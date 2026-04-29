@@ -30,17 +30,16 @@ The Go daemon is a 5 MB binary. The Python backend runs as a subprocess. Nothing
 ## Install
 
 ```bash
-# macOS / Linux
-curl -L https://github.com/sraj0501/automation_tools/releases/latest/download/devtrack_$(uname -s)_$(uname -m).tar.gz | tar xz
+# macOS / Linux — detect OS and architecture, then download the right binary
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+[ "$ARCH" = "x86_64" ]  && ARCH="amd64"
+[ "$ARCH" = "aarch64" ] && ARCH="arm64"
+curl -fsSL "https://github.com/sraj0501/automation_tools/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
 sudo mv devtrack /usr/local/bin/
 
-# Clone the Python backend (required for AI and integrations)
-git clone https://github.com/sraj0501/automation_tools.git
-cd automation_tools
-uv sync
-
-# Interactive setup wizard — recommended for new users
-devtrack setup    # walks through LLM provider, credentials, workspace; generates .env
+# Interactive setup wizard — choose standalone or full mode
+devtrack setup
 
 devtrack start
 devtrack status

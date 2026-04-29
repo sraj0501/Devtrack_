@@ -76,11 +76,11 @@ release:
     ### Quick install
 
     ```bash
-    # macOS / Linux
-    curl -L https://github.com/sraj0501/automation_tools/releases/latest/download/devtrack_$(uname -s)_$(uname -m).tar.gz | tar xz
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" ] && ARCH="arm64"
+    curl -fsSL "https://github.com/sraj0501/automation_tools/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
     sudo mv devtrack /usr/local/bin/
-
-    devtrack setup   # choose standalone or full mode
+    devtrack setup
     ```
 
     See [Installation Guide](https://github.com/sraj0501/automation_tools/blob/main/docs/INSTALLATION.md) for full setup.
