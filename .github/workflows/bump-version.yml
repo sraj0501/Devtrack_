@@ -111,6 +111,11 @@ jobs:
           cp workspaces.yaml.example "dist/${ARCHIVE_DIR}/"
           cp workspaces.yaml.sample  "dist/${ARCHIVE_DIR}/"
 
+          # Management CLI and version stamp
+          cp devtrack-server          "dist/${ARCHIVE_DIR}/"
+          chmod +x                    "dist/${ARCHIVE_DIR}/devtrack-server"
+          echo "${VER}"             > "dist/${ARCHIVE_DIR}/VERSION"
+
           # Strip bytecode and test artefacts
           find "dist/${ARCHIVE_DIR}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
           find "dist/${ARCHIVE_DIR}" -name "*.pyc" -o -name "*.pyo" -delete 2>/dev/null || true
@@ -150,8 +155,15 @@ jobs:
 
           ### Server install (Full mode)
 
-          Download \`devtrack-server-${TAG#v}.tar.gz\`, extract, and run \`./setup_local.sh\`.
-          The archive contains the Python backend, \`workspaces.yaml.example\` (rename to \`workspaces.yaml\` if needed), and \`docker-compose.yml\`.
+          \`\`\`bash
+          curl -fsSL "https://github.com/${{ github.repository }}/releases/latest/download/devtrack-server-${TAG#v}.tar.gz" | tar xz
+          cd devtrack-server-${TAG#v}
+          ./devtrack-server install   # installs to ~/.local/share/devtrack-server
+          devtrack-server setup       # interactive .env wizard
+          devtrack-server start
+          \`\`\`
+
+          To upgrade an existing server: \`devtrack-server upgrade\`
 
           ### Updating from a previous version
 
