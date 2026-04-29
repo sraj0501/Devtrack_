@@ -116,10 +116,12 @@ jobs:
           chmod +x                    "dist/${ARCHIVE_DIR}/devtrack-server"
           echo "${VER}"             > "dist/${ARCHIVE_DIR}/VERSION"
 
-          # Strip bytecode and test artefacts
-          find "dist/${ARCHIVE_DIR}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-          find "dist/${ARCHIVE_DIR}" -name "*.pyc" -o -name "*.pyo" -delete 2>/dev/null || true
+          # Strip dev-only artefacts
+          find "dist/${ARCHIVE_DIR}" -type d -name "__pycache__"   -exec rm -rf {} + 2>/dev/null || true
+          find "dist/${ARCHIVE_DIR}" -type d -name "tests"         -exec rm -rf {} + 2>/dev/null || true
           find "dist/${ARCHIVE_DIR}" -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+          find "dist/${ARCHIVE_DIR}" -name "*.pyc" -delete 2>/dev/null || true
+          find "dist/${ARCHIVE_DIR}" -name "*.pyo" -delete 2>/dev/null || true
 
           cd dist
           tar czf "devtrack-server-${VER}.tar.gz" "${ARCHIVE_DIR}"
