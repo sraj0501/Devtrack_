@@ -88,6 +88,39 @@ jobs:
           cd ../dist
           sha256sum devtrack_*.tar.gz > checksums.txt
 
+      - name: Build server archive
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          VER="${TAG#v}"
+          ARCHIVE_DIR="devtrack-server-${VER}"
+          mkdir -p "dist/${ARCHIVE_DIR}"
+
+          # Copy Python backend files
+          cp -r backend                   "dist/${ARCHIVE_DIR}/backend"
+          cp    python_bridge.py          "dist/${ARCHIVE_DIR}/"
+          cp    pyproject.toml            "dist/${ARCHIVE_DIR}/"
+          cp    docker-compose.yml        "dist/${ARCHIVE_DIR}/"
+          cp    setup_local.sh            "dist/${ARCHIVE_DIR}/"
+          cp    devtrack-git-wrapper.sh   "dist/${ARCHIVE_DIR}/"
+          cp    README.md                 "dist/${ARCHIVE_DIR}/"
+          cp    TERMS.md                  "dist/${ARCHIVE_DIR}/"
+          [ -f uv.lock ] && cp uv.lock   "dist/${ARCHIVE_DIR}/"
+          [ -f .env_sample ] && cp .env_sample "dist/${ARCHIVE_DIR}/"
+
+          # Workspace templates only — never ship the live workspaces.yaml
+          cp workspaces.yaml.example "dist/${ARCHIVE_DIR}/"
+          cp workspaces.yaml.sample  "dist/${ARCHIVE_DIR}/"
+
+          # Strip bytecode and test artefacts
+          find "dist/${ARCHIVE_DIR}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find "dist/${ARCHIVE_DIR}" -name "*.pyc" -o -name "*.pyo" -delete 2>/dev/null || true
+          find "dist/${ARCHIVE_DIR}" -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+
+          cd dist
+          tar czf "devtrack-server-${VER}.tar.gz" "${ARCHIVE_DIR}"
+          sha256sum "devtrack-server-${VER}.tar.gz" >> checksums.txt
+          rm -rf "${ARCHIVE_DIR}"
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -103,9 +136,9 @@ jobs:
 
           > **Two deployment modes** — choose during \`devtrack setup\`:
           > - **Standalone**: git tracking, CLI tools, and AI commit messages — no Python backend required.
-          > - **Full**: all of the above plus AI work updates, project management sync, and reporting.
+          > - **Full**: all of the above plus AI work updates, project management sync, and reporting (requires \`devtrack-server\` on a server).
 
-          ### Quick install
+          ### Quick install (CLI)
 
           \`\`\`bash
           OS=\$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -114,6 +147,11 @@ jobs:
           sudo mv devtrack /usr/local/bin/
           devtrack setup
           \`\`\`
+
+          ### Server install (Full mode)
+
+          Download \`devtrack-server-${TAG#v}.tar.gz\`, extract, and run \`./setup_local.sh\`.
+          The archive contains the Python backend, \`workspaces.yaml.example\` (rename to \`workspaces.yaml\` if needed), and \`docker-compose.yml\`.
 
           ### Updating from a previous version
 
@@ -130,4 +168,5 @@ jobs:
             dist/devtrack_linux_arm64.tar.gz \
             dist/devtrack_darwin_amd64.tar.gz \
             dist/devtrack_darwin_arm64.tar.gz \
+            dist/devtrack-server-${TAG#v}.tar.gz \
             dist/checksums.txt
