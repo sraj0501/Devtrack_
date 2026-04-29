@@ -27,7 +27,7 @@ builds:
 
 archives:
   - id: devtrack
-    builds:
+    ids:
       - devtrack
     name_template: "devtrack_{{ .Os }}_{{ .Arch }}"
     files:

@@ -21,8 +21,8 @@ permissions:
   contents: write
 
 jobs:
-  bump:
-    name: Bump version and tag
+  release:
+    name: Bump version, build, and publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -30,21 +30,21 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: devtrack-bin/go.mod
+          cache-dependency-path: devtrack-bin/go.sum
+
       - name: Compute next version
         id: version
         run: |
-          # Get latest tag (default to v0.0.0 if none)
           LATEST=$(git tag --sort=-version:refname | grep '^v' | head -1)
           [ -z "$LATEST" ] && LATEST="v0.0.0"
-          echo "Latest tag: $LATEST"
-
-          # Strip leading 'v'
           VER="${LATEST#v}"
           MAJOR=$(echo "$VER" | cut -d. -f1)
           MINOR=$(echo "$VER" | cut -d. -f2)
           PATCH=$(echo "$VER" | cut -d. -f3)
 
-          # workflow_dispatch provides bump type; push triggers always do patch
           BUMP="${{ github.event.inputs.bump }}"
           [ -z "$BUMP" ] && BUMP="patch"
 
@@ -58,15 +58,68 @@ jobs:
           echo "Next version: $NEXT"
           echo "tag=$NEXT" >> "$GITHUB_OUTPUT"
 
-      - name: Configure git
+      - name: Configure git and create tag
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-
-      - name: Create and push tag
-        run: |
           TAG="${{ steps.version.outputs.tag }}"
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
-          echo "✅ Tagged $TAG — release workflow will now build and publish the binary."
+
+      - name: Build binaries
+        run: |
+          cd devtrack-bin
+          mkdir -p ../dist
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILDTIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          TAG="${{ steps.version.outputs.tag }}"
+          LDFLAGS="-s -w -X main.Version=${TAG} -X main.GitCommit=${COMMIT} -X main.BuildTime=${BUILDTIME}"
+          for TARGET in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            OS=${TARGET%/*}
+            ARCH=${TARGET#*/}
+            CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -ldflags "$LDFLAGS" -o ../dist/devtrack_${OS}_${ARCH} .
+            cd ../dist
+            cp devtrack_${OS}_${ARCH} devtrack
+            tar czf devtrack_${OS}_${ARCH}.tar.gz devtrack
+            rm devtrack
+            cd ../devtrack-bin
+          done
+          cd ../dist
+          sha256sum devtrack_*.tar.gz > checksums.txt
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          PREV=$(git tag --sort=-version:refname | grep '^v' | grep -v "^${TAG}$" | head -1)
+          gh release create "$TAG" \
+            --title "DevTrack ${TAG}" \
+            --notes "$(cat <<EOF
+          ## DevTrack ${TAG}
+
+          Pre-built binaries for macOS (Apple Silicon + Intel) and Linux (amd64 + arm64).
+
+          > **Two deployment modes** — choose during \`devtrack setup\`:
+          > - **Standalone**: git tracking, CLI tools, and AI commit messages — no Python backend required.
+          > - **Full**: all of the above plus AI work updates, project management sync, and reporting.
+
+          ### Quick install
+
+          \`\`\`bash
+          OS=\$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=\$(uname -m); [ "\$ARCH" = "x86_64" ] && ARCH="amd64"; [ "\$ARCH" = "aarch64" ] && ARCH="arm64"
+          curl -fsSL "https://github.com/${{ github.repository }}/releases/latest/download/devtrack_\${OS}_\${ARCH}.tar.gz" | tar xz
+          sudo mv devtrack /usr/local/bin/
+          devtrack setup
+          \`\`\`
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV}...${TAG}
+          EOF
+          )" \
+            dist/devtrack_linux_amd64.tar.gz \
+            dist/devtrack_linux_arm64.tar.gz \
+            dist/devtrack_darwin_amd64.tar.gz \
+            dist/devtrack_darwin_arm64.tar.gz \
+            dist/checksums.txt
