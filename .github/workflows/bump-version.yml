@@ -115,6 +115,14 @@ jobs:
           devtrack setup
           \`\`\`
 
+          ### Updating from a previous version
+
+          \`\`\`bash
+          devtrack upgrade
+          # If the binary is in a root-owned location (e.g. /usr/local/bin):
+          sudo devtrack upgrade
+          \`\`\`
+
           **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV}...${TAG}
           EOF
           )" \

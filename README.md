@@ -45,6 +45,9 @@ devtrack start
 devtrack status
 ```
 
+> **Updating?** Run `devtrack upgrade` to download and install the latest binary automatically.
+> If the binary is in a root-owned location (e.g. `/usr/local/bin`), run `sudo devtrack upgrade` instead.
+
 > `devtrack setup` generates `.env` and writes `~/.devtrack/devtrack.conf` so the daemon can find it automatically. If you prefer manual setup, copy `.env_sample` to `.env` and fill in the values instead.
 
 > Full walkthrough: [Installation Guide](docs/INSTALLATION.md) · [Quick Start](docs/QUICK_START.md)
