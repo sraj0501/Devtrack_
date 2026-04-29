@@ -34,6 +34,10 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 INSTALL_BIN="$HOME/.local/bin"
 OS="$(uname -s)"
 
+# Ensure ~/.local/bin is on PATH for this script's lifetime.
+# uv installs there; without this it's invisible on re-runs in a fresh shell.
+export PATH="$HOME/.local/bin:$PATH"
+
 # ── Header ────────────────────────────────────────────────────────────────────
 clear
 echo -e "${CYAN}${BOLD}"
@@ -128,6 +132,8 @@ uv sync
 ok "Python packages ready"
 
 info "Downloading spaCy NLP model..."
+# uv venvs don't include pip by default; spacy download calls pip internally.
+uv pip install pip --quiet
 uv run python -m spacy download en_core_web_sm
 ok "spaCy en_core_web_sm ready"
 
