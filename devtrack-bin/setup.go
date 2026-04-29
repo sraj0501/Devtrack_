@@ -99,7 +99,12 @@ func RunSetup() error {
 		}
 	}
 
-	envPath := filepath.Join(projectRoot, ".env")
+		// ── 1b. XDG data home ────────────────────────────────────────────────────
+	xdgHome, err := devtrackDataHome()
+	if err != nil {
+		return fmt.Errorf("could not determine data home: %w", err)
+	}
+	envPath := filepath.Join(xdgHome, ".env")
 
 	// ── 2. Already configured? ────────────────────────────────────────────────
 	if _, err := os.Stat(envPath); err == nil {
@@ -116,7 +121,7 @@ func RunSetup() error {
 
 	cfg := &SetupConfig{
 		ProjectRoot: projectRoot,
-		DataDir:     filepath.Join(projectRoot, "Data"),
+		DataDir:     filepath.Join(xdgHome, "data"),
 		Mode:        selectedMode,
 	}
 
@@ -293,12 +298,7 @@ func RunSetup() error {
 	// ── 10. Shell integration ─────────────────────────────────────────────────
 	fmt.Println()
 	fmt.Println("─── Shell Integration ────────────────────────────────────────────")
-	fmt.Println("Shell integration enables bare 'git commit' to use AI enhancement.")
-	fmt.Print("Set up shell integration now? [Y/n]: ")
-	shellAnswer := readLine(reader)
-	if shellAnswer == "" || strings.ToLower(shellAnswer) == "y" {
-		printShellInitInstructions(projectRoot, envPath)
-	}
+	installShellIntegration()
 
 	// ── 11. Autostart ─────────────────────────────────────────────────────────
 	fmt.Println()
@@ -755,22 +755,65 @@ func checkPythonBackend(projectRoot string) {
 	fmt.Println()
 }
 
-// printShellInitInstructions prints what to add to the shell profile.
-func printShellInitInstructions(projectRoot, envPath string) {
-	shell := os.Getenv("SHELL")
-	profileFile := "~/.bashrc"
-	if strings.Contains(shell, "zsh") {
-		profileFile = "~/.zshrc"
-	} else if strings.Contains(shell, "fish") {
-		profileFile = "~/.config/fish/config.fish"
+// installShellIntegration appends the devtrack eval line to the active shell RC file.
+// It is idempotent: a second run will not add a duplicate line.
+func installShellIntegration() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("  ✗ Could not determine home directory; add shell integration manually.")
+		fmt.Println(`    eval "$(devtrack shell-init)"`)
+		return
 	}
 
-	fmt.Printf("\nAdd the following to %s:\n\n", profileFile)
-	fmt.Println("  # DevTrack shell integration (enables bare 'git commit' AI enhancement)")
-	fmt.Printf("  eval \"$(devtrack shell-init)\"\n")
-	fmt.Println()
-	fmt.Println("Note: env vars are auto-loaded by the binary — no 'source .env' needed.")
-	fmt.Println("Then restart your shell or run: source " + profileFile)
+	shell := os.Getenv("SHELL")
+	var rcFile string
+	switch {
+	case strings.Contains(shell, "zsh"):
+		rcFile = filepath.Join(home, ".zshrc")
+	case strings.Contains(shell, "fish"):
+		rcFile = filepath.Join(home, ".config", "fish", "config.fish")
+	default:
+		rcFile = filepath.Join(home, ".bashrc")
+	}
+
+	evalLine := `eval "$(devtrack shell-init)"`
+
+	if data, err := os.ReadFile(rcFile); err == nil {
+		if strings.Contains(string(data), "devtrack shell-init") {
+			fmt.Printf("  ✓ Shell integration already present in %s\n", rcFile)
+			return
+		}
+	}
+
+	f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Printf("  ✗ Could not write to %s: %v\n", rcFile, err)
+		fmt.Printf("    Add manually: %s\n", evalLine)
+		return
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString("\n# DevTrack shell integration\n" + evalLine + "\n"); err != nil {
+		fmt.Printf("  ✗ Write error on %s: %v\n", rcFile, err)
+		return
+	}
+
+	fmt.Printf("  ✓ Added to %s\n", rcFile)
+	fmt.Printf("    Run: source %s  (or open a new terminal)\n", rcFile)
+}
+
+// devtrackDataHome returns the XDG data home directory for DevTrack.
+// Default: ~/.local/share/devtrack. Honours $XDG_DATA_HOME if set.
+func devtrackDataHome() (string, error) {
+	base := os.Getenv("XDG_DATA_HOME")
+	if base == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		base = filepath.Join(home, ".local", "share")
+	}
+	return filepath.Join(base, "devtrack"), nil
 }
 
 // printAutostartInstructions shows the autostart command.
@@ -791,7 +834,8 @@ func printSetupHeader() {
 	fmt.Println("║          DevTrack — First-Run Setup Wizard                      ║")
 	fmt.Println("╚══════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
-	fmt.Println("This wizard creates your .env configuration and Data/ directories.")
+	fmt.Println("This wizard creates ~/.local/share/devtrack/ with all required directories")
+	fmt.Println("and registers DevTrack in your shell profile.")
 	fmt.Println("You can re-run 'devtrack setup' at any time to reconfigure.")
 	fmt.Println()
 }
