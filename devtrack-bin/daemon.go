@@ -131,6 +131,9 @@ func (d *Daemon) Start() error {
 		// Wait up to 10 s for the Python HTTP server to become healthy
 		d.waitForPythonHTTP(10)
 	}
+	if IsLightweightMode() {
+		log.Println("Running in Lightweight mode — Python backend disabled")
+	}
 
 	// Start Telegram bot if enabled
 	if err := d.startTelegramBot(); err != nil {

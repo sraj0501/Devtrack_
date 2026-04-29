@@ -14,6 +14,7 @@ type LearningCommands struct {
 	pythonPath      string
 	scriptPath      string
 	dailyScriptPath string
+	dailyScriptErr  error // non-nil when the daily script file was not found
 	projectRoot     string
 }
 
@@ -24,16 +25,21 @@ func NewLearningCommands() *LearningCommands {
 	if config != nil {
 		projectRoot = config.ProjectRoot
 	}
+	dailyPath, dailyErr := GetLearningDailyScriptPath()
 	return &LearningCommands{
 		pythonPath:      GetLearningPythonPath(),
 		scriptPath:      GetLearningScriptPath(),
-		dailyScriptPath: GetLearningDailyScriptPath(),
+		dailyScriptPath: dailyPath,
+		dailyScriptErr:  dailyErr,
 		projectRoot:     projectRoot,
 	}
 }
 
 // runDailyScript runs run_daily_learning.py with the given arguments via uv
 func (lc *LearningCommands) runDailyScript(args ...string) error {
+	if lc.dailyScriptErr != nil {
+		return fmt.Errorf("daily learning script unavailable: %w", lc.dailyScriptErr)
+	}
 	uvArgs := []string{"run", "--directory", lc.projectRoot, "python", lc.dailyScriptPath}
 	uvArgs = append(uvArgs, args...)
 	cmd := exec.Command("uv", uvArgs...)

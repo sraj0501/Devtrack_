@@ -17,6 +17,8 @@ const (
 	ServerModeExternal ServerMode = "external"
 	// ServerModeCloud — Python backend is a remote cloud-hosted server; credentials in ~/.devtrack/cloud.json
 	ServerModeCloud ServerMode = "cloud"
+	// ServerModeLightweight — git monitoring + scheduling only; no Python backend spawned
+	ServerModeLightweight ServerMode = "lightweight"
 )
 
 // GetServerMode returns the configured server mode.
@@ -25,6 +27,9 @@ const (
 func GetServerMode() ServerMode {
 	if IsCloudMode() {
 		return ServerModeCloud
+	}
+	if os.Getenv("DEVTRACK_SERVER_MODE") == "lightweight" {
+		return ServerModeLightweight
 	}
 	if os.Getenv("DEVTRACK_SERVER_MODE") == "external" {
 		return ServerModeExternal
@@ -92,9 +97,16 @@ func GetTLSKeyPath() string {
 
 // IsExternalServer returns true when the Python backend is managed externally
 // (i.e. the daemon should NOT spawn it as a subprocess).
+// This includes Lightweight mode, where no Python backend is used at all.
 func IsExternalServer() bool {
 	mode := GetServerMode()
-	return mode == ServerModeExternal || mode == ServerModeCloud
+	return mode == ServerModeExternal || mode == ServerModeCloud || mode == ServerModeLightweight
+}
+
+// IsLightweightMode returns true when the daemon is running in Lightweight mode
+// (git monitoring + scheduling only; Python backend is disabled).
+func IsLightweightMode() bool {
+	return GetServerMode() == ServerModeLightweight
 }
 
 // IsLocalTLS reports whether TLS cert-pinning (self-signed) should be used.

@@ -238,40 +238,38 @@ func GetIPCAddress() string {
 	return config.IPCHost + ":" + config.IPCPort
 }
 
-// GetPythonBridgePath returns the path to python_bridge.py
-func GetPythonBridgePath() string {
+// GetPythonBridgePath returns the path to python_bridge.py.
+// Returns an error instead of calling os.Exit so Lightweight mode callers can
+// handle the missing file gracefully.
+func GetPythonBridgePath() (string, error) {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		return "", fmt.Errorf("config load failed: %w", err)
 	}
 
 	path := filepath.Join(config.ProjectRoot, config.PythonBridgeScript)
 	if !fileExists(path) {
-		fmt.Fprintf(os.Stderr, "ERROR: Python bridge script not found at: %s\n", path)
-		fmt.Fprintf(os.Stderr, "Check PROJECT_ROOT and PYTHON_BRIDGE_SCRIPT in .env file\n")
-		os.Exit(1)
+		return "", fmt.Errorf("Python bridge script not found at %s", path)
 	}
 
-	return path
+	return path, nil
 }
 
-// GetEmailReporterPath returns the path to backend/email_reporter.py
-func GetEmailReporterPath() string {
+// GetEmailReporterPath returns the path to backend/email_reporter.py.
+// Returns an error instead of calling os.Exit so Lightweight mode callers can
+// handle the missing backend gracefully.
+func GetEmailReporterPath() (string, error) {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		return "", fmt.Errorf("config load failed: %w", err)
 	}
 
 	path := filepath.Join(config.ProjectRoot, "backend", "email_reporter.py")
 	if !fileExists(path) {
-		fmt.Fprintf(os.Stderr, "ERROR: Email reporter script not found at: %s\n", path)
-		fmt.Fprintf(os.Stderr, "Check PROJECT_ROOT in .env file\n")
-		os.Exit(1)
+		return "", fmt.Errorf("email reporter script not found at %s (Managed mode required)", path)
 	}
 
-	return path
+	return path, nil
 }
 
 // GetConfigFileName returns the config file name
@@ -637,17 +635,25 @@ func GetLearningScriptPath() string {
 	return expandPath(config.LearningScriptPath)
 }
 
-func GetLearningDailyScriptPath() string {
+// GetLearningDailyScriptPath returns the path to the daily learning Python script.
+// Returns an error instead of calling os.Exit so Lightweight mode callers can
+// handle the missing backend gracefully.
+func GetLearningDailyScriptPath() (string, error) {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		return "", fmt.Errorf("config load failed: %w", err)
 	}
+	var path string
 	// Use explicit env var if set, otherwise derive from PROJECT_ROOT
 	if config.LearningDailyScriptPath != "" {
-		return expandPath(config.LearningDailyScriptPath)
+		path = expandPath(config.LearningDailyScriptPath)
+	} else {
+		path = filepath.Join(config.ProjectRoot, "backend", "run_daily_learning.py")
 	}
-	return filepath.Join(config.ProjectRoot, "backend", "run_daily_learning.py")
+	if !fileExists(path) {
+		return "", fmt.Errorf("daily learning script not found at %s (Managed mode required)", path)
+	}
+	return path, nil
 }
 
 func GetLearningDefaultDays() int {

@@ -2,6 +2,102 @@
 
 ---
 
+### [2026-04-24 15:30] TASK-024 — refactor(config): make GetEmailReporterPath, GetLearningDailyScriptPath, GetPythonBridgePath return error instead of os.Exit
+
+**Original message**: "refactor(config): make GetEmailReporterPath, GetLearningDailyScriptPath, GetPythonBridgePath return error instead of os.Exit (TASK-024)"
+**DevTrack enhanced it to**: N/A — devtrack binary not installed in this dev environment; used raw git commit
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated (TASK-024 COMPLETE)
+**Time**: ~10 minutes
+**Friction**: LOW — signature change + caller updates are mechanical; compiler guided every site
+**Notes**: Three functions in config_env.go changed from `string` to `(string, error)`. Callers: 3 sites in cli.go (handlePreviewReport, handleSendReport, handleSaveReport) each now propagate the error. learning.go NewLearningCommands stores the (path, err) pair; runDailyScript checks the error before exec. GetPythonBridgePath had zero external callers so only its own definition was updated. fileExists helper was already defined in config_env.go — no new helper needed. Build/vet produce only the pre-existing Windows syscall errors (SIGUSR2, Setsid) — no new errors. PR opened for features/standalone-cli-mode → main covering all 4 tasks.
+
+[DEVTRACK PAUSED — devtrack binary not installed in this dev environment; used raw git for this commit]
+
+## Task Summary — TASK-024: config_env.go non-fatal path functions — 2026-04-24
+
+- Total commits: 1 (4de127b)
+- Acceptance criteria met: 4/4
+- Tickets auto-updated: 0 (devtrack binary not running)
+- Estimated daily time saved: ~1 min (prevents confusing os.Exit in unexpected Lightweight-mode calls)
+- Blockers encountered: none
+- One thing that still feels rough: "GetPythonBridgePath is now dead code — no caller exists. Could be removed in a follow-up cleanup."
+- Ready for PM review: YES
+
+---
+
+### [2026-04-24 14:00] TASK-023 — feat(cli): capability guard for backend-dependent commands in lightweight mode
+
+**Original message**: "feat(cli): capability guard for backend-dependent commands in lightweight mode (TASK-023)"
+**DevTrack enhanced it to**: N/A — devtrack binary not installed in this dev environment; used raw git commit
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated (TASK-023 COMPLETE, TASK-024 IN PROGRESS)
+**Time**: ~8 minutes
+**Friction**: LOW — mechanical guard additions; all handlers already return error so pattern was uniform
+**Notes**: Added `requiresManagedMode()` helper function in cli.go just before `handleStart()`. Guarded 28 handlers: 10 learning, 4 report, 4 azure, 4 gitlab, 4 github, 2 server/admin. handleServerTUI and handleAdminStart are in cli_work.go — guarded there. All handlers already returned `error` so the `return err` pattern was consistent — no `os.Exit(1)` needed. Build/vet/test produce only the pre-existing Windows syscall errors (SIGUSR2, Setsid) — no new errors introduced.
+
+[DEVTRACK PAUSED — devtrack binary not installed in this dev environment; used raw git for this commit]
+
+## Task Summary — TASK-023: cli.go capability guard for backend-dependent commands — 2026-04-24
+
+- Total commits: 1 (0cde877)
+- Acceptance criteria met: 4/4
+- Tickets auto-updated: 0 (devtrack binary not running)
+- Estimated daily time saved: ~2 min (lightweight users get clear error instead of confusing Python crash)
+- Blockers encountered: none
+- One thing that still feels rough: "handleWork() sub-commands (work start/stop/adjust/status/report) call Python internally for the report sub-command — that path is not guarded yet; deferred per spec."
+- Ready for PM review: YES
+
+---
+
+### [2026-04-24 12:00] TASK-022 — feat(daemon): add ServerModeLightweight — skip Python spawn in lightweight mode
+
+**Original message**: "feat(daemon): add ServerModeLightweight — skip Python spawn in lightweight mode (TASK-022)"
+**DevTrack enhanced it to**: N/A — devtrack binary not installed in this dev environment; used raw git commit
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated (TASK-022 COMPLETE, TASK-023 IN PROGRESS)
+**Time**: ~5 minutes
+**Friction**: LOW — straightforward constant + function additions; pre-existing Windows syscall build errors unchanged
+**Notes**: Added `ServerModeLightweight` constant, updated `GetServerMode()` resolution order (cloud → lightweight → external → managed), updated `IsExternalServer()` to include lightweight, added `IsLightweightMode()` helper in server_config.go, and added a log line in daemon.go Start() after the startWebhookServer call. Build/vet/test output contains only the same pre-existing Windows syscall errors (SIGUSR2, Setsid) from before — no new errors introduced. devtrack binary not installed; used raw git per fallback protocol.
+
+[DEVTRACK PAUSED — devtrack binary not installed in this dev environment; used raw git for this commit]
+
+## Task Summary — TASK-022: daemon.go Lightweight mode skips Python spawn — 2026-04-24
+
+- Total commits: 1 (744acd2)
+- Acceptance criteria met: 6/6
+- Tickets auto-updated: 0 (devtrack binary not running)
+- Estimated daily time saved: ~3 min (avoids Python crash noise in Lightweight deployments)
+- Blockers encountered: none
+- One thing that still feels rough: "The build/vet/test gates cannot fully pass on Windows — a Linux CI gate would close this gap definitively."
+- Ready for PM review: YES
+
+---
+
+### [2026-04-24 00:00] TASK-021 — feat(setup): add mode selection wizard for standalone-cli support
+
+**Original message**: "feat(setup): add mode selection wizard for standalone-cli support (TASK-021)"
+**DevTrack enhanced it to**: N/A — devtrack binary not installed in this dev environment; used raw git commit
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated (TASK-021 COMPLETE, TASK-022 IN PROGRESS)
+**Time**: ~10 minutes
+**Friction**: LOW — pre-existing Windows build errors (syscall.Setsid, SIGUSR2) are Linux-only APIs; confirmed pre-existing, not introduced by this change
+**Notes**: Build/vet/test all fail on Windows due to pre-existing Linux-only syscall usage in cli.go and daemon.go. The setup.go changes are syntactically correct Go — no new errors introduced. The devtrack binary is not installed on this Windows machine; used raw git commit per fallback protocol.
+
+[DEVTRACK PAUSED — devtrack binary not installed in this dev environment; used raw git for this commit]
+
+## Task Summary — TASK-021: setup.go mode selection wizard — 2026-04-24
+
+- Total commits: 1 (fd208f6)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0 (devtrack binary not running)
+- Estimated daily time saved: ~5 min (clear error path for standalone deployments)
+- Blockers encountered: none
+- One thing that still feels rough: "Build/vet/test commands cannot be fully verified on Windows due to Linux-only syscalls in cli.go and daemon.go — the project needs a Linux CI gate."
+- Ready for PM review: YES
+
+---
+
 ## 2026-04-23 — TASK-019: Ship features/loadEnvs to main
 
 **Branch**: `features/loadEnvs`

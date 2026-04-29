@@ -11,11 +11,23 @@ import (
 	"time"
 )
 
+// DevTrackMode represents the operating mode chosen during setup.
+type DevTrackMode string
+
+const (
+	ModeLightweight DevTrackMode = "lightweight"
+	ModeExternal    DevTrackMode = "external"
+	ModeManaged     DevTrackMode = "managed"
+)
+
 // SetupConfig holds all values collected during the setup wizard.
 type SetupConfig struct {
 	ProjectRoot   string
 	WorkspacePath string
 	DataDir       string
+
+	// Mode
+	Mode DevTrackMode
 
 	// LLM
 	LLMProvider    string
@@ -50,10 +62,41 @@ func RunSetup() error {
 
 	printSetupHeader()
 
+	// ── 0. Mode selection ─────────────────────────────────────────────────────
+	fmt.Println("Which mode do you want to run DevTrack in?")
+	fmt.Println("  [1] Managed    (default) — full AI features. Requires Python backend/ on this machine.")
+	fmt.Println("  [2] Lightweight           — git monitoring + scheduling only. No Python needed.")
+	fmt.Println("  [3] External              — daemon only; Python runs on a separate server.")
+	fmt.Println()
+	fmt.Print("Choice [1]: ")
+	modeChoice := readLine(reader)
+	fmt.Println()
+
+	var selectedMode DevTrackMode
+	switch modeChoice {
+	case "2":
+		selectedMode = ModeLightweight
+	case "3":
+		selectedMode = ModeExternal
+	default:
+		selectedMode = ModeManaged
+	}
+
 	// ── 1. Detect PROJECT_ROOT ────────────────────────────────────────────────
-	projectRoot, err := detectProjectRoot()
-	if err != nil {
-		return fmt.Errorf("could not locate DevTrack installation: %w\n\nMake sure the devtrack binary is inside the release package (next to backend/)", err)
+	var projectRoot string
+	if selectedMode == ModeManaged {
+		root, err := detectProjectRoot()
+		if err != nil {
+			return fmt.Errorf("could not locate DevTrack installation: %w\n\nMake sure the devtrack binary is inside the release package (next to backend/)", err)
+		}
+		projectRoot = root
+	} else {
+		execPath, err := os.Executable()
+		if err == nil {
+			projectRoot = filepath.Dir(execPath)
+		} else {
+			projectRoot, _ = os.Getwd()
+		}
 	}
 
 	envPath := filepath.Join(projectRoot, ".env")
@@ -74,10 +117,17 @@ func RunSetup() error {
 	cfg := &SetupConfig{
 		ProjectRoot: projectRoot,
 		DataDir:     filepath.Join(projectRoot, "Data"),
+		Mode:        selectedMode,
 	}
 
 	// ── 3. Python backend check ───────────────────────────────────────────────
-	checkPythonBackend(projectRoot)
+	if cfg.Mode == ModeManaged {
+		checkPythonBackend(projectRoot)
+	} else {
+		fmt.Println("─── Checking prerequisites ───────────────────────────────────────")
+		fmt.Println("[" + string(cfg.Mode) + " mode] Python backend not required — skipping prerequisite check.")
+		fmt.Println()
+	}
 
 	// ── 4. Workspace path ─────────────────────────────────────────────────────
 	fmt.Println("─── Git Repository to Monitor ───────────────────────────────────")
@@ -261,7 +311,7 @@ func RunSetup() error {
 	}
 
 	// ── Done ──────────────────────────────────────────────────────────────────
-	printSetupComplete(projectRoot, envPath)
+	printSetupComplete(projectRoot, envPath, cfg.Mode)
 	return nil
 }
 
@@ -360,7 +410,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("LEARNING_DIR_PATH=" + filepath.Join(dataDir, "learning") + "\n\n")
 
 	b.WriteString("## DAEMON INTERNALS\n")
-	b.WriteString("DEVTRACK_SERVER_MODE=managed\n")
+	b.WriteString("DEVTRACK_SERVER_MODE=" + string(cfg.Mode) + "\n")
 	b.WriteString("DEVTRACK_SERVER_URL=\n")
 	b.WriteString("DEVTRACK_TLS=true\n")
 	b.WriteString("DEVTRACK_API_KEY=\n")
@@ -747,25 +797,35 @@ func printSetupHeader() {
 }
 
 // printSetupComplete prints the completion summary.
-func printSetupComplete(projectRoot, envPath string) {
+func printSetupComplete(projectRoot, envPath string, mode DevTrackMode) {
 	fmt.Println()
 	fmt.Println("╔══════════════════════════════════════════════════════════════════╗")
 	fmt.Println("║  Setup complete!                                                ║")
 	fmt.Println("╚══════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
-	fmt.Println("Next steps:")
-	fmt.Println()
-	fmt.Printf("  1. Install Python dependencies:\n")
-	fmt.Printf("       cd %s && uv sync\n", projectRoot)
-	fmt.Println()
-	fmt.Println("  2. Start DevTrack (env auto-loaded — no sourcing needed):")
-	fmt.Println("       devtrack start")
-	fmt.Println()
-	fmt.Println("  3. Check status:  devtrack status")
-	fmt.Println("  4. View logs:     devtrack logs")
-	fmt.Println("  5. Add workspace: devtrack workspace add <path>")
-	fmt.Println()
-	fmt.Println("Edit .env at any time to add integrations (GitHub, Azure, Jira, etc.)")
+
+	if mode == ModeManaged {
+		fmt.Println("Next steps:")
+		fmt.Println()
+		fmt.Printf("  1. Install Python dependencies:\n")
+		fmt.Printf("       cd %s && uv sync\n", projectRoot)
+		fmt.Println()
+		fmt.Println("  2. Start DevTrack (env auto-loaded — no sourcing needed):")
+		fmt.Println("       devtrack start")
+		fmt.Println()
+		fmt.Println("  3. Check status:  devtrack status")
+		fmt.Println("  4. View logs:     devtrack logs")
+		fmt.Println("  5. Add workspace: devtrack workspace add <path>")
+		fmt.Println()
+		fmt.Println("Edit .env at any time to add integrations (GitHub, Azure, Jira, etc.)")
+	} else {
+		fmt.Println("Next steps:")
+		fmt.Println("  1. Start DevTrack:  devtrack start")
+		fmt.Println("  2. Check status:    devtrack status")
+		fmt.Println()
+		fmt.Println("Note: AI features (reports, integrations, commit enhancement) require Managed mode.")
+		fmt.Println("Re-run 'devtrack setup' and choose [1] to enable them.")
+	}
 	fmt.Println()
 }
 
