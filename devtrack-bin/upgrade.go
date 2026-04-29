@@ -4,10 +4,12 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -183,23 +185,38 @@ func downloadBinaryFromAsset(url string) (string, error) {
 	return "", fmt.Errorf("devtrack binary not found in archive")
 }
 
-// replaceBinary atomically replaces dst with src using rename.
-// On the same filesystem this is atomic.  Falls back to copy+rename
-// when src and dst are on different filesystems.
+// replaceBinary replaces dst with src.
+// It first tries a direct copy+rename (works when running as root or the
+// binary is in a user-writable location).  If that fails with a permission
+// error it retries via "sudo cp", which prompts the user for their password
+// exactly as "sudo" normally would.
 func replaceBinary(dst, src string) error {
-	// Try atomic rename first (same filesystem)
 	tmpDst := dst + ".upgrade"
-	if err := copyFile(src, tmpDst); err != nil {
+
+	err := copyFile(src, tmpDst)
+	if err == nil {
+		_ = os.Chmod(tmpDst, 0755)
+		if renameErr := os.Rename(tmpDst, dst); renameErr == nil {
+			return nil
+		}
+		os.Remove(tmpDst)
+	}
+
+	if err != nil && !errors.Is(err, os.ErrPermission) {
 		return fmt.Errorf("stage new binary: %w", err)
 	}
-	if err := os.Chmod(tmpDst, 0755); err != nil {
-		os.Remove(tmpDst)
-		return err
+
+	// Permission denied — the binary is likely in /usr/local/bin or similar.
+	// Retry with sudo so the user sees a normal password prompt.
+	fmt.Println("  Needs elevated permissions — retrying with sudo...")
+	sudoCp := exec.Command("sudo", "cp", src, dst)
+	sudoCp.Stdin = os.Stdin
+	sudoCp.Stdout = os.Stdout
+	sudoCp.Stderr = os.Stderr
+	if err := sudoCp.Run(); err != nil {
+		return fmt.Errorf("sudo cp failed — try: sudo cp %s %s", src, dst)
 	}
-	if err := os.Rename(tmpDst, dst); err != nil {
-		os.Remove(tmpDst)
-		return fmt.Errorf("replace binary: %w", err)
-	}
+	_ = exec.Command("sudo", "chmod", "755", dst).Run()
 	return nil
 }
 
