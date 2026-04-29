@@ -38,6 +38,22 @@ func main() {
 			return
 		}
 
+		// devtrack upgrade [--check] — self-update binary and run migrations
+		if cmd == "upgrade" {
+			checkOnly := len(os.Args) > 2 && os.Args[2] == "--check"
+			if err := RunUpgrade(checkOnly); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+
+		// devtrack migrate — run any pending config/filesystem migrations
+		if cmd == "migrate" {
+			RunPendingMigrations()
+			return
+		}
+
 		// devtrack install — server architecture info
 		if cmd == "install" {
 			if err := RunInstall(); err != nil {
@@ -65,6 +81,12 @@ func main() {
 				os.Exit(1)
 			}
 			return
+		}
+
+		// Run pending migrations silently on every daemon start.
+		// All migrations are idempotent — already-applied ones are skipped instantly.
+		if cmd == "start" {
+			RunPendingMigrations()
 		}
 
 		// Handle daemon commands
@@ -128,6 +150,9 @@ func printBasicUsage() {
 	fmt.Println("ALERTS:    alerts | alerts --all | alerts --clear")
 	fmt.Println("REPORTS:   preview-report | send-report | save-report")
 	fmt.Println("ACCOUNT:   login | logout | whoami | license | terms | telemetry [on|off]")
+	fmt.Println()
+	fmt.Println("UPDATE:    upgrade                         (download latest binary + apply migrations)")
+	fmt.Println("           upgrade --check                 (check for updates without installing)")
 	fmt.Println()
 	fmt.Println("New install? Run: devtrack setup")
 	fmt.Println("Run 'devtrack help' for full usage.")

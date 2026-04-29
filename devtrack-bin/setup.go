@@ -320,6 +320,9 @@ func RunSetup() error {
 	}
 
 	// ── Done ──────────────────────────────────────────────────────────────────
+	// Record all current migrations as applied — setup already did everything they do.
+	MarkAllMigrationsApplied()
+
 	printSetupComplete(projectRoot, envPath, cfg.Mode)
 	return nil
 }
