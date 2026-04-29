@@ -1792,7 +1792,7 @@ func (cli *CLI) handleSettings() error {
 	fmt.Printf("  Enabled:     %s\n", enabled)
 	if enabled == "true" {
 		fmt.Printf("  Bot token:   %s\n", maskSecret(os.Getenv("TELEGRAM_BOT_TOKEN")))
-		fmt.Printf("  Chat ID:     %s\n", maskEmpty(os.Getenv("TELEGRAM_CHAT_ID")))
+		fmt.Printf("  Allowed IDs: %s\n", maskEmpty(os.Getenv("TELEGRAM_ALLOWED_CHAT_IDS")))
 	}
 	fmt.Println()
 

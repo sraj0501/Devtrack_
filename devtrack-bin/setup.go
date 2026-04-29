@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -125,12 +127,13 @@ func RunSetup() error {
 		Mode:        selectedMode,
 	}
 
-	// ── 3. Python backend check ───────────────────────────────────────────────
+	// ── 3. Prerequisites check ────────────────────────────────────────────────
+	fmt.Println("─── Checking prerequisites ───────────────────────────────────────")
+	checkCommonPrereqs()
 	if cfg.Mode == ModeManaged {
 		checkPythonBackend(projectRoot)
 	} else {
-		fmt.Println("─── Checking prerequisites ───────────────────────────────────────")
-		fmt.Println("[" + string(cfg.Mode) + " mode] Python backend not required — skipping prerequisite check.")
+		fmt.Println("[" + string(cfg.Mode) + " mode] Python backend not required — skipping.")
 		fmt.Println()
 	}
 
@@ -645,7 +648,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("ADMIN_HOST=0.0.0.0\n")
 	b.WriteString("ADMIN_USERNAME=admin\n")
 	b.WriteString("ADMIN_PASSWORD=changeme\n")
-	b.WriteString("ADMIN_SECRET_KEY=\n")
+	b.WriteString("ADMIN_SECRET_KEY=" + generateSecret(32) + "\n")
 	b.WriteString("ADMIN_EMBED=false\n")
 	b.WriteString("ADMIN_SESSION_HOURS=8\n")
 	b.WriteString("SCRYPT_N=16384\n")
@@ -724,6 +727,26 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("DEVTRACK_API_URL=\n\n")
 
 	return b.String()
+}
+
+// checkCommonPrereqs verifies prerequisites required by all modes.
+func checkCommonPrereqs() {
+	if _, err := exec.LookPath("git"); err != nil {
+		fmt.Println("  ✗ git not found — required for repository monitoring")
+		fmt.Println("    Install git: https://git-scm.com/downloads")
+	} else {
+		fmt.Println("  ✓ git found")
+	}
+}
+
+// generateSecret returns a cryptographically random hex string of n bytes.
+func generateSecret(n int) string {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback: timestamp-based (not cryptographic, but better than empty)
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
 }
 
 // checkPythonBackend verifies the Python backend and uv are present.
