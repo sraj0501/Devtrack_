@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const githubRepo = "sraj0501/automation_tools"
+const githubRepo = "sraj0501/Devtrack_"
 
 type githubRelease struct {
 	TagName string        `json:"tag_name"`

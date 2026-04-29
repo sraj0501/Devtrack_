@@ -6,9 +6,9 @@
 
 *Watches your Git activity. Prompts at the right moments. Routes work updates through AI. Keeps Azure DevOps, GitHub, and GitLab in sync — all on your machine.*
 
-[![GitHub Release](https://img.shields.io/github/v/release/sraj0501/automation_tools?label=release&color=blue)](https://github.com/sraj0501/automation_tools/releases/latest)
-[![Version](https://img.shields.io/badge/version-v2.0.0-blue)](https://github.com/sraj0501/automation_tools/releases/tag/v2.0.0)
-[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)](https://github.com/sraj0501/automation_tools/releases/latest)
+[![GitHub Release](https://img.shields.io/github/v/release/sraj0501/Devtrack_?label=release&color=blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
+[![Version](https://img.shields.io/badge/version-v2.0.0-blue)](https://github.com/sraj0501/Devtrack_/releases/tag/v2.0.0)
+[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
 [![License](https://img.shields.io/badge/license-Community-green)](TERMS.md)
 
 ![DevTrack demo](wiki/assets/demo.gif)
@@ -35,7 +35,7 @@ OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
 [ "$ARCH" = "x86_64" ]  && ARCH="amd64"
 [ "$ARCH" = "aarch64" ] && ARCH="arm64"
-curl -fsSL "https://github.com/sraj0501/automation_tools/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
+curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
 sudo mv devtrack /usr/local/bin/
 
 # Interactive setup wizard — choose standalone or full mode

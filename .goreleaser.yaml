@@ -62,7 +62,7 @@ changelog:
 release:
   github:
     owner: sraj0501
-    name: automation_tools
+    name: Devtrack_
   name_template: "DevTrack {{.Version}}"
   header: |
     ## DevTrack {{.Version}}
@@ -78,11 +78,11 @@ release:
     ```bash
     OS=$(uname -s | tr '[:upper:]' '[:lower:]')
     ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" ] && ARCH="arm64"
-    curl -fsSL "https://github.com/sraj0501/automation_tools/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
+    curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
     sudo mv devtrack /usr/local/bin/
     devtrack setup
     ```
 
-    See [Installation Guide](https://github.com/sraj0501/automation_tools/blob/main/docs/INSTALLATION.md) for full setup.
+    See [Installation Guide](https://github.com/sraj0501/Devtrack_/blob/main/docs/INSTALLATION.md) for full setup.
   footer: |
-    **Full Changelog**: https://github.com/sraj0501/automation_tools/compare/{{.PreviousTag}}...{{.Tag}}
+    **Full Changelog**: https://github.com/sraj0501/Devtrack_/compare/{{.PreviousTag}}...{{.Tag}}
