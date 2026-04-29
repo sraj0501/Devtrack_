@@ -270,10 +270,16 @@ func RunSetup() error {
 	}
 	fmt.Println()
 
-	// ── 8. Create directories ─────────────────────────────────────────────────
+	// ── 8. Create directories and workspaces.yaml ────────────────────────────
 	fmt.Println("─── Creating directories ─────────────────────────────────────────")
 	if err := createDataDirectories(cfg.DataDir); err != nil {
 		return fmt.Errorf("failed to create data directories: %w", err)
+	}
+	wsPath := filepath.Join(xdgHome, "workspaces.yaml")
+	if err := createWorkspacesFile(wsPath, cfg.WorkspacePath, cfg.PMPlatform); err != nil {
+		fmt.Printf("  Warning: could not create workspaces.yaml: %v\n", err)
+	} else {
+		fmt.Printf("  ✓ %s\n", wsPath)
 	}
 
 	// ── 9. Write .env ─────────────────────────────────────────────────────────
@@ -402,6 +408,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("PROJECT_ROOT=" + cfg.ProjectRoot + "\n")
 	b.WriteString("DEVTRACK_HOME=" + filepath.Join(cfg.ProjectRoot, "devtrack-bin") + "\n")
 	b.WriteString("DEVTRACK_WORKSPACE=" + cfg.WorkspacePath + "\n")
+	b.WriteString("WORKSPACES_FILE=" + filepath.Join(filepath.Dir(dataDir), "workspaces.yaml") + "\n")
 	b.WriteString("DATA_DIR=" + dataDir + "\n")
 	b.WriteString("DATABASE_DIR=" + filepath.Join(dataDir, "db") + "\n")
 	b.WriteString("LOG_DIR=" + filepath.Join(dataDir, "logs") + "\n")
@@ -800,6 +807,38 @@ func installShellIntegration() {
 
 	fmt.Printf("  ✓ Added to %s\n", rcFile)
 	fmt.Printf("    Run: source %s  (or open a new terminal)\n", rcFile)
+}
+
+// createWorkspacesFile writes an initial workspaces.yaml with the workspace
+// collected during setup. Skips if the file already exists.
+func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil // already exists — don't overwrite
+	}
+	if pmPlatform == "" || pmPlatform == "none" {
+		pmPlatform = "none"
+	}
+	// Derive a short name from the last path component.
+	name := filepath.Base(workspacePath)
+	if name == "" || name == "." {
+		name = "default"
+	}
+	content := "# workspaces.yaml — managed by DevTrack\n" +
+		"# Add more workspaces with: devtrack workspace add <name> <path> [platform]\n" +
+		"# pm_platform options: azure | github | gitlab | jira | none\n\n" +
+		"version: \"1\"\nworkspaces:\n" +
+		"  - name: \"" + name + "\"\n" +
+		"    path: \"" + workspacePath + "\"\n" +
+		"    pm_platform: \"" + pmPlatform + "\"\n" +
+		"    pm_project: \"\"\n" +
+		"    enabled: true\n" +
+		"    ignore_branches: []\n" +
+		"    tags: []\n" +
+		"    pm_assignee: \"\"\n" +
+		"    pm_iteration_path: \"\"\n" +
+		"    pm_area_path: \"\"\n" +
+		"    pm_milestone: 0\n"
+	return os.WriteFile(path, []byte(content), 0644)
 }
 
 // devtrackDataHome returns the XDG data home directory for DevTrack.
