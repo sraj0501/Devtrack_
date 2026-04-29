@@ -12,7 +12,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -101,8 +103,38 @@ func RunUpgrade(checkOnly bool) error {
 	fmt.Printf("✓ Updated to %s\n", latest.TagName)
 	fmt.Println("\nApplying configuration migrations...")
 	RunPendingMigrations()
-	fmt.Println("Done. Run 'devtrack start' to use the new version.")
+
+	if isDaemonRunning() {
+		fmt.Println("\nRestarting daemon with new binary...")
+		restart := exec.Command(execPath, "restart")
+		restart.Stdin = os.Stdin
+		restart.Stdout = os.Stdout
+		restart.Stderr = os.Stderr
+		if err := restart.Run(); err != nil {
+			fmt.Printf("  Warning: restart failed: %v\n", err)
+			fmt.Println("  Run 'devtrack restart' manually.")
+		}
+	} else {
+		fmt.Println("\nDone. Run 'devtrack start' to use the new version.")
+	}
 	return nil
+}
+
+// isDaemonRunning returns true if the PID file exists and the process is alive.
+func isDaemonRunning() bool {
+	data, err := os.ReadFile(GetPIDFilePath())
+	if err != nil {
+		return false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || pid <= 0 {
+		return false
+	}
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	return proc.Signal(syscall.Signal(0)) == nil
 }
 
 // fetchLatestRelease queries the GitHub releases API.
