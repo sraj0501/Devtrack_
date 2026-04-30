@@ -100,7 +100,6 @@ jobs:
           cp    python_bridge.py          "dist/${ARCHIVE_DIR}/"
           cp    pyproject.toml            "dist/${ARCHIVE_DIR}/"
           cp    docker-compose.yml        "dist/${ARCHIVE_DIR}/"
-          cp    setup_local.sh            "dist/${ARCHIVE_DIR}/"
           cp    devtrack-git-wrapper.sh   "dist/${ARCHIVE_DIR}/"
           cp    README.md                 "dist/${ARCHIVE_DIR}/"
           cp    TERMS.md                  "dist/${ARCHIVE_DIR}/"
