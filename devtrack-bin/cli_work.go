@@ -312,6 +312,9 @@ func (cli *CLI) handleWorkReport() error {
 // handleServerTUI launches the Textual-based server process monitor.
 // Usage: devtrack server-tui
 func (cli *CLI) handleServerTUI() error {
+	if err := requiresManagedMode("server-tui"); err != nil {
+		return err
+	}
 	projectRoot := os.Getenv("PROJECT_ROOT")
 	if projectRoot == "" {
 		return fmt.Errorf("PROJECT_ROOT is not set — cannot locate Python backend")
@@ -326,6 +329,9 @@ func (cli *CLI) handleServerTUI() error {
 // handleAdminStart starts the Admin Console web server (CS-3).
 // Usage: devtrack admin-start
 func (cli *CLI) handleAdminStart() error {
+	if err := requiresManagedMode("admin-start"); err != nil {
+		return err
+	}
 	projectRoot := os.Getenv("PROJECT_ROOT")
 	if projectRoot == "" {
 		return fmt.Errorf("PROJECT_ROOT is not set — cannot locate Python backend")

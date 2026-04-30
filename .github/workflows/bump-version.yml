@@ -1,6 +1,10 @@
 name: Bump Version & Release
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'devtrack-bin/**'
   workflow_dispatch:
     inputs:
       bump:
@@ -17,8 +21,8 @@ permissions:
   contents: write
 
 jobs:
-  bump:
-    name: Bump version and tag
+  release:
+    name: Bump version, build, and publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -26,21 +30,25 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: devtrack-bin/go.mod
+          cache-dependency-path: devtrack-bin/go.sum
+
       - name: Compute next version
         id: version
         run: |
-          # Get latest tag (default to v0.0.0 if none)
           LATEST=$(git tag --sort=-version:refname | grep '^v' | head -1)
           [ -z "$LATEST" ] && LATEST="v0.0.0"
-          echo "Latest tag: $LATEST"
-
-          # Strip leading 'v'
           VER="${LATEST#v}"
           MAJOR=$(echo "$VER" | cut -d. -f1)
           MINOR=$(echo "$VER" | cut -d. -f2)
           PATCH=$(echo "$VER" | cut -d. -f3)
 
-          case "${{ github.event.inputs.bump }}" in
+          BUMP="${{ github.event.inputs.bump }}"
+          [ -z "$BUMP" ] && BUMP="patch"
+
+          case "$BUMP" in
             major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
             minor) MINOR=$((MINOR+1)); PATCH=0 ;;
             patch) PATCH=$((PATCH+1)) ;;
@@ -50,15 +58,128 @@ jobs:
           echo "Next version: $NEXT"
           echo "tag=$NEXT" >> "$GITHUB_OUTPUT"
 
-      - name: Configure git
+      - name: Configure git and create tag
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-
-      - name: Create and push tag
-        run: |
           TAG="${{ steps.version.outputs.tag }}"
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
-          echo "✅ Tagged $TAG — release workflow will now build and publish the binary."
+
+      - name: Build binaries
+        run: |
+          cd devtrack-bin
+          mkdir -p ../dist
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILDTIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          TAG="${{ steps.version.outputs.tag }}"
+          LDFLAGS="-s -w -X main.Version=${TAG} -X main.GitCommit=${COMMIT} -X main.BuildTime=${BUILDTIME}"
+          for TARGET in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            OS=${TARGET%/*}
+            ARCH=${TARGET#*/}
+            CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -ldflags "$LDFLAGS" -o ../dist/devtrack_${OS}_${ARCH} .
+            cd ../dist
+            cp devtrack_${OS}_${ARCH} devtrack
+            tar czf devtrack_${OS}_${ARCH}.tar.gz devtrack
+            rm devtrack
+            cd ../devtrack-bin
+          done
+          cd ../dist
+          sha256sum devtrack_*.tar.gz > checksums.txt
+
+      - name: Build server archive
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          VER="${TAG#v}"
+          ARCHIVE_DIR="devtrack-server-${VER}"
+          mkdir -p "dist/${ARCHIVE_DIR}"
+
+          # Copy Python backend files
+          cp -r backend                   "dist/${ARCHIVE_DIR}/backend"
+          cp    python_bridge.py          "dist/${ARCHIVE_DIR}/"
+          cp    pyproject.toml            "dist/${ARCHIVE_DIR}/"
+          cp    docker-compose.yml        "dist/${ARCHIVE_DIR}/"
+          cp    devtrack-git-wrapper.sh   "dist/${ARCHIVE_DIR}/"
+          cp    README.md                 "dist/${ARCHIVE_DIR}/"
+          cp    TERMS.md                  "dist/${ARCHIVE_DIR}/"
+          [ -f uv.lock ] && cp uv.lock   "dist/${ARCHIVE_DIR}/"
+          [ -f .env_sample ] && cp .env_sample "dist/${ARCHIVE_DIR}/"
+
+          # Workspace templates only — never ship the live workspaces.yaml
+          cp workspaces.yaml.example "dist/${ARCHIVE_DIR}/"
+          cp workspaces.yaml.sample  "dist/${ARCHIVE_DIR}/"
+
+          # Management CLI and version stamp
+          cp devtrack-server          "dist/${ARCHIVE_DIR}/"
+          chmod +x                    "dist/${ARCHIVE_DIR}/devtrack-server"
+          echo "${VER}"             > "dist/${ARCHIVE_DIR}/VERSION"
+
+          # Strip dev-only artefacts
+          find "dist/${ARCHIVE_DIR}" -type d -name "__pycache__"   -exec rm -rf {} + 2>/dev/null || true
+          find "dist/${ARCHIVE_DIR}" -type d -name "tests"         -exec rm -rf {} + 2>/dev/null || true
+          find "dist/${ARCHIVE_DIR}" -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+          find "dist/${ARCHIVE_DIR}" -name "*.pyc" -delete 2>/dev/null || true
+          find "dist/${ARCHIVE_DIR}" -name "*.pyo" -delete 2>/dev/null || true
+
+          cd dist
+          tar czf "devtrack-server-${VER}.tar.gz" "${ARCHIVE_DIR}"
+          sha256sum "devtrack-server-${VER}.tar.gz" >> checksums.txt
+          rm -rf "${ARCHIVE_DIR}"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          PREV=$(git tag --sort=-version:refname | grep '^v' | grep -v "^${TAG}$" | head -1)
+          gh release create "$TAG" \
+            --title "DevTrack ${TAG}" \
+            --notes "$(cat <<EOF
+          ## DevTrack ${TAG}
+
+          Pre-built binaries for macOS (Apple Silicon + Intel) and Linux (amd64 + arm64).
+
+          > **Two deployment modes** — choose during \`devtrack setup\`:
+          > - **Standalone**: git tracking, CLI tools, and AI commit messages — no Python backend required.
+          > - **Full**: all of the above plus AI work updates, project management sync, and reporting (requires \`devtrack-server\` on a server).
+
+          ### Quick install (CLI)
+
+          \`\`\`bash
+          OS=\$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=\$(uname -m); [ "\$ARCH" = "x86_64" ] && ARCH="amd64"; [ "\$ARCH" = "aarch64" ] && ARCH="arm64"
+          curl -fsSL "https://github.com/${{ github.repository }}/releases/latest/download/devtrack_\${OS}_\${ARCH}.tar.gz" | tar xz
+          sudo mv devtrack /usr/local/bin/
+          devtrack setup
+          \`\`\`
+
+          ### Server install (Full mode)
+
+          \`\`\`bash
+          curl -fsSL "https://github.com/${{ github.repository }}/releases/latest/download/devtrack-server-${TAG#v}.tar.gz" | tar xz
+          cd devtrack-server-${TAG#v}
+          ./devtrack-server install   # installs to ~/.local/share/devtrack-server
+          devtrack-server setup       # interactive .env wizard
+          devtrack-server start
+          \`\`\`
+
+          To upgrade an existing server: \`devtrack-server upgrade\`
+
+          ### Updating from a previous version
+
+          \`\`\`bash
+          devtrack upgrade
+          # If the binary is in a root-owned location (e.g. /usr/local/bin):
+          sudo devtrack upgrade
+          \`\`\`
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV}...${TAG}
+          EOF
+          )" \
+            dist/devtrack_linux_amd64.tar.gz \
+            dist/devtrack_linux_arm64.tar.gz \
+            dist/devtrack_darwin_amd64.tar.gz \
+            dist/devtrack_darwin_arm64.tar.gz \
+            dist/devtrack-server-${TAG#v}.tar.gz \
+            dist/checksums.txt

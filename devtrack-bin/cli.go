@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -237,6 +236,17 @@ func (cli *CLI) Execute() error {
 	}
 }
 
+// requiresManagedMode prints a clear error and returns an error when the
+// current server mode does not include a Python backend.
+func requiresManagedMode(command string) error {
+	if IsLightweightMode() {
+		fmt.Printf("'%s' requires Managed mode (Python backend).\n", command)
+		fmt.Println("Re-run 'devtrack setup' and choose [1] Managed to enable AI features.")
+		return fmt.Errorf("command unavailable in Lightweight mode")
+	}
+	return nil
+}
+
 // handleStart starts the daemon
 func (cli *CLI) handleStart() error {
 	if cli.daemon.IsRunning() {
@@ -292,10 +302,8 @@ func (cli *CLI) handleStart() error {
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 
-	// Detach from parent
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid: true,
-	}
+	// Detach from parent (platform-specific — see cli_unix.go / cli_windows.go)
+	setSetsid(cmd)
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start daemon process: %w", err)
@@ -575,7 +583,8 @@ func (cli *CLI) handleForceTrigger() error {
 		return err
 	}
 
-	if err := process.Signal(syscall.SIGUSR2); err != nil {
+	// Platform-specific: Unix sends SIGUSR2; Windows uses HTTP trigger (see cli_unix.go / cli_windows.go)
+	if err := sendForceTriggerSignal(process); err != nil {
 		fmt.Printf("❌ Could not send signal to daemon: %v\n", err)
 		return err
 	}
@@ -592,6 +601,9 @@ func (cli *CLI) handleForceTrigger() error {
 
 // handleSendSummary generates and sends the daily summary
 func (cli *CLI) handleSendSummary() error {
+	if err := requiresManagedMode("send-summary"); err != nil {
+		return err
+	}
 	if !cli.daemon.IsRunning() {
 		fmt.Println("❌ Daemon is not running")
 		fmt.Println("\nStart the daemon first:")
@@ -808,6 +820,9 @@ func (cli *CLI) handleDBStats() error {
 
 // handleEnableLearning enables personalized AI learning
 func (cli *CLI) handleEnableLearning() error {
+	if err := requiresManagedMode("enable-learning"); err != nil {
+		return err
+	}
 	days := GetLearningDefaultDays()
 	if len(os.Args) > 2 {
 		fmt.Sscanf(os.Args[2], "%d", &days)
@@ -819,12 +834,18 @@ func (cli *CLI) handleEnableLearning() error {
 
 // handleShowProfile shows the learning profile
 func (cli *CLI) handleShowProfile() error {
+	if err := requiresManagedMode("show-profile"); err != nil {
+		return err
+	}
 	learning := NewLearningCommands()
 	return learning.ShowProfile()
 }
 
 // handleTestResponse tests generating a response
 func (cli *CLI) handleTestResponse() error {
+	if err := requiresManagedMode("test-response"); err != nil {
+		return err
+	}
 	if len(os.Args) < 3 {
 		fmt.Println("❌ Usage: devtrack test-response <text>")
 		return fmt.Errorf("missing text argument")
@@ -837,12 +858,18 @@ func (cli *CLI) handleTestResponse() error {
 
 // handleRevokeConsent revokes learning consent
 func (cli *CLI) handleRevokeConsent() error {
+	if err := requiresManagedMode("revoke-consent"); err != nil {
+		return err
+	}
 	learning := NewLearningCommands()
 	return learning.RevokeConsent()
 }
 
 // handleLearningStatus shows learning status
 func (cli *CLI) handleLearningStatus() error {
+	if err := requiresManagedMode("learning-status"); err != nil {
+		return err
+	}
 	learning := NewLearningCommands()
 	status, err := learning.GetLearningStatus()
 	if err != nil {
@@ -856,30 +883,45 @@ func (cli *CLI) handleLearningStatus() error {
 
 // handleLearningReset wipes all learning data for a fresh start
 func (cli *CLI) handleLearningReset() error {
+	if err := requiresManagedMode("learning-reset"); err != nil {
+		return err
+	}
 	learning := NewLearningCommands()
 	return learning.ResetLearning()
 }
 
 // handleLearningSetupCron installs the crontab entry from LEARNING_CRON_SCHEDULE
 func (cli *CLI) handleLearningSetupCron() error {
+	if err := requiresManagedMode("learning-setup-cron"); err != nil {
+		return err
+	}
 	learning := NewLearningCommands()
 	return learning.SetupCron()
 }
 
 // handleLearningRemoveCron removes the DevTrack learning crontab entry
 func (cli *CLI) handleLearningRemoveCron() error {
+	if err := requiresManagedMode("learning-remove-cron"); err != nil {
+		return err
+	}
 	learning := NewLearningCommands()
 	return learning.RemoveCron()
 }
 
 // handleLearningCronStatus shows cron entry status
 func (cli *CLI) handleLearningCronStatus() error {
+	if err := requiresManagedMode("learning-cron-status"); err != nil {
+		return err
+	}
 	learning := NewLearningCommands()
 	return learning.CronStatus()
 }
 
 // handleLearningSync runs a delta (or full) sync immediately
 func (cli *CLI) handleLearningSync() error {
+	if err := requiresManagedMode("learning-sync"); err != nil {
+		return err
+	}
 	full := len(os.Args) > 2 && os.Args[2] == "--full"
 	learning := NewLearningCommands()
 	return learning.SyncNow(full)
@@ -887,6 +929,9 @@ func (cli *CLI) handleLearningSync() error {
 
 // handlePreviewReport previews today's email report
 func (cli *CLI) handlePreviewReport() error {
+	if err := requiresManagedMode("preview-report"); err != nil {
+		return err
+	}
 	date := ""
 	if len(os.Args) > 2 {
 		date = os.Args[2]
@@ -895,7 +940,10 @@ func (cli *CLI) handlePreviewReport() error {
 	fmt.Println("📊 Generating daily report preview...")
 	fmt.Println()
 
-	scriptPath := GetEmailReporterPath()
+	scriptPath, err := GetEmailReporterPath()
+	if err != nil {
+		return fmt.Errorf("cannot generate report: %w", err)
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -927,6 +975,9 @@ func (cli *CLI) handlePreviewReport() error {
 
 // handleSendReport sends email report
 func (cli *CLI) handleSendReport() error {
+	if err := requiresManagedMode("send-report"); err != nil {
+		return err
+	}
 	if len(os.Args) < 3 {
 		fmt.Println("❌ Usage: devtrack send-report <email> [date]")
 		return fmt.Errorf("missing email argument")
@@ -941,7 +992,10 @@ func (cli *CLI) handleSendReport() error {
 	fmt.Printf("📧 Sending report to %s...\n", email)
 	fmt.Println()
 
-	scriptPath := GetEmailReporterPath()
+	scriptPath, err := GetEmailReporterPath()
+	if err != nil {
+		return fmt.Errorf("cannot send report: %w", err)
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -973,6 +1027,9 @@ func (cli *CLI) handleSendReport() error {
 
 // handleSaveReport saves report to file
 func (cli *CLI) handleSaveReport() error {
+	if err := requiresManagedMode("save-report"); err != nil {
+		return err
+	}
 	date := ""
 	if len(os.Args) > 2 {
 		date = os.Args[2]
@@ -981,7 +1038,10 @@ func (cli *CLI) handleSaveReport() error {
 	fmt.Println("💾 Saving report to file...")
 	fmt.Println()
 
-	scriptPath := GetEmailReporterPath()
+	scriptPath, err := GetEmailReporterPath()
+	if err != nil {
+		return fmt.Errorf("cannot save report: %w", err)
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1166,6 +1226,9 @@ func (cli *CLI) handleQueueStats() error {
 
 // handleAzureCheck verifies Azure DevOps config and connectivity
 func (cli *CLI) handleAzureCheck() error {
+	if err := requiresManagedMode("azure-check"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1194,6 +1257,9 @@ func (cli *CLI) handleAzureCheck() error {
 
 // handleAzureList lists work items assigned to the user
 func (cli *CLI) handleAzureList() error {
+	if err := requiresManagedMode("azure-list"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1221,6 +1287,9 @@ func (cli *CLI) handleAzureList() error {
 // handleAzureSync runs a manual sync with Azure DevOps.
 // Passes --full or --hours N through from CLI args.
 func (cli *CLI) handleAzureSync() error {
+	if err := requiresManagedMode("azure-sync"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1252,6 +1321,9 @@ func (cli *CLI) handleAzureSync() error {
 
 // handleAzureView shows details for a specific Azure DevOps work item
 func (cli *CLI) handleAzureView() error {
+	if err := requiresManagedMode("azure-view"); err != nil {
+		return err
+	}
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: devtrack azure-view <work-item-id>")
 		return fmt.Errorf("missing work item ID")
@@ -1282,6 +1354,9 @@ func (cli *CLI) handleAzureView() error {
 
 // handleGitLabCheck verifies GitLab config and connectivity
 func (cli *CLI) handleGitLabCheck() error {
+	if err := requiresManagedMode("gitlab-check"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1307,6 +1382,9 @@ func (cli *CLI) handleGitLabCheck() error {
 
 // handleGitLabList lists GitLab issues assigned to the user
 func (cli *CLI) handleGitLabList() error {
+	if err := requiresManagedMode("gitlab-list"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1334,6 +1412,9 @@ func (cli *CLI) handleGitLabList() error {
 // handleGitLabSync runs a manual sync with GitLab.
 // Passes --full or --hours N through from CLI args.
 func (cli *CLI) handleGitLabSync() error {
+	if err := requiresManagedMode("gitlab-sync"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1365,6 +1446,9 @@ func (cli *CLI) handleGitLabSync() error {
 
 // handleGitLabView shows details for a specific GitLab issue
 func (cli *CLI) handleGitLabView() error {
+	if err := requiresManagedMode("gitlab-view"); err != nil {
+		return err
+	}
 	if len(os.Args) < 4 {
 		fmt.Println("Usage: devtrack gitlab-view <project_id> <issue_iid>")
 		return fmt.Errorf("missing project_id and/or issue_iid")
@@ -1395,6 +1479,9 @@ func (cli *CLI) handleGitLabView() error {
 
 // handleGitHubCheck verifies GitHub config and connectivity
 func (cli *CLI) handleGitHubCheck() error {
+	if err := requiresManagedMode("github-check"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1420,6 +1507,9 @@ func (cli *CLI) handleGitHubCheck() error {
 
 // handleGitHubList lists GitHub issues assigned to the user
 func (cli *CLI) handleGitHubList() error {
+	if err := requiresManagedMode("github-list"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1447,6 +1537,9 @@ func (cli *CLI) handleGitHubList() error {
 // handleGitHubSync runs a manual sync with GitHub.
 // Passes --full or --hours N through from CLI args.
 func (cli *CLI) handleGitHubSync() error {
+	if err := requiresManagedMode("github-sync"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
@@ -1478,6 +1571,9 @@ func (cli *CLI) handleGitHubSync() error {
 
 // handleGitHubView shows details for a specific GitHub issue
 func (cli *CLI) handleGitHubView() error {
+	if err := requiresManagedMode("github-view"); err != nil {
+		return err
+	}
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: devtrack github-view <issue_number>")
 		return fmt.Errorf("missing issue_number")
@@ -1694,7 +1790,7 @@ func (cli *CLI) handleSettings() error {
 	fmt.Printf("  Enabled:     %s\n", enabled)
 	if enabled == "true" {
 		fmt.Printf("  Bot token:   %s\n", maskSecret(os.Getenv("TELEGRAM_BOT_TOKEN")))
-		fmt.Printf("  Chat ID:     %s\n", maskEmpty(os.Getenv("TELEGRAM_CHAT_ID")))
+		fmt.Printf("  Allowed IDs: %s\n", maskEmpty(os.Getenv("TELEGRAM_ALLOWED_CHAT_IDS")))
 	}
 	fmt.Println()
 

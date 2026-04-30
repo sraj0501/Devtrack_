@@ -6,9 +6,9 @@
 
 *Watches your Git activity. Prompts at the right moments. Routes work updates through AI. Keeps Azure DevOps, GitHub, and GitLab in sync — all on your machine.*
 
-[![GitHub Release](https://img.shields.io/github/v/release/sraj0501/automation_tools?label=release&color=blue)](https://github.com/sraj0501/automation_tools/releases/latest)
-[![Version](https://img.shields.io/badge/version-v2.0.0-blue)](https://github.com/sraj0501/automation_tools/releases/tag/v2.0.0)
-[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)](https://github.com/sraj0501/automation_tools/releases/latest)
+[![GitHub Release](https://img.shields.io/github/v/release/sraj0501/Devtrack_?label=release&color=blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
+[![Version](https://img.shields.io/badge/version-v2.0.0-blue)](https://github.com/sraj0501/Devtrack_/releases/tag/v2.0.0)
+[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
 [![License](https://img.shields.io/badge/license-Community-green)](TERMS.md)
 
 ![DevTrack demo](wiki/assets/demo.gif)
@@ -30,21 +30,24 @@ The Go daemon is a 5 MB binary. The Python backend runs as a subprocess. Nothing
 ## Install
 
 ```bash
-# macOS / Linux
-curl -L https://github.com/sraj0501/automation_tools/releases/latest/download/devtrack_$(uname -s)_$(uname -m).tar.gz | tar xz
+# macOS / Linux — detect OS and architecture, then download the right binary
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+[ "$ARCH" = "x86_64" ]  && ARCH="amd64"
+[ "$ARCH" = "aarch64" ] && ARCH="arm64"
+curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
 sudo mv devtrack /usr/local/bin/
 
-# Clone the Python backend (required for AI and integrations)
-git clone https://github.com/sraj0501/automation_tools.git
-cd automation_tools
-uv sync
-
-# Interactive setup wizard — recommended for new users
-devtrack setup    # walks through LLM provider, credentials, workspace; generates .env
+# Interactive setup wizard — choose standalone or full mode
+devtrack setup
 
 devtrack start
 devtrack status
 ```
+
+> **Updating?** Run `devtrack upgrade` to download and install the latest binary automatically.
+> If the binary is in a root-owned location (e.g. `/usr/local/bin`), run `sudo devtrack upgrade` instead.
+> Versioned migrations are applied automatically and the daemon is restarted after a successful upgrade.
 
 > `devtrack setup` generates `.env` and writes `~/.devtrack/devtrack.conf` so the daemon can find it automatically. If you prefer manual setup, copy `.env_sample` to `.env` and fill in the values instead.
 
@@ -233,10 +236,13 @@ devtrack setup
 ```
 
 What it does:
-- Prompts for LLM provider (Ollama / OpenAI / Anthropic / Groq) and credentials
-- Sets workspace path, PM platform, and other required values
-- Generates `.env` in the repo root
-- Writes `~/.devtrack/devtrack.conf` pointing at the generated file
+- Checks Git is installed before proceeding
+- Prompts for operating mode (Managed / Lightweight / External) and LLM provider credentials
+- Generates `.env` in the repo root with `ADMIN_SECRET_KEY` auto-generated (no manual `openssl rand` step)
+- Creates `~/.devtrack/` (XDG home dir) and writes `workspaces.yaml` there
+- Writes `WORKSPACES_FILE` into `.env` pointing at the generated file
+- Appends `eval "$(devtrack shell-init)"` to `.bashrc` / `.zshrc` automatically
+- Writes `~/.devtrack/devtrack.conf` pointing at the generated `.env`
 
 After `devtrack setup` completes, run `devtrack start` — no manual `source .env` needed.
 
@@ -249,6 +255,19 @@ The daemon automatically finds and loads `.env` at startup (v2.0.0+). Resolution
 3. `.env` file next to the `devtrack` binary
 
 You no longer need to manually `source .env` before `devtrack start` for most setups. The env-first rule still applies for `devtrack autostart-install` — run it after `devtrack setup` so the service bakes the correct variables.
+
+### Self-update (`devtrack upgrade`)
+
+```bash
+devtrack upgrade          # download and install the latest release binary
+sudo devtrack upgrade     # use when the binary is in a root-owned directory (e.g. /usr/local/bin)
+```
+
+What happens on upgrade:
+1. Downloads the latest binary for your OS/arch from GitHub Releases
+2. Applies all versioned migrations that have not yet run (schema changes, config file moves, etc.)
+3. Auto-restarts the daemon so the new binary takes effect immediately
+4. Falls back to `sudo cp` if the target directory is root-owned and the command wasn't run as root
 
 ### Post-commit hooks for all workspaces
 
@@ -357,15 +376,34 @@ The `server-tui` panel includes a **trigger throughput stats** pane that reads d
 
 ## Deployment modes
 
-| Mode | How | Use case |
-|------|-----|----------|
-| **Managed** (default) | Daemon spawns Python automatically | Local dev |
-| **External** | `DEVTRACK_SERVER_URL=http://host:port` | Docker / self-hosted backend |
-| **Cloud** | `devtrack cloud login --url URL --key KEY` | Remote managed backend |
+| Mode | `DEVTRACK_SERVER_MODE` | How | Use case |
+|------|------------------------|-----|----------|
+| **Managed** (default) | `managed` | Daemon spawns Python automatically | Local dev — full AI features |
+| **Lightweight** | `lightweight` | Go daemon only — no Python | Git monitoring + scheduling without a Python environment |
+| **External** | `external` | Python runs on a separate server; set `DEVTRACK_SERVER_URL` | Docker / self-hosted backend |
+| **Cloud** | — | `devtrack cloud login --url URL --key KEY` | Remote managed backend |
+
+`devtrack setup` prompts for the mode on first run and writes it to `.env`. In **Lightweight** mode, commands that depend on the Python backend show a clear error rather than crashing.
 
 ```bash
 docker compose up -d   # starts Python backend + MongoDB, Redis, PostgreSQL
 ```
+
+### `devtrack-server` — server-side management CLI
+
+For **server / Linux deployments** where only the Python backend is hosted (External mode), a separate `devtrack-server` binary is distributed in the release tarball:
+
+```bash
+# Download the server tarball (no Go daemon required on the server)
+curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack-server-<version>.tar.gz" | tar xz
+
+devtrack-server start     # start the Python backend (webhook_server.py)
+devtrack-server stop      # stop it
+devtrack-server status    # show whether the backend process is running
+devtrack-server logs      # tail recent log output
+```
+
+`devtrack-server` wraps the tarball-deployed Python backend in the same UX as the main CLI so server operators don't need to manage the subprocess manually.
 
 ---
 
@@ -407,6 +445,9 @@ docker compose up -d   # starts Python backend + MongoDB, Redis, PostgreSQL
 | Plan a project with AI | [AI Project Planning](docs/PROJECT_PLANNING.md) |
 | Manage opt-out telemetry | [Telemetry](docs/TELEMETRY_PLAN.md) |
 | Use external/Docker mode (HTTP triggers + webhooks) | [Webhook Server](docs/WEBHOOK_SERVER.md) |
+| Deploy only the Python backend on a server | [`devtrack-server`](#devtrack-server--server-side-management-cli) |
+| Run without Python (Lightweight mode) | [Deployment modes](#deployment-modes) |
+| Update to the latest release | [`devtrack upgrade`](#self-update-devtrack-upgrade) |
 | Monitor server health and trigger stats | [Server TUI](docs/SERVER_TUI.md) |
 | Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
 | Use AI agents for development workflow | [`.claude/agents/`](.claude/agents/) |

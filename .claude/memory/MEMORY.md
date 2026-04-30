@@ -1,7 +1,7 @@
 # DevTrack Project Memory
 
-**Last Updated**: April 23, 2026
-**Project Status**: Production-Ready (v2.0.0; CS-1 + CS-2 + CS-3 complete; hardcoded values eliminated; 502 tests passing)
+**Last Updated**: April 30, 2026
+**Project Status**: Production-Ready (v2.0.12+; CS-1–CS-3 complete; standalone-CLI mode shipped; devtrack-server CLI added; repo renamed to Devtrack_; 502 tests passing)
 **Current Branch**: main
 
 ## Project Overview
@@ -50,6 +50,9 @@ The `devtrack` alias points to `/Users/sraj/git_apps/personal/automation_tools/d
 | Hardcoded values eliminated | Done | TASK-016–018: scrypt params, session cookie, routes, webhook, dashboard, audit limit |
 | Auto-load .env at startup | Done | `devtrack-bin/loadenv.go` (`AutoLoadEnv()`) |
 | Interactive setup wizard | Done | `devtrack-bin/setup.go` (`devtrack setup`) |
+| CS-standalone: Lightweight + External modes | Done | TASK-021–024: mode wizard, `ServerModeLightweight`, capability guards, non-fatal paths |
+| devtrack-server management CLI | Done | `devtrack-server` binary wraps tarball-deployed Python backend |
+| Self-update + migration (`devtrack upgrade`) | Done | downloads latest release, applies versioned migrations, auto-restarts |
 
 ## Key Files & Locations
 
@@ -157,11 +160,27 @@ The daemon does NOT reload `.env` at runtime.
 - **PR target rule reinforced**: `project-vision.md` agent directive updated to mandate `--base dev` on all PRs; `feedback_pr_target_branch.md` memory updated with incident context
 - **Docs synced** (docu-agent run): wiki new SETUP_WIZARD page + v2.0.1-dev WHATS_NEW section; README updated with `devtrack setup` as recommended first-run path; `project_autoload_env.md` memory created
 
+## Session: April 24–30, 2026
+
+- **TASK-021**: Mode selection wizard in `setup.go` — prompts user for Managed/Lightweight/External mode before `detectProjectRoot()`. Lightweight + External modes skip the Python backend check; `.env` gets `DEVTRACK_SERVER_MODE` set accordingly. Commit: `fd208f6`
+- **TASK-022**: `ServerModeLightweight` constant added to `server_config.go`; `IsExternalServer()` returns `true` for lightweight; daemon skips Python spawn in lightweight mode. Commit: `744acd2`
+- **TASK-023**: `requiresManagedMode()` helper added to `cli.go`; 28 backend-dependent handlers (learning, report, azure, gitlab, github, server/admin) guarded with clear error in lightweight mode. Commit: `0cde877`
+- **TASK-024**: `GetEmailReporterPath()`, `GetLearningDailyScriptPath()`, `GetPythonBridgePath()` changed from `os.Exit` to `(string, error)` return; all callers updated. Commit: `4de127b`
+- **PR #82** merged (`features/standalone-cli-mode → main`) covering all 4 TASK-02x tasks
+- **devtrack-server CLI** (`feat(server)`: `8196279`): `devtrack-server` management CLI added — wraps the tarball-deployed server with start/stop/status/logs commands
+- **Self-update + migration** (`feat(upgrade)`: `214d78a`): `devtrack upgrade` command downloads latest release binary, applies versioned migrations, auto-restarts daemon
+- **Setup hardening**: git prereq check, auto-generate `ADMIN_SECRET_KEY`, `workspaces.yaml` written to XDG home, shell integration written automatically. Commits: `491ccd3`, `4ddf157`, `9904c43`
+- **Repo rename**: `automation_tools` → `Devtrack_` (GitHub + all CLAUDE.md/README references). Commit: `6b66641`
+- **setup_local.sh removed**: consolidated on `devtrack-server` tarball. Commit: `1ae7966`
+- **Next task ID**: TASK-025
+
 ## Next Steps for Future Sessions
 
-1. **Webhook server integration tests** — inbound webhook event endpoints at `/inbound/*` not yet tested; add pytest tests
-2. **CS-4: Managed SaaS** — cloud infra + billing; next CS phase after CS-3
-3. **PR #79** — developer routing manually through `dev` → `main` (standard flow)
+1. **Windows native support** — Go daemon does not compile for Windows (3 hard errors: `Setsid`, `SIGUSR2` ×3); needs build-tag split into `daemon_unix.go`/`daemon_windows.go`, signal replacement with named pipe/HTTP, and Windows Service autostart. See `project_windows_gap.md`. WSL (linux_amd64) is the current workaround.
+2. **Webhook server integration tests** — inbound webhook event endpoints at `/inbound/*` not yet tested; add pytest tests
+3. **CS-4: Managed SaaS** — cloud infra + billing; next CS phase after CS-3
+4. **`GetPythonBridgePath` dead code** — no callers remain after TASK-024; safe to remove in a follow-up cleanup
+5. **`handleWork()` sub-commands** — `work report` sub-command calls Python internally but was not guarded in TASK-023; deferred per spec, needs follow-up
 
 ## Memory File Index
 
@@ -200,6 +219,10 @@ The daemon does NOT reload `.env` at runtime.
 | `project_vision_roadmap.md` | Long-term vision |
 | `project_local_agents.md` | Local agents system: project-vision (PM), devtrack-engineer, post-generator |
 | `project_autoload_env.md` | AutoLoadEnv() resolution order, setup wizard, ~/.devtrack/devtrack.conf |
+| `project_windows_gap.md` | Windows native support gap: compile errors, what needs build-tag splitting, WSL workaround |
+| `project_devtrack_server_cli.md` | devtrack-server Bash CLI: install/setup/start/stop/upgrade for tarball-deployed Python backend |
+| `project_upgrade_command.md` | devtrack upgrade: GitHub release download, sudo cp fallback, versioned migrations, auto-restart |
+| `project_standalone_cli_mode.md` | CS-standalone: Managed/Lightweight/External modes, capability guards, XDG home, shell integration |
 | `ARCHITECTURE.md` | System architecture deep-dive |
 | `STATUS.md` | Detailed phase status |
 

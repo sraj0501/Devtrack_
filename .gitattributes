@@ -1,0 +1,25 @@
+# Files and directories excluded from git archive exports.
+# GitHub's auto-generated "Source code" zip/tar.gz respects these.
+
+# Developer tooling — not for end users
+.claude/            export-ignore
+.vscode/            export-ignore
+.github/            export-ignore
+CLAUDE.md           export-ignore
+.goreleaser.yaml    export-ignore
+
+# Runtime data and local state
+Data/               export-ignore
+.env                export-ignore
+workspaces.yaml     export-ignore
+
+# Dev scripts and demos
+scripts/            export-ignore
+demo/               export-ignore
+
+# Test artefacts
+backend/tests/      export-ignore
+backend/.pytest_cache/ export-ignore
+
+# Go CLI source (ships as a separate binary release)
+devtrack-bin/       export-ignore

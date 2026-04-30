@@ -524,7 +524,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v2.0.1-dev</span>
+        <span class="version-chip">v2.1.0-dev</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -555,6 +555,8 @@ const NAV = [
       { id: 'QUICK_START',     label: 'Quick Start',        icon: flash_icon() },
       { id: 'SETUP_WIZARD',    label: 'Setup Wizard',       icon: flash_icon() },
       { id: 'WHATS_NEW',       label: "What's New",         icon: '🎉' },
+      { id: 'DEVTRACK_SERVER', label: 'devtrack-server CLI', icon: terminal_icon() },
+      { id: 'UPGRADE',         label: 'Upgrade',             icon: download_icon() },
     ]
   },
   {
@@ -661,9 +663,9 @@ function launch_icon()   { return svgIcon('<path fill-rule="evenodd" d="M11.3 1.
 const CONTENT = {
   SETUP_WIZARD: `<div class="md-body">
 <h1>Setup Wizard</h1>
-<p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through LLM provider selection, credential entry, workspace selection, project management platform, and shell integration, then writes a complete <code>.env</code> and registers it so every subsequent <code>devtrack</code> invocation auto-loads it.</p>
+<p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode selection, LLM provider selection, credential entry, workspace selection, project management platform, and shell integration, then writes a complete <code>.env</code> and registers it so every subsequent <code>devtrack</code> invocation auto-loads it.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">New in v2.0.1-dev — features/loadEnvs</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Updated in v2.1.0-dev — mode selection, git check, auto shell integration, workspaces.yaml bootstrap</div>
 
 <h2>Running the Wizard</h2>
 <pre><code class="language-bash">devtrack setup</code></pre>
@@ -674,16 +676,19 @@ const CONTENT = {
 <div class="table-wrap"><table>
 <thead><tr><th>Step</th><th>What happens</th></tr></thead>
 <tbody>
-<tr><td><strong>1. Prerequisites</strong></td><td>Checks <code>backend/</code> directory, <code>uv</code>, and Python 3.9+ are present. Prints a clear error for each missing item.</td></tr>
-<tr><td><strong>2. Workspace</strong></td><td>Prompts for the git repository to monitor. Defaults to the project root. Warns if the path is not a git repository.</td></tr>
-<tr><td><strong>3. LLM provider</strong></td><td>Offers Ollama (local, default), OpenAI, Anthropic, Groq, or Skip. Prompts for host/model or API key depending on choice.</td></tr>
-<tr><td><strong>4. Identity</strong></td><td>Optional email address — used to filter your own comments in integrations and to identify you in reports.</td></tr>
-<tr><td><strong>5. PM platform</strong></td><td>GitHub Issues, Azure DevOps, Jira, or None. Prompts for the relevant tokens/credentials.</td></tr>
-<tr><td><strong>6. Data directories</strong></td><td>Creates all required subdirectories under <code>Data/</code> (<code>db/</code>, <code>logs/</code>, <code>pids/</code>, <code>configs/</code>, <code>learning/</code>, <code>reports/</code>, <code>tls/</code>).</td></tr>
-<tr><td><strong>7. Write .env</strong></td><td>Generates a complete <code>.env</code> at <code>PROJECT_ROOT/.env</code> with all required variables, sensible defaults, and your answers. Written with <code>chmod 0600</code>.</td></tr>
-<tr><td><strong>8. Register .env</strong></td><td>Writes the <code>.env</code> path to <code>~/.devtrack/devtrack.conf</code> — a one-line pointer file. All future <code>devtrack</code> commands pick this up automatically via <code>AutoLoadEnv()</code>.</td></tr>
-<tr><td><strong>9. Shell integration</strong></td><td>Prints the line to add to <code>~/.zshrc</code> / <code>~/.bashrc</code> for bare <code>git commit</code> AI enhancement (<code>eval "$(devtrack shell-init)"</code>). Notes that no manual <code>source .env</code> is needed.</td></tr>
-<tr><td><strong>10. Autostart</strong></td><td>Prompts to install OS-native autostart via <code>devtrack autostart-install</code>.</td></tr>
+<tr><td><strong>1. Prerequisites</strong></td><td>Checks <code>git</code> is on PATH (v2.1.0-dev), then checks <code>backend/</code> directory, <code>uv</code>, and Python 3.9+. Prints a clear install hint for each missing item.</td></tr>
+<tr><td><strong>2. Server mode</strong></td><td><strong>(v2.1.0-dev)</strong> Choose <strong>Managed</strong> (daemon spawns Python — default), <strong>Lightweight</strong> (no Python, git monitoring only), or <strong>External</strong> (provide a URL for a separately-running backend). Written as <code>DEVTRACK_SERVER_MODE</code>.</td></tr>
+<tr><td><strong>3. Workspace</strong></td><td>Prompts for the git repository to monitor. Defaults to the project root. Warns if the path is not a git repository.</td></tr>
+<tr><td><strong>4. LLM provider</strong></td><td>Offers Ollama (local, default), OpenAI, Anthropic, Groq, or Skip. Prompts for host/model or API key depending on choice. Skipped in Lightweight mode.</td></tr>
+<tr><td><strong>5. Identity</strong></td><td>Optional email address — used to filter your own comments in integrations and to identify you in reports.</td></tr>
+<tr><td><strong>6. PM platform</strong></td><td>GitHub Issues, Azure DevOps, Jira, or None. Prompts for the relevant tokens/credentials. Skipped in Lightweight mode.</td></tr>
+<tr><td><strong>7. Data directories</strong></td><td>Creates all required subdirectories under <code>Data/</code> (<code>db/</code>, <code>logs/</code>, <code>pids/</code>, <code>configs/</code>, <code>learning/</code>, <code>reports/</code>, <code>tls/</code>).</td></tr>
+<tr><td><strong>8. XDG home</strong></td><td><strong>(v2.1.0-dev)</strong> Creates <code>~/.devtrack/</code> if it does not exist.</td></tr>
+<tr><td><strong>9. workspaces.yaml</strong></td><td><strong>(v2.1.0-dev)</strong> Writes a starter <code>workspaces.yaml</code> to <code>~/.devtrack/workspaces.yaml</code> and sets <code>WORKSPACES_FILE</code> in the generated <code>.env</code>.</td></tr>
+<tr><td><strong>10. Write .env</strong></td><td>Generates a complete <code>.env</code> at <code>PROJECT_ROOT/.env</code> with all required variables, sensible defaults, and your answers. <code>ADMIN_SECRET_KEY</code> is auto-generated as a 32-byte hex secret — no manual step needed. Written with <code>chmod 0600</code>.</td></tr>
+<tr><td><strong>11. Register .env</strong></td><td>Writes the <code>.env</code> path to <code>~/.devtrack/devtrack.conf</code>. All future <code>devtrack</code> commands pick this up automatically via <code>AutoLoadEnv()</code>.</td></tr>
+<tr><td><strong>12. Shell integration</strong></td><td><strong>(v2.1.0-dev)</strong> Writes <code>eval "$(devtrack shell-init)"</code> directly to the detected shell profile (<code>~/.zshrc</code> or <code>~/.bashrc</code>) — no manual copy-paste. No <code>source .env</code> needed.</td></tr>
+<tr><td><strong>13. Autostart</strong></td><td>Prompts to install OS-native autostart via <code>devtrack autostart-install</code>.</td></tr>
 </tbody>
 </table></div>
 
@@ -1057,6 +1062,7 @@ devtrack cloud logout</code></pre>
 <thead><tr><th>Mode</th><th>Config</th><th>Use case</th></tr></thead>
 <tbody>
 <tr><td><code>managed</code> (default)</td><td><code>DEVTRACK_SERVER_MODE=managed</code></td><td>Local dev — daemon spawns Python subprocess automatically</td></tr>
+<tr><td><code>lightweight</code></td><td><code>DEVTRACK_SERVER_MODE=lightweight</code></td><td>Git monitoring + SQLite only — no Python; 28 backend commands guarded (v2.1.0-dev)</td></tr>
 <tr><td><code>external</code></td><td><code>DEVTRACK_SERVER_MODE=external</code> + <code>DEVTRACK_SERVER_URL=http://host:port</code></td><td>Docker or self-hosted Python backend; uses cert-pinning for TLS</td></tr>
 <tr><td><code>cloud</code></td><td>Set via <code>devtrack cloud login</code></td><td>Hosted DevTrack backend; CA-signed cert; API key auth</td></tr>
 </tbody>
@@ -1427,8 +1433,187 @@ curl -s https://api.github.com/repos/sraj0501/automation_tools/releases \
 <blockquote><p><strong>Implementation status (v1.4-dev):</strong> Tier-2 anonymous pings are now implemented in <code>devtrack-bin/ping.go</code>. The <code>install</code> event fires on the first daemon start; the <code>active</code> event fires at most once per 24 hours. Both are fire-and-forget goroutines to a Cloudflare Worker at <code>https://ping.devtrack.dev</code>. The server-side foundation, real-time admin dashboard (Tier 1 GitHub stats, Tier 2 SSE live feed), and Tier-3 registered-user heartbeats described above remain planned. The four-phase implementation plan is documented in <code>docs/TELEMETRY_PLAN.md</code>.</p></blockquote>
 </div>`,
 
+  DEVTRACK_SERVER: `<div class="md-body">
+<h1>devtrack-server CLI</h1>
+<p>The <strong>devtrack-server</strong> tool is a standalone management CLI bundled inside the <code>devtrack-server-{version}.tar.gz</code> release tarball. It handles the complete lifecycle of a server-side DevTrack installation — downloading the right binary, running the setup wizard, and starting/stopping the daemon — without requiring users to clone the repository or manage paths manually.</p>
+
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">New in v2.1.0-dev — features/standalone-cli-mode</div>
+
+<h2>Quick Start</h2>
+<pre><code class="language-bash"># Download the server tarball from the GitHub releases page
+curl -L https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack-server-linux-amd64.tar.gz | tar xz
+cd devtrack-server/
+
+# Install DevTrack (downloads the Go binary, runs uv sync, writes config)
+devtrack-server install
+
+# Run the interactive setup wizard
+devtrack-server setup
+
+# Start the daemon
+devtrack-server start
+
+# Check status
+devtrack-server status</code></pre>
+
+<h2>Commands</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Command</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>devtrack-server install</code></td><td>Download the DevTrack Go binary for the current OS/arch, run <code>uv sync</code> to install Python dependencies, and write the initial configuration skeleton</td></tr>
+<tr><td><code>devtrack-server setup</code></td><td>Run the interactive <code>devtrack setup</code> wizard — prompts for LLM provider, PM platform, workspaces, and writes a complete <code>.env</code></td></tr>
+<tr><td><code>devtrack-server start</code></td><td>Start the DevTrack daemon (equivalent to <code>devtrack start</code>)</td></tr>
+<tr><td><code>devtrack-server stop</code></td><td>Stop the running daemon</td></tr>
+<tr><td><code>devtrack-server status</code></td><td>Show daemon status and server health</td></tr>
+<tr><td><code>devtrack-server upgrade</code></td><td>Download and install the latest release (calls <code>devtrack upgrade</code> internally)</td></tr>
+<tr><td><code>devtrack-server logs</code></td><td>Tail daemon logs</td></tr>
+</tbody>
+</table></div>
+
+<h2>Release Tarball Contents</h2>
+<p>The <code>devtrack-server-{version}.tar.gz</code> release asset ships everything needed to run the Python backend on a fresh server:</p>
+<ul>
+<li><code>devtrack-server</code> — the management CLI binary</li>
+<li><code>backend/</code> — Python backend source tree</li>
+<li><code>pyproject.toml</code> + <code>uv.lock</code> — dependency manifest for <code>uv sync</code></li>
+<li><code>.env_sample</code> — configuration template</li>
+<li><strong>Excluded</strong>: development-only files (<code>.claude/</code>, <code>tests/</code>, CI configs, <code>workspaces.yaml</code>, <code>setup_local.sh</code>)</li>
+</ul>
+
+<h2>Relation to devtrack binary</h2>
+<p>The <code>devtrack-server</code> CLI is a companion tool, not a replacement for the <code>devtrack</code> binary. After <code>devtrack-server install</code> downloads the <code>devtrack</code> binary and places it on <code>PATH</code>, all normal <code>devtrack &lt;cmd&gt;</code> commands work as documented elsewhere in this wiki. <code>devtrack-server</code> is only needed for the initial install and for server-level lifecycle tasks (upgrade, status from the OS perspective).</p>
+
+<h2>Server vs Developer Install</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Scenario</th><th>Recommended path</th></tr></thead>
+<tbody>
+<tr><td>Developer laptop</td><td>Download the <code>devtrack_*.tar.gz</code> binary tarball → <code>devtrack setup</code></td></tr>
+<tr><td>Headless server / VM</td><td>Download <code>devtrack-server-*.tar.gz</code> → <code>devtrack-server install</code> → <code>devtrack-server setup</code></td></tr>
+<tr><td>Docker</td><td>Use the <code>docker compose</code> path in the Quick Start box on the Home page</td></tr>
+</tbody>
+</table></div>
+
+<h2>setup_local.sh Removed</h2>
+<p>The legacy <code>setup_local.sh</code> script has been removed. All functionality it provided is now covered by <code>devtrack setup</code> (interactive wizard) and <code>devtrack-server install</code> (headless server bootstrap). Existing installations using <code>setup_local.sh</code> should migrate to <code>devtrack setup</code>.</p>
+</div>`,
+
+  UPGRADE: `<div class="md-body">
+<h1>Upgrade</h1>
+<p>The <code>devtrack upgrade</code> command performs a self-update: it downloads the latest release binary for your OS and architecture from GitHub Releases, replaces the current binary on disk, and automatically restarts the running daemon.</p>
+
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">New in v2.1.0-dev — self-update + versioned migration</div>
+
+<h2>Quick Start</h2>
+<pre><code class="language-bash"># Upgrade to the latest release
+devtrack upgrade
+
+# If the binary is in a root-owned directory (e.g. /usr/local/bin)
+sudo devtrack upgrade</code></pre>
+
+<h2>What It Does</h2>
+<ol>
+<li>Fetches the latest release tag from the GitHub Releases API.</li>
+<li>If the current version is already up to date, exits with a message and does nothing.</li>
+<li>Downloads the appropriate <code>devtrack_&lt;os&gt;_&lt;arch&gt;.tar.gz</code> archive for the current platform.</li>
+<li>Extracts the new binary to a temporary location and verifies it starts cleanly.</li>
+<li>Replaces the current binary on disk. Falls back to <code>sudo cp</code> automatically when the binary is in a root-owned directory.</li>
+<li>Runs any <strong>versioned migrations</strong> needed to update local data files (<code>Data/</code>, <code>~/.devtrack/</code>) to the new schema.</li>
+<li>If the daemon was running, restarts it automatically so the new version takes effect immediately — no manual <code>devtrack restart</code> needed.</li>
+</ol>
+
+<h2>Root-Owned Installations</h2>
+<p>If the <code>devtrack</code> binary lives in a directory owned by root (e.g. <code>/usr/local/bin/devtrack</code> installed with <code>sudo mv</code>), the upgrade command will detect the write permission error and re-invoke itself with <code>sudo cp</code> automatically. You will be prompted for your password at that point. Alternatively, run the whole upgrade as root from the start:</p>
+<pre><code class="language-bash">sudo devtrack upgrade</code></pre>
+
+<h2>Versioned Migration System</h2>
+<p>DevTrack keeps a <code>~/.devtrack/schema_version</code> file that records the last applied migration version. Each release can ship numbered migration steps (e.g. <code>migration_v2_1.go</code>) that run exactly once after the binary is replaced. Migrations handle:</p>
+<ul>
+<li>SQLite schema changes (new tables, new columns with <code>ALTER TABLE … ADD COLUMN</code>)</li>
+<li>New required <code>.env</code> variables — migration prints a warning and the name of any missing vars rather than failing hard</li>
+<li>Renamed keys in <code>~/.devtrack/devtrack.conf</code> or <code>~/.devtrack/cloud.json</code></li>
+</ul>
+<p>Migrations are additive and idempotent — running the same migration twice is safe.</p>
+
+<h2>Auto-Restart After Upgrade</h2>
+<p>After a successful binary replacement and migration, the upgrade command checks whether the DevTrack daemon is currently running (via the PID file at <code>Data/pids/daemon.pid</code>). If it is, it calls <code>devtrack restart</code> automatically so the new version is live without any extra steps.</p>
+
+<blockquote><p><strong>Note:</strong> The auto-restart uses a short delay to allow the old daemon process to clean up its PID file before the new process writes a fresh one. If you see "daemon already running" after an upgrade, wait 3–5 seconds and run <code>devtrack status</code> to confirm the new version is active.</p></blockquote>
+
+<h2>Rollback</h2>
+<p>The upgrade does not keep a backup of the previous binary. If you need to roll back, download the previous release tarball from <a href="https://github.com/sraj0501/Devtrack_/releases" target="_blank" rel="noopener">GitHub Releases</a> and replace the binary manually.</p>
+
+<h2>Implementation Files</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>File</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>devtrack-bin/upgrade.go</code></td><td><code>RunUpgrade()</code> — GitHub API fetch, download, verify, replace binary, sudo fallback, auto-restart</td></tr>
+<tr><td><code>devtrack-bin/migrate.go</code></td><td>Migration registry, <code>RunMigrations()</code>, schema version tracking in <code>~/.devtrack/schema_version</code></td></tr>
+</tbody>
+</table></div>
+</div>`,
+
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-note);border-color:var(--callout-note-border);color:#1e40af;">v2.1.0-dev — unreleased — features/standalone-cli-mode + main</div>
+
+<h2>v2.1.0-dev — devtrack-server CLI, Self-Update, Lightweight Mode &amp; Setup Enhancements</h2>
+<p>This batch (merged from <code>features/standalone-cli-mode</code> via PR #82) introduces a dedicated server management CLI for headless deployments, a self-update command, a new lightweight daemon mode for environments without Python, and a series of setup wizard improvements.</p>
+
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack-server management CLI (feat: 8196279, 94a3b40)</h4><p>A new <code>devtrack-server</code> binary ships in the <code>devtrack-server-{version}.tar.gz</code> release tarball. It handles the full headless server lifecycle: <code>devtrack-server install</code> downloads the Go binary and runs <code>uv sync</code>; <code>devtrack-server setup</code> launches the interactive wizard; <code>devtrack-server start/stop/status</code> manage the daemon. The tarball excludes development-only paths (<code>.claude/</code>, CI configs, <code>workspaces.yaml</code>). The legacy <code>setup_local.sh</code> script has been removed — all its functionality is now covered by <code>devtrack setup</code> and <code>devtrack-server install</code>. See the <a href="#DEVTRACK_SERVER" onclick="navigate('DEVTRACK_SERVER');return false;">devtrack-server CLI</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>devtrack upgrade — self-update with versioned migration (feat: 214d78a)</h4><p>New <code>devtrack upgrade</code> command (<code>devtrack-bin/upgrade.go</code>) fetches the latest release from GitHub Releases, replaces the binary on disk (with automatic <code>sudo cp</code> fallback for root-owned install paths), runs any pending versioned migrations via <code>devtrack-bin/migrate.go</code>, and auto-restarts the daemon if it was running — all in one step. A <code>~/.devtrack/schema_version</code> file tracks which migrations have been applied. Run <code>sudo devtrack upgrade</code> if the binary is in a root-owned directory. See the <a href="#UPGRADE" onclick="navigate('UPGRADE');return false;">Upgrade</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">3</div><div><h4>Mode selection wizard — Managed / Lightweight / External (TASK-021, PR #82)</h4><p>The <code>devtrack setup</code> wizard now begins with a <strong>mode selection step</strong> that asks which server mode to use: <strong>Managed</strong> (daemon spawns the Python backend subprocess — the default), <strong>Lightweight</strong> (daemon runs with no Python dependency; git monitoring, scheduling, and SQLite logging all work, but AI and PM sync features are disabled), or <strong>External</strong> (user provides a separately-running backend URL). The selected mode is written to <code>.env</code> as <code>DEVTRACK_SERVER_MODE</code>. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> and <a href="#CLOUD_MODE" onclick="navigate('CLOUD_MODE');return false;">Server Modes</a> pages for details.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">4</div><div><h4>Lightweight mode — daemon skips Python spawn (TASK-022)</h4><p>When <code>DEVTRACK_SERVER_MODE=lightweight</code>, the Go daemon starts without spawning the Python backend subprocess. Git monitoring, the cron scheduler, SQLite trigger logging, and the TUI dashboard all work normally. The 28 CLI commands that require the Python backend (AI enhancement, PM sync, report generation, etc.) are guarded: they print a clear "feature not available in lightweight mode" message and exit cleanly instead of hanging or crashing. This is the recommended mode for minimal environments (e.g., pure git activity logging without AI or PM integration). See the <a href="#CLOUD_MODE" onclick="navigate('CLOUD_MODE');return false;">Server Modes</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">5</div><div><h4>Setup wizard enhancements (feat: 491ccd3, 4ddf157, 9904c43)</h4><p>Three improvements to <code>devtrack setup</code>: (1) <strong>Git prereq check</strong> — the wizard now verifies <code>git</code> is installed and on <code>PATH</code> before proceeding; a clear error is shown with install instructions if missing. (2) <strong>Auto-generate ADMIN_SECRET_KEY</strong> — the wizard generates a cryptographically random 32-byte hex secret automatically, so no manual <code>python3 -c "..."</code> step is needed. (3) <strong>XDG home + shell integration written automatically</strong> — the wizard creates <code>~/.devtrack/</code> and writes the <code>eval "$(devtrack shell-init)"</code> line directly to the detected shell profile (<code>~/.zshrc</code> or <code>~/.bashrc</code>) so shell integration is active without any manual copy-paste. (4) <strong>workspaces.yaml bootstrap</strong> — a starter <code>workspaces.yaml</code> is written to the XDG home directory on first run and <code>WORKSPACES_FILE</code> is set in the generated <code>.env</code>. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">6</div><div><h4>Repo references updated: automation_tools → Devtrack_ (chore: 6b66641)</h4><p>All internal references to the old repository name <code>sraj0501/automation_tools</code> have been updated to <code>sraj0501/Devtrack_</code>. This affects release download URLs, GitHub API slugs in telemetry, and documentation links. No configuration changes are required for existing installations.</p></div></div>
+</div>
+
+<h2>New CLI Commands (v2.1.0-dev)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Command</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>devtrack upgrade</code></td><td>Download the latest release binary, run migrations, and auto-restart the daemon</td></tr>
+<tr><td><code>devtrack-server install</code></td><td>Server tarball: download DevTrack binary + run uv sync</td></tr>
+<tr><td><code>devtrack-server setup</code></td><td>Server tarball: run interactive setup wizard</td></tr>
+<tr><td><code>devtrack-server start/stop/status</code></td><td>Server tarball: daemon lifecycle management</td></tr>
+<tr><td><code>devtrack-server upgrade</code></td><td>Server tarball: upgrade to latest release</td></tr>
+<tr><td><code>devtrack-server logs</code></td><td>Server tarball: tail daemon logs</td></tr>
+</tbody>
+</table></div>
+
+<h2>New .env Variables (v2.1.0-dev)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>WORKSPACES_FILE</code></td><td>—</td><td>Path to the <code>workspaces.yaml</code> file, written automatically by <code>devtrack setup</code> to the XDG home directory (<code>~/.devtrack/workspaces.yaml</code>)</td></tr>
+</tbody>
+</table></div>
+
+<h2>New Source Files (v2.1.0-dev)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>File</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>devtrack-bin/upgrade.go</code></td><td><code>RunUpgrade()</code> — GitHub Releases fetch, download, binary replace, sudo fallback, auto-restart</td></tr>
+<tr><td><code>devtrack-bin/migrate.go</code></td><td>Migration registry and <code>RunMigrations()</code> — schema version tracking in <code>~/.devtrack/schema_version</code></td></tr>
+</tbody>
+</table></div>
+
+<h2>Capability Guards — Lightweight Mode (TASK-023)</h2>
+<p>The following 28 commands print a "not available in lightweight mode" message and exit cleanly when <code>DEVTRACK_SERVER_MODE=lightweight</code>:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Category</th><th>Guarded commands</th></tr></thead>
+<tbody>
+<tr><td>AI / commit</td><td><code>git commit</code> (AI enhancement), <code>git-sage</code></td></tr>
+<tr><td>PM sync</td><td><code>work start/stop/status/report</code>, <code>alerts</code>, <code>pm-sync</code></td></tr>
+<tr><td>Report generation</td><td><code>work report</code>, <code>daily-report</code></td></tr>
+<tr><td>Integrations</td><td><code>telegram-start</code>, <code>slack-start</code>, <code>admin-start</code>, <code>server-tui</code></td></tr>
+<tr><td>Learning</td><td><code>enable-learning</code>, <code>learning-sync</code>, <code>show-profile</code>, <code>test-response</code></td></tr>
+<tr><td>Vacation</td><td><code>vacation on/off/status</code></td></tr>
+</tbody>
+</table></div>
+<p>All other commands — <code>start</code>, <code>stop</code>, <code>status</code>, <code>logs</code>, <code>tui</code>, <code>upgrade</code>, <code>setup</code>, <code>workspace</code>, <code>autostart-install</code>, <code>cloud</code>, <code>telemetry</code> — work normally in lightweight mode.</p>
+
+<hr>
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-note);border-color:var(--callout-note-border);color:#1e40af;">v2.0.1-dev — unreleased — features/loadEnvs</div>
 
 <h2>v2.0.1-dev — Setup Wizard, Auto Env Load &amp; Config Hardening</h2>
@@ -1773,6 +1958,20 @@ curl -s https://api.github.com/repos/sraj0501/automation_tools/releases \
 </tbody>
 </table></div>
 
+<h2>In v2.1.0-dev (features/standalone-cli-mode — PR #82)</h2>
+<ul>
+<li><code>devtrack-server</code> management CLI — install/setup/start/stop/status/upgrade/logs for headless servers ✅</li>
+<li><code>devtrack upgrade</code> — self-update, versioned migrations, auto-restart daemon ✅</li>
+<li>TASK-021: Mode selection wizard (Managed/Lightweight/External) in <code>devtrack setup</code> ✅</li>
+<li>TASK-022: <code>ServerModeLightweight</code> — daemon runs without Python backend subprocess ✅</li>
+<li>TASK-023: Capability guards for 28 backend-dependent CLI commands in lightweight mode ✅</li>
+<li>TASK-024: Non-fatal path functions (<code>GetEmailReporterPath</code> etc. return error, not os.Exit) ✅</li>
+<li>Setup: git prereq check, auto-generate ADMIN_SECRET_KEY, XDG home creation, shell integration written automatically ✅</li>
+<li>Setup: bootstrap <code>workspaces.yaml</code> in <code>~/.devtrack/</code>; set <code>WORKSPACES_FILE</code> in <code>.env</code> ✅</li>
+<li>Repo references updated: <code>automation_tools</code> → <code>Devtrack_</code> ✅</li>
+<li>Legacy <code>setup_local.sh</code> removed ✅</li>
+</ul>
+
 <h2>In v2.0.1-dev (features/loadEnvs — PR #79)</h2>
 <ul>
 <li><code>devtrack setup</code> interactive first-run wizard — generates <code>.env</code>, creates <code>Data/</code> dirs, registers env file ✅</li>
@@ -1865,7 +2064,7 @@ SENTIMENT_ANALYSIS_WINDOW_MINUTES=120</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>DEVTRACK_SERVER_MODE</code></td><td><code>managed</code></td><td><code>managed</code> = daemon spawns Python; <code>external</code> = user-run Python; <code>cloud</code> = set by <code>devtrack cloud login</code></td></tr>
+<tr><td><code>DEVTRACK_SERVER_MODE</code></td><td><code>managed</code></td><td><code>managed</code> = daemon spawns Python; <code>lightweight</code> = no Python, git/SQLite only (v2.1.0-dev); <code>external</code> = user-run Python; <code>cloud</code> = set by <code>devtrack cloud login</code></td></tr>
 <tr><td><code>DEVTRACK_SERVER_URL</code></td><td>auto</td><td>Python backend URL — leave blank in managed mode; set for external/cloud</td></tr>
 <tr><td><code>DEVTRACK_TLS</code></td><td><code>true</code></td><td>Enable TLS for Go↔Python channel (self-signed ECDSA cert auto-generated)</td></tr>
 <tr><td><code>DEVTRACK_TLS_CERT</code></td><td>auto</td><td>Override cert path (for CA-signed certs in cloud deployments)</td></tr>
@@ -2547,7 +2746,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-First · v2.0.0 · v2.0.1-dev</div>
+      <div class="home-badge">Local-First · v2.0.0 · v2.1.0-dev</div>
       <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
       <p class="home-sub">DevTrack monitors your Git activity, prompts for work updates, routes them through AI, and keeps your project management systems in sync — all running locally on your machine.</p>
     </div>
@@ -2555,7 +2754,9 @@ function renderHome() {
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v2.0.1 (unreleased): <code>devtrack setup</code> first-run wizard, auto env-load from <code>~/.devtrack/devtrack.conf</code>, all hardcoded admin values eliminated (scrypt params, session max_age, audit limit, license email). v2.0.0: CS-3 Admin GUI MVP — 492 tests total.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v2.1.0 (unreleased): <code>devtrack-server</code> CLI, self-update (<code>devtrack upgrade</code>), Lightweight mode, mode-selection wizard, auto-generate ADMIN_SECRET_KEY, XDG home + shell integration written automatically. v2.0.1: setup wizard, auto env-load. v2.0.0: CS-3 Admin GUI MVP.' },
+        { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
+        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary, runs versioned migrations, and auto-restarts the daemon. Handles root-owned install paths via <code>sudo cp</code> fallback automatically.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
         { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard',       desc:'<code>devtrack setup</code> — interactive first-run wizard. Walks through LLM provider, credentials, workspace, and PM platform; generates a complete <code>.env</code>; auto-registers it at <code>~/.devtrack/devtrack.conf</code> so no manual sourcing is ever needed again.' },
@@ -2605,31 +2806,30 @@ function renderHome() {
       <h3>5-Minute Setup</h3>
       <p style="margin:0 0 .75rem;font-size:.9rem;opacity:.8;">Option 1 — Download binary + interactive wizard (recommended)</p>
       <pre><code class="language-bash"># macOS / Linux — download the lean ~5 MB Go binary (no Python included)
-curl -L https://github.com/sraj0501/automation_tools/releases/latest/download/devtrack_$(uname -s)_$(uname -m).tar.gz | tar xz
+curl -L https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_$(uname -s)_$(uname -m).tar.gz | tar xz
 sudo mv devtrack /usr/local/bin/
 
-# Run the interactive setup wizard — generates .env, creates Data/ dirs, no manual sourcing needed
+# Run the interactive setup wizard — generates .env, creates Data/ dirs, writes shell integration, no manual sourcing needed
 devtrack setup
 
 # Install Python dependencies
 uv sync
 
 devtrack start       # env auto-loaded from ~/.devtrack/devtrack.conf (no source .env needed)
-devtrack status
-
-# Optional: type 'git commit' instead of 'devtrack git commit'
-echo 'eval "$(devtrack shell-init)"' >> ~/.zshrc && source ~/.zshrc</code></pre>
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 2 — Docker (Python backend in a container)</p>
-      <pre><code class="language-bash">git clone https://github.com/sraj0501/automation_tools.git
-cd automation_tools
+devtrack status</code></pre>
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 2 — Server tarball (headless / VM)</p>
+      <pre><code class="language-bash">curl -L https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack-server-linux-amd64.tar.gz | tar xz
+cd devtrack-server/
+devtrack-server install   # downloads binary + uv sync
+devtrack-server setup     # interactive wizard
+devtrack-server start</code></pre>
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 3 — Docker (Python backend in a container)</p>
+      <pre><code class="language-bash">git clone https://github.com/sraj0501/Devtrack_.git
+cd Devtrack_
 docker compose up               # starts Python server + MongoDB + Redis
 # In .env: DEVTRACK_SERVER_MODE=external  DEVTRACK_SERVER_URL=http://localhost:8089
 devtrack start</code></pre>
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 3 — Build from source (developers)</p>
-      <pre><code class="language-bash">git clone https://github.com/sraj0501/automation_tools.git
-cd automation_tools
-./setup_local.sh</code></pre>
-      <p style="margin:.5rem 0 0;font-size:.85rem;opacity:.7;">All releases: <a href="https://github.com/sraj0501/automation_tools/releases" target="_blank">github.com/sraj0501/automation_tools/releases</a> — Go binary only; Python backend set up separately.</p>
+      <p style="margin:.5rem 0 0;font-size:.85rem;opacity:.7;">All releases: <a href="https://github.com/sraj0501/Devtrack_/releases" target="_blank">github.com/sraj0501/Devtrack_/releases</a> — Go binary and server tarballs available.</p>
     </div>
 
     <div class="feature-list">

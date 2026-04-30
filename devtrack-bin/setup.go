@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,11 +13,23 @@ import (
 	"time"
 )
 
+// DevTrackMode represents the operating mode chosen during setup.
+type DevTrackMode string
+
+const (
+	ModeLightweight DevTrackMode = "lightweight"
+	ModeExternal    DevTrackMode = "external"
+	ModeManaged     DevTrackMode = "managed"
+)
+
 // SetupConfig holds all values collected during the setup wizard.
 type SetupConfig struct {
 	ProjectRoot   string
 	WorkspacePath string
 	DataDir       string
+
+	// Mode
+	Mode DevTrackMode
 
 	// LLM
 	LLMProvider    string
@@ -50,13 +64,49 @@ func RunSetup() error {
 
 	printSetupHeader()
 
-	// ── 1. Detect PROJECT_ROOT ────────────────────────────────────────────────
-	projectRoot, err := detectProjectRoot()
-	if err != nil {
-		return fmt.Errorf("could not locate DevTrack installation: %w\n\nMake sure the devtrack binary is inside the release package (next to backend/)", err)
+	// ── 0. Mode selection ─────────────────────────────────────────────────────
+	fmt.Println("Which mode do you want to run DevTrack in?")
+	fmt.Println("  [1] Managed    (default) — full AI features. Requires Python backend/ on this machine.")
+	fmt.Println("  [2] Lightweight           — git monitoring + scheduling only. No Python needed.")
+	fmt.Println("  [3] External              — daemon only; Python runs on a separate server.")
+	fmt.Println()
+	fmt.Print("Choice [1]: ")
+	modeChoice := readLine(reader)
+	fmt.Println()
+
+	var selectedMode DevTrackMode
+	switch modeChoice {
+	case "2":
+		selectedMode = ModeLightweight
+	case "3":
+		selectedMode = ModeExternal
+	default:
+		selectedMode = ModeManaged
 	}
 
-	envPath := filepath.Join(projectRoot, ".env")
+	// ── 1. Detect PROJECT_ROOT ────────────────────────────────────────────────
+	var projectRoot string
+	if selectedMode == ModeManaged {
+		root, err := detectProjectRoot()
+		if err != nil {
+			return fmt.Errorf("could not locate DevTrack installation: %w\n\nMake sure the devtrack binary is inside the release package (next to backend/)", err)
+		}
+		projectRoot = root
+	} else {
+		execPath, err := os.Executable()
+		if err == nil {
+			projectRoot = filepath.Dir(execPath)
+		} else {
+			projectRoot, _ = os.Getwd()
+		}
+	}
+
+		// ── 1b. XDG data home ────────────────────────────────────────────────────
+	xdgHome, err := devtrackDataHome()
+	if err != nil {
+		return fmt.Errorf("could not determine data home: %w", err)
+	}
+	envPath := filepath.Join(xdgHome, ".env")
 
 	// ── 2. Already configured? ────────────────────────────────────────────────
 	if _, err := os.Stat(envPath); err == nil {
@@ -73,11 +123,19 @@ func RunSetup() error {
 
 	cfg := &SetupConfig{
 		ProjectRoot: projectRoot,
-		DataDir:     filepath.Join(projectRoot, "Data"),
+		DataDir:     filepath.Join(xdgHome, "data"),
+		Mode:        selectedMode,
 	}
 
-	// ── 3. Python backend check ───────────────────────────────────────────────
-	checkPythonBackend(projectRoot)
+	// ── 3. Prerequisites check ────────────────────────────────────────────────
+	fmt.Println("─── Checking prerequisites ───────────────────────────────────────")
+	checkCommonPrereqs()
+	if cfg.Mode == ModeManaged {
+		checkPythonBackend(projectRoot)
+	} else {
+		fmt.Println("[" + string(cfg.Mode) + " mode] Python backend not required — skipping.")
+		fmt.Println()
+	}
 
 	// ── 4. Workspace path ─────────────────────────────────────────────────────
 	fmt.Println("─── Git Repository to Monitor ───────────────────────────────────")
@@ -215,10 +273,16 @@ func RunSetup() error {
 	}
 	fmt.Println()
 
-	// ── 8. Create directories ─────────────────────────────────────────────────
+	// ── 8. Create directories and workspaces.yaml ────────────────────────────
 	fmt.Println("─── Creating directories ─────────────────────────────────────────")
 	if err := createDataDirectories(cfg.DataDir); err != nil {
 		return fmt.Errorf("failed to create data directories: %w", err)
+	}
+	wsPath := filepath.Join(xdgHome, "workspaces.yaml")
+	if err := createWorkspacesFile(wsPath, cfg.WorkspacePath, cfg.PMPlatform); err != nil {
+		fmt.Printf("  Warning: could not create workspaces.yaml: %v\n", err)
+	} else {
+		fmt.Printf("  ✓ %s\n", wsPath)
 	}
 
 	// ── 9. Write .env ─────────────────────────────────────────────────────────
@@ -243,12 +307,7 @@ func RunSetup() error {
 	// ── 10. Shell integration ─────────────────────────────────────────────────
 	fmt.Println()
 	fmt.Println("─── Shell Integration ────────────────────────────────────────────")
-	fmt.Println("Shell integration enables bare 'git commit' to use AI enhancement.")
-	fmt.Print("Set up shell integration now? [Y/n]: ")
-	shellAnswer := readLine(reader)
-	if shellAnswer == "" || strings.ToLower(shellAnswer) == "y" {
-		printShellInitInstructions(projectRoot, envPath)
-	}
+	installShellIntegration()
 
 	// ── 11. Autostart ─────────────────────────────────────────────────────────
 	fmt.Println()
@@ -261,7 +320,10 @@ func RunSetup() error {
 	}
 
 	// ── Done ──────────────────────────────────────────────────────────────────
-	printSetupComplete(projectRoot, envPath)
+	// Record all current migrations as applied — setup already did everything they do.
+	MarkAllMigrationsApplied()
+
+	printSetupComplete(projectRoot, envPath, cfg.Mode)
 	return nil
 }
 
@@ -352,6 +414,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("PROJECT_ROOT=" + cfg.ProjectRoot + "\n")
 	b.WriteString("DEVTRACK_HOME=" + filepath.Join(cfg.ProjectRoot, "devtrack-bin") + "\n")
 	b.WriteString("DEVTRACK_WORKSPACE=" + cfg.WorkspacePath + "\n")
+	b.WriteString("WORKSPACES_FILE=" + filepath.Join(filepath.Dir(dataDir), "workspaces.yaml") + "\n")
 	b.WriteString("DATA_DIR=" + dataDir + "\n")
 	b.WriteString("DATABASE_DIR=" + filepath.Join(dataDir, "db") + "\n")
 	b.WriteString("LOG_DIR=" + filepath.Join(dataDir, "logs") + "\n")
@@ -360,7 +423,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("LEARNING_DIR_PATH=" + filepath.Join(dataDir, "learning") + "\n\n")
 
 	b.WriteString("## DAEMON INTERNALS\n")
-	b.WriteString("DEVTRACK_SERVER_MODE=managed\n")
+	b.WriteString("DEVTRACK_SERVER_MODE=" + string(cfg.Mode) + "\n")
 	b.WriteString("DEVTRACK_SERVER_URL=\n")
 	b.WriteString("DEVTRACK_TLS=true\n")
 	b.WriteString("DEVTRACK_API_KEY=\n")
@@ -588,7 +651,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("ADMIN_HOST=0.0.0.0\n")
 	b.WriteString("ADMIN_USERNAME=admin\n")
 	b.WriteString("ADMIN_PASSWORD=changeme\n")
-	b.WriteString("ADMIN_SECRET_KEY=\n")
+	b.WriteString("ADMIN_SECRET_KEY=" + generateSecret(32) + "\n")
 	b.WriteString("ADMIN_EMBED=false\n")
 	b.WriteString("ADMIN_SESSION_HOURS=8\n")
 	b.WriteString("SCRYPT_N=16384\n")
@@ -669,6 +732,26 @@ func generateEnvContent(cfg *SetupConfig) string {
 	return b.String()
 }
 
+// checkCommonPrereqs verifies prerequisites required by all modes.
+func checkCommonPrereqs() {
+	if _, err := exec.LookPath("git"); err != nil {
+		fmt.Println("  ✗ git not found — required for repository monitoring")
+		fmt.Println("    Install git: https://git-scm.com/downloads")
+	} else {
+		fmt.Println("  ✓ git found")
+	}
+}
+
+// generateSecret returns a cryptographically random hex string of n bytes.
+func generateSecret(n int) string {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback: timestamp-based (not cryptographic, but better than empty)
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
+
 // checkPythonBackend verifies the Python backend and uv are present.
 func checkPythonBackend(projectRoot string) {
 	fmt.Println("─── Checking prerequisites ───────────────────────────────────────")
@@ -705,22 +788,97 @@ func checkPythonBackend(projectRoot string) {
 	fmt.Println()
 }
 
-// printShellInitInstructions prints what to add to the shell profile.
-func printShellInitInstructions(projectRoot, envPath string) {
-	shell := os.Getenv("SHELL")
-	profileFile := "~/.bashrc"
-	if strings.Contains(shell, "zsh") {
-		profileFile = "~/.zshrc"
-	} else if strings.Contains(shell, "fish") {
-		profileFile = "~/.config/fish/config.fish"
+// installShellIntegration appends the devtrack eval line to the active shell RC file.
+// It is idempotent: a second run will not add a duplicate line.
+func installShellIntegration() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("  ✗ Could not determine home directory; add shell integration manually.")
+		fmt.Println(`    eval "$(devtrack shell-init)"`)
+		return
 	}
 
-	fmt.Printf("\nAdd the following to %s:\n\n", profileFile)
-	fmt.Println("  # DevTrack shell integration (enables bare 'git commit' AI enhancement)")
-	fmt.Printf("  eval \"$(devtrack shell-init)\"\n")
-	fmt.Println()
-	fmt.Println("Note: env vars are auto-loaded by the binary — no 'source .env' needed.")
-	fmt.Println("Then restart your shell or run: source " + profileFile)
+	shell := os.Getenv("SHELL")
+	var rcFile string
+	switch {
+	case strings.Contains(shell, "zsh"):
+		rcFile = filepath.Join(home, ".zshrc")
+	case strings.Contains(shell, "fish"):
+		rcFile = filepath.Join(home, ".config", "fish", "config.fish")
+	default:
+		rcFile = filepath.Join(home, ".bashrc")
+	}
+
+	evalLine := `eval "$(devtrack shell-init)"`
+
+	if data, err := os.ReadFile(rcFile); err == nil {
+		if strings.Contains(string(data), "devtrack shell-init") {
+			fmt.Printf("  ✓ Shell integration already present in %s\n", rcFile)
+			return
+		}
+	}
+
+	f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Printf("  ✗ Could not write to %s: %v\n", rcFile, err)
+		fmt.Printf("    Add manually: %s\n", evalLine)
+		return
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString("\n# DevTrack shell integration\n" + evalLine + "\n"); err != nil {
+		fmt.Printf("  ✗ Write error on %s: %v\n", rcFile, err)
+		return
+	}
+
+	fmt.Printf("  ✓ Added to %s\n", rcFile)
+	fmt.Printf("    Run: source %s  (or open a new terminal)\n", rcFile)
+}
+
+// createWorkspacesFile writes an initial workspaces.yaml with the workspace
+// collected during setup. Skips if the file already exists.
+func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil // already exists — don't overwrite
+	}
+	if pmPlatform == "" || pmPlatform == "none" {
+		pmPlatform = "none"
+	}
+	// Derive a short name from the last path component.
+	name := filepath.Base(workspacePath)
+	if name == "" || name == "." {
+		name = "default"
+	}
+	content := "# workspaces.yaml — managed by DevTrack\n" +
+		"# Add more workspaces with: devtrack workspace add <name> <path> [platform]\n" +
+		"# pm_platform options: azure | github | gitlab | jira | none\n\n" +
+		"version: \"1\"\nworkspaces:\n" +
+		"  - name: \"" + name + "\"\n" +
+		"    path: \"" + workspacePath + "\"\n" +
+		"    pm_platform: \"" + pmPlatform + "\"\n" +
+		"    pm_project: \"\"\n" +
+		"    enabled: true\n" +
+		"    ignore_branches: []\n" +
+		"    tags: []\n" +
+		"    pm_assignee: \"\"\n" +
+		"    pm_iteration_path: \"\"\n" +
+		"    pm_area_path: \"\"\n" +
+		"    pm_milestone: 0\n"
+	return os.WriteFile(path, []byte(content), 0644)
+}
+
+// devtrackDataHome returns the XDG data home directory for DevTrack.
+// Default: ~/.local/share/devtrack. Honours $XDG_DATA_HOME if set.
+func devtrackDataHome() (string, error) {
+	base := os.Getenv("XDG_DATA_HOME")
+	if base == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		base = filepath.Join(home, ".local", "share")
+	}
+	return filepath.Join(base, "devtrack"), nil
 }
 
 // printAutostartInstructions shows the autostart command.
@@ -741,31 +899,42 @@ func printSetupHeader() {
 	fmt.Println("║          DevTrack — First-Run Setup Wizard                      ║")
 	fmt.Println("╚══════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
-	fmt.Println("This wizard creates your .env configuration and Data/ directories.")
+	fmt.Println("This wizard creates ~/.local/share/devtrack/ with all required directories")
+	fmt.Println("and registers DevTrack in your shell profile.")
 	fmt.Println("You can re-run 'devtrack setup' at any time to reconfigure.")
 	fmt.Println()
 }
 
 // printSetupComplete prints the completion summary.
-func printSetupComplete(projectRoot, envPath string) {
+func printSetupComplete(projectRoot, envPath string, mode DevTrackMode) {
 	fmt.Println()
 	fmt.Println("╔══════════════════════════════════════════════════════════════════╗")
 	fmt.Println("║  Setup complete!                                                ║")
 	fmt.Println("╚══════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
-	fmt.Println("Next steps:")
-	fmt.Println()
-	fmt.Printf("  1. Install Python dependencies:\n")
-	fmt.Printf("       cd %s && uv sync\n", projectRoot)
-	fmt.Println()
-	fmt.Println("  2. Start DevTrack (env auto-loaded — no sourcing needed):")
-	fmt.Println("       devtrack start")
-	fmt.Println()
-	fmt.Println("  3. Check status:  devtrack status")
-	fmt.Println("  4. View logs:     devtrack logs")
-	fmt.Println("  5. Add workspace: devtrack workspace add <path>")
-	fmt.Println()
-	fmt.Println("Edit .env at any time to add integrations (GitHub, Azure, Jira, etc.)")
+
+	if mode == ModeManaged {
+		fmt.Println("Next steps:")
+		fmt.Println()
+		fmt.Printf("  1. Install Python dependencies:\n")
+		fmt.Printf("       cd %s && uv sync\n", projectRoot)
+		fmt.Println()
+		fmt.Println("  2. Start DevTrack (env auto-loaded — no sourcing needed):")
+		fmt.Println("       devtrack start")
+		fmt.Println()
+		fmt.Println("  3. Check status:  devtrack status")
+		fmt.Println("  4. View logs:     devtrack logs")
+		fmt.Println("  5. Add workspace: devtrack workspace add <path>")
+		fmt.Println()
+		fmt.Println("Edit .env at any time to add integrations (GitHub, Azure, Jira, etc.)")
+	} else {
+		fmt.Println("Next steps:")
+		fmt.Println("  1. Start DevTrack:  devtrack start")
+		fmt.Println("  2. Check status:    devtrack status")
+		fmt.Println()
+		fmt.Println("Note: AI features (reports, integrations, commit enhancement) require Managed mode.")
+		fmt.Println("Re-run 'devtrack setup' and choose [1] to enable them.")
+	}
 	fmt.Println()
 }
 

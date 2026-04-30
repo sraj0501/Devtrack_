@@ -27,7 +27,7 @@ builds:
 
 archives:
   - id: devtrack
-    builds:
+    ids:
       - devtrack
     name_template: "devtrack_{{ .Os }}_{{ .Arch }}"
     files:
@@ -62,29 +62,27 @@ changelog:
 release:
   github:
     owner: sraj0501
-    name: automation_tools
+    name: Devtrack_
   name_template: "DevTrack {{.Version}}"
   header: |
     ## DevTrack {{.Version}}
 
     Pre-built binaries for macOS (Apple Silicon + Intel) and Linux (amd64 + arm64).
 
-    > **DevTrack is a client-server tool.**
-    > The `devtrack` binary is the client/daemon. The Python backend runs separately.
+    > **Two deployment modes** — choose during `devtrack setup`:
+    > - **Standalone** (new): git tracking, CLI tools, and AI commit messages — no Python backend required.
+    > - **Full**: all of the above plus AI work updates, project management sync, and reporting (requires Python backend).
 
     ### Quick install
 
     ```bash
-    # macOS / Linux
-    curl -L https://github.com/sraj0501/automation_tools/releases/latest/download/devtrack_$(uname -s)_$(uname -m).tar.gz | tar xz
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" ] && ARCH="arm64"
+    curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
     sudo mv devtrack /usr/local/bin/
-
-    # Set up the Python backend server (choose one):
-    #   Local managed:  set DEVTRACK_SERVER_MODE=managed in .env  (default)
-    #   Docker:         docker compose up
-    devtrack install   # prints setup instructions
+    devtrack setup
     ```
 
-    See [Installation Guide](https://github.com/sraj0501/automation_tools/blob/main/docs/INSTALLATION.md) for full setup.
+    See [Installation Guide](https://github.com/sraj0501/Devtrack_/blob/main/docs/INSTALLATION.md) for full setup.
   footer: |
-    **Full Changelog**: https://github.com/sraj0501/automation_tools/compare/{{.PreviousTag}}...{{.Tag}}
+    **Full Changelog**: https://github.com/sraj0501/Devtrack_/compare/{{.PreviousTag}}...{{.Tag}}
