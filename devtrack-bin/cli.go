@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -303,10 +302,8 @@ func (cli *CLI) handleStart() error {
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 
-	// Detach from parent
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid: true,
-	}
+	// Detach from parent (platform-specific — see cli_unix.go / cli_windows.go)
+	setSetsid(cmd)
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start daemon process: %w", err)
@@ -586,7 +583,8 @@ func (cli *CLI) handleForceTrigger() error {
 		return err
 	}
 
-	if err := process.Signal(syscall.SIGUSR2); err != nil {
+	// Platform-specific: Unix sends SIGUSR2; Windows uses HTTP trigger (see cli_unix.go / cli_windows.go)
+	if err := sendForceTriggerSignal(process); err != nil {
 		fmt.Printf("❌ Could not send signal to daemon: %v\n", err)
 		return err
 	}
