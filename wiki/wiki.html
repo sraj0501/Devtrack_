@@ -2625,10 +2625,11 @@ cd automation_tools
 docker compose up               # starts Python server + MongoDB + Redis
 # In .env: DEVTRACK_SERVER_MODE=external  DEVTRACK_SERVER_URL=http://localhost:8089
 devtrack start</code></pre>
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 3 — Build from source (developers)</p>
-      <pre><code class="language-bash">git clone https://github.com/sraj0501/automation_tools.git
-cd automation_tools
-./setup_local.sh</code></pre>
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 3 — Install from release (developers)</p>
+      <pre><code class="language-bash"># Download the devtrack binary from releases, then:
+devtrack-server install
+devtrack-server setup
+devtrack-server start</code></pre>
       <p style="margin:.5rem 0 0;font-size:.85rem;opacity:.7;">All releases: <a href="https://github.com/sraj0501/automation_tools/releases" target="_blank">github.com/sraj0501/automation_tools/releases</a> — Go binary only; Python backend set up separately.</p>
     </div>
 

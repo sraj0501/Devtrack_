@@ -168,5 +168,7 @@ echo -e "${CYAN}${BOLD}═══════════════════
 echo -e "${GREEN}${BOLD}  DevTrack uninstalled.${NC}"
 echo -e "${CYAN}${BOLD}═══════════════════════════════════════════════${NC}"
 echo ""
-echo "  To reinstall: ${CYAN}./setup_local.sh${NC}"
+echo "  To reinstall:"
+echo "    1. Download the binary:  ${CYAN}https://github.com/sraj0501/Devtrack_/releases/latest${NC}"
+echo "    2. Install the server:   ${CYAN}devtrack-server install${NC}"
 echo ""

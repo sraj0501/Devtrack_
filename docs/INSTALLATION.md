@@ -1,8 +1,6 @@
 # Installation Guide
 
-DevTrack is a **client-server tool**: the Go binary (`devtrack`) acts as the local daemon/client, and the Python backend is the server that handles AI, NLP, integrations, and reports. The two components are set up separately.
-
-The GitHub release binary is a lean ~5 MB pure-Go executable — it contains **no embedded Python**. Set up the Python backend using one of the options below.
+DevTrack is a **client-server tool**: the Go binary (`devtrack`) is the local daemon/client, and the Python backend handles AI, NLP, integrations, and reports. The two components are installed separately.
 
 ---
 
@@ -10,131 +8,86 @@ The GitHub release binary is a lean ~5 MB pure-Go executable — it contains **n
 
 | Dependency | Version | Notes |
 |---|---|---|
-| Git | 2.0+ | To clone the repo |
-| Go | 1.20+ | Builds the `devtrack` binary |
 | Python | 3.12+ | Runs the AI/NLP backend |
-| uv | latest | Python package manager ([astral.sh/uv](https://astral.sh/uv)) |
+| uv | latest | Python package manager — installed automatically if missing |
 | Ollama | latest | Optional — local LLM. Can use OpenAI/Anthropic/Groq instead |
 
----
-
-## Quickest Path — Setup Script (macOS & Linux)
-
-```bash
-git clone https://github.com/sraj0501/automation_tools.git
-cd automation_tools
-chmod +x setup_local.sh
-./setup_local.sh
-```
-
-The script handles everything: dependency checks, Python env, spaCy model, Go build, `~/.local/bin` install, and `.env` bootstrap. Follow the prompts.
+> Go is **not** required. The `devtrack` binary is distributed as a pre-built executable.
 
 ---
 
-## Manual Installation
+## Step 1 — Install the `devtrack` binary
 
-If you prefer to run steps yourself or are on Windows:
-
-### 1. Clone
+Download the pre-built binary for your platform from the [latest release](https://github.com/sraj0501/Devtrack_/releases/latest):
 
 ```bash
-git clone https://github.com/sraj0501/automation_tools.git
-cd automation_tools
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" ] && ARCH="arm64"
+curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
+sudo mv devtrack /usr/local/bin/
 ```
 
-### 2. Install system dependencies
-
-#### macOS
+Verify:
 ```bash
-brew install go python@3.12
-curl -LsSf https://astral.sh/uv/install.sh | sh
+devtrack --version
 ```
 
-#### Linux (Ubuntu/Debian)
-```bash
-# Go
-wget https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.22.3.linux-amd64.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc && source ~/.bashrc
+---
 
-# Python + uv
-sudo apt install python3.12 python3.12-venv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+## Step 2 — Install the Python backend
 
-#### Windows
-```powershell
-scoop install go python uv    # requires Scoop: scoop.sh
-```
-> **Note:** `devtrack git commit` (AI commit enhancement) requires WSL or Git Bash on Windows as it depends on a shell script. All other commands work natively.
-
-### 3. Install Python dependencies
+Download the server package from the same release page:
 
 ```bash
-uv sync
-uv run python -m spacy download en_core_web_sm
+curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack-server-$(curl -fsSL https://api.github.com/repos/sraj0501/Devtrack_/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v).tar.gz" | tar xz
+cd devtrack-server-*
+devtrack-server install
 ```
 
-### 4. Build the Go binary
+This copies the backend files to `~/.local/share/devtrack-server`, installs Python dependencies, downloads the spaCy NLP model, and adds `devtrack-server` to your PATH.
+
+---
+
+## Step 3 — Configure
 
 ```bash
-cd devtrack-bin
-go build -o devtrack .     # simple go build — no bundle step
-mkdir -p ~/.local/bin
-cp devtrack ~/.local/bin/
-cp devtrack ..          # also keep a copy in project root
-cd ..
+devtrack-server setup
 ```
 
-Add to PATH if needed:
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc  # or ~/.bashrc
-source ~/.zshrc
-```
-
-### 5. Configure `.env`
-
-```bash
-cp .env_sample .env
-nano .env   # or your editor of choice
-```
-
-Three variables are required to start:
+The interactive wizard configures your `.env`. Three variables are required to start:
 
 | Variable | Example | Description |
 |---|---|---|
-| `PROJECT_ROOT` | `/home/you/automation_tools` | Absolute path to this directory |
+| `PROJECT_ROOT` | `~/.local/share/devtrack-server` | Where the server files live |
 | `DEVTRACK_WORKSPACE` | `/home/you/myproject` | Git repo DevTrack monitors |
-| `DATA_DIR` | `${PROJECT_ROOT}/Data` | Where logs, DB, and reports are stored |
+| `DATA_DIR` | `~/.local/share/devtrack-server/data` | Where logs, DB, and reports are stored |
 
 See [CONFIGURATION.md](CONFIGURATION.md) for all variables.
 
-### 6. Start DevTrack
+---
 
-The daemon does not load `.env` itself — load it into your shell first:
+## Step 4 — Start
 
 ```bash
-set -a && source .env && set +a
-devtrack start
-devtrack status
+devtrack-server start       # start the Python backend
+devtrack start              # start the Go daemon (connects to the backend)
+devtrack status             # verify everything is running
 ```
 
-**Tip:** Add `set -a && source /path/to/automation_tools/.env && set +a` to your `~/.zshrc` / `~/.bashrc` so it's always available, or use `direnv` with a `.envrc` containing `dotenv`.
-
-For persistent auto-start on login (recommended for daily use):
+For persistent auto-start on login:
 
 ```bash
 devtrack autostart-install   # installs launchd (macOS) or systemd unit (Linux)
-                             # bakes all .env vars into the service — no manual sourcing needed
 ```
 
-### 7. Optional: Shell Integration
+---
 
-Enable `git commit` to route through DevTrack without the `devtrack` prefix:
+## Optional: Shell Integration
+
+Route `git commit` through DevTrack without the `devtrack` prefix:
 
 ```bash
-# Add to ~/.zshrc or ~/.bashrc
-echo 'eval "$(devtrack shell-init)"' >> ~/.zshrc
+echo 'eval "$(devtrack shell-init)"' >> ~/.zshrc   # or ~/.bashrc
 source ~/.zshrc
 ```
 
@@ -145,7 +98,7 @@ cd /path/to/your/repo
 devtrack enable-git      # sets git config devtrack.enabled=true
 ```
 
-After this, `git commit` in that repo runs the full DevTrack AI enhancement flow. To undo: `devtrack disable-git`. Repos listed in `workspaces.yaml` are intercepted automatically — no `enable-git` needed.
+After this, `git commit` in that repo runs the full AI enhancement flow. Repos listed in `workspaces.yaml` are intercepted automatically.
 
 See [Git Features](GIT_FEATURES.md) for details.
 
@@ -153,20 +106,15 @@ See [Git Features](GIT_FEATURES.md) for details.
 
 ## Option B — Docker (Python Backend in a Container)
 
-If you prefer to run the Python backend in Docker (e.g., to keep Python dependencies off the host), use the included `Dockerfile.server`:
-
 ```bash
-# Build the Python backend image
-docker build -f Dockerfile.server -t devtrack-server .
-
-# Run it (exposes port 8089 by default)
-docker run -p 8089:8089 --env-file .env devtrack-server
+# Run the Python backend in Docker (exposes port 8089)
+docker run -p 8089:8089 --env-file ~/.local/share/devtrack-server/.env ghcr.io/sraj0501/devtrack-server:latest
 
 # Or start everything (Python server + MongoDB + Redis) with compose
 docker compose up
 ```
 
-Then configure the Go binary to connect to it as an external server:
+Configure the Go binary to connect to it:
 
 ```bash
 # In .env
@@ -174,29 +122,14 @@ DEVTRACK_SERVER_MODE=external
 DEVTRACK_SERVER_URL=http://localhost:8089
 ```
 
-Start the daemon as usual — it will connect to the Docker container instead of spawning a subprocess:
-
-```bash
-devtrack start
-devtrack status
-```
-
----
-
-## `devtrack install`
-
-Running `devtrack install` prints setup instructions for configuring the Python backend in your chosen mode (managed subprocess, external server, or Docker). It does **not** extract or embed Python — the binary is pure Go.
-
 ---
 
 ## Optional: Ollama (Local AI)
 
-Ollama runs LLMs locally so no data leaves your machine:
-
 ```bash
 # Install: https://ollama.com/download
-ollama pull llama3          # or mistral, phi3, etc.
-ollama serve                # start the server
+ollama pull llama3
+ollama serve
 
 # macOS background service
 brew services start ollama
@@ -216,10 +149,9 @@ To use a cloud provider instead, see [LLM Guide](LLM_GUIDE.md).
 ## Verification
 
 ```bash
-devtrack status                                          # daemon running?
-uv run python -c "import spacy; spacy.load('en_core_web_sm'); print('NLP OK')"
-curl http://localhost:11434/api/tags                     # Ollama OK? (if using)
-devtrack help                                            # all commands
+devtrack status                  # daemon running?
+devtrack-server status           # backend running?
+devtrack help                    # all commands
 ```
 
 ---
@@ -228,8 +160,8 @@ devtrack help                                            # all commands
 
 ```bash
 devtrack stop
-rm ~/.local/bin/devtrack
-rm -rf /path/to/automation_tools      # removes everything including Data/
+devtrack-server uninstall        # removes backend files and stops the server
+sudo rm /usr/local/bin/devtrack  # remove the binary
 ```
 
 ---
@@ -238,13 +170,14 @@ rm -rf /path/to/automation_tools      # removes everything including Data/
 
 | Problem | Fix |
 |---|---|
-| `devtrack: command not found` | Run `source ~/.zshrc` or check `echo $PATH` contains `~/.local/bin` |
-| `spaCy model not found` | `uv run python -m spacy download en_core_web_sm` |
+| `devtrack: command not found` | Check `echo $PATH` contains `/usr/local/bin` |
+| `devtrack-server: command not found` | Run `export PATH="$HOME/.local/bin:$PATH"` then re-run install |
+| `spaCy model not found` | `cd ~/.local/share/devtrack-server && uv run python -m spacy download en_core_web_sm` |
 | `IPC connection failed` | Check port: `lsof -i :35893`. Change `IPC_PORT` in `.env` if in use |
-| `.env not found` | `cp .env_sample .env` from the project root |
-| `missing required environment variables` | You forgot to source `.env` — run `set -a && source .env && set +a` before `devtrack start` |
+| `.env not found` | Run `devtrack-server setup` |
+| `missing required environment variables` | Re-run `devtrack-server setup` or check `.env` at `~/.local/share/devtrack-server/.env` |
 | `Ollama unreachable` | `ollama serve` in a separate terminal |
-| `git commit` still uses plain git | Run `source ~/.zshrc`, or check that `eval "$(devtrack shell-init)"` is in your shell config |
+| `git commit` still uses plain git | Run `source ~/.zshrc`, check `eval "$(devtrack shell-init)"` is in your shell config |
 
 More: [Troubleshooting Guide](TROUBLESHOOTING.md)
 
