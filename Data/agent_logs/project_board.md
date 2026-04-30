@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-04-24 by PM (TASK-021 through TASK-024 planned — standalone-cli-mode)_
-_Next task ID: TASK-025_
+_Last updated: 2026-04-30 by PM (TASK-025 dispatched — Windows native build; TASK-026/027 planned)_
+_Next task ID: TASK-028_
 
 ---
 
@@ -14,6 +14,103 @@ _Next task ID: TASK-025_
   must be written Linux-first. No macOS-specific assumptions in any server_tui or backend
   code.
 - The Go binary is already cross-platform and not affected by this rule.
+
+---
+
+## 🔴 IN PROGRESS
+
+### TASK-025 — Windows native build support (build-tag syscall split)
+**Assigned to**: engineer
+**Phase**: CS-standalone
+**Started**: 2026-04-30
+**Branch**: fix/TASK-025-windows-native-build
+
+**Spec**:
+Split Unix-only syscall sites out of `cli.go` and `daemon.go` into build-tag-gated files
+so `go build ./...` succeeds natively on Windows (D:/git_apps/Devtrack_).
+
+Changes required:
+
+1. Create `devtrack-bin/daemon_unix.go` (`//go:build !windows`)
+   - Move `Setsid: true` SysProcAttr usage from `daemon.go`
+   - Move SIGUSR2 daemon listener from `daemon.go`
+
+2. Create `devtrack-bin/daemon_windows.go` (`//go:build windows`)
+   - Stub equivalents: `CREATE_NEW_PROCESS_GROUP` flag instead of `Setsid`
+   - HTTP or named-pipe signal for trigger, or a clearly-commented no-op stub
+
+3. Create `devtrack-bin/cli_unix.go` (`//go:build !windows`)
+   - Move `syscall.SIGUSR2` usage from `cli.go` (the `devtrack trigger` handler)
+
+4. Create `devtrack-bin/cli_windows.go` (`//go:build windows`)
+   - Stub for trigger handler on Windows
+
+5. No change to Linux/macOS behavior — build tags must preserve all existing code paths
+
+**Checkout instruction**: `git checkout -b fix/TASK-025-windows-native-build` from main.
+Do NOT target main in the PR — use `gh pr create --base dev`.
+
+**Acceptance criteria**:
+- [ ] `go build ./...` exits 0 on Windows (this machine: D:/git_apps/Devtrack_)
+- [ ] `go vet ./...` exits 0 on Windows
+- [ ] `go test ./...` exits 0 on Windows
+- [ ] No change to Linux behavior (verified by reading build tags — no existing code paths altered)
+- [ ] `devtrack start` and `devtrack stop` logic is provably intact on Linux (moved code is identical, just in a new file)
+- [ ] PR opened targeting `dev` (not main): `gh pr create --base dev`
+
+**Engineer status**: not started
+**Blockers**: none
+
+---
+
+## 🟡 PLANNED
+
+### TASK-026 — Remove GetPythonBridgePath dead code from config_env.go
+**Priority**: LOW
+**Phase**: CS-standalone
+**Depends on**: TASK-025
+
+**Spec**:
+`GetPythonBridgePath()` in `devtrack-bin/config_env.go` was made non-fatal by TASK-024.
+No callers remain after that refactor. Delete the function entirely.
+
+- File: `devtrack-bin/config_env.go`
+- Action: Remove `GetPythonBridgePath()` function definition
+- Verify with `grep -rn "GetPythonBridgePath" devtrack-bin/` that no callers exist before deletion
+- Run `go build ./...`, `go vet ./...`, `go test ./...` to confirm nothing breaks
+
+**Acceptance criteria**:
+- [ ] `GetPythonBridgePath()` function no longer exists in `config_env.go`
+- [ ] `grep -rn "GetPythonBridgePath" devtrack-bin/` returns no matches
+- [ ] `go build ./...`, `go vet ./...`, `go test ./...` pass
+- [ ] PR opened targeting `dev`: `gh pr create --base dev`
+
+---
+
+### TASK-027 — Guard handleWork() work report subcommand in Lightweight mode
+**Priority**: MEDIUM
+**Phase**: CS-standalone
+**Depends on**: TASK-025
+
+**Background**:
+The `work report` subcommand inside `handleWork()` in `cli.go` calls Python internally
+(the email reporter). It was excluded from the `requiresManagedMode()` guard added in
+TASK-023 per spec ("handleWork() ... leave them unguarded for now; they are lower risk
+and can be addressed in a follow-up"). This is that follow-up.
+
+**Spec**:
+Inside `handleWork()` in `devtrack-bin/cli.go`, locate the `work report` subcommand
+dispatch branch. Add a `requiresManagedMode("work report")` guard at the top of that
+branch only. Leave all other `handleWork()` subcommands unguarded.
+
+**Acceptance criteria**:
+- [ ] `devtrack work report` in Lightweight mode prints:
+      `'work report' requires Managed mode (Python backend).`
+      followed by the re-run-setup line
+- [ ] All other `devtrack work` subcommands (e.g. `work update`, `work status`) still
+      work normally in Lightweight mode
+- [ ] `go build ./...`, `go vet ./...`, `go test ./...` pass
+- [ ] PR opened targeting `dev`: `gh pr create --base dev`
 
 ---
 
@@ -66,87 +163,6 @@ _Next task ID: TASK-025_
 **Started**: 2026-04-24
 **Branch**: features/standalone-cli-mode
 
-**Background**:
-`RunSetup()` in `devtrack-bin/setup.go` calls `detectProjectRoot()` as its very first
-action. That function walks up from the binary looking for a `backend/` directory and
-hard-fails if absent. This blocks any client deployment where only the Go binary is
-distributed (no Python source).
-
-The fix is to prompt the user for an operating mode *before* `detectProjectRoot()` is
-called, then conditionally skip the `backend/` check in Lightweight and External modes.
-
-**Spec — exact changes to `devtrack-bin/setup.go`**:
-
-1. Add a `DevTrackMode` type and three constants at the top of the file (or in a new
-   short block before `RunSetup`):
-
-   ```go
-   type DevTrackMode string
-   const (
-       ModeLightweight DevTrackMode = "lightweight"
-       ModeExternal    DevTrackMode = "external"
-       ModeManaged     DevTrackMode = "managed"
-   )
-   ```
-
-2. Add a `SetupConfig.Mode DevTrackMode` field to `SetupConfig`.
-
-3. At the very top of `RunSetup()`, before *any* call to `detectProjectRoot()`, insert
-   a mode-selection prompt:
-
-   ```
-   Which mode do you want to run DevTrack in?
-     [1] Managed    (default) — full AI features. Requires Python backend/ on this machine.
-     [2] Lightweight           — git monitoring + scheduling only. No Python needed.
-     [3] External              — daemon only; Python runs on a separate server.
-
-   Choice [1]:
-   ```
-
-   Store the result in `cfg.Mode` (default: `ModeManaged`).
-
-4. Determine `projectRoot` differently depending on mode:
-   - `ModeManaged`: call existing `detectProjectRoot()` — keep all current behavior.
-   - `ModeLightweight` / `ModeExternal`: skip `detectProjectRoot()` entirely. Use the
-     binary's parent directory as `projectRoot`:
-     ```go
-     execPath, _ := os.Executable()
-     projectRoot = filepath.Dir(execPath)
-     ```
-     If `os.Executable()` fails, fall back to `os.Getwd()`.
-
-5. Move the existing `.env` existence check to *after* `projectRoot` is determined
-   (it already reads `envPath` which depends on `projectRoot` — just ensure the order
-   is correct after the mode-selection block).
-
-6. Wrap `checkPythonBackend(projectRoot)` (step 3 in the current wizard) in an `if
-   cfg.Mode == ModeManaged` guard. In Lightweight / External modes, skip the Python /
-   uv check entirely and print a single info line instead:
-   ```
-   [Lightweight mode] Python backend not required — skipping prerequisite check.
-   ```
-
-7. In `generateEnvContent(cfg)`, set `DEVTRACK_SERVER_MODE` from `cfg.Mode`:
-   - `ModeManaged`     → `DEVTRACK_SERVER_MODE=managed`
-   - `ModeLightweight` → `DEVTRACK_SERVER_MODE=lightweight`
-   - `ModeExternal`    → `DEVTRACK_SERVER_MODE=external`
-
-   The current code hardcodes `DEVTRACK_SERVER_MODE=managed` — replace that single line.
-
-8. In `printSetupComplete()`, for Managed mode keep the existing "Next steps" text.
-   For Lightweight / External modes, omit the "Install Python dependencies" step 1
-   and replace it with:
-   ```
-   Next steps:
-     1. Start DevTrack:  devtrack start
-     2. Check status:    devtrack status
-   Note: AI features (reports, integrations, commit enhancement) require Managed mode.
-   Re-run 'devtrack setup' and choose [1] to enable them.
-   ```
-
-9. Do NOT change the LLM provider section, workspace section, or PM platform section —
-   those remain the same for all modes (user may still configure them for future use).
-
 **Acceptance criteria**:
 - [x] Running `devtrack setup` presents the 3-option mode menu as the first prompt.
 - [x] Choosing [2] or [3] does NOT call `detectProjectRoot()` and does NOT fail if
@@ -166,73 +182,6 @@ called, then conditionally skip the `backend/` check in Lightweight and External
 
 ---
 
-## 🟡 PLANNED
-
-### TASK-022 — daemon.go: Lightweight mode skips Python subprocess spawning
-**Priority**: HIGH
-**Phase**: CS-standalone
-**Depends on**: TASK-021
-
-**Background**:
-`server_config.go` already defines `ServerModeManaged`, `ServerModeExternal`, and
-`ServerModeCloud`. `IsExternalServer()` returns true for External and Cloud — which
-already causes `startWebhookServer()` to skip spawning Python. We need the same skip
-for a new `lightweight` mode, and we need to add the `ServerModeLightweight` constant.
-
-**Spec — exact changes to `devtrack-bin/daemon.go` and `devtrack-bin/server_config.go`**:
-
-1. In `devtrack-bin/server_config.go`:
-   - Add the constant:
-     ```go
-     ServerModeLightweight ServerMode = "lightweight"
-     ```
-   - Update `GetServerMode()` to recognize `"lightweight"`:
-     ```go
-     if os.Getenv("DEVTRACK_SERVER_MODE") == "lightweight" {
-         return ServerModeLightweight
-     }
-     ```
-     Add this check before the `external` check (order: cloud → lightweight → external → managed).
-   - Update `IsExternalServer()` to return true for Lightweight too:
-     ```go
-     func IsExternalServer() bool {
-         mode := GetServerMode()
-         return mode == ServerModeExternal || mode == ServerModeCloud || mode == ServerModeLightweight
-     }
-     ```
-
-2. In `devtrack-bin/daemon.go`:
-   - `startWebhookServer()` already returns early when `IsExternalServer()` is true — no
-     change needed there; the updated `IsExternalServer()` covers it.
-   - Add a `IsLightweightMode()` helper in `server_config.go`:
-     ```go
-     func IsLightweightMode() bool {
-         return GetServerMode() == ServerModeLightweight
-     }
-     ```
-   - In `daemon.go`'s `Start()` method, after the `startWebhookServer()` call, add a log
-     line when in lightweight mode so it's visible in the log:
-     ```go
-     if IsLightweightMode() {
-         log.Println("Running in Lightweight mode — Python backend disabled")
-     }
-     ```
-   - In `startAssignmentPoller()`, `startGitLabPoller()`, `startTelegramBot()`, and
-     `startSlackBot()`: these already check their respective enable flags and return early.
-     No additional changes needed — they won't spawn Python if the flags are false (which
-     a fresh Lightweight `.env` will have by default).
-
-**Acceptance criteria**:
-- [ ] `server_config.go` has `ServerModeLightweight` constant.
-- [ ] `GetServerMode()` returns `ServerModeLightweight` when env var is `"lightweight"`.
-- [ ] `IsExternalServer()` returns `true` for lightweight mode.
-- [ ] `IsLightweightMode()` helper function exists and works correctly.
-- [ ] `go build ./...`, `go vet ./...`, `go test ./...` all pass.
-- [ ] A daemon started with `DEVTRACK_SERVER_MODE=lightweight` does not attempt to
-      spawn any Python subprocess (verified by reading the log output).
-
----
-
 ### TASK-023 — cli.go: capability guard for backend-dependent commands
 **Assigned to**: engineer
 **Priority**: HIGH
@@ -241,81 +190,8 @@ for a new `lightweight` mode, and we need to add the `ServerModeLightweight` con
 **Branch**: features/standalone-cli-mode
 **Depends on**: TASK-022 (complete)
 
-**Background**:
-In Lightweight mode, commands that depend on the Python backend (reports, learning,
-azure-*, github-*, gitlab-*, git-sage) currently fail with cryptic Python errors
-(missing script, subprocess launch failure, etc.). We need a clean capability guard
-that prints a clear message when the mode cannot support the command.
-
-**Spec — exact changes to `devtrack-bin/cli.go`**:
-
-1. Add a helper function near the top of `cli.go`:
-
-   ```go
-   // requiresManagedMode prints a clear error and returns an error when the
-   // current server mode does not include a Python backend.
-   func requiresManagedMode(command string) error {
-       if IsLightweightMode() {
-           fmt.Printf("'%s' requires Managed mode (Python backend).\n", command)
-           fmt.Println("Re-run 'devtrack setup' and choose [1] Managed to enable AI features.")
-           return fmt.Errorf("command unavailable in Lightweight mode")
-       }
-       return nil
-   }
-   ```
-
-2. Add `requiresManagedMode` guard at the top of each of the following handlers in
-   `cli.go` (return immediately if the check returns a non-nil error):
-
-   **Learning commands** (all call Python learning scripts):
-   - `handleEnableLearning()`
-   - `handleShowProfile()`
-   - `handleTestResponse()`
-   - `handleRevokeConsent()`
-   - `handleLearningStatus()`
-   - `handleLearningSetupCron()`
-   - `handleLearningRemoveCron()`
-   - `handleLearningCronStatus()`
-   - `handleLearningSync()`
-   - `handleLearningReset()`
-
-   **Report commands** (call Python email_reporter.py):
-   - `handlePreviewReport()`
-   - `handleSendReport()`
-   - `handleSaveReport()`
-   - `handleSendSummary()`
-
-   **Integration commands** (call Python Azure/GitHub/GitLab clients):
-   - `handleAzureCheck()`
-   - `handleAzureList()`
-   - `handleAzureSync()`
-   - `handleAzureView()`
-   - `handleGitLabCheck()`
-   - `handleGitLabList()`
-   - `handleGitLabSync()`
-   - `handleGitLabView()`
-   - `handleGitHubCheck()`
-   - `handleGitHubList()`
-   - `handleGitHubSync()`
-   - `handleGitHubView()`
-
-   **Server TUI / Admin** (requires running Python server):
-   - `handleServerTUI()`
-   - `handleAdminStart()`
-
-   Note: `handleWork()`, `handleVacation()`, `handleAlerts()` are IPC/TUI commands —
-   leave them unguarded for now; they are lower risk and can be addressed in a follow-up.
-
-3. `handleStart()` should NOT be guarded — lightweight mode still starts the Go daemon.
-
-4. `handleSendReport()` and `handlePreviewReport()` may also call `GetEmailReporterPath()`
-   internally. Those `GetEmailReporterPath()` / `GetLearningDailyScriptPath()` callers in
-   `learning.go` should remain as-is — the guard in the CLI handler will prevent reaching
-   them in Lightweight mode.
-
 **Acceptance criteria**:
-- [x] All listed handlers return early with `requiresManagedMode()` when mode is
-      `lightweight`.
+- [x] All listed handlers return early with `requiresManagedMode()` when mode is `lightweight`.
 - [x] The error message printed is exactly:
       `'<command>' requires Managed mode (Python backend).`
       followed by the re-run-setup line.
@@ -327,91 +203,6 @@ that prints a clear message when the mode cannot support the command.
 **Engineer status**: 4/4 criteria done — last commit: 0cde877 "feat(cli): capability guard for backend-dependent commands in lightweight mode (TASK-023)" — 2026-04-24
 
 **COMPLETE** — ready for PM review — 2026-04-24
-
----
-
-### TASK-024 — config_env.go: non-fatal GetEmailReporterPath + GetLearningDailyScriptPath
-**Priority**: MEDIUM
-**Phase**: CS-standalone
-**Depends on**: TASK-023
-
-**Background**:
-`GetEmailReporterPath()` and `GetLearningDailyScriptPath()` in `config_env.go` currently
-call `os.Exit(1)` when the script file is not found. In Lightweight mode there is no
-`backend/` directory, so these would exit the entire process if ever reached. The CLI
-guard from TASK-023 prevents normal execution paths from hitting them, but defense-in-
-depth: make them return an error instead of exiting so tests and any unexpected callsite
-don't blow up.
-
-**Spec — exact changes to `devtrack-bin/config_env.go`**:
-
-1. Change `GetEmailReporterPath()` signature from `string` to `(string, error)`:
-
-   ```go
-   func GetEmailReporterPath() (string, error) {
-       config, err := LoadEnvConfig()
-       if err != nil {
-           return "", fmt.Errorf("config load failed: %w", err)
-       }
-       path := filepath.Join(config.ProjectRoot, "backend", "email_reporter.py")
-       if !fileExists(path) {
-           return "", fmt.Errorf("email reporter script not found at %s (Managed mode required)", path)
-       }
-       return path, nil
-   }
-   ```
-
-2. Update all callers of `GetEmailReporterPath()` to handle the error. Search callers:
-   - `devtrack-bin/cli.go` — any handler that calls it should log/return the error.
-
-3. Change `GetLearningDailyScriptPath()` from returning `string` with internal
-   `os.Exit` on a derived path issue to returning `(string, error)`. The current
-   implementation actually does NOT call `os.Exit` — it has graceful fallback. Verify
-   this is still correct after TASK-021/022/023 changes and add a file-existence check:
-
-   ```go
-   func GetLearningDailyScriptPath() (string, error) {
-       config, err := LoadEnvConfig()
-       if err != nil {
-           return "", fmt.Errorf("config load failed: %w", err)
-       }
-       var path string
-       if config.LearningDailyScriptPath != "" {
-           path = expandPath(config.LearningDailyScriptPath)
-       } else {
-           path = filepath.Join(config.ProjectRoot, "backend", "run_daily_learning.py")
-       }
-       if !fileExists(path) {
-           return "", fmt.Errorf("daily learning script not found at %s (Managed mode required)", path)
-       }
-       return path, nil
-   }
-   ```
-
-4. Update all callers of `GetLearningDailyScriptPath()` to handle the error:
-   - `devtrack-bin/learning.go` — `NewLearningCommands()` calls it. Update to propagate
-     the error cleanly, or move the call into individual command methods that are already
-     guarded.
-
-5. `GetPythonBridgePath()` also has an `os.Exit` on missing file — apply the same
-   non-fatal treatment:
-   ```go
-   func GetPythonBridgePath() (string, error) {
-       ...
-       if !fileExists(path) {
-           return "", fmt.Errorf("Python bridge script not found at %s", path)
-       }
-       return path, nil
-   }
-   ```
-   Update callers accordingly.
-
-**Acceptance criteria**:
-- [ ] `GetEmailReporterPath()`, `GetLearningDailyScriptPath()`, `GetPythonBridgePath()`
-      all return `(string, error)` instead of calling `os.Exit`.
-- [ ] All callers updated to handle the returned error.
-- [ ] `go build ./...`, `go vet ./...`, `go test ./...` pass.
-- [ ] No `os.Exit` calls remain in any of the three functions.
 
 ---
 

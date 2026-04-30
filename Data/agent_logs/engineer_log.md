@@ -2,6 +2,51 @@
 
 ---
 
+### [2026-04-30] TASK-025 — fix(build): Windows native build support via platform-split syscall files
+
+**Branch**: fix/TASK-025-windows-native-build
+**Original message**: "fix(build): split Unix-only syscall sites into build-tag-gated files for Windows native build (TASK-025)"
+**DevTrack enhanced it to**: N/A — devtrack binary not installed in this dev environment
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated
+
+**Problem**: `go build ./...` on Windows produced 4 errors:
+- `cli.go:308: unknown field Setsid in struct literal of type syscall.SysProcAttr`
+- `cli.go:589: undefined: syscall.SIGUSR2`
+- `daemon.go:383: undefined: syscall.SIGUSR2`
+- `daemon.go:390: undefined: syscall.SIGUSR2`
+
+**Fix**: Extracted the two Unix-only syscall patterns into four build-tag-gated files:
+1. `devtrack-bin/daemon_unix.go` (`//go:build !windows`) — full `setupSignalHandlers()` with SIGUSR2 + SIGHUP
+2. `devtrack-bin/daemon_windows.go` (`//go:build windows`) — stub `setupSignalHandlers()` with only SIGTERM/Interrupt
+3. `devtrack-bin/cli_unix.go` (`//go:build !windows`) — `setSetsid(cmd)` sets `Setsid:true`; `sendForceTriggerSignal()` sends SIGUSR2
+4. `devtrack-bin/cli_windows.go` (`//go:build windows`) — `setSetsid(cmd)` uses `CREATE_NEW_PROCESS_GROUP`; `sendForceTriggerSignal()` sends HTTP timer trigger
+
+`daemon.go`: removed `setupSignalHandlers()` body + `os/signal` import (no longer needed).
+`cli.go`: replaced `SysProcAttr{Setsid:true}` with `setSetsid(cmd)`; replaced `process.Signal(SIGUSR2)` with `sendForceTriggerSignal(process)`; removed `syscall` import.
+
+**Linux/macOS behavior**: unchanged — `daemon_unix.go` and `cli_unix.go` carry the identical code that was previously in the base files. Build tags guarantee these run on all non-Windows platforms.
+
+**Results**:
+- `go build ./...` — PASS (Windows)
+- `go vet ./...` — PASS (Windows)
+- `go test ./...` — PASS (Windows, 1 package, 0.588s)
+
+**Time**: ~25 minutes
+**Friction**: LOW — errors were precise; helper-function extraction is a clean pattern
+**Notes**: `SIGHUP` and `Signal(0)` and `SIGTERM` are available on Windows — only `SIGUSR2` and `Setsid` needed platform gating. `setupSignalHandlers()` was moved wholesale rather than splitting just the SIGUSR2 case, since keeping SIGHUP in the Windows path would be a no-op at best and confusing at worst.
+
+## Task Summary — TASK-025: Windows native build support — 2026-04-30
+
+- Total commits: 1 (pending)
+- Files created: 4 (daemon_unix.go, daemon_windows.go, cli_unix.go, cli_windows.go)
+- Files modified: 2 (daemon.go, cli.go)
+- Acceptance criteria met: 5/6 (PR not yet opened — next step)
+- Blockers encountered: none
+- Ready for PM review: YES (after PR)
+
+---
+
 ### [2026-04-24 15:30] TASK-024 — refactor(config): make GetEmailReporterPath, GetLearningDailyScriptPath, GetPythonBridgePath return error instead of os.Exit
 
 **Original message**: "refactor(config): make GetEmailReporterPath, GetLearningDailyScriptPath, GetPythonBridgePath return error instead of os.Exit (TASK-024)"
