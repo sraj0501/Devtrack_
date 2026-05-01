@@ -4,19 +4,37 @@ Thin HTTP client that proxies user commands to `devtrack-server`.
 
 ## Status
 
-**Not yet implemented.** Code will be created in TASK-004 and TASK-005.
-See root `CLAUDE.md` for the full migration plan and issue links.
+**TASK-008 complete.** GitLab CI/CD pipelines added.
 
-## Planned structure
+## Structure
 
 ```
 devtrack_client/
   cmd/cli/
-    main.go          ← entry point
-  cli_client.go      ← CLIClient HTTP methods
-  go.mod             ← module: gitlab.com/devtrack3_cloud/devtrack_cli
-  .env_sample        ← 3 vars only (see below)
-  .gitlab-ci.yml     ← build + release pipeline
+    main.go            ← entry point; routes args to CLIClient
+  cli_client.go        ← CLIClient HTTP methods (all 9 routes)
+  cli_client_test.go   ← unit tests (httptest; no real server needed)
+  devtrack             ← Unix compat wrapper → execs devtrack-cli
+  devtrack.bat         ← Windows compat wrapper → calls devtrack-cli.exe
+  go.mod               ← module: gitlab.com/devtrack3_cloud/devtrack_cli
+  go.sum
+  .env_sample          ← 4 vars (URL + token + app name + version)
+  .gitlab-ci.yml       ← build + release pipeline
+```
+
+## Tests
+
+```bash
+go test ./...
+```
+
+15 unit tests covering all 9 HTTP methods, auth header handling, error responses,
+and unreachable-server behaviour. Uses `httptest.NewServer` — no daemon required.
+
+## Build
+
+```bash
+go build -o devtrack-cli ./cmd/cli
 ```
 
 ## Required env vars (CLI only)

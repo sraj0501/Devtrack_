@@ -1,4 +1,4 @@
-module go-cli
+module gitlab.com/devtrack3_cloud/devtrack_server
 
 go 1.24.4
 

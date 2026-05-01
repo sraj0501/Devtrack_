@@ -29,7 +29,6 @@ type EnvConfig struct {
 
 	// File names
 	PythonBridgeScript string
-	CLIBinaryName      string
 	ConfigFileName     string
 	DatabaseFileName   string
 	PIDFileName        string
@@ -38,10 +37,6 @@ type EnvConfig struct {
 	// Directory names
 	LearningDirName string
 	ConfigDirName   string
-
-	// CLI identifiers
-	CLIAppName    string
-	CLIDaemonName string
 
 	// External services
 	OllamaHost string
@@ -96,15 +91,12 @@ var requiredEnvVars = []string{
 	"IPC_PORT",
 	"IPC_CONNECT_TIMEOUT_SECS",
 	"PYTHON_BRIDGE_SCRIPT",
-	"CLI_BINARY_NAME",
 	"CONFIG_FILE_NAME",
 	"DATABASE_FILE_NAME",
 	"PID_FILE_NAME",
 	"LOG_FILE_NAME",
 	"LEARNING_DIR_NAME",
 	"CONFIG_DIR_NAME",
-	"CLI_APP_NAME",
-	"CLI_DAEMON_NAME",
 	"DEVTRACK_WORKSPACE",
 	"DATABASE_DIR",
 	"LOG_DIR",
@@ -185,15 +177,12 @@ func LoadEnvConfig() (*EnvConfig, error) {
 		ConfigDirPath:       expandPath(os.Getenv("CONFIG_DIR_PATH")),
 		LearningDirPath:     expandPath(os.Getenv("LEARNING_DIR_PATH")),
 		PythonBridgeScript:  os.Getenv("PYTHON_BRIDGE_SCRIPT"),
-		CLIBinaryName:       os.Getenv("CLI_BINARY_NAME"),
 		ConfigFileName:      os.Getenv("CONFIG_FILE_NAME"),
 		DatabaseFileName:    os.Getenv("DATABASE_FILE_NAME"),
 		PIDFileName:         os.Getenv("PID_FILE_NAME"),
 		LogFileName:         os.Getenv("LOG_FILE_NAME"),
 		LearningDirName:     os.Getenv("LEARNING_DIR_NAME"),
 		ConfigDirName:       os.Getenv("CONFIG_DIR_NAME"),
-		CLIAppName:          os.Getenv("CLI_APP_NAME"),
-		CLIDaemonName:       os.Getenv("CLI_DAEMON_NAME"),
 		Workspace:           expandPath(os.Getenv("DEVTRACK_WORKSPACE")),
 		OllamaHost:          os.Getenv("OLLAMA_HOST"),
 		PromptInterval:      os.Getenv("PROMPT_INTERVAL"),
@@ -417,16 +406,6 @@ func GetLearningDirPath() string {
 		os.Exit(1)
 	}
 	return config.LearningDirPath
-}
-
-// GetCLIAppName returns the CLI application name
-func GetCLIAppName() string {
-	config, err := LoadEnvConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
-	}
-	return config.CLIAppName
 }
 
 func mustParseInt(name, raw string) int {

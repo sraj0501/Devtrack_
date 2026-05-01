@@ -45,7 +45,15 @@ See `devtrack_server/CLAUDE.md` for full server architecture, config vars, and d
 ## devtrack_client/
 
 Thin Go CLI binary — proxies commands to devtrack-server over HTTP.
-**Not yet implemented** — code arrives in TASK-004 and TASK-005.
+
+**Build:**
+```bash
+cd devtrack_client
+go build -o devtrack-cli ./cmd/cli
+```
+
+**Module:** `gitlab.com/devtrack3_cloud/devtrack_cli`
+**Required env:** `DEVTRACK_SERVER_URL`, `DEVTRACK_API_TOKEN` (optional)
 
 See `devtrack_client/CLAUDE.md` for planned structure and env vars.
 
@@ -54,13 +62,13 @@ See `devtrack_client/CLAUDE.md` for planned structure and env vars.
 | Task | Issue | Status |
 |------|-------|--------|
 | TASK-001-A: Update doc URLs | #89 | Planned |
-| TASK-002: ADR document | #90 | Planned |
-| TASK-003: HTTP API on server | #91 | Planned |
-| TASK-004: cmd/ restructure | #92 | Planned |
-| TASK-005: CLI HTTP client | #93 | Planned |
-| TASK-006: Config split | #94 | Planned |
-| TASK-007: Tests + compat | #95 | Planned |
-| TASK-008: GitLab CI/CD | #96 | Planned |
+| TASK-002: ADR document | #90 | Done ✅ |
+| TASK-003: HTTP API on server | #91 | Done ✅ |
+| TASK-004: cmd/ restructure | #92 | Done ✅ |
+| TASK-005: CLI HTTP client | #93 | Done ✅ |
+| TASK-006: Config split | #94 | Done ✅ |
+| TASK-007: Tests + compat | #95 | Done ✅ |
+| TASK-008: GitLab CI/CD | #96 | Done ✅ |
 | TASK-001-B: Final GitLab push | #97 | Planned — last step |
 
 ## Working across both repos
