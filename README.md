@@ -2,22 +2,28 @@
 
 > An intelligent system that automates developer timesheet tracking, task management, and progress reporting through Git monitoring and AI-powered natural language processing.
 
-## Documentation Hub
+## Monorepo Structure (Migration Phase)
 
-Start here to find what you need:
+This repo is being split into two independent services. Code is physically separated into subfolders:
+
+| Folder | Destination | What's inside |
+|--------|------------|---------------|
+| [`devtrack_server/`](devtrack_server/) | `gitlab.com/devtrack3_cloud/devtrack_server` | Go daemon + Python backend |
+| [`devtrack_client/`](devtrack_client/) | `gitlab.com/devtrack3_cloud/devtrack_cli` | Thin CLI client (in progress) |
+| [`contract/`](contract/) | Shared by both | HTTP API types — read this first when debugging |
+
+See [CLAUDE.md](CLAUDE.md) for migration task status and the full architecture overview.
+
+## Documentation
 
 | Purpose | Documentation |
 |---------|---|
-| **New to DevTrack?** | Read [Getting Started](docs/GETTING_STARTED.md) |
-| **Setup & Installation** | See [Installation Guide](docs/INSTALLATION.md) |
-| **Understanding the vision** | Check [Vision & Roadmap](docs/VISION.md) |
-| **How it works** | Read [Architecture Overview](docs/ARCHITECTURE.md) |
-| **Using DevTrack** | See [Quick Start Guide](docs/QUICK_START.md) |
-| **Git workflow tools** | Check [Git Features](docs/GIT_FEATURES.md) & [Commit Workflow](GIT_COMMIT_WORKFLOW.md) |
-| **LLM Configuration** | Read [LLM Guide](docs/LLM_GUIDE.md) |
-| **Phase Status** | See [Roadmap & Phases](docs/PHASES.md) |
-| **Development Guide** | Check [CLAUDE.md](CLAUDE.md) (for developers) |
-| **All Documentation** | See [Complete Index](docs/INDEX.md) |
+| **Architecture** | [devtrack_server/docs/ARCHITECTURE.md](devtrack_server/docs/ARCHITECTURE.md) |
+| **Getting Started** | [devtrack_server/docs/GETTING_STARTED.md](devtrack_server/docs/GETTING_STARTED.md) |
+| **Installation** | [devtrack_server/docs/INSTALLATION.md](devtrack_server/docs/INSTALLATION.md) |
+| **Configuration** | [devtrack_server/docs/CONFIGURATION.md](devtrack_server/docs/CONFIGURATION.md) |
+| **LLM Guide** | [devtrack_server/docs/LLM_GUIDE.md](devtrack_server/docs/LLM_GUIDE.md) |
+| **All docs** | [devtrack_server/docs/INDEX.md](devtrack_server/docs/INDEX.md) |
 
 ---
 
