@@ -22,6 +22,7 @@ type Daemon struct {
 	cancel       context.CancelFunc
 	isRunning    bool
 	pythonBridge *exec.Cmd
+	httpAPI      *HTTPAPIServer
 }
 
 // DaemonStatus represents the current daemon state
@@ -110,6 +111,12 @@ func (d *Daemon) Start() error {
 		log.Println("IPC functionality will be limited")
 	}
 
+	// Start HTTP API server for devtrack-cli
+	d.httpAPI = NewHTTPAPIServer(d)
+	if err := d.httpAPI.Start(); err != nil {
+		log.Printf("Warning: Failed to start HTTP API server: %v", err)
+	}
+
 	d.isRunning = true
 	log.Println("✓ Daemon started successfully")
 
@@ -133,6 +140,11 @@ func (d *Daemon) Stop() error {
 	}
 
 	log.Println("Stopping daemon...")
+
+	// Stop HTTP API server
+	if d.httpAPI != nil {
+		d.httpAPI.Stop()
+	}
 
 	// Stop Python bridge
 	if d.pythonBridge != nil {

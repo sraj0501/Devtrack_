@@ -78,6 +78,9 @@ type EnvConfig struct {
 	LearningDailyScriptPath string
 	LearningDefaultDays     string
 
+	// HTTP API
+	HTTPAPIPort string
+
 	// Build metadata
 	DevTrackVersion   string
 	DevTrackBuildDate string
@@ -134,6 +137,7 @@ var requiredEnvVars = []string{
 	"LEARNING_PYTHON_PATH",
 	"LEARNING_SCRIPT_PATH",
 	"LEARNING_DEFAULT_DAYS",
+	"DEVTRACK_SERVER_HTTP_PORT",
 	"DEVTRACK_VERSION",
 	"DEVTRACK_BUILD_DATE",
 }
@@ -218,6 +222,7 @@ func LoadEnvConfig() (*EnvConfig, error) {
 		LearningScriptPath:      os.Getenv("LEARNING_SCRIPT_PATH"),
 		LearningDailyScriptPath: os.Getenv("LEARNING_DAILY_SCRIPT_PATH"),
 		LearningDefaultDays:     os.Getenv("LEARNING_DEFAULT_DAYS"),
+		HTTPAPIPort:         os.Getenv("DEVTRACK_SERVER_HTTP_PORT"),
 		DevTrackVersion:     os.Getenv("DEVTRACK_VERSION"),
 		DevTrackBuildDate:   os.Getenv("DEVTRACK_BUILD_DATE"),
 	}
@@ -295,6 +300,16 @@ func GetEmailReporterPath() string {
 	}
 
 	return path
+}
+
+// GetHTTPAPIPort returns the port for the HTTP API server (DEVTRACK_SERVER_HTTP_PORT).
+func GetHTTPAPIPort() string {
+	config, err := LoadEnvConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+	return config.HTTPAPIPort
 }
 
 // GetConfigFileName returns the config file name
