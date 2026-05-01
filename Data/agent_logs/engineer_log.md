@@ -2,6 +2,49 @@
 
 ---
 
+### [2026-05-01] TASK-026 — refactor(config): remove dead GetPythonBridgePath function
+
+**Branch**: fix/TASK-026-remove-python-bridge-path
+**Commit**: 332423c — "refactor(config): remove dead GetPythonBridgePath function (TASK-026)"
+**PR**: https://github.com/sraj0501/Devtrack_/pull/86 (targeting dev)
+**PM system updated**: YES — project_board.md updated
+
+**Action**: Deleted `GetPythonBridgePath()` function (17 lines) from `devtrack-bin/config_env.go`.
+Confirmed with `grep -rn "GetPythonBridgePath" devtrack-bin/` that no callers existed before deletion.
+
+**Results**:
+- grep scan: CLEAN (no callers)
+- `go build ./...` — PASS
+- `go vet ./...` — PASS
+- `go test ./...` — PASS (cached ok)
+
+**Time**: ~5 minutes
+**Friction**: NONE
+
+---
+
+### [2026-05-01] TASK-027 — feat(cli): guard work report subcommand in Lightweight mode
+
+**Branch**: fix/TASK-027-work-report-mode-guard
+**Commit**: 3980422 — "feat(cli): guard work report subcommand in Lightweight mode (TASK-027)"
+**PR**: https://github.com/sraj0501/Devtrack_/pull/87 (targeting dev)
+**PM system updated**: YES — project_board.md updated
+
+**Action**: Added `requiresManagedMode("work report")` guard as the first statement in
+`handleWorkReport()` in `devtrack-bin/cli_work.go`. The function spawns Python via
+`uv run backend.work_tracker.eod_report_generator` — incompatible with Lightweight mode.
+All other work subcommands (start/stop/adjust/status) are pure Go/SQLite and remain unguarded.
+
+**Results**:
+- `go build ./...` — PASS
+- `go vet ./...` — PASS
+- `go test ./...` — PASS (cached ok)
+
+**Time**: ~5 minutes
+**Friction**: NONE
+
+---
+
 ### [2026-04-30] TASK-025 — fix(build): Windows native build support via platform-split syscall files
 
 **Branch**: fix/TASK-025-windows-native-build
