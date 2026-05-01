@@ -30,3 +30,6 @@ Data/
 
 #Claude Files and Folders
 *.claude*
+
+# Extracted sub-repos (pushed to their own GitLab repos)
+devtrack_wiki/
