@@ -284,6 +284,9 @@ func (cli *CLI) handleWorkStatus() error {
 
 // handleWorkReport delegates EOD report generation to the Python layer
 func (cli *CLI) handleWorkReport() error {
+	if err := requiresManagedMode("work report"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {
