@@ -1,0 +1,62 @@
+stages:
+  - test
+  - build
+  - release
+
+variables:
+  CGO_ENABLED: "0"
+
+# ── Go: vet + build ───────────────────────────────────────────────────────────
+
+go-vet:
+  stage: test
+  image: golang:1.24-alpine
+  script:
+    - cd devtrack-bin && go vet ./...
+
+go-build:
+  stage: build
+  image: golang:1.24-alpine
+  variables:
+    GOOS: linux
+    GOARCH: amd64
+  script:
+    - cd devtrack-bin
+    - go build -ldflags "-s -w" -o devtrack-server .
+  artifacts:
+    paths:
+      - devtrack-bin/devtrack-server
+    expire_in: 1 week
+
+# ── Python: install + test ────────────────────────────────────────────────────
+
+python-test:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - pip install uv --quiet
+    - uv sync --frozen
+  script:
+    # Many tests require external services (Ollama, Azure, Jira); allow failures.
+    - uv run pytest backend/tests/ -v --tb=short
+  allow_failure: true
+
+# ── Release (tag-triggered) ───────────────────────────────────────────────────
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - job: go-build
+      artifacts: true
+  script:
+    - echo "Creating release ${CI_COMMIT_TAG}"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: "devtrack-server ${CI_COMMIT_TAG}"
+    assets:
+      links:
+        - name: "devtrack-server-linux-amd64"
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/raw/devtrack-bin/devtrack-server?job=go-build"

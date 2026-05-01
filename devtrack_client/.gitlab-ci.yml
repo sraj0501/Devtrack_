@@ -1,0 +1,110 @@
+stages:
+  - test
+  - build
+  - release
+
+variables:
+  CGO_ENABLED: "0"
+  GO_VERSION: "1.24"
+
+default:
+  image: golang:1.24-alpine
+  before_script:
+    # contract lives in a sibling repo; clone it so the replace directive resolves
+    - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/devtrack3_cloud/devtrack_contract.git"
+        ../contract
+
+# ── Test ─────────────────────────────────────────────────────────────────────
+
+vet:
+  stage: test
+  script:
+    - go vet ./...
+
+test:
+  stage: test
+  script:
+    - go test -v -count=1 ./...
+  coverage: '/coverage: \d+\.\d+% of statements/'
+
+# ── Build (cross-compile) ─────────────────────────────────────────────────────
+
+.build-template: &build-template
+  stage: build
+  script:
+    - go build -ldflags "-s -w -X main.version=${CI_COMMIT_TAG:-dev}" -o "${BINARY_NAME}" ./cmd/cli
+  artifacts:
+    expire_in: 1 week
+
+build-linux-amd64:
+  <<: *build-template
+  variables:
+    GOOS: linux
+    GOARCH: amd64
+    BINARY_NAME: devtrack-cli-linux-amd64
+  artifacts:
+    paths: [devtrack-cli-linux-amd64]
+    expire_in: 1 week
+
+build-darwin-arm64:
+  <<: *build-template
+  variables:
+    GOOS: darwin
+    GOARCH: arm64
+    BINARY_NAME: devtrack-cli-darwin-arm64
+  artifacts:
+    paths: [devtrack-cli-darwin-arm64]
+    expire_in: 1 week
+
+build-darwin-amd64:
+  <<: *build-template
+  variables:
+    GOOS: darwin
+    GOARCH: amd64
+    BINARY_NAME: devtrack-cli-darwin-amd64
+  artifacts:
+    paths: [devtrack-cli-darwin-amd64]
+    expire_in: 1 week
+
+build-windows-amd64:
+  <<: *build-template
+  variables:
+    GOOS: windows
+    GOARCH: amd64
+    BINARY_NAME: devtrack-cli-windows-amd64.exe
+  artifacts:
+    paths: [devtrack-cli-windows-amd64.exe]
+    expire_in: 1 week
+
+# ── Release (tag-triggered) ───────────────────────────────────────────────────
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - job: build-linux-amd64
+      artifacts: true
+    - job: build-darwin-arm64
+      artifacts: true
+    - job: build-darwin-amd64
+      artifacts: true
+    - job: build-windows-amd64
+      artifacts: true
+  before_script: []  # no contract clone needed here
+  script:
+    - echo "Creating release ${CI_COMMIT_TAG}"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: "devtrack-cli ${CI_COMMIT_TAG}"
+    assets:
+      links:
+        - name: "devtrack-cli-linux-amd64"
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/raw/devtrack-cli-linux-amd64?job=build-linux-amd64"
+        - name: "devtrack-cli-darwin-arm64"
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/raw/devtrack-cli-darwin-arm64?job=build-darwin-arm64"
+        - name: "devtrack-cli-darwin-amd64"
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/raw/devtrack-cli-darwin-amd64?job=build-darwin-amd64"
+        - name: "devtrack-cli-windows-amd64.exe"
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/raw/devtrack-cli-windows-amd64.exe?job=build-windows-amd64"
