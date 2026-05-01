@@ -1,1 +1,0 @@
-ERROR: Failed to load configuration: .env file not found at: .env. Set DEVTRACK_ENV_FILE or place .env in current directory.
