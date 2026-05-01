@@ -116,9 +116,7 @@ func (cli *CLI) handleWorkStop() error {
 		}
 	}
 	durationMins := int(time.Since(startTime).Minutes())
-	if durationMins < 0 {
-		durationMins = 0
-	}
+	durationMins = max(durationMins, 0)
 
 	endedAt := time.Now().UTC().Format("2006-01-02 15:04:05")
 	if err := db.EndWorkSession(active.ID, endedAt, durationMins); err != nil {
