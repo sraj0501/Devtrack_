@@ -18,6 +18,7 @@ go-cli
 devtrack-bin/devtrack
 *devtrack
 devtrack
+!devtrack_client/devtrack
 *.log
 
 

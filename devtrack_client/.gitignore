@@ -1,0 +1,8 @@
+# Built binaries (cross-compile outputs from CI)
+devtrack-cli
+devtrack-cli-linux-*
+devtrack-cli-darwin-*
+devtrack-cli-windows-*
+
+# Test cache
+*.test

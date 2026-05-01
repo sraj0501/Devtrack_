@@ -1,0 +1,4 @@
+#!/bin/sh
+# Compatibility wrapper: forwards 'devtrack' commands to devtrack-cli.
+# Install alongside devtrack-cli in the same directory and add to PATH.
+exec "$(dirname "$0")/devtrack-cli" "$@"
