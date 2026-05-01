@@ -31,8 +31,8 @@ Data/
 # Test temp dirs
 .test_commit_enhancer_tmp
 
-#Claude Files and Folders
-*.claude*
+# Claude Code — ignore local settings only; agents/commands/memory are committed
+.claude/settings.local.json
 
 # Extracted sub-repos (pushed to their own GitLab repos)
 devtrack_wiki/
