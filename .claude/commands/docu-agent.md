@@ -4,30 +4,31 @@ Run the following three sub-agents **in parallel** (launch all three in a single
 
 ---
 
-## Agent 1 — Wiki (`wiki/wiki.html`)
+## Agent 1 — Wiki (`devtrack_wiki/wiki/wiki.html`)
 
-1. Run `GIT_NO_DEVTRACK=1 git log --oneline -20` to see what changed recently.
-2. Read `wiki/wiki.html` to understand the current structure (single-file SPA with inline page sections, nav sidebar, and home grid cards).
+1. Run `GIT_NO_DEVTRACK=1 git log --oneline -20` from the monorepo root to see what changed recently.
+2. Read `devtrack_wiki/wiki/wiki.html` to understand the current structure (single-file SPA with inline page sections, nav sidebar, and home grid cards).
 3. For each new feature or change identified from git log:
    - Add a new inline page section (`<div class="content" id="PAGE_ID">`) if the feature warrants its own page
    - Add a nav entry in the appropriate group in the sidebar
    - Add a home grid card if it's a major feature
 4. Update the WHATS_NEW page: prepend a new version section at the top for any unreleased changes. Preserve all existing content below.
 5. Update the version chip and home badge if a version bump is warranted.
+6. If any change warrants a new markdown reference doc, add it to `devtrack_wiki/docs/`.
 
 ---
 
-## Agent 2 — Memory (`/Users/sraj/.claude/projects/-Users-sraj-git-apps-personal-automation-tools/memory/`)
+## Agent 2 — Memory (`.claude/memory/`)
 
 1. Run `GIT_NO_DEVTRACK=1 git log --oneline -20` to see what changed recently.
-2. Read `MEMORY.md` to understand what's already recorded.
-3. Update `MEMORY.md`:
+2. Read `.claude/memory/MEMORY.md` to understand what's already recorded.
+3. Update `.claude/memory/MEMORY.md`:
    - Add a new "Completed" subsection for the session date with bullet points for each shipped feature
    - Move any items from "Planned" to "Completed" if they are now shipped
    - Update the **Project Status** line at the top
-   - Update Key CLI Files list if new files were added
+   - Update the Key CLI Files list if new files were added
 4. Create or update individual memory files (e.g. `project_*.md`) for significant new features that need detailed notes. Follow the frontmatter format: `name`, `description`, `type`, `---`, then content with **Why:** and **How to apply:** lines.
-5. Add pointer lines to `MEMORY.md` index for any new memory files.
+5. Add pointer lines to `.claude/memory/MEMORY.md` for any new memory files.
 
 ---
 
@@ -45,12 +46,21 @@ Run the following three sub-agents **in parallel** (launch all three in a single
 
 ## After all three agents complete
 
-1. Run `GIT_NO_DEVTRACK=1 git status --short` to see which doc files changed.
-2. Stage and commit only the documentation files with:
-   ```
-   GIT_NO_DEVTRACK=1 git add wiki/wiki.html README.md docs/ memory/
+1. **Commit wiki changes** (`devtrack_wiki` is a separate GitLab repo — commit and push there independently):
+   ```bash
+   cd devtrack_wiki
+   GIT_NO_DEVTRACK=1 git status --short
+   GIT_NO_DEVTRACK=1 git add wiki/ docs/
    GIT_NO_DEVTRACK=1 git commit -m "docs: <brief summary of what was documented>"
+   GIT_NO_DEVTRACK=1 git push origin main
+   cd ..
    ```
-3. Push: `GIT_NO_DEVTRACK=1 git push origin main`
+
+2. **Commit monorepo changes** (README and memory — do NOT push, let the user decide):
+   ```bash
+   GIT_NO_DEVTRACK=1 git status --short
+   GIT_NO_DEVTRACK=1 git add README.md .claude/memory/
+   GIT_NO_DEVTRACK=1 git commit -m "docs: sync README and memory"
+   ```
 
 Do NOT commit or modify any source code files (.go, .py, etc.). Documentation only.
