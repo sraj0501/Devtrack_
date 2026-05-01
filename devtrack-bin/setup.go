@@ -316,14 +316,14 @@ func RunSetup() error {
 	fmt.Print("Set up autostart now? [Y/n]: ")
 	autostartAnswer := readLine(reader)
 	if autostartAnswer == "" || strings.ToLower(autostartAnswer) == "y" {
-		printAutostartInstructions(projectRoot, envPath)
+		printAutostartInstructions()
 	}
 
 	// ── Done ──────────────────────────────────────────────────────────────────
 	// Record all current migrations as applied — setup already did everything they do.
 	MarkAllMigrationsApplied()
 
-	printSetupComplete(projectRoot, envPath, cfg.Mode)
+	printSetupComplete(projectRoot, cfg.Mode)
 	return nil
 }
 
@@ -340,7 +340,7 @@ func detectProjectRoot() (string, error) {
 	if err == nil {
 		execPath, _ = filepath.Abs(execPath)
 		searchDir := filepath.Dir(execPath)
-		for i := 0; i < 6; i++ {
+		for range 6 {
 			if _, err := os.Stat(filepath.Join(searchDir, "backend")); err == nil {
 				return searchDir, nil
 			}
@@ -882,7 +882,7 @@ func devtrackDataHome() (string, error) {
 }
 
 // printAutostartInstructions shows the autostart command.
-func printAutostartInstructions(projectRoot, envPath string) {
+func printAutostartInstructions() {
 	fmt.Println()
 	fmt.Println("Run the following to install autostart:")
 	fmt.Println()
@@ -906,7 +906,7 @@ func printSetupHeader() {
 }
 
 // printSetupComplete prints the completion summary.
-func printSetupComplete(projectRoot, envPath string, mode DevTrackMode) {
+func printSetupComplete(projectRoot string, mode DevTrackMode) {
 	fmt.Println()
 	fmt.Println("╔══════════════════════════════════════════════════════════════════╗")
 	fmt.Println("║  Setup complete!                                                ║")
