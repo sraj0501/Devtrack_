@@ -10,6 +10,7 @@ variables:
 default:
   image: golang:1.24-alpine
   before_script:
+    - apk add --no-cache git
     # contract lives in a sibling repo; clone it so the replace directive resolves
     - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/devtrack3_cloud/devtrack_contract.git"
         ../contract
