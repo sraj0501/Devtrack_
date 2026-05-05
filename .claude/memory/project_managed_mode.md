@@ -122,15 +122,17 @@ Redis             event queue, WebSocket pub/sub
 - **Managed solo** — subscription, single user, cloud AI + always-on bot
 - **Managed team** — per-seat, adds team management + workload-aware assignment
 
-## Foundation Already Laid (March 28, 2026)
+## Foundation Already Laid (updated May 2026)
 
-The client-server split is partially implemented:
-- `devtrack-bin/server_config.go` shipped — `DEVTRACK_SERVER_MODE=external` makes daemon skip Python subprocess
-- `Dockerfile.server` added — Python backend can run as a standalone container
-- Go binary is now Python-free in releases (~5MB, pure Go)
-- `DEVTRACK_SERVER_URL` env var accepted (used when mode=external)
+The client-server split is fully implemented for local/remote use:
+- `devtrack_server/devtrack-bin/server_config.go` — `DEVTRACK_SERVER_MODE` (managed/lightweight/external/cloud)
+- HTTP API live on port `DEVTRACK_SERVER_HTTP_PORT` (default 8765) — 9 REST endpoints, `X-DevTrack-Token` auth (optional)
+- `devtrack-cli` is a separate standalone Go binary (`devtrack_client/`) — talks to server over HTTP only
+- `contract/api.go` is the single source of truth for all HTTP types and route constants
+- Three GitLab repos live: `devtrack_server`, `devtrack_cli`, `devtrack_contract`
+- Go binary is Python-free in releases; Python backend is optional (Lightweight mode skips it)
 
-Remaining for Phase 1: Replace TCP IPC with HTTPS POST + WebSocket when connecting to a remote server.
+Remaining for Managed Cloud Phase 1: Replace HTTP polling with WebSocket push from cloud; add cloud API endpoints (`/event/commit`, `/event/timer`); implement `devtrack login` + API key auth for cloud mode.
 
 ## Build Phases
 

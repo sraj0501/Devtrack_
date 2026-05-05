@@ -4,11 +4,11 @@ description: Planned telemetry system — download stats, usage events, register
 type: project
 ---
 
-Telemetry is fully designed but not yet implemented. Plan document at: `docs/TELEMETRY_PLAN.md`
+**Status (May 2026):** Anonymous install/active ping is **shipped** (`devtrack-bin/ping.go` — see `project_anon_ping.md`). The full opt-in feature telemetry + SSE admin dashboard described below is still not yet built. Plan document is now at: `devtrack_wiki/docs/TELEMETRY_PLAN.md`.
 
 **Why:** User wants download counts, usage stats, and registered user (CS-4 signup) growth visible in real-time in the admin console.
 
-**How to apply:** When the user says "implement telemetry" or "build the analytics dashboard", start from Phase 1 of the plan doc. Do not redesign — the architecture is already agreed.
+**How to apply:** When the user says "implement telemetry dashboard" or "build the analytics dashboard", start from Phase 2 of the plan doc (Phase 1 — anon ping — is done). Do not redesign — the architecture is already agreed.
 
 ## Three Tiers
 

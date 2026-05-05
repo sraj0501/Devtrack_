@@ -4,7 +4,7 @@ description: Lightweight anonymous install and active-user telemetry so the user
 type: project
 ---
 
-Designed April 1, 2026. Not yet implemented.
+Designed April 1, 2026. **Implemented** — `devtrack-bin/ping.go` ships in the daemon binary.
 
 **Why:** The existing `backend/telemetry.py` requires login + explicit opt-in — it will never produce a meaningful user count. To display "X installs" publicly, DevTrack needs a separate anonymous ping that fires without any account.
 

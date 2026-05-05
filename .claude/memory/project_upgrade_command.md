@@ -10,9 +10,9 @@ type: project
 
 **How it works (step by step):**
 
-1. Calls `GET https://api.github.com/repos/sraj0501/Devtrack_/releases/latest`
+1. Calls the GitLab releases API for the `devtrack_server` project (`gitlab.com/devtrack3_cloud/devtrack_server`)
 2. Compares `tag_name` to `GetDevTrackVersion()` (skips if `"dev"` build or already current)
-3. Finds the matching asset: `devtrack_{GOOS}_{GOARCH}.tar.gz`
+3. Finds the matching asset: `devtrack-server-linux-amd64` (or platform equivalent)
 4. Downloads and extracts the `devtrack` binary from the tarball into a temp file
 5. Calls `replaceBinary(execPath, tmpFile)`:
    - First tries direct copy + atomic rename (works for user-writable install locations)

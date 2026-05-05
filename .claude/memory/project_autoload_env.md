@@ -2,7 +2,6 @@
 name: project_autoload_env
 description: AutoLoadEnv() startup env resolution and devtrack setup wizard
 type: project
-originSessionId: 224dbc1c-de8b-4635-b8b1-b826b4c85afa
 ---
 # Auto-Load .env at Daemon Startup
 

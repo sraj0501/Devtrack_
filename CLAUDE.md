@@ -79,3 +79,7 @@ When debugging a server-client issue:
 3. Read `devtrack_client/cli_client.go` — what the client sends
 
 All three files together give complete context. No need to clone two repos.
+
+## Detailed memory
+
+`.claude/memory/MEMORY.md` is the index for 40 in-repo memory files covering architecture, completed feature records, feedback rules, and references. Read it when you need deep context on any subsystem — it links directly to the relevant file.

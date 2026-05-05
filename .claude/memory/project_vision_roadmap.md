@@ -12,9 +12,9 @@ type: project
 
 **How to apply:** Every feature should be evaluated against this north-star. Priority: bidirectional integrations > remote access > full autonomy.
 
-## Three-Layer Assessment (as of March 19, 2026)
+## Three-Layer Assessment (updated May 2026 — original assessment March 19, 2026)
 
-### Layer 1: "Automate my reporting and git work" — ~90% done
+### Layer 1: "Automate my reporting and git work" — ~95% done
 
 | Capability | Status |
 |---|---|
@@ -52,12 +52,14 @@ type: project
 | Accept/triage incoming tasks | PARTIAL — webhook receiver detects assignments |
 | Vacation mode (auto-approve routine, escalate complex) | NOT BUILT |
 
-### Layer 4: "Managed Cloud Mode" — ~0% built (designed March 19, 2026)
+### Layer 4: "Managed Cloud Mode" — ~10% built (foundational HTTP API + CLI split done May 2026)
 
 | Capability | Status |
 |---|---|
-| Cloud API (FastAPI, event endpoints) | DESIGNED — not built |
-| WebSocket IPC (replaces local TCP IPC) | DESIGNED — not built |
+| HTTP REST API (9 endpoints, port 8765) | BUILT — `devtrack_server/devtrack-bin/http_api.go` |
+| Standalone CLI binary (`devtrack-cli`) | BUILT — `devtrack_client/` repo |
+| Cloud API (push event endpoints) | DESIGNED — not built |
+| WebSocket IPC (push from cloud to daemon) | DESIGNED — not built |
 | Encrypted credential vault | DESIGNED — not built |
 | Cloud-hosted Telegram bot (always-on) | DESIGNED — not built |
 | Cloud NLP + LLM pipeline | DESIGNED — not built |
