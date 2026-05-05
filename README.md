@@ -2,17 +2,17 @@
 
 > An intelligent system that automates developer timesheet tracking, task management, and progress reporting through Git monitoring and AI-powered natural language processing.
 
-## Monorepo Structure (Migration Phase)
+## Monorepo Structure
 
-This repo is being split into two independent services. Code is physically separated into subfolders:
+The codebase is split into two independent services living in separate GitLab repositories. This monorepo exists as a combined working tree during the transition period.
 
-| Folder | Destination | What's inside |
+| Folder | GitLab repo | What's inside |
 |--------|------------|---------------|
-| [`devtrack_server/`](devtrack_server/) | `gitlab.com/devtrack3_cloud/devtrack_server` | Go daemon + Python backend |
-| [`devtrack_client/`](devtrack_client/) | `gitlab.com/devtrack3_cloud/devtrack_cli` | Thin CLI client (in progress) |
-| [`contract/`](contract/) | Shared by both | HTTP API types — read this first when debugging |
+| [`devtrack_server/`](devtrack_server/) | [`devtrack3_cloud/devtrack_server`](https://gitlab.com/devtrack3_cloud/devtrack_server) | Go daemon + Python backend |
+| [`devtrack_client/`](devtrack_client/) | [`devtrack3_cloud/devtrack_cli`](https://gitlab.com/devtrack3_cloud/devtrack_cli) | Thin CLI client |
+| [`contract/`](contract/) | [`devtrack3_cloud/devtrack_contract`](https://gitlab.com/devtrack3_cloud/devtrack_contract) | HTTP API types — read this first when debugging |
 
-See [CLAUDE.md](CLAUDE.md) for migration task status and the full architecture overview.
+See [CLAUDE.md](CLAUDE.md) for the full architecture overview.
 
 ## Documentation
 
@@ -45,7 +45,7 @@ DevTrack combines background process automation with AI intelligence to:
 
 ### CLI/Server Architecture
 
-As of the migration phase the system is split into two binaries:
+The system is split into two binaries that communicate over HTTP:
 
 | Binary | Module | What it does |
 |--------|--------|--------------|
@@ -203,8 +203,8 @@ The client pipeline clones `devtrack_contract` via `CI_JOB_TOKEN` so the `replac
 
 ## Project Status
 
-**Current Phase**: GitLab migration complete; docs/wiki consolidation in progress
-**Overall Progress**: ~90% Complete
+**Current Phase**: GitLab migration complete; active feature development
+**Overall Progress**: ~95% Complete
 
 ### Completed Phases
 
@@ -212,12 +212,11 @@ The client pipeline clones `devtrack_contract` via `CI_JOB_TOKEN` so the `replac
 - **Phase 2**: Conflict Resolution & PR-Aware Parsing ✅
 - **Phase 3**: Event-Driven Integration ✅
 - **Phase 4**: Personalization / "Talk Like You" ✅
-- **Migration**: CLI/server split, HTTP API, GitLab CI/CD ✅
+- **Migration**: CLI/server split, HTTP API, GitLab CI/CD, doc URLs ✅
+- **Housekeeping**: Docs/wiki moved to `devtrack_wiki` repo, monorepo cleaned up ✅
 
-### Current / Planned
+### Planned
 
-- Docs and wiki consolidation into `devtrack_wiki.git`
-- Final GitLab push (TASK-001-B)
 - launchd plist for macOS auto-start
 - Ticket Alerter (background polling for Jira/Azure/GitHub events)
 - Dashboard and analytics
@@ -365,11 +364,11 @@ See [Troubleshooting Guide](devtrack_wiki/docs/TROUBLESHOOTING.md) for more solu
 
 ## Contributing
 
-1. Fork the repository
+1. Fork the relevant repo on GitLab ([server](https://gitlab.com/devtrack3_cloud/devtrack_server) | [CLI](https://gitlab.com/devtrack3_cloud/devtrack_cli))
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+5. Open a Merge Request
 
 For development setup and architecture details, see [CLAUDE.md](CLAUDE.md).
 

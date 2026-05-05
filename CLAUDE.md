@@ -69,7 +69,7 @@ See `devtrack_client/CLAUDE.md` for planned structure and env vars.
 | TASK-006: Config split | #94 | Done ✅ |
 | TASK-007: Tests + compat | #95 | Done ✅ |
 | TASK-008: GitLab CI/CD | #96 | Done ✅ |
-| TASK-001-B: Final GitLab push | #97 | Planned — last step |
+| TASK-001-B: Final GitLab push | #97 | Done ✅ |
 
 ## Working across both repos
 
