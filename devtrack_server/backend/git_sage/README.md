@@ -18,7 +18,7 @@ A **local LLM-powered git agent** that lives in your terminal. It doesn't just s
 **Requirements:** Python 3.10+ and a running local LLM.
 
 ```bash
-git clone https://github.com/you/git-sage
+git clone https://gitlab.com/devtrack3_cloud/devtrack_server
 cd git-sage
 pip install -e .
 ```

@@ -61,7 +61,7 @@ See `devtrack_client/CLAUDE.md` for planned structure and env vars.
 
 | Task | Issue | Status |
 |------|-------|--------|
-| TASK-001-A: Update doc URLs | #89 | Planned |
+| TASK-001-A: Update doc URLs | #89 | Done ✅ |
 | TASK-002: ADR document | #90 | Done ✅ |
 | TASK-003: HTTP API on server | #91 | Done ✅ |
 | TASK-004: cmd/ restructure | #92 | Done ✅ |

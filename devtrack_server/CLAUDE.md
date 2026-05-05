@@ -207,7 +207,7 @@ All these variables **must** be set in `.env` or deployment will fail:
 
 - `SENTIMENT_ANALYSIS_WINDOW_MINUTES` - Sentiment analysis window (minutes)
 
-See [Configuration Reference](../docs/CONFIGURATION.md) for complete list with examples.
+See [Configuration Reference](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/CONFIGURATION.md) for complete list with examples.
 
 ### Configuration Functions (Go)
 
@@ -330,22 +330,22 @@ All user-facing documentation has been reorganized for clarity:
 
 ### Quick Navigation
 
-- **[📖 Complete Documentation Index](../docs/INDEX.md)** — Master index of all documentation
-- **[Getting Started](../docs/GETTING_STARTED.md)** — New user introduction and concepts
-- **[Installation Guide](../docs/INSTALLATION.md)** — Step-by-step setup for all platforms
-- **[Quick Start Guide](../docs/QUICK_START.md)** — Get running in 15 minutes
+- **[📖 Complete Documentation Index](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/INDEX.md)** — Master index of all documentation
+- **[Getting Started](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/GETTING_STARTED.md)** — New user introduction and concepts
+- **[Installation Guide](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/INSTALLATION.md)** — Step-by-step setup for all platforms
+- **[Quick Start Guide](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/QUICK_START.md)** — Get running in 15 minutes
 
 ### Using DevTrack
 
-- **[Architecture Overview](../docs/ARCHITECTURE.md)** — System design and component details
-- **[Git Features Guide](../docs/GIT_FEATURES.md)** — Enhanced commits, conflict resolution, work parsing
-- **[LLM Configuration Guide](../docs/LLM_GUIDE.md)** — AI provider setup and optimization
-- **[Configuration Reference](../docs/CONFIGURATION.md)** — All .env variables explained
-- **[Troubleshooting Guide](../docs/TROUBLESHOOTING.md)** — Common issues and solutions
+- **[Architecture Overview](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/ARCHITECTURE.md)** — System design and component details
+- **[Git Features Guide](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/GIT_FEATURES.md)** — Enhanced commits, conflict resolution, work parsing
+- **[LLM Configuration Guide](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/LLM_GUIDE.md)** — AI provider setup and optimization
+- **[Configuration Reference](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/CONFIGURATION.md)** — All .env variables explained
+- **[Troubleshooting Guide](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/TROUBLESHOOTING.md)** — Common issues and solutions
 
 ### Advanced & Phase-Specific
 
-- **[Roadmap & Phases](../docs/PHASES.md)** — Current phase status and timeline
+- **[Roadmap & Phases](https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/PHASES.md)** — Current phase status and timeline
 - **[Vision & Roadmap](VISION_AND_ROADMAP.md)** — Long-term strategic vision
 - **[Hybrid LLM Strategy](HYBRID_LLM_STRATEGY.md)** — Multi-provider AI architecture
 
@@ -652,7 +652,7 @@ All 22 hardcoded values were refactored from source code to required environment
 ERROR: Configuration missing IPC_CONNECT_TIMEOUT_SECS
 This variable is required for daemon startup.
 Set it in .env file: IPC_CONNECT_TIMEOUT_SECS=5
-See ../docs/CONFIGURATION.md for details.
+See https://gitlab.com/devtrack3_cloud/devtrack_wiki/-/blob/master/docs/CONFIGURATION.md for details.
 ```
 
 ### How to Deploy with New Config
