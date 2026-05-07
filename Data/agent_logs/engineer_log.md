@@ -2,6 +2,36 @@
 
 ---
 
+### [2026-05-08] TASK-028 — feat(windows): internal HTTP control API, reload-config, cross-platform AlertNotifier
+
+**Branch**: features/TASK-009-ticket-cache
+**Commit**: 8dddce9
+**Ticket auto-linked**: NO
+**PM system updated**: YES — TASK-028 created and tracked on project_board.md
+
+**Background**: Work started alongside TASK-009 in the previous session; session cut before commit.
+Recovered by audit: `reload-config` was wired in CLI help + NewCLI but had no handler — clearest
+sign of interruption.
+
+**What was built**:
+- `devtrack-bin/http_api.go` (new): internal HTTP server on `GetIPCHost():GetDevTrackServerHTTPPort()`
+  with `POST /internal/force-trigger` and `POST /internal/reload-config` endpoints
+- `config_env.go`: `GetIPCHost()`, `GetDevTrackServerHTTPPort()`, `GetHTTPTimeoutShort()`
+- `daemon.go`: `d.startInternalHTTPServer()` call added at daemon Start()
+- `cli_unix.go`: `sendReloadConfigSignal()` sends SIGHUP
+- `cli_windows.go`: `sendReloadConfigSignal()` POSTs to `/internal/reload-config`; added http/time imports
+- `cli.go`: `case "reload-config"` + `handleReloadConfig()` implementation
+- `backend/alert_notifier.py`: `AlertNotifier` class (macOS: osascript→plyer; Linux: notify-send→plyer; Windows: plyer→PowerShell Toast)
+- `backend/config.py`: `get_notification_enabled()` for NOTIFICATION_ENABLED env var
+- `pyproject.toml`: `notifications = ["plyer>=2.1"]` optional dep group
+- `.gitignore`: `devtrack_client/`, `devtrack_wiki/`, `devtrack_server/` (local GitLab clones)
+
+**Results**: go build/vet/test PASS; AlertNotifier import PASS
+**Time**: ~30 min (recovery + completion)
+**Friction**: LOW — interruption obvious from missing handler; HTTP endpoint pattern already established
+
+---
+
 ### [2026-04-30] TASK-025 — fix(build): Windows native build support via platform-split syscall files
 
 **Branch**: fix/TASK-025-windows-native-build

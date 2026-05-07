@@ -54,7 +54,7 @@ hot-reload for Windows. `AlertNotifier` provides cross-platform desktop notifica
 - [x] `.gitignore` covers nested GitLab repo clones
 - [ ] Committed and PR opened
 
-**Engineer status**: all code complete; pending commit + PR
+**Engineer status**: committed 8dddce9 — pending PR
 
 ---
 
