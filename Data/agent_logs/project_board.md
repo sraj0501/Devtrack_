@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-05-07 by engineer (TASK-025 started and confirmed complete — all build-tag split files in main)_
-_Next task ID: TASK-028_
+_Last updated: 2026-05-08 by engineer (TASK-023-PY + TASK-025 verified complete; TASK-028 committed — pending PR + CI)_
+_Next task ID: TASK-029_
 
 ---
 
@@ -19,70 +19,41 @@ _Next task ID: TASK-028_
 
 ## 🔴 IN PROGRESS
 
-### TASK-023-PY — Cross-platform Python desktop notifications
+### TASK-028 — Internal HTTP control API + cross-platform AlertNotifier + reload-config
 **Assigned to**: engineer
-**Phase**: CS-standalone
-**Started**: 2026-05-07
-**Branch**: features/TASK-023-cross-platform-notifications
+**Phase**: CS-standalone / Windows support
+**Started**: 2026-05-08
+**Branch**: features/TASK-009-ticket-cache
 
-**Spec**: Create `backend/alert_notifier.py` — cross-platform desktop notification class (macOS/Linux/Windows). Add optional `plyer` dep, `get_notification_enabled()` config accessor, and `.env_sample` entry.
-
-**Acceptance criteria**:
-- [ ] `backend/alert_notifier.py` exists with `AlertNotifier` class implementing all platform paths
-- [ ] `pyproject.toml` has `[project.optional-dependencies] notifications = ["plyer>=2.1"]`
-- [ ] `backend/config.py` has `get_notification_enabled()` using `get_bool`
-- [ ] `.env_sample` has `NOTIFICATION_ENABLED=true`
-- [ ] `backend/tests/test_alert_notifier.py` passes all 6 test cases
-- [ ] `uv run pytest backend/tests/test_alert_notifier.py -v` exits 0
-
-**Engineer status**: started — writing alert_notifier.py, tests, editing config.py + pyproject.toml + .env_sample
-**Blockers**: none
-
----
-
-### TASK-025 — Windows native build support (build-tag syscall split)
-**Assigned to**: engineer
-**Phase**: CS-standalone
-**Started**: 2026-04-30
-**Branch**: fix/TASK-025-windows-native-build
+**Background**:
+Started in the last session alongside TASK-009; session ended before commit. Absorbs TASK-023-PY
+(cross-platform notifications). Recovers incomplete work: Windows `sendForceTriggerSignal` uses
+the HTTP API (`http_api.go`) to avoid SIGUSR2; `reload-config` adds SIGHUP-equivalent hot-reload
+for Windows; `AlertNotifier` provides cross-platform desktop notifications.
 
 **Spec**:
-Split Unix-only syscall sites out of `cli.go` and `daemon.go` into build-tag-gated files
-so `go build ./...` succeeds natively on Windows (D:/git_apps/Devtrack_).
-
-Changes required:
-
-1. Create `devtrack-bin/daemon_unix.go` (`//go:build !windows`)
-   - Move `Setsid: true` SysProcAttr usage from `daemon.go`
-   - Move SIGUSR2 daemon listener from `daemon.go`
-
-2. Create `devtrack-bin/daemon_windows.go` (`//go:build windows`)
-   - Stub equivalents: `CREATE_NEW_PROCESS_GROUP` flag instead of `Setsid`
-   - HTTP or named-pipe signal for trigger, or a clearly-commented no-op stub
-
-3. Create `devtrack-bin/cli_unix.go` (`//go:build !windows`)
-   - Move `syscall.SIGUSR2` usage from `cli.go` (the `devtrack trigger` handler)
-
-4. Create `devtrack-bin/cli_windows.go` (`//go:build windows`)
-   - Stub for trigger handler on Windows
-
-5. No change to Linux/macOS behavior — build tags must preserve all existing code paths
-
-**Checkout instruction**: `git checkout -b fix/TASK-025-windows-native-build` from main.
-Do NOT target main in the PR — use `gh pr create --base dev`.
+1. `devtrack-bin/http_api.go` — internal HTTP server with POST /internal/force-trigger + POST /internal/reload-config
+2. `devtrack-bin/config_env.go` — `GetIPCHost()`, `GetDevTrackServerHTTPPort()`, `GetHTTPTimeoutShort()`
+3. `devtrack-bin/daemon.go` — call `d.startInternalHTTPServer()` at daemon start
+4. `devtrack-bin/cli_unix.go` — `sendReloadConfigSignal()` sends SIGHUP
+5. `devtrack-bin/cli_windows.go` — `sendReloadConfigSignal()` calls `/internal/reload-config`
+6. `devtrack-bin/cli.go` — `case "reload-config"` + `handleReloadConfig()` handler
+7. `backend/alert_notifier.py` — `AlertNotifier` class (macOS/Linux/Windows dispatch chain)
+8. `backend/config.py` — `get_notification_enabled()`
+9. `pyproject.toml` — `notifications = ["plyer>=2.1"]` optional dep
+10. `.gitignore` — add `devtrack_client/`, `devtrack_wiki/`, `devtrack_server/`
 
 **Acceptance criteria**:
-- [x] `go build ./...` exits 0 on Windows (this machine: D:/git_apps/Devtrack_)
-- [x] `go vet ./...` exits 0 on Windows
-- [x] `go test ./...` exits 0 on Windows
-- [x] No change to Linux behavior (verified by reading build tags — no existing code paths altered)
-- [x] `devtrack start` and `devtrack stop` logic is provably intact on Linux (moved code is identical, just in a new file)
-- [x] PR merged to main via PR #84 (fix/TASK-025-windows-native-build)
+- [x] `go build ./...`, `go vet ./...`, `go test ./...` pass on Windows
+- [x] `devtrack reload-config` handler exists and is wired in the switch
+- [x] `/internal/reload-config` HTTP endpoint registered and implemented
+- [x] `sendReloadConfigSignal()` defined in both `cli_unix.go` and `cli_windows.go`
+- [x] `AlertNotifier` imports clean (`from backend.alert_notifier import AlertNotifier`)
+- [x] `.gitignore` covers nested GitLab repo clones
+- [x] Committed (8dddce9)
+- [ ] PR merged (CI pending — flaky JWT test fixed at b6739a6)
 
-**Engineer status**: 6/6 criteria done — verified 2026-05-07 — code in main via commit e0c45b9 "fix(build): split Unix-only syscall sites into build-tag-gated files for Windows native build (TASK-025)" — all builds pass
-**PR**: https://github.com/sraj0501/Devtrack_/pull/113
-
-**COMPLETE** — ready for PM review — 2026-05-07 11:00
+**Engineer status**: code committed; CI re-triggered after JWT test fix — awaiting green
 
 ---
 
@@ -134,6 +105,77 @@ branch only. Leave all other `handleWork()` subcommands unguarded.
       work normally in Lightweight mode
 - [ ] `go build ./...`, `go vet ./...`, `go test ./...` pass
 - [ ] PR opened targeting `dev`: `gh pr create --base dev`
+
+---
+
+## ✅ DONE (session 2026-05-07)
+
+### TASK-009 — Ticket cache: SQLite schema + GitHub sync
+**Assigned to**: engineer
+**Phase**: Phase 5 / CS-1
+**Started**: 2026-05-07
+**Branch**: features/TASK-009-ticket-cache
+
+**Acceptance criteria**:
+- [x] `ticket_cache` and `pm_update_queue` tables created on daemon start
+- [x] All seven Go CRUD methods compile with `go build ./...`
+- [x] `GitHubTicketSync.sync()` pages open assigned issues and writes to SQLite
+- [x] `devtrack init` triggers sync and prints progress
+- [x] New env vars documented in `.env_sample`
+- [x] `test_ticket_cache.py` passes with `uv run pytest`
+- [x] No hardcoded tokens, hosts, or paths anywhere in new code
+
+**Engineer status**: 7/7 criteria done — last commit: 8ddf709 "feat(ticket-cache): add SQLite schema, Go CRUD, Python sync, and tests (TASK-009)" — 2026-05-07
+**Blockers**: none
+**PR**: https://github.com/sraj0501/Devtrack_/pull/114
+
+**COMPLETE** — ready for PM review — 2026-05-07
+
+---
+
+### TASK-025 — Windows native build support (build-tag syscall split)
+**Assigned to**: engineer
+**Phase**: CS-standalone
+**Started**: 2026-04-30
+**Branch**: fix/TASK-025-windows-native-build
+
+**Acceptance criteria**:
+- [x] `go build ./...` exits 0 on Windows
+- [x] `go vet ./...` exits 0 on Windows
+- [x] `go test ./...` exits 0 on Windows
+- [x] No change to Linux behavior (verified by reading build tags — no existing code paths altered)
+- [x] `devtrack start` and `devtrack stop` logic is provably intact on Linux (moved code is identical, just in a new file)
+- [x] PR opened targeting `dev` (not main): merged via PR #84
+
+**Engineer status**: 6/6 criteria done — last commit: e0c45b9 "fix(build): split Unix-only syscall sites into build-tag-gated files for Windows native build (TASK-025)" — 2026-04-30
+**Blockers**: none
+**PR**: https://github.com/sraj0501/Devtrack_/pull/84
+
+**COMPLETE** — ready for PM review — 2026-04-30
+
+---
+
+---
+
+### TASK-023-PY — Cross-platform Python desktop notifications
+**Phase**: CS-standalone
+**Branch**: features/TASK-009-ticket-cache (absorbed into TASK-028)
+
+Completed as part of TASK-028. `AlertNotifier` class, `plyer` dep, `get_notification_enabled()` config accessor all shipped in TASK-028 commit 8dddce9.
+
+**COMPLETE** — 2026-05-08
+
+---
+
+### TASK-018 (verify) / TASK-025 (build-tag split verification)
+**Phase**: CS-standalone
+**Branch**: features/TASK-018-windows-build-tags
+**PR**: https://github.com/sraj0501/Devtrack_/pull/113 — merged 2026-05-07
+
+Build-tag split already in main (commit e0c45b9). TASK-018 verified all acceptance criteria on
+`GOOS=windows` + Linux cross-compile. PR #113 merged to main.
+
+**COMPLETE** — 2026-05-07
 
 ---
 
@@ -327,13 +369,6 @@ branch only. Leave all other `handleWork()` subcommands unguarded.
 ### TASK-010 — Full Documentation and Memory Audit
 **Completed**: 2026-04-06
 **Commit(s)**: `175a41d` — docs: sync CLAUDE.md and README to CS-1 reality (TASK-010)
-**Vision check**: PASS
-
----
-
-### TASK-009 — CS-2: Tests for server_tui modules
-**Completed**: 2026-04-05
-**Commit(s)**: `4b5ad49`
 **Vision check**: PASS
 
 ---

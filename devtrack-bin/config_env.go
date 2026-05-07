@@ -727,6 +727,41 @@ func IsWebhookEnabled() bool {
 	return val == "true" || val == "1" || val == "yes" || val == "on"
 }
 
+// --- GitHub / Ticket Sync ---
+
+// GetGitHubToken returns the GitHub PAT from GITHUB_TOKEN.
+// Exits with an error if the variable is not set.
+func GetGitHubToken() string {
+	val := os.Getenv("GITHUB_TOKEN")
+	if val == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: GITHUB_TOKEN not set in .env\n")
+		os.Exit(1)
+	}
+	return val
+}
+
+// GetGitHubDefaultRepo returns the default GitHub repo (owner/repo) from GITHUB_DEFAULT_REPO.
+// Exits with an error if the variable is not set.
+func GetGitHubDefaultRepo() string {
+	val := os.Getenv("GITHUB_DEFAULT_REPO")
+	if val == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: GITHUB_DEFAULT_REPO not set in .env\n")
+		os.Exit(1)
+	}
+	return val
+}
+
+// GetGitHubAssignee returns the GitHub username to filter assigned issues from GITHUB_ASSIGNEE.
+// Exits with an error if the variable is not set.
+func GetGitHubAssignee() string {
+	val := os.Getenv("GITHUB_ASSIGNEE")
+	if val == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: GITHUB_ASSIGNEE not set in .env\n")
+		os.Exit(1)
+	}
+	return val
+}
+
 // GetWebhookPort returns the webhook server listen port.
 // Reads WEBHOOK_PORT from .env (default: 8089).
 func GetWebhookPort() int {
@@ -878,4 +913,53 @@ func GetHealthAutoRestartTelegram() bool {
 		return true // default: auto-restart
 	}
 	return strings.EqualFold(val, "true") || val == "1"
+}
+
+// GetIPCHost returns the daemon bind host from IPC_HOST (default 127.0.0.1).
+// Used by the internal HTTP server and by Windows CLI callers.
+func GetIPCHost() string {
+	config, err := LoadEnvConfig()
+	if err != nil {
+		// Pre-setup or lightweight callers — fall back to env then loopback.
+		if v := os.Getenv("IPC_HOST"); v != "" {
+			return v
+		}
+		return "127.0.0.1"
+	}
+	if config.IPCHost != "" {
+		return config.IPCHost
+	}
+	return "127.0.0.1"
+}
+
+// GetDevTrackServerHTTPPort returns the port the daemon exposes for its internal
+// HTTP control server (e.g. /internal/force-trigger).
+// Reads DEVTRACK_SERVER_HTTP_PORT; default 35894.
+func GetDevTrackServerHTTPPort() int {
+	val := os.Getenv("DEVTRACK_SERVER_HTTP_PORT")
+	if val == "" {
+		return 35894
+	}
+	port, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || port <= 0 || port > 65535 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid DEVTRACK_SERVER_HTTP_PORT %q — using default 35894\n", val)
+		return 35894
+	}
+	return port
+}
+
+// GetHTTPTimeoutShort returns the short HTTP client timeout in seconds used for
+// internal daemon calls (e.g. force-trigger).
+// Reads HTTP_TIMEOUT_SHORT_SECS; default 5.
+func GetHTTPTimeoutShort() int {
+	val := os.Getenv("HTTP_TIMEOUT_SHORT_SECS")
+	if val == "" {
+		return 5
+	}
+	secs, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || secs <= 0 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid HTTP_TIMEOUT_SHORT_SECS %q — using default 5\n", val)
+		return 5
+	}
+	return secs
 }

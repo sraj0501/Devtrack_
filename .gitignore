@@ -36,3 +36,8 @@ workspaces.yaml
 # Claude Code — exclude machine-specific settings, keep shared agents
 .claude/settings.local.json
 .claude/worktrees/
+
+# Local clones of GitLab split repos (separate git repos, not submodules)
+devtrack_client/
+devtrack_wiki/
+devtrack_server/

@@ -26,3 +26,12 @@ func sendForceTriggerSignal(process *os.Process) error {
 	}
 	return nil
 }
+
+// sendReloadConfigSignal sends SIGHUP to the daemon process to reload .env +
+// YAML config without restarting. On Windows the stub uses the HTTP endpoint.
+func sendReloadConfigSignal(process *os.Process) error {
+	if err := process.Signal(syscall.SIGHUP); err != nil {
+		return fmt.Errorf("could not send SIGHUP to daemon: %w", err)
+	}
+	return nil
+}

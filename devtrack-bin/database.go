@@ -392,6 +392,41 @@ func (d *Database) initSchema() error {
 		last_checked DATETIME NOT NULL,
 		updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
+
+	-- Ticket cache: offline-first ticket store for commit-time ranking
+	CREATE TABLE IF NOT EXISTS ticket_cache (
+		id          TEXT PRIMARY KEY,
+		source      TEXT NOT NULL,
+		external_id TEXT NOT NULL,
+		repo        TEXT,
+		title       TEXT NOT NULL,
+		description TEXT,
+		status      TEXT,
+		assignee    TEXT,
+		labels      TEXT,
+		url         TEXT,
+		synced_at   DATETIME NOT NULL,
+		created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	-- PM update queue: offline-tolerant outbox for upstream PM API calls
+	CREATE TABLE IF NOT EXISTS pm_update_queue (
+		id          INTEGER PRIMARY KEY AUTOINCREMENT,
+		ticket_id   TEXT NOT NULL,
+		action      TEXT NOT NULL,
+		payload     TEXT NOT NULL,
+		commit_hash TEXT,
+		status      TEXT DEFAULT 'pending',
+		attempts    INTEGER DEFAULT 0,
+		last_error  TEXT,
+		created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+		sent_at     DATETIME
+	);
+	CREATE INDEX IF NOT EXISTS idx_ticket_cache_source   ON ticket_cache(source);
+	CREATE INDEX IF NOT EXISTS idx_ticket_cache_assignee ON ticket_cache(assignee);
+	CREATE INDEX IF NOT EXISTS idx_ticket_cache_status   ON ticket_cache(status);
+	CREATE INDEX IF NOT EXISTS idx_pm_queue_status       ON pm_update_queue(status);
+	CREATE INDEX IF NOT EXISTS idx_pm_queue_ticket       ON pm_update_queue(ticket_id);
 	`
 
 	_, err := d.db.Exec(schema)
@@ -1762,4 +1797,217 @@ func (d *Database) SetAlertLastChecked(userID, source string, ts time.Time) erro
 		key, userID, source, ts.UTC().Format(time.RFC3339),
 	)
 	return err
+}
+
+// --- Ticket Cache ---
+
+// TicketCacheRecord represents a cached ticket from an upstream PM system.
+type TicketCacheRecord struct {
+	ID          string
+	Source      string
+	ExternalID  string
+	Repo        string
+	Title       string
+	Description string
+	Status      string
+	Assignee    string
+	Labels      string // raw JSON array
+	URL         string
+	SyncedAt    time.Time
+	CreatedAt   time.Time
+}
+
+// PMUpdateQueueRecord represents a pending PM API call waiting to be dispatched.
+type PMUpdateQueueRecord struct {
+	ID         int64
+	TicketID   string
+	Action     string
+	Payload    string // raw JSON
+	CommitHash string
+	Status     string
+	Attempts   int
+	LastError  string
+	CreatedAt  time.Time
+	SentAt     *time.Time
+}
+
+// UpsertTicketCache inserts or replaces a ticket_cache row.
+func (d *Database) UpsertTicketCache(record TicketCacheRecord) error {
+	query := `
+		INSERT OR REPLACE INTO ticket_cache
+			(id, source, external_id, repo, title, description, status, assignee, labels, url, synced_at, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(
+			(SELECT created_at FROM ticket_cache WHERE id = ?),
+			CURRENT_TIMESTAMP
+		))
+	`
+	_, err := d.db.Exec(query,
+		record.ID,
+		record.Source,
+		record.ExternalID,
+		record.Repo,
+		record.Title,
+		record.Description,
+		record.Status,
+		record.Assignee,
+		record.Labels,
+		record.URL,
+		record.SyncedAt,
+		record.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to upsert ticket cache: %w", err)
+	}
+	return nil
+}
+
+// GetTicketsByAssignee returns all cached tickets for a given assignee.
+func (d *Database) GetTicketsByAssignee(assignee string) ([]TicketCacheRecord, error) {
+	query := `
+		SELECT id, source, external_id, COALESCE(repo,''), title,
+		       COALESCE(description,''), COALESCE(status,''), COALESCE(assignee,''),
+		       COALESCE(labels,''), COALESCE(url,''), synced_at, created_at
+		FROM ticket_cache
+		WHERE assignee = ?
+		ORDER BY synced_at DESC
+	`
+	rows, err := d.db.Query(query, assignee)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tickets by assignee: %w", err)
+	}
+	defer rows.Close()
+
+	var tickets []TicketCacheRecord
+	for rows.Next() {
+		var r TicketCacheRecord
+		var syncedAt, createdAt string
+		if err := rows.Scan(
+			&r.ID, &r.Source, &r.ExternalID, &r.Repo, &r.Title,
+			&r.Description, &r.Status, &r.Assignee, &r.Labels, &r.URL,
+			&syncedAt, &createdAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan ticket: %w", err)
+		}
+		r.SyncedAt, _ = time.Parse("2006-01-02 15:04:05", syncedAt)
+		r.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+		tickets = append(tickets, r)
+	}
+	return tickets, nil
+}
+
+// GetTicketByID returns a single cached ticket by its composite ID, or nil if not found.
+func (d *Database) GetTicketByID(id string) (*TicketCacheRecord, error) {
+	query := `
+		SELECT id, source, external_id, COALESCE(repo,''), title,
+		       COALESCE(description,''), COALESCE(status,''), COALESCE(assignee,''),
+		       COALESCE(labels,''), COALESCE(url,''), synced_at, created_at
+		FROM ticket_cache
+		WHERE id = ?
+	`
+	var r TicketCacheRecord
+	var syncedAt, createdAt string
+	err := d.db.QueryRow(query, id).Scan(
+		&r.ID, &r.Source, &r.ExternalID, &r.Repo, &r.Title,
+		&r.Description, &r.Status, &r.Assignee, &r.Labels, &r.URL,
+		&syncedAt, &createdAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ticket by id: %w", err)
+	}
+	r.SyncedAt, _ = time.Parse("2006-01-02 15:04:05", syncedAt)
+	r.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+	return &r, nil
+}
+
+// --- PM Update Queue ---
+
+// InsertPMUpdateQueue inserts a new PM update request into the outbox queue.
+// Returns the row ID of the inserted record.
+func (d *Database) InsertPMUpdateQueue(record PMUpdateQueueRecord) (int64, error) {
+	query := `
+		INSERT INTO pm_update_queue (ticket_id, action, payload, commit_hash, status, attempts)
+		VALUES (?, ?, ?, ?, 'pending', 0)
+	`
+	result, err := d.db.Exec(query,
+		record.TicketID,
+		record.Action,
+		record.Payload,
+		record.CommitHash,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert pm update queue: %w", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert id: %w", err)
+	}
+	return id, nil
+}
+
+// GetPendingPMUpdates returns all rows in pm_update_queue with status = 'pending'.
+func (d *Database) GetPendingPMUpdates() ([]PMUpdateQueueRecord, error) {
+	query := `
+		SELECT id, ticket_id, action, payload, COALESCE(commit_hash,''),
+		       status, attempts, COALESCE(last_error,''), created_at, sent_at
+		FROM pm_update_queue
+		WHERE status = 'pending'
+		ORDER BY created_at ASC
+	`
+	rows, err := d.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query pending pm updates: %w", err)
+	}
+	defer rows.Close()
+
+	var updates []PMUpdateQueueRecord
+	for rows.Next() {
+		var r PMUpdateQueueRecord
+		var createdAt string
+		var sentAt sql.NullString
+		if err := rows.Scan(
+			&r.ID, &r.TicketID, &r.Action, &r.Payload, &r.CommitHash,
+			&r.Status, &r.Attempts, &r.LastError, &createdAt, &sentAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan pm update: %w", err)
+		}
+		r.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+		if sentAt.Valid {
+			t, _ := time.Parse("2006-01-02 15:04:05", sentAt.String)
+			r.SentAt = &t
+		}
+		updates = append(updates, r)
+	}
+	return updates, nil
+}
+
+// MarkPMUpdateSent marks a pm_update_queue row as successfully sent.
+func (d *Database) MarkPMUpdateSent(id int64) error {
+	query := `
+		UPDATE pm_update_queue
+		SET status = 'sent', sent_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`
+	_, err := d.db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to mark pm update as sent: %w", err)
+	}
+	return nil
+}
+
+// MarkPMUpdateFailed increments attempts and records the error on a pm_update_queue row.
+// The row stays 'pending' to allow future retries.
+func (d *Database) MarkPMUpdateFailed(id int64, errMsg string) error {
+	query := `
+		UPDATE pm_update_queue
+		SET attempts = attempts + 1, last_error = ?
+		WHERE id = ?
+	`
+	_, err := d.db.Exec(query, errMsg, id)
+	if err != nil {
+		return fmt.Errorf("failed to mark pm update as failed: %w", err)
+	}
+	return nil
 }
