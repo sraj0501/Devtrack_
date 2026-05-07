@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-05-08 by engineer (TASK-028 in progress — internal HTTP API + cross-platform AlertNotifier + reload-config)_
+_Last updated: 2026-05-08 by engineer (TASK-023-PY + TASK-025 verified complete; TASK-028 committed — pending PR + CI)_
 _Next task ID: TASK-029_
 
 ---
@@ -26,15 +26,13 @@ _Next task ID: TASK-029_
 **Branch**: features/TASK-009-ticket-cache
 
 **Background**:
-Started in the last session alongside TASK-009; session ended before commit. Recovers that
-incomplete work: the Windows `sendForceTriggerSignal` uses the HTTP API (`http_api.go`) to
-avoid SIGUSR2 which is unavailable on Windows. `reload-config` adds SIGHUP-equivalent
-hot-reload for Windows. `AlertNotifier` provides cross-platform desktop notifications.
+Started in the last session alongside TASK-009; session ended before commit. Absorbs TASK-023-PY
+(cross-platform notifications). Recovers incomplete work: Windows `sendForceTriggerSignal` uses
+the HTTP API (`http_api.go`) to avoid SIGUSR2; `reload-config` adds SIGHUP-equivalent hot-reload
+for Windows; `AlertNotifier` provides cross-platform desktop notifications.
 
 **Spec**:
-1. `devtrack-bin/http_api.go` — internal HTTP server on `GetIPCHost():GetDevTrackServerHTTPPort()`
-   - `POST /internal/force-trigger` — already used by Windows `sendForceTriggerSignal`
-   - `POST /internal/reload-config` — mirrors SIGHUP for Windows
+1. `devtrack-bin/http_api.go` — internal HTTP server with POST /internal/force-trigger + POST /internal/reload-config
 2. `devtrack-bin/config_env.go` — `GetIPCHost()`, `GetDevTrackServerHTTPPort()`, `GetHTTPTimeoutShort()`
 3. `devtrack-bin/daemon.go` — call `d.startInternalHTTPServer()` at daemon start
 4. `devtrack-bin/cli_unix.go` — `sendReloadConfigSignal()` sends SIGHUP
@@ -52,9 +50,10 @@ hot-reload for Windows. `AlertNotifier` provides cross-platform desktop notifica
 - [x] `sendReloadConfigSignal()` defined in both `cli_unix.go` and `cli_windows.go`
 - [x] `AlertNotifier` imports clean (`from backend.alert_notifier import AlertNotifier`)
 - [x] `.gitignore` covers nested GitLab repo clones
-- [ ] Committed and PR opened
+- [x] Committed (8dddce9)
+- [ ] PR merged (CI pending — flaky JWT test fixed at b6739a6)
 
-**Engineer status**: committed 8dddce9 — pending PR
+**Engineer status**: code committed; CI re-triggered after JWT test fix — awaiting green
 
 ---
 
@@ -153,6 +152,30 @@ branch only. Leave all other `handleWork()` subcommands unguarded.
 **PR**: https://github.com/sraj0501/Devtrack_/pull/84
 
 **COMPLETE** — ready for PM review — 2026-04-30
+
+---
+
+---
+
+### TASK-023-PY — Cross-platform Python desktop notifications
+**Phase**: CS-standalone
+**Branch**: features/TASK-009-ticket-cache (absorbed into TASK-028)
+
+Completed as part of TASK-028. `AlertNotifier` class, `plyer` dep, `get_notification_enabled()` config accessor all shipped in TASK-028 commit 8dddce9.
+
+**COMPLETE** — 2026-05-08
+
+---
+
+### TASK-018 (verify) / TASK-025 (build-tag split verification)
+**Phase**: CS-standalone
+**Branch**: features/TASK-018-windows-build-tags
+**PR**: https://github.com/sraj0501/Devtrack_/pull/113 — merged 2026-05-07
+
+Build-tag split already in main (commit e0c45b9). TASK-018 verified all acceptance criteria on
+`GOOS=windows` + Linux cross-compile. PR #113 merged to main.
+
+**COMPLETE** — 2026-05-07
 
 ---
 
