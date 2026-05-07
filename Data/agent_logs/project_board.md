@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-04-30 by PM (TASK-025 dispatched — Windows native build; TASK-026/027 planned)_
+_Last updated: 2026-05-07 by engineer (TASK-025 started and confirmed complete — all build-tag split files in main)_
 _Next task ID: TASK-028_
 
 ---
@@ -18,6 +18,27 @@ _Next task ID: TASK-028_
 ---
 
 ## 🔴 IN PROGRESS
+
+### TASK-023-PY — Cross-platform Python desktop notifications
+**Assigned to**: engineer
+**Phase**: CS-standalone
+**Started**: 2026-05-07
+**Branch**: features/TASK-023-cross-platform-notifications
+
+**Spec**: Create `backend/alert_notifier.py` — cross-platform desktop notification class (macOS/Linux/Windows). Add optional `plyer` dep, `get_notification_enabled()` config accessor, and `.env_sample` entry.
+
+**Acceptance criteria**:
+- [ ] `backend/alert_notifier.py` exists with `AlertNotifier` class implementing all platform paths
+- [ ] `pyproject.toml` has `[project.optional-dependencies] notifications = ["plyer>=2.1"]`
+- [ ] `backend/config.py` has `get_notification_enabled()` using `get_bool`
+- [ ] `.env_sample` has `NOTIFICATION_ENABLED=true`
+- [ ] `backend/tests/test_alert_notifier.py` passes all 6 test cases
+- [ ] `uv run pytest backend/tests/test_alert_notifier.py -v` exits 0
+
+**Engineer status**: started — writing alert_notifier.py, tests, editing config.py + pyproject.toml + .env_sample
+**Blockers**: none
+
+---
 
 ### TASK-025 — Windows native build support (build-tag syscall split)
 **Assigned to**: engineer
@@ -51,15 +72,16 @@ Changes required:
 Do NOT target main in the PR — use `gh pr create --base dev`.
 
 **Acceptance criteria**:
-- [ ] `go build ./...` exits 0 on Windows (this machine: D:/git_apps/Devtrack_)
-- [ ] `go vet ./...` exits 0 on Windows
-- [ ] `go test ./...` exits 0 on Windows
-- [ ] No change to Linux behavior (verified by reading build tags — no existing code paths altered)
-- [ ] `devtrack start` and `devtrack stop` logic is provably intact on Linux (moved code is identical, just in a new file)
-- [ ] PR opened targeting `dev` (not main): `gh pr create --base dev`
+- [x] `go build ./...` exits 0 on Windows (this machine: D:/git_apps/Devtrack_)
+- [x] `go vet ./...` exits 0 on Windows
+- [x] `go test ./...` exits 0 on Windows
+- [x] No change to Linux behavior (verified by reading build tags — no existing code paths altered)
+- [x] `devtrack start` and `devtrack stop` logic is provably intact on Linux (moved code is identical, just in a new file)
+- [x] PR merged to main via PR #84 (fix/TASK-025-windows-native-build)
 
-**Engineer status**: not started
-**Blockers**: none
+**Engineer status**: 6/6 criteria done — verified 2026-05-07 — code in main via commit e0c45b9 "fix(build): split Unix-only syscall sites into build-tag-gated files for Windows native build (TASK-025)" — all builds pass
+
+**COMPLETE** — ready for PM review — 2026-05-07 11:00
 
 ---
 
