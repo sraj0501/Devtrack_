@@ -22,7 +22,8 @@ func NewCLI() (*CLI, error) {
 	if len(os.Args) > 1 {
 		cmd := os.Args[1]
 		if cmd == "help" || cmd == "version" || cmd == "commit-queue" || cmd == "commits" || cmd == "queue" || cmd == "telegram-status" || cmd == "azure-check" || cmd == "gitlab-check" || cmd == "github-check" || cmd == "workspace" || cmd == "shell-init" || cmd == "is-workspace" || cmd == "enable-git" || cmd == "disable-git" || cmd == "launchd-install" || cmd == "launchd-uninstall" || cmd == "autostart-install" || cmd == "autostart-uninstall" || cmd == "autostart-status" || cmd == "alerts" || cmd == "cloud" || cmd == "tui" ||
-			cmd == "login" || cmd == "logout" || cmd == "whoami" || cmd == "license" || cmd == "terms" || cmd == "telemetry" {
+			cmd == "login" || cmd == "logout" || cmd == "whoami" || cmd == "license" || cmd == "terms" || cmd == "telemetry" ||
+			cmd == "reload-config" {
 			return &CLI{}, nil
 		}
 	}
@@ -136,6 +137,8 @@ func (cli *CLI) Execute() error {
 		return cli.handleSaveReport()
 	case "force-trigger":
 		return cli.handleForceTrigger()
+	case "reload-config":
+		return cli.handleReloadConfig()
 	case "send-summary":
 		return cli.handleSendSummary()
 	case "skip-next":
@@ -597,6 +600,42 @@ func (cli *CLI) handleForceTrigger() error {
 	fmt.Println("✓ Trigger initiated successfully")
 	fmt.Println("\nThe trigger is executing in the background.")
 	fmt.Println("Check logs for details:")
+	fmt.Println("  devtrack logs")
+	return nil
+}
+
+// handleReloadConfig signals the running daemon to reload .env + YAML config
+// without restarting. On Unix this sends SIGHUP; on Windows it calls the
+// daemon's internal HTTP /internal/reload-config endpoint.
+func (cli *CLI) handleReloadConfig() error {
+	if !cli.daemon.IsRunning() {
+		fmt.Println("❌ Daemon is not running")
+		fmt.Println("\nStart the daemon first:")
+		fmt.Println("  devtrack start")
+		return nil
+	}
+
+	pid, err := cli.daemon.readPID()
+	if err != nil {
+		fmt.Printf("❌ Could not read daemon PID: %v\n", err)
+		return err
+	}
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		fmt.Printf("❌ Could not find daemon process: %v\n", err)
+		return err
+	}
+
+	fmt.Println("🔄 Reloading config...")
+
+	if err := sendReloadConfigSignal(process); err != nil {
+		fmt.Printf("❌ Could not send reload signal to daemon: %v\n", err)
+		return err
+	}
+
+	fmt.Println("✓ Config reload signal sent")
+	fmt.Println("\nCheck logs for reload status:")
 	fmt.Println("  devtrack logs")
 	return nil
 }
@@ -2750,6 +2789,7 @@ func (cli *CLI) printUsage() {
 	fmt.Println("  devtrack pause         Pause scheduler (keep git monitoring)")
 	fmt.Println("  devtrack resume        Resume scheduler")
 	fmt.Println("  devtrack force-trigger Force immediate trigger")
+	fmt.Println("  devtrack reload-config Reload .env + YAML config without restart")
 	fmt.Println("  devtrack skip-next     Skip the next scheduled trigger")
 	fmt.Println("  devtrack send-summary  Generate daily summary now")
 	fmt.Println()

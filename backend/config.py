@@ -1406,3 +1406,8 @@ def get_mongodb_uri() -> str:
 def get_mongodb_db() -> str:
     """MongoDB database name. MONGODB_DB (default: 'devtrack')."""
     return get("MONGODB_DB", "") or get("MONGODB_DB_NAME", "devtrack")
+
+
+def get_notification_enabled() -> bool:
+    """Whether cross-platform desktop notifications are enabled. NOTIFICATION_ENABLED (default: true)."""
+    return get_bool("NOTIFICATION_ENABLED", default=True)

@@ -174,6 +174,9 @@ func (d *Daemon) Start() error {
 	d.healthMonitor = hm
 	log.Println("✓ Health monitor started")
 
+	// Start internal HTTP server for platform-agnostic control endpoints.
+	d.startInternalHTTPServer()
+
 	// Setup signal handlers for graceful shutdown
 	d.setupSignalHandlers()
 

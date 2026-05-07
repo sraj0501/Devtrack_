@@ -11,6 +11,7 @@ Respects ALERT_NOTIFY_* env vars from backend.config.
 from __future__ import annotations
 
 import logging
+import platform
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,7 @@ from typing import Any, Dict, Optional
 import backend.config as cfg
 
 logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def _should_notify(event_type: str) -> bool:
@@ -139,3 +141,91 @@ def notify_many(notifications: list) -> None:
             notify(n)
         except Exception as e:
             logger.warning(f"Failed to deliver notification: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Cross-platform notification class (TASK-023)
+# ---------------------------------------------------------------------------
+
+
+class AlertNotifier:
+    """Cross-platform desktop notification dispatcher.
+
+    Dispatch order:
+    - macOS:   osascript -> plyer fallback
+    - Linux:   notify-send -> plyer fallback
+    - Windows: plyer -> PowerShell Toast fallback
+    """
+
+    def notify(self, title: str, message: str, url: str = "") -> bool:
+        system = platform.system()
+        try:
+            if system == "Darwin":
+                return self._notify_macos(title, message, url)
+            elif system == "Windows":
+                return self._notify_windows(title, message)
+            else:
+                return self._notify_linux(title, message)
+        except Exception as exc:
+            log.warning("Notification delivery failed: %s", exc)
+            return False
+
+    def _notify_macos(self, title: str, message: str, url: str) -> bool:
+        script = f'display notification "{message}" with title "{title}"'
+        result = subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            timeout=self._timeout(),
+        )
+        if result.returncode == 0:
+            return True
+        return self._notify_plyer(title, message)
+
+    def _notify_linux(self, title: str, message: str) -> bool:
+        result = subprocess.run(
+            ["notify-send", title, message],
+            capture_output=True,
+            timeout=self._timeout(),
+        )
+        if result.returncode == 0:
+            return True
+        return self._notify_plyer(title, message)
+
+    def _notify_windows(self, title: str, message: str) -> bool:
+        if self._notify_plyer(title, message):
+            return True
+        return self._notify_windows_powershell(title, message)
+
+    def _notify_plyer(self, title: str, message: str) -> bool:
+        try:
+            from plyer import notification as plyer_notification  # type: ignore
+            plyer_notification.notify(title=title, message=message, timeout=5)
+            return True
+        except ImportError:
+            return False
+        except Exception as exc:
+            log.debug("plyer notification failed: %s", exc)
+            return False
+
+    def _notify_windows_powershell(self, title: str, message: str) -> bool:
+        ps_script = (
+            "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, "
+            "ContentType = WindowsRuntime] | Out-Null; "
+            "$template = [Windows.UI.Notifications.ToastNotificationManager]"
+            "::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
+            f'$template.SelectSingleNode(\"//text[@id=\'1\']\").InnerText = \"{title}\"; '
+            f'$template.SelectSingleNode(\"//text[@id=\'2\']\").InnerText = \"{message}\"; '
+            "$toast = [Windows.UI.Notifications.ToastNotification]::new($template); "
+            "[Windows.UI.Notifications.ToastNotificationManager]"
+            "::CreateToastNotifier('DevTrack').Show($toast)"
+        )
+        result = subprocess.run(
+            ["powershell", "-NonInteractive", "-Command", ps_script],
+            capture_output=True,
+            timeout=self._timeout(),
+        )
+        return result.returncode == 0
+
+    def _timeout(self) -> int:
+        import backend.config as _cfg
+        return _cfg.http_timeout_short()

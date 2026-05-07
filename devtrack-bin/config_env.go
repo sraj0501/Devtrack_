@@ -914,3 +914,52 @@ func GetHealthAutoRestartTelegram() bool {
 	}
 	return strings.EqualFold(val, "true") || val == "1"
 }
+
+// GetIPCHost returns the daemon bind host from IPC_HOST (default 127.0.0.1).
+// Used by the internal HTTP server and by Windows CLI callers.
+func GetIPCHost() string {
+	config, err := LoadEnvConfig()
+	if err != nil {
+		// Pre-setup or lightweight callers — fall back to env then loopback.
+		if v := os.Getenv("IPC_HOST"); v != "" {
+			return v
+		}
+		return "127.0.0.1"
+	}
+	if config.IPCHost != "" {
+		return config.IPCHost
+	}
+	return "127.0.0.1"
+}
+
+// GetDevTrackServerHTTPPort returns the port the daemon exposes for its internal
+// HTTP control server (e.g. /internal/force-trigger).
+// Reads DEVTRACK_SERVER_HTTP_PORT; default 35894.
+func GetDevTrackServerHTTPPort() int {
+	val := os.Getenv("DEVTRACK_SERVER_HTTP_PORT")
+	if val == "" {
+		return 35894
+	}
+	port, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || port <= 0 || port > 65535 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid DEVTRACK_SERVER_HTTP_PORT %q — using default 35894\n", val)
+		return 35894
+	}
+	return port
+}
+
+// GetHTTPTimeoutShort returns the short HTTP client timeout in seconds used for
+// internal daemon calls (e.g. force-trigger).
+// Reads HTTP_TIMEOUT_SHORT_SECS; default 5.
+func GetHTTPTimeoutShort() int {
+	val := os.Getenv("HTTP_TIMEOUT_SHORT_SECS")
+	if val == "" {
+		return 5
+	}
+	secs, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || secs <= 0 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid HTTP_TIMEOUT_SHORT_SECS %q — using default 5\n", val)
+		return 5
+	}
+	return secs
+}
