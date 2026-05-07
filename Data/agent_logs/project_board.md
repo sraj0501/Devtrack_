@@ -80,6 +80,7 @@ Do NOT target main in the PR — use `gh pr create --base dev`.
 - [x] PR merged to main via PR #84 (fix/TASK-025-windows-native-build)
 
 **Engineer status**: 6/6 criteria done — verified 2026-05-07 — code in main via commit e0c45b9 "fix(build): split Unix-only syscall sites into build-tag-gated files for Windows native build (TASK-025)" — all builds pass
+**PR**: https://github.com/sraj0501/Devtrack_/pull/113
 
 **COMPLETE** — ready for PM review — 2026-05-07 11:00
 
