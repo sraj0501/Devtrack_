@@ -19,6 +19,25 @@ _Next task ID: TASK-028_
 
 ## 🔴 IN PROGRESS
 
+### TASK-009 — Ticket cache: SQLite schema + GitHub sync
+**Assigned to**: engineer
+**Phase**: Phase 5 / CS-1
+**Started**: 2026-05-07
+**Branch**: features/TASK-009-ticket-cache
+
+**Acceptance criteria**:
+- [ ] `ticket_cache` and `pm_update_queue` tables created on daemon start
+- [ ] All seven Go CRUD methods compile with `go build ./...`
+- [ ] `GitHubTicketSync.sync()` pages open assigned issues and writes to SQLite
+- [ ] `devtrack init` triggers sync and prints progress
+- [ ] New env vars documented in `.env_sample`
+- [ ] `test_ticket_cache.py` passes with `uv run pytest`
+- [ ] No hardcoded tokens, hosts, or paths anywhere in new code
+
+**Engineer status**: started — adding SQLite tables/CRUD in database.go, Go config accessors in config_env.go, Python TicketDB helper, GitHubTicketSync class, devtrack init integration, env vars in .env_sample + config.py, and pytest suite
+
+---
+
 ### TASK-025 — Windows native build support (build-tag syscall split)
 **Assigned to**: engineer
 **Phase**: CS-standalone

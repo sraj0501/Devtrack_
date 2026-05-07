@@ -727,6 +727,41 @@ func IsWebhookEnabled() bool {
 	return val == "true" || val == "1" || val == "yes" || val == "on"
 }
 
+// --- GitHub / Ticket Sync ---
+
+// GetGitHubToken returns the GitHub PAT from GITHUB_TOKEN.
+// Exits with an error if the variable is not set.
+func GetGitHubToken() string {
+	val := os.Getenv("GITHUB_TOKEN")
+	if val == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: GITHUB_TOKEN not set in .env\n")
+		os.Exit(1)
+	}
+	return val
+}
+
+// GetGitHubDefaultRepo returns the default GitHub repo (owner/repo) from GITHUB_DEFAULT_REPO.
+// Exits with an error if the variable is not set.
+func GetGitHubDefaultRepo() string {
+	val := os.Getenv("GITHUB_DEFAULT_REPO")
+	if val == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: GITHUB_DEFAULT_REPO not set in .env\n")
+		os.Exit(1)
+	}
+	return val
+}
+
+// GetGitHubAssignee returns the GitHub username to filter assigned issues from GITHUB_ASSIGNEE.
+// Exits with an error if the variable is not set.
+func GetGitHubAssignee() string {
+	val := os.Getenv("GITHUB_ASSIGNEE")
+	if val == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: GITHUB_ASSIGNEE not set in .env\n")
+		os.Exit(1)
+	}
+	return val
+}
+
 // GetWebhookPort returns the webhook server listen port.
 // Reads WEBHOOK_PORT from .env (default: 8089).
 func GetWebhookPort() int {
