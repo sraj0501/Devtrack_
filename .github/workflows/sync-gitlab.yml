@@ -30,14 +30,20 @@ jobs:
           # Split produces a local branch containing only devtrack-bin/ history
           git subtree split --prefix=devtrack-bin/ -b split-client
 
+          # Capture the split HEAD before deleting the branch
+          SPLIT_SHA=$(git rev-parse split-client)
+
           # Force-push so the GitLab mirror always matches the monorepo
           git push --force gitlab-client split-client:dev
           git branch -D split-client
 
-          # If triggered by a tag, push it to GitLab to fire the release CI
+          # If triggered by a tag, create a tag pointing at the SPLIT commit
+          # (not the monorepo commit) so GitLab finds .gitlab-ci.yml at root
+          # and fires the release pipeline.
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
-            git push gitlab-client "refs/tags/${TAG}"
+            git tag -f "$TAG" "$SPLIT_SHA"
+            git push --force gitlab-client "refs/tags/${TAG}"
           fi
 
   sync-server:
