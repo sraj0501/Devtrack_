@@ -3,6 +3,8 @@ name: Sync to GitLab
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
 
 jobs:
   sync-client:
@@ -31,6 +33,12 @@ jobs:
           # Force-push so the GitLab mirror always matches the monorepo
           git push --force gitlab-client split-client:dev
           git branch -D split-client
+
+          # If triggered by a tag, push it to GitLab to fire the release CI
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            git push gitlab-client "refs/tags/${TAG}"
+          fi
 
   sync-server:
     name: Sync Python backend → devtrack_server dev
