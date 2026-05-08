@@ -283,6 +283,12 @@ func (cli *CLI) handleStart() error {
 		return nil
 	}
 
+	// Ensure local MongoDB/Redis are reachable; auto-start Docker containers if needed.
+	// Returns an error only if the user explicitly chose to exit without a working DB.
+	if err := EnsureLocalInfra(); err != nil {
+		return err
+	}
+
 	// Parent process - fork to background
 	fmt.Println("🚀 Starting DevTrack daemon...")
 
