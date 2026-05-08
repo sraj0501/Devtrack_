@@ -310,6 +310,66 @@ python -m spacy info
 
 ## Daemon Issues
 
+### "daemon already running (could not acquire lock)"
+
+**Problem**: You see this error when running `devtrack start`:
+
+```
+Error: daemon already running (could not acquire lock)
+```
+
+This means a previous daemon process is still alive and holding the OS lock on `devtrack.lock`. It is **not** a stale file — the lock is released automatically when the process exits, so deleting `devtrack.lock` manually will not help if the process is still running.
+
+**Solutions**:
+
+1. Stop the existing daemon:
+```bash
+devtrack stop
+```
+
+2. Verify no stale process remains:
+```bash
+# Unix / macOS
+pgrep -a devtrack
+
+# Windows (PowerShell)
+Get-Process devtrack -ErrorAction SilentlyContinue
+```
+
+3. If the process is frozen and `devtrack stop` has no effect:
+```bash
+# Unix / macOS
+pkill -9 devtrack
+
+# Windows (PowerShell)
+Stop-Process -Name devtrack -Force
+```
+
+4. Then start fresh:
+```bash
+devtrack start
+```
+
+> Note: you never need to delete `devtrack.lock` manually. The OS releases it when the process exits for any reason, including crashes.
+
+---
+
+### Multiple daemon instances spawning on Windows
+
+**Problem**: On Windows, `devtrack start` launches a second instance even though one is already running, or `devtrack status` incorrectly reports "not running" for a live process.
+
+**Root cause (pre-fix)**: The old `IsRunning()` check used `Signal(0)` which is not supported on Windows, causing liveness checks to always return false.
+
+**Current behaviour**: `IsRunning()` now calls `OpenProcess` + `GetExitCodeProcess` on Windows. If you are seeing multiple instances on a version older than the one that introduced `process_windows.go`, upgrade:
+
+```bash
+devtrack upgrade
+```
+
+After upgrading, `devtrack start` will refuse to start a second instance with `"daemon already running (could not acquire lock)"`.
+
+---
+
 ### "DevTrack daemon is not running" or won't start
 
 **Problem**: Daemon fails to start or crashes immediately.
@@ -495,6 +555,22 @@ ls -la .git/
 ```bash
 devtrack force-trigger
 # This should prompt for work update even if commits not detected
+```
+
+---
+
+### Excessive "ErrReferenceNotFound" log spam on a repo with no commits
+
+**Problem**: DevTrack logs `ErrReferenceNotFound` every ~2 seconds when `DEVTRACK_WORKSPACE` points to a freshly-initialised repo that has no commits yet.
+
+**Cause**: The git monitor tried to resolve HEAD on every fsnotify tick and logged the reference error on each attempt.
+
+**Current behaviour**: `git_monitor.go` now skips gracefully when HEAD cannot be resolved and only wires up the real watcher on the first commit. No log spam occurs for empty repos.
+
+**If you still see this**: you are running a binary older than the fix. Upgrade:
+
+```bash
+devtrack upgrade
 ```
 
 ---

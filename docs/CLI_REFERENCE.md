@@ -389,6 +389,30 @@ devtrack telegram-status   # Show whether the Telegram bot process is alive
 
 ---
 
+## Self-Update
+
+```bash
+devtrack upgrade          # Check for a new release and install it
+devtrack upgrade --check  # Check for updates without installing
+```
+
+`devtrack upgrade` fetches the latest release from the **GitLab Package Registry** (`gitlab.com/devtrack3_cloud/devtrack_client`).
+
+**What it does:**
+1. Queries the GitLab Releases API for the newest tag.
+2. Downloads the archive for the current OS/arch (`.tar.gz` on Unix, `.zip` on Windows).
+3. Replaces the running binary in place.
+   - **Unix**: if the destination is root-owned, retries with `sudo cp` (you will be prompted for your password).
+   - **Windows**: if permission is denied, prints a message asking you to re-run as Administrator or copy the file manually.
+4. Runs pending configuration migrations (`RunPendingMigrations`).
+5. Restarts the daemon automatically if it was running.
+
+**Notes:**
+- `dev` builds (built from source) are reported as "not a release" and the upgrade is skipped.
+- The `--check` flag prints whether an update is available without downloading anything.
+
+---
+
 ## Info & Settings
 
 ```bash

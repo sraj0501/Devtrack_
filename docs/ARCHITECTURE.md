@@ -53,7 +53,7 @@ Running `devtrack install` prints setup instructions for the client-server archi
 
 ### Binary Releases
 
-GitHub Releases contain only the Go binary (~5 MB, no Python). Users set up the Python backend separately following the [Installation Guide](INSTALLATION.md).
+The Go binary (~5 MB, no Python) is published to the **GitLab Package Registry** (`gitlab.com/devtrack3_cloud/devtrack_client`) on every tagged release. `devtrack upgrade` fetches from GitLab automatically. Users set up the Python backend separately following the [Installation Guide](INSTALLATION.md).
 
 ---
 
@@ -117,17 +117,39 @@ The lightweight background service that monitors and coordinates.
 |-----------|------|---------|
 | **Entry Point** | main.go | Routes CLI args or delegates git subcommand |
 | **CLI Handler** | cli.go | Implements all CLI commands (start, stop, status, etc.) |
-| **Daemon Lifecycle** | daemon.go | Manages PID file, signals, Python bridge process |
+| **Daemon Lifecycle** | daemon.go | Manages lock file, PID file, signals, Python bridge process |
+| **Lock (Unix)** | lock_unix.go | Exclusive `flock(LOCK_EX\|LOCK_NB)` on `devtrack.lock` |
+| **Lock (Windows)** | lock_windows.go | Exclusive `LockFileEx` on `devtrack.lock` |
+| **Process check (Unix)** | process_unix.go | `Signal(0)` liveness probe |
+| **Process check (Windows)** | process_windows.go | `OpenProcess` + `GetExitCodeProcess` liveness probe |
 | **Integration Hub** | integrated.go | Wires together git monitor, scheduler, HTTP trigger client |
-| **Git Monitor** | git_monitor.go | fsnotify-based repository watcher, fires commit_trigger |
+| **Git Monitor** | git_monitor.go | fsnotify-based repository watcher, fires commit_trigger; lazy-wired on first commit for empty repos |
 | **Scheduler** | scheduler.go | Cron-based periodic trigger, fires timer_trigger |
 | **HTTP Trigger Client** | server_config.go + daemon.go | POSTs JSON to Python `/trigger/*` via HTTPS (self-signed ECDSA cert) |
 | **Database** | database.go | SQLite access, trigger history, task updates |
 | **Configuration** | config.go, config_env.go | YAML struct + .env accessors |
+| **Upgrade** | upgrade.go, upgrade_unix.go, upgrade_windows.go | `devtrack upgrade` — fetches from GitLab Package Registry; Unix uses `sudo cp`, Windows prints Administrator guidance |
 | **Learning** | learning.go | AI learning consent and profile management |
 | **Message Queue** | queue.go | Store-and-forward IPC messages for offline resilience |
 | **Health Monitor** | health.go | Periodic service health checks with auto-restart |
 | **Deferred Commits** | deferred_commit.go | Queue commits for later AI enhancement |
+
+#### Single-Instance Enforcement
+
+`daemon.Start()` acquires an OS-level exclusive lock on `devtrack.lock` (in the PID directory) as its very first operation, before writing the PID file or starting any subprocess.
+
+- **Unix**: `flock(LOCK_EX|LOCK_NB)` — non-blocking; fails immediately if another instance holds the lock.
+- **Windows**: `LockFileEx(LOCKFILE_EXCLUSIVE_LOCK|LOCKFILE_FAIL_IMMEDIATELY)` — equivalent Windows API.
+
+If the lock cannot be acquired the daemon exits with:
+
+```
+Error: daemon already running (could not acquire lock)
+```
+
+The OS releases the lock automatically when the process exits for any reason, so a crashed daemon never leaves a stale lock behind. There is no need to delete `devtrack.lock` manually.
+
+`IsRunning()` uses a platform-specific process liveness check: `Signal(0)` on Unix and `OpenProcess`+`GetExitCodeProcess` on Windows, so stale PID files from terminated processes are correctly treated as "not running".
 
 #### Trigger Endpoints
 

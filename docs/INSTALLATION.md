@@ -18,14 +18,20 @@ DevTrack is a **client-server tool**: the Go binary (`devtrack`) is the local da
 
 ## Step 1 — Install the `devtrack` binary
 
-Download the pre-built binary for your platform from the [latest release](https://github.com/sraj0501/Devtrack_/releases/latest):
+Binaries are published to the **GitLab Package Registry** for `devtrack_client`. Download the archive for your platform and extract it:
 
 ```bash
+# Fetch the latest tag name, then download the matching archive
+GITLAB_PROJECT="devtrack3_cloud%2Fdevtrack_client"
+TAG=$(curl -fsSL "https://gitlab.com/api/v4/projects/${GITLAB_PROJECT}/repository/tags?order_by=version&sort=desc&per_page=1" \
+      | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['name'])")
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" ] && ARCH="arm64"
-curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
+curl -fsSL "https://gitlab.com/api/v4/projects/${GITLAB_PROJECT}/packages/generic/devtrack/${TAG}/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
 sudo mv devtrack /usr/local/bin/
 ```
+
+**Windows** — download the `.zip` from the same URL (replace `.tar.gz` with `.zip` and `OS=windows`), extract, and copy `devtrack.exe` to a directory on your `PATH`. If you need elevated permissions, re-run the copy step as Administrator.
 
 Verify:
 ```bash
@@ -36,10 +42,13 @@ devtrack --version
 
 ## Step 2 — Install the Python backend
 
-Download the server package from the same release page:
+Download the server package from the same GitLab release:
 
 ```bash
-curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack-server-$(curl -fsSL https://api.github.com/repos/sraj0501/Devtrack_/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v).tar.gz" | tar xz
+GITLAB_PROJECT="devtrack3_cloud%2Fdevtrack_client"
+TAG=$(curl -fsSL "https://gitlab.com/api/v4/projects/${GITLAB_PROJECT}/repository/tags?order_by=version&sort=desc&per_page=1" \
+      | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['name'])")
+curl -fsSL "https://gitlab.com/api/v4/projects/${GITLAB_PROJECT}/packages/generic/devtrack/${TAG}/devtrack-server-${TAG#v}.tar.gz" | tar xz
 cd devtrack-server-*
 devtrack-server install
 ```
