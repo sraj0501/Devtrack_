@@ -323,15 +323,7 @@ func (d *Daemon) IsRunning() bool {
 		return false
 	}
 
-	// Check if process exists
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-
-	// Send signal 0 to check if process is alive (doesn't actually send a signal)
-	err = process.Signal(syscall.Signal(0))
-	return err == nil
+	return checkProcessAlive(pid)
 }
 
 // Pause pauses the scheduler (but keeps daemon running)
