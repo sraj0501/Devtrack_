@@ -16,7 +16,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -137,6 +136,7 @@ func platformAssetName() string {
 }
 
 // isDaemonRunning returns true if the PID file exists and the process is alive.
+// The liveness probe is platform-specific — see upgrade_unix.go / upgrade_windows.go.
 func isDaemonRunning() bool {
 	data, err := os.ReadFile(GetPIDFilePath())
 	if err != nil {
@@ -146,11 +146,7 @@ func isDaemonRunning() bool {
 	if err != nil || pid <= 0 {
 		return false
 	}
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return proc.Signal(syscall.Signal(0)) == nil
+	return isProcessAlive(pid)
 }
 
 // fetchLatestRelease queries the GitLab releases API for devtrack_client.
@@ -300,18 +296,9 @@ func replaceBinary(dst, src string) error {
 		return fmt.Errorf("stage new binary: %w", err)
 	}
 
-	// Permission denied — the binary is likely in /usr/local/bin or similar.
-	// Retry with sudo so the user sees a normal password prompt.
-	fmt.Println("  Needs elevated permissions — retrying with sudo...")
-	sudoCp := exec.Command("sudo", "cp", src, dst)
-	sudoCp.Stdin = os.Stdin
-	sudoCp.Stdout = os.Stdout
-	sudoCp.Stderr = os.Stderr
-	if err := sudoCp.Run(); err != nil {
-		return fmt.Errorf("sudo cp failed — try: sudo cp %s %s", src, dst)
-	}
-	_ = exec.Command("sudo", "chmod", "755", dst).Run()
-	return nil
+	// Permission denied — delegate to the platform-specific elevated replace
+	// (sudo on Unix, guidance message on Windows).
+	return elevatedReplace(dst, src)
 }
 
 func copyFile(src, dst string) error {
