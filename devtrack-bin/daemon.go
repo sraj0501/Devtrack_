@@ -18,6 +18,7 @@ type Daemon struct {
 	config           *Config
 	pidFile          string
 	logFile          string
+	lockFile         *os.File // exclusive lock — held for process lifetime
 	ctx              context.Context
 	cancel           context.CancelFunc
 	isRunning        bool
@@ -83,11 +84,15 @@ func NewDaemon(repoPath string) (*Daemon, error) {
 
 // Start starts the daemon process
 func (d *Daemon) Start() error {
-	// Check if already running
-	if d.IsRunning() {
-		pid, _ := d.readPID()
-		return fmt.Errorf("daemon already running (PID: %d)", pid)
+	// Acquire exclusive lock first — atomic guard against multiple instances.
+	// The OS releases the lock automatically when this process exits for any reason,
+	// so a crashed daemon never leaves a stale lock behind.
+	lockPath := filepath.Join(GetPIDDir(), "devtrack.lock")
+	lf, err := acquireDaemonLock(lockPath)
+	if err != nil {
+		return fmt.Errorf("daemon already running (could not acquire lock)")
 	}
+	d.lockFile = lf
 
 	// Setup logging
 	if err := d.setupLogging(); err != nil {
@@ -394,11 +399,13 @@ func (d *Daemon) readPID() (int, error) {
 	return pid, nil
 }
 
-// cleanup removes PID file and performs cleanup
+// cleanup removes PID file and releases the exclusive lock
 func (d *Daemon) cleanup() {
 	if err := os.Remove(d.pidFile); err != nil && !os.IsNotExist(err) {
 		log.Printf("Warning: failed to remove PID file: %v", err)
 	}
+	releaseDaemonLock(d.lockFile)
+	d.lockFile = nil
 }
 
 // GetLogs returns the last N lines from the log file
