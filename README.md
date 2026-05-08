@@ -45,8 +45,8 @@ devtrack start
 devtrack status
 ```
 
-> **Updating?** Run `devtrack upgrade` to download and install the latest binary automatically.
-> If the binary is in a root-owned location (e.g. `/usr/local/bin`), run `sudo devtrack upgrade` instead.
+> **Updating?** Run `devtrack upgrade` to download and install the latest binary automatically (fetched from GitLab Releases; supports Linux/macOS and Windows).
+> If the binary is in a root-owned location (e.g. `/usr/local/bin`), run `sudo devtrack upgrade` instead. On Windows, re-run as Administrator if a permission error occurs.
 > Versioned migrations are applied automatically and the daemon is restarted after a successful upgrade.
 
 > `devtrack setup` generates `.env` and writes `~/.devtrack/devtrack.conf` so the daemon can find it automatically. If you prefer manual setup, copy `.env_sample` to `.env` and fill in the values instead.
@@ -150,6 +150,8 @@ devtrack workspace list
 devtrack workspace add my-project ~/code/project --pm github
 devtrack workspace install-hooks   # push post-commit hooks to all enabled workspaces
 ```
+
+> **Empty repositories**: If a monitored workspace has no commits yet, the daemon watches the folder silently and begins triggering normally once the first commit arrives — no log spam or errors during the empty-repo period.
 
 ### Work session tracking
 
@@ -264,10 +266,11 @@ sudo devtrack upgrade     # use when the binary is in a root-owned directory (e.
 ```
 
 What happens on upgrade:
-1. Downloads the latest binary for your OS/arch from GitHub Releases
+1. Downloads the latest binary for your OS/arch from **GitLab Releases** (`devtrack3_cloud/devtrack_client`) — supports Linux/macOS (`.tar.gz`) and Windows (`.zip`)
 2. Applies all versioned migrations that have not yet run (schema changes, config file moves, etc.)
 3. Auto-restarts the daemon so the new binary takes effect immediately
-4. Falls back to `sudo cp` if the target directory is root-owned and the command wasn't run as root
+4. On Unix: falls back to `sudo cp` automatically if the target directory is root-owned and the command wasn't run as root
+5. On Windows: if a permission error occurs, a message is printed asking you to re-run the command as Administrator
 
 ### Post-commit hooks for all workspaces
 
