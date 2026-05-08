@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go-cli/gitsage"
+	"gitlab.com/devtrack3_cloud/devtrack_client/gitsage"
 )
 
 func main() {
