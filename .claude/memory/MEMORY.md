@@ -1,7 +1,7 @@
 # DevTrack Project Memory
 
-**Last Updated**: April 30, 2026
-**Project Status**: Production-Ready (v2.0.12+; CS-1–CS-3 complete; standalone-CLI mode shipped; devtrack-server CLI added; repo renamed to Devtrack_; 502 tests passing)
+**Last Updated**: May 9, 2026
+**Project Status**: Production-Ready (v2.0.12+; CS-1–CS-3 complete; standalone-CLI mode shipped; monorepo→GitLab split-repo sync live; upgrade command on GitLab Releases; 502 tests passing)
 **Current Branch**: main
 
 ## Project Overview
@@ -174,6 +174,14 @@ The daemon does NOT reload `.env` at runtime.
 - **setup_local.sh removed**: consolidated on `devtrack-server` tarball. Commit: `1ae7966`
 - **Next task ID**: TASK-025
 
+## Session: May 9, 2026
+
+- **git_monitor.go empty-repo fix**: silenced `plumbing.ErrReferenceNotFound` log spam (every 2s) when daemon monitors a git folder with no commits yet. Watchers for `refs/heads` and `COMMIT_EDITMSG` wired lazily on first commit. Commit: `d06dd2c`
+- **`devtrack upgrade` fixed** (`7167546`, `aaf2409`): was hitting GitHub API (404 — no releases there). Now hits GitLab Releases API (`devtrack3_cloud/devtrack_client`). Added Windows `.zip` extraction alongside `.tar.gz`. Platform-specific elevated-replace split into `upgrade_unix.go` (`//go:build !windows` — sudo cp) and `upgrade_windows.go` (`//go:build windows` — Administrator guidance message).
+- **TASK-E complete** (was pre-done): `devtrack_wiki` install scripts (`install.sh`, `install.ps1`, `download.html`) already pull from GitLab Package Registry — no changes needed.
+- **TASK-F complete**: `sync-gitlab.yml` GitHub Actions workflow running successfully on every push to `main`. `GITLAB_SYNC_TOKEN` secret set. All 5 recent runs: `completed / success`. Monorepo→GitLab split-repo sync is fully live.
+- **Stale nested wiki clone deleted**: `D:\git_apps\Devtrack_\git_appsdevtrack_wiki\` was an accidental git clone of devtrack_wiki sitting untracked inside the monorepo. Removed.
+
 ## Next Steps for Future Sessions
 
 1. **Windows native support** — Go daemon does not compile for Windows (3 hard errors: `Setsid`, `SIGUSR2` ×3); needs build-tag split into `daemon_unix.go`/`daemon_windows.go`, signal replacement with named pipe/HTTP, and Windows Service autostart. See `project_windows_gap.md`. WSL (linux_amd64) is the current workaround.
@@ -221,7 +229,7 @@ The daemon does NOT reload `.env` at runtime.
 | `project_autoload_env.md` | AutoLoadEnv() resolution order, setup wizard, ~/.devtrack/devtrack.conf |
 | `project_windows_gap.md` | Windows native support gap: compile errors, what needs build-tag splitting, WSL workaround |
 | `project_devtrack_server_cli.md` | devtrack-server Bash CLI: install/setup/start/stop/upgrade for tarball-deployed Python backend |
-| `project_upgrade_command.md` | devtrack upgrade: GitHub release download, sudo cp fallback, versioned migrations, auto-restart |
+| `project_upgrade_command.md` | devtrack upgrade: GitLab Releases API, zip/tar.gz per platform, Unix sudo cp / Windows Administrator split, versioned migrations, auto-restart |
 | `project_standalone_cli_mode.md` | CS-standalone: Managed/Lightweight/External modes, capability guards, XDG home, shell integration |
 | `ARCHITECTURE.md` | System architecture deep-dive |
 | `STATUS.md` | Detailed phase status |
