@@ -2,6 +2,18 @@
 
 ---
 
+### [2026-05-09] TASK-029 DONE — pyproject.toml restructured: spacy/chromadb/sentence-transformers/en-core-web-sm moved to [project.optional-dependencies] ai; pytest/pytest-asyncio/pandas-stubs moved to [dependency-groups] dev
+
+### [2026-05-09] TASK-030 DONE — is_ai_available() added to backend/config.py using importlib.util.find_spec('spacy')
+
+### [2026-05-09] TASK-031 DONE — feature:ai log line added to lifespan() in backend/webhook_server.py
+
+### [2026-05-09] TASK-032 DONE — devtrack-server: cmd_features() and cmd_enable() added; dispatch block and help updated
+
+### [2026-05-09] TASK-033 DONE — ci/devtrack_server.gitlab-ci.yml: test job split into core-tests (uv sync --group dev, ignores test_nlp_parser.py) and full-tests (uv sync --frozen --extra ai --group dev)
+
+---
+
 ### [2026-05-07 11:00] TASK-018 (PM label) / TASK-025 (board label) — Build-tag split: verify Windows compile
 
 **Original message**: "PM dispatched TASK-018 — Build-tag split: extract all Unix-only proc/signal code"

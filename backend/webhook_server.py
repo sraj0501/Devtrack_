@@ -52,6 +52,8 @@ logging.basicConfig(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("DevTrack Webhook + Trigger Server starting (CS-1 HTTP mode)")
+    from backend.config import is_ai_available
+    logger.info("feature:ai %s", "enabled" if is_ai_available() else "disabled (run: devtrack-server enable ai)")
     await asyncio.to_thread(TriggerProcessor.get)
     await _ensure_gitlab_webhooks()
     yield

@@ -129,12 +129,14 @@ After installation, here's what to do:
 # Check Go daemon is installed
 devtrack --version
 
-# Check Python dependencies
-uv run python -c "import spacy; spacy.load('en_core_web_sm')"
+# Check which server feature tiers are active
+devtrack-server features
 
 # (Optional) Check Ollama is running
 curl http://localhost:11434/api/tags
 ```
+
+> **Two-tier server install**: The default `uv sync` installs the `core` tier only. NLP parsing, AI description enhancement, and RAG personalization require the `ai` tier. Run `devtrack-server enable ai` to install it, then restart the daemon.
 
 ### 2. Configure .env
 ```bash
@@ -252,8 +254,8 @@ Now that you understand DevTrack:
 | Git Monitoring | Detects commits and prompts you | Just .env configuration |
 | Commit Enhancement | AI-powered commit messages | Ollama (or OpenAI/Anthropic) |
 | Work Updates | Prompts you for status at intervals | Just .env configuration |
-| NLP Parsing | Extracts tasks from your text | Just Python dependencies |
-| Conflict Resolution | Auto-resolves merge conflicts | Just Python dependencies |
+| NLP Parsing | Extracts tasks from your text | `ai` tier (`devtrack-server enable ai`) |
+| Conflict Resolution | Auto-resolves merge conflicts | `ai` tier (`devtrack-server enable ai`) |
 | Report Generation | Daily/weekly AI summaries | Ollama (or OpenAI/Anthropic) |
 | Azure DevOps Integration | Updates work items automatically | Azure credentials in .env |
 | GitHub Integration | Updates issues/PRs automatically | GitHub token in .env |

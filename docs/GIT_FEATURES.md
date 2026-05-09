@@ -517,12 +517,14 @@ Natural language work updates that extract tasks, time, and status automatically
 
 ### How It Works
 
+> **Requires the `ai` tier.** spaCy NLP parsing is part of the optional `ai` dependency tier. If the tier is absent, the server falls back to basic string matching, which may miss task IDs and time durations. Install with `devtrack-server enable ai` then restart.
+
 ```
 You type natural language
 "Working on PR #42 - fixing OAuth (2h)"
         │
         ▼
-NLP Parsing (spaCy)
+NLP Parsing (spaCy) — requires ai tier
 ├─ Extract task: PR #42
 ├─ Extract action: working on
 ├─ Extract duration: 2 hours
@@ -781,7 +783,11 @@ devtrack resolve-conflicts --manual
 ### Work Updates Not Parsing
 
 ```bash
-# Check NLP model
+# Check which server tiers are active
+devtrack-server features
+# If ai shows ✗, install it: devtrack-server enable ai && devtrack restart
+
+# Check NLP model (only needed when ai tier is installed)
 uv run python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('OK')"
 
 # Test NLP parsing
