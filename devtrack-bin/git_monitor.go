@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -9,14 +10,15 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/go-git/go-git/v5"
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // GitMonitor handles Git repository monitoring and commit detection
 type GitMonitor struct {
 	repoPath string
-	repo     *git.Repository
+	repo     *gogit.Repository
 	watcher  *fsnotify.Watcher
 	stopChan chan bool
 }
@@ -34,7 +36,7 @@ type CommitInfo struct {
 // NewGitMonitor creates a new GitMonitor instance
 func NewGitMonitor(repoPath string) (*GitMonitor, error) {
 	// Open the repository
-	repo, err := git.PlainOpen(repoPath)
+	repo, err := gogit.PlainOpen(repoPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open git repository: %w", err)
 	}
@@ -67,24 +69,30 @@ func (gm *GitMonitor) Start(onCommit func(CommitInfo)) error {
 		log.Printf("Warning: failed to watch HEAD file: %v", err)
 	}
 
-	// Watch the refs directory where branch pointers are updated on commits
+	// Watch the refs directory where branch pointers are updated on commits.
+	// This directory may not exist yet in a freshly-initialised repo with no commits.
 	refsDir := filepath.Join(gitDir, "refs", "heads")
-	if err := gm.watcher.Add(refsDir); err != nil {
+	if err := gm.watcher.Add(refsDir); err != nil && !os.IsNotExist(err) {
 		log.Printf("Warning: failed to watch refs/heads directory: %v", err)
 	}
 
-	// Watch COMMIT_EDITMSG which is updated on every commit
+	// Watch COMMIT_EDITMSG which is updated on every commit.
+	// It does not exist until the first commit is made.
 	commitMsgFile := filepath.Join(gitDir, "COMMIT_EDITMSG")
-	if err := gm.watcher.Add(commitMsgFile); err != nil {
+	if err := gm.watcher.Add(commitMsgFile); err != nil && !os.IsNotExist(err) {
 		log.Printf("Warning: failed to watch COMMIT_EDITMSG file: %v", err)
 	}
 
-	log.Printf("Started monitoring Git repository: %s", gm.repoPath)
-
-	// Store the last commit hash to detect new commits
+	// Determine initial state; an empty repo (no commits) is valid — monitoring continues.
 	lastCommit, err := gm.getLatestCommit()
 	if err != nil {
-		log.Printf("Warning: could not get initial commit: %v", err)
+		if errors.Is(err, plumbing.ErrReferenceNotFound) {
+			log.Printf("Started monitoring Git repository (no commits yet): %s", gm.repoPath)
+		} else {
+			log.Printf("Started monitoring Git repository (warning: %v): %s", err, gm.repoPath)
+		}
+	} else {
+		log.Printf("Started monitoring Git repository: %s", gm.repoPath)
 	}
 
 	go func() {
@@ -98,12 +106,20 @@ func (gm *GitMonitor) Start(onCommit func(CommitInfo)) error {
 				// Periodic check for new commits (works reliably across Docker volumes)
 				currentCommit, err := gm.getLatestCommit()
 				if err != nil {
-					log.Printf("Error getting latest commit: %v", err)
+					if !errors.Is(err, plumbing.ErrReferenceNotFound) {
+						log.Printf("Error getting latest commit: %v", err)
+					}
 					continue
 				}
 
 				// If we have a new commit, trigger the callback
 				if lastCommit == nil || currentCommit.Hash != lastCommit.Hash {
+					if lastCommit == nil {
+						// First commit — wire up watchers that didn't exist before
+						gitDir := filepath.Join(gm.repoPath, ".git")
+						_ = gm.watcher.Add(filepath.Join(gitDir, "refs", "heads"))
+						_ = gm.watcher.Add(filepath.Join(gitDir, "COMMIT_EDITMSG"))
+					}
 					log.Printf("New commit detected: %s - %s", currentCommit.Hash[:8], currentCommit.Message)
 					onCommit(*currentCommit)
 					lastCommit = currentCommit
@@ -127,7 +143,9 @@ func (gm *GitMonitor) Start(onCommit func(CommitInfo)) error {
 					// Check for new commit
 					currentCommit, err := gm.getLatestCommit()
 					if err != nil {
-						log.Printf("Error getting latest commit: %v", err)
+						if !errors.Is(err, plumbing.ErrReferenceNotFound) {
+							log.Printf("Error getting latest commit: %v", err)
+						}
 						continue
 					}
 

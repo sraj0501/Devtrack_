@@ -83,9 +83,12 @@ class TestJWTTokens:
     def test_decode_tampered_token_returns_none(self):
         from backend.admin.auth import create_token, decode_token
         token = create_token("alice")
-        # Flip a character in the signature (last segment)
+        # Replace the entire signature with a known-invalid one.
+        # Flipping a single base64url character is unreliable: the trailing bits
+        # of a base64url block may be insignificant, so a one-char flip can leave
+        # the decoded bytes unchanged and the signature still valid.
         parts = token.split(".")
-        parts[-1] = parts[-1][:-1] + ("A" if parts[-1][-1] != "A" else "B")
+        parts[-1] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         assert decode_token(".".join(parts)) is None
 
     def test_decode_expired_token_returns_none(self):

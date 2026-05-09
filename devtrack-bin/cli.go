@@ -22,7 +22,8 @@ func NewCLI() (*CLI, error) {
 	if len(os.Args) > 1 {
 		cmd := os.Args[1]
 		if cmd == "help" || cmd == "version" || cmd == "commit-queue" || cmd == "commits" || cmd == "queue" || cmd == "telegram-status" || cmd == "azure-check" || cmd == "gitlab-check" || cmd == "github-check" || cmd == "workspace" || cmd == "shell-init" || cmd == "is-workspace" || cmd == "enable-git" || cmd == "disable-git" || cmd == "launchd-install" || cmd == "launchd-uninstall" || cmd == "autostart-install" || cmd == "autostart-uninstall" || cmd == "autostart-status" || cmd == "alerts" || cmd == "cloud" || cmd == "tui" ||
-			cmd == "login" || cmd == "logout" || cmd == "whoami" || cmd == "license" || cmd == "terms" || cmd == "telemetry" {
+			cmd == "login" || cmd == "logout" || cmd == "whoami" || cmd == "license" || cmd == "terms" || cmd == "telemetry" ||
+			cmd == "reload-config" {
 			return &CLI{}, nil
 		}
 	}
@@ -136,6 +137,8 @@ func (cli *CLI) Execute() error {
 		return cli.handleSaveReport()
 	case "force-trigger":
 		return cli.handleForceTrigger()
+	case "reload-config":
+		return cli.handleReloadConfig()
 	case "send-summary":
 		return cli.handleSendSummary()
 	case "skip-next":
@@ -225,6 +228,8 @@ func (cli *CLI) Execute() error {
 	case "help":
 		cli.printUsage()
 		return nil
+	case "init":
+		return cli.handleInit()
 	default:
 		// Check if it's a test command
 		if strings.HasPrefix(command, "test-") {
@@ -276,6 +281,12 @@ func (cli *CLI) handleStart() error {
 			return err
 		}
 		return nil
+	}
+
+	// Ensure local MongoDB/Redis are reachable; auto-start Docker containers if needed.
+	// Returns an error only if the user explicitly chose to exit without a working DB.
+	if err := EnsureLocalInfra(); err != nil {
+		return err
 	}
 
 	// Parent process - fork to background
@@ -595,6 +606,42 @@ func (cli *CLI) handleForceTrigger() error {
 	fmt.Println("✓ Trigger initiated successfully")
 	fmt.Println("\nThe trigger is executing in the background.")
 	fmt.Println("Check logs for details:")
+	fmt.Println("  devtrack logs")
+	return nil
+}
+
+// handleReloadConfig signals the running daemon to reload .env + YAML config
+// without restarting. On Unix this sends SIGHUP; on Windows it calls the
+// daemon's internal HTTP /internal/reload-config endpoint.
+func (cli *CLI) handleReloadConfig() error {
+	if !cli.daemon.IsRunning() {
+		fmt.Println("❌ Daemon is not running")
+		fmt.Println("\nStart the daemon first:")
+		fmt.Println("  devtrack start")
+		return nil
+	}
+
+	pid, err := cli.daemon.readPID()
+	if err != nil {
+		fmt.Printf("❌ Could not read daemon PID: %v\n", err)
+		return err
+	}
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		fmt.Printf("❌ Could not find daemon process: %v\n", err)
+		return err
+	}
+
+	fmt.Println("🔄 Reloading config...")
+
+	if err := sendReloadConfigSignal(process); err != nil {
+		fmt.Printf("❌ Could not send reload signal to daemon: %v\n", err)
+		return err
+	}
+
+	fmt.Println("✓ Config reload signal sent")
+	fmt.Println("\nCheck logs for reload status:")
 	fmt.Println("  devtrack logs")
 	return nil
 }
@@ -2748,6 +2795,7 @@ func (cli *CLI) printUsage() {
 	fmt.Println("  devtrack pause         Pause scheduler (keep git monitoring)")
 	fmt.Println("  devtrack resume        Resume scheduler")
 	fmt.Println("  devtrack force-trigger Force immediate trigger")
+	fmt.Println("  devtrack reload-config Reload .env + YAML config without restart")
 	fmt.Println("  devtrack skip-next     Skip the next scheduled trigger")
 	fmt.Println("  devtrack send-summary  Generate daily summary now")
 	fmt.Println()
@@ -2908,4 +2956,47 @@ func formatDuration(d time.Duration) string {
 	days := int(d.Hours()) / 24
 	hours := int(d.Hours()) % 24
 	return fmt.Sprintf("%dd %dh", days, hours)
+}
+
+// handleInit runs one-time DevTrack initialisation for the current repository.
+// After completing existing setup steps it triggers github_ticket_sync.py to
+// warm the ticket cache. Sync failures are non-fatal — init always succeeds.
+func (cli *CLI) handleInit() error {
+	config, _ := LoadEnvConfig()
+	projectRoot := ""
+	if config != nil {
+		projectRoot = config.ProjectRoot
+	}
+	if projectRoot == "" {
+		projectRoot = os.Getenv("PROJECT_ROOT")
+	}
+	if projectRoot == "" {
+		fmt.Println("PROJECT_ROOT not set — skipping ticket sync")
+		return nil
+	}
+
+	// Determine repo and assignee from env; fall back gracefully if not set.
+	repo := os.Getenv("GITHUB_DEFAULT_REPO")
+	assignee := os.Getenv("GITHUB_ASSIGNEE")
+	if repo == "" || assignee == "" {
+		fmt.Println("GITHUB_DEFAULT_REPO or GITHUB_ASSIGNEE not set — skipping ticket sync")
+		return nil
+	}
+
+	fmt.Println("Syncing tickets from GitHub...")
+
+	syncScript := filepath.Join(projectRoot, "backend", "github_ticket_sync.py")
+	cmd := exec.Command("uv", "run", "--directory", projectRoot, "python", syncScript, "sync", repo, assignee)
+	cmd.Dir = projectRoot
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Ticket sync failed (non-fatal): %v\n", err)
+		// Do not return an error — init continues regardless of sync outcome.
+	} else {
+		fmt.Println("Ticket sync complete.")
+	}
+
+	return nil
 }

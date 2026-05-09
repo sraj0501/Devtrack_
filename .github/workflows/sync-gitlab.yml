@@ -1,0 +1,94 @@
+name: Sync to GitLab
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+
+jobs:
+  sync-client:
+    name: Sync devtrack-bin → devtrack_client dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Split subtree and push to devtrack_client dev
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_SYNC_TOKEN }}
+        run: |
+          git remote add gitlab-client \
+            "https://oauth2:${GITLAB_TOKEN}@gitlab.com/devtrack3_cloud/devtrack_client.git"
+
+          # Split produces a local branch containing only devtrack-bin/ history
+          git subtree split --prefix=devtrack-bin/ -b split-client
+
+          # Capture the split HEAD before deleting the branch
+          SPLIT_SHA=$(git rev-parse split-client)
+
+          # Force-push so the GitLab mirror always matches the monorepo
+          git push --force gitlab-client split-client:dev
+          git branch -D split-client
+
+          # If triggered by a tag, create a tag pointing at the SPLIT commit
+          # (not the monorepo commit) so GitLab finds .gitlab-ci.yml at root
+          # and fires the release pipeline.
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            git tag -f "$TAG" "$SPLIT_SHA"
+            git push --force gitlab-client "refs/tags/${TAG}"
+          fi
+
+  sync-server:
+    name: Sync Python backend → devtrack_server dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Overlay backend files onto devtrack_server dev
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_SYNC_TOKEN }}
+        run: |
+          # Clone server repo so we keep its .gitlab-ci.yml intact
+          git clone --depth=1 --branch=dev \
+            "https://oauth2:${GITLAB_TOKEN}@gitlab.com/devtrack3_cloud/devtrack_server.git" \
+            /tmp/server-repo
+
+          cd /tmp/server-repo
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Sync backend/ — delete files removed in monorepo, never touch .gitlab-ci.yml
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.gitlab-ci.yml' \
+            $GITHUB_WORKSPACE/backend/ backend/
+
+          # Copy root Python/config files that belong to the server repo
+          for f in pyproject.toml docker-compose.yml python_bridge.py \
+                   devtrack-git-wrapper.sh .env_sample uv.lock \
+                   workspaces.yaml.example workspaces.yaml.sample; do
+            [ -f "$GITHUB_WORKSPACE/$f" ] && cp "$GITHUB_WORKSPACE/$f" .
+          done
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes — server repo is already up to date."
+            exit 0
+          fi
+
+          git commit -m "sync: monorepo@${GITHUB_SHA::8} → devtrack_server"
+          git push origin dev

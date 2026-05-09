@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"gitlab.com/devtrack3_cloud/devtrack_client/gitsage"
 )
 
 func main() {
@@ -164,14 +166,71 @@ func printBasicUsage() {
 	fmt.Println()
 }
 
-// runGitSage delegates to the Python git-sage module, forwarding all args after "sage"
+// runGitSage dispatches to the Go native implementation in lightweight mode,
+// or delegates to the Python backend in managed mode for full AI features.
 func runGitSage() {
+	args := os.Args[2:] // everything after "sage"
+
+	// Managed mode: delegate to Python for full git-sage (NLP, RAG, conflict resolution).
+	if !IsLightweightMode() {
+		runGitSagePython(args)
+		return
+	}
+
+	// Lightweight mode: native Go implementation via Ollama.
+	cfg := gitsage.LoadLLMConfig()
+	repoPath, _ := os.Getwd()
+	verbose := false
+
+	// Strip --verbose flag before dispatching
+	var cleanArgs []string
+	for _, a := range args {
+		if a == "--verbose" || a == "-v" {
+			verbose = true
+		} else {
+			cleanArgs = append(cleanArgs, a)
+		}
+	}
+	args = cleanArgs
+
+	sub := ""
+	if len(args) > 0 {
+		sub = args[0]
+	}
+	rest := strings.Join(args[1:], " ")
+
+	var err error
+	switch sub {
+	case "ask":
+		if rest == "" {
+			fmt.Fprintln(os.Stderr, "usage: devtrack sage ask '<question>'")
+			os.Exit(1)
+		}
+		err = gitsage.Ask(repoPath, rest, cfg)
+	case "do":
+		if rest == "" {
+			fmt.Fprintln(os.Stderr, "usage: devtrack sage do '<task>'")
+			os.Exit(1)
+		}
+		err = gitsage.Do(repoPath, rest, cfg, verbose)
+	case "interactive", "":
+		err = gitsage.Interactive(repoPath, cfg)
+	default:
+		// Treat the whole args as a question (e.g. devtrack sage what branch am I on)
+		err = gitsage.Ask(repoPath, strings.Join(args, " "), cfg)
+	}
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "sage:", err)
+		os.Exit(1)
+	}
+}
+
+// runGitSagePython delegates to the Python git-sage module (managed mode only).
+func runGitSagePython(args []string) {
 	projectRoot := os.Getenv("PROJECT_ROOT")
 	if projectRoot == "" {
-		execPath, err := os.Executable()
-		if err != nil {
-			execPath = os.Args[0]
-		}
+		execPath, _ := os.Executable()
 		execPath, _ = filepath.Abs(execPath)
 		searchDir := filepath.Dir(execPath)
 		for i := 0; i < 6; i++ {
@@ -186,19 +245,16 @@ func runGitSage() {
 			searchDir = parent
 		}
 	}
-
 	if projectRoot == "" {
-		fmt.Println("Error: Could not find backend/git_sage directory")
-		fmt.Println("Set PROJECT_ROOT to the automation_tools path")
+		fmt.Fprintln(os.Stderr, "error: could not find backend/git_sage — set PROJECT_ROOT or use lightweight mode")
 		os.Exit(1)
 	}
 
-	// Forward all args after "sage" to the Python module
-	sageArgs := append([]string{"run", "python", "-m", "backend.git_sage"}, os.Args[2:]...)
-
-	env := os.Environ()
-	env = append(env, "PROJECT_ROOT="+projectRoot)
-	env = append(env, "DEVTRACK_ENV_FILE="+filepath.Join(projectRoot, ".env"))
+	sageArgs := append([]string{"run", "python", "-m", "backend.git_sage"}, args...)
+	env := append(os.Environ(),
+		"PROJECT_ROOT="+projectRoot,
+		"DEVTRACK_ENV_FILE="+filepath.Join(projectRoot, ".env"),
+	)
 
 	cmd := exec.Command("uv", sageArgs...)
 	cmd.Dir = projectRoot

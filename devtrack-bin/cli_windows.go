@@ -4,9 +4,11 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 )
 
 // setSetsid is a Windows stub. On Unix, Setsid creates a new session to detach
@@ -24,8 +26,8 @@ func setSetsid(cmd *exec.Cmd) {
 // that the daemon exposes for exactly this purpose.
 func sendForceTriggerSignal(process *os.Process) error {
 	// Verify the process is still alive before attempting the HTTP call.
-	if err := process.Signal(syscall.Signal(0)); err != nil {
-		return fmt.Errorf("daemon process is not running: %w", err)
+	if !checkProcessAlive(process.Pid) {
+		return fmt.Errorf("daemon process is not running")
 	}
 	client := NewHTTPTriggerClient()
 	data := TimerTriggerData{
@@ -37,5 +39,25 @@ func sendForceTriggerSignal(process *os.Process) error {
 		return fmt.Errorf("could not send force-trigger via HTTP: %w", err)
 	}
 	fmt.Println("(Windows: force-trigger sent via HTTP endpoint)")
+	return nil
+}
+
+// sendReloadConfigSignal triggers a config reload on Windows via the daemon's
+// internal HTTP endpoint. SIGHUP is not reliably supported on Windows.
+func sendReloadConfigSignal(process *os.Process) error {
+	if !checkProcessAlive(process.Pid) {
+		return fmt.Errorf("daemon process is not running")
+	}
+	url := fmt.Sprintf("http://%s:%d%s", GetIPCHost(), GetDevTrackServerHTTPPort(), RouteInternalReloadConfig)
+	client := &http.Client{Timeout: time.Duration(GetHTTPTimeoutShort()) * time.Second}
+	resp, err := client.Post(url, "application/json", nil)
+	if err != nil {
+		return fmt.Errorf("could not send reload-config via HTTP: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("reload-config HTTP endpoint returned %d", resp.StatusCode)
+	}
+	fmt.Println("(Windows: reload-config sent via HTTP endpoint)")
 	return nil
 }

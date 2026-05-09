@@ -91,7 +91,18 @@ func (wc *WorkspacesConfig) Save() error {
 		return fmt.Errorf("failed to create directory for workspaces file: %w", err)
 	}
 
-	data, err := yaml.Marshal(wc)
+	// Normalize workspace paths to forward slashes before marshalling.
+	// yaml.Marshal double-quotes strings containing backslashes, which causes
+	// the YAML parser to interpret sequences like \u as Unicode escapes.
+	// Forward slashes are valid path separators on Windows.
+	normalized := *wc
+	normalized.Workspaces = make([]WorkspaceConfig, len(wc.Workspaces))
+	copy(normalized.Workspaces, wc.Workspaces)
+	for i := range normalized.Workspaces {
+		normalized.Workspaces[i].Path = filepath.ToSlash(normalized.Workspaces[i].Path)
+	}
+
+	data, err := yaml.Marshal(&normalized)
 	if err != nil {
 		return fmt.Errorf("failed to marshal workspaces config: %w", err)
 	}

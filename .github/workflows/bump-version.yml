@@ -127,6 +127,27 @@ jobs:
           sha256sum "devtrack-server-${VER}.tar.gz" >> checksums.txt
           rm -rf "${ARCHIVE_DIR}"
 
+      - name: Sync devtrack-bin → GitLab devtrack_client
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_SYNC_TOKEN }}
+        run: |
+          git remote add gitlab-client \
+            "https://oauth2:${GITLAB_TOKEN}@gitlab.com/devtrack3_cloud/devtrack_client.git"
+
+          # Split produces a local branch containing only devtrack-bin/ history
+          git subtree split --prefix=devtrack-bin/ -b split-client
+          SPLIT_SHA=$(git rev-parse split-client)
+
+          # Keep the dev branch up to date
+          git push --force gitlab-client split-client:dev
+          git branch -D split-client
+
+          # Tag the split commit — this triggers GitLab CI to build + publish
+          # to the Package Registry (all 5 platforms including Windows)
+          TAG="${{ steps.version.outputs.tag }}"
+          git tag -f "$TAG" "$SPLIT_SHA"
+          git push --force gitlab-client "refs/tags/${TAG}"
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

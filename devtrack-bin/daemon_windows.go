@@ -3,11 +3,24 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 )
+
+// sendStopSignal terminates the target process on Windows.
+// SIGTERM is not sendable to other processes on Windows; Kill() (TerminateProcess) is equivalent.
+func sendStopSignal(process *os.Process) error {
+	return process.Kill()
+}
+
+// sendReloadSignal is a no-op on Windows — SIGHUP is not supported.
+// Use `devtrack restart` to reload configuration on Windows.
+func sendReloadSignal(_ *os.Process) error {
+	return fmt.Errorf("workspace reload via signal is not supported on Windows; run: devtrack restart")
+}
 
 // setupSignalHandlers sets up handlers for graceful shutdown.
 // Windows: SIGUSR2 and SIGHUP are not available; force-trigger uses HTTP instead.

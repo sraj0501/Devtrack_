@@ -614,6 +614,73 @@ def is_azure_create_on_no_match() -> bool:
     return get_bool("AZURE_SYNC_CREATE_ON_NO_MATCH", False)
 
 
+# --- GitHub Ticket Sync (NO DEFAULTS — raise ConfigError on missing) ---
+
+class ConfigError(ValueError):
+    """Raised when a required config variable is absent or invalid."""
+
+    def __init__(self, var_name: str, message: str) -> None:
+        super().__init__(message)
+        self.var_name = var_name
+        self.message = message
+
+
+def get_github_token() -> str:
+    """GitHub PAT with repo + issues:read scope. REQUIRED: GITHUB_TOKEN."""
+    val = get("GITHUB_TOKEN")
+    if not val:
+        raise ConfigError(
+            "GITHUB_TOKEN",
+            "GITHUB_TOKEN environment variable required (PAT with repo + issues:read scope)",
+        )
+    return val
+
+
+def get_github_default_repo() -> str:
+    """Default GitHub repo in owner/repo format. REQUIRED: GITHUB_DEFAULT_REPO."""
+    val = get("GITHUB_DEFAULT_REPO")
+    if not val:
+        raise ConfigError(
+            "GITHUB_DEFAULT_REPO",
+            "GITHUB_DEFAULT_REPO environment variable required (e.g. acme/backend)",
+        )
+    return val
+
+
+def get_github_assignee() -> str:
+    """GitHub username to filter assigned issues. REQUIRED: GITHUB_ASSIGNEE."""
+    val = get("GITHUB_ASSIGNEE")
+    if not val:
+        raise ConfigError(
+            "GITHUB_ASSIGNEE",
+            "GITHUB_ASSIGNEE environment variable required (your GitHub username)",
+        )
+    return val
+
+
+def get_ticket_sync_max_age_hours() -> int:
+    """Max age of cached tickets (hours) before re-sync. REQUIRED: TICKET_SYNC_MAX_AGE_HOURS."""
+    val = get("TICKET_SYNC_MAX_AGE_HOURS")
+    if not val:
+        raise ConfigError(
+            "TICKET_SYNC_MAX_AGE_HOURS",
+            "TICKET_SYNC_MAX_AGE_HOURS environment variable required (e.g. 24)",
+        )
+    try:
+        hours = int(val)
+    except ValueError:
+        raise ConfigError(
+            "TICKET_SYNC_MAX_AGE_HOURS",
+            f"TICKET_SYNC_MAX_AGE_HOURS must be an integer, got: {val!r}",
+        )
+    if hours <= 0:
+        raise ConfigError(
+            "TICKET_SYNC_MAX_AGE_HOURS",
+            f"TICKET_SYNC_MAX_AGE_HOURS must be > 0, got {hours}",
+        )
+    return hours
+
+
 def get_azure_match_threshold() -> float:
     """Minimum confidence for auto-matching tasks (0.0-1.0). AZURE_SYNC_MATCH_THRESHOLD (default: 0.7)."""
     val = get("AZURE_SYNC_MATCH_THRESHOLD", "0.7")
@@ -1307,6 +1374,13 @@ def get_eod_report_email() -> str:
     return get("EOD_REPORT_EMAIL", "")
 
 
+# --- Notifications ---
+
+def get_notification_enabled() -> bool:
+    """Whether desktop notifications are enabled. NOTIFICATION_ENABLED (default: true)."""
+    return get_bool("NOTIFICATION_ENABLED", True)
+
+
 # --- Misc ---
 
 def get_commit_enhance_mode() -> bool:
@@ -1332,3 +1406,8 @@ def get_mongodb_uri() -> str:
 def get_mongodb_db() -> str:
     """MongoDB database name. MONGODB_DB (default: 'devtrack')."""
     return get("MONGODB_DB", "") or get("MONGODB_DB_NAME", "devtrack")
+
+
+def get_notification_enabled() -> bool:
+    """Whether cross-platform desktop notifications are enabled. NOTIFICATION_ENABLED (default: true)."""
+    return get_bool("NOTIFICATION_ENABLED", default=True)

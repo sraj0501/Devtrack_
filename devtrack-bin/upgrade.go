@@ -2,6 +2,8 @@ package main
 
 import (
 	"archive/tar"
+	"archive/zip"
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"errors"
@@ -14,22 +16,25 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
-const githubRepo = "sraj0501/Devtrack_"
+const gitlabProject = "devtrack3_cloud/devtrack_client"
+const gitlabAPIBase = "https://gitlab.com/api/v4"
 
-type githubRelease struct {
-	TagName string        `json:"tag_name"`
-	Name    string        `json:"name"`
-	Assets  []githubAsset `json:"assets"`
+type gitlabRelease struct {
+	TagName string       `json:"tag_name"`
+	Name    string       `json:"name"`
+	Assets  gitlabAssets `json:"assets"`
 }
 
-type githubAsset struct {
-	Name               string `json:"name"`
-	BrowserDownloadURL string `json:"browser_download_url"`
-	Size               int64  `json:"size"`
+type gitlabAssets struct {
+	Links []gitlabLink `json:"links"`
+}
+
+type gitlabLink struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 // RunUpgrade implements `devtrack upgrade [--check]`.
@@ -38,7 +43,7 @@ func RunUpgrade(checkOnly bool) error {
 
 	latest, err := fetchLatestRelease()
 	if err != nil {
-		return fmt.Errorf("could not reach GitHub: %w", err)
+		return fmt.Errorf("could not reach GitLab: %w", err)
 	}
 
 	current := GetDevTrackVersion()
@@ -66,12 +71,12 @@ func RunUpgrade(checkOnly bool) error {
 		return nil
 	}
 
-	// Find the asset for this platform
-	assetName := fmt.Sprintf("devtrack_%s_%s.tar.gz", runtime.GOOS, runtime.GOARCH)
+	// Locate the asset for this platform
+	assetName := platformAssetName()
 	var downloadURL string
-	for _, a := range latest.Assets {
-		if a.Name == assetName {
-			downloadURL = a.BrowserDownloadURL
+	for _, link := range latest.Assets.Links {
+		if link.Name == assetName {
+			downloadURL = link.URL
 			break
 		}
 	}
@@ -80,7 +85,7 @@ func RunUpgrade(checkOnly bool) error {
 	}
 
 	fmt.Printf("\nDownloading %s...\n", assetName)
-	newBinary, err := downloadBinaryFromAsset(downloadURL)
+	newBinary, err := downloadBinary(downloadURL, assetName)
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
@@ -120,7 +125,18 @@ func RunUpgrade(checkOnly bool) error {
 	return nil
 }
 
+// platformAssetName returns the archive filename for the current OS/arch.
+func platformAssetName() string {
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+	if goos == "windows" {
+		return fmt.Sprintf("devtrack_%s_%s.zip", goos, goarch)
+	}
+	return fmt.Sprintf("devtrack_%s_%s.tar.gz", goos, goarch)
+}
+
 // isDaemonRunning returns true if the PID file exists and the process is alive.
+// The liveness probe is platform-specific — see upgrade_unix.go / upgrade_windows.go.
 func isDaemonRunning() bool {
 	data, err := os.ReadFile(GetPIDFilePath())
 	if err != nil {
@@ -130,19 +146,17 @@ func isDaemonRunning() bool {
 	if err != nil || pid <= 0 {
 		return false
 	}
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return proc.Signal(syscall.Signal(0)) == nil
+	return isProcessAlive(pid)
 }
 
-// fetchLatestRelease queries the GitHub releases API.
-func fetchLatestRelease() (*githubRelease, error) {
-	url := "https://api.github.com/repos/" + githubRepo + "/releases/latest"
+// fetchLatestRelease queries the GitLab releases API for devtrack_client.
+func fetchLatestRelease() (*gitlabRelease, error) {
+	encoded := strings.ReplaceAll(gitlabProject, "/", "%2F")
+	url := gitlabAPIBase + "/projects/" + encoded + "/releases?per_page=1&order_by=released_at&sort=desc"
+
 	client := &http.Client{Timeout: 15 * time.Second}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "devtrack-upgrade/1.0")
 
 	resp, err := client.Do(req)
@@ -152,19 +166,22 @@ func fetchLatestRelease() (*githubRelease, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
+		return nil, fmt.Errorf("GitLab API returned %d", resp.StatusCode)
 	}
 
-	var rel githubRelease
-	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+	var releases []gitlabRelease
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
-	return &rel, nil
+	if len(releases) == 0 {
+		return nil, fmt.Errorf("no releases found")
+	}
+	return &releases[0], nil
 }
 
-// downloadBinaryFromAsset downloads a .tar.gz asset, extracts the `devtrack`
-// binary from it, writes it to a temp file, and returns the temp path.
-func downloadBinaryFromAsset(url string) (string, error) {
+// downloadBinary fetches the archive at url, extracts the devtrack binary,
+// writes it to a temp file, and returns the temp path.
+func downloadBinary(url, assetName string) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "devtrack-upgrade/1.0")
@@ -178,7 +195,20 @@ func downloadBinaryFromAsset(url string) (string, error) {
 		return "", fmt.Errorf("download returned %d", resp.StatusCode)
 	}
 
-	gz, err := gzip.NewReader(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read body: %w", err)
+	}
+
+	if strings.HasSuffix(assetName, ".zip") {
+		return extractFromZip(body)
+	}
+	return extractFromTarGz(bytes.NewReader(body))
+}
+
+// extractFromTarGz pulls the devtrack binary out of a .tar.gz archive.
+func extractFromTarGz(r io.Reader) (string, error) {
+	gz, err := gzip.NewReader(r)
 	if err != nil {
 		return "", fmt.Errorf("gzip: %w", err)
 	}
@@ -193,28 +223,56 @@ func downloadBinaryFromAsset(url string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("tar: %w", err)
 		}
-		// The binary inside the archive is named "devtrack"
-		if hdr.Typeflag != tar.TypeReg || filepath.Base(hdr.Name) != "devtrack" {
+		if hdr.Typeflag != tar.TypeReg {
 			continue
 		}
-
-		tmp, err := os.CreateTemp("", "devtrack-upgrade-*")
-		if err != nil {
-			return "", fmt.Errorf("temp file: %w", err)
+		base := filepath.Base(hdr.Name)
+		if base != "devtrack" && base != "devtrack.exe" {
+			continue
 		}
-		if _, err := io.Copy(tmp, tr); err != nil {
-			tmp.Close()
-			os.Remove(tmp.Name())
-			return "", fmt.Errorf("extract: %w", err)
-		}
-		tmp.Close()
-		if err := os.Chmod(tmp.Name(), 0755); err != nil {
-			os.Remove(tmp.Name())
-			return "", err
-		}
-		return tmp.Name(), nil
+		return writeTempBinary(tr)
 	}
 	return "", fmt.Errorf("devtrack binary not found in archive")
+}
+
+// extractFromZip pulls the devtrack binary out of a .zip archive.
+func extractFromZip(data []byte) (string, error) {
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return "", fmt.Errorf("zip: %w", err)
+	}
+	for _, f := range zr.File {
+		base := filepath.Base(f.Name)
+		if base != "devtrack" && base != "devtrack.exe" {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			return "", fmt.Errorf("zip open: %w", err)
+		}
+		defer rc.Close()
+		return writeTempBinary(rc)
+	}
+	return "", fmt.Errorf("devtrack binary not found in zip archive")
+}
+
+// writeTempBinary copies r into a temp file with executable permissions.
+func writeTempBinary(r io.Reader) (string, error) {
+	tmp, err := os.CreateTemp("", "devtrack-upgrade-*")
+	if err != nil {
+		return "", fmt.Errorf("temp file: %w", err)
+	}
+	if _, err := io.Copy(tmp, r); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return "", fmt.Errorf("extract: %w", err)
+	}
+	tmp.Close()
+	if err := os.Chmod(tmp.Name(), 0755); err != nil {
+		os.Remove(tmp.Name())
+		return "", err
+	}
+	return tmp.Name(), nil
 }
 
 // replaceBinary replaces dst with src.
@@ -238,18 +296,9 @@ func replaceBinary(dst, src string) error {
 		return fmt.Errorf("stage new binary: %w", err)
 	}
 
-	// Permission denied — the binary is likely in /usr/local/bin or similar.
-	// Retry with sudo so the user sees a normal password prompt.
-	fmt.Println("  Needs elevated permissions — retrying with sudo...")
-	sudoCp := exec.Command("sudo", "cp", src, dst)
-	sudoCp.Stdin = os.Stdin
-	sudoCp.Stdout = os.Stdout
-	sudoCp.Stderr = os.Stderr
-	if err := sudoCp.Run(); err != nil {
-		return fmt.Errorf("sudo cp failed — try: sudo cp %s %s", src, dst)
-	}
-	_ = exec.Command("sudo", "chmod", "755", dst).Run()
-	return nil
+	// Permission denied — delegate to the platform-specific elevated replace
+	// (sudo on Unix, guidance message on Windows).
+	return elevatedReplace(dst, src)
 }
 
 func copyFile(src, dst string) error {
