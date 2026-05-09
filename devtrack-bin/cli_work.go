@@ -116,9 +116,7 @@ func (cli *CLI) handleWorkStop() error {
 		}
 	}
 	durationMins := int(time.Since(startTime).Minutes())
-	if durationMins < 0 {
-		durationMins = 0
-	}
+	durationMins = max(durationMins, 0)
 
 	endedAt := time.Now().UTC().Format("2006-01-02 15:04:05")
 	if err := db.EndWorkSession(active.ID, endedAt, durationMins); err != nil {
@@ -284,6 +282,9 @@ func (cli *CLI) handleWorkStatus() error {
 
 // handleWorkReport delegates EOD report generation to the Python layer
 func (cli *CLI) handleWorkReport() error {
+	if err := requiresManagedMode("work report"); err != nil {
+		return err
+	}
 	config, _ := LoadEnvConfig()
 	projectRoot := ""
 	if config != nil {

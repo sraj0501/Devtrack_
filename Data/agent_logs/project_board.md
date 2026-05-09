@@ -123,47 +123,42 @@ Do NOT commit — edits only.
 **Phase**: CS-standalone
 **Depends on**: TASK-025
 
-**Spec**:
-`GetPythonBridgePath()` in `devtrack-bin/config_env.go` was made non-fatal by TASK-024.
-No callers remain after that refactor. Delete the function entirely.
+---
 
-- File: `devtrack-bin/config_env.go`
-- Action: Remove `GetPythonBridgePath()` function definition
-- Verify with `grep -rn "GetPythonBridgePath" devtrack-bin/` that no callers exist before deletion
-- Run `go build ./...`, `go vet ./...`, `go test ./...` to confirm nothing breaks
+## ✅ DONE (session 2026-05-01)
 
-**Acceptance criteria**:
-- [ ] `GetPythonBridgePath()` function no longer exists in `config_env.go`
-- [ ] `grep -rn "GetPythonBridgePath" devtrack-bin/` returns no matches
-- [ ] `go build ./...`, `go vet ./...`, `go test ./...` pass
-- [ ] PR opened targeting `dev`: `gh pr create --base dev`
+### TASK-026 — Remove GetPythonBridgePath dead code from config_env.go
+**Completed**: 2026-05-01
+**Branch**: fix/TASK-026-remove-python-bridge-path
+**Commit(s)**: `332423c` — refactor(config): remove dead GetPythonBridgePath function (TASK-026)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/86 (targeting dev)
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
+**Notes**: Confirmed no callers with grep before deletion. Removed 17-line dead function block from config_env.go. go build/vet/test all pass.
 
 ---
 
 ### TASK-027 — Guard handleWork() work report subcommand in Lightweight mode
-**Priority**: MEDIUM
-**Phase**: CS-standalone
-**Depends on**: TASK-025
+**Completed**: 2026-05-01
+**Branch**: fix/TASK-027-work-report-mode-guard
+**Commit(s)**: `3980422` — feat(cli): guard work report subcommand in Lightweight mode (TASK-027)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/87 (targeting dev)
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
+**Notes**: Added requiresManagedMode("work report") guard as first statement in handleWorkReport() in cli_work.go. Other work subcommands (start/stop/adjust/status) are pure Go/SQLite and remain unguarded. go build/vet/test all pass.
 
-**Background**:
-The `work report` subcommand inside `handleWork()` in `cli.go` calls Python internally
-(the email reporter). It was excluded from the `requiresManagedMode()` guard added in
-TASK-023 per spec ("handleWork() ... leave them unguarded for now; they are lower risk
-and can be addressed in a follow-up"). This is that follow-up.
+---
 
-**Spec**:
-Inside `handleWork()` in `devtrack-bin/cli.go`, locate the `work report` subcommand
-dispatch branch. Add a `requiresManagedMode("work report")` guard at the top of that
-branch only. Leave all other `handleWork()` subcommands unguarded.
+## ✅ DONE (session 2026-04-30)
 
-**Acceptance criteria**:
-- [ ] `devtrack work report` in Lightweight mode prints:
-      `'work report' requires Managed mode (Python backend).`
-      followed by the re-run-setup line
-- [ ] All other `devtrack work` subcommands (e.g. `work update`, `work status`) still
-      work normally in Lightweight mode
-- [ ] `go build ./...`, `go vet ./...`, `go test ./...` pass
-- [ ] PR opened targeting `dev`: `gh pr create --base dev`
+### TASK-025 — Windows native build support (build-tag syscall split)
+**Completed**: 2026-04-30
+**Branch**: fix/TASK-025-windows-native-build
+**Commit(s)**: `e0c45b9` — fix(build): split Unix-only syscall sites into build-tag-gated files for Windows native build (TASK-025)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/83
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
+**Notes**: Created 4 platform files (daemon_unix.go, daemon_windows.go, cli_unix.go, cli_windows.go). Removed setupSignalHandlers() body from daemon.go; removed os/signal and syscall imports. Windows stub for force-trigger uses HTTP timer endpoint; Windows stub for process detach uses CREATE_NEW_PROCESS_GROUP. go build/vet/test all pass on Windows.
 
 ---
 

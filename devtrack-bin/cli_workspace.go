@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"syscall"
 )
 
 // WorkspaceCommands handles workspace management commands
@@ -177,12 +176,19 @@ func (wc *WorkspaceCommands) sendWorkspaceReload() {
 		fmt.Println("(Daemon not running — changes will take effect on next start.)")
 		return
 	}
-	proc, err := os.FindProcess(pid)
-	if err != nil || proc.Signal(syscall.Signal(0)) != nil {
+	if !checkProcessAlive(pid) {
 		fmt.Println("(Daemon not running — changes will take effect on next start.)")
 		return
 	}
-	proc.Signal(syscall.SIGHUP) //nolint:errcheck
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		fmt.Println("(Daemon not running — changes will take effect on next start.)")
+		return
+	}
+	if err := sendReloadSignal(proc); err != nil {
+		fmt.Printf("(%v)\n", err)
+		return
+	}
 	fmt.Println("Reload signal sent to daemon.")
 }
 
@@ -196,8 +202,8 @@ func (wc *WorkspaceCommands) Reload() error {
 	if err != nil {
 		return fmt.Errorf("process not found: %w", err)
 	}
-	if err := proc.Signal(syscall.SIGHUP); err != nil {
-		return fmt.Errorf("failed to send SIGHUP: %w", err)
+	if err := sendReloadSignal(proc); err != nil {
+		return err
 	}
 	fmt.Println("Workspace reload signal sent to daemon.")
 	return nil

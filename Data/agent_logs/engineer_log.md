@@ -91,6 +91,85 @@ sign of interruption.
 
 ---
 
+### [2026-05-01] TASK-026 — refactor(config): remove dead GetPythonBridgePath function
+
+**Branch**: fix/TASK-026-remove-python-bridge-path
+**Commit**: 332423c — "refactor(config): remove dead GetPythonBridgePath function (TASK-026)"
+**PR**: https://github.com/sraj0501/Devtrack_/pull/86 (targeting dev)
+**PM system updated**: YES — project_board.md updated
+
+**Action**: Deleted `GetPythonBridgePath()` function (17 lines) from `devtrack-bin/config_env.go`.
+Confirmed with `grep -rn "GetPythonBridgePath" devtrack-bin/` that no callers existed before deletion.
+
+**Results**:
+- grep scan: CLEAN (no callers)
+- `go build ./...` — PASS
+- `go vet ./...` — PASS
+- `go test ./...` — PASS (cached ok)
+
+**Time**: ~5 minutes
+**Friction**: NONE
+
+---
+
+### [2026-05-01] TASK-027 — feat(cli): guard work report subcommand in Lightweight mode
+
+**Branch**: fix/TASK-027-work-report-mode-guard
+**Commit**: 3980422 — "feat(cli): guard work report subcommand in Lightweight mode (TASK-027)"
+**PR**: https://github.com/sraj0501/Devtrack_/pull/87 (targeting dev)
+**PM system updated**: YES — project_board.md updated
+
+**Action**: Added `requiresManagedMode("work report")` guard as the first statement in
+`handleWorkReport()` in `devtrack-bin/cli_work.go`. The function spawns Python via
+`uv run backend.work_tracker.eod_report_generator` — incompatible with Lightweight mode.
+All other work subcommands (start/stop/adjust/status) are pure Go/SQLite and remain unguarded.
+
+**Results**:
+- `go build ./...` — PASS
+- `go vet ./...` — PASS
+- `go test ./...` — PASS (cached ok)
+
+**Time**: ~5 minutes
+**Friction**: NONE
+
+---
+
+### [2026-05-01 12:00] Lint cleanup — fix(lint): modernize range loop, drop unused params, use max() builtin
+
+**Branch**: fix/lint-cleanup (based off origin/dev)
+**Original message**: "fix(lint): modernize range loop, drop unused params, use max() builtin"
+**DevTrack enhanced it to**: N/A — daemon cannot start without .env; used raw git per fallback protocol
+**Ticket auto-linked**: NO
+**PM system updated**: YES — engineer_log.md updated; PR #88 posted
+**Time**: ~10 minutes
+**Friction**: LOW — all changes are purely mechanical style modernization
+
+**Changes made**:
+- `cli_work.go` line ~119: replaced 3-line if/else negative clamp with `max(durationMins, 0)` builtin (Go 1.21+)
+- `setup.go`: removed unused `envPath string` param from `printAutostartInstructions()` and `printSetupComplete()`; updated both call sites (lines ~319 and ~326)
+- `setup.go`: replaced `for i := 0; i < 6; i++` with `for range 6` in `detectProjectRoot()` (line ~343)
+
+**Results**:
+- `go build ./...` — PASS
+- `go vet ./...` — PASS
+- PR: https://github.com/sraj0501/Devtrack_/pull/88 (targeting dev)
+
+**Notes**: devtrack daemon not runnable in this environment (no .env file present). Used `GIT_NO_DEVTRACK=1 git commit` per fallback protocol. Local `dev` branch had diverged from `origin/dev` (194 commits behind); created branch directly from `origin/dev` to avoid conflict cascade.
+
+[DEVTRACK PAUSED — using raw git for this commit; daemon cannot start without .env]
+
+## Task Summary — Lint cleanup: modernize range loop, drop unused params, use max() — 2026-05-01
+
+- Total commits: 1 (5512149)
+- Files changed: 2 (cli_work.go, setup.go)
+- Tickets auto-updated: 0 (devtrack daemon not running)
+- Estimated daily time saved: ~0 min (style-only; no behaviour change)
+- Blockers encountered: local dev branch diverged — resolved by branching from origin/dev directly
+- One thing that still feels rough: "devtrack daemon still not runnable locally without a fully populated .env; every commit falls back to raw git."
+- Ready for PM review: YES
+
+---
+
 ### [2026-04-30] TASK-025 — fix(build): Windows native build support via platform-split syscall files
 
 **Branch**: fix/TASK-025-windows-native-build

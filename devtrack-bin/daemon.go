@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"syscall"
 	"time"
 )
 
@@ -784,15 +783,14 @@ func KillDaemon(pidFile string) error {
 		return fmt.Errorf("process not found: %w", err)
 	}
 
-	// Send SIGTERM
-	if err := process.Signal(syscall.SIGTERM); err != nil {
-		return fmt.Errorf("failed to send SIGTERM: %w", err)
+	// Send stop signal (SIGTERM on Unix, TerminateProcess on Windows)
+	if err := sendStopSignal(process); err != nil {
+		return fmt.Errorf("failed to stop daemon: %w", err)
 	}
 
 	// Wait for process to exit (with timeout)
 	for i := 0; i < 10; i++ {
-		if err := process.Signal(syscall.Signal(0)); err != nil {
-			// Process has exited
+		if !checkProcessAlive(pid) {
 			os.Remove(pidFile)
 			return nil
 		}
