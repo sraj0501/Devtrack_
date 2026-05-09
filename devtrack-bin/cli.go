@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -513,6 +514,10 @@ func serviceDisplayName(service string) string {
 		return "Telegram Bot"
 	case "mongodb":
 		return "MongoDB"
+	case "redis":
+		return "Redis"
+	case "sqlite":
+		return "SQLite"
 	default:
 		return service
 	}
@@ -527,14 +532,37 @@ func formatHealthDetail(snap HealthSnapshot) string {
 		}
 		return "Connected"
 	case "down":
+		if msg := extractDetailsField(snap.Details, "error"); msg != "" {
+			if url := extractDetailsField(snap.Details, "url"); url != "" {
+				return fmt.Sprintf("Down — %s (%s)", url, msg)
+			}
+			return fmt.Sprintf("Down — %s", msg)
+		}
 		return "Down"
 	case "degraded":
+		if msg := extractDetailsField(snap.Details, "error"); msg != "" {
+			return fmt.Sprintf("Degraded — %s", msg)
+		}
 		return "Degraded"
 	case "unconfigured":
 		return "Not configured"
 	default:
 		return snap.Status
 	}
+}
+
+// extractDetailsField pulls a single string field out of a JSON details blob.
+// Returns "" if the field is missing or the blob isn't valid JSON.
+func extractDetailsField(details, field string) string {
+	if details == "" {
+		return ""
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal([]byte(details), &m); err != nil {
+		return ""
+	}
+	v, _ := m[field].(string)
+	return v
 }
 
 // handlePause pauses the scheduler

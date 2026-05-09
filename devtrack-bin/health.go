@@ -6,7 +6,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -18,6 +20,7 @@ type HealthMonitor struct {
 	stopCh        chan struct{}
 	running       bool
 	mu            sync.Mutex
+	dbMu          sync.Mutex // serializes SQLite writes from concurrent check goroutines
 
 	// Process PIDs to monitor
 	webhookPID  int
@@ -84,8 +87,8 @@ func (hm *HealthMonitor) Start() {
 	log.Printf("Health monitor started (interval: %s)", hm.checkInterval)
 
 	go func() {
-		// Initial check after short delay
-		time.Sleep(5 * time.Second)
+		// Initial check after short delay (all checks run concurrently so 2s is enough)
+		time.Sleep(2 * time.Second)
 		hm.RunAllChecks()
 
 		ticker := time.NewTicker(hm.checkInterval)
@@ -113,14 +116,29 @@ func (hm *HealthMonitor) Stop() {
 	}
 }
 
-// RunAllChecks runs all health checks and records results
+// RunAllChecks runs all health checks concurrently and records results.
+// Running in parallel prevents a slow/unreachable service from delaying
+// the status display for all other services.
 func (hm *HealthMonitor) RunAllChecks() {
-	hm.checkPythonHTTP()
-	hm.checkOllama()
-	hm.checkAzureDevOps()
-	hm.checkWebhookServer()
-	hm.checkTelegramBot()
-	hm.checkMongoDB()
+	var wg sync.WaitGroup
+	checks := []func(){
+		hm.checkPythonHTTP,
+		hm.checkOllama,
+		hm.checkAzureDevOps,
+		hm.checkWebhookServer,
+		hm.checkTelegramBot,
+		hm.checkMongoDB,
+		hm.checkRedis,
+		hm.checkSQLite,
+	}
+	for _, check := range checks {
+		wg.Add(1)
+		go func(fn func()) {
+			defer wg.Done()
+			fn()
+		}(check)
+	}
+	wg.Wait()
 }
 
 // checkPythonHTTP verifies the Python HTTP server responds to /health.
@@ -144,6 +162,46 @@ func (hm *HealthMonitor) checkPythonHTTP() {
 	hm.recordSnapshot(snap)
 }
 
+// normalizeOllamaHost converts an OLLAMA_HOST value into a proper base URL
+// suitable for outbound HTTP connections.
+//
+// OLLAMA_HOST is Ollama's bind-address env var, so users often set it to
+// "0.0.0.0", "0.0.0.0:11434", or just "11434". All of those are valid for
+// Ollama itself but not for an outbound dial — this function canonicalises
+// them into "http://localhost:<port>".
+func normalizeOllamaHost(raw string) string {
+	raw = strings.TrimRight(raw, "/")
+	if raw == "" {
+		return "http://localhost:11434"
+	}
+
+	// Add scheme if missing so url.Parse works correctly.
+	withScheme := raw
+	if !strings.HasPrefix(raw, "http://") && !strings.HasPrefix(raw, "https://") {
+		withScheme = "http://" + raw
+	}
+
+	u, err := url.Parse(withScheme)
+	if err != nil {
+		// Unparseable — return a safe default.
+		return "http://localhost:11434"
+	}
+
+	host := u.Hostname()
+	port := u.Port()
+
+	// 0.0.0.0 is a bind-all address; connect to localhost instead.
+	if host == "" || host == "0.0.0.0" {
+		host = "localhost"
+	}
+	// No port in the URL — use Ollama's default.
+	if port == "" {
+		port = "11434"
+	}
+
+	return fmt.Sprintf("%s://%s", u.Scheme, net.JoinHostPort(host, port))
+}
+
 // checkPythonBridge checks if the Python bridge process is alive
 // checkOllama checks if Ollama is reachable
 func (hm *HealthMonitor) checkOllama() {
@@ -159,24 +217,24 @@ func (hm *HealthMonitor) checkOllama() {
 		hm.recordSnapshot(snap)
 		return
 	}
-
+	ollamaHost = normalizeOllamaHost(ollamaHost)
 	start := time.Now()
-	client := &http.Client{Timeout: 2 * time.Second}
+	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(ollamaHost + "/api/tags")
 	latency := time.Since(start)
 
 	if err != nil {
 		snap.Status = "down"
-		snap.Details = fmt.Sprintf(`{"error":%q}`, err.Error())
+		snap.Details = fmt.Sprintf(`{"url":%q,"error":%q}`, ollamaHost, err.Error())
 	} else {
 		resp.Body.Close()
 		if resp.StatusCode == 200 {
 			snap.Status = "up"
 			snap.LatencyMs = int(latency.Milliseconds())
-			snap.Details = fmt.Sprintf(`{"latency_ms":%d}`, snap.LatencyMs)
+			snap.Details = fmt.Sprintf(`{"url":%q,"latency_ms":%d}`, ollamaHost, snap.LatencyMs)
 		} else {
 			snap.Status = "degraded"
-			snap.Details = fmt.Sprintf(`{"status_code":%d}`, resp.StatusCode)
+			snap.Details = fmt.Sprintf(`{"url":%q,"status_code":%d}`, ollamaHost, resp.StatusCode)
 		}
 	}
 
@@ -282,27 +340,22 @@ func (hm *HealthMonitor) checkTelegramBot() {
 	hm.recordSnapshot(snap)
 }
 
-// checkMongoDB checks if MongoDB is reachable
-func (hm *HealthMonitor) checkMongoDB() {
+// checkRedis checks if Redis is reachable
+func (hm *HealthMonitor) checkRedis() {
 	snap := HealthSnapshot{
-		Service:   "mongodb",
+		Service:   "redis",
 		CheckedAt: time.Now(),
 	}
 
-	mongoURI := os.Getenv("MONGODB_URI")
-	if mongoURI == "" {
+	if os.Getenv("REDIS_URL") == "" {
 		snap.Status = "unconfigured"
-		snap.Details = `{"error":"MONGODB_URI not set"}`
+		snap.Details = `{"error":"REDIS_URL not set"}`
 		hm.recordSnapshot(snap)
 		return
 	}
 
-	// Extract host:port from URI for a simple TCP dial check
-	mongoPort := os.Getenv("MONGO_PORT")
-	if mongoPort == "" {
-		mongoPort = "27017"
-	}
-	host := fmt.Sprintf("localhost:%s", mongoPort)
+	redisHost, redisPort, _ := resolveRedisConfig()
+	host := net.JoinHostPort(redisHost, redisPort)
 
 	start := time.Now()
 	conn, err := net.DialTimeout("tcp", host, 2*time.Second)
@@ -310,12 +363,67 @@ func (hm *HealthMonitor) checkMongoDB() {
 
 	if err != nil {
 		snap.Status = "down"
-		snap.Details = fmt.Sprintf(`{"error":%q}`, err.Error())
+		snap.Details = fmt.Sprintf(`{"url":%q,"error":%q}`, host, err.Error())
 	} else {
 		conn.Close()
 		snap.Status = "up"
 		snap.LatencyMs = int(latency.Milliseconds())
-		snap.Details = fmt.Sprintf(`{"latency_ms":%d}`, snap.LatencyMs)
+		snap.Details = fmt.Sprintf(`{"url":%q,"latency_ms":%d}`, host, snap.LatencyMs)
+	}
+
+	hm.recordSnapshot(snap)
+}
+
+// checkSQLite checks if the local SQLite database file is accessible
+func (hm *HealthMonitor) checkSQLite() {
+	snap := HealthSnapshot{
+		Service:   "sqlite",
+		CheckedAt: time.Now(),
+	}
+
+	dbPath := GetDatabasePath()
+	info, err := os.Stat(dbPath)
+	if err != nil {
+		snap.Status = "down"
+		snap.Details = fmt.Sprintf(`{"error":%q,"path":%q}`, err.Error(), dbPath)
+	} else {
+		snap.Status = "up"
+		snap.Details = fmt.Sprintf(`{"size_kb":%d,"path":%q}`, info.Size()/1024, dbPath)
+	}
+
+	hm.recordSnapshot(snap)
+}
+
+// checkMongoDB checks if MongoDB is reachable
+func (hm *HealthMonitor) checkMongoDB() {
+	snap := HealthSnapshot{
+		Service:   "mongodb",
+		CheckedAt: time.Now(),
+	}
+
+	if os.Getenv("MONGODB_URI") == "" {
+		snap.Status = "unconfigured"
+		snap.Details = `{"error":"MONGODB_URI not set"}`
+		hm.recordSnapshot(snap)
+		return
+	}
+
+	// Derive host:port from MONGODB_URI (may include a Docker-assigned port)
+	mongoHost, mongoPort, _, _, _ := resolveMongoConfig()
+	host := net.JoinHostPort(mongoHost, mongoPort)
+
+	start := time.Now()
+	conn, err := net.DialTimeout("tcp", host, 2*time.Second)
+	latency := time.Since(start)
+
+	if err != nil {
+		snap.Status = "down"
+		snap.Details = fmt.Sprintf(`{"url":%q,"error":%q}`, host, err.Error())
+	} else {
+		conn.Close()
+		snap.Status = "up"
+		snap.LatencyMs = int(latency.Milliseconds())
+		snap.Details = fmt.Sprintf(`{"url":%q,"latency_ms":%d}`, host, snap.LatencyMs)
 	}
 
 	hm.recordSnapshot(snap)
@@ -369,11 +477,14 @@ func (hm *HealthMonitor) tryRestart(service string) {
 	}()
 }
 
-// recordSnapshot writes a health snapshot to the database
+// recordSnapshot writes a health snapshot to the database.
+// dbMu serializes writes so concurrent check goroutines don't cause SQLITE_BUSY.
 func (hm *HealthMonitor) recordSnapshot(snap HealthSnapshot) {
 	if hm.db == nil {
 		return
 	}
+	hm.dbMu.Lock()
+	defer hm.dbMu.Unlock()
 	if err := hm.db.InsertHealthSnapshot(snap); err != nil {
 		log.Printf("Health: failed to record snapshot for %s: %v", snap.Service, err)
 	}

@@ -2,13 +2,61 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
+
+// infraState holds the ports chosen for DevTrack-managed Docker containers.
+// Written once on first provision; read on every restart to reuse the same ports.
+type infraState struct {
+	MongoPort string `json:"mongo_port"`
+	RedisPort string `json:"redis_port"`
+}
+
+func infraStatePath() string {
+	home, err := devtrackDataHome()
+	if err != nil {
+		// Fallback to ~/.devtrack so we always have somewhere to write.
+		if h, e := os.UserHomeDir(); e == nil {
+			return filepath.Join(h, ".devtrack", "infra_state.json")
+		}
+		return ""
+	}
+	return filepath.Join(home, "data", "infra_state.json")
+}
+
+func readInfraState() infraState {
+	path := infraStatePath()
+	if path == "" {
+		return infraState{}
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return infraState{}
+	}
+	var s infraState
+	_ = json.Unmarshal(data, &s)
+	return s
+}
+
+func writeInfraState(s infraState) {
+	path := infraStatePath()
+	if path == "" {
+		return
+	}
+	_ = os.MkdirAll(filepath.Dir(path), 0755)
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return
+	}
+	_ = os.WriteFile(path, data, 0644)
+}
 
 const (
 	mongoContainerName = "devtrack-mongo"
@@ -48,38 +96,161 @@ func EnsureLocalInfra() error {
 }
 
 // provisionContainers starts whichever of MongoDB / Redis are missing as Docker containers.
+// Preferred ports are read from the infra state file so the same ports are reused across
+// restarts. New random ports are only chosen when no preference is stored or the stored
+// port is already bound by another process.
 func provisionContainers(mongoOK bool, redisOK bool, mongoUser, mongoPass, mongoDB, redisPass string) error {
+	state := readInfraState()
+
 	if !mongoOK {
-		port, err := freePort()
+		port, err := ensureMongoRunning(mongoUser, mongoPass, state.MongoPort)
 		if err != nil {
-			return fmt.Errorf("could not find free port for MongoDB: %w", err)
-		}
-		fmt.Printf("   Starting MongoDB container on port %s...\n", port)
-		if err := ensureMongoContainer(port, mongoUser, mongoPass); err != nil {
 			return fmt.Errorf("failed to start MongoDB: %w", err)
 		}
 		uri := fmt.Sprintf("mongodb://%s:%s@localhost:%s/%s?authSource=admin",
 			mongoUser, mongoPass, port, mongoDB)
 		os.Setenv("MONGODB_URI", uri)
 		updateEnvFile("MONGODB_URI", uri)
+		state.MongoPort = port
 		fmt.Printf("   ✓ MongoDB ready → %s\n", uri)
 	}
 
 	if !redisOK {
-		port, err := freePort()
+		port, err := ensureRedisRunning(redisPass, state.RedisPort)
 		if err != nil {
-			return fmt.Errorf("could not find free port for Redis: %w", err)
-		}
-		fmt.Printf("   Starting Redis container on port %s...\n", port)
-		if err := ensureRedisContainer(port, redisPass); err != nil {
 			return fmt.Errorf("failed to start Redis: %w", err)
 		}
 		url := fmt.Sprintf("redis://:%s@localhost:%s/0", redisPass, port)
 		os.Setenv("REDIS_URL", url)
 		updateEnvFile("REDIS_URL", url)
+		state.RedisPort = port
 		fmt.Printf("   ✓ Redis ready → %s\n", url)
 	}
+
+	writeInfraState(state)
 	return nil
+}
+
+// ensureMongoRunning ensures the MongoDB container is running and returns the host port it listens on.
+//
+// Port selection priority (once the container needs to be created fresh):
+//  1. preferredPort from the infra state file — reuses the installation-time port when possible
+//  2. Fresh random port — only when the preferred port is already bound by another process
+//
+// If the container already exists (running or stopped), its actual mapped port is always used
+// regardless of preferredPort, so the state file stays in sync.
+func ensureMongoRunning(user, pass, preferredPort string) (string, error) {
+	status := containerStatus(mongoContainerName)
+
+	if status == "running" {
+		// Container is already up — return its current host port.
+		if port := getContainerHostPort(mongoContainerName, "27017"); port != "" {
+			return port, nil
+		}
+	}
+
+	if status != "" {
+		// Container exists but is stopped — restart it on its original port mapping.
+		if err := exec.Command("docker", "start", mongoContainerName).Run(); err != nil {
+			return "", fmt.Errorf("docker start: %w", err)
+		}
+		port := getContainerHostPort(mongoContainerName, "27017")
+		if port == "" {
+			return "", fmt.Errorf("could not determine MongoDB container port after restart")
+		}
+		if err := waitForPort("localhost", port, 20*time.Second); err != nil {
+			return "", err
+		}
+		return port, nil
+	}
+
+	// Container does not exist — pick the port to bind.
+	port := choosePort(preferredPort)
+	fmt.Printf("   Starting MongoDB container on port %s...\n", port)
+	args := []string{
+		"run", "-d",
+		"--name", mongoContainerName,
+		"--restart", "unless-stopped",
+		"-p", port + ":27017",
+		"-e", "MONGO_INITDB_ROOT_USERNAME=" + user,
+		"-e", "MONGO_INITDB_ROOT_PASSWORD=" + pass,
+		mongoImage,
+	}
+	if out, err := exec.Command("docker", args...).CombinedOutput(); err != nil {
+		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+	}
+	if err := waitForPort("localhost", port, 20*time.Second); err != nil {
+		return "", err
+	}
+	return port, nil
+}
+
+// ensureRedisRunning ensures the Redis container is running and returns the host port it listens on.
+// preferredPort follows the same selection logic as ensureMongoRunning.
+func ensureRedisRunning(pass, preferredPort string) (string, error) {
+	status := containerStatus(redisContainerName)
+
+	if status == "running" {
+		if port := getContainerHostPort(redisContainerName, "6379"); port != "" {
+			return port, nil
+		}
+	}
+
+	if status != "" {
+		if err := exec.Command("docker", "start", redisContainerName).Run(); err != nil {
+			return "", fmt.Errorf("docker start: %w", err)
+		}
+		port := getContainerHostPort(redisContainerName, "6379")
+		if port == "" {
+			return "", fmt.Errorf("could not determine Redis container port after restart")
+		}
+		if err := waitForPort("localhost", port, 15*time.Second); err != nil {
+			return "", err
+		}
+		return port, nil
+	}
+
+	port := choosePort(preferredPort)
+	fmt.Printf("   Starting Redis container on port %s...\n", port)
+	args := []string{
+		"run", "-d",
+		"--name", redisContainerName,
+		"--restart", "unless-stopped",
+		"-p", port + ":6379",
+		redisImage,
+		"redis-server", "--requirepass", pass,
+	}
+	if out, err := exec.Command("docker", args...).CombinedOutput(); err != nil {
+		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+	}
+	if err := waitForPort("localhost", port, 15*time.Second); err != nil {
+		return "", err
+	}
+	return port, nil
+}
+
+// choosePort returns preferredPort if it is non-empty and not already bound by another process,
+// otherwise falls back to a fresh random port.
+func choosePort(preferredPort string) string {
+	if preferredPort != "" && !isPortBound(preferredPort) {
+		return preferredPort
+	}
+	port, err := freePort()
+	if err != nil {
+		// Should not happen; return a last-resort value.
+		return "0"
+	}
+	return port
+}
+
+// isPortBound returns true if something is already listening on localhost:port.
+func isPortBound(port string) bool {
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort("localhost", port), 500*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
 
 // infraSetupLoop is the interactive prompt shown when Docker is absent.
@@ -231,52 +402,27 @@ func dockerAvailable() bool {
 	return cmd.Run() == nil
 }
 
-// ensureMongoContainer starts devtrack-mongo on the given host port, creating it first-run.
-func ensureMongoContainer(hostPort, user, pass string) error {
-	status := containerStatus(mongoContainerName)
-	if status == "running" {
-		return nil
+// getContainerHostPort returns the host port mapped to the given container internal port.
+// e.g. getContainerHostPort("devtrack-mongo", "27017") → "58816"
+func getContainerHostPort(containerName, internalPort string) string {
+	out, err := exec.Command("docker", "port", containerName, internalPort).Output()
+	if err != nil {
+		return ""
 	}
-	if status != "" {
-		// Exists but stopped.
-		return exec.Command("docker", "start", mongoContainerName).Run()
+	// Output may contain multiple lines (IPv4 + IPv6): "0.0.0.0:58816\n:::58816"
+	// Take the last non-empty line and split off the port.
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		_, port, err := net.SplitHostPort(line)
+		if err == nil && port != "" {
+			return port
+		}
 	}
-	args := []string{
-		"run", "-d",
-		"--name", mongoContainerName,
-		"--restart", "unless-stopped",
-		"-p", hostPort + ":27017",
-		"-e", "MONGO_INITDB_ROOT_USERNAME=" + user,
-		"-e", "MONGO_INITDB_ROOT_PASSWORD=" + pass,
-		mongoImage,
-	}
-	if out, err := exec.Command("docker", args...).CombinedOutput(); err != nil {
-		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
-	}
-	return waitForPort("localhost", hostPort, 20*time.Second)
-}
-
-// ensureRedisContainer starts devtrack-redis on the given host port, creating it first-run.
-func ensureRedisContainer(hostPort, pass string) error {
-	status := containerStatus(redisContainerName)
-	if status == "running" {
-		return nil
-	}
-	if status != "" {
-		return exec.Command("docker", "start", redisContainerName).Run()
-	}
-	args := []string{
-		"run", "-d",
-		"--name", redisContainerName,
-		"--restart", "unless-stopped",
-		"-p", hostPort + ":6379",
-		redisImage,
-		"redis-server", "--requirepass", pass,
-	}
-	if out, err := exec.Command("docker", args...).CombinedOutput(); err != nil {
-		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
-	}
-	return waitForPort("localhost", hostPort, 15*time.Second)
+	return ""
 }
 
 // containerStatus returns the Docker container state string, or "" if it doesn't exist.
