@@ -211,15 +211,18 @@ The smart processing engine that handles AI, NLP, and integrations.
 
 #### NLP & AI Processing
 
+> **Requires the `ai` tier.** The modules below depend on `spacy`, `sentence-transformers`, and `chromadb`, which are not installed by default. Install them with `devtrack-server enable ai`. When the `ai` tier is absent, `backend/config.py:is_ai_available()` returns `False` and the server logs `feature:ai disabled` at startup — all other features continue to work normally.
+
 | Module | Purpose |
 |--------|---------|
-| **backend/nlp_parser.py** | spaCy-based NLP for commit/user text → structured task data |
-| **backend/description_enhancer.py** | Ollama-based description enhancement and categorization |
+| **backend/nlp_parser.py** | spaCy-based NLP for commit/user text → structured task data (`ai` tier) |
+| **backend/description_enhancer.py** | Ollama-based description enhancement and categorization (`ai` tier) |
 | **backend/llm/provider_factory.py** | Multi-provider LLM abstraction with fallback chain |
 | **backend/llm/ollama_provider.py** | Local Ollama integration |
 | **backend/llm/openai_provider.py** | OpenAI GPT-4 integration |
 | **backend/llm/anthropic_provider.py** | Anthropic Claude integration |
-| **backend/personalized_ai.py** | AI learning from user communications |
+| **backend/personalized_ai.py** | AI learning from user communications (`ai` tier) |
+| **backend/rag/** | ChromaDB-backed RAG few-shot examples for personalization (`ai` tier) |
 | **backend/learning_integration.py** | Learning consent and profile handling |
 
 #### User Interaction & Reporting
@@ -670,14 +673,19 @@ See [Offline Resilience](OFFLINE_RESILIENCE.md) for full details.
 - `gopkg.in/yaml.v3` - YAML configuration
 
 ### Python Dependencies
-- `spacy[en_core_web_sm]` - NLP and entity extraction
+
+**Core tier** (installed by default via `uv sync`):
 - `python-dotenv` - .env file loading
 - `requests` - HTTP client
-- `sentence-transformers` - Semantic matching
 - `azure-devops` - Azure DevOps SDK
 - `PyGithub` - GitHub API
 - `atlassian-python-api` - Jira API
 - `msgraph-core` - Microsoft Graph SDK
+
+**AI tier** (installed via `devtrack-server enable ai`):
+- `spacy[en_core_web_sm]` - NLP and entity extraction
+- `sentence-transformers` - Semantic matching
+- `chromadb` - RAG vector store for personalization
 
 ---
 

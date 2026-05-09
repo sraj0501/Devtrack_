@@ -9,6 +9,16 @@ import (
 	"syscall"
 )
 
+// sendStopSignal sends SIGTERM to the target process, allowing graceful shutdown.
+func sendStopSignal(process *os.Process) error {
+	return process.Signal(syscall.SIGTERM)
+}
+
+// sendReloadSignal sends SIGHUP to the target process, triggering config reload.
+func sendReloadSignal(proc *os.Process) error {
+	return proc.Signal(syscall.SIGHUP)
+}
+
 // setupSignalHandlers sets up handlers for graceful shutdown and force-trigger.
 // Unix: listens for SIGUSR2 (force-trigger), SIGHUP (config reload), SIGTERM/Interrupt (shutdown).
 func (d *Daemon) setupSignalHandlers() {

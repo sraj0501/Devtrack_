@@ -308,6 +308,45 @@ python -m spacy info
 
 ---
 
+### NLP features not working / spaCy or sentence-transformers not found
+
+**Problem**: Work update parsing produces no task extractions, or the server logs `feature:ai disabled` at startup. Symptoms include `ImportError: No module named 'spacy'`, `ImportError: No module named 'sentence_transformers'`, or `ImportError: No module named 'chromadb'`.
+
+**Cause**: The default `uv sync` installs the `core` tier only. NLP parsing, AI description enhancement, and RAG personalization are in the optional `ai` tier and are not installed unless explicitly requested.
+
+**Solution**:
+
+1. Check which tiers are active:
+```bash
+devtrack-server features
+# ✓ core  — always present
+# ✗ ai    — not installed (run: devtrack-server enable ai)
+```
+
+2. Install the ai tier:
+```bash
+devtrack-server enable ai
+```
+
+3. After installation completes, restart the daemon:
+```bash
+devtrack restart
+```
+
+4. Verify:
+```bash
+devtrack-server features
+# ✓ core
+# ✓ ai
+```
+
+5. If the spaCy model is missing even after enabling the ai tier:
+```bash
+uv run python -m spacy download en_core_web_sm
+```
+
+---
+
 ## Daemon Issues
 
 ### "daemon already running (could not acquire lock)"

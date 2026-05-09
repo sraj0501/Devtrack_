@@ -53,7 +53,51 @@ cd devtrack-server-*
 devtrack-server install
 ```
 
-This copies the backend files to `~/.local/share/devtrack-server`, installs Python dependencies, downloads the spaCy NLP model, and adds `devtrack-server` to your PATH.
+This copies the backend files to `~/.local/share/devtrack-server`, installs the **core** Python dependencies, and adds `devtrack-server` to your PATH.
+
+### Two-Tier Dependency Model
+
+The Python backend uses a two-tier dependency model so the server runs lean by default:
+
+| Tier | Installed by | Includes |
+|------|-------------|---------|
+| **core** (default) | `devtrack-server install` / `uv sync` | Web server, LLM providers, integrations (Azure/GitHub/GitLab/Jira), reports, Telegram, Slack |
+| **ai** (optional) | `devtrack-server enable ai` | spaCy NLP parser, RAG personalization (ChromaDB + sentence-transformers), `en_core_web_sm` model |
+
+The server starts and runs fully without the `ai` extra. NLP-powered features (smarter work-update parsing, RAG-based commit message style) are enabled on demand.
+
+#### Check what is installed
+
+```bash
+devtrack-server features
+```
+
+Example output when `ai` is not yet installed:
+
+```
+── DevTrack Server Features ──
+
+  ✓  core    web server, LLM, integrations, reporting
+  ✗  ai      NLP parser, RAG personalization (run: devtrack-server enable ai)
+```
+
+#### Enable the AI extra
+
+```bash
+devtrack-server enable ai
+```
+
+This installs spaCy, ChromaDB, sentence-transformers, and the English NLP model into the server virtualenv, then reminds you to restart:
+
+```
+── Enabling AI features ──
+
+  →  Installing ai extra into server venv...
+  ✓  AI features installed
+  !  Restart the server to apply: devtrack-server restart
+```
+
+After restarting, `devtrack-server features` will show both tiers with a checkmark.
 
 ---
 
@@ -181,7 +225,8 @@ sudo rm /usr/local/bin/devtrack  # remove the binary
 |---|---|
 | `devtrack: command not found` | Check `echo $PATH` contains `/usr/local/bin` |
 | `devtrack-server: command not found` | Run `export PATH="$HOME/.local/bin:$PATH"` then re-run install |
-| `spaCy model not found` | `cd ~/.local/share/devtrack-server && uv run python -m spacy download en_core_web_sm` |
+| `spaCy model not found` | Run `devtrack-server enable ai` — it installs spaCy and the model automatically |
+| NLP features not working | Run `devtrack-server features` to check whether the `ai` extra is installed |
 | `IPC connection failed` | Check port: `lsof -i :35893`. Change `IPC_PORT` in `.env` if in use |
 | `.env not found` | Run `devtrack-server setup` |
 | `missing required environment variables` | Re-run `devtrack-server setup` or check `.env` at `~/.local/share/devtrack-server/.env` |

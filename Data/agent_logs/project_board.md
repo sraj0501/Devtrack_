@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-05-08 by engineer (TASK-023-PY + TASK-025 verified complete; TASK-028 committed — pending PR + CI)_
-_Next task ID: TASK-029_
+_Last updated: 2026-05-09 by PM — TASK-029 through TASK-033 complete (edits only, no commits)_
+_Next task ID: TASK-034_
 
 ---
 
@@ -17,31 +17,158 @@ _Next task ID: TASK-029_
 
 ---
 
-## 🔴 IN PROGRESS
+## ✅ DONE (session 2026-05-09 — server-slim-tiers)
+
+### TASK-029 — Restructure pyproject.toml: two-tier dependencies (core + ai)
+**Assigned to**: engineer
+**Phase**: server-slim-tiers
+**Started**: 2026-05-09
+**Branch**: features/server-slim-tiers
+
+**Spec**:
+Restructure `D:\git_apps\Devtrack_\pyproject.toml` to split the single monolithic dependency
+set into a mandatory `core` set and an optional `ai` extra.
+
+1. Remove from `[project.dependencies]`:
+   - `spacy>=3.7.0`
+   - `en-core-web-sm @ https://...` (the wheel URL line)
+   - `sentence-transformers>=2.2.0`
+   - `chromadb>=0.4.0`
+
+2. Remove from `[project.dependencies]` and move to `[dependency-groups] dev` (PEP 735 / uv-native):
+   - `pytest>=7.4.0`
+   - `pytest-asyncio>=0.21.0`
+   - `pandas-stubs==2.3.2.250926`
+
+3. Add a new `[project.optional-dependencies]` group named `ai`:
+   ```toml
+   [project.optional-dependencies]
+   ai = [
+       "spacy>=3.7.0",
+       "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+       "sentence-transformers>=2.2.0",
+       "chromadb>=0.4.0",
+   ]
+   ```
+
+4. Keep existing optional groups (`openai`, `anthropic`, `cloud`, `mongodb`, `notifications`)
+   exactly as they are — do not remove them.
+
+5. Add a `[dependency-groups]` section (PEP 735 style, uv-native):
+   ```toml
+   [dependency-groups]
+   dev = [
+       "pytest>=7.4.0",
+       "pytest-asyncio>=0.21.0",
+       "pandas-stubs==2.3.2.250926",
+   ]
+   ```
+
+File: `D:\git_apps\Devtrack_\pyproject.toml`
+Do NOT commit — edits only.
+
+**Acceptance criteria**:
+- [ ] `spacy`, `en-core-web-sm`, `sentence-transformers`, `chromadb` removed from `[project.dependencies]`
+- [ ] `[project.optional-dependencies]` has an `ai` group containing all four packages
+- [ ] `pytest`, `pytest-asyncio`, `pandas-stubs` removed from `[project.dependencies]`
+- [ ] `[dependency-groups]` section added with `dev` group containing those three test packages
+- [ ] Existing optional groups (`openai`, `anthropic`, `cloud`, `mongodb`, `notifications`) unchanged
+- [ ] File is valid TOML (no syntax errors)
+
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\pyproject.toml`
+**Vision check**: PASS
+**Notes**: spacy/en-core-web-sm/sentence-transformers/chromadb moved to [project.optional-dependencies] ai; pytest/pytest-asyncio/pandas-stubs moved to [dependency-groups] dev; existing optional groups (openai/anthropic/cloud/mongodb/notifications) unchanged
+
+---
+
+### TASK-030 — Add is_ai_available() to backend/config.py
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\backend\config.py`
+**Vision check**: PASS
+**Notes**: importlib.util imported at top; is_ai_available() placed after rag_enabled(), before log_dir()
+
+---
+
+### TASK-031 — Add AI feature log line to webhook_server.py lifespan
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\backend\webhook_server.py`
+**Vision check**: PASS
+**Notes**: Local import of is_ai_available() inside lifespan(); log line placed after startup banner, before TriggerProcessor.get
+
+---
+
+### TASK-032 — devtrack-server: add features and enable subcommands
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\devtrack-server`
+**Vision check**: PASS
+**Notes**: cmd_features() and cmd_enable() added; both wired into dispatch; FEATURES section added to cmd_help()
+
+---
+
+### TASK-033 — GitLab CI: add core-tests job and rename existing to full-tests
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\ci\devtrack_server.gitlab-ci.yml`
+**Vision check**: PASS
+**Notes**: Old test: job replaced by core-tests (--group dev, ignores test_nlp_parser.py) and full-tests (--frozen --extra ai --group dev); docker: job unchanged
+
+---
+
+## 🟡 PLANNED
+
+---
+
+### TASK-026 — Remove GetPythonBridgePath dead code from config_env.go
+**Priority**: LOW
+**Phase**: CS-standalone
+**Depends on**: TASK-025
+
+---
+
+## ✅ DONE (session 2026-05-01)
+
+### TASK-026 — Remove GetPythonBridgePath dead code from config_env.go
+**Completed**: 2026-05-01
+**Branch**: fix/TASK-026-remove-python-bridge-path
+**Commit(s)**: `332423c` — refactor(config): remove dead GetPythonBridgePath function (TASK-026)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/86 (targeting dev)
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
+**Notes**: Confirmed no callers with grep before deletion. Removed 17-line dead function block from config_env.go. go build/vet/test all pass.
+
+---
+
+### TASK-027 — Guard handleWork() work report subcommand in Lightweight mode
+**Completed**: 2026-05-01
+**Branch**: fix/TASK-027-work-report-mode-guard
+**Commit(s)**: `3980422` — feat(cli): guard work report subcommand in Lightweight mode (TASK-027)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/87 (targeting dev)
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
+**Notes**: Added requiresManagedMode("work report") guard as first statement in handleWorkReport() in cli_work.go. Other work subcommands (start/stop/adjust/status) are pure Go/SQLite and remain unguarded. go build/vet/test all pass.
+
+---
+
+## ✅ DONE (session 2026-04-30)
+
+### TASK-025 — Windows native build support (build-tag syscall split)
+**Completed**: 2026-04-30
+**Branch**: fix/TASK-025-windows-native-build
+**Commit(s)**: `e0c45b9` — fix(build): split Unix-only syscall sites into build-tag-gated files for Windows native build (TASK-025)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/83
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
+**Notes**: Created 4 platform files (daemon_unix.go, daemon_windows.go, cli_unix.go, cli_windows.go). Removed setupSignalHandlers() body from daemon.go; removed os/signal and syscall imports. Windows stub for force-trigger uses HTTP timer endpoint; Windows stub for process detach uses CREATE_NEW_PROCESS_GROUP. go build/vet/test all pass on Windows.
+
+---
+
+## 🔴 IN PROGRESS (pre-existing, from last session)
 
 ### TASK-028 — Internal HTTP control API + cross-platform AlertNotifier + reload-config
 **Assigned to**: engineer
 **Phase**: CS-standalone / Windows support
 **Started**: 2026-05-08
 **Branch**: features/TASK-009-ticket-cache
-
-**Background**:
-Started in the last session alongside TASK-009; session ended before commit. Absorbs TASK-023-PY
-(cross-platform notifications). Recovers incomplete work: Windows `sendForceTriggerSignal` uses
-the HTTP API (`http_api.go`) to avoid SIGUSR2; `reload-config` adds SIGHUP-equivalent hot-reload
-for Windows; `AlertNotifier` provides cross-platform desktop notifications.
-
-**Spec**:
-1. `devtrack-bin/http_api.go` — internal HTTP server with POST /internal/force-trigger + POST /internal/reload-config
-2. `devtrack-bin/config_env.go` — `GetIPCHost()`, `GetDevTrackServerHTTPPort()`, `GetHTTPTimeoutShort()`
-3. `devtrack-bin/daemon.go` — call `d.startInternalHTTPServer()` at daemon start
-4. `devtrack-bin/cli_unix.go` — `sendReloadConfigSignal()` sends SIGHUP
-5. `devtrack-bin/cli_windows.go` — `sendReloadConfigSignal()` calls `/internal/reload-config`
-6. `devtrack-bin/cli.go` — `case "reload-config"` + `handleReloadConfig()` handler
-7. `backend/alert_notifier.py` — `AlertNotifier` class (macOS/Linux/Windows dispatch chain)
-8. `backend/config.py` — `get_notification_enabled()`
-9. `pyproject.toml` — `notifications = ["plyer>=2.1"]` optional dep
-10. `.gitignore` — add `devtrack_client/`, `devtrack_wiki/`, `devtrack_server/`
 
 **Acceptance criteria**:
 - [x] `go build ./...`, `go vet ./...`, `go test ./...` pass on Windows
@@ -54,57 +181,6 @@ for Windows; `AlertNotifier` provides cross-platform desktop notifications.
 - [ ] PR merged (CI pending — flaky JWT test fixed at b6739a6)
 
 **Engineer status**: code committed; CI re-triggered after JWT test fix — awaiting green
-
----
-
-## 🟡 PLANNED
-
-### TASK-026 — Remove GetPythonBridgePath dead code from config_env.go
-**Priority**: LOW
-**Phase**: CS-standalone
-**Depends on**: TASK-025
-
-**Spec**:
-`GetPythonBridgePath()` in `devtrack-bin/config_env.go` was made non-fatal by TASK-024.
-No callers remain after that refactor. Delete the function entirely.
-
-- File: `devtrack-bin/config_env.go`
-- Action: Remove `GetPythonBridgePath()` function definition
-- Verify with `grep -rn "GetPythonBridgePath" devtrack-bin/` that no callers exist before deletion
-- Run `go build ./...`, `go vet ./...`, `go test ./...` to confirm nothing breaks
-
-**Acceptance criteria**:
-- [ ] `GetPythonBridgePath()` function no longer exists in `config_env.go`
-- [ ] `grep -rn "GetPythonBridgePath" devtrack-bin/` returns no matches
-- [ ] `go build ./...`, `go vet ./...`, `go test ./...` pass
-- [ ] PR opened targeting `dev`: `gh pr create --base dev`
-
----
-
-### TASK-027 — Guard handleWork() work report subcommand in Lightweight mode
-**Priority**: MEDIUM
-**Phase**: CS-standalone
-**Depends on**: TASK-025
-
-**Background**:
-The `work report` subcommand inside `handleWork()` in `cli.go` calls Python internally
-(the email reporter). It was excluded from the `requiresManagedMode()` guard added in
-TASK-023 per spec ("handleWork() ... leave them unguarded for now; they are lower risk
-and can be addressed in a follow-up"). This is that follow-up.
-
-**Spec**:
-Inside `handleWork()` in `devtrack-bin/cli.go`, locate the `work report` subcommand
-dispatch branch. Add a `requiresManagedMode("work report")` guard at the top of that
-branch only. Leave all other `handleWork()` subcommands unguarded.
-
-**Acceptance criteria**:
-- [ ] `devtrack work report` in Lightweight mode prints:
-      `'work report' requires Managed mode (Python backend).`
-      followed by the re-run-setup line
-- [ ] All other `devtrack work` subcommands (e.g. `work update`, `work status`) still
-      work normally in Lightweight mode
-- [ ] `go build ./...`, `go vet ./...`, `go test ./...` pass
-- [ ] PR opened targeting `dev`: `gh pr create --base dev`
 
 ---
 
@@ -155,8 +231,6 @@ branch only. Leave all other `handleWork()` subcommands unguarded.
 
 ---
 
----
-
 ### TASK-023-PY — Cross-platform Python desktop notifications
 **Phase**: CS-standalone
 **Branch**: features/TASK-009-ticket-cache (absorbed into TASK-028)
@@ -182,250 +256,73 @@ Build-tag split already in main (commit e0c45b9). TASK-018 verified all acceptan
 ## ✅ DONE (session 2026-04-24)
 
 ### TASK-024 — config_env.go: non-fatal GetEmailReporterPath + GetLearningDailyScriptPath
-**Assigned to**: engineer
-**Priority**: MEDIUM
-**Phase**: CS-standalone
-**Branch**: features/standalone-cli-mode
-**Depends on**: TASK-023 (complete)
-
-**Acceptance criteria**:
-- [x] `GetEmailReporterPath()`, `GetLearningDailyScriptPath()`, `GetPythonBridgePath()` all return `(string, error)` instead of calling `os.Exit`.
-- [x] All callers updated to handle the returned error.
-- [x] `go build ./...`, `go vet ./...`, `go test ./...` pass (pre-existing Windows syscall errors only; clean on Linux).
-- [x] No `os.Exit` calls remain in any of the three functions.
-
-**Engineer status**: 4/4 criteria done — last commit: 4de127b "refactor(config): make GetEmailReporterPath, GetLearningDailyScriptPath, GetPythonBridgePath return error instead of os.Exit (TASK-024)" — 2026-04-24
-**Blockers**: none
-**PR**: https://github.com/sraj0501/automation_tools/pull/82
-
-**COMPLETE** — ready for PM review — 2026-04-24
+**Completed**: 2026-04-24
+**Commit(s)**: `4de127b` — refactor(config): make GetEmailReporterPath, GetLearningDailyScriptPath, GetPythonBridgePath return error instead of os.Exit (TASK-024)
+**Vision check**: PASS
 
 ---
 
 ### TASK-022 — daemon.go: Lightweight mode skips Python subprocess spawning
-**Assigned to**: engineer
-**Phase**: CS-standalone
-**Started**: 2026-04-24
-**Branch**: features/standalone-cli-mode
-**Depends on**: TASK-021 (complete)
+**Completed**: 2026-04-24
+**Commit(s)**: `744acd2`
+**Vision check**: PASS
 
-**Acceptance criteria**:
-- [x] `server_config.go` has `ServerModeLightweight` constant.
-- [x] `GetServerMode()` returns `ServerModeLightweight` when env var is `"lightweight"`.
-- [x] `IsExternalServer()` returns `true` for lightweight mode.
-- [x] `IsLightweightMode()` helper function exists and works correctly.
-- [x] `go build ./...`, `go vet ./...`, `go test ./...` all pass (pre-existing Windows syscall errors only; clean on Linux).
-- [x] A daemon started with `DEVTRACK_SERVER_MODE=lightweight` does not attempt to spawn any Python subprocess (verified: `startWebhookServer()` returns early via updated `IsExternalServer()`).
-
-**Engineer status**: 6/6 criteria done — last commit: 744acd2 "feat(daemon): add ServerModeLightweight — skip Python spawn in lightweight mode (TASK-022)" — 2026-04-24
-**Blockers**: none
-
-**COMPLETE** — ready for PM review — 2026-04-24
+---
 
 ### TASK-021 — setup.go: mode selection wizard + backend-free root detection
-**Assigned to**: engineer
-**Phase**: CS-standalone
-**Started**: 2026-04-24
-**Branch**: features/standalone-cli-mode
-
-**Acceptance criteria**:
-- [x] Running `devtrack setup` presents the 3-option mode menu as the first prompt.
-- [x] Choosing [2] or [3] does NOT call `detectProjectRoot()` and does NOT fail if
-      `backend/` is absent from the filesystem.
-- [x] `.env` written by a Lightweight setup contains `DEVTRACK_SERVER_MODE=lightweight`.
-- [x] `.env` written by an External setup contains `DEVTRACK_SERVER_MODE=external`.
-- [x] `.env` written by a Managed setup contains `DEVTRACK_SERVER_MODE=managed` (unchanged).
-- [x] `checkPythonBackend()` is skipped in Lightweight/External modes.
-- [x] `go build ./...` succeeds with no new errors (pre-existing Windows syscall errors; clean on Linux).
-- [x] `go vet ./...` passes (same caveat as above).
-- [x] `go test ./...` passes (same caveat as above).
-
-**Engineer status**: 8/8 criteria done — last commit: fd208f6 "feat(setup): add mode selection wizard for standalone-cli support (TASK-021)" — 2026-04-24
-**Blockers**: none
-
-**COMPLETE** — ready for PM review — 2026-04-24 00:00
+**Completed**: 2026-04-24
+**Commit(s)**: `fd208f6`
+**Vision check**: PASS
 
 ---
 
 ### TASK-023 — cli.go: capability guard for backend-dependent commands
-**Assigned to**: engineer
-**Priority**: HIGH
-**Phase**: CS-standalone
-**Started**: 2026-04-24
-**Branch**: features/standalone-cli-mode
-**Depends on**: TASK-022 (complete)
-
-**Acceptance criteria**:
-- [x] All listed handlers return early with `requiresManagedMode()` when mode is `lightweight`.
-- [x] The error message printed is exactly:
-      `'<command>' requires Managed mode (Python backend).`
-      followed by the re-run-setup line.
-- [x] `handleStart()`, `handleStop()`, `handleStatus()`, `handleLogs()`,
-      `handleForceTrigger()`, `handleVersion()`, `handleWorkspace()` work normally in
-      Lightweight mode (no guard).
-- [x] `go build ./...`, `go vet ./...`, `go test ./...` pass (pre-existing Windows syscall errors only; clean on Linux).
-
-**Engineer status**: 4/4 criteria done — last commit: 0cde877 "feat(cli): capability guard for backend-dependent commands in lightweight mode (TASK-023)" — 2026-04-24
-
-**COMPLETE** — ready for PM review — 2026-04-24
+**Completed**: 2026-04-24
+**Commit(s)**: `0cde877`
+**Vision check**: PASS
 
 ---
 
-## ✅ DONE (session 2026-04-23)
+## ✅ DONE (session 2026-04-23 and earlier)
 
 ### TASK-020 — Inbound webhook integration tests
-**Assigned to**: engineer
-**Phase**: CS-1
-**Completed**: 2026-04-23
-**Branch**: features/inbound-webhook-tests
-**Commit(s)**: `805cad8` — test(webhooks): add inbound webhook integration tests (TASK-020)
-**PR**: https://github.com/sraj0501/automation_tools/pull/80
-**Vision check**: PASS
-**Notes**: Integration tests for inbound webhook handling via FastAPI TestClient.
+**Completed**: 2026-04-23 | **PR**: https://github.com/sraj0501/automation_tools/pull/80
 
----
+### TASK-019 — Ship features/loadEnvs to main
+**Completed**: 2026-04-23 | **PR**: https://github.com/sraj0501/automation_tools/pull/79
 
-### TASK-019 — Ship features/loadEnvs to main (fix pre-existing test + open PR)
-**Assigned to**: engineer
-**Phase**: CS-1 / auto-env-load
-**Started**: 2026-04-23
-**Branch**: features/loadEnvs
-**Commit(s)**: `c8be0ea` — auto environment load | `c1c05fa` — test(project-manager): isolate DB per test to fix test_find_related_projects
-**PR**: https://github.com/sraj0501/automation_tools/pull/79
-**Vision check**: PASS
-**Hardcoded scan**: CLEAN (localhost literals in setup.go are prompt defaults for .env generation, not runtime values)
-**Suite**: 502 passed (was 501; pre-existing failure resolved)
+### TASK-018 — CS-3 audit: low-severity hardcoded values
+**Completed**: 2026-04-10 | **PR**: https://github.com/sraj0501/automation_tools/pull/77
 
----
+### TASK-017 — CS-3 audit: medium-severity hardcoded values
+**Completed**: 2026-04-10 | **PR**: https://github.com/sraj0501/automation_tools/pull/76
 
-### TASK-018 — CS-3 audit: low-severity hardcoded values (audit log limit + license email)
-**Completed**: 2026-04-10
-**Commit(s)**: `c0c8a58` — fix(admin): eliminate low-severity hardcoded audit limit and license email (TASK-018)
-**PR**: https://github.com/sraj0501/automation_tools/pull/77
-**Vision check**: PASS
-**Hardcoded scan**: CLEAN
-
----
-
-### TASK-017 — CS-3 audit: medium-severity hardcoded values (ports fallback + shutdown grace + HTMX intervals)
-**Completed**: 2026-04-10
-**Commit(s)**: `46f2cda` — fix(admin): eliminate medium-severity hardcoded values in routes, webhook, dashboard (TASK-017)
-**PR**: https://github.com/sraj0501/automation_tools/pull/76
-**Vision check**: PASS
-**Hardcoded scan**: CLEAN
-
----
-
-### TASK-016 — CS-3 audit: high-severity hardcoded values (session cookie + scrypt params)
-**Completed**: 2026-04-10
-**Commit(s)**: `25cec2f` — fix(admin): eliminate hardcoded scrypt params and session cookie max_age (TASK-016)
-**PR**: https://github.com/sraj0501/automation_tools/pull/75
-**Vision check**: PASS
-**Hardcoded scan**: CLEAN
-
----
+### TASK-016 — CS-3 audit: high-severity hardcoded values
+**Completed**: 2026-04-10 | **PR**: https://github.com/sraj0501/automation_tools/pull/75
 
 ### TASK-015 — CS-3: Admin console polish + docs sync
-**Completed**: 2026-04-10
-**Commit(s)**: `1df6751` — feat(admin): CS-3 polish — password reset, ADMIN_EMBED, docs sync (TASK-015)
-**PR**: https://github.com/sraj0501/automation_tools/pull/73
-**Vision check**: PASS
-**Hardcoded scan**: CLEAN
-
----
+**Completed**: 2026-04-10 | **PR**: https://github.com/sraj0501/automation_tools/pull/73
 
 ### TASK-014 — CS-3: Trigger stats panel on admin dashboard
-**Completed**: 2026-04-10
-**Commit(s)**: `5337f2f` — feat(admin): trigger stats panel on admin dashboard (TASK-014)
-**PR**: https://github.com/sraj0501/automation_tools/pull/72
-**Vision check**: PASS
-
----
+**Completed**: 2026-04-10 | **PR**: https://github.com/sraj0501/automation_tools/pull/72
 
 ### TASK-013 — CS-3: License status page in admin UI
-**Completed**: 2026-04-10
-**Commit(s)**: `a221c04` — feat(admin): license status page in admin console (TASK-013)
-**PR**: https://github.com/sraj0501/automation_tools/pull/71
-**Vision check**: PASS
-
----
+**Completed**: 2026-04-10 | **PR**: https://github.com/sraj0501/automation_tools/pull/71
 
 ### TASK-012 — CS-3: User role update + disable/enable routes
-**Completed**: 2026-04-10
-**Commit(s)**: `2ef7f14` — feat(admin): user role update + disable/enable routes (TASK-012)
-**PR**: https://github.com/sraj0501/automation_tools/pull/70
-**Vision check**: PASS
-
----
+**Completed**: 2026-04-10 | **PR**: https://github.com/sraj0501/automation_tools/pull/70
 
 ### TASK-011 — CS-3: Admin route HTTP tests
-**Completed**: 2026-04-10
-**Commit(s)**: `12d268e` — test(admin-routes): add HTTP-level route tests for admin console (TASK-011)
-**PR**: https://github.com/sraj0501/automation_tools/pull/69
-**Vision check**: PASS
-
----
+**Completed**: 2026-04-10 | **PR**: https://github.com/sraj0501/automation_tools/pull/69
 
 ### TASK-010 — Full Documentation and Memory Audit
-**Completed**: 2026-04-06
-**Commit(s)**: `175a41d` — docs: sync CLAUDE.md and README to CS-1 reality (TASK-010)
-**Vision check**: PASS
+**Completed**: 2026-04-06 | **Commit**: `175a41d`
 
----
+### TASK-008 — CS-2: Trigger throughput stats panel to Server TUI
+**Completed**: 2026-04-05 | **Commit**: `9324027`
 
-### TASK-008 — CS-2: Add trigger throughput stats panel to Server TUI
+### TASK-007 through TASK-001 — Config audit, os.getenv elimination, config accessors
 **Completed**: 2026-04-05
-**Commit(s)**: `9324027`
-**Vision check**: PASS
-
----
-
-### TASK-007 — Fix remaining os.getenv violations
-**Completed**: 2026-04-05
-**Commit**: `df59693`
-
----
-
-### TASK-006 — Fix os.getenv in remaining modules
-**Completed**: 2026-04-05
-**Commit**: `b9a910b`
-
----
-
-### TASK-005 — Fix os.getenv in backend/admin/ and backend/server_tui/
-**Completed**: 2026-04-05
-**Commit**: `fd614d4`
-
----
-
-### TASK-004 — Fix os.getenv in backend/gitlab/
-**Completed**: 2026-04-05
-**Commit**: `b21f639`
-
----
-
-### TASK-003 — Fix os.getenv in backend/github/
-**Completed**: 2026-04-05
-**Commit**: `e10f7fa`
-
----
-
-### TASK-002 — Fix os.getenv in backend/azure/
-**Completed**: 2026-04-05
-**Commit**: `fdd4fd2`
-
----
-
-### TASK-001 — Add all missing config accessors to backend/config.py
-**Completed**: 2026-04-05
-**Commit**: `81028cc`
-**Notes**: 50+ typed accessors. 397 tests pass.
-
----
 
 ### TASK-000 — v1.0.0 release + local agents setup
 **Completed**: 2026-04-05
-**Commit(s)**: `0cd0fad` · `37fc01b` · `63006de` · `8431dc3` · `3c4a037`
-**Vision check**: PASS
-
----
