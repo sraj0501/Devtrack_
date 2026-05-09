@@ -229,6 +229,8 @@ devtrack autostart-uninstall  # remove auto-start
 
 All current `.env` variables are baked into the service file at install time so the daemon starts with the correct environment even in a login session without a shell profile. Re-run `autostart-install` after changing `.env`.
 
+The daemon enforces a single running instance using an OS-level file lock (`Data/devtrack.lock`). On Windows this is a mandatory lock; on Unix a cooperative flock. Attempting to start a second instance prints a clear error and exits immediately rather than running in parallel and corrupting shared state.
+
 ### Interactive setup wizard (`devtrack setup`)
 
 New in v2.0.0. Walks through every required setting interactively and writes the result for you:
@@ -257,6 +259,21 @@ The daemon automatically finds and loads `.env` at startup (v2.0.0+). Resolution
 3. `.env` file next to the `devtrack` binary
 
 You no longer need to manually `source .env` before `devtrack start` for most setups. The env-first rule still applies for `devtrack autostart-install` — run it after `devtrack setup` so the service bakes the correct variables.
+
+### Uninstall (`devtrack uninstall`)
+
+```bash
+devtrack uninstall           # remove daemon, autostart, data dir, and binary
+devtrack uninstall --dry-run # preview what would be deleted without making changes
+```
+
+The uninstall command is interactive by default and asks for confirmation at each step. It:
+- Stops the running daemon (if active)
+- Removes the autostart entry (launchd on macOS, systemd on Linux, Task Scheduler on Windows)
+- Deletes the `Data/` directory (logs, DB, reports, PIDs)
+- Removes the `devtrack` (and `devtrack-server`) binary from `PATH`
+
+Use `--dry-run` to preview every action before committing.
 
 ### Self-update (`devtrack upgrade`)
 
@@ -371,9 +388,23 @@ ADMIN_EMBED=false
 ```bash
 devtrack server-tui    # live process monitor — CPU%, memory, health + trigger throughput stats
 devtrack tui           # full-screen dashboard: overview, activity, workspaces, alerts
+devtrack health        # run all health checks and print a status report
 ```
 
 The `server-tui` panel includes a **trigger throughput stats** pane that reads directly from the SQLite database and shows triggers fired today, commits today, last trigger time (HH:MM), and unprocessed-trigger error count for the last 24 hours. The pane degrades gracefully — it displays zeroes rather than crashing if the database is unavailable.
+
+`devtrack health` runs checks concurrently and reports the status of all monitored subsystems:
+
+| Check | What is verified |
+|-------|-----------------|
+| Daemon process | PID file present and process alive |
+| Python backend | `/health` HTTP endpoint reachable |
+| SQLite | Database file readable and schema valid |
+| Redis | `PING` roundtrip (if `REDIS_URL` is configured) |
+| Ollama | `/api/tags` reachable; response normalised across Ollama versions |
+| Ports | Bound ports recorded and checked across restarts |
+
+The last-known port list is persisted to disk so that `devtrack health` can report port conflicts even when the daemon is not currently running.
 
 ---
 
@@ -451,6 +482,7 @@ devtrack-server logs      # tail recent log output
 | Deploy only the Python backend on a server | [`devtrack-server`](#devtrack-server--server-side-management-cli) |
 | Run without Python (Lightweight mode) | [Deployment modes](#deployment-modes) |
 | Update to the latest release | [`devtrack upgrade`](#self-update-devtrack-upgrade) |
+| Completely remove DevTrack | [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Monitor server health and trigger stats | [Server TUI](docs/SERVER_TUI.md) |
 | Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
 | Use AI agents for development workflow | [`.claude/agents/`](.claude/agents/) |

@@ -524,7 +524,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v2.1.0-dev</span>
+        <span class="version-chip">v2.2.0-dev</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -557,6 +557,7 @@ const NAV = [
       { id: 'WHATS_NEW',       label: "What's New",         icon: '🎉' },
       { id: 'DEVTRACK_SERVER', label: 'devtrack-server CLI', icon: terminal_icon() },
       { id: 'UPGRADE',         label: 'Upgrade',             icon: download_icon() },
+      { id: 'UNINSTALL',       label: 'Uninstall',           icon: bug_icon() },
     ]
   },
   {
@@ -1499,34 +1500,50 @@ devtrack-server status</code></pre>
 
   UPGRADE: `<div class="md-body">
 <h1>Upgrade</h1>
-<p>The <code>devtrack upgrade</code> command performs a self-update: it downloads the latest release binary for your OS and architecture from GitHub Releases, replaces the current binary on disk, and automatically restarts the running daemon.</p>
+<p>The <code>devtrack upgrade</code> command performs a self-update: it downloads the latest release binary for your OS and architecture from the GitLab Releases API, replaces the current binary on disk, and automatically restarts the running daemon.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">New in v2.1.0-dev — self-update + versioned migration</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Updated in v2.2.0-dev — GitLab Releases API, Windows .zip, split upgrade_unix/upgrade_windows</div>
 
 <h2>Quick Start</h2>
 <pre><code class="language-bash"># Upgrade to the latest release
 devtrack upgrade
 
-# If the binary is in a root-owned directory (e.g. /usr/local/bin)
+# macOS / Linux: if the binary is in a root-owned directory (e.g. /usr/local/bin)
 sudo devtrack upgrade</code></pre>
 
 <h2>What It Does</h2>
 <ol>
-<li>Fetches the latest release tag from the GitHub Releases API.</li>
+<li>Fetches the latest release tag from the <strong>GitLab Releases API</strong>.</li>
 <li>If the current version is already up to date, exits with a message and does nothing.</li>
-<li>Downloads the appropriate <code>devtrack_&lt;os&gt;_&lt;arch&gt;.tar.gz</code> archive for the current platform.</li>
+<li>Downloads the appropriate release asset for the current platform:
+  <ul>
+    <li>macOS / Linux: <code>devtrack_&lt;os&gt;_&lt;arch&gt;.tar.gz</code></li>
+    <li>Windows: <code>devtrack_windows_&lt;arch&gt;.zip</code> — extracted using the standard library <code>archive/zip</code></li>
+  </ul>
+</li>
 <li>Extracts the new binary to a temporary location and verifies it starts cleanly.</li>
-<li>Replaces the current binary on disk. Falls back to <code>sudo cp</code> automatically when the binary is in a root-owned directory.</li>
+<li>Replaces the current binary on disk:
+  <ul>
+    <li><strong>Unix</strong> (<code>upgrade_unix.go</code>): falls back to <code>sudo cp</code> automatically when the binary is in a root-owned directory.</li>
+    <li><strong>Windows</strong> (<code>upgrade_windows.go</code>): if the binary location requires Administrator rights, prints clear guidance to re-run from an elevated prompt rather than silently failing.</li>
+  </ul>
+</li>
 <li>Runs any <strong>versioned migrations</strong> needed to update local data files (<code>Data/</code>, <code>~/.devtrack/</code>) to the new schema.</li>
 <li>If the daemon was running, restarts it automatically so the new version takes effect immediately — no manual <code>devtrack restart</code> needed.</li>
 </ol>
 
-<h2>Root-Owned Installations</h2>
-<p>If the <code>devtrack</code> binary lives in a directory owned by root (e.g. <code>/usr/local/bin/devtrack</code> installed with <code>sudo mv</code>), the upgrade command will detect the write permission error and re-invoke itself with <code>sudo cp</code> automatically. You will be prompted for your password at that point. Alternatively, run the whole upgrade as root from the start:</p>
+<h2>Root-Owned / Administrator Installations</h2>
+<h3>macOS / Linux</h3>
+<p>If the <code>devtrack</code> binary lives in a directory owned by root (e.g. <code>/usr/local/bin/devtrack</code> installed with <code>sudo mv</code>), the upgrade command detects the write permission error and re-invokes itself with <code>sudo cp</code> automatically. You will be prompted for your password at that point. Alternatively, run the whole upgrade as root:</p>
 <pre><code class="language-bash">sudo devtrack upgrade</code></pre>
 
+<h3>Windows</h3>
+<p>If the binary is installed in a protected directory (e.g. <code>C:\Program Files\</code>), the upgrade prints a message with the path of the new binary in the temp directory and instructs you to copy it manually from an Administrator prompt:</p>
+<pre><code class="language-bash"># Run in an Administrator PowerShell or Command Prompt
+Copy-Item "$env:TEMP\devtrack_new.exe" "C:\Program Files\devtrack\devtrack.exe" -Force</code></pre>
+
 <h2>Versioned Migration System</h2>
-<p>DevTrack keeps a <code>~/.devtrack/schema_version</code> file that records the last applied migration version. Each release can ship numbered migration steps (e.g. <code>migration_v2_1.go</code>) that run exactly once after the binary is replaced. Migrations handle:</p>
+<p>DevTrack keeps a <code>~/.devtrack/schema_version</code> file that records the last applied migration version. Each release can ship numbered migration steps (e.g. <code>migration_v2_2.go</code>) that run exactly once after the binary is replaced. Migrations handle:</p>
 <ul>
 <li>SQLite schema changes (new tables, new columns with <code>ALTER TABLE … ADD COLUMN</code>)</li>
 <li>New required <code>.env</code> variables — migration prints a warning and the name of any missing vars rather than failing hard</li>
@@ -1540,20 +1557,125 @@ sudo devtrack upgrade</code></pre>
 <blockquote><p><strong>Note:</strong> The auto-restart uses a short delay to allow the old daemon process to clean up its PID file before the new process writes a fresh one. If you see "daemon already running" after an upgrade, wait 3–5 seconds and run <code>devtrack status</code> to confirm the new version is active.</p></blockquote>
 
 <h2>Rollback</h2>
-<p>The upgrade does not keep a backup of the previous binary. If you need to roll back, download the previous release tarball from <a href="https://github.com/sraj0501/Devtrack_/releases" target="_blank" rel="noopener">GitHub Releases</a> and replace the binary manually.</p>
+<p>The upgrade does not keep a backup of the previous binary. If you need to roll back, download the previous release tarball from the GitLab Releases page and replace the binary manually.</p>
 
 <h2>Implementation Files</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/upgrade.go</code></td><td><code>RunUpgrade()</code> — GitHub API fetch, download, verify, replace binary, sudo fallback, auto-restart</td></tr>
+<tr><td><code>devtrack-bin/upgrade.go</code></td><td><code>RunUpgrade()</code> — GitLab API fetch, download, verify, extract (<code>.tar.gz</code> and <code>.zip</code>), auto-restart</td></tr>
+<tr><td><code>devtrack-bin/upgrade_unix.go</code></td><td>Unix elevated-replace path — <code>sudo cp</code> fallback for root-owned binary locations</td></tr>
+<tr><td><code>devtrack-bin/upgrade_windows.go</code></td><td>Windows elevated-replace path — prints Administrator guidance when write permission is denied</td></tr>
 <tr><td><code>devtrack-bin/migrate.go</code></td><td>Migration registry, <code>RunMigrations()</code>, schema version tracking in <code>~/.devtrack/schema_version</code></td></tr>
+</tbody>
+</table></div>
+</div>`,
+
+  UNINSTALL: `<div class="md-body">
+<h1>Uninstall</h1>
+<p>The <code>devtrack uninstall</code> command performs a clean, interactive removal of DevTrack from your machine — stopping the daemon, removing autostart entries, deleting runtime data, and optionally removing the binary itself.</p>
+
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">New in v2.2.0-dev — feat/uninstall-and-upgrade-fix</div>
+
+<h2>Quick Start</h2>
+<pre><code class="language-bash"># Interactive uninstall (confirms each step)
+devtrack uninstall
+
+# Skip all confirmation prompts
+devtrack uninstall --yes</code></pre>
+
+<h2>What It Does</h2>
+<ol>
+<li><strong>Stops the running daemon</strong> — sends a stop signal if the daemon is currently running; waits for it to exit cleanly.</li>
+<li><strong>Removes autostart</strong> — unregisters the launchd LaunchAgent (macOS), systemd user service (Linux), or shell profile block (WSL) that was installed by <code>devtrack autostart-install</code>.</li>
+<li><strong>Deletes the data directory</strong> — removes <code>Data/</code> including the SQLite database, logs, PID files, TLS certs, and reports. Skipped if <code>DATA_DIR</code> is not set.</li>
+<li><strong>Removes the <code>~/.devtrack/</code> directory</strong> — deletes the XDG home used by <code>devtrack setup</code> (<code>devtrack.conf</code>, <code>cloud.json</code>, <code>telemetry.json</code>, <code>schema_version</code>, <code>workspaces.yaml</code>).</li>
+<li><strong>Removes the binary</strong> — deletes the <code>devtrack</code> binary from its current location. On Windows, asks you to remove it manually if a file lock prevents deletion.</li>
+</ol>
+
+<blockquote><p><strong>Note:</strong> Uninstall does <em>not</em> touch your monitored git repositories, the Python virtualenv created by <code>uv sync</code>, or your <code>.env</code> file. Those are left in place so you can reinstall without re-entering credentials.</p></blockquote>
+
+<h2>Platform Behaviour</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Platform</th><th>Autostart removal</th><th>Binary removal</th></tr></thead>
+<tbody>
+<tr><td><strong>macOS</strong></td><td><code>launchctl unload</code> + plist file deleted</td><td><code>os.Remove</code> — no extra permissions needed for user-owned installs</td></tr>
+<tr><td><strong>Linux</strong></td><td><code>systemctl --user disable --now</code> + unit file deleted</td><td><code>os.Remove</code></td></tr>
+<tr><td><strong>Windows</strong></td><td>Shell profile block removed (WSL) or no-op if no autostart was installed</td><td>Prints the binary path and instructs you to delete it manually if it cannot be removed (common when the process is still in memory)</td></tr>
+</tbody>
+</table></div>
+
+<h2>Flags</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--yes</code></td><td>Skip all confirmation prompts — performs every step automatically. Useful for CI or scripted teardowns.</td></tr>
+</tbody>
+</table></div>
+
+<h2>What Is Not Removed</h2>
+<ul>
+<li>Your monitored git repositories and their commit history</li>
+<li>The Python virtualenv created by <code>uv sync</code> (located under the project root)</li>
+<li>Your <code>.env</code> file — credentials and configuration are preserved so reinstalling is fast</li>
+<li>MongoDB data (if <code>MONGODB_URI</code> was configured)</li>
+</ul>
+
+<h2>Reinstalling After Uninstall</h2>
+<pre><code class="language-bash"># Download the latest binary again
+curl -L https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_$(uname -s)_$(uname -m).tar.gz | tar xz
+sudo mv devtrack /usr/local/bin/
+
+# Re-run setup (or just source your preserved .env and start)
+devtrack setup
+devtrack start</code></pre>
+
+<h2>Implementation Files</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>File</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>devtrack-bin/cli.go</code></td><td><code>RunUninstall()</code> — orchestrates all uninstall steps; <code>--yes</code> flag handling; platform-detection for autostart and binary removal</td></tr>
 </tbody>
 </table></div>
 </div>`,
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-note);border-color:var(--callout-note-border);color:#1e40af;">v2.2.0-dev — unreleased — feat/uninstall-and-upgrade-fix</div>
+
+<h2>v2.2.0-dev — Uninstall Command, Upgrade Fixes &amp; Daemon Hardening</h2>
+<p>This batch (merged from <code>feat/uninstall-and-upgrade-fix</code> via PRs #121–122) adds a cross-platform uninstall command, fixes the upgrade pipeline to use the GitLab Releases API and Windows <code>.zip</code> extraction, hardens the health monitor with concurrent checks and Redis/SQLite monitors, and eliminates log spam from empty repositories.</p>
+
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack uninstall — cross-platform clean removal (feat: 112da8f)</h4><p>New <code>devtrack uninstall</code> command (<code>devtrack-bin/cli.go</code>) performs an interactive, step-by-step teardown: stops the running daemon, removes the launchd LaunchAgent / systemd unit / shell profile block installed by <code>devtrack autostart-install</code>, deletes the <code>Data/</code> directory and the <code>~/.devtrack/</code> XDG home, and removes the binary. Each step asks for confirmation unless <code>--yes</code> is passed. On Windows, binary deletion prints a manual-removal hint if the file is locked. Your <code>.env</code>, Python virtualenv, and git repositories are left intact. See the <a href="#UNINSTALL" onclick="navigate('UNINSTALL');return false;">Uninstall</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>devtrack upgrade — GitLab Releases API + Windows .zip fix (feat: 112da8f)</h4><p><code>devtrack upgrade</code> now fetches the latest release from the <strong>GitLab Releases API</strong> (not GitHub) and handles the Windows <code>.zip</code> asset alongside the Linux/macOS <code>.tar.gz</code> archives. The elevated-replace path has been split into <code>upgrade_unix.go</code> (which uses <code>sudo cp</code>) and <code>upgrade_windows.go</code> (which prints clear Administrator guidance instead of attempting a privileged copy that Windows UAC would block silently). See the <a href="#UPGRADE" onclick="navigate('UPGRADE');return false;">Upgrade</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">3</div><div><h4>Health monitor enhancements (feat: c537169)</h4><p>The <code>devtrack health</code> check has been overhauled: all service probes now run <strong>concurrently</strong> (reducing total wait time from sum-of-timeouts to max-of-timeouts), Redis and SQLite connection checks are included as first-class monitors, port numbers are persisted so health knows which port to probe without reading <code>.env</code> again, and Ollama model lists are normalised for consistent output regardless of the server version. These improvements make <code>devtrack health</code> significantly faster and more reliable in environments where some services are intentionally absent.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">4</div><div><h4>Empty-repo fix in git_monitor.go</h4><p>The git activity monitor previously logged a noisy warning on every poll when monitoring a repository that has no commits yet (e.g. a freshly <code>git init</code>-ed workspace). The monitor now silently skips repositories with no HEAD commit and resumes monitoring as soon as the first commit is made — no configuration change needed.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">5</div><div><h4>Windows single-instance enforcement (lock_windows.go + process_windows.go)</h4><p>On Windows, the daemon now uses <code>LockFileEx</code> (via <code>devtrack-bin/lock_windows.go</code>) to hold an exclusive lock on the PID file for the lifetime of the process — preventing a second <code>devtrack start</code> from running silently alongside the first. The Unix equivalent uses <code>flock</code> (<code>lock_unix.go</code>). Platform-specific process utilities live in <code>process_windows.go</code> and <code>process_unix.go</code>.</p></div></div>
+</div>
+
+<h2>New CLI Commands (v2.2.0-dev)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Command</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>devtrack uninstall [--yes]</code></td><td>Interactively remove DevTrack: stop daemon, remove autostart, delete Data/ and ~/.devtrack/, remove binary</td></tr>
+</tbody>
+</table></div>
+
+<h2>New Source Files (v2.2.0-dev)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>File</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>devtrack-bin/upgrade_unix.go</code></td><td>Unix elevated-replace path — <code>sudo cp</code> fallback for root-owned binary locations</td></tr>
+<tr><td><code>devtrack-bin/upgrade_windows.go</code></td><td>Windows elevated-replace path — prints Administrator guidance when write permission is denied</td></tr>
+<tr><td><code>devtrack-bin/lock_unix.go</code></td><td>Unix single-instance enforcement using <code>flock</code></td></tr>
+<tr><td><code>devtrack-bin/lock_windows.go</code></td><td>Windows single-instance enforcement using <code>LockFileEx</code></td></tr>
+<tr><td><code>devtrack-bin/process_unix.go</code></td><td>Unix process utilities (signal, PID resolution)</td></tr>
+<tr><td><code>devtrack-bin/process_windows.go</code></td><td>Windows process utilities (OpenProcess, TerminateProcess)</td></tr>
+</tbody>
+</table></div>
+
+<hr>
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-note);border-color:var(--callout-note-border);color:#1e40af;">v2.1.0-dev — unreleased — features/standalone-cli-mode + main</div>
 
 <h2>v2.1.0-dev — devtrack-server CLI, Self-Update, Lightweight Mode &amp; Setup Enhancements</h2>
@@ -2746,7 +2868,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-First · v2.0.0 · v2.1.0-dev</div>
+      <div class="home-badge">Local-First · v2.0.0 · v2.2.0-dev</div>
       <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
       <p class="home-sub">DevTrack monitors your Git activity, prompts for work updates, routes them through AI, and keeps your project management systems in sync — all running locally on your machine.</p>
     </div>
@@ -2754,9 +2876,10 @@ function renderHome() {
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v2.1.0 (unreleased): <code>devtrack-server</code> CLI, self-update (<code>devtrack upgrade</code>), Lightweight mode, mode-selection wizard, auto-generate ADMIN_SECRET_KEY, XDG home + shell integration written automatically. v2.0.1: setup wizard, auto env-load. v2.0.0: CS-3 Admin GUI MVP.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v2.2.0 (unreleased): <code>devtrack uninstall</code>, upgrade now uses GitLab Releases API + Windows .zip, concurrent health checks, Redis/SQLite monitors, Windows single-instance lock. v2.1.0: <code>devtrack-server</code> CLI, self-update, Lightweight mode. v2.0.0: CS-3 Admin GUI MVP.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
-        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary, runs versioned migrations, and auto-restarts the daemon. Handles root-owned install paths via <code>sudo cp</code> fallback automatically.' },
+        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitLab Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
+        { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
         { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard',       desc:'<code>devtrack setup</code> — interactive first-run wizard. Walks through LLM provider, credentials, workspace, and PM platform; generates a complete <code>.env</code>; auto-registers it at <code>~/.devtrack/devtrack.conf</code> so no manual sourcing is ever needed again.' },
