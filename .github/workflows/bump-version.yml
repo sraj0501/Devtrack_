@@ -109,6 +109,7 @@ jobs:
           # Workspace templates only — never ship the live workspaces.yaml
           cp workspaces.yaml.example "dist/${ARCHIVE_DIR}/"
           cp workspaces.yaml.sample  "dist/${ARCHIVE_DIR}/"
+          cp Dockerfile.server        "dist/${ARCHIVE_DIR}/"
 
           # Management CLI and version stamp
           cp devtrack-server          "dist/${ARCHIVE_DIR}/"
@@ -167,6 +168,7 @@ jobs:
           [ -f uv.lock ]     && cp uv.lock     "$SERVER_TMP/"
           [ -f .env_sample ] && cp .env_sample "$SERVER_TMP/"
           cp workspaces.yaml.example workspaces.yaml.sample "$SERVER_TMP/"
+          cp Dockerfile.server                             "$SERVER_TMP/"
           # Ship the GitLab CI config as .gitlab-ci.yml
           cp ci/devtrack_server.gitlab-ci.yml "$SERVER_TMP/.gitlab-ci.yml"
           echo "${VER}" > "$SERVER_TMP/VERSION"
