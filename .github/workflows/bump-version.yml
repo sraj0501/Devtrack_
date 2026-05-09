@@ -173,9 +173,8 @@ jobs:
           cp ci/devtrack_server.gitlab-ci.yml "$SERVER_TMP/.gitlab-ci.yml"
           echo "${VER}" > "$SERVER_TMP/VERSION"
 
-          # Strip dev-only artefacts
+          # Strip compiled artefacts (keep tests/ — GitLab CI needs them for pytest)
           find "$SERVER_TMP" -type d -name "__pycache__"   -exec rm -rf {} + 2>/dev/null || true
-          find "$SERVER_TMP" -type d -name "tests"         -exec rm -rf {} + 2>/dev/null || true
           find "$SERVER_TMP" -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
           find "$SERVER_TMP" -name "*.pyc" -delete 2>/dev/null || true
           find "$SERVER_TMP" -name "*.pyo" -delete 2>/dev/null || true
