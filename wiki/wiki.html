@@ -524,7 +524,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v2.2.0-dev</span>
+        <span class="version-chip">v2.2.11</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -1502,7 +1502,7 @@ devtrack-server status</code></pre>
 <h1>Upgrade</h1>
 <p>The <code>devtrack upgrade</code> command performs a self-update: it downloads the latest release binary for your OS and architecture from the GitLab Releases API, replaces the current binary on disk, and automatically restarts the running daemon.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Updated in v2.2.0-dev — GitLab Releases API, Windows .zip, split upgrade_unix/upgrade_windows</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Updated in v2.2.11 — GitLab Releases API, Windows .zip, split upgrade_unix/upgrade_windows</div>
 
 <h2>Quick Start</h2>
 <pre><code class="language-bash"># Upgrade to the latest release
@@ -1575,7 +1575,7 @@ Copy-Item "$env:TEMP\devtrack_new.exe" "C:\Program Files\devtrack\devtrack.exe" 
 <h1>Uninstall</h1>
 <p>The <code>devtrack uninstall</code> command performs a clean, interactive removal of DevTrack from your machine — stopping the daemon, removing autostart entries, deleting runtime data, and optionally removing the binary itself.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">New in v2.2.0-dev — feat/uninstall-and-upgrade-fix</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">New in v2.2.11 — feat/uninstall-and-upgrade-fix</div>
 
 <h2>Quick Start</h2>
 <pre><code class="language-bash"># Interactive uninstall (confirms each step)
@@ -1641,9 +1641,9 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-note);border-color:var(--callout-note-border);color:#1e40af;">v2.2.0-dev — unreleased — feat/uninstall-and-upgrade-fix</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-note);border-color:var(--callout-note-border);color:#1e40af;">v2.2.11 — released</div>
 
-<h2>v2.2.0-dev — Uninstall Command, Upgrade Fixes &amp; Daemon Hardening</h2>
+<h2>v2.2.11 — Uninstall Command, Upgrade Fixes &amp; Daemon Hardening</h2>
 <p>This batch (merged from <code>feat/uninstall-and-upgrade-fix</code> via PRs #121–122) adds a cross-platform uninstall command, fixes the upgrade pipeline to use the GitLab Releases API and Windows <code>.zip</code> extraction, hardens the health monitor with concurrent checks and Redis/SQLite monitors, and eliminates log spam from empty repositories.</p>
 
 <div class="feature-list" style="margin-bottom:32px;">
@@ -1654,7 +1654,7 @@ devtrack start</code></pre>
   <div class="feature-item"><div class="feature-dot">5</div><div><h4>Windows single-instance enforcement (lock_windows.go + process_windows.go)</h4><p>On Windows, the daemon now uses <code>LockFileEx</code> (via <code>devtrack-bin/lock_windows.go</code>) to hold an exclusive lock on the PID file for the lifetime of the process — preventing a second <code>devtrack start</code> from running silently alongside the first. The Unix equivalent uses <code>flock</code> (<code>lock_unix.go</code>). Platform-specific process utilities live in <code>process_windows.go</code> and <code>process_unix.go</code>.</p></div></div>
 </div>
 
-<h2>New CLI Commands (v2.2.0-dev)</h2>
+<h2>New CLI Commands (v2.2.11)</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>Command</th><th>Description</th></tr></thead>
 <tbody>
@@ -1662,7 +1662,7 @@ devtrack start</code></pre>
 </tbody>
 </table></div>
 
-<h2>New Source Files (v2.2.0-dev)</h2>
+<h2>New Source Files (v2.2.11)</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Description</th></tr></thead>
 <tbody>
@@ -2868,7 +2868,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-First · v2.0.0 · v2.2.0-dev</div>
+      <div class="home-badge">Local-First · v2.2.11</div>
       <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
       <p class="home-sub">DevTrack monitors your Git activity, prompts for work updates, routes them through AI, and keeps your project management systems in sync — all running locally on your machine.</p>
     </div>
@@ -2876,7 +2876,7 @@ function renderHome() {
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v2.2.0 (unreleased): <code>devtrack uninstall</code>, upgrade now uses GitLab Releases API + Windows .zip, concurrent health checks, Redis/SQLite monitors, Windows single-instance lock. v2.1.0: <code>devtrack-server</code> CLI, self-update, Lightweight mode. v2.0.0: CS-3 Admin GUI MVP.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v2.2.11: <code>devtrack uninstall</code>, upgrade now uses GitLab Releases API + Windows .zip, concurrent health checks, Redis/SQLite monitors, Windows single-instance lock. v2.1.0: <code>devtrack-server</code> CLI, self-update, Lightweight mode. v2.0.0: CS-3 Admin GUI MVP.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitLab Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
