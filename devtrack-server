@@ -388,6 +388,45 @@ cmd_uninstall() {
     ok "DevTrack server uninstalled."
 }
 
+# ── features ───────────────────────────────────────────────────────────────────
+cmd_features() {
+    _load_env
+    hdr "DevTrack Server Features"
+    local python_ok=false
+    if [[ -d "$SERVER_HOME/.venv" ]]; then
+        if ( cd "$SERVER_HOME" && uv run python -c "import spacy" 2>/dev/null ); then
+            python_ok=true
+        fi
+    fi
+    echo ""
+    ok "core    web server, LLM, integrations, reporting"
+    if [[ "$python_ok" == true ]]; then
+        ok "ai      NLP parser, RAG personalization"
+    else
+        err "ai      NLP parser, RAG personalization (run: devtrack-server enable ai)"
+    fi
+    echo ""
+}
+
+# ── enable ─────────────────────────────────────────────────────────────────────
+cmd_enable() {
+    local feature="${1:-}"
+    case "$feature" in
+        ai)
+            hdr "Enabling AI features"
+            export PATH="$HOME/.local/bin:$PATH"
+            info "Installing ai extra into server venv..."
+            ( cd "$SERVER_HOME" && uv pip install "devtrack[ai]" ) \
+                || die "Failed to install ai extra"
+            ok "AI features installed"
+            warn "Restart the server to apply: devtrack-server restart"
+            ;;
+        *)
+            die "Unknown feature: ${feature}. Available: ai"
+            ;;
+    esac
+}
+
 # ── help ───────────────────────────────────────────────────────────────────────
 cmd_help() {
     echo ""
@@ -412,6 +451,10 @@ cmd_help() {
     echo -e "    uninstall        Remove all installed server files"
     echo -e "    version          Print installed version"
     echo ""
+    echo -e "  ${BOLD}FEATURES${NC}"
+    echo -e "    features         Show which optional feature sets are installed"
+    echo -e "    enable ai        Install the AI extra (NLP parser, RAG personalization)"
+    echo ""
     echo -e "  ${BOLD}Environment:${NC}"
     echo -e "    DEVTRACK_SERVER_HOME  Override install directory (default: ~/.local/share/devtrack-server)"
     echo ""
@@ -432,6 +475,8 @@ case "$CMD" in
     upgrade)   cmd_upgrade "$@" ;;
     uninstall) cmd_uninstall "$@" ;;
     version)   echo "devtrack-server $(_server_version)" ;;
+    features)  cmd_features "$@" ;;
+    enable)    cmd_enable   "$@" ;;
     help|--help|-h) cmd_help ;;
     *) err "Unknown command: $CMD"; cmd_help; exit 1 ;;
 esac

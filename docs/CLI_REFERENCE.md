@@ -389,6 +389,66 @@ devtrack telegram-status   # Show whether the Telegram bot process is alive
 
 ---
 
+## devtrack-server — Python Backend Management
+
+The `devtrack-server` script manages the Python backend process. It is installed to `~/.local/bin/devtrack-server` by `devtrack-server install`.
+
+### Lifecycle
+
+```bash
+devtrack-server install        # Copy backend files, install core deps, add to PATH
+devtrack-server setup          # Interactive .env configuration wizard
+devtrack-server start          # Start the webhook server in the background
+devtrack-server stop           # Stop the running server
+devtrack-server restart        # Stop then start
+devtrack-server status         # Show process state and HTTP health
+devtrack-server logs           # Tail the server log (Ctrl+C to exit)
+devtrack-server upgrade        # Download and install the latest release
+devtrack-server upgrade --check # Check for updates without installing
+devtrack-server uninstall      # Stop the server and remove all installed files
+devtrack-server version        # Print installed version
+```
+
+### Feature Management
+
+The Python backend uses a two-tier dependency model. The `core` tier is installed by default; the `ai` tier adds NLP and RAG personalization features on demand.
+
+```bash
+devtrack-server features       # Show which feature tiers are installed
+devtrack-server enable ai      # Install the ai extra (spaCy, ChromaDB, sentence-transformers)
+```
+
+#### `devtrack-server features`
+
+Checks whether the optional `ai` extra is installed in the server virtualenv and prints a status table:
+
+```
+── DevTrack Server Features ──
+
+  ✓  core    web server, LLM, integrations, reporting
+  ✗  ai      NLP parser, RAG personalization (run: devtrack-server enable ai)
+```
+
+A `✓` means that feature tier is active. A `✗` means the packages are not installed — the server still runs, but NLP-powered features (smarter work-update parsing, RAG commit style) are unavailable until the `ai` extra is enabled.
+
+#### `devtrack-server enable ai`
+
+Installs the `ai` optional-dependency group into the server virtualenv using `uv pip install "devtrack[ai]"`. This includes:
+
+- `spacy>=3.7.0` — NLP parser for work-update extraction
+- `en_core_web_sm` — English spaCy model
+- `sentence-transformers>=2.2.0` — embeddings for RAG personalization
+- `chromadb>=0.4.0` — local vector store for RAG few-shot retrieval
+
+After the install completes, restart the server for the features to activate:
+
+```bash
+devtrack-server enable ai
+devtrack-server restart
+```
+
+---
+
 ## Self-Update
 
 ```bash

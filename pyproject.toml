@@ -15,22 +15,12 @@ dependencies = [
     "pygithub>=2.6.1",
     "python-dotenv>=1.1.0",
     "requests>=2.32.3",
-    # NLP & AI Dependencies (Critical for Phase 3)
-    "spacy>=3.7.0",
-    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
-    "sentence-transformers>=2.2.0",
     "ollama>=0.1.0",
     # Task Matching & Parsing
     "fuzzywuzzy>=0.18.0",
     "python-Levenshtein>=0.21.0",
     "dateparser>=1.2.0",
-    # Testing Framework
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "pandas-stubs==2.3.2.250926",
     "openai>=2.24.0",
-    # RAG-based personalization (vector store for few-shot style retrieval)
-    "chromadb>=0.4.0",
     "python-telegram-bot>=22.7",
     "motor>=3.7.1",
     "runtime-narrative>=0.1.0",
@@ -45,8 +35,21 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ai = [
+    "spacy>=3.7.0",
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+    "sentence-transformers>=2.2.0",
+    "chromadb>=0.4.0",
+]
 openai = ["openai>=1.0.0"]
 anthropic = ["anthropic>=0.25.0"]
 cloud = ["openai>=1.0.0", "anthropic>=0.25.0"]
 mongodb = ["motor>=3.3.0"]
 notifications = ["plyer>=2.1"]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pandas-stubs==2.3.2.250926",
+]
