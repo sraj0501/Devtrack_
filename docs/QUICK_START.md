@@ -53,12 +53,18 @@ Leave credential variables empty for now (OPENAI_API_KEY, AZURE_DEVOPS_TOKEN, et
 ### Step 2: Install Dependencies (2 min)
 
 ```bash
-# Install Python dependencies
+# Install Python core dependencies
 uv sync
 
-# Download spaCy NLP model
+# (Optional) Install AI/NLP tier — required for spaCy parsing, description enhancement,
+# and RAG personalization. Skip this if you only need the core trigger pipeline.
+devtrack-server enable ai
+
+# If you installed the ai tier, also download the spaCy model:
 uv run python -m spacy download en_core_web_sm
 ```
+
+> Run `devtrack-server features` at any time to see which tiers are active and get the install hint for any that are missing.
 
 ### Step 3: Build Go Daemon (1 min)
 
@@ -207,13 +213,19 @@ tail Data/logs/daemon.log | head -30
 
 Should show the Python webhook server startup messages (e.g. `✓ Python server started`).
 
-### 3. Check NLP Model
+### 3. Check Server Feature Tiers
 
 ```bash
-uv run python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('NLP ready')"
+devtrack-server features
 ```
 
-Should print: `NLP ready`
+Expected output shows `✓ core` always. `✓ ai` appears only if you ran `devtrack-server enable ai`. If `ai` shows `✗`, NLP parsing and description enhancement will be skipped at runtime (the server still starts and handles triggers).
+
+To enable the ai tier:
+```bash
+devtrack-server enable ai
+# Then restart: devtrack restart
+```
 
 ### 4. Check Ollama (if using AI)
 

@@ -18,6 +18,13 @@ Both signals are automatically injected into every LLM prompt across the system 
 
 ## Setup
 
+> **Prerequisite — `ai` tier**: Personalization depends on `spacy`, `sentence-transformers`, and `chromadb`, which are part of the optional `ai` dependency tier. Before following the steps below, ensure the tier is installed:
+> ```bash
+> devtrack-server enable ai
+> devtrack restart
+> ```
+> Run `devtrack-server features` to confirm `✓ ai` is shown.
+
 ### Step 1: Enable Learning (One-time)
 
 ```bash
@@ -32,7 +39,7 @@ This:
 
 ### Step 2: Install the RAG Embedding Model
 
-For the few-shot example feature (optional but recommended):
+For the few-shot example feature (optional but recommended). The `ai` tier must already be installed (Step 0 above) before pulling the embedding model:
 
 ```bash
 ollama pull nomic-embed-text
