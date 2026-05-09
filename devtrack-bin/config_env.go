@@ -238,23 +238,6 @@ func GetIPCAddress() string {
 	return config.IPCHost + ":" + config.IPCPort
 }
 
-// GetPythonBridgePath returns the path to python_bridge.py.
-// Returns an error instead of calling os.Exit so Lightweight mode callers can
-// handle the missing file gracefully.
-func GetPythonBridgePath() (string, error) {
-	config, err := LoadEnvConfig()
-	if err != nil {
-		return "", fmt.Errorf("config load failed: %w", err)
-	}
-
-	path := filepath.Join(config.ProjectRoot, config.PythonBridgeScript)
-	if !fileExists(path) {
-		return "", fmt.Errorf("Python bridge script not found at %s", path)
-	}
-
-	return path, nil
-}
-
 // GetEmailReporterPath returns the path to backend/email_reporter.py.
 // Returns an error instead of calling os.Exit so Lightweight mode callers can
 // handle the missing backend gracefully.
