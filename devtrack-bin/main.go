@@ -50,6 +50,25 @@ func main() {
 			return
 		}
 
+		// devtrack uninstall [--yes] [--keep-data]
+		if cmd == "uninstall" {
+			keepData := false
+			yes := false
+			for _, arg := range os.Args[2:] {
+				switch arg {
+				case "--keep-data":
+					keepData = true
+				case "--yes", "-y":
+					yes = true
+				}
+			}
+			if err := RunUninstall(keepData, yes); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+
 		// devtrack migrate — run any pending config/filesystem migrations
 		if cmd == "migrate" {
 			RunPendingMigrations()
@@ -160,6 +179,8 @@ func printBasicUsage() {
 	fmt.Println()
 	fmt.Println("UPDATE:     upgrade                          (download latest binary + apply migrations)")
 	fmt.Println("            upgrade --check                  (check for updates without installing)")
+	fmt.Println("UNINSTALL:  uninstall                        (remove all DevTrack components)")
+	fmt.Println("            uninstall --keep-data            (keep database and logs)")
 	fmt.Println()
 	fmt.Println("New install? Run: devtrack setup")
 	fmt.Println("Run 'devtrack help' for full usage.")
