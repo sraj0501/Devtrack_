@@ -148,6 +148,51 @@ jobs:
           git tag -f "$TAG" "$SPLIT_SHA"
           git push --force gitlab-client "refs/tags/${TAG}"
 
+      - name: Sync server files → GitLab devtrack_server
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_SYNC_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          VER="${TAG#v}"
+
+          # Build a clean snapshot of server files in a throwaway git repo
+          SERVER_TMP=$(mktemp -d)
+          cp -r backend                    "$SERVER_TMP/"
+          cp    python_bridge.py           "$SERVER_TMP/"
+          cp    pyproject.toml             "$SERVER_TMP/"
+          cp    docker-compose.yml         "$SERVER_TMP/"
+          cp    devtrack-git-wrapper.sh    "$SERVER_TMP/"
+          cp    devtrack-server            "$SERVER_TMP/"
+          cp    README.md TERMS.md         "$SERVER_TMP/"
+          [ -f uv.lock ]     && cp uv.lock     "$SERVER_TMP/"
+          [ -f .env_sample ] && cp .env_sample "$SERVER_TMP/"
+          cp workspaces.yaml.example workspaces.yaml.sample "$SERVER_TMP/"
+          # Ship the GitLab CI config as .gitlab-ci.yml
+          cp ci/devtrack_server.gitlab-ci.yml "$SERVER_TMP/.gitlab-ci.yml"
+          echo "${VER}" > "$SERVER_TMP/VERSION"
+
+          # Strip dev-only artefacts
+          find "$SERVER_TMP" -type d -name "__pycache__"   -exec rm -rf {} + 2>/dev/null || true
+          find "$SERVER_TMP" -type d -name "tests"         -exec rm -rf {} + 2>/dev/null || true
+          find "$SERVER_TMP" -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+          find "$SERVER_TMP" -name "*.pyc" -delete 2>/dev/null || true
+          find "$SERVER_TMP" -name "*.pyo" -delete 2>/dev/null || true
+
+          # Commit and force-push to gitlab-server dev (triggers pytest + Docker CI)
+          cd "$SERVER_TMP"
+          git init
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add origin \
+            "https://oauth2:${GITLAB_TOKEN}@gitlab.com/devtrack3_cloud/devtrack_server.git"
+          git add -A
+          git commit -m "chore: sync server ${TAG}"
+          git push --force origin HEAD:dev
+
+          # Push version tag so gitlab-server can correlate releases
+          git tag "$TAG"
+          git push --force origin "refs/tags/${TAG}"
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
