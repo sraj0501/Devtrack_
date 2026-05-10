@@ -1,8 +1,28 @@
 # DevTrack Project Board
 
-_Last updated: 2026-05-11 by engineer — TASK-040 added and IN PROGRESS (logo embedding)_
-_Next DevTrack task ID: TASK-041_
+_Last updated: 2026-05-11 by engineer — TASK-041 IN PROGRESS (wiki migration)_
+_Next DevTrack task ID: TASK-042_
 _Next build-runner task ID: BR-010_
+
+---
+
+## 🔴 IN PROGRESS
+
+### TASK-041 — Migrate wiki/ out of monorepo into devtrack_wiki/wiki/
+**Assigned to**: engineer
+**Phase**: deploy-arch
+**Started**: 2026-05-11
+**Branch**: chore/TASK-041-migrate-wiki
+
+**Acceptance criteria**:
+- [ ] All files from wiki/ reconciled into devtrack_wiki/wiki/ (devtrack_wiki version is canonical; wiki/ content merged only where it has something devtrack_wiki lacks)
+- [ ] devtrack_wiki/wiki/ committed and pushed to GitLab main
+- [ ] wiki/ removed from monorepo via git rm -r
+- [ ] Removal committed via devtrack git commit
+- [ ] git status in monorepo shows no reference to wiki/
+- [ ] PR opened from chore/TASK-041-migrate-wiki to dev on GitHub
+
+**Engineer status**: started — reconcile differing files, commit devtrack_wiki, remove wiki/ from monorepo
 
 ---
 
