@@ -2,6 +2,28 @@
 
 ---
 
+### [2026-05-11 00:36] TASK-041 — Remove wiki/ from monorepo; reconcile into devtrack_wiki
+
+**Original message**: "chore: remove wiki/ from monorepo — website source now lives in devtrack_wiki repo"
+**DevTrack enhanced it to**: "chore: remove wiki/ from monorepo — website source now lives in devtrack_wiki repo" (no AI enhancement — message accepted as-is; devtrack-git-wrapper.sh path mode used with PROJECT_ROOT)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated with COMPLETE status, PR URL recorded
+**Time**: ~10 minutes
+**Friction**: LOW
+**Notes**: Compared all 7 differing files. script.js, style.css, style.css.bak — whitespace only, devtrack_wiki canonical. index.html — devtrack_wiki version is canonical (correct repo URL Devtrack_, added download.html nav link, updated standup->force-trigger command, updated demo blocks). privacy.html — devtrack_wiki version canonical (GitLab links). vercel.json — effectively identical. netlify.toml — wiki/ version was more up-to-date (had already removed obsolete GitLab Package Registry redirects); applied that cleaner version to devtrack_wiki. Logo images (devtrack.png, devtrack_icon.png) already present in devtrack_wiki/wiki/assets/. devtrack_wiki pushed (commit c654109). wiki/ removed via git rm -r (12 files). Committed via devtrack git commit with PROJECT_ROOT set. PR #129 opened to dev.
+
+## Task Summary — TASK-041: Migrate wiki/ out of monorepo into devtrack_wiki/wiki/ — 2026-05-11
+
+- Total commits: 2 (devtrack_wiki: c654109 raw git; monorepo: 6e1ca9f via devtrack git commit)
+- Acceptance criteria met: 6/6
+- Tickets auto-updated: 0
+- Estimated daily time saved: N/A (one-off migration task)
+- Blockers encountered: none — devtrack git commit needed PROJECT_ROOT env var set explicitly (installed binary looks for wrapper script)
+- One thing that still feels rough: "devtrack git commit on Windows requires PROJECT_ROOT set manually; the installed binary errors without it"
+- Ready for PM review: YES
+
+---
+
 ### [2026-05-11 00:30] TASK-040 — DevTrack logo added to website and icon embedded in Windows binary
 
 **Original message**: "feat(branding): add DevTrack logo to website and embed icon in Windows binary (TASK-040)"

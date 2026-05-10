@@ -15,14 +15,18 @@ _Next build-runner task ID: BR-010_
 **Branch**: chore/TASK-041-migrate-wiki
 
 **Acceptance criteria**:
-- [ ] All files from wiki/ reconciled into devtrack_wiki/wiki/ (devtrack_wiki version is canonical; wiki/ content merged only where it has something devtrack_wiki lacks)
-- [ ] devtrack_wiki/wiki/ committed and pushed to GitLab main
-- [ ] wiki/ removed from monorepo via git rm -r
-- [ ] Removal committed via devtrack git commit
-- [ ] git status in monorepo shows no reference to wiki/
-- [ ] PR opened from chore/TASK-041-migrate-wiki to dev on GitHub
+- [x] All files from wiki/ reconciled into devtrack_wiki/wiki/ (devtrack_wiki version is canonical; wiki/ content merged only where it has something devtrack_wiki lacks)
+- [x] devtrack_wiki/wiki/ committed and pushed to GitLab main
+- [x] wiki/ removed from monorepo via git rm -r
+- [x] Removal committed via devtrack git commit
+- [x] git status in monorepo shows no reference to wiki/
+- [x] PR opened from chore/TASK-041-migrate-wiki to dev on GitHub
 
-**Engineer status**: started — reconcile differing files, commit devtrack_wiki, remove wiki/ from monorepo
+**Engineer status**: 6/6 criteria done — last commit: 6e1ca9f "chore: remove wiki/ from monorepo — website source now lives in devtrack_wiki repo" — 2026-05-11
+**PR**: https://github.com/sraj0501/Devtrack_/pull/129 (targeting dev)
+**devtrack_wiki commit**: c654109 "chore: migrate monorepo wiki/ content into devtrack_wiki"
+
+**COMPLETE** — ready for PM review — 2026-05-11
 
 ---
 
