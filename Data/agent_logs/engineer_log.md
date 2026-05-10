@@ -2,6 +2,28 @@
 
 ---
 
+### [2026-05-11 00:30] TASK-040 — DevTrack logo added to website and icon embedded in Windows binary
+
+**Original message**: "feat(branding): add DevTrack logo to website and embed icon in Windows binary (TASK-040)"
+**DevTrack enhanced it to**: "feat(branding): add DevTrack logo to website and embed icon in Windows binary (TASK-040)" (no AI enhancement shown in output — message accepted as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated with COMPLETE status, PR URL recorded
+**Time**: ~25 minutes
+**Friction**: LOW
+**Notes**: devtrack.png found at wiki/assets/ (untracked). devtrack_wiki/ is gitignored in monorepo — it is a separate GitLab repo; wiki changes committed there with raw git. goversioninfo installed via `go install`, PIL used via `python3 --break-system-packages pillow` to convert PNG to ICO. goversioninfo -64 flag required (plain -o produced relocation type 7 error). go build/vet/test all pass after resource.syso added. macOS/Linux: no action needed (no app bundle). go:generate directive added to main.go for future regeneration.
+
+## Task Summary — TASK-040: Add DevTrack logo to website and embed Windows icon — 2026-05-11
+
+- Total commits: 2 (monorepo via devtrack: 85d67e2; devtrack_wiki via raw git: d22a76d)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0
+- Estimated daily time saved: N/A (one-off branding task)
+- Blockers encountered: none — goversioninfo -64 flag needed (discovered by fixing relocation error)
+- One thing that still feels rough: "The devtrack_wiki/ separate repo requires raw git commits; devtrack daemon is not scoped to it"
+- Ready for PM review: YES
+
+---
+
 ### [2026-05-09] TASK-029 DONE — pyproject.toml restructured: spacy/chromadb/sentence-transformers/en-core-web-sm moved to [project.optional-dependencies] ai; pytest/pytest-asyncio/pandas-stubs moved to [dependency-groups] dev
 
 ### [2026-05-09] TASK-030 DONE — is_ai_available() added to backend/config.py using importlib.util.find_spec('spacy')
