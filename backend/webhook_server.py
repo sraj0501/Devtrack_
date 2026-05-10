@@ -827,6 +827,340 @@ async def http_work_session_stop(
 
 
 # ---------------------------------------------------------------------------
+# PM Agent — plan preview & create
+# ---------------------------------------------------------------------------
+
+try:
+    from backend.pm_agent import PMAgent, DecompositionPlan
+    from backend.plan_parser import parse_plan_file, parse_plan_folder, PlanParseError
+    import dataclasses, json as _json
+    _pm_agent_available = True
+except ImportError as _pm_err:
+    _pm_agent_available = False
+    logger.warning(f"PM agent not available: {_pm_err}")
+
+
+@app.post("/trigger/plan/preview")
+async def http_plan_preview(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """
+    Decompose a problem into an Epic→Story→Task plan and return a preview.
+
+    Accepts either:
+      { "problem": "...", "platform": "azure", "project_context": "...", "notes": "..." }
+    or:
+      { "markdown": "<full plan file contents>", "platform": "azure" }
+
+    Returns:
+      { "preview": "...", "plan_token": "<json>", "total_count": N,
+        "epic_count": N, "story_count": N, "task_count": N }
+    """
+    if not _pm_agent_available:
+        raise HTTPException(status_code=503, detail="PM agent dependencies not installed")
+
+    data = await request.json()
+
+    markdown = data.get("markdown", "").strip()
+    if markdown:
+        # Parse structured markdown sent by the CLI
+        try:
+            from backend.plan_parser import _parse_content
+            parsed = _parse_content(markdown)
+            problem = parsed.to_problem_statement()
+            platform = data.get("platform") or parsed.platform or "azure"
+            project_context = parsed.project
+        except PlanParseError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+    else:
+        problem = data.get("problem", "").strip()
+        if not problem:
+            raise HTTPException(status_code=400, detail="'problem' or 'markdown' field required")
+        platform = data.get("platform", "azure")
+        project_context = data.get("project_context") or None
+
+    notes = data.get("notes", "")
+    if notes:
+        problem = f"{problem}\n\nAdditional constraints:\n{notes}"
+
+    logger.info(f"Plan preview requested — platform={platform}, problem_len={len(problem)}")
+
+    try:
+        agent = PMAgent(platform=platform, project_context=project_context)
+        plan = agent.decompose(problem)
+    except Exception as exc:
+        logger.exception("Plan decomposition failed")
+        raise HTTPException(status_code=500, detail=f"Decomposition failed: {exc}")
+
+    preview = agent.format_preview(plan)
+
+    # Serialise plan to a token so the CLI can pass it back for creation
+    plan_dict = dataclasses.asdict(plan)
+    plan_token = base64.b64encode(_json.dumps(plan_dict).encode()).decode()
+
+    return {
+        "preview": preview,
+        "plan_token": plan_token,
+        "total_count": plan.total_count,
+        "epic_count": plan.epic_count,
+        "story_count": plan.story_count,
+        "task_count": plan.task_count,
+        "platform": platform,
+    }
+
+
+@app.post("/trigger/plan/create")
+async def http_plan_create(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """
+    Execute plan creation from a plan_token returned by /trigger/plan/preview.
+
+    Accepts: { "plan_token": "<base64 plan json>" }
+
+    Returns:
+      { "created": [ { "title": ..., "platform_id": ..., "platform_url": ... } ],
+        "failed":  [ { "title": ..., "error": ... } ] }
+    """
+    if not _pm_agent_available:
+        raise HTTPException(status_code=503, detail="PM agent dependencies not installed")
+
+    data = await request.json()
+    token = data.get("plan_token", "")
+    if not token:
+        raise HTTPException(status_code=400, detail="'plan_token' field required")
+
+    try:
+        plan_dict = _json.loads(base64.b64decode(token.encode()).decode())
+        # Reconstruct DecompositionPlan + WorkItemNode objects
+        from backend.pm_agent import WorkItemNode
+        items = [WorkItemNode(**it) for it in plan_dict.pop("items", [])]
+        plan = DecompositionPlan(**plan_dict, items=items)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid plan_token: {exc}")
+
+    logger.info(f"Plan create requested — platform={plan.platform}, items={plan.total_count}")
+
+    progress_log: list[str] = []
+
+    async def on_progress(node, status: str) -> None:
+        progress_log.append(f"{node.title}: {status}")
+        logger.debug(f"Plan progress: {node.title} → {status}")
+
+    try:
+        agent = PMAgent(platform=plan.platform)
+        created, failed = await agent.create_all(plan, on_progress=on_progress)
+    except Exception as exc:
+        logger.exception("Plan creation failed")
+        raise HTTPException(status_code=500, detail=f"Creation failed: {exc}")
+
+    return {
+        "created": [
+            {
+                "title": n.title,
+                "item_type": n.item_type,
+                "level": n.level,
+                "platform_id": n.platform_id,
+                "platform_url": n.platform_url,
+            }
+            for n in created
+        ],
+        "failed": [
+            {"title": n.title, "error": err}
+            for n, err in failed
+        ],
+        "progress": progress_log,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Boardroom — multi-persona plan review
+# ---------------------------------------------------------------------------
+
+try:
+    from backend.boardroom.session import BoardroomSession
+    from backend.boardroom.report import format_terminal, format_markdown
+    from backend.boardroom.interactive import (
+        select_responders,
+        generate_persona_response,
+        generate_final_summary,
+    )
+    _boardroom_available = True
+except ImportError as _br_err:
+    _boardroom_available = False
+    logger.warning(f"Boardroom not available: {_br_err}")
+
+
+@app.post("/trigger/boardroom")
+async def http_boardroom(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """
+    Run a full boardroom review on a plan.
+
+    Accepts:
+      { "plan_text": "...", "output_format": "terminal"|"markdown" }
+    or:
+      { "markdown": "<plan file contents>", "output_format": "terminal"|"markdown" }
+
+    Returns:
+      { "report": "<formatted report string>",
+        "verdict": "PROCEED"|"REVISE"|"RECONSIDER",
+        "approve": N, "revise": N, "reject": N }
+    """
+    if not _boardroom_available:
+        raise HTTPException(status_code=503, detail="Boardroom dependencies not installed")
+
+    data = await request.json()
+    output_format = data.get("output_format", "terminal")
+
+    markdown_src = data.get("markdown", "").strip()
+    if markdown_src:
+        try:
+            from backend.plan_parser import _parse_content
+            parsed = _parse_content(markdown_src)
+            plan_text = parsed.to_problem_statement()
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Plan parse error: {exc}")
+    else:
+        plan_text = data.get("plan_text", "").strip()
+        if not plan_text:
+            raise HTTPException(status_code=400, detail="'plan_text' or 'markdown' field required")
+
+    logger.info(f"Boardroom session starting — plan_len={len(plan_text)}")
+
+    session = BoardroomSession()
+    report = await session.run(plan_text)
+
+    if output_format == "markdown":
+        report_str = format_markdown(report)
+    else:
+        report_str = format_terminal(report)
+
+    return {
+        "report": report_str,
+        "verdict": report.verdict,
+        "verdict_summary": report.verdict_summary,
+        "approve": report.approve_count,
+        "revise": report.revise_count,
+        "reject": report.reject_count,
+        "pros": report.pros,
+        "cons": report.cons,
+    }
+
+
+@app.post("/trigger/boardroom/chat")
+async def http_boardroom_chat(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """
+    One turn of an interactive boardroom conversation.
+
+    Accepts:
+      {
+        "plan_text":     "<problem/plan description>",
+        "history":       [ {role, content, persona_id?, persona_name?}, ... ],
+        "user_message":  "<what the user just typed>",
+        "addressed_to":  "<persona_id or null>",   // e.g. "security" if user typed @sam
+        "final_say":     "<text or null>"           // set to end the session
+      }
+
+    Returns:
+      {
+        "responses": [ {persona_id, persona_name, role, content}, ... ],
+        "updated_history": [ ... ],        // full history including this turn
+        "session_closed": false,
+        "closing_summary": null
+      }
+    """
+    if not _boardroom_available:
+        raise HTTPException(status_code=503, detail="Boardroom dependencies not installed")
+
+    data = await request.json()
+    plan_text    = data.get("plan_text", "")
+    history      = data.get("history", [])
+    user_message = data.get("user_message", "").strip()
+    addressed_to = data.get("addressed_to") or None
+    final_say    = data.get("final_say") or None
+
+    if not plan_text:
+        raise HTTPException(status_code=400, detail="'plan_text' is required")
+
+    from backend.llm import get_provider
+    provider = get_provider()
+
+    # ── Final-say path: close the session ───────────────────────────────────
+    if final_say:
+        closing = await asyncio.to_thread(
+            generate_final_summary, provider, plan_text, history, final_say
+        )
+        # Append final say + closing to history
+        updated = list(history)
+        updated.append({"role": "user", "content": f"[Final say] {final_say}"})
+        updated.append({"role": "system", "content": f"[Closing summary] {closing}"})
+        return {
+            "responses": [],
+            "updated_history": updated,
+            "session_closed": True,
+            "closing_summary": closing,
+        }
+
+    if not user_message:
+        raise HTTPException(status_code=400, detail="'user_message' or 'final_say' required")
+
+    # ── Normal turn: select responders ──────────────────────────────────────
+    responder_ids = await asyncio.to_thread(
+        select_responders, provider, history, user_message, addressed_to
+    )
+
+    from backend.boardroom.personas import PERSONAS as _PERSONAS
+    id_to_persona = {p.id: p for p in _PERSONAS}
+
+    # ── Generate responses in parallel ──────────────────────────────────────
+    # Append user message to history first so personas see it in context
+    turn_history = list(history) + [{"role": "user", "content": user_message}]
+
+    async def _get_response(persona_id: str):
+        persona = id_to_persona.get(persona_id)
+        if not persona:
+            return None
+        content = await asyncio.to_thread(
+            generate_persona_response,
+            provider, persona, turn_history, user_message, plan_text,
+        )
+        return {
+            "persona_id": persona.id,
+            "persona_name": persona.name,
+            "role": persona.role,
+            "content": content,
+        }
+
+    raw_responses = await asyncio.gather(*[_get_response(rid) for rid in responder_ids])
+    responses = [r for r in raw_responses if r and r["content"]]
+
+    # Build updated history
+    updated = list(turn_history)
+    for r in responses:
+        updated.append({
+            "role": "persona",
+            "persona_id": r["persona_id"],
+            "persona_name": r["persona_name"],
+            "content": r["content"],
+        })
+
+    return {
+        "responses": responses,
+        "updated_history": updated,
+        "session_closed": False,
+        "closing_summary": None,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Startup
 # ---------------------------------------------------------------------------
 
