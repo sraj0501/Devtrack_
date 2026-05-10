@@ -295,9 +295,41 @@ See [MULTI_REPO.md](MULTI_REPO.md) for full multi-repo documentation.
 
 ---
 
+## Boardroom
+
+Multi-persona AI review of a problem or plan. Seven AI personas (architect, security, PM, devil's advocate, engineer, analyst, scalability) each provide PROs/CONs; the session produces a SWOT matrix and a final verdict.
+
+```bash
+devtrack boardroom "<problem>"                             # Inline problem — all 7 personas review it
+devtrack boardroom --file <plan.md>                        # Review a Markdown plan file
+devtrack boardroom --folder <plans/>                       # Review all .md files in a folder
+devtrack boardroom --file <plan.md> --output <report.md>  # Save report to file
+devtrack boardroom --file <plan.md> --interactive          # Auto-enter interactive chat after review
+```
+
+After the review you can optionally continue with a chat session, directing follow-up questions to individual personas or the full group.
+
+---
+
+## Plan
+
+Decompose a problem statement into an Epic → Story → Task hierarchy and create the items on your configured PM platform (GitHub, GitLab, Azure DevOps, Jira).
+
+```bash
+devtrack plan "<problem>"          # Inline problem statement
+devtrack plan --file <plan.md>     # Load problem from a Markdown file
+devtrack plan --folder <plans/>    # Process all .md files in a folder
+```
+
+A platform picker is shown if `PM_AGENT_DEFAULT_PLATFORM` is not set.
+
+See [PM_AGENT.md](PM_AGENT.md) for full PM agent documentation.
+
+---
+
 ## PM Agent (via Telegram)
 
-The PM Agent is Telegram-only. Use `/plan` in your Telegram bot:
+The PM Agent is also available via Telegram. Use `/plan` in your Telegram bot:
 
 ```
 /plan Build a user authentication system
