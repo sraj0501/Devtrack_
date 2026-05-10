@@ -1,3 +1,9 @@
+// Windows binary icon and version info.
+// Requires: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+// Regenerate resource.syso after updating versioninfo.json or devtrack.ico:
+//
+//go:generate goversioninfo -64 -o resource.syso versioninfo.json
+
 package main
 
 import (
