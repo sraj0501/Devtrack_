@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -108,6 +109,201 @@ func (c *HTTPTriggerClient) SendWorkSessionStop(sessionID int64) error {
 	return c.post("/trigger/work_session_stop", map[string]interface{}{
 		"session_id": sessionID,
 	})
+}
+
+// PlanPreviewRequest is the payload sent to POST /trigger/plan/preview.
+type PlanPreviewRequest struct {
+	Problem        string `json:"problem,omitempty"`
+	Markdown       string `json:"markdown,omitempty"`
+	Platform       string `json:"platform,omitempty"`
+	ProjectContext string `json:"project_context,omitempty"`
+	Notes          string `json:"notes,omitempty"`
+}
+
+// PlanPreviewResponse is the response from POST /trigger/plan/preview.
+type PlanPreviewResponse struct {
+	Preview    string `json:"preview"`
+	PlanToken  string `json:"plan_token"`
+	TotalCount int    `json:"total_count"`
+	EpicCount  int    `json:"epic_count"`
+	StoryCount int    `json:"story_count"`
+	TaskCount  int    `json:"task_count"`
+	Platform   string `json:"platform"`
+}
+
+// PlanCreatedItem is one successfully created work item.
+type PlanCreatedItem struct {
+	Title       string `json:"title"`
+	ItemType    string `json:"item_type"`
+	Level       int    `json:"level"`
+	PlatformID  string `json:"platform_id"`
+	PlatformURL string `json:"platform_url"`
+}
+
+// PlanFailedItem is one work item that failed to be created.
+type PlanFailedItem struct {
+	Title string `json:"title"`
+	Error string `json:"error"`
+}
+
+// PlanCreateResponse is the response from POST /trigger/plan/create.
+type PlanCreateResponse struct {
+	Created  []PlanCreatedItem `json:"created"`
+	Failed   []PlanFailedItem  `json:"failed"`
+	Progress []string          `json:"progress"`
+}
+
+// SendPlanPreview calls POST /trigger/plan/preview and returns the parsed response.
+func (c *HTTPTriggerClient) SendPlanPreview(req PlanPreviewRequest) (*PlanPreviewResponse, error) {
+	var resp PlanPreviewResponse
+	if err := c.postWithResult("/trigger/plan/preview", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// SendPlanCreate calls POST /trigger/plan/create and returns the parsed response.
+func (c *HTTPTriggerClient) SendPlanCreate(planToken string) (*PlanCreateResponse, error) {
+	var resp PlanCreateResponse
+	payload := map[string]string{"plan_token": planToken}
+	if err := c.postWithResult("/trigger/plan/create", payload, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// BoardroomRequest is the payload for POST /trigger/boardroom.
+type BoardroomRequest struct {
+	PlanText     string `json:"plan_text,omitempty"`
+	Markdown     string `json:"markdown,omitempty"`
+	OutputFormat string `json:"output_format"` // "terminal" | "markdown"
+}
+
+// BoardroomResponse is the response from POST /trigger/boardroom.
+type BoardroomResponse struct {
+	Report        string   `json:"report"`
+	Verdict       string   `json:"verdict"`
+	VerdictSummary string  `json:"verdict_summary"`
+	Approve       int      `json:"approve"`
+	Revise        int      `json:"revise"`
+	Reject        int      `json:"reject"`
+	Pros          []string `json:"pros"`
+	Cons          []string `json:"cons"`
+}
+
+// SendBoardroom calls POST /trigger/boardroom and returns the parsed response.
+// Uses a longer timeout (180s) since 7 parallel LLM calls + synthesis can be slow.
+func (c *HTTPTriggerClient) SendBoardroom(req BoardroomRequest) (*BoardroomResponse, error) {
+	// Build a client with a longer timeout for boardroom sessions.
+	longClient := *c
+	longClient.httpClient = &http.Client{
+		Timeout:   180 * time.Second,
+		Transport: c.httpClient.Transport,
+	}
+	var resp BoardroomResponse
+	if err := longClient.postWithResult("/trigger/boardroom", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// BoardroomHistoryEntry is one message in the interactive boardroom conversation.
+type BoardroomHistoryEntry struct {
+	Role        string `json:"role"`                   // "user" | "persona" | "system"
+	Content     string `json:"content"`
+	PersonaID   string `json:"persona_id,omitempty"`
+	PersonaName string `json:"persona_name,omitempty"`
+}
+
+// BoardroomChatRequest is the payload for POST /trigger/boardroom/chat.
+type BoardroomChatRequest struct {
+	PlanText    string                   `json:"plan_text"`
+	History     []BoardroomHistoryEntry  `json:"history"`
+	UserMessage string                   `json:"user_message,omitempty"`
+	AddressedTo string                   `json:"addressed_to,omitempty"`
+	FinalSay    string                   `json:"final_say,omitempty"`
+}
+
+// BoardroomPersonaResponse is one persona's reply in a chat turn.
+type BoardroomPersonaResponse struct {
+	PersonaID   string `json:"persona_id"`
+	PersonaName string `json:"persona_name"`
+	Role        string `json:"role"`
+	Content     string `json:"content"`
+}
+
+// BoardroomChatResponse is the response from POST /trigger/boardroom/chat.
+type BoardroomChatResponse struct {
+	Responses      []BoardroomPersonaResponse `json:"responses"`
+	UpdatedHistory []BoardroomHistoryEntry    `json:"updated_history"`
+	SessionClosed  bool                       `json:"session_closed"`
+	ClosingSummary string                     `json:"closing_summary"`
+}
+
+// SendBoardroomChat sends one interactive chat turn to the boardroom.
+func (c *HTTPTriggerClient) SendBoardroomChat(req BoardroomChatRequest) (*BoardroomChatResponse, error) {
+	longClient := *c
+	longClient.httpClient = &http.Client{
+		Timeout:   120 * time.Second,
+		Transport: c.httpClient.Transport,
+	}
+	var resp BoardroomChatResponse
+	if err := longClient.postWithResult("/trigger/boardroom/chat", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// postWithResult POSTs payload as JSON and decodes the response body into dest.
+func (c *HTTPTriggerClient) postWithResult(path string, payload interface{}, dest interface{}) error {
+	if c.serverURL == "" {
+		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", c.serverURL+path, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if c.apiKey != "" {
+		req.Header.Set("X-DevTrack-API-Key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("POST %s%s: %w", c.serverURL, path, err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// Try to extract a detail message from FastAPI error shape.
+		var errResp struct {
+			Detail string `json:"detail"`
+		}
+		if jsonErr := json.Unmarshal(respBody, &errResp); jsonErr == nil && errResp.Detail != "" {
+			return fmt.Errorf("server error (HTTP %d): %s", resp.StatusCode, errResp.Detail)
+		}
+		return fmt.Errorf("server returned HTTP %d for %s", resp.StatusCode, path)
+	}
+
+	if dest != nil {
+		if err := json.Unmarshal(respBody, dest); err != nil {
+			return fmt.Errorf("decode response: %w", err)
+		}
+	}
+
+	log.Printf("✓ Request sent via HTTP → %s%s (%d)", c.serverURL, path, resp.StatusCode)
+	return nil
 }
 
 func (c *HTTPTriggerClient) post(path string, payload interface{}) error {
