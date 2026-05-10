@@ -86,6 +86,10 @@ Git commits / cron timer
 | `config.go` | YAML config struct (`Data/configs/config.yaml`); all runtime values via `config_env.go` |
 | `config_env.go` | All `.env` key accessors for Go — the single source of truth for env var names |
 | `learning.go` | Personalized AI learning consent and profile management |
+| `cli_boardroom.go` | `devtrack boardroom` command — multi-persona AI plan review with SWOT, verdict, and interactive chat |
+| `cli_plan.go` | `devtrack plan` command — decompose a problem into Epic/Story/Task hierarchy and create on PM platform |
+| `versioninfo.json` | Windows binary version metadata for `goversioninfo` (`go generate` embeds as `resource_windows_amd64.syso`) |
+| `resource_windows_amd64.syso` | Pre-built Windows resource object (icon + version info); `_windows_amd64` suffix constrains linkage to that target only |
 
 ### Python layer (`backend/`)
 
@@ -98,6 +102,13 @@ Git commits / cron timer
 | `backend/config.py` | Centralized config — all modules use `backend.config.get()`, not `os.getenv()` directly |
 | `backend/ipc_client.py` | TCP IPC client (Python side) — legacy internal channel; mirrors message types from Go's `ipc.go` |
 | `python_bridge.py` | Legacy bridge (kept for reference); superseded by `webhook_server.py` as the daemon's Python process |
+
+#### Boardroom & Plan
+
+| Module | Purpose |
+|---|---|
+| `backend/boardroom/` | Multi-persona AI boardroom module: `personas.py` (7 personas), `session.py` (session orchestration), `interactive.py` (chat loop), `report.py` (SWOT/verdict rendering) |
+| `backend/plan_parser.py` | Parses free-text or Markdown plan files into structured sections for the boardroom and plan commands |
 
 #### NLP & AI Processing
 
@@ -278,7 +289,7 @@ except ConfigError as e:
 
 ## Session Completion Status (Current)
 
-**Last Updated**: April 10, 2026
+**Last Updated**: May 11, 2026
 
 **Phases Completed**:
 
@@ -297,6 +308,10 @@ except ConfigError as e:
 - Anonymous telemetry ping ✅
 - Jira alerter ✅
 - Webhook server + alert poller ✅
+- Logo integration: Windows binary icon (`devtrack.ico` via `goversioninfo`), website header images ✅
+- Wiki folder consolidation: `devtrack_wiki/` is canonical; `wiki/` subfolder removed from monorepo ✅
+- ARM64 cross-compilation fix: `.syso` renamed to `resource_windows_amd64.syso` ✅
+- Boardroom feature: multi-persona AI plan review (`devtrack boardroom`, `devtrack plan`) 🔄 IN PROGRESS
 
 **Production Readiness**: VERY HIGH
 
@@ -350,6 +365,55 @@ Automatic conflict detection and work context enrichment wired into the trigger 
 - Commit trigger logs git metadata
 - Phase 3 logic now lives in `backend/webhook_server.py` and associated handlers
 - File: **PHASE_3_IMPLEMENTATION.md**
+
+### Boardroom Feature (IN PROGRESS — `feature/boardroom`)
+
+Multi-persona AI review of a plan or problem statement. Seven AI personas (architect, security, PM, devil's advocate, engineer, analyst, scalability) each produce PROs/CONs, then the session synthesises a SWOT matrix and final verdict. Optionally continues into an interactive chat.
+
+**CLI commands:**
+
+```bash
+devtrack boardroom "<problem>"               # Inline problem review by all 7 personas
+devtrack boardroom --file <plan.md>          # Review a Markdown plan file
+devtrack boardroom --folder <plans/>         # Review all .md files in a folder
+devtrack boardroom --file <plan.md> --output <report.md>   # Save report to file
+devtrack boardroom --file <plan.md> --interactive          # Auto-enter chat after review
+devtrack boardroom --file <plan.md> --interactive          # Chat session with personas
+
+devtrack plan "<problem>"                    # Decompose problem → Epic/Story/Task + create on PM platform
+devtrack plan --file <plan.md>               # Load problem from Markdown file
+devtrack plan --folder <plans/>              # Process all .md files in folder
+```
+
+**New files:**
+
+- `backend/boardroom/personas.py` — 7 persona definitions and LLM prompt templates
+- `backend/boardroom/session.py` — orchestrates multi-persona review; calls LLM for each persona in turn
+- `backend/boardroom/interactive.py` — post-review chat loop; routes follow-up questions to relevant personas
+- `backend/boardroom/report.py` — renders SWOT matrix and verdict to terminal or Markdown file
+- `backend/plan_parser.py` — parses free-text or Markdown into structured plan sections
+- `devtrack-bin/cli_boardroom.go` — Go CLI for `devtrack boardroom`; calls `/boardroom` webhook endpoint
+- `devtrack-bin/cli_plan.go` — Go CLI for `devtrack plan`; calls existing `/plan` webhook endpoint
+
+### Windows Binary Build Notes
+
+**`goversioninfo` and `.syso` files:**
+
+```bash
+cd devtrack-bin
+go generate   # runs: goversioninfo -64 -o resource_windows_amd64.syso versioninfo.json
+```
+
+`main.go` carries the directive:
+
+```go
+//go:generate goversioninfo -64 -o resource_windows_amd64.syso versioninfo.json
+```
+
+**`.syso` filename constraint pattern:** Go links every `.syso` file found in a package for *all* build targets unless the filename contains a build-constraint suffix. Name syso files as `name_GOOS_GOARCH.syso` to constrain linkage.
+
+- `resource_windows_amd64.syso` → only linked when `GOOS=windows GOARCH=amd64`
+- A plain `resource.syso` would be linked for all targets including Linux/ARM64, causing `unknown ARM64 relocation type 3` cross-compilation failures
 
 ## Documentation Organization
 
