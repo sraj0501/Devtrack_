@@ -24,7 +24,7 @@ func NewCLI() (*CLI, error) {
 		cmd := os.Args[1]
 		if cmd == "help" || cmd == "version" || cmd == "commit-queue" || cmd == "commits" || cmd == "queue" || cmd == "telegram-status" || cmd == "azure-check" || cmd == "gitlab-check" || cmd == "github-check" || cmd == "workspace" || cmd == "shell-init" || cmd == "is-workspace" || cmd == "enable-git" || cmd == "disable-git" || cmd == "launchd-install" || cmd == "launchd-uninstall" || cmd == "autostart-install" || cmd == "autostart-uninstall" || cmd == "autostart-status" || cmd == "alerts" || cmd == "cloud" || cmd == "tui" ||
 			cmd == "login" || cmd == "logout" || cmd == "whoami" || cmd == "license" || cmd == "terms" || cmd == "telemetry" ||
-			cmd == "reload-config" {
+			cmd == "reload-config" || cmd == "plan" || cmd == "boardroom" {
 			return &CLI{}, nil
 		}
 	}
@@ -231,6 +231,10 @@ func (cli *CLI) Execute() error {
 		return nil
 	case "init":
 		return cli.handleInit()
+	case "plan":
+		return cli.handlePlan()
+	case "boardroom":
+		return cli.handleBoardroom()
 	default:
 		// Check if it's a test command
 		if strings.HasPrefix(command, "test-") {
@@ -2893,10 +2897,21 @@ func (cli *CLI) printUsage() {
 	fmt.Println("                     ALERT_GITHUB_ENABLED, ALERT_NOTIFY_ASSIGNED,")
 	fmt.Println("                     ALERT_NOTIFY_COMMENTS, ALERT_NOTIFY_REVIEW_REQUESTED")
 	fmt.Println()
-	fmt.Println("PM AGENT (via Telegram bot):")
-	fmt.Println("  /plan <problem>    Decompose a problem into Epic → Story → Task hierarchy")
-	fmt.Println("                     Platform picker → LLM preview → confirm to create items")
-	fmt.Println("                     Supported platforms: azure, gitlab, github")
+	fmt.Println("PM AGENT:")
+	fmt.Println("  devtrack plan \"<problem>\"       Decompose a problem into Epic → Story → Task hierarchy")
+	fmt.Println("  devtrack plan --file <plan.md>  Load a structured plan file")
+	fmt.Println("  devtrack plan --folder <dir/>   Process all .md plan files in a folder")
+	fmt.Println("                                  Platform picker → LLM preview → confirm to create items")
+	fmt.Println("                                  Supported platforms: azure, gitlab, github")
+	fmt.Println("  Also available via Telegram bot: /plan <problem>")
+	fmt.Println()
+	fmt.Println("BOARDROOM (multi-persona AI plan review):")
+	fmt.Println("  devtrack boardroom \"<problem>\"               7 AI personas review the plan in parallel")
+	fmt.Println("  devtrack boardroom --file <plan.md>          Review a structured plan file")
+	fmt.Println("  devtrack boardroom --folder <dir/>           Review all .md plans in folder")
+	fmt.Println("  devtrack boardroom --file <p.md> --output <r.md>  Save report as markdown")
+	fmt.Println("  Personas: Architect · Security · PM · Devil's Advocate · Engineer · Analyst · Scalability")
+	fmt.Println("  Output:   PROs/CONs · SWOT matrix · Implementation approach · PROCEED/REVISE/RECONSIDER")
 	fmt.Println()
 	fmt.Println("OFFLINE RESILIENCE:")
 	fmt.Println("  devtrack queue             Show message queue stats")
