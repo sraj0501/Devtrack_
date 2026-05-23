@@ -1,0 +1,1 @@
+Client binary source. See monorepo CLAUDE.md for full context. Module: gitlab.com/devtrack3_cloud/devtrack_client. All config via config_env.go. git-sage is bundled at devtrack_client/git_sage/ (Python, client-owned).
