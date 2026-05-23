@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}API Keys — {{ target_user }} — DevTrack Admin{% endblock %}
+{% block page_title %}API Keys — {{ target_user }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="section-header">
+    <div>
+      <a href="/admin/users" class="text-muted" style="font-size:13px">← Back to Users</a>
+      <div class="card-title" style="margin:8px 0 0">API Keys for <strong>{{ target_user }}</strong></div>
+    </div>
+    <form method="post" action="/admin/users/{{ target_user }}/keys/create">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" name="label" placeholder="Key label (optional)" style="width:180px">
+        <button type="submit" class="btn btn-primary btn-sm">+ Create Key</button>
+      </div>
+    </form>
+  </div>
+
+  {% if new_key %}
+  <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:16px;margin-bottom:20px">
+    <div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px">
+      ✓ New API key created — copy it now, it won't be shown again
+    </div>
+    <code style="font-size:13px;font-family:monospace;color:var(--text);background:var(--bg);padding:8px 12px;border-radius:4px;display:block;word-break:break-all">
+      {{ new_key }}
+    </code>
+  </div>
+  {% endif %}
+
+  <table>
+    <thead>
+      <tr><th>Prefix</th><th>Label</th><th>Created</th><th>Last Used</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for key in api_keys %}
+      <tr>
+        <td class="mono">{{ key.key_prefix }}…</td>
+        <td>{{ key.label or '—' }}</td>
+        <td class="mono">{{ key.created_at[:10] }}</td>
+        <td class="mono">{{ key.last_used[:10] if key.last_used else '—' }}</td>
+        <td style="text-align:right">
+          <form method="post" action="/admin/keys/{{ key.id }}/revoke" style="display:inline"
+                onsubmit="return confirm('Revoke this key?')">
+            <button type="submit" class="btn btn-danger btn-sm">Revoke</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-muted" style="text-align:center;padding:24px">No API keys.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

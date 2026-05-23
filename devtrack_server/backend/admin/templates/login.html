@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevTrack Admin — Sign In</title>
+  <link rel="stylesheet" href="/admin/static/admin.css">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-box">
+    <div class="login-title">Dev<span>Track</span><br><small style="font-size:14px;color:var(--muted);font-weight:400">Admin Console</small></div>
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/admin/login">
+      <div class="form-row">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" autofocus required>
+      </div>
+      <div class="form-row">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px">
+        Sign in
+      </button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{% if stats %}
+<div class="grid-4">
+  <div class="stat-card">
+    <div class="stat-label">Triggers Today</div>
+    <div class="stat-value">{{ stats.triggers_today }}</div>
+    <div class="stat-sub">all types</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Commits Today</div>
+    <div class="stat-value">{{ stats.commits_today }}</div>
+    <div class="stat-sub">commit triggers</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Last Trigger</div>
+    <div class="stat-value" style="font-size:20px">{{ stats.last_trigger }}</div>
+    <div class="stat-sub">most recent</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Errors (24h)</div>
+    <div class="stat-value {{ 'text-red' if stats.errors_24h > 0 else '' }}">{{ stats.errors_24h }}</div>
+    <div class="stat-sub">unprocessed &gt;5 min</div>
+  </div>
+</div>
+{% else %}
+<div class="text-muted" style="padding:12px 0;font-size:13px">Trigger stats unavailable — database not accessible.</div>
+{% endif %}

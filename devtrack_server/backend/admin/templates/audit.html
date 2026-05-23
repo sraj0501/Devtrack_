@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Audit Log — DevTrack Admin{% endblock %}
+{% block page_title %}Audit Log{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="section-header">
+    <div class="card-title" style="margin-bottom:0">Recent Activity</div>
+    <span class="text-muted" style="font-size:12px">Last {{ entries|length }} events</span>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Time</th><th>User</th><th>Action</th><th>Detail</th><th>IP</th></tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td class="mono" style="white-space:nowrap">{{ e.ts }}</td>
+        <td><strong>{{ e.username }}</strong></td>
+        <td>
+          <span class="badge badge-blue">{{ e.action }}</span>
+        </td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.detail or '—' }}</td>
+        <td class="mono">{{ e.ip or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-muted" style="text-align:center;padding:24px">No audit events yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

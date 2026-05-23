@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}DevTrack Admin{% endblock %}</title>
+  <link rel="stylesheet" href="/admin/static/admin.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2uodhrgzmieviBW7GkHxV3xNFr1EFPaFvEY" crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      Dev<span>Track</span>
+      <div class="sidebar-version">Admin Console</div>
+    </div>
+    <nav class="nav">
+      <a href="/admin/" class="{{ 'active' if active == 'dashboard' }}">
+        <span class="nav-icon">⬡</span> Dashboard
+      </a>
+      <a href="/admin/users" class="{{ 'active' if active == 'users' }}">
+        <span class="nav-icon">👤</span> Users
+      </a>
+      <a href="/admin/server" class="{{ 'active' if active == 'server' }}">
+        <span class="nav-icon">⚙</span> Server
+      </a>
+      <a href="/admin/audit" class="{{ 'active' if active == 'audit' }}">
+        <span class="nav-icon">📋</span> Audit Log
+      </a>
+      <a href="/admin/license" class="{{ 'active' if active == 'license' }}">
+        <span class="nav-icon">⚖</span> License
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      Signed in as <strong>{{ current_user }}</strong><br>
+      <a href="/admin/logout">Sign out</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+      <div class="topbar-right">
+        <span id="clock" class="mono"></span>
+      </div>
+    </header>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<script>
+  // Live clock
+  function tick() {
+    const el = document.getElementById('clock');
+    if (el) el.textContent = new Date().toLocaleTimeString();
+  }
+  tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>

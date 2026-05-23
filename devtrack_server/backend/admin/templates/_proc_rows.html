@@ -1,0 +1,34 @@
+{% for p in snapshot.processes %}
+<tr>
+  <td><strong>{{ p.name }}</strong></td>
+  <td>
+    <span class="badge {{ 'badge-green' if p.running else 'badge-red' }}">
+      <span class="dot"></span>{{ p.status }}
+    </span>
+  </td>
+  <td class="mono">{{ p.pid or '—' }}</td>
+  <td>{{ '%.1f' % p.cpu_percent if p.running else '—' }}</td>
+  <td>{{ '%.1f' % p.mem_mb if p.running else '—' }}</td>
+  <td style="text-align:right">
+    {% if p.running %}
+    <button class="btn btn-ghost btn-sm"
+            hx-post="/admin/process/{{ p.name }}/restart"
+            hx-target="#proc-table-body"
+            hx-swap="innerHTML"
+            onclick="return confirm('Restart {{ p.name }}?')">↻ Restart</button>
+    <button class="btn btn-danger btn-sm"
+            hx-post="/admin/process/{{ p.name }}/stop"
+            hx-target="#proc-table-body"
+            hx-swap="innerHTML"
+            onclick="return confirm('Stop {{ p.name }}?')">■ Stop</button>
+    {% else %}
+    <button class="btn btn-primary btn-sm"
+            hx-post="/admin/process/{{ p.name }}/start"
+            hx-target="#proc-table-body"
+            hx-swap="innerHTML">▶ Start</button>
+    {% endif %}
+  </td>
+</tr>
+{% else %}
+<tr><td colspan="6" class="text-muted" style="text-align:center;padding:24px">No processes discovered.</td></tr>
+{% endfor %}

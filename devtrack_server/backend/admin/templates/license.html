@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}License — DevTrack Admin{% endblock %}
+{% block page_title %}License{% endblock %}
+
+{% block content %}
+<!-- Acceptance status -->
+<div class="grid-2" style="margin-bottom:20px">
+  <div class="card">
+    <div class="card-title">Terms Acceptance</div>
+    {% if accepted %}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span class="badge badge-green"><span class="dot"></span>Accepted</span>
+      <span class="text-muted" style="font-size:13px">Terms v{{ acceptance.terms_version }}</span>
+    </div>
+    <table>
+      <tbody>
+        <tr>
+          <td class="mono" style="color:var(--muted);width:40%">Accepted at</td>
+          <td>{{ acceptance.accepted_at[:19] if acceptance else '—' }}</td>
+        </tr>
+        <tr>
+          <td class="mono" style="color:var(--muted)">User</td>
+          <td>{{ acceptance.user_identifier if acceptance else '—' }}</td>
+        </tr>
+        <tr>
+          <td class="mono" style="color:var(--muted)">Mode</td>
+          <td>{{ acceptance.mode if acceptance else '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+    {% else %}
+    <div class="error-msg" style="margin-bottom:12px">
+      Terms of Service have not been accepted. DevTrack may refuse to start.
+    </div>
+    <p class="text-muted" style="font-size:13px">
+      Run the following command to accept the terms:
+    </p>
+    <code style="display:block;background:var(--bg);padding:10px 14px;border-radius:6px;font-size:13px;margin-top:8px">devtrack terms --accept</code>
+    {% endif %}
+  </div>
+
+  <!-- Tier / seat status -->
+  <div class="card">
+    <div class="card-title">Current Tier</div>
+    <div style="font-size:28px;font-weight:700;margin-bottom:4px">{{ tier_label }}</div>
+    <div class="text-muted" style="margin-bottom:16px;font-size:13px">{{ user_count }} admin user{{ 's' if user_count != 1 }}</div>
+
+    {% if seat_ok %}
+    <span class="badge badge-green"><span class="dot"></span>{{ seat_msg }}</span>
+    {% else %}
+    <div class="error-msg">{{ seat_msg }}</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tier comparison table -->
+<div class="card">
+  <div class="card-title">Tier Overview</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Tier</th>
+        <th>Users</th>
+        <th>Deployment</th>
+        <th>Cost</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr {% if tier == 'personal' %}style="background:rgba(99,102,241,.06)"{% endif %}>
+        <td><strong>Personal</strong></td>
+        <td>1</td>
+        <td>Local / self-hosted</td>
+        <td>Free</td>
+        <td>{% if tier == 'personal' %}<span class="badge badge-green">current</span>{% endif %}</td>
+      </tr>
+      <tr {% if tier == 'team' %}style="background:rgba(99,102,241,.06)"{% endif %}>
+        <td><strong>Team</strong></td>
+        <td>2–{{ free_team_seat_limit }}</td>
+        <td>Self-hosted</td>
+        <td>Free</td>
+        <td>{% if tier == 'team' %}<span class="badge badge-green">current</span>{% endif %}</td>
+      </tr>
+      <tr {% if tier == 'enterprise' %}style="background:rgba(239,68,68,.06)"{% endif %}>
+        <td><strong>Enterprise</strong></td>
+        <td>{{ free_team_seat_limit + 1 }}+</td>
+        <td>Self-hosted or SaaS</td>
+        <td>Commercial licence required</td>
+        <td>{% if tier == 'enterprise' %}<span class="badge badge-red">current</span>{% endif %}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="text-muted" style="font-size:12px;margin-top:12px">
+    Enterprise licences: <a href="mailto:{{ license_email }}">{{ license_email }}</a>
+  </p>
+</div>
+{% endblock %}

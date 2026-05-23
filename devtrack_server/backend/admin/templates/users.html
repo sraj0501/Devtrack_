@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Users — DevTrack Admin{% endblock %}
+{% block page_title %}Users{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="section-header">
+    <div class="card-title" style="margin-bottom:0">Admin Users</div>
+    <button class="btn btn-primary btn-sm"
+            onclick="document.getElementById('add-user-form').style.display='block';this.style.display='none'">
+      + Add user
+    </button>
+  </div>
+
+  <!-- Add user form (hidden by default) -->
+  <div id="add-user-form" style="display:none;margin-bottom:20px;padding:16px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+    <form method="post" action="/admin/users/create">
+      <div class="grid-3" style="gap:12px;align-items:end">
+        <div class="form-row" style="margin-bottom:0">
+          <label>Username</label>
+          <input type="text" name="username" required>
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label>Password</label>
+          <input type="password" name="password" required>
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label>Role</label>
+          <select name="role">
+            <option value="viewer">Viewer</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button type="submit" class="btn btn-primary btn-sm">Create</button>
+        <button type="button" class="btn btn-ghost btn-sm"
+                onclick="document.getElementById('add-user-form').style.display='none';document.querySelector('[onclick*=add-user-form]').style.display=''">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if flash %}
+  <div class="{{ 'error-msg' if flash_type == 'error' else '' }}"
+       style="{% if flash_type != 'error' %}background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green);padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px{% endif %}">
+    {{ flash }}
+  </div>
+  {% endif %}
+
+  <table>
+    <thead>
+      <tr><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th>Last Login</th><th>API Keys</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr {% if user.disabled %}style="opacity:0.55"{% endif %}>
+        <td><strong>{{ user.username }}</strong></td>
+        <td>
+          <!-- Inline role-change form -->
+          {% if user.username != current_user %}
+          <form method="post" action="/admin/users/{{ user.username }}/role" style="display:inline-flex;gap:4px;align-items:center">
+            <select name="role" style="padding:2px 6px;font-size:12px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+              <option value="viewer" {{ 'selected' if user.role == 'viewer' }}>viewer</option>
+              <option value="admin" {{ 'selected' if user.role == 'admin' }}>admin</option>
+            </select>
+            <button type="submit" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 6px">set</button>
+          </form>
+          {% else %}
+          <span class="badge {{ 'badge-purple' if user.role == 'admin' else 'badge-blue' }}">{{ user.role }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if user.disabled %}
+          <span class="badge badge-red"><span class="dot"></span>disabled</span>
+          {% else %}
+          <span class="badge badge-green"><span class="dot"></span>active</span>
+          {% endif %}
+        </td>
+        <td class="mono">{{ user.created_at[:10] }}</td>
+        <td class="mono">{{ user.last_login[:10] if user.last_login else '—' }}</td>
+        <td>
+          <a href="/admin/users/{{ user.username }}/keys" class="btn btn-ghost btn-sm">Keys</a>
+        </td>
+        <td style="text-align:right;white-space:nowrap">
+          {% if user.username != current_user %}
+          {% if user.disabled %}
+          <form method="post" action="/admin/users/{{ user.username }}/enable" style="display:inline">
+            <button type="submit" class="btn btn-ghost btn-sm">Enable</button>
+          </form>
+          {% else %}
+          <form method="post" action="/admin/users/{{ user.username }}/disable" style="display:inline"
+                onsubmit="return confirm('Disable user {{ user.username }}?')">
+            <button type="submit" class="btn btn-ghost btn-sm">Disable</button>
+          </form>
+          {% endif %}
+          <form method="post" action="/admin/users/{{ user.username }}/delete" style="display:inline"
+                onsubmit="return confirm('Delete user {{ user.username }}?')">
+            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+          </form>
+          {% else %}
+          <span class="text-muted" style="font-size:12px">you</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="text-muted" style="text-align:center;padding:24px">No users yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

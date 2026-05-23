@@ -8,6 +8,16 @@ _Next build-runner task ID: BR-010_
 
 ## ✅ DONE (session 2026-05-24 — EPIC-SPLIT)
 
+### TASK-042 — Create `devtrack_client/` directory skeleton with correct Go module
+**Completed**: 2026-05-24
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `c0a6c5b` — feat(split): create devtrack_client/ skeleton with Go files and git_sage copy (TASK-042)
+**Vision check**: PASS
+**Hardcoded scan**: N/A — file copy only; no new code written
+**Notes**: 78 files copied from devtrack-bin/ to devtrack_client/. go build/vet/test all pass. git_sage/ (12 Python files) copied from backend/git_sage/. gitsage/ (3 Go files) copied from devtrack-bin/gitsage/. go.mod module name unchanged (already gitlab.com/devtrack3_cloud/devtrack_client). Removed devtrack_client/ and devtrack_server/ from .gitignore (they are source dirs, not git repo clones). CLAUDE.md stub and .env_sample (Go-only vars) added.
+
+---
+
 ### TASK-041 — Audit: catalogue every file by ownership (client / server / shared / wiki)
 **Completed**: 2026-05-24
 **Branch**: `features/SPLIT-001-monorepo-restructure`
@@ -773,32 +783,32 @@ writing a single line of code. Every commit goes to this branch. One final PR ta
 
 ## 🔴 IN PROGRESS
 
-### TASK-042 — Create `devtrack_client/` directory skeleton with correct Go module
+### TASK-043 — Create `devtrack_server/` directory skeleton with correct Python module
 **Assigned to**: engineer
-**Phase**: EPIC-SPLIT / Phase 1 — client skeleton
+**Phase**: EPIC-SPLIT / Phase 1 — server skeleton
 **Started**: 2026-05-24
 **Branch**: `features/SPLIT-001-monorepo-restructure` (already exists — do NOT create a new branch)
 
 **Spec**: See PLANNED section below for full spec. Key points:
-- Copy all Go files from `devtrack-bin/` → `devtrack_client/` (flat, same names)
-- Copy `backend/git_sage/` → `devtrack_client/git_sage/` (real copy, client-owned)
-- `devtrack_client/go.mod` module name: `gitlab.com/devtrack3_cloud/devtrack_client`
-- No `replace` directives in go.mod
-- Add `devtrack_client/CLAUDE.md` stub
-- Add `devtrack_client/.env_sample` (Go-consumed vars only)
-- Verify: `cd devtrack_client && go build ./...` must exit 0
+- Copy `backend/` → `devtrack_server/backend/` (full tree, EXCLUDING `backend/git_sage/`)
+- Copy `pyproject.toml` → `devtrack_server/pyproject.toml`; update name = "devtrack-server"
+- Copy infra files: `docker-compose.yml`, `Dockerfile`, `Dockerfile.server`, `entrypoint.sh` (if they exist)
+- Copy `python_bridge.py` → `devtrack_server/python_bridge.py` (legacy ref)
+- Copy `ci/devtrack_server.gitlab-ci.yml` → `devtrack_server/.gitlab-ci.yml`
+- Add `devtrack_server/CLAUDE.md` stub
+- Add `devtrack_server/.env_sample` (Python-consumed vars only; no Go IPC_ or Go-only vars)
+- Verify: `cd devtrack_server && uv sync --no-install-project` exits 0
+- Verify: `cd devtrack_server && uv run pytest backend/tests/ -x -q` passes
 - After commit: `GIT_NO_DEVTRACK=1 git push origin features/SPLIT-001-monorepo-restructure`
 
 **Acceptance criteria**:
-- [ ] `devtrack_client/` exists with all Go source files from `devtrack-bin/`
-- [ ] `devtrack_client/git_sage/` exists with all Python files from `backend/git_sage/`
-- [ ] `devtrack_client/go.mod` has module `gitlab.com/devtrack3_cloud/devtrack_client`
-- [ ] No `replace` directives in `devtrack_client/go.mod`
-- [ ] `cd devtrack_client && go build ./...` exits 0
-- [ ] `cd devtrack_client && go vet ./...` exits 0
-- [ ] `cd devtrack_client && go test ./...` exits 0
-- [ ] `devtrack_client/CLAUDE.md` exists
-- [ ] `devtrack_client/.env_sample` contains only Go-consumed vars
+- [ ] `devtrack_server/` exists with full `backend/` subtree (excluding `git_sage/`)
+- [ ] `devtrack_server/backend/git_sage/` does NOT exist
+- [ ] `devtrack_server/pyproject.toml` has `name = "devtrack-server"`
+- [ ] `devtrack_server/.env_sample` exists
+- [ ] `devtrack_server/CLAUDE.md` exists
+- [ ] `cd devtrack_server && uv sync --no-install-project` exits 0
+- [ ] `cd devtrack_server && uv run pytest backend/tests/ -x -q` passes
 
 **Engineer status**: not started
 **Blockers**: none
