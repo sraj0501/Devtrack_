@@ -12,7 +12,7 @@ LDFLAGS  := -s -w \
 
 ## build: compile the devtrack binary
 build:
-	cd devtrack-bin && go build -ldflags="$(LDFLAGS)" -o ../devtrack .
+	cd devtrack_client && go build -ldflags="$(LDFLAGS)" -o ../devtrack .
 	@echo "✅ Built devtrack $(VERSION) ($(COMMIT))"
 
 ## build-dev: fast build for local dev iteration
@@ -30,22 +30,22 @@ test: go-test python-test
 
 ## go-test: run Go tests
 go-test:
-	cd devtrack-bin && go test ./... && go vet ./...
+	cd devtrack_client && go test ./... && go vet ./...
 
 ## python-test: run Python tests
 python-test:
-	uv run pytest backend/tests/ -q --tb=short
+	cd devtrack_server && uv run pytest backend/tests/ -q --tb=short
 
 # ----- Python Server -------------------------------------------------------
 
 ## server-start: start the Python backend server locally (requires PROJECT_ROOT set)
 server-start:
-	uv run python python_bridge.py &
+	cd devtrack_server && uv run python -m backend.webhook_server &
 	@echo "✅ Python backend server started"
 
 ## server-stop: stop the locally running Python backend server
 server-stop:
-	-pkill -f python_bridge.py
+	-pkill -f webhook_server
 	@echo "✅ Python backend server stopped"
 
 # ----- Release -------------------------------------------------------------
@@ -70,7 +70,7 @@ bump-major:
 
 ## clean: remove build artifacts
 clean:
-	rm -f devtrack devtrack-bin/devtrack
+	rm -f devtrack devtrack_client/devtrack
 
 ## help: list available targets
 help:
