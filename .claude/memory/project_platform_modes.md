@@ -12,16 +12,10 @@ type: project
 | Lightweight | `lightweight` | Git monitoring + scheduling only; 28 backend commands blocked |
 | External | `external` | Daemon only; Python on separate server via `DEVTRACK_SERVER_URL` |
 
-`IsExternalServer()` = true for Lightweight + External (skips Python spawn). `IsLightweightMode()` is the guard used by `requiresManagedMode()` in `cli.go`.
-
-**How to apply:** Default to `ServerModeManaged` for new features. Check `IsLightweightMode()` before calling Python helpers. Any new command requiring Python backend must be added to the `requiresManagedMode()` guard list. Never read `DEVTRACK_SERVER_MODE` directly — use `GetServerMode()`.
+`IsLightweightMode()` guards `requiresManagedMode()` in `cli.go`. Never read `DEVTRACK_SERVER_MODE` directly — use `GetServerMode()`. New commands needing Python must be added to the guard list.
 
 ## Windows Gap
 
-Go daemon does not compile natively on Windows. Three hard errors:
-- `cli.go` — `Setsid: true` (Unix-only)
-- `cli.go` + `daemon.go` — `syscall.SIGUSR2` (undefined on Windows)
-
-**Fix plan:** Split into `daemon_unix.go`/`daemon_windows.go` with build tags. Replace `Setsid` with `CREATE_NEW_PROCESS_GROUP`, `SIGUSR2` with named pipe or HTTP signal, SIGTERM-stop with `os.Process.Kill()`. Add Windows Service/Task Scheduler autostart path.
-
-**Current workaround:** WSL2 (linux_amd64 binary runs natively).
+Go daemon does not compile natively on Windows (`Setsid`, `SIGUSR2` are Unix-only).
+**Fix plan:** Split `daemon_unix.go`/`daemon_windows.go` with build tags; replace `SIGUSR2` with named pipe or HTTP signal.
+**Current workaround:** WSL2 (linux_amd64 binary).

@@ -1,25 +1,19 @@
 ---
 name: Local Claude Code agents
-description: project-vision (PM), devtrack-engineer, post-generator — PM workflow and board format
+description: project-vision, devtrack-engineer, git-agent, memory-compactor, post-generator — roles and board format
 type: project
 ---
 
-Three agents in `.claude/agents/`. Always invoke `project-vision` first — it creates the board task and dispatches the engineer. Never invoke `devtrack-engineer` without a board task.
+Five agents in `.claude/agents/`. Always invoke `project-vision` first; it creates board tasks and dispatches the engineer. Never invoke `devtrack-engineer` without a board task.
 
-**Runtime files** (gitignored):
-- `Data/agent_logs/project_board.md` — task board (IN PROGRESS / PLANNED / DONE / BLOCKED)
-- `Data/agent_logs/engineer_log.md` — per-commit log
+**Runtime files** (gitignored): `Data/agent_logs/project_board.md` (task board), `Data/agent_logs/engineer_log.md` (per-commit log).
 
-**Core rules** (both agents enforce):
-1. All commits via `devtrack git commit` — never raw `git commit`
-2. Every task on a `features/TASK-NNN-*`, `fix/TASK-NNN-*`, or `docs/TASK-NNN-*` branch
-3. Board + engineer log updated after every commit
-4. PR on task completion — do NOT merge without developer approval
+**Core rules:** commits via `devtrack git commit` only; every task on a typed branch; board+log updated after every commit; PRs require developer approval before merge.
 
-**Engineer log entry format**:
-```
-### [YYYY-MM-DD HH:MM] TASK-NNN — <what>
-Original message: "..." / Enhanced: "..." / Ticket linked: YES/NO / PM updated: YES/NO / Friction: LOW|MEDIUM|HIGH
-```
+**Engineer log format:** `### [YYYY-MM-DD HH:MM] TASK-NNN — <what> / Original: "..." / Enhanced: "..." / Ticket: YES/NO / PM: YES/NO / Friction: LOW|MED|HIGH`
 
-`post-generator`: invoke weekly — turns engineer log into dev.to article, HN Show HN, LinkedIn post.
+**git-agent:** pure plumbing — branches, push, merge to dev, PR (`--base dev`). Never commits code.
+
+**memory-compactor:** Sunday 9:13am cron; compacts both `.claude/memory/` dirs; no manual action needed.
+
+**post-generator:** weekly — engineer log → dev.to / HN / LinkedIn posts.
