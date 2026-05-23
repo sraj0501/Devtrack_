@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-05-11 by engineer — TASK-040 added and IN PROGRESS (logo embedding)_
-_Next DevTrack task ID: TASK-041_
+_Last updated: 2026-05-24 by PM — EPIC-SPLIT approved; all 10 split tasks finalized; TASK-034 to TASK-039 blocked_
+_Next DevTrack task ID: TASK-051_
 _Next build-runner task ID: BR-010_
 
 ---
@@ -380,11 +380,6 @@ Write `templates/pipeline.yml` in full. Requirements:
    - Trigger rule: runs ONLY on `v*` tags pushed to `main`
      ```yaml
      rules:
-       - if: '$CI_COMMIT_TAG =~ /^v/ && $CI_COMMIT_BRANCH == "main"'
-     ```
-     Note: tags do not have a `CI_COMMIT_BRANCH` set — use:
-     ```yaml
-     rules:
        - if: '$CI_COMMIT_TAG =~ /^v/'
      ```
    - Image: `$BUILD_IMAGE`
@@ -663,7 +658,7 @@ adopt the platform in under 30 minutes.
 **Spec**:
 Write `README.md` in full. Required sections:
 
-1. **What is build-runner** (3–4 sentences)
+1. **What is build-runner** (3-4 sentences)
    - Language-agnostic Docker-based build and release platform
    - Self-hosted GitLab runner on your laptop — zero cloud CI compute usage
    - Shared pipeline template for any project to include
@@ -680,8 +675,8 @@ Write `README.md` in full. Required sections:
    a. Set up the self-hosted runner (one-time)
    b. Add `include:` to your `.gitlab-ci.yml`
    c. Write `scripts/build.sh` and `scripts/release.sh`
-   d. Push to `dev` → watch artifacts appear in `~/releases/`
-   e. Tag on `main` → watch release publish to GitLab Releases
+   d. Push to `dev` — watch artifacts appear in `~/releases/`
+   e. Tag on `main` — watch release publish to GitLab Releases
 
 4. **Two-tier workflow** (diagram or bullet list)
    - Dev push flow
@@ -735,111 +730,462 @@ Write `README.md` in full. Required sections:
 
 ---
 
-## ✅ DONE (session 2026-05-09 — server-slim-tiers)
+## EPIC: MONOREPO-SPLIT — Restructure monorepo into devtrack_client (Go) + devtrack_server (Python)
 
-### TASK-029 — Restructure pyproject.toml: two-tier dependencies (core + ai)
+_Scoped: 2026-05-24 | Status: APPROVED — ready to dispatch TASK-041_
+
+**Vision**: Split the current monorepo into two independently releasable codebases that share
+no compiled artefacts — only an HTTP/JSON API contract documented in prose and enforced by
+integration tests.
+
+**Confirmed decisions (2026-05-24)**:
+- Client folder and GitLab repo name: `devtrack_client`. Binary name stays `devtrack`.
+- git-sage: stays Python, bundled inside `devtrack_client/` (client-owned). Future Go rewrite deferred.
+- GitLab push timing: Option A — push to GitLab only after full end-to-end testing (TASK-050).
+  No upstream push until all tasks complete.
+- TASK-034 to TASK-039: BLOCKED until this epic completes.
+
+**Guiding constraints (non-negotiable)**:
+- Rule 0: client binary works fully offline with local Ollama; server is always optional
+- Rule 1: devtrack binary is CLI/TUI only; no GUI ever added to it
+- No `contract/` shared Go module — boundary is HTTP/JSON only
+- migration branch (`git branch: migration`) shows the target file structure (reference only)
+- migration branch has a `contract/` module via `replace` directive — DO NOT carry that over
+
+**Epic branch strategy**:
+ALL tasks in this epic work on ONE shared branch: `features/SPLIT-001-monorepo-restructure`.
+The engineer must `git checkout -b features/SPLIT-001-monorepo-restructure` from `dev` BEFORE
+writing a single line of code. Every commit goes to this branch. One final PR targets `dev`.
+
+---
+
+## 🔴 IN PROGRESS
+
+### TASK-041 — Audit: catalogue every file by ownership (client / server / shared / wiki)
 **Assigned to**: engineer
-**Phase**: server-slim-tiers
-**Started**: 2026-05-09
-**Branch**: features/server-slim-tiers
+**Phase**: EPIC-SPLIT / Phase 0 — discovery
+**Started**: 2026-05-24
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Engineer status**: dispatched — working
+**Blockers**: none
+
+**CRITICAL — branch setup (do this first, before any other action)**:
+```
+git checkout dev
+git pull origin dev
+git checkout -b features/SPLIT-001-monorepo-restructure
+```
+All subsequent EPIC-SPLIT tasks (TASK-041 through TASK-049) commit to this same branch.
+Do NOT create separate branches per task in this epic.
+
+**Priority**: HIGH (must be first — all subsequent tasks depend on this map)
+**Depends on**: none
+**Agent or developer**: AGENT — pure read/analysis, no destructive ops
 
 **Spec**:
-Restructure `D:\git_apps\Devtrack_\pyproject.toml` to split the single monolithic dependency
-set into a mandatory `core` set and an optional `ai` extra.
+Produce a split manifest at `docs/split-manifest.md`. For every file and directory in the
+monorepo root (excluding `.git/`, `devtrack_wiki/`, `Data/`, `.claude/`) categorise it as:
 
-1. Remove from `[project.dependencies]`:
-   - `spacy>=3.7.0`
-   - `en-core-web-sm @ https://...` (the wheel URL line)
-   - `sentence-transformers>=2.2.0`
-   - `chromadb>=0.4.0`
+- CLIENT — belongs in `devtrack_client` (Go binary: git monitor, git-sage, scheduler, local
+  SQLite, TUI for git workflow, commit enhancer, offline-capable features).
+  NOTE: `backend/git_sage/` is CLIENT — git-sage is a local tool bundled with the client.
+- SERVER — belongs in `devtrack_server` (Python AI pipeline, NLP/spaCy, LLM, boardroom,
+  admin GUI, PM integrations, web UI, alert poller)
+- BOTH — genuinely needed by both (note what changes per codebase, e.g. `.env_sample`)
+- WIKI — already separated; note if monorepo copy is the source of truth or stale
+- DELETE — dead code, migration artefacts, or superseded files
 
-2. Remove from `[project.dependencies]` and move to `[dependency-groups] dev` (PEP 735 / uv-native):
-   - `pytest>=7.4.0`
-   - `pytest-asyncio>=0.21.0`
-   - `pandas-stubs==2.3.2.250926`
+Rules for classification:
+- Any Python file that is purely AI/NLP/server-side → SERVER
+- Any Go file → CLIENT (Go binary stays client-only)
+- `backend/git_sage/` — CLIENT (git-sage is a local tool; bundled with the client binary)
+- `backend/config.py` → SERVER (client config is Go-only via `config_env.go`)
+- `pyproject.toml` → SERVER (Python deps belong to server; client has `go.mod` only)
+- CI files: classify per the repo they target
+- Infra files (`docker-compose.yml`, `Dockerfile`, etc.) → SERVER
 
-3. Add a new `[project.optional-dependencies]` group named `ai`:
-   ```toml
-   [project.optional-dependencies]
-   ai = [
-       "spacy>=3.7.0",
-       "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
-       "sentence-transformers>=2.2.0",
-       "chromadb>=0.4.0",
-   ]
-   ```
-
-4. Keep existing optional groups (`openai`, `anthropic`, `cloud`, `mongodb`, `notifications`)
-   exactly as they are — do not remove them.
-
-5. Add a `[dependency-groups]` section (PEP 735 style, uv-native):
-   ```toml
-   [dependency-groups]
-   dev = [
-       "pytest>=7.4.0",
-       "pytest-asyncio>=0.21.0",
-       "pandas-stubs==2.3.2.250926",
-   ]
-   ```
-
-File: `D:\git_apps\Devtrack_\pyproject.toml`
-Do NOT commit — edits only.
+The manifest must include:
+1. A table: `| path | owner | notes |` covering every top-level dir and representative files
+2. A "shared boundary" section listing the HTTP endpoints the client calls on the server
+   (extract from `http_trigger.go`, `webhook_server.py` route list) — these define the
+   interface that must be documented, not shared as code
+3. A "go.mod module name" recommendation for the client
+   (`gitlab.com/devtrack3_cloud/devtrack_client` based on migration branch precedent)
 
 **Acceptance criteria**:
-- [ ] `spacy`, `en-core-web-sm`, `sentence-transformers`, `chromadb` removed from `[project.dependencies]`
-- [ ] `[project.optional-dependencies]` has an `ai` group containing all four packages
-- [ ] `pytest`, `pytest-asyncio`, `pandas-stubs` removed from `[project.dependencies]`
-- [ ] `[dependency-groups]` section added with `dev` group containing those three test packages
-- [ ] Existing optional groups (`openai`, `anthropic`, `cloud`, `mongodb`, `notifications`) unchanged
-- [ ] File is valid TOML (no syntax errors)
-
-**Completed**: 2026-05-09
-**Files**: `D:\git_apps\Devtrack_\pyproject.toml`
-**Vision check**: PASS
-**Notes**: spacy/en-core-web-sm/sentence-transformers/chromadb moved to [project.optional-dependencies] ai; pytest/pytest-asyncio/pandas-stubs moved to [dependency-groups] dev; existing optional groups (openai/anthropic/cloud/mongodb/notifications) unchanged
+- [ ] `docs/split-manifest.md` exists and covers all top-level directories
+- [ ] Every file in `devtrack-bin/` is marked CLIENT
+- [ ] Every file in `backend/` is classified (CLIENT/SERVER per module)
+- [ ] `backend/git_sage/` is classified CLIENT with a note explaining it is bundled in devtrack_client
+- [ ] HTTP endpoint boundary section is present with at least `/trigger/commit`,
+      `/trigger/timer`, `/health`
+- [ ] Go module name recommendation included (`gitlab.com/devtrack3_cloud/devtrack_client`)
+- [ ] No files marked as UNKNOWN
 
 ---
 
-### TASK-030 — Add is_ai_available() to backend/config.py
-**Completed**: 2026-05-09
-**Files**: `D:\git_apps\Devtrack_\backend\config.py`
-**Vision check**: PASS
-**Notes**: importlib.util imported at top; is_ai_available() placed after rag_enabled(), before log_dir()
+## 🟡 PLANNED — EPIC-SPLIT (in execution order, all on branch `features/SPLIT-001-monorepo-restructure`)
 
 ---
 
-### TASK-031 — Add AI feature log line to webhook_server.py lifespan
-**Completed**: 2026-05-09
-**Files**: `D:\git_apps\Devtrack_\backend\webhook_server.py`
-**Vision check**: PASS
-**Notes**: Local import of is_ai_available() inside lifespan(); log line placed after startup banner, before TriggerProcessor.get
+### TASK-042 — Create `devtrack_client/` directory skeleton with correct Go module
+**Priority**: HIGH
+**Phase**: EPIC-SPLIT / Phase 1 — client skeleton
+**Depends on**: TASK-041 (manifest must be approved before moving files)
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Agent or developer**: AGENT — mechanical file creation; no logic changes
+
+**Spec**:
+Create the new client directory structure inside the monorepo (we are NOT creating a new Git
+repo yet — that is TASK-046 / TASK-050). The directory lives at `devtrack_client/` at the
+monorepo root.
+
+1. Copy all files classified CLIENT in TASK-041 manifest into `devtrack_client/`.
+   Source: `devtrack-bin/` → `devtrack_client/` (flat — same file names, no restructuring).
+   ALSO copy `backend/git_sage/` → `devtrack_client/git_sage/` (git-sage is client-owned).
+   Do NOT delete originals yet (TASK-048 cleans up).
+
+2. Update `go.mod` inside `devtrack_client/`:
+   - Module name: `gitlab.com/devtrack3_cloud/devtrack_client`
+   - Retain same `go` version and all `require` entries from `devtrack-bin/go.mod`
+   - Remove any `replace` directives (no contract module)
+
+3. Verify the copy builds: `cd devtrack_client && go build ./...`
+   This must pass with zero modifications to business logic.
+
+4. Add `devtrack_client/CLAUDE.md` — one-paragraph stub:
+   "Client binary source. See monorepo CLAUDE.md for full context. Module:
+   gitlab.com/devtrack3_cloud/devtrack_client. All config via config_env.go.
+   git-sage is bundled at devtrack_client/git_sage/ (Python, client-owned)."
+
+5. Add `devtrack_client/.env_sample` — copy from monorepo root `.env_sample`,
+   then remove any SERVER-only variables (Python vars, ADMIN_*, MONGODB_*, etc.).
+   Keep only vars consumed by Go code (identified from `config_env.go`).
+
+**Acceptance criteria**:
+- [ ] `devtrack_client/` exists with all Go source files from `devtrack-bin/`
+- [ ] `devtrack_client/git_sage/` exists with all Python files from `backend/git_sage/`
+- [ ] `devtrack_client/go.mod` has module `gitlab.com/devtrack3_cloud/devtrack_client`
+- [ ] No `replace` directives in `devtrack_client/go.mod`
+- [ ] `cd devtrack_client && go build ./...` exits 0
+- [ ] `cd devtrack_client && go vet ./...` exits 0
+- [ ] `cd devtrack_client && go test ./...` exits 0
+- [ ] `devtrack_client/CLAUDE.md` exists
+- [ ] `devtrack_client/.env_sample` contains only Go-consumed vars
 
 ---
 
-### TASK-032 — devtrack-server: add features and enable subcommands
-**Completed**: 2026-05-09
-**Files**: `D:\git_apps\Devtrack_\devtrack-server`
-**Vision check**: PASS
-**Notes**: cmd_features() and cmd_enable() added; both wired into dispatch; FEATURES section added to cmd_help()
+### TASK-043 — Create `devtrack_server/` directory skeleton with correct Python module
+**Priority**: HIGH
+**Phase**: EPIC-SPLIT / Phase 1 — server skeleton
+**Depends on**: TASK-041 (manifest must be approved)
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Agent or developer**: AGENT — mechanical; can run in parallel with TASK-042
+
+**Spec**:
+Create `devtrack_server/` at the monorepo root containing everything classified SERVER in
+the TASK-041 manifest. The server becomes a standalone Python project.
+
+1. Copy all SERVER-classified files into `devtrack_server/`:
+   - `backend/` → `devtrack_server/backend/` (full tree, EXCLUDING `backend/git_sage/` — that
+     belongs in `devtrack_client/` per TASK-042)
+   - `pyproject.toml` → `devtrack_server/pyproject.toml`
+   - `python_bridge.py` → `devtrack_server/python_bridge.py` (legacy ref, keep for now)
+   - Infra: `docker-compose.yml`, `Dockerfile` (if exists), `entrypoint.sh` (if exists)
+   - CI: `ci/devtrack_server.gitlab-ci.yml` → `devtrack_server/.gitlab-ci.yml`
+   Do NOT delete originals yet.
+
+2. Update `devtrack_server/pyproject.toml`:
+   - `name = "devtrack-server"`
+   - Keep all dependency groups exactly as-is (do not touch `[project.optional-dependencies]`)
+
+3. Add `devtrack_server/CLAUDE.md` — one-paragraph stub:
+   "Server source. See monorepo CLAUDE.md for full context. Start with:
+   uv sync && uv run python -m backend.webhook_server"
+
+4. Add `devtrack_server/.env_sample` — copy from monorepo root `.env_sample`,
+   then remove CLIENT-only Go vars (IPC_*, HTTP_TIMEOUT_* used only by Go, etc.).
+   Keep all Python-consumed vars.
+
+5. Smoke test: `cd devtrack_server && uv sync --no-install-project` must exit 0.
+   (We only verify deps resolve; we do not run the server in this task.)
+
+**Acceptance criteria**:
+- [ ] `devtrack_server/` exists with full `backend/` subtree (excluding `git_sage/`)
+- [ ] `devtrack_server/backend/git_sage/` does NOT exist (it lives in devtrack_client)
+- [ ] `devtrack_server/pyproject.toml` has `name = "devtrack-server"`
+- [ ] `devtrack_server/.env_sample` exists
+- [ ] `devtrack_server/CLAUDE.md` exists
+- [ ] `cd devtrack_server && uv sync --no-install-project` exits 0
+- [ ] All Python tests pass: `cd devtrack_server && uv run pytest backend/tests/ -x -q`
 
 ---
 
-### TASK-033 — GitLab CI: add core-tests job and rename existing to full-tests
-**Completed**: 2026-05-09
-**Files**: `D:\git_apps\Devtrack_\ci\devtrack_server.gitlab-ci.yml`
-**Vision check**: PASS
-**Notes**: Old test: job replaced by core-tests (--group dev, ignores test_nlp_parser.py) and full-tests (--frozen --extra ai --group dev); docker: job unchanged
+### TASK-044 — Document the HTTP API boundary (the "contract without a contract/ module")
+**Priority**: HIGH
+**Phase**: EPIC-SPLIT / Phase 1 — boundary definition
+**Depends on**: TASK-041
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Agent or developer**: AGENT — documentation + test stubs; references existing code
+
+**Spec**:
+The only shared interface between client and server is HTTP/JSON. Document it authoritatively.
+
+1. Create `docs/HTTP_API.md` in the monorepo. Sections:
+   - Overview: "The devtrack client communicates with devtrack-server exclusively over HTTPS.
+     There is no shared code, module, or compiled artefact between them."
+   - Endpoint table:
+     | Method | Path | Caller | Description |
+     | POST | /trigger/commit | Go client | Commit event payload |
+     | POST | /trigger/timer | Go client | Scheduled tick payload |
+     | GET | /health | Go client | Server health check |
+     | POST | /boardroom | Go client | Boardroom session request |
+     | POST | /plan | Go client | Plan decomposition request |
+     (Add any others found in `http_trigger.go` and `webhook_server.py`)
+   - Request/response schemas for each endpoint (JSON, written as prose + example JSON block)
+   - Auth: document `DEVTRACK_API_KEY` header for remote mode
+   - Versioning: "v1 — no version prefix in URL; breaking changes will add /v2/"
+   - Error format: standard error response shape
+
+2. Create `devtrack_client/api_contract_test.go` — integration test that:
+   - Starts a minimal HTTP mock server matching the spec
+   - Calls `sendTriggerHTTP()` and asserts the correct JSON shape is sent
+   - Does NOT import any Python/server code — pure Go
+   This test proves the client's outbound request shape matches the spec.
+
+3. Create `devtrack_server/backend/tests/test_api_contract.py` — integration test that:
+   - Starts the FastAPI app (TestClient)
+   - Posts the example JSON from `HTTP_API.md` to each endpoint
+   - Asserts HTTP 200 and a valid response shape
+   This test proves the server accepts what the spec says it accepts.
+
+**Acceptance criteria**:
+- [ ] `docs/HTTP_API.md` exists with all five (or more) endpoints documented
+- [ ] Request and response JSON schemas present for each endpoint
+- [ ] `devtrack_client/api_contract_test.go` compiles and passes `go test`
+- [ ] `devtrack_server/backend/tests/test_api_contract.py` passes `uv run pytest`
+- [ ] No `import` of server Python code from Go test; no `import` of Go types from Python test
 
 ---
 
-## 🟡 PLANNED
+### TASK-045 — Write CI for devtrack_client standalone (GitHub Actions)
+**Priority**: MEDIUM
+**Phase**: EPIC-SPLIT / Phase 2 — CI
+**Depends on**: TASK-042 (client skeleton must build)
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Agent or developer**: AGENT
+
+**Spec**:
+Add a GitHub Actions workflow that CI-tests the client independently.
+
+File: `.github/workflows/client.yml`
+
+Jobs:
+1. `build` — matrix: [linux/amd64, darwin/amd64, windows/amd64] (cross-compile only; no
+   native macOS/Windows runners needed — use `GOOS`/`GOARCH` env vars on ubuntu-latest)
+   - `cd devtrack_client && go build ./...`
+   - `cd devtrack_client && go vet ./...`
+2. `test`
+   - `cd devtrack_client && go test ./... -timeout 60s`
+3. `api-contract`
+   - `cd devtrack_client && go test -run TestAPI ./...`
+
+Trigger: push or PR to `dev` or `main` that touches `devtrack_client/**`.
+
+**Acceptance criteria**:
+- [ ] `.github/workflows/client.yml` exists
+- [ ] Workflow triggers only on changes under `devtrack_client/`
+- [ ] All three jobs defined with correct working directory
+- [ ] Cross-compile matrix covers linux/amd64, darwin/amd64, windows/amd64
+- [ ] Workflow passes on the current `dev` branch (verify via `gh workflow run` or PR)
+
+---
+
+### TASK-046 — Write CI for devtrack_server standalone (GitLab CI)
+**Priority**: MEDIUM
+**Phase**: EPIC-SPLIT / Phase 2 — CI
+**Depends on**: TASK-043 (server skeleton must pass tests)
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Agent or developer**: AGENT — can run in parallel with TASK-045
+
+**Spec**:
+Update (or create) `devtrack_server/.gitlab-ci.yml` for the server's own standalone CI.
+
+Jobs:
+1. `core-tests` — `uv sync --group dev && uv run pytest backend/tests/ -x -q`
+   (core deps only, no AI extra)
+2. `api-contract` — `uv run pytest backend/tests/test_api_contract.py -v`
+3. `docker-build` — `docker build -t devtrack-server:ci .` (verify Dockerfile is valid)
+
+Trigger: push to any branch; additionally a `v*` tag trigger for the docker job.
+
+**Acceptance criteria**:
+- [ ] `devtrack_server/.gitlab-ci.yml` exists and is valid YAML
+- [ ] `core-tests` job runs without AI/spaCy deps
+- [ ] `api-contract` job runs the TASK-044 test
+- [ ] `docker-build` job builds the server image
+- [ ] No reference to client Go code in any server CI job
+
+---
+
+### TASK-047 — Update monorepo CLAUDE.md and docs to describe split architecture
+**Priority**: MEDIUM
+**Phase**: EPIC-SPLIT / Phase 2 — docs
+**Depends on**: TASK-044 (HTTP_API.md must exist first)
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Agent or developer**: AGENT
+
+**Spec**:
+Update the monorepo's top-level documentation to reflect the new three-codebase architecture.
+Do NOT rewrite devtrack_wiki docs (that is TASK-049 and requires developer judgment on content).
+
+1. Update monorepo `CLAUDE.md` — Architecture section:
+   - Replace the current monolith architecture diagram with the three-codebase diagram
+   - Add a "Codebase Map" section: `devtrack_client/` (Go + git-sage), `devtrack_server/`
+     (Python), `devtrack_wiki/` (docs site, GitLab-wiki remote)
+   - Update "Key Patterns" section: remove references to `python_bridge.py` as entry point;
+     `webhook_server.py` is the server entry; `devtrack_client/main.go` is the client entry
+   - Add a link to `docs/HTTP_API.md` under "Architecture"
+   - Update "Build & Run Commands" to show both `devtrack_client/` and `devtrack_server/`
+
+2. Update `docs/ARCHITECTURE.md` similarly (if it diverges from CLAUDE.md).
+
+3. Update `README.md` — add a two-liner under the title:
+   "devtrack_client (Go binary) | devtrack_server (AI pipeline) | devtrack_wiki (docs)"
+   with links to each subdirectory.
+
+**Acceptance criteria**:
+- [ ] `CLAUDE.md` architecture section shows three-codebase diagram
+- [ ] `CLAUDE.md` no longer refers to `python_bridge.py` as the primary Python entry point
+      for the monolith (it may still mention it as legacy reference)
+- [ ] `docs/HTTP_API.md` is linked from `CLAUDE.md`
+- [ ] `README.md` updated with three-codebase summary
+- [ ] No new files created (edits only to existing docs)
+
+---
+
+### TASK-048 — Remove monorepo originals: retire `devtrack-bin/` and root `backend/`
+**Priority**: HIGH
+**Phase**: EPIC-SPLIT / Phase 3 — cleanup
+**Depends on**: TASK-042, TASK-043, TASK-044, TASK-045, TASK-046 ALL complete and green
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Agent or developer**: DEVELOPER JUDGMENT REQUIRED — this is the irreversible step
+
+**Spec**:
+This task removes the original monolith directories once all standalone builds are confirmed
+green. The developer must explicitly approve dispatch after reviewing TASK-042-046 results.
+
+Steps:
+1. Confirm green: `cd devtrack_client && go build ./... && go test ./...`
+2. Confirm green: `cd devtrack_server && uv run pytest backend/tests/ -x -q`
+3. `git rm -r devtrack-bin/` — remove original Go source
+4. `git rm -r backend/` — remove original Python source
+5. `git rm pyproject.toml` — remove root pyproject (server now has its own)
+6. `git rm python_bridge.py` — remove legacy bridge at root
+7. `git rm ci/devtrack_server.gitlab-ci.yml` — CI now lives inside `devtrack_server/`
+8. Update `.gitignore` to remove any `devtrack-bin/`-specific entries
+9. Run full build again from scratch to confirm nothing is broken
+
+**IMPORTANT**: Before dispatching this task, the PM must verify:
+- TASK-042 committed and green
+- TASK-043 committed and green
+- TASK-044 committed and green
+- TASK-045 GitHub Actions workflow confirmed passing
+- TASK-046 GitLab CI confirmed passing locally
+
+**Acceptance criteria**:
+- [ ] `devtrack-bin/` no longer exists in the repo
+- [ ] `backend/` no longer exists at the monorepo root
+- [ ] `pyproject.toml` no longer exists at the monorepo root
+- [ ] `python_bridge.py` no longer exists at the monorepo root
+- [ ] `devtrack_client/go build ./...` still passes after deletion
+- [ ] `devtrack_server/uv run pytest` still passes after deletion
+- [ ] `git status` shows a clean tree after commit
+
+---
+
+### TASK-049 — Rewrite devtrack_wiki docs to reflect split architecture
+**Priority**: MEDIUM
+**Phase**: EPIC-SPLIT / Phase 3 — wiki
+**Depends on**: TASK-047 (internal docs updated first as reference), TASK-048 (originals gone)
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Agent or developer**: DEVELOPER JUDGMENT REQUIRED — public-facing copy; PM reviews before dispatch
+
+**Spec**:
+The wiki (`devtrack_wiki/wiki/`) currently describes the old monolith. Key pages to update:
+
+1. `docs/ARCHITECTURE.md` on the wiki — replace monolith diagram with three-codebase diagram
+2. `docs/INSTALLATION.md` — split into two paths:
+   - "Install the devtrack binary (client)" — same curl/install.sh flow, no change needed
+   - "Set up devtrack-server (optional, for AI features)" — new section: `cd devtrack_server && uv sync`
+3. `docs/GETTING_STARTED.md` — update "how it works" to mention server is optional
+4. `README.md` on the wiki site (if it has one) — update project description
+
+Content rules:
+- Lead with the wedge: "writes your standup when you commit" (Rule 2 from vision check)
+- Never lead with "platform" or "Swiss Army knife"
+- Do not change the install scripts (`install.sh`, `install.ps1`) — those are TASK-037's scope
+
+**Acceptance criteria**:
+- [ ] `devtrack_wiki/wiki/docs/ARCHITECTURE.md` updated with three-codebase diagram
+- [ ] `devtrack_wiki/wiki/docs/INSTALLATION.md` has separate client and server install paths
+- [ ] `devtrack_wiki/wiki/docs/GETTING_STARTED.md` describes server as optional
+- [ ] No remaining references to `devtrack-bin/` or root `backend/` in the wiki docs
+- [ ] Netlify deploy preview passes (or confirmed by developer)
+
+---
+
+### TASK-050 — GitLab cut-over: push `features/SPLIT-001-monorepo-restructure` to GitLab remote
+**Priority**: HIGH
+**Phase**: EPIC-SPLIT / Phase 4 — cut-over
+**Depends on**: TASK-041 through TASK-049 ALL complete; full end-to-end testing done; developer approval
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Agent or developer**: DEVELOPER ACTION — no code changes; git push only
+
+**Context**:
+Per confirmed decision (Q3, Option A): no code is pushed to the GitLab remote until every
+task in this epic is complete and tested end-to-end. This task is the cut-over gate.
+
+**Spec**:
+1. Developer verifies end-to-end locally:
+   - `cd devtrack_client && go build ./... && go test ./...` — passes
+   - `cd devtrack_server && uv run pytest backend/tests/ -x -q` — passes
+   - `devtrack version` or `devtrack status` — binary runs correctly from `devtrack_client/`
+2. Open a PR from `features/SPLIT-001-monorepo-restructure` → `dev` on GitHub (NOT main).
+   PM will record the PR URL on this task when opened.
+3. After PR is merged to `dev`, push `dev` to the GitLab remote:
+   ```
+   git push gitlab-client dev
+   ```
+   (no CI will fire — TASK-034 will handle disabling it, or it can be done before this push)
+4. Confirm the GitLab mirror shows the updated directory structure.
+
+**IMPORTANT — branch rule**: The PR targets `dev`, NOT `main`. Promoting `dev` → `main` is
+a separate action requiring explicit developer instruction.
+
+**Acceptance criteria**:
+- [ ] All TASK-041 through TASK-049 are in the DONE section of this board
+- [ ] PR from `features/SPLIT-001-monorepo-restructure` → `dev` opened on GitHub
+- [ ] PR merged to `dev` (not main)
+- [ ] `dev` branch pushed to GitLab remote (`git push gitlab-client dev`)
+- [ ] GitLab shows `devtrack_client/` and `devtrack_server/` directories on `dev`
+- [ ] No unintended GitLab CI pipelines triggered by the push
+
+---
+
+## 🔴 BLOCKED — Deploy architecture tasks (waiting on EPIC-SPLIT completion)
+
+_All tasks below are blocked until TASK-041 through TASK-050 are complete and merged to dev._
+_Reason: the split restructure changes the codebase layout that these tasks depend on._
+_Unblock date: when TASK-050 is marked DONE._
 
 ---
 
 ### TASK-034 — Disable GitLab CI pipelines on all three repos
+**Status**: BLOCKED — waiting on EPIC-SPLIT (TASK-041 to TASK-050)
 **Priority**: HIGH
 **Phase**: deploy-arch
-**Depends on**: none — do this first; every other task in this group bleeds CI credits until it is done
+**Depends on**: none (but blocked by epic; will run after TASK-050)
 
 **Context**:
 Three GitLab repos are currently draining CI compute credits:
@@ -865,7 +1211,7 @@ The monorepo contains:
 1. Do you have GitLab Owner access on all three repos? If yes, Option A (UI toggle) is cleaner and does not require touching any files.
 2. If Option B is chosen: should the `.gitlab-ci.yml` files be deleted from the monorepo entirely, or replaced with a one-liner stub (`workflow: rules: - when: never`) so the mirror stays intact but CI never runs?
 3. Should `sync-gitlab.yml` (pushes `dev` branch on every `main` push) continue running? It is a GitHub Actions job so it does not consume GitLab compute — but it does keep GitLab mirrored. Keep or disable?
-4. Should `bump-version.yml` stop pushing tags to GitLab (the tag push is what fires the `release` stage)? The tag push to GitLab is on lines 143–150 of `release.yml` — removing those two `git push --force gitlab-client` calls would stop triggering the binary release pipeline.
+4. Should `bump-version.yml` stop pushing tags to GitLab (the tag push is what fires the `release` stage)? The tag push to GitLab is on lines 143-150 of `release.yml` — removing those two `git push --force gitlab-client` calls would stop triggering the binary release pipeline.
 
 **Acceptance criteria**:
 - [ ] `devtrack_client` CI does not run on any push or tag
@@ -877,9 +1223,10 @@ The monorepo contains:
 ---
 
 ### TASK-035 — Install and configure Netlify CLI locally
+**Status**: BLOCKED — waiting on EPIC-SPLIT (TASK-041 to TASK-050)
 **Priority**: HIGH
 **Phase**: deploy-arch
-**Depends on**: none (can be done in parallel with TASK-034)
+**Depends on**: none (can be done in parallel with TASK-034, but blocked by epic)
 
 **Context**:
 Currently the website (`devtrack_wiki/wiki/`) is deployed by GitLab CI via a curl POST to the Netlify Deploy API (see `devtrack_wiki/.gitlab-ci.yml`). The target is to replace that with `netlify deploy --prod --dir=./wiki` run locally, eliminating GitLab compute entirely for website deployments.
@@ -898,7 +1245,7 @@ The Netlify site already exists and is live at `devtrack.cloud`. The `NETLIFY_AU
 1. Where are `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` currently stored? In GitLab CI variables — can you retrieve them from GitLab Settings > CI/CD > Variables?
 2. Do you have Node.js installed locally? (`node --version`) — Netlify CLI requires it.
 3. Preferred location for the deploy helper script: inside `devtrack_wiki/wiki/` or at the monorepo root under `scripts/`?
-4. The current `netlify.toml` has redirect rules pointing to GitLab Package Registry URLs (lines 13–22). Those redirects will break once GitLab CI stops publishing binaries. Should those redirects be updated in this task or in TASK-037 (download page update)?
+4. The current `netlify.toml` has redirect rules pointing to GitLab Package Registry URLs (lines 13-22). Those redirects will break once GitLab CI stops publishing binaries. Should those redirects be updated in this task or in TASK-037 (download page update)?
 
 **Acceptance criteria**:
 - [ ] `netlify-cli` installed and `netlify --version` prints a version
@@ -911,9 +1258,10 @@ The Netlify site already exists and is live at `devtrack.cloud`. The `NETLIFY_AU
 ---
 
 ### TASK-036 — Create local binary build and GitHub Release upload script
+**Status**: BLOCKED — waiting on EPIC-SPLIT (TASK-041 to TASK-050)
 **Priority**: HIGH
 **Phase**: deploy-arch
-**Depends on**: none (parallel with TASK-034 and TASK-035)
+**Depends on**: none (parallel with TASK-034 and TASK-035, but blocked by epic)
 
 **Context**:
 Currently, binaries are built and published in two places:
@@ -967,6 +1315,7 @@ Notes from reading the existing CI:
 ---
 
 ### TASK-037 — Update download page and install scripts to use GitHub Release URLs
+**Status**: BLOCKED — waiting on EPIC-SPLIT (TASK-041 to TASK-050) and TASK-036
 **Priority**: HIGH
 **Phase**: deploy-arch
 **Depends on**: TASK-036 (GitHub Release must exist before URLs can be verified)
@@ -976,26 +1325,26 @@ The following files in `devtrack_wiki/wiki/` currently point to GitLab Package R
 
 Files that need changes:
 
-1. `devtrack_wiki/wiki/install.sh` (lines 4–18)
+1. `devtrack_wiki/wiki/install.sh` (lines 4-18)
    - Currently: fetches latest version from GitLab Tags API; downloads from `GITLAB_API/packages/generic/devtrack/`
    - New: fetch latest version from GitHub Releases API; download from `https://github.com/sraj0501/Devtrack_/releases/download/<version>/`
 
-2. `devtrack_wiki/wiki/install.ps1` (lines 5–17)
+2. `devtrack_wiki/wiki/install.ps1` (lines 5-17)
    - Currently: fetches version from GitLab Tags API; downloads Windows zip from GitLab Package Registry
    - New: fetch version from GitHub Releases API; download from GitHub Releases
 
-3. `devtrack_wiki/wiki/download.html` (lines 335–337, 455–456)
+3. `devtrack_wiki/wiki/download.html` (lines 335-337, 455-456)
    - Currently: JavaScript sets `GITLAB_API` and `PKG_BASE` constants; manual install snippet uses GitLab curl command
    - New: JS must use GitHub API (`https://api.github.com/repos/sraj0501/Devtrack_/releases/latest`) and download URLs from `browser_download_url` fields
 
-4. `devtrack_wiki/wiki/netlify.toml` (lines 13–22)
+4. `devtrack_wiki/wiki/netlify.toml` (lines 13-22)
    - Currently: redirect rules proxy `devtrack.cloud/releases/latest/*` → GitLab Package Registry
    - New: redirects should point to GitHub Releases download URLs, OR be removed entirely (GitHub Releases URLs are already stable and public)
 
 5. `devtrack_wiki/wiki/docs/CLI_QUICKSTART.md` (lines 17, 31, 94, 99) — GitLab repo links
 
 **Questions that need developer answers before implementation**:
-1. Is the GitHub repo `sraj0501/Devtrack_` public or private? Release assets on private repos require authentication. The plan states "Verify GitHub private repo Release assets are publicly accessible" — this must be confirmed before changing the install scripts, because `curl` without a token will fail on private repo assets.
+1. Is the GitHub repo `sraj0501/Devtrack_` public or private? Release assets on private repos require authentication. The plan states "GitHub (private monorepo)" — this must be confirmed before changing the install scripts, because `curl` without a token will fail on private repo assets.
 2. For `netlify.toml` redirects: keep them (updated to GitHub URLs) or remove them entirely? Keeping them provides stable `devtrack.cloud/releases/...` URLs that are independent of the hosting backend.
 3. The `download.html` JS currently calls the GitLab API to render version badges and dynamic download buttons. The GitHub API equivalent is unauthenticated for public repos (60 req/hr rate limit) — acceptable?
 4. `docs/CLI_QUICKSTART.md` references an older thin-client architecture (`devtrack_cli` repo). Should those docs be rewritten or simply have the GitLab links removed?
@@ -1012,6 +1361,7 @@ Files that need changes:
 ---
 
 ### TASK-038 — Verify GitHub private repo Release assets are publicly accessible
+**Status**: BLOCKED — waiting on EPIC-SPLIT (TASK-041 to TASK-050) and TASK-036
 **Priority**: HIGH
 **Phase**: deploy-arch
 **Depends on**: TASK-036 (need an actual release to test against)
@@ -1044,6 +1394,7 @@ There are three options if the repo is private:
 ---
 
 ### TASK-039 — Document the manual release process
+**Status**: BLOCKED — waiting on EPIC-SPLIT (TASK-041 to TASK-050) and TASK-034 through TASK-038
 **Priority**: MEDIUM
 **Phase**: deploy-arch
 **Depends on**: TASK-034, TASK-035, TASK-036, TASK-037, TASK-038 (document the complete working process)
@@ -1089,10 +1440,56 @@ Create `docs/RELEASE_PROCESS.md` at the monorepo root (or update an existing doc
 
 ---
 
+## 🟡 PLANNED — Other
+
+---
+
 ### TASK-026 — Remove GetPythonBridgePath dead code from config_env.go
 **Priority**: LOW
 **Phase**: CS-standalone
 **Depends on**: TASK-025
+
+---
+
+## ✅ DONE (session 2026-05-09 — server-slim-tiers)
+
+### TASK-029 — Restructure pyproject.toml: two-tier dependencies (core + ai)
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\pyproject.toml`
+**Vision check**: PASS
+**Notes**: spacy/en-core-web-sm/sentence-transformers/chromadb moved to [project.optional-dependencies] ai; pytest/pytest-asyncio/pandas-stubs moved to [dependency-groups] dev; existing optional groups (openai/anthropic/cloud/mongodb/notifications) unchanged
+
+---
+
+### TASK-030 — Add is_ai_available() to backend/config.py
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\backend\config.py`
+**Vision check**: PASS
+**Notes**: importlib.util imported at top; is_ai_available() placed after rag_enabled(), before log_dir()
+
+---
+
+### TASK-031 — Add AI feature log line to webhook_server.py lifespan
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\backend\webhook_server.py`
+**Vision check**: PASS
+**Notes**: Local import of is_ai_available() inside lifespan(); log line placed after startup banner, before TriggerProcessor.get
+
+---
+
+### TASK-032 — devtrack-server: add features and enable subcommands
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\devtrack-server`
+**Vision check**: PASS
+**Notes**: cmd_features() and cmd_enable() added; both wired into dispatch; FEATURES section added to cmd_help()
+
+---
+
+### TASK-033 — GitLab CI: add core-tests job and rename existing to full-tests
+**Completed**: 2026-05-09
+**Files**: `D:\git_apps\Devtrack_\ci\devtrack_server.gitlab-ci.yml`
+**Vision check**: PASS
+**Notes**: Old test: job replaced by core-tests (--group dev, ignores test_nlp_parser.py) and full-tests (--frozen --extra ai --group dev); docker: job unchanged
 
 ---
 
