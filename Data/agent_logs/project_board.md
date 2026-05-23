@@ -8,6 +8,16 @@ _Next build-runner task ID: BR-010_
 
 ## ✅ DONE (session 2026-05-24 — EPIC-SPLIT)
 
+### TASK-043 — Create `devtrack_server/` directory skeleton with correct Python module
+**Completed**: 2026-05-24
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `962ec03` — feat(split): create devtrack_server/ skeleton with Python backend copy (TASK-043)
+**Vision check**: PASS
+**Hardcoded scan**: N/A — file copy only; no new code written
+**Notes**: backend/ tree copied (excluding git_sage/) to devtrack_server/backend/. Confirmed devtrack_server/backend/git_sage/ does NOT exist. pyproject.toml name updated to "devtrack-server". Dockerfile, Dockerfile.server, docker-compose.yml, python_bridge.py, ci/devtrack_server.gitlab-ci.yml all copied. uv sync --no-install-project exits 0. pytest: 549 pass, 1 skipped. 1 pre-existing env failure (test_ollama_host_returns_string reads OLLAMA_HOST=0.0.0.0 from shell; identical failure in monorepo root — not a regression).
+
+---
+
 ### TASK-042 — Create `devtrack_client/` directory skeleton with correct Go module
 **Completed**: 2026-05-24
 **Branch**: `features/SPLIT-001-monorepo-restructure`
@@ -783,35 +793,7 @@ writing a single line of code. Every commit goes to this branch. One final PR ta
 
 ## 🔴 IN PROGRESS
 
-### TASK-043 — Create `devtrack_server/` directory skeleton with correct Python module
-**Assigned to**: engineer
-**Phase**: EPIC-SPLIT / Phase 1 — server skeleton
-**Started**: 2026-05-24
-**Branch**: `features/SPLIT-001-monorepo-restructure` (already exists — do NOT create a new branch)
-
-**Spec**: See PLANNED section below for full spec. Key points:
-- Copy `backend/` → `devtrack_server/backend/` (full tree, EXCLUDING `backend/git_sage/`)
-- Copy `pyproject.toml` → `devtrack_server/pyproject.toml`; update name = "devtrack-server"
-- Copy infra files: `docker-compose.yml`, `Dockerfile`, `Dockerfile.server`, `entrypoint.sh` (if they exist)
-- Copy `python_bridge.py` → `devtrack_server/python_bridge.py` (legacy ref)
-- Copy `ci/devtrack_server.gitlab-ci.yml` → `devtrack_server/.gitlab-ci.yml`
-- Add `devtrack_server/CLAUDE.md` stub
-- Add `devtrack_server/.env_sample` (Python-consumed vars only; no Go IPC_ or Go-only vars)
-- Verify: `cd devtrack_server && uv sync --no-install-project` exits 0
-- Verify: `cd devtrack_server && uv run pytest backend/tests/ -x -q` passes
-- After commit: `GIT_NO_DEVTRACK=1 git push origin features/SPLIT-001-monorepo-restructure`
-
-**Acceptance criteria**:
-- [ ] `devtrack_server/` exists with full `backend/` subtree (excluding `git_sage/`)
-- [ ] `devtrack_server/backend/git_sage/` does NOT exist
-- [ ] `devtrack_server/pyproject.toml` has `name = "devtrack-server"`
-- [ ] `devtrack_server/.env_sample` exists
-- [ ] `devtrack_server/CLAUDE.md` exists
-- [ ] `cd devtrack_server && uv sync --no-install-project` exits 0
-- [ ] `cd devtrack_server && uv run pytest backend/tests/ -x -q` passes
-
-**Engineer status**: not started
-**Blockers**: none
+_(none — TASK-042 and TASK-043 complete; TASK-044 ready to dispatch on developer approval)_
 
 ---
 

@@ -2,6 +2,51 @@
 
 ---
 
+### [2026-05-24] TASK-043 — devtrack_server/ skeleton
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `962ec03` — feat(split): create devtrack_server/ skeleton with Python backend copy (TASK-043)
+
+**Work done**:
+- Created `devtrack_server/` at monorepo root
+- Copied `backend/` tree (excluding `git_sage/`) to `devtrack_server/backend/` — 24 subdirs, all Python modules
+- Confirmed `devtrack_server/backend/git_sage/` does NOT exist
+- Copied: `pyproject.toml`, `docker-compose.yml`, `Dockerfile`, `Dockerfile.server`, `python_bridge.py`
+- Copied `ci/devtrack_server.gitlab-ci.yml` → `devtrack_server/.gitlab-ci.yml`
+- Updated `pyproject.toml` name from "devtrack" to "devtrack-server"
+- Copied `uv.lock` from monorepo root (required for uv sync)
+- Created `devtrack_server/CLAUDE.md` stub
+- Created `devtrack_server/.env_sample` (Python-consumed vars only; IPC_, GIT_SAGE_, Go-only vars excluded)
+- `uv sync --no-install-project`: exit 0
+- `uv run pytest backend/tests/ -q`: 549 pass, 1 skipped, 1 pre-existing env failure (test_ollama_host_returns_string reads OLLAMA_HOST=0.0.0.0 from shell — confirmed identical in monorepo root, not a regression)
+- Pushed to `features/SPLIT-001-monorepo-restructure`
+
+---
+
+### [2026-05-24] TASK-042 — devtrack_client/ skeleton
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `c0a6c5b` — feat(split): create devtrack_client/ skeleton with Go files and git_sage copy (TASK-042)
+
+**Work done**:
+- Removed `devtrack_client/` and `devtrack_server/` from `.gitignore` (they are source dirs in this epic, not git repo clones)
+- Created `devtrack_client/` at monorepo root
+- Copied all Go source files from `devtrack-bin/` to `devtrack_client/` (flat layout) — 62 `.go` files + go.mod, go.sum, versioninfo.json, resource_windows_amd64.syso, devtrack.ico, test_manual_triggers.sh, .gitlab-ci.yml
+- Excluded: `daemon.log` (stale log), `go-cli/` (empty dir)
+- Copied `devtrack-bin/gitsage/` → `devtrack_client/gitsage/` (3 Go files: agent.go, context.go, llm.go)
+- Copied `backend/git_sage/` → `devtrack_client/git_sage/` (12 Python files: cli.py, agent.py, config.py, context.py, git_operations.py, conflict_resolver.py, pr_finder.py, llm.py, __init__.py, __main__.py, setup.py, README.md)
+- Fixed nested gitsage/ directory created by the copy — moved files to correct path
+- `go.mod` module name: `gitlab.com/devtrack3_cloud/devtrack_client` (no change required — already correct)
+- No `replace` directives in go.mod
+- `go build ./...`: exit 0
+- `go vet ./...`: exit 0
+- `go test ./...`: ok + no test files in gitsage (exit 0)
+- Created `devtrack_client/CLAUDE.md` stub
+- Created `devtrack_client/.env_sample` (Go-consumed vars only — verified against config_env.go)
+- Pushed to `features/SPLIT-001-monorepo-restructure`
+
+---
+
 ### [2026-05-24] TASK-041 — Monorepo split manifest (audit)
 
 **Branch**: `features/SPLIT-001-monorepo-restructure`
