@@ -6,6 +6,8 @@
 
 *Watches your Git activity. Prompts at the right moments. Routes work updates through AI. Keeps Azure DevOps, GitHub, and GitLab in sync — all on your machine.*
 
+`devtrack_client` (Go binary + git-sage) | `devtrack_server` (AI pipeline + admin) | `devtrack_wiki` (docs site)
+
 [![GitHub Release](https://img.shields.io/github/v/release/sraj0501/Devtrack_?label=release&color=blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
 [![Version](https://img.shields.io/badge/version-v2.0.0-blue)](https://github.com/sraj0501/Devtrack_/releases/tag/v2.0.0)
 [![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
@@ -495,14 +497,14 @@ devtrack-server logs      # tail recent log output
 ## Testing
 
 ```bash
-cd devtrack-bin && go test ./...                    # Go layer (20+ tests)
-uv run pytest backend/tests/                        # Python backend (492+ tests)
-uv run pytest backend/tests/ -k cs1                # CS-1 HTTP trigger suite (28 tests)
-uv run pytest backend/tests/test_server_tui.py     # server_tui helpers (37 headless tests)
-uv run pytest backend/tests/test_admin_auth.py     # admin auth (19 tests)
-uv run pytest backend/tests/test_admin_routes.py   # admin console routes (59+ tests)
-uv run pytest backend/tests/test_admin_user_manager.py  # user manager (33+ tests)
-uv run pytest backend/tests/test_jira_alerter.py   # Jira alerter (26 tests)
+cd devtrack_client && go test ./...                                       # Go client (20+ tests)
+cd devtrack_server && uv run pytest backend/tests/                        # Python server (492+ tests)
+cd devtrack_server && uv run pytest backend/tests/ -k cs1                # CS-1 HTTP trigger suite (28 tests)
+cd devtrack_server && uv run pytest backend/tests/test_server_tui.py     # server_tui helpers (37 headless tests)
+cd devtrack_server && uv run pytest backend/tests/test_admin_auth.py     # admin auth (19 tests)
+cd devtrack_server && uv run pytest backend/tests/test_admin_routes.py   # admin console routes (59+ tests)
+cd devtrack_server && uv run pytest backend/tests/test_admin_user_manager.py  # user manager (33+ tests)
+cd devtrack_server && uv run pytest backend/tests/test_jira_alerter.py   # Jira alerter (26 tests)
 ```
 
 The CS-2 config audit enforces that **no Python business-logic module calls `os.getenv()` directly** — all 40+ backend modules were audited (TASK-001 through TASK-007) and now route through `backend.config` typed accessors. Missing required env vars produce a `ConfigError` with the exact variable name rather than a silent `None`.
