@@ -75,7 +75,7 @@ func TestAPIContractHealthShape(t *testing.T) {
 		t.Errorf("expected HTTP 200, got %d", resp.StatusCode)
 	}
 
-	var body map[string]interface{}
+	var body map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("could not decode /health response: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestAPIContractAPIKeyHeader(t *testing.T) {
 // TestAPIContractCommitPayloadShape verifies that SendCommitTrigger sends a
 // JSON object with the fields defined in docs/HTTP_API.md § POST /trigger/commit.
 func TestAPIContractCommitPayloadShape(t *testing.T) {
-	var receivedBody map[string]interface{}
+	var receivedBody map[string]any
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewDecoder(r.Body).Decode(&receivedBody); err != nil {
