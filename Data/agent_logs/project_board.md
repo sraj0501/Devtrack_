@@ -1,8 +1,20 @@
 # DevTrack Project Board
 
-_Last updated: 2026-05-24 by PM — EPIC-SPLIT approved; all 10 split tasks finalized; TASK-034 to TASK-039 blocked_
+_Last updated: 2026-05-24 14:00 by PM — TASK-041 DONE; TASK-042 and TASK-043 ready to dispatch_
 _Next DevTrack task ID: TASK-051_
 _Next build-runner task ID: BR-010_
+
+---
+
+## ✅ DONE (session 2026-05-24 — EPIC-SPLIT)
+
+### TASK-041 — Audit: catalogue every file by ownership (client / server / shared / wiki)
+**Completed**: 2026-05-24
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `b1434df` — docs(split): add monorepo split manifest cataloguing all files by owner (TASK-041)
+**Vision check**: PASS
+**Hardcoded scan**: N/A — pure documentation; no code written
+**Notes**: `docs/split-manifest.md` produced. 65+ files in devtrack-bin/ all CLIENT. backend/git_sage/ classified CLIENT (bundled local tool). 19 HTTP endpoints extracted from http_trigger.go and webhook_server.py. Go module name confirmed as gitlab.com/devtrack3_cloud/devtrack_client (already set in go.mod — no rename needed). DELETE list includes: bin/, demo/, python_bridge.py, scripts/setup_claude_memory.py, devtrack-bin/daemon.log, devtrack-bin/go-cli/. All 7 acceptance criteria met.
 
 ---
 
@@ -761,66 +773,7 @@ writing a single line of code. Every commit goes to this branch. One final PR ta
 
 ## 🔴 IN PROGRESS
 
-### TASK-041 — Audit: catalogue every file by ownership (client / server / shared / wiki)
-**Assigned to**: engineer
-**Phase**: EPIC-SPLIT / Phase 0 — discovery
-**Started**: 2026-05-24
-**Branch**: `features/SPLIT-001-monorepo-restructure`
-**Engineer status**: dispatched — working
-**Blockers**: none
-
-**CRITICAL — branch setup (do this first, before any other action)**:
-```
-git checkout dev
-git pull origin dev
-git checkout -b features/SPLIT-001-monorepo-restructure
-```
-All subsequent EPIC-SPLIT tasks (TASK-041 through TASK-049) commit to this same branch.
-Do NOT create separate branches per task in this epic.
-
-**Priority**: HIGH (must be first — all subsequent tasks depend on this map)
-**Depends on**: none
-**Agent or developer**: AGENT — pure read/analysis, no destructive ops
-
-**Spec**:
-Produce a split manifest at `docs/split-manifest.md`. For every file and directory in the
-monorepo root (excluding `.git/`, `devtrack_wiki/`, `Data/`, `.claude/`) categorise it as:
-
-- CLIENT — belongs in `devtrack_client` (Go binary: git monitor, git-sage, scheduler, local
-  SQLite, TUI for git workflow, commit enhancer, offline-capable features).
-  NOTE: `backend/git_sage/` is CLIENT — git-sage is a local tool bundled with the client.
-- SERVER — belongs in `devtrack_server` (Python AI pipeline, NLP/spaCy, LLM, boardroom,
-  admin GUI, PM integrations, web UI, alert poller)
-- BOTH — genuinely needed by both (note what changes per codebase, e.g. `.env_sample`)
-- WIKI — already separated; note if monorepo copy is the source of truth or stale
-- DELETE — dead code, migration artefacts, or superseded files
-
-Rules for classification:
-- Any Python file that is purely AI/NLP/server-side → SERVER
-- Any Go file → CLIENT (Go binary stays client-only)
-- `backend/git_sage/` — CLIENT (git-sage is a local tool; bundled with the client binary)
-- `backend/config.py` → SERVER (client config is Go-only via `config_env.go`)
-- `pyproject.toml` → SERVER (Python deps belong to server; client has `go.mod` only)
-- CI files: classify per the repo they target
-- Infra files (`docker-compose.yml`, `Dockerfile`, etc.) → SERVER
-
-The manifest must include:
-1. A table: `| path | owner | notes |` covering every top-level dir and representative files
-2. A "shared boundary" section listing the HTTP endpoints the client calls on the server
-   (extract from `http_trigger.go`, `webhook_server.py` route list) — these define the
-   interface that must be documented, not shared as code
-3. A "go.mod module name" recommendation for the client
-   (`gitlab.com/devtrack3_cloud/devtrack_client` based on migration branch precedent)
-
-**Acceptance criteria**:
-- [ ] `docs/split-manifest.md` exists and covers all top-level directories
-- [ ] Every file in `devtrack-bin/` is marked CLIENT
-- [ ] Every file in `backend/` is classified (CLIENT/SERVER per module)
-- [ ] `backend/git_sage/` is classified CLIENT with a note explaining it is bundled in devtrack_client
-- [ ] HTTP endpoint boundary section is present with at least `/trigger/commit`,
-      `/trigger/timer`, `/health`
-- [ ] Go module name recommendation included (`gitlab.com/devtrack3_cloud/devtrack_client`)
-- [ ] No files marked as UNKNOWN
+_(none — TASK-042 and TASK-043 ready to dispatch on developer approval)_
 
 ---
 

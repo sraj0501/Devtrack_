@@ -2,6 +2,33 @@
 
 ---
 
+### [2026-05-24] TASK-041 — Monorepo split manifest (audit)
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `b1434df` — docs(split): add monorepo split manifest cataloguing all files by owner (TASK-041)
+
+**Work done**:
+- Created branch `features/SPLIT-001-monorepo-restructure` from `dev`
+- Surveyed all top-level dirs and representative files in the monorepo
+- Classified every file in `devtrack-bin/` (65+ files, all CLIENT)
+- Classified every file in `backend/` (~120 files); `backend/git_sage/` marked CLIENT
+- Classified docs/, scripts/, ci/, .github/workflows/, infra/, demo/, bin/, root files
+- Extracted HTTP API boundary from `http_trigger.go` and `webhook_server.py` (19 endpoints)
+- Confirmed Go module name `gitlab.com/devtrack3_cloud/devtrack_client` already in go.mod
+- Produced `docs/split-manifest.md` — 7 sections, full coverage, no UNKNOWN entries
+- Pushed branch to GitHub
+
+**All 7 acceptance criteria met**:
+- [x] `docs/split-manifest.md` exists and covers all top-level directories
+- [x] Every file in `devtrack-bin/` is marked CLIENT
+- [x] Every file in `backend/` is classified (CLIENT/SERVER per module)
+- [x] `backend/git_sage/` classified CLIENT with bundling note
+- [x] HTTP endpoint boundary section present with all trigger endpoints plus /health, /version
+- [x] Go module name recommendation included (`gitlab.com/devtrack3_cloud/devtrack_client`)
+- [x] No files marked UNKNOWN
+
+---
+
 ### [2026-05-11 00:30] TASK-040 — DevTrack logo added to website and icon embedded in Windows binary
 
 **Original message**: "feat(branding): add DevTrack logo to website and embed icon in Windows binary (TASK-040)"
