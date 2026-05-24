@@ -4,12 +4,12 @@ project_name: devtrack
 
 before:
   hooks:
-    - bash -c "cd devtrack-bin && go mod tidy"
+    - bash -c "go mod tidy"
 
 builds:
   - id: devtrack
     main: .
-    dir: devtrack-bin
+    dir: devtrack_client
     binary: devtrack
     goos:
       - linux
@@ -64,9 +64,9 @@ changelog:
       - Merge branch
 
 release:
-  github:
-    owner: sraj0501
-    name: Devtrack_
+  gitlab:
+    owner: devtrack3_cloud
+    name: devtrack_client
   name_template: "DevTrack {{.Version}}"
   header: |
     ## DevTrack {{.Version}}
