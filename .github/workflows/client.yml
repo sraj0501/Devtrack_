@@ -1,0 +1,70 @@
+name: devtrack_client CI
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - "devtrack_client/**"
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - "devtrack_client/**"
+
+jobs:
+  build:
+    name: Build & vet (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
+
+      - name: go build
+        working-directory: devtrack_client
+        run: go build ./...
+
+      - name: go vet
+        working-directory: devtrack_client
+        run: go vet ./...
+
+  test:
+    name: Test (ubuntu-latest)
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
+
+      - name: go test
+        working-directory: devtrack_client
+        run: go test ./... -timeout 60s
+
+  api-contract:
+    name: API contract tests (ubuntu-latest)
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
+
+      - name: go test (contract)
+        working-directory: devtrack_client
+        run: go test -run TestAPIContract ./...

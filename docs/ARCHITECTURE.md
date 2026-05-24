@@ -2,18 +2,32 @@
 
 Complete overview of DevTrack's system design, components, and data flow.
 
+> **Monorepo split in progress (EPIC-SPLIT)**: The canonical sources have moved to `devtrack_client/` (Go) and `devtrack_server/` (Python). The legacy `devtrack-bin/` and root `backend/` directories are being retired. See `docs/split-manifest.md` for the full ownership catalogue and `docs/HTTP_API.md` for the client-server API contract.
+
+---
+
+## Three-Codebase Structure
+
+| Directory | Language | Role |
+|---|---|---|
+| `devtrack_client/` | Go + Python (git-sage) | Binary, git monitor, scheduler, CLI — canonical Go source |
+| `devtrack_server/` | Python | AI pipeline, webhook server, admin UI — canonical Python source |
+| `devtrack_wiki/` | HTML/Markdown | Website and wiki (pushed to GitLab wiki remote) |
+
+Client and server share no compiled artefact. The only interface between them is HTTPS POST over a documented JSON API (`docs/HTTP_API.md`).
+
 ---
 
 ## Client-Server Architecture
 
 DevTrack is explicitly a **client-server tool** with two independently deployable components:
 
-| Component | Technology | Size | Role |
-|---|---|---|---|
-| **`devtrack` binary** | Pure Go | ~5 MB | Client / daemon — git monitoring, scheduling, CLI |
-| **Python backend** | Python + uv | separate | Server — AI, NLP, integrations, reports, Telegram |
+| Component | Source | Technology | Size | Role |
+|---|---|---|---|---|
+| **`devtrack` binary** | `devtrack_client/` | Pure Go | ~5 MB | Client / daemon — git monitoring, scheduling, CLI |
+| **Python server** | `devtrack_server/` | Python + uv | separate | Server — AI, NLP, integrations, reports, admin |
 
-The Go binary contains **no embedded Python**. The Python backend is set up separately and can run as a local subprocess, a Docker container, or a remote server.
+The Go binary contains **no embedded Python** (except the bundled git-sage tool at `devtrack_client/git_sage/`). The Python server is set up separately and can run as a local subprocess, a Docker container, or a remote server.
 
 ### Server Modes
 
@@ -74,7 +88,7 @@ The Go binary (~5 MB, no Python) is published to the **GitLab Package Registry**
                          │
          ┌───────────────▼───────────────┐
          │    Go Background Daemon       │
-         │   (devtrack-bin/ packages)    │
+         │   (devtrack_client/ packages) │
          │                               │
          ├─ Git Repository Monitor      │
          ├─ Scheduler (cron-based)      │
@@ -107,7 +121,7 @@ The Go binary (~5 MB, no Python) is published to the **GitLab Package Registry**
 
 ## Component Breakdown
 
-### 1. Go Daemon Layer (devtrack-bin/)
+### 1. Go Daemon Layer (devtrack_client/)
 
 The lightweight background service that monitors and coordinates.
 
