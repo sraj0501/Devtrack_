@@ -2,6 +2,116 @@
 
 ---
 
+### [2026-05-24] TASK-047 — Update CLAUDE.md and docs for three-codebase split
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `20d2e4f` — docs(split): update CLAUDE.md and component docs for three-codebase split (TASK-047)
+
+**Work done**:
+- Root `CLAUDE.md`: added Codebase Map section listing all five directories with
+  legacy flags on devtrack-bin/ and root backend/; replaced monolith architecture
+  ASCII diagram with three-codebase diagram showing devtrack_client / devtrack_server /
+  devtrack_wiki with HTTPS POST boundary; updated Build & Run Commands to show both
+  devtrack_client/ (canonical) and devtrack_server/ (canonical) with legacy section;
+  updated all Go file table entries from devtrack-bin/ to devtrack_client/ paths,
+  added devtrack_client/git_sage/ row; updated Python layer heading and module table
+  to devtrack_server/backend/ paths; added note that git_sage is NOT in devtrack_server;
+  updated Key Patterns to name devtrack_client/main.go as client entry and
+  devtrack_server/backend/webhook_server.py as server entry (python_bridge.py is legacy only);
+  updated IPC pattern to reference devtrack_client/ipc.go and devtrack_server/backend/ipc_client.py;
+  added links to docs/HTTP_API.md and docs/split-manifest.md.
+- `README.md`: added three-codebase summary line under the tagline; updated Testing
+  section from `cd devtrack-bin` to `cd devtrack_client` and `uv run pytest backend/tests/`
+  to `cd devtrack_server && uv run pytest backend/tests/`.
+- `devtrack_client/CLAUDE.md`: expanded from one-line stub to full document —
+  build/test/cross-compile commands, file table (all 15+ files), git-sage ownership
+  note, config var summary, server communication reference to docs/HTTP_API.md.
+- `devtrack_server/CLAUDE.md`: expanded from one-line stub to full document —
+  run/test commands, architecture diagram, module table (15 modules), explicit note
+  that git_sage is NOT here, config and client-server boundary docs.
+- `docs/ARCHITECTURE.md`: added EPIC-SPLIT notice at top, added three-codebase
+  table section, updated component table to reference devtrack_client/ and
+  devtrack_server/, updated ASCII diagram devtrack-bin/ → devtrack_client/,
+  updated component heading.
+- Pushed to origin with GIT_NO_DEVTRACK=1.
+
+---
+
+### [2026-05-24] TASK-046 — GitLab CI for devtrack_server standalone
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `2f1fb4e` — ci(split): add GitLab CI for devtrack_server standalone (TASK-046)
+
+**Work done**:
+- Created `ci/devtrack_server_new.gitlab-ci.yml` (named `_new` to avoid conflict with existing
+  `ci/devtrack_server.gitlab-ci.yml`).
+- Mirrored structure of existing server CI: stages [test, docker], same image (python:3.12-slim),
+  same uv cache pattern, same docker:27-dind pattern for docker stage.
+- All test jobs use `changes: [devtrack_server/**]` in rules to avoid spurious triggers on
+  client-only commits. Two rule entries per job: MR event + branch push.
+- Cache keys prefixed `uv-server-core-` and `uv-server-full-` to avoid collision with any
+  existing monorepo cache keys.
+- before_script for all test jobs: `cd devtrack_server` before `uv sync` — ensures pytest
+  resolves `backend/tests/` relative to the server root, not the monorepo root.
+- Four jobs:
+  - `core-tests`: uv sync --group dev; pytest backend/tests/ excluding test_nlp_parser.py
+  - `full-tests`: uv sync --extra ai --group dev; full pytest run
+  - `api-contract`: same setup as core-tests; pytest backend/tests/test_api_contract.py -v
+  - `docker`: docker:27-dind; builds with `-f devtrack_server/Dockerfile.server devtrack_server/`
+    from repo root; gated on `v*` tags + devtrack_server/** changes
+- No reference to devtrack-bin/ or root backend/ anywhere in the file.
+- Pushed to `features/SPLIT-001-monorepo-restructure` with GIT_NO_DEVTRACK=1
+
+---
+
+### [2026-05-24] TASK-045 — GitHub Actions CI for devtrack_client standalone
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `4f3b9d2` — ci(split): add GitHub Actions CI for devtrack_client standalone (TASK-045)
+
+**Work done**:
+- Created `.github/workflows/client.yml`.
+- Trigger: push or PR to `dev` or `main` with `paths: devtrack_client/**` filter.
+  Does NOT trigger on `devtrack-bin/` changes (old path not listed).
+- Uses `actions/checkout@v5` and `actions/setup-go@v5` with `go-version-file: devtrack_client/go.mod`
+  (Go 1.24.4 per go.mod; matrix uses `1.24` label).
+- Three jobs:
+  - `build`: matrix [ubuntu-latest, windows-latest]; `working-directory: devtrack_client`;
+    runs `go build ./...` then `go vet ./...`. fail-fast: false.
+  - `test`: ubuntu-latest only; needs: build; `go test ./... -timeout 60s`
+  - `api-contract`: ubuntu-latest only; needs: build; `go test -run TestAPIContract ./...`
+- Pushed to `features/SPLIT-001-monorepo-restructure` with GIT_NO_DEVTRACK=1
+
+---
+
+### [2026-05-24] TASK-044 — HTTP API boundary documentation and contract tests
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `56e3ab3` — docs(split): add HTTP API contract document and stub contract tests (TASK-044)
+
+**Work done**:
+- Created `docs/HTTP_API.md` — formal specification of all 21 endpoints from split-manifest.md
+  Section 5. Schemas derived directly from Go structs in `devtrack-bin/http_trigger.go` and
+  FastAPI handlers in `backend/webhook_server.py` as source of truth.
+  Covers: /health, /version, /status, /trigger/commit, /trigger/timer, /trigger/workspace_reload,
+  /trigger/shutdown, /trigger/ping, /trigger/work_session_start, /trigger/work_session_stop,
+  /trigger/plan/preview, /trigger/plan/create, /trigger/boardroom, /trigger/boardroom/chat,
+  /webhooks/azure-devops, /webhooks/github, /webhooks/gitlab, /webhooks/jira,
+  /admin/*, /spec/{spec_id}/review. Auth, error format, versioning sections included.
+- Created `devtrack_client/api_contract_test.go` — 4 Go contract tests using httptest.NewServer:
+  TestAPIContractHealth, TestAPIContractHealthShape, TestAPIContractPingRejectsNon200,
+  TestAPIContractAPIKeyHeader, TestAPIContractCommitPayloadShape.
+  Pure Go, no Python imports. `go test -run TestAPIContract ./...`: PASS
+- Created `devtrack_server/backend/tests/test_api_contract.py` — 31 Python contract tests
+  using FastAPI TestClient. Covers: /health (4), /version (4), /status (3), /trigger/ping (3),
+  /trigger/commit (5), /trigger/timer (4), /trigger/workspace_reload (3),
+  /trigger/work_session_start (3), /trigger/work_session_stop (2).
+  `uv run pytest backend/tests/test_api_contract.py -v`: 31 passed in 1.32s
+- `go build ./...` in devtrack_client: exit 0
+- Pushed to `features/SPLIT-001-monorepo-restructure` with GIT_NO_DEVTRACK=1
+
+---
+
 ### [2026-05-24] TASK-043 — devtrack_server/ skeleton
 
 **Branch**: `features/SPLIT-001-monorepo-restructure`
