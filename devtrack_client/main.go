@@ -261,7 +261,7 @@ func runGitSagePython(args []string) {
 		execPath, _ = filepath.Abs(execPath)
 		searchDir := filepath.Dir(execPath)
 		for i := 0; i < 6; i++ {
-			if _, err := os.Stat(filepath.Join(searchDir, "backend", "git_sage")); err == nil {
+			if _, err := os.Stat(filepath.Join(searchDir, "gitsage")); err == nil {
 				projectRoot = searchDir
 				break
 			}
@@ -273,11 +273,11 @@ func runGitSagePython(args []string) {
 		}
 	}
 	if projectRoot == "" {
-		fmt.Fprintln(os.Stderr, "error: could not find backend/git_sage — set PROJECT_ROOT or use lightweight mode")
+		fmt.Fprintln(os.Stderr, "error: could not find gitsage — set PROJECT_ROOT or use lightweight mode")
 		os.Exit(1)
 	}
 
-	sageArgs := append([]string{"run", "python", "-m", "backend.git_sage"}, args...)
+	sageArgs := append([]string{"run", "python", "-m", "gitsage"}, args...)
 	env := append(os.Environ(),
 		"PROJECT_ROOT="+projectRoot,
 		"DEVTRACK_ENV_FILE="+filepath.Join(projectRoot, ".env"),

@@ -2,7 +2,7 @@
 # bump-version.sh — increment the git version tag and push.
 # Pushing the tag triggers the release.yml GitHub Actions workflow.
 #
-# Usage: scripts/bump-version.sh [patch|minor|major]
+# Usage: devtrack_client/scripts/bump-version.sh [patch|minor|major]
 
 set -euo pipefail
 
