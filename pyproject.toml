@@ -1,0 +1,5 @@
+[tool.uv.workspace]
+members = [
+    "devtrack_server",
+    "devtrack_client",
+]

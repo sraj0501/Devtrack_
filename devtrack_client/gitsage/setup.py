@@ -8,7 +8,7 @@ setup(
     python_requires=">=3.10",
     entry_points={
         "console_scripts": [
-            "git-sage=git_sage.cli:main",
+            "git-sage=gitsage.cli:main",
         ],
     },
 )

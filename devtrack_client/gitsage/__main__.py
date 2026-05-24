@@ -1,3 +1,3 @@
-from backend.git_sage.cli import main
+from gitsage.cli import main
 
 main()
