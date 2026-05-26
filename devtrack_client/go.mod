@@ -1,4 +1,4 @@
-module gitlab.com/devtrack3_cloud/devtrack_client
+module github.com/sraj0501/Devtrack_/devtrack_client
 
 go 1.24.4
 

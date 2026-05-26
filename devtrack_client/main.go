@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gitlab.com/devtrack3_cloud/devtrack_client/gitsage"
+	"github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
 )
 
 func main() {
