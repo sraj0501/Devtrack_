@@ -9,7 +9,6 @@ before:
 builds:
   - id: devtrack
     main: .
-    dir: devtrack_client
     binary: devtrack
     goos:
       - linux
@@ -34,8 +33,6 @@ archives:
     ids:
       - devtrack
     name_template: "devtrack_{{ .Os }}_{{ .Arch }}"
-    files:
-      - LICENSE
 
 checksum:
   name_template: "checksums.txt"
