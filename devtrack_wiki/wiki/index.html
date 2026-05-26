@@ -547,29 +547,24 @@
     .form-submit:hover { opacity: .9; transform: translateY(-1px); }
     .form-note { font-size: .74rem; color: var(--faint); text-align: center; margin-top: 12px; }
 
-    /* ── Hero "written" shimmer ─────────────────────────────────────── */
-    @keyframes shimmer {
-      0%   { background-position: -300% center; }
-      100% { background-position: 300% center; }
-    }
-    .hero-written {
-      background: linear-gradient(
-        90deg,
-        #3b82f6 0%,
-        #8b5cf6 20%,
-        #e0f2fe 48%,
-        #ffffff 50%,
-        #e0f2fe 52%,
-        #8b5cf6 80%,
-        #22d3ee 100%
-      );
-      background-size: 300% auto;
+    /* ── Hero typewriter word cycle ─────────────────────────────────── */
+    .hero-typewriter { display: inline; white-space: nowrap; }
+    #typewriter-word {
+      background: var(--grad);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      animation: shimmer 3s linear infinite;
-      display: inline;
     }
+    .typewriter-cursor {
+      display: inline-block;
+      width: 3px; height: .9em;
+      background: var(--violet);
+      vertical-align: middle;
+      margin-left: 2px;
+      border-radius: 1px;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
 
     /* ── Grid overlay ───────────────────────────────────────────────── */
     .grid-overlay {
@@ -711,7 +706,7 @@
 
   <h1 class="hero-title">
     Your standup,<br>
-    <span class="hero-written">written</span><span class="grad-text"> for you.</span>
+    <span class="hero-typewriter"><span id="typewriter-word"></span><span class="typewriter-cursor"></span></span><span class="grad-text"> for you.</span>
   </h1>
 
   <p class="hero-sub">
@@ -1413,6 +1408,27 @@ function handleFormSubmit(btn) {
   const body    = encodeURIComponent(`Name: ${name}\nEmail: ${email}\nTopic: ${topic}\n\n${message}`);
   window.location.href = `mailto:admin@mogrov.com?subject=${subject}&body=${body}`;
 }
+
+// ── Hero typewriter word cycle ────────────────────────────────────────────────
+(function() {
+  const words = ['written', 'documented', 'reported', 'tracked', 'automated', 'filed'];
+  let wordIdx = 0, charIdx = 0, deleting = false;
+  const el = document.getElementById('typewriter-word');
+  const TYPE_SPEED = 85, DELETE_SPEED = 45, PAUSE = 2000;
+
+  function tick() {
+    const word = words[wordIdx];
+    if (!deleting) {
+      el.textContent = word.slice(0, ++charIdx);
+      if (charIdx === word.length) { deleting = true; setTimeout(tick, PAUSE); return; }
+    } else {
+      el.textContent = word.slice(0, --charIdx);
+      if (charIdx === 0) { deleting = false; wordIdx = (wordIdx + 1) % words.length; }
+    }
+    setTimeout(tick, deleting ? DELETE_SPEED : TYPE_SPEED);
+  }
+  tick();
+})();
 
 // ── Nav scroll tint ────────────────────────────────────────────────────────────
 window.addEventListener('scroll', () => {
