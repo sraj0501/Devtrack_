@@ -9,11 +9,10 @@
 `devtrack_client` (Go binary + git-sage) | `devtrack_server` (AI pipeline + admin) | `devtrack_wiki` (docs site)
 
 [![GitHub Release](https://img.shields.io/github/v/release/sraj0501/Devtrack_?label=release&color=blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
-[![Version](https://img.shields.io/badge/version-v2.0.0-blue)](https://github.com/sraj0501/Devtrack_/releases/tag/v2.0.0)
-[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
+[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
 [![License](https://img.shields.io/badge/license-Community-green)](TERMS.md)
 
-![DevTrack demo](wiki/assets/demo.gif)
+![DevTrack demo](devtrack_wiki/wiki/assets/demo.gif)
 
 </div>
 
@@ -47,7 +46,7 @@ devtrack start
 devtrack status
 ```
 
-> **Updating?** Run `devtrack upgrade` to download and install the latest binary automatically (fetched from GitLab Releases; supports Linux/macOS and Windows).
+> **Updating?** Run `devtrack upgrade` to download and install the latest binary automatically (fetched from GitHub Releases; supports Linux/macOS and Windows).
 > If the binary is in a root-owned location (e.g. `/usr/local/bin`), run `sudo devtrack upgrade` instead. On Windows, re-run as Administrator if a permission error occurs.
 > Versioned migrations are applied automatically and the daemon is restarted after a successful upgrade.
 
@@ -168,7 +167,7 @@ Every `git commit` while a session is active automatically attaches its hash —
 
 ### git-sage — local LLM git agent
 
-![git-sage standup demo](wiki/assets/standup-demo.gif)
+![git-sage standup demo](devtrack_wiki/wiki/assets/standup-demo.gif)
 
 ```bash
 uv run python -m backend.git_sage do "squash my last 5 commits"
@@ -285,7 +284,7 @@ sudo devtrack upgrade     # use when the binary is in a root-owned directory (e.
 ```
 
 What happens on upgrade:
-1. Downloads the latest binary for your OS/arch from **GitLab Releases** (`devtrack3_cloud/devtrack_client`) — supports Linux/macOS (`.tar.gz`) and Windows (`.zip`)
+1. Downloads the latest binary for your OS/arch from **GitHub Releases** (`sraj0501/Devtrack_`) — supports Linux/macOS (`.tar.gz`) and Windows (`.zip`)
 2. Applies all versioned migrations that have not yet run (schema changes, config file moves, etc.)
 3. Auto-restarts the daemon so the new binary takes effect immediately
 4. On Unix: falls back to `sudo cp` automatically if the target directory is root-owned and the command wasn't run as root
@@ -491,6 +490,22 @@ devtrack-server logs      # tail recent log output
 | Fix a problem | [Troubleshooting](docs/TROUBLESHOOTING.md) |
 | Understand the architecture | [Architecture](docs/ARCHITECTURE.md) |
 | Full documentation index | [docs/INDEX.md](docs/INDEX.md) |
+
+---
+
+## Releasing
+
+Releases are built and published locally from the developer's machine using a single script. No CI required.
+
+```powershell
+.\scripts\release.ps1              # patch bump (default) → v2.x.y+1
+.\scripts\release.ps1 -Bump minor  # minor bump
+.\scripts\release.ps1 -Bump major  # major bump
+```
+
+The script: computes the next version, creates a git tag, cross-compiles all 5 targets (Linux amd64/arm64, macOS amd64/arm64, Windows amd64), packages them, creates the GitHub release, updates the website version, and pushes — all in one run.
+
+**Requires:** `go`, `gh` (GitHub CLI), `git`, `tar` (Windows 10+).
 
 ---
 
