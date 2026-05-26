@@ -85,8 +85,10 @@ jobs:
             rm devtrack
             cd ../devtrack_client
           done
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o ../dist/devtrack_windows_amd64.exe .
           cd ../dist
-          sha256sum devtrack_*.tar.gz > checksums.txt
+          zip devtrack_windows_amd64.zip devtrack_windows_amd64.exe
+          sha256sum devtrack_*.tar.gz devtrack_windows_amd64.zip > checksums.txt
 
       - name: Build server archive
         run: |
@@ -185,7 +187,7 @@ jobs:
             --notes "$(cat <<EOF
           ## DevTrack ${TAG}
 
-          Pre-built binaries for macOS (Apple Silicon + Intel) and Linux (amd64 + arm64).
+          Pre-built binaries for macOS (Apple Silicon + Intel), Linux (amd64 + arm64), and Windows (amd64).
 
           > **Two deployment modes** — choose during \`devtrack setup\`:
           > - **Standalone**: git tracking, CLI tools, and AI commit messages — no Python backend required.
@@ -218,5 +220,6 @@ jobs:
             dist/devtrack_linux_arm64.tar.gz \
             dist/devtrack_darwin_amd64.tar.gz \
             dist/devtrack_darwin_arm64.tar.gz \
+            dist/devtrack_windows_amd64.zip \
             dist/devtrack-server-${TAG#v}.tar.gz \
             dist/checksums.txt

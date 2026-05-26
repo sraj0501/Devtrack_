@@ -33,6 +33,9 @@ archives:
     ids:
       - devtrack
     name_template: "devtrack_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
 
 checksum:
   name_template: "checksums.txt"
