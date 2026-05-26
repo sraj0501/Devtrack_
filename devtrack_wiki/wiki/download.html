@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Download DevTrack CLI</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/devtrack.png" />
+  <link rel="apple-touch-icon" href="assets/devtrack.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    :root {
+      --sans: 'Inter', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+      --bg: #080808;
+      --bg1: #0f0f0f;
+      --bg2: #161616;
+      --bg3: #1e1e1e;
+      --border: rgba(255,255,255,.08);
+      --border2: rgba(255,255,255,.14);
+      --text: #f0f0f0;
+      --muted: #888;
+      --faint: #444;
+      --blue: #3b82f6;
+      --violet: #8b5cf6;
+      --teal: #14b8a6;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --grad: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      --grad2: linear-gradient(135deg, #8b5cf6 0%, #14b8a6 100%);
+      --radius: 8px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: .4;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      height: 60px; display: flex; align-items: center;
+      padding: 0 40px;
+      background: rgba(8,8,8,.7);
+      backdrop-filter: blur(20px) saturate(1.6);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: var(--grad); display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: .85rem; color: white;
+    }
+    img.nav-logo { background: none; display: block; border-radius: 7px; }
+    .nav-name { font-weight: 700; font-size: .95rem; color: var(--text); }
+    .nav-links { display: flex; gap: 28px; margin-left: 48px; }
+    .nav-links a { font-size: .85rem; color: var(--muted); text-decoration: none; transition: color .15s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+    .nav-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+    .btn-ghost {
+      padding: 7px 16px; border-radius: var(--radius);
+      border: 1px solid var(--border2); background: transparent;
+      color: var(--text); font-family: var(--sans); font-size: .85rem;
+      cursor: pointer; text-decoration: none; transition: all .15s;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.25); }
+    .btn-primary {
+      padding: 7px 16px; border-radius: var(--radius);
+      background: var(--grad); color: white;
+      font-family: var(--sans); font-size: .85rem; font-weight: 600;
+      cursor: pointer; text-decoration: none; border: none; transition: opacity .15s;
+    }
+    .btn-primary:hover { opacity: .9; }
+
+    /* ── Layout ── */
+    .page { padding: 100px 40px 80px; max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+
+    /* ── Hero ── */
+    .dl-hero { text-align: center; margin-bottom: 64px; }
+    .section-label {
+      font-size: .72rem; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--blue); margin-bottom: 14px;
+    }
+    .dl-title {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900; letter-spacing: -.04em; line-height: 1.1;
+      margin-bottom: 14px;
+    }
+    .grad-text {
+      background: var(--grad); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .dl-sub { font-size: 1rem; color: var(--muted); max-width: 440px; margin: 0 auto; }
+    #version-badge {
+      display: inline-block; margin-top: 16px;
+      padding: 4px 12px; border-radius: 99px;
+      border: 1px solid rgba(34,197,94,.3);
+      background: rgba(34,197,94,.08);
+      font-family: var(--mono); font-size: .78rem; color: var(--green);
+    }
+
+    /* ── Platform cards ── */
+    .platforms { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 48px; }
+    .platform-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px 20px;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+      transition: border-color .2s, background .2s;
+    }
+    .platform-card.detected {
+      border-color: rgba(59,130,246,.4);
+      background: rgba(59,130,246,.06);
+    }
+    .platform-icon { font-size: 1.6rem; }
+    .platform-name { font-weight: 700; font-size: .95rem; }
+    .platform-arch { font-size: .78rem; color: var(--muted); font-family: var(--mono); }
+    .dl-btn {
+      margin-top: auto; width: 100%;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 10px 0; border-radius: var(--radius);
+      font-family: var(--sans); font-size: .85rem; font-weight: 600;
+      text-decoration: none; transition: all .15s; cursor: pointer; border: none;
+    }
+    .dl-btn-primary { background: var(--grad); color: white; box-shadow: 0 4px 20px rgba(59,130,246,.25); }
+    .dl-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(59,130,246,.35); }
+    .dl-btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+    .dl-btn-secondary:hover { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.25); }
+
+    /* ── One-liner ── */
+    .oneliner-section { margin-bottom: 64px; }
+    .oneliner-section h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; }
+    .code-block {
+      background: #0d0d0d; border: 1px solid var(--border2);
+      border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .code-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      font-family: var(--mono); font-size: .72rem; color: var(--faint);
+    }
+    .code-body { padding: 16px 20px; font-family: var(--mono); font-size: .85rem; line-height: 1.6; }
+    .code-body .c-prompt { color: var(--blue); }
+    .code-body .c-cmd { color: #e2e8f0; }
+    .code-body .c-comment { color: var(--faint); }
+    .copy-btn {
+      background: transparent; border: 1px solid var(--border2); border-radius: 5px;
+      color: var(--muted); font-family: var(--mono); font-size: .72rem;
+      padding: 3px 10px; cursor: pointer; transition: all .15s;
+    }
+    .copy-btn:hover { color: var(--text); border-color: rgba(255,255,255,.3); }
+
+    /* ── Divider ── */
+    .section-divider {
+      border: none; border-top: 1px solid var(--border);
+      margin: 56px 0;
+    }
+
+    /* ── Server setup ── */
+    .server-section h2 {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 800; letter-spacing: -.03em; margin-bottom: 10px;
+    }
+    .server-section .intro { color: var(--muted); max-width: 600px; margin-bottom: 36px; line-height: 1.7; }
+
+    .steps { display: flex; flex-direction: column; gap: 32px; }
+    .step { display: grid; grid-template-columns: 36px 1fr; gap: 16px; }
+    .step-num {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: var(--grad); display: flex; align-items: center;
+      justify-content: center; font-weight: 700; font-size: .85rem; color: white;
+      margin-top: 2px;
+    }
+    .step-body h3 { font-size: .95rem; font-weight: 700; margin-bottom: 6px; }
+    .step-body p { font-size: .88rem; color: var(--muted); margin-bottom: 10px; line-height: 1.65; }
+    .step-body a { color: var(--blue); text-decoration: none; }
+    .step-body a:hover { text-decoration: underline; }
+
+    .req-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .req-chip {
+      padding: 4px 12px; border-radius: 99px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      font-family: var(--mono); font-size: .78rem; color: var(--muted);
+    }
+
+    .info-box {
+      padding: 14px 16px; border-radius: var(--radius);
+      background: rgba(59,130,246,.07); border: 1px solid rgba(59,130,246,.2);
+      font-size: .85rem; color: #93c5fd; margin-top: 10px; line-height: 1.6;
+    }
+    .info-box strong { color: var(--blue); }
+
+    /* ── Footer ── */
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 28px 40px; display: flex;
+      align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+    }
+    footer .footer-brand { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 600; }
+    footer .footer-links { display: flex; gap: 24px; }
+    footer .footer-links a { font-size: .82rem; color: var(--muted); text-decoration: none; transition: color .15s; }
+    footer .footer-links a:hover { color: var(--text); }
+    footer .footer-copy { font-size: .78rem; color: var(--faint); }
+
+    @media (max-width: 640px) {
+      .page { padding: 90px 20px 60px; }
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      footer { padding: 24px 20px; flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <a class="nav-brand" href="index.html">
+    <img class="nav-logo" src="assets/devtrack.png" alt="DevTrack logo" width="28" height="28" style="object-fit:contain;background:none;" />
+    <span class="nav-name">DevTrack</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html#features">Features</a>
+    <a href="index.html#how">How It Works</a>
+    <a href="index.html#integrations">Integrations</a>
+    <a href="download.html" class="active">Download</a>
+    <a href="index.html#contact">Contact</a>
+  </div>
+  <div class="nav-right">
+    <a class="btn-ghost" href="wiki.html">Documentation →</a>
+    <a class="btn-primary" href="download.html">Download CLI</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- ── Download hero ── -->
+  <div class="dl-hero">
+    <div class="section-label">Download</div>
+    <h1 class="dl-title">DevTrack <span class="grad-text">CLI</span></h1>
+    <p class="dl-sub">The lightweight binary that monitors your git activity and routes work updates to your project management system.</p>
+    <div id="version-badge">Latest: v2.2.22</div>
+  </div>
+
+  <!-- ── Platform cards ── -->
+  <div class="platforms">
+    <div class="platform-card" id="card-linux-amd64">
+      <div class="platform-icon">🐧</div>
+      <div class="platform-name">Linux</div>
+      <div class="platform-arch">x86_64 · amd64</div>
+      <a class="dl-btn dl-btn-secondary" href="#" id="dl-linux-amd64" data-platform="linux" data-arch="amd64" data-ext="tar.gz">
+        ↓ Download .tar.gz
+      </a>
+    </div>
+    <div class="platform-card" id="card-darwin-arm64">
+      <div class="platform-icon">🍎</div>
+      <div class="platform-name">macOS</div>
+      <div class="platform-arch">Apple Silicon · arm64</div>
+      <a class="dl-btn dl-btn-secondary" href="#" id="dl-darwin-arm64" data-platform="darwin" data-arch="arm64" data-ext="tar.gz">
+        ↓ Download .tar.gz
+      </a>
+    </div>
+    <div class="platform-card" id="card-darwin-amd64">
+      <div class="platform-icon">🍎</div>
+      <div class="platform-name">macOS</div>
+      <div class="platform-arch">Intel · amd64</div>
+      <a class="dl-btn dl-btn-secondary" href="#" id="dl-darwin-amd64" data-platform="darwin" data-arch="amd64" data-ext="tar.gz">
+        ↓ Download .tar.gz
+      </a>
+    </div>
+    <div class="platform-card" id="card-windows-amd64">
+      <div class="platform-icon">🪟</div>
+      <div class="platform-name">Windows</div>
+      <div class="platform-arch">x86_64 · amd64</div>
+      <a class="dl-btn dl-btn-secondary" href="#" id="dl-windows-amd64" data-platform="windows" data-arch="amd64" data-ext="zip">
+        ↓ Download .zip
+      </a>
+      <div style="font-size:.75rem;color:var(--muted);margin-top:4px;">or use the PowerShell one-liner below</div>
+    </div>
+  </div>
+
+  <!-- ── One-liner install ── -->
+  <div class="oneliner-section">
+    <h2>Install with one command</h2>
+    <div class="code-block">
+      <div class="code-topbar">
+        <span>bash / zsh — macOS &amp; Linux</span>
+        <button class="copy-btn" onclick="copyCode('oneliner', this)">copy</button>
+      </div>
+      <div class="code-body">
+        <div><span class="c-prompt">$</span> <span class="c-cmd" id="oneliner">curl -fsSL https://devtrack.cloud/install.sh | sh</span></div>
+        <div><span class="c-comment"># Installs to ~/.local/bin/devtrack · add to PATH if needed</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Windows one-liner ── -->
+  <div class="oneliner-section">
+    <h2>Install on Windows (PowerShell)</h2>
+    <div class="code-block">
+      <div class="code-topbar">
+        <span>PowerShell — Windows</span>
+        <button class="copy-btn" onclick="copyCode('oneliner-win', this)">copy</button>
+      </div>
+      <div class="code-body">
+        <div><span class="c-prompt">&gt;</span> <span class="c-cmd" id="oneliner-win">irm https://devtrack.cloud/install.ps1 | iex</span></div>
+        <div><span class="c-comment"># Installs to %LOCALAPPDATA%\DevTrack\devtrack.exe · adds to user PATH</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Manual install steps ── -->
+  <div class="oneliner-section">
+    <h2>Manual install</h2>
+    <div class="code-block">
+      <div class="code-topbar">
+        <span>bash / zsh</span>
+        <button class="copy-btn" onclick="copyCode('manual-install', this)">copy</button>
+      </div>
+      <div class="code-body">
+        <div><span class="c-comment"># 1 — get the latest version tag</span></div>
+        <div><span class="c-prompt">$</span> <span class="c-cmd" id="manual-install">VER=$(curl -sf 'https://api.github.com/repos/sraj0501/Devtrack_/releases/latest' | grep -o '"tag_name":"[^"]*"' | sed 's/"tag_name":"//;s/"//')</span></div>
+        <div><span class="c-comment"># 2 — download and extract (replace linux_amd64 with your platform)</span></div>
+        <div><span class="c-prompt">$</span> <span class="c-cmd">curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/download/${VER}/devtrack_linux_amd64.tar.gz" | tar xz</span></div>
+        <div><span class="c-comment"># 2 — move into PATH</span></div>
+        <div><span class="c-prompt">$</span> <span class="c-cmd">mv devtrack ~/.local/bin/</span></div>
+        <div><span class="c-comment"># 3 — run setup wizard</span></div>
+        <div><span class="c-prompt">$</span> <span class="c-cmd">devtrack setup</span></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ── First run ── -->
+  <div class="server-section">
+    <div class="section-label">Getting started</div>
+    <h2>Everything is in the <span class="grad-text">single binary</span></h2>
+    <p class="intro">
+      DevTrack is a single self-contained binary. There is no separate server to install.
+      The setup wizard provisions a local database (via Docker), configures your AI provider,
+      and wires up your project management integrations — all in one step.
+    </p>
+
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Install</h3>
+          <p>Download the binary for your platform above, or use the one-liner. No other dependencies required for basic use.</p>
+          <div class="req-grid">
+            <span class="req-chip">macOS · Linux · Windows</span>
+            <span class="req-chip">Docker (auto-installed prompt)</span>
+            <span class="req-chip">Ollama (optional, for local AI)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Run the setup wizard</h3>
+          <p>The wizard detects your environment, provisions MongoDB + Redis via Docker if needed, and writes a <code>.env</code> file with all required settings.</p>
+          <div class="code-block">
+            <div class="code-topbar"><span>bash / PowerShell</span><button class="copy-btn" onclick="copyBlock('step-setup', this)">copy</button></div>
+            <div class="code-body" id="step-setup">
+              <div><span class="c-prompt">$</span> <span class="c-cmd">devtrack setup</span></div>
+              <div>&nbsp;</div>
+              <div><span class="c-comment"># choose mode, LLM provider, and PM integration</span></div>
+              <div><span class="c-comment"># Docker is started automatically if MongoDB/Redis are missing</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Start the daemon</h3>
+          <div class="code-block">
+            <div class="code-topbar"><span>bash / PowerShell</span><button class="copy-btn" onclick="copyBlock('step-start', this)">copy</button></div>
+            <div class="code-body" id="step-start">
+              <div><span class="c-prompt">$</span> <span class="c-cmd">devtrack start</span></div>
+              <div><span class="c-ok">✓ Daemon started</span></div>
+              <div>&nbsp;</div>
+              <div><span class="c-prompt">$</span> <span class="c-cmd">devtrack status</span></div>
+              <div><span class="c-ok">✓ running · monitoring 1 workspace</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Optional: local AI with Ollama</h3>
+          <p>Enhance commit messages and run git-sage entirely offline. No API keys, no data leaving your machine.</p>
+          <div class="code-block">
+            <div class="code-topbar"><span>bash</span></div>
+            <div class="code-body">
+              <div><span class="c-comment"># install Ollama</span></div>
+              <div><span class="c-prompt">$</span> <span class="c-cmd">curl -fsSL https://ollama.com/install.sh | sh</span></div>
+              <div><span class="c-comment"># pull a model</span></div>
+              <div><span class="c-prompt">$</span> <span class="c-cmd">ollama pull llama3.2</span></div>
+              <div><span class="c-comment"># set in your .env</span></div>
+              <div><span class="c-cmd">LLM_PROVIDER=ollama</span></div>
+              <div><span class="c-cmd">GIT_SAGE_DEFAULT_MODEL=llama3.2</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /steps -->
+
+    <div class="info-box" style="margin-top:32px;">
+      Full configuration reference, troubleshooting guide, and all .env variables are in the
+      <a href="wiki.html#CONFIGURATION" style="color:var(--blue);">Documentation →</a>
+    </div>
+
+  </div><!-- /server-section -->
+
+</div><!-- /page -->
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-brand">
+    <img src="assets/devtrack.png" alt="DevTrack logo" width="22" height="22" style="object-fit:contain;" />
+    DevTrack
+  </div>
+  <div class="footer-links">
+    <a href="wiki.html">Docs</a>
+    <a href="wiki.html#CLI_REFERENCE">CLI Reference</a>
+    <a href="wiki.html#CONFIGURATION">Configuration</a>
+    <a href="wiki.html#TROUBLESHOOTING">Troubleshooting</a>
+  </div>
+  <div class="footer-copy">MIT License · Built for developers, by developers</div>
+</footer>
+
+<script>
+// ── Fetch latest version from GitHub and wire download links ─────────────────
+const GH_API = 'https://api.github.com/repos/sraj0501/Devtrack_/releases/latest';
+const GH_DL  = 'https://github.com/sraj0501/Devtrack_/releases/download';
+
+fetch(GH_API, { headers: { Accept: 'application/vnd.github.v3+json' } })
+  .then(r => r.ok ? r.json() : null)
+  .then(data => {
+    const version = data && data.tag_name ? data.tag_name : null;
+    if (!version) return;
+    document.getElementById('version-badge').textContent = 'Latest: ' + version;
+    document.querySelectorAll('[data-platform]').forEach(el => {
+      const os   = el.dataset.platform;
+      const arch = el.dataset.arch;
+      const ext  = el.dataset.ext;
+      el.href = `${GH_DL}/${version}/devtrack_${os}_${arch}.${ext}`;
+    });
+  })
+  .catch(() => {});
+
+// ── Detect platform and highlight matching card ───────────────────────────────
+(function detectPlatform() {
+  const ua = navigator.userAgent.toLowerCase();
+  const platform = navigator.platform ? navigator.platform.toLowerCase() : '';
+
+  let cardId = null;
+  let dlId = null;
+
+  if (/win/.test(platform) || /win/.test(ua)) {
+    cardId = 'card-windows-amd64';
+    dlId   = 'dl-windows-amd64';
+  } else if (/mac/.test(platform) || /mac/.test(ua)) {
+    // Distinguish Apple Silicon from Intel via userAgentData or heuristic
+    const isARM = (navigator.userAgentData && navigator.userAgentData.architecture === 'arm') ||
+                  /arm/.test(ua);
+    cardId = isARM ? 'card-darwin-arm64' : 'card-darwin-amd64';
+    dlId   = isARM ? 'dl-darwin-arm64'   : 'dl-darwin-amd64';
+  } else {
+    // Default to Linux amd64
+    cardId = 'card-linux-amd64';
+    dlId   = 'dl-linux-amd64';
+  }
+
+  const card = document.getElementById(cardId);
+  const btn  = document.getElementById(dlId);
+  if (card) card.classList.add('detected');
+  if (btn)  { btn.classList.remove('dl-btn-secondary'); btn.classList.add('dl-btn-primary'); btn.textContent = '↓ Download (recommended)'; }
+})();
+
+// ── Copy helpers ──────────────────────────────────────────────────────────────
+function copyCode(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent.trim()).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1800);
+  });
+}
+
+function copyBlock(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // Collect all .c-cmd and .c-prompt text as runnable lines
+  const lines = [];
+  el.querySelectorAll('div').forEach(div => {
+    const cmd = div.querySelector('.c-cmd');
+    const prompt = div.querySelector('.c-prompt');
+    if (cmd) lines.push((prompt ? '$ ' : '') + cmd.textContent.trim());
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1800);
+  });
+}
+</script>
+</body>
+</html>
