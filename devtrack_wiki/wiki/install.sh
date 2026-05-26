@@ -1,21 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
-GITLAB_PROJECT="devtrack3_cloud%2Fdevtrack_client"
-GITLAB_API="https://gitlab.com/api/v4/projects/${GITLAB_PROJECT}"
-
-# Fetch latest version tag
-VERSION=$(curl -sf "${GITLAB_API}/repository/tags?order_by=version&sort=desc&per_page=1" \
-  | grep -o '"name":"v[^"]*"' | head -1 \
-  | sed 's/"name":"//;s/".*//') \
-  || VERSION=""
-
-if [ -z "$VERSION" ]; then
-  echo "Error: could not fetch latest version from GitLab. Check your network or visit https://devtrack.cloud/download"
-  exit 1
-fi
-
-BASE_URL="${GITLAB_API}/packages/generic/devtrack/${VERSION}"
+REPO="sraj0501/Devtrack_"
 INSTALL_DIR="${DEVTRACK_INSTALL_DIR:-$HOME/.local/bin}"
 
 # Detect OS
@@ -42,11 +28,20 @@ case "$ARCH" in
     ;;
 esac
 
+# Fetch latest version tag
+VERSION=$(curl -sf "https://api.github.com/repos/${REPO}/releases/latest" \
+  | grep '"tag_name"' | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/') || VERSION=""
+
+if [ -z "$VERSION" ]; then
+  echo "Error: could not fetch latest version. Check your network or visit https://devtrack.cloud/download"
+  exit 1
+fi
+
 ARCHIVE="devtrack_${os}_${arch}.tar.gz"
-URL="${BASE_URL}/${ARCHIVE}"
+URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
 
 echo "Detected: ${os}/${arch}"
-echo "Downloading devtrack..."
+echo "Downloading DevTrack ${VERSION}..."
 
 mkdir -p "$INSTALL_DIR"
 
