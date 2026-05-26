@@ -304,7 +304,7 @@
         <button class="copy-btn" onclick="copyCode('oneliner', this)">copy</button>
       </div>
       <div class="code-body">
-        <div><span class="c-prompt">$</span> <span class="c-cmd" id="oneliner">curl -fsSL https://devtrack.cloud/install.sh | sh</span></div>
+        <div><span class="c-prompt">$</span> <span class="c-cmd" id="oneliner">OS=$(uname -s | tr '[:upper:]' '[:lower:]'); ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz && mv devtrack ~/.local/bin/</span></div>
         <div><span class="c-comment"># Installs to ~/.local/bin/devtrack · add to PATH if needed</span></div>
       </div>
     </div>
@@ -319,8 +319,8 @@
         <button class="copy-btn" onclick="copyCode('oneliner-win', this)">copy</button>
       </div>
       <div class="code-body">
-        <div><span class="c-prompt">&gt;</span> <span class="c-cmd" id="oneliner-win">irm https://devtrack.cloud/install.ps1 | iex</span></div>
-        <div><span class="c-comment"># Installs to %LOCALAPPDATA%\DevTrack\devtrack.exe · adds to user PATH</span></div>
+        <div><span class="c-prompt">&gt;</span> <span class="c-cmd" id="oneliner-win">$v=(irm 'https://api.github.com/repos/sraj0501/Devtrack_/releases/latest').tag_name; irm "https://github.com/sraj0501/Devtrack_/releases/download/$v/devtrack_windows_amd64.zip" -OutFile dt.zip; Expand-Archive dt.zip .; Remove-Item dt.zip</span></div>
+        <div><span class="c-comment"># Extracts devtrack.exe to current directory · move to a folder in your PATH</span></div>
       </div>
     </div>
   </div>
@@ -338,9 +338,9 @@
         <div><span class="c-prompt">$</span> <span class="c-cmd" id="manual-install">VER=$(curl -sf 'https://api.github.com/repos/sraj0501/Devtrack_/releases/latest' | grep -o '"tag_name":"[^"]*"' | sed 's/"tag_name":"//;s/"//')</span></div>
         <div><span class="c-comment"># 2 — download and extract (replace linux_amd64 with your platform)</span></div>
         <div><span class="c-prompt">$</span> <span class="c-cmd">curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/download/${VER}/devtrack_linux_amd64.tar.gz" | tar xz</span></div>
-        <div><span class="c-comment"># 2 — move into PATH</span></div>
+        <div><span class="c-comment"># 3 — move into PATH</span></div>
         <div><span class="c-prompt">$</span> <span class="c-cmd">mv devtrack ~/.local/bin/</span></div>
-        <div><span class="c-comment"># 3 — run setup wizard</span></div>
+        <div><span class="c-comment"># 4 — run setup wizard</span></div>
         <div><span class="c-prompt">$</span> <span class="c-cmd">devtrack setup</span></div>
       </div>
     </div>
