@@ -1,6 +1,5 @@
 stages:
   - test
-  - docker
 
 variables:
   UV_CACHE_DIR: $CI_PROJECT_DIR/.uv-cache
@@ -8,6 +7,7 @@ variables:
 # ---------------------------------------------------------------------------
 # core-tests
 # Runs the server test suite without AI/spaCy extras.
+# Trigger manually (requires self-hosted runner).
 # ---------------------------------------------------------------------------
 core-tests:
   stage: test
@@ -23,12 +23,12 @@ core-tests:
   script:
     - uv run pytest backend/tests/ -x -q --tb=short --ignore=backend/tests/test_nlp_parser.py
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH
+    - when: manual
 
 # ---------------------------------------------------------------------------
 # full-tests
-# Runs the server test suite with AI/spaCy extras (slower; same trigger).
+# Runs the server test suite with AI/spaCy extras (slower).
+# Trigger manually (requires self-hosted runner).
 # ---------------------------------------------------------------------------
 full-tests:
   stage: test
@@ -44,12 +44,12 @@ full-tests:
   script:
     - uv run pytest backend/tests/ -x -q --tb=short
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH
+    - when: manual
 
 # ---------------------------------------------------------------------------
 # api-contract
 # Verifies the HTTP API contract tests.
+# Trigger manually (requires self-hosted runner).
 # ---------------------------------------------------------------------------
 api-contract:
   stage: test
@@ -65,26 +65,4 @@ api-contract:
   script:
     - uv run pytest backend/tests/test_api_contract.py -v
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH
-
-# ---------------------------------------------------------------------------
-# docker
-# Builds the server Docker image. Gated on version tags only.
-# ---------------------------------------------------------------------------
-docker:
-  stage: docker
-  image: docker:27
-  services:
-    - docker:27-dind
-  variables:
-    IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
-    IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
-  before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-  script:
-    - docker build -t $IMAGE -t $IMAGE_LATEST -f Dockerfile .
-    - docker push $IMAGE
-    - docker push $IMAGE_LATEST
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
+    - when: manual
