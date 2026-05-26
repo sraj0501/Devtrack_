@@ -547,6 +547,30 @@
     .form-submit:hover { opacity: .9; transform: translateY(-1px); }
     .form-note { font-size: .74rem; color: var(--faint); text-align: center; margin-top: 12px; }
 
+    /* ── Hero "written" shimmer ─────────────────────────────────────── */
+    @keyframes shimmer {
+      0%   { background-position: -300% center; }
+      100% { background-position: 300% center; }
+    }
+    .hero-written {
+      background: linear-gradient(
+        90deg,
+        #3b82f6 0%,
+        #8b5cf6 20%,
+        #e0f2fe 48%,
+        #ffffff 50%,
+        #e0f2fe 52%,
+        #8b5cf6 80%,
+        #22d3ee 100%
+      );
+      background-size: 300% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+      display: inline;
+    }
+
     /* ── Grid overlay ───────────────────────────────────────────────── */
     .grid-overlay {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -687,7 +711,7 @@
 
   <h1 class="hero-title">
     Your standup,<br>
-    <span class="grad-text">written for you.</span>
+    <span class="hero-written">written</span><span class="grad-text"> for you.</span>
   </h1>
 
   <p class="hero-sub">
