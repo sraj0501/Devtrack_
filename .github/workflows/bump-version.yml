@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'devtrack-bin/**'
+      - 'devtrack_client/**'
   workflow_dispatch:
     inputs:
       bump:
@@ -32,8 +32,8 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: devtrack-bin/go.mod
-          cache-dependency-path: devtrack-bin/go.sum
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
 
       - name: Compute next version
         id: version
@@ -69,7 +69,7 @@ jobs:
 
       - name: Build binaries
         run: |
-          cd devtrack-bin
+          cd devtrack_client
           mkdir -p ../dist
           COMMIT=$(git rev-parse --short HEAD)
           BUILDTIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -83,7 +83,7 @@ jobs:
             cp devtrack_${OS}_${ARCH} devtrack
             tar czf devtrack_${OS}_${ARCH}.tar.gz devtrack
             rm devtrack
-            cd ../devtrack-bin
+            cd ../devtrack_client
           done
           cd ../dist
           sha256sum devtrack_*.tar.gz > checksums.txt
@@ -95,28 +95,20 @@ jobs:
           ARCHIVE_DIR="devtrack-server-${VER}"
           mkdir -p "dist/${ARCHIVE_DIR}"
 
-          # Copy Python backend files
-          cp -r backend                   "dist/${ARCHIVE_DIR}/backend"
-          cp    python_bridge.py          "dist/${ARCHIVE_DIR}/"
-          cp    pyproject.toml            "dist/${ARCHIVE_DIR}/"
-          cp    docker-compose.yml        "dist/${ARCHIVE_DIR}/"
-          cp    devtrack-git-wrapper.sh   "dist/${ARCHIVE_DIR}/"
-          cp    README.md                 "dist/${ARCHIVE_DIR}/"
-          cp    TERMS.md                  "dist/${ARCHIVE_DIR}/"
-          [ -f uv.lock ] && cp uv.lock   "dist/${ARCHIVE_DIR}/"
-          [ -f .env_sample ] && cp .env_sample "dist/${ARCHIVE_DIR}/"
+          cp -r devtrack_server/backend            "dist/${ARCHIVE_DIR}/backend"
+          cp    devtrack_server/devtrack-server    "dist/${ARCHIVE_DIR}/"
+          cp    devtrack_server/Dockerfile         "dist/${ARCHIVE_DIR}/"
+          cp    devtrack_server/docker-compose.yml "dist/${ARCHIVE_DIR}/"
+          cp    devtrack_server/pyproject.toml     "dist/${ARCHIVE_DIR}/"
+          [ -f devtrack_server/uv.lock ] && cp devtrack_server/uv.lock "dist/${ARCHIVE_DIR}/"
+          cp    devtrack_client/workspaces.yaml.example "dist/${ARCHIVE_DIR}/"
+          cp    devtrack_client/workspaces.yaml.sample  "dist/${ARCHIVE_DIR}/"
+          cp    devtrack_client/devtrack-git-wrapper.sh "dist/${ARCHIVE_DIR}/"
+          cp    README.md TERMS.md                      "dist/${ARCHIVE_DIR}/"
+          [ -f .env_sample ] && cp .env_sample          "dist/${ARCHIVE_DIR}/"
+          chmod +x "dist/${ARCHIVE_DIR}/devtrack-server"
+          echo "${VER}" > "dist/${ARCHIVE_DIR}/VERSION"
 
-          # Workspace templates only — never ship the live workspaces.yaml
-          cp workspaces.yaml.example "dist/${ARCHIVE_DIR}/"
-          cp workspaces.yaml.sample  "dist/${ARCHIVE_DIR}/"
-          cp Dockerfile.server        "dist/${ARCHIVE_DIR}/"
-
-          # Management CLI and version stamp
-          cp devtrack-server          "dist/${ARCHIVE_DIR}/"
-          chmod +x                    "dist/${ARCHIVE_DIR}/devtrack-server"
-          echo "${VER}"             > "dist/${ARCHIVE_DIR}/VERSION"
-
-          # Strip dev-only artefacts
           find "dist/${ARCHIVE_DIR}" -type d -name "__pycache__"   -exec rm -rf {} + 2>/dev/null || true
           find "dist/${ARCHIVE_DIR}" -type d -name "tests"         -exec rm -rf {} + 2>/dev/null || true
           find "dist/${ARCHIVE_DIR}" -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
@@ -128,58 +120,48 @@ jobs:
           sha256sum "devtrack-server-${VER}.tar.gz" >> checksums.txt
           rm -rf "${ARCHIVE_DIR}"
 
-      - name: Sync devtrack-bin → GitLab devtrack_client
+      - name: Sync devtrack_client → GitLab devtrack_client
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_SYNC_TOKEN }}
         run: |
           git remote add gitlab-client \
             "https://oauth2:${GITLAB_TOKEN}@gitlab.com/devtrack3_cloud/devtrack_client.git"
 
-          # Split produces a local branch containing only devtrack-bin/ history
-          git subtree split --prefix=devtrack-bin/ -b split-client
+          git subtree split --prefix=devtrack_client/ -b split-client
           SPLIT_SHA=$(git rev-parse split-client)
 
-          # Keep the dev branch up to date
           git push --force gitlab-client split-client:dev
           git branch -D split-client
 
-          # Tag the split commit — this triggers GitLab CI to build + publish
-          # to the Package Registry (all 5 platforms including Windows)
           TAG="${{ steps.version.outputs.tag }}"
           git tag -f "$TAG" "$SPLIT_SHA"
           git push --force gitlab-client "refs/tags/${TAG}"
 
-      - name: Sync server files → GitLab devtrack_server
+      - name: Sync devtrack_server → GitLab devtrack_server
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_SYNC_TOKEN }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           VER="${TAG#v}"
 
-          # Build a clean snapshot of server files in a throwaway git repo
           SERVER_TMP=$(mktemp -d)
-          cp -r backend                    "$SERVER_TMP/"
-          cp    python_bridge.py           "$SERVER_TMP/"
-          cp    pyproject.toml             "$SERVER_TMP/"
-          cp    docker-compose.yml         "$SERVER_TMP/"
-          cp    devtrack-git-wrapper.sh    "$SERVER_TMP/"
-          cp    devtrack-server            "$SERVER_TMP/"
-          cp    README.md TERMS.md         "$SERVER_TMP/"
-          [ -f uv.lock ]     && cp uv.lock     "$SERVER_TMP/"
+          cp -r devtrack_server/backend            "$SERVER_TMP/"
+          cp    devtrack_server/devtrack-server    "$SERVER_TMP/"
+          cp    devtrack_server/Dockerfile         "$SERVER_TMP/"
+          cp    devtrack_server/docker-compose.yml "$SERVER_TMP/"
+          cp    devtrack_server/pyproject.toml     "$SERVER_TMP/"
+          [ -f devtrack_server/uv.lock ] && cp devtrack_server/uv.lock "$SERVER_TMP/"
           [ -f .env_sample ] && cp .env_sample "$SERVER_TMP/"
-          cp workspaces.yaml.example workspaces.yaml.sample "$SERVER_TMP/"
-          cp Dockerfile.server                             "$SERVER_TMP/"
-          # Ship the GitLab CI config as .gitlab-ci.yml
-          cp ci/devtrack_server.gitlab-ci.yml "$SERVER_TMP/.gitlab-ci.yml"
+          cp README.md TERMS.md "$SERVER_TMP/"
+          cp devtrack_client/workspaces.yaml.example devtrack_client/workspaces.yaml.sample "$SERVER_TMP/"
+          cp ci/devtrack_server_new.gitlab-ci.yml "$SERVER_TMP/.gitlab-ci.yml"
           echo "${VER}" > "$SERVER_TMP/VERSION"
 
-          # Strip compiled artefacts (keep tests/ — GitLab CI needs them for pytest)
           find "$SERVER_TMP" -type d -name "__pycache__"   -exec rm -rf {} + 2>/dev/null || true
           find "$SERVER_TMP" -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
           find "$SERVER_TMP" -name "*.pyc" -delete 2>/dev/null || true
           find "$SERVER_TMP" -name "*.pyo" -delete 2>/dev/null || true
 
-          # Commit and force-push to gitlab-server dev (triggers pytest + Docker CI)
           cd "$SERVER_TMP"
           git init
           git config user.name  "github-actions[bot]"
@@ -189,8 +171,6 @@ jobs:
           git add -A
           git commit -m "chore: sync server ${TAG}"
           git push --force origin HEAD:dev
-
-          # Push version tag so gitlab-server can correlate releases
           git tag "$TAG"
           git push --force origin "refs/tags/${TAG}"
 
@@ -226,19 +206,9 @@ jobs:
           \`\`\`bash
           curl -fsSL "https://github.com/${{ github.repository }}/releases/latest/download/devtrack-server-${TAG#v}.tar.gz" | tar xz
           cd devtrack-server-${TAG#v}
-          ./devtrack-server install   # installs to ~/.local/share/devtrack-server
-          devtrack-server setup       # interactive .env wizard
+          ./devtrack-server install
+          devtrack-server setup
           devtrack-server start
-          \`\`\`
-
-          To upgrade an existing server: \`devtrack-server upgrade\`
-
-          ### Updating from a previous version
-
-          \`\`\`bash
-          devtrack upgrade
-          # If the binary is in a root-owned location (e.g. /usr/local/bin):
-          sudo devtrack upgrade
           \`\`\`
 
           **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV}...${TAG}

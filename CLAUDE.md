@@ -6,25 +6,48 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **DevTrack** is a developer automation tool that monitors Git activity and scheduled timers, prompting developers for work updates and routing them through an AI pipeline to update project management systems and generate reports.
 
+## Codebase Map
+
+This monorepo contains three independent codebases undergoing a structural split (EPIC-SPLIT):
+
+| Directory | Language | Role |
+|---|---|---|
+| `devtrack_client/` | Go + Python (git-sage) | **CLIENT** — binary, git monitor, scheduler, CLI, git-sage bundled tool. New canonical source. |
+| `devtrack_server/` | Python | **SERVER** — AI pipeline, webhook server, NLP, LLM, admin UI, integrations. New canonical source. |
+| `devtrack_wiki/` | HTML/Markdown | **DOCS** — website and wiki (pushed to GitLab wiki remote separately). |
+| `devtrack-bin/` | Go | **LEGACY** — original Go source. Being retired in TASK-048. Do not add new code here. |
+| `backend/` | Python | **LEGACY** — original Python source. Being retired in TASK-048. Do not add new code here. |
+
+See `docs/split-manifest.md` for the full file-ownership catalogue.
+See `docs/HTTP_API.md` for the HTTP/JSON boundary between client and server.
+
 ## Build & Run Commands
 
-### Go daemon (devtrack-bin/)
+### Go client (devtrack_client/) — canonical
 
 ```bash
-cd devtrack-bin
+cd devtrack_client
 go build -o devtrack .          # Build binary
 go test ./...                   # Run all Go tests
 go vet ./...                    # Run Go linter
 ```
 
-### Python backend
+### Python server (devtrack_server/) — canonical
 
 ```bash
+cd devtrack_server
 uv sync                         # Install/sync dependencies (uv manages the venv)
 uv run pytest backend/tests/    # Run all Python tests (uses conftest.py setup)
 uv run pytest backend/tests/test_nlp_parser.py  # Run single test file
 uv run pytest backend/tests/ -k test_name       # Run tests by name filter
-uv run python validate_env_sample.py            # Validate .env keys match .env_sample
+```
+
+### Legacy paths (devtrack-bin/ and root backend/) — do not use for new work
+
+```bash
+cd devtrack-bin
+go build -o devtrack .          # LEGACY — use devtrack_client/ instead
+uv run pytest backend/tests/    # LEGACY — use devtrack_server/ instead
 ```
 
 ### Testing Patterns
@@ -50,94 +73,97 @@ devtrack logs                   # View recent log output
 
 ## Architecture
 
-The system has two main runtime components. The Go daemon sends triggers to the Python backend over HTTPS POST (CS-1 transport). TCP IPC (`127.0.0.1:35893`) is retained as a legacy internal channel only.
+Three independent codebases share a single HTTP/JSON boundary. See `docs/HTTP_API.md` for the full API contract.
 
 ```
-Git commits / cron timer
-        │
-        ▼
-┌──────────────────┐   HTTPS POST (JSON)    ┌──────────────────────────┐
-│  Go Daemon       │ ──────────────────────▶ │  Python Backend          │
-│  devtrack-bin/   │                         │  backend/webhook_server  │
-│  - git_monitor   │                         │  - NLP parsing (spaCy)   │
-│  - scheduler     │                         │  - LLM enhancement       │
-│  - http_trigger  │                         │  - TUI user prompts      │
-│  - database      │                         │  - Report generation     │
-│  - cli           │                         │  - Project mgmt APIs     │
-└──────────────────┘                         └──────────────────────────┘
-        │                                              │
-        ▼                                              ▼
-  SQLite (Data/db/)                        Azure DevOps / GitHub / Jira
-  PID/logs (Data/)                         Microsoft Graph (Teams/Email)
+devtrack_client/          devtrack_server/              devtrack_wiki/
+(Go binary + git-sage)    (Python AI pipeline)          (docs site)
+        │                          │                           │
+        │   HTTPS POST /trigger/*  │                    GitLab wiki remote
+        │ ─────────────────────── ▶│
+        │                          │
+Git commits / cron timer    NLP / LLM / Admin UI
+CLI commands                Azure DevOps / GitHub / Jira
+SQLite (Data/db/)           Microsoft Graph (Teams/Email)
 ```
 
-### Go layer (`devtrack-bin/`)
+The Go client sends triggers to the Python server over HTTPS POST (CS-1 transport). TCP IPC (`127.0.0.1:35893`) is retained as a legacy internal channel only. There is no shared compiled artefact between client and server — the boundary is HTTP/JSON only.
+
+**LEGACY paths** (being retired in TASK-048):
+- `devtrack-bin/` — original Go source, mirror of `devtrack_client/`. Do not add new code here.
+- `backend/` at monorepo root — original Python source, mirror of `devtrack_server/backend/`. Do not add new code here.
+
+### Go layer (`devtrack_client/`)
 
 | File | Purpose |
 |---|---|
-| `main.go` | Entry point; routes CLI args or delegates `git` subcommand to shell wrapper |
-| `cli.go` | All CLI command implementations (`start`, `stop`, `status`, `logs`, etc.) |
-| `daemon.go` | Lifecycle management (PID file, signals, webhook server subprocess) |
-| `integrated.go` | `IntegratedMonitor` — wires together git monitor, scheduler, and IPC server |
-| `git_monitor.go` | fsnotify-based Git repository watcher; fires `commit_trigger` on new commits |
-| `scheduler.go` | Cron-based periodic trigger using robfig/cron; fires `timer_trigger` |
-| `ipc.go` | TCP IPC server (Go side); JSON-delimited messages, one handler per `MessageType` |
-| `database.go` | SQLite via modernc.org/sqlite; stores trigger history and task updates |
-| `config.go` | YAML config struct (`Data/configs/config.yaml`); all runtime values via `config_env.go` |
-| `config_env.go` | All `.env` key accessors for Go — the single source of truth for env var names |
-| `learning.go` | Personalized AI learning consent and profile management |
-| `cli_boardroom.go` | `devtrack boardroom` command — multi-persona AI plan review with SWOT, verdict, and interactive chat |
-| `cli_plan.go` | `devtrack plan` command — decompose a problem into Epic/Story/Task hierarchy and create on PM platform |
-| `versioninfo.json` | Windows binary version metadata for `goversioninfo` (`go generate` embeds as `resource_windows_amd64.syso`) |
-| `resource_windows_amd64.syso` | Pre-built Windows resource object (icon + version info); `_windows_amd64` suffix constrains linkage to that target only |
+| `devtrack_client/main.go` | Entry point; routes CLI args or delegates `git` subcommand to shell wrapper |
+| `devtrack_client/cli.go` | All CLI command implementations (`start`, `stop`, `status`, `logs`, etc.) |
+| `devtrack_client/daemon.go` | Lifecycle management (PID file, signals, webhook server subprocess) |
+| `devtrack_client/integrated.go` | `IntegratedMonitor` — wires together git monitor, scheduler, and IPC server |
+| `devtrack_client/git_monitor.go` | fsnotify-based Git repository watcher; fires `commit_trigger` on new commits |
+| `devtrack_client/scheduler.go` | Cron-based periodic trigger using robfig/cron; fires `timer_trigger` |
+| `devtrack_client/ipc.go` | TCP IPC server (Go side); JSON-delimited messages, one handler per `MessageType` |
+| `devtrack_client/database.go` | SQLite via modernc.org/sqlite; stores trigger history and task updates |
+| `devtrack_client/config.go` | YAML config struct (`Data/configs/config.yaml`); all runtime values via `config_env.go` |
+| `devtrack_client/config_env.go` | All `.env` key accessors for Go — the single source of truth for env var names |
+| `devtrack_client/learning.go` | Personalized AI learning consent and profile management |
+| `devtrack_client/cli_boardroom.go` | `devtrack boardroom` command — multi-persona AI plan review with SWOT, verdict, and interactive chat |
+| `devtrack_client/cli_plan.go` | `devtrack plan` command — decompose a problem into Epic/Story/Task hierarchy and create on PM platform |
+| `devtrack_client/versioninfo.json` | Windows binary version metadata for `goversioninfo` (`go generate` embeds as `resource_windows_amd64.syso`) |
+| `devtrack_client/resource_windows_amd64.syso` | Pre-built Windows resource object (icon + version info); `_windows_amd64` suffix constrains linkage to that target only |
+| `devtrack_client/git_sage/` | Python git-sage agent (client-owned; bundled here, not in devtrack_server/) |
 
-### Python layer (`backend/`)
+### Python layer (`devtrack_server/backend/`)
+
+The canonical Python source lives at `devtrack_server/backend/`. The root `backend/` directory is a legacy mirror being retired in TASK-048. The server entry point is `devtrack_server/backend/webhook_server.py` (not `python_bridge.py`, which is a legacy reference only).
 
 #### Core Infrastructure
 
 | Module | Purpose |
 |---|---|
-| `backend/webhook_server.py` | Primary Python entry point started by Go daemon; FastAPI server handling inbound webhook events AND outbound triggers from Go |
-| `backend/webhook_handlers.py` | `WebhookEventHandler` — routes Azure/GitHub/Jira events; separated from HTTP routing for testability |
-| `backend/config.py` | Centralized config — all modules use `backend.config.get()`, not `os.getenv()` directly |
-| `backend/ipc_client.py` | TCP IPC client (Python side) — legacy internal channel; mirrors message types from Go's `ipc.go` |
-| `python_bridge.py` | Legacy bridge (kept for reference); superseded by `webhook_server.py` as the daemon's Python process |
+| `devtrack_server/backend/webhook_server.py` | Primary Python entry point started by Go client; FastAPI server handling inbound webhook events AND outbound triggers from Go |
+| `devtrack_server/backend/webhook_handlers.py` | `WebhookEventHandler` — routes Azure/GitHub/Jira events; separated from HTTP routing for testability |
+| `devtrack_server/backend/config.py` | Centralized config — all modules use `backend.config.get()`, not `os.getenv()` directly |
+| `devtrack_server/backend/ipc_client.py` | TCP IPC client (Python side) — legacy internal channel; mirrors message types from Go's `ipc.go` |
+| `python_bridge.py` | Legacy bridge at monorepo root (kept for reference only); superseded by `webhook_server.py` |
 
 #### Boardroom & Plan
 
 | Module | Purpose |
 |---|---|
-| `backend/boardroom/` | Multi-persona AI boardroom module: `personas.py` (7 personas), `session.py` (session orchestration), `interactive.py` (chat loop), `report.py` (SWOT/verdict rendering) |
-| `backend/plan_parser.py` | Parses free-text or Markdown plan files into structured sections for the boardroom and plan commands |
+| `devtrack_server/backend/boardroom/` | Multi-persona AI boardroom module: `personas.py` (7 personas), `session.py` (session orchestration), `interactive.py` (chat loop), `report.py` (SWOT/verdict rendering) |
+| `devtrack_server/backend/plan_parser.py` | Parses free-text or Markdown plan files into structured sections for the boardroom and plan commands |
 
 #### NLP & AI Processing
 
 | Module | Purpose |
 |---|---|
-| `backend/nlp_parser.py` | spaCy-based NLP for commit/user text → structured task data (entity extraction, action detection) |
-| `backend/description_enhancer.py` | Ollama-based description enhancement and categorization |
-| `backend/llm/` | Multi-provider LLM abstraction (`provider_factory.py` builds fallback chain: primary → OpenAI/Anthropic → Ollama) |
-| `backend/personalized_ai.py` | AI learning from user communications for personalized responses |
-| `backend/learning_integration.py` | Learning consent management and profile handling |
+| `devtrack_server/backend/nlp_parser.py` | spaCy-based NLP for commit/user text → structured task data (entity extraction, action detection) |
+| `devtrack_server/backend/description_enhancer.py` | Ollama-based description enhancement and categorization |
+| `devtrack_server/backend/llm/` | Multi-provider LLM abstraction (`provider_factory.py` builds fallback chain: primary → OpenAI/Anthropic → Ollama) |
+| `devtrack_server/backend/personalized_ai.py` | AI learning from user communications for personalized responses |
+| `devtrack_server/backend/learning_integration.py` | Learning consent management and profile handling |
 
 #### User Interaction & Reporting
 
 | Module | Purpose |
 |---|---|
-| `backend/user_prompt.py` | Terminal TUI for interactive work-update prompts |
-| `backend/daily_report_generator.py` | AI-enhanced daily/weekly report generation (multiple output formats: Terminal, HTML, Markdown, JSON) |
-| `backend/email_reporter.py` | Report delivery via email/Teams |
-| `backend/task_matcher.py` | Fuzzy + semantic matching of natural language to tracked tasks |
+| `devtrack_server/backend/user_prompt.py` | Terminal TUI for interactive work-update prompts |
+| `devtrack_server/backend/daily_report_generator.py` | AI-enhanced daily/weekly report generation (multiple output formats: Terminal, HTML, Markdown, JSON) |
+| `devtrack_server/backend/email_reporter.py` | Report delivery via email/Teams |
+| `devtrack_server/backend/task_matcher.py` | Fuzzy + semantic matching of natural language to tracked tasks |
 
 #### Git Integration
 
 | Module | Purpose |
 |---|---|
-| `backend/commit_message_enhancer.py` | AI-powered iterative commit message refinement (multi-attempt workflow) |
-| `backend/git_diff_analyzer.py` | Analyze staged changes to enhance context for commit messages |
-| `backend/git_sage/` | **Local LLM-powered git agent** with complete implementation |
+| `devtrack_server/backend/commit_message_enhancer.py` | AI-powered iterative commit message refinement (multi-attempt workflow) |
+| `devtrack_server/backend/git_diff_analyzer.py` | Analyze staged changes to enhance context for commit messages |
 
-##### git-sage Sub-modules
+Note: `git_sage/` is **client-owned** and lives at `devtrack_client/git_sage/`, not in devtrack_server. It is invoked as `python -m backend.git_sage` from the client's bundled Python environment.
+
+##### git-sage Sub-modules (`devtrack_client/git_sage/`)
 
 | Module | Purpose |
 |---|---|
@@ -155,19 +181,19 @@ Git commits / cron timer
 
 | Module | Purpose |
 |---|---|
-| `backend/jira/` | Jira REST API client for issue management |
-| `backend/github/` | GitHub API integration (PR analysis, repository insights) |
-| `backend/azure/` | Azure DevOps work item fetching and updating |
-| `backend/msgraph_python/` | Microsoft Graph integration (Teams chat, Outlook email, sentiment analysis) |
+| `devtrack_server/backend/jira/` | Jira REST API client for issue management |
+| `devtrack_server/backend/github/` | GitHub API integration (PR analysis, repository insights) |
+| `devtrack_server/backend/azure/` | Azure DevOps work item fetching and updating |
+| `devtrack_server/backend/msgraph_python/` | Microsoft Graph integration (Teams chat, Outlook email, sentiment analysis) |
 
 #### Utilities & Helpers
 
 | Module | Purpose |
 |---|---|
-| `backend/utils/` | Shared utilities (formatting, validation, helpers) |
-| `backend/autodoc/` | Auto-documentation generation from code |
-| `backend/db/` | Database models and migrations |
-| `backend/ai/` | Low-level AI utilities (Ollama client, inference helpers) |
+| `devtrack_server/backend/utils/` | Shared utilities (formatting, validation, helpers) |
+| `devtrack_server/backend/autodoc/` | Auto-documentation generation from code |
+| `devtrack_server/backend/db/` | Database models and migrations |
+| `devtrack_server/backend/ai/` | Low-level AI utilities (Ollama client, inference helpers) |
 
 ## Configuration Architecture
 
@@ -457,13 +483,16 @@ All user-facing documentation has been reorganized for clarity:
 
 ## Key Patterns
 
-- **Python entry point**: `backend/webhook_server.py` is the Python process the Go daemon spawns. It handles both inbound webhook events (Azure/GitHub/GitLab/Jira) and trigger calls from the Go daemon (`/trigger/commit`, `/trigger/timer`, etc.). `python_bridge.py` is retained as a legacy reference only.
+- **Client entry point**: `devtrack_client/main.go` is the Go binary entry point. It routes CLI args or delegates `git` subcommand to the shell wrapper. The legacy `devtrack-bin/main.go` is a mirror being retired in TASK-048.
+- **Server entry point**: `devtrack_server/backend/webhook_server.py` is the Python process the Go client spawns (in managed mode) or connects to (in external mode). It handles both inbound webhook events (Azure/GitHub/GitLab/Jira) and trigger calls from the Go client (`/trigger/commit`, `/trigger/timer`, etc.). `python_bridge.py` at the monorepo root is a legacy reference only — do not use it for new code.
+- **HTTP API boundary**: Client and server share no compiled artefact. The only interface is HTTPS POST to `/trigger/*` and related endpoints. See `docs/HTTP_API.md` for the full contract. The legacy TCP IPC channel (`127.0.0.1:35893`) is retained but new trigger types must use HTTP.
+- **git-sage ownership**: git-sage is client-owned Python, bundled at `devtrack_client/git_sage/`. It is NOT in `devtrack_server/`. Invoke as `python -m backend.git_sage` from the client's Python environment.
 - **git-sage architecture**: Modular design with GitOperations, ConflictResolver, PRFinder as reusable components. Agent uses these as helpers for autonomous git operations. Can be used standalone via CLI or as Python library.
 - **Trigger pipeline**: webhook_server.py trigger handlers integrate git-sage features: timer triggers enhance work context, commit triggers log git metadata, post-update checks detect and resolve conflicts. All features degrade gracefully if git-sage unavailable.
-- **IPC message protocol**: JSON-newline-delimited over TCP. Message types are defined in both `devtrack-bin/ipc.go` (`MessageType` constants) and `backend/ipc_client.py` (`MessageType` enum) — legacy internal channel; new trigger types should use the HTTP `/trigger/*` endpoints instead.
+- **IPC message protocol**: JSON-newline-delimited over TCP. Message types are defined in both `devtrack_client/ipc.go` (`MessageType` constants) and `devtrack_server/backend/ipc_client.py` (`MessageType` enum) — legacy internal channel; new trigger types should use the HTTP `/trigger/*` endpoints instead.
 - **Python optional imports**: All Python subsystems (NLP, TUI, LLM, report generator, git_sage, work_enhancer, conflict_resolver) are imported with `try/except` and individually gated; the webhook server degrades gracefully if a dependency is missing.
 - **Config centralization**: All Python modules access config via `backend.config.get()`, `get_int()`, `get_bool()`, `get_path()` — never `os.getenv()` directly.
-- **Database access**: Centralized via `backend/db/` models; no direct SQLite queries in business logic.
+- **Database access**: Centralized via `devtrack_server/backend/db/` models; no direct SQLite queries in business logic.
 - **Commit message enhancement**: The `devtrack git commit` workflow is stateful (caches attempt count, original message, refined versions) across up to 5 iterations before creating a commit.
 - **Work update enrichment**: Timer trigger enhancements (Phase 3) inject git context (branch, PR, changes) into work updates before NLP parsing for better task extraction and auto PR-number detection.
 - **Conflict auto-resolution**: Post-update hook (Phase 3) automatically detects and resolves merge conflicts using smart strategies, reports status to user via TUI or logs.
@@ -471,7 +500,7 @@ All user-facing documentation has been reorganized for clarity:
 - **git-sage session UX**: `do` mode shows an approval dialog (auto/review/suggest-only) before the first command. After the task completes, up to 5 follow-up questions can be asked in the same conversation context. Command history and `undo [N]` are available at any point.
 - **git-sage squash**: Agent always uses `git reset --soft HEAD~N && git commit -m "..."` — never `git rebase -i` (interactive editor blocks the agent loop).
 - **git-sage LLM JSON mode**: `raw_chat(..., json_mode=True)` is set on every agent call. Ollama uses `format:"json"`, OpenAI-compatible uses `response_format:{"type":"json_object"}` with a `BadRequestError` fallback. Model names strip `provider/` prefixes (LiteLLM convention) before the API call.
-- **Groq provider**: `backend/llm/groq_provider.py` + added to `provider_factory.py` fallback chain. git-sage uses `GIT_SAGE_PROVIDER=groq` with `GROQ_API_KEY` / `GROQ_HOST` / `GROQ_MODEL` env vars.
+- **Groq provider**: `devtrack_server/backend/llm/groq_provider.py` + added to `provider_factory.py` fallback chain. git-sage uses `GIT_SAGE_PROVIDER=groq` with `GROQ_API_KEY` / `GROQ_HOST` / `GROQ_MODEL` env vars.
 
 ## Personalization System
 
