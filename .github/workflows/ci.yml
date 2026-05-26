@@ -15,21 +15,20 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: devtrack-bin/go.mod
-          cache-dependency-path: devtrack-bin/go.sum
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
 
       - name: go vet
-        run: cd devtrack-bin && go vet ./...
+        working-directory: devtrack_client
+        run: go vet ./...
 
       - name: go test
-        run: cd devtrack-bin && go test ./...
+        working-directory: devtrack_client
+        run: go test ./...
 
       - name: go build (smoke test)
-        run: |
-          # Bundle placeholder so go:embed compiles even without real assets
-          mkdir -p devtrack-bin/assets
-          touch devtrack-bin/assets/.gitkeep
-          cd devtrack-bin && go build -o /dev/null .
+        working-directory: devtrack_client
+        run: go build -o /dev/null .
 
   python-test:
     name: Python tests
@@ -45,7 +44,9 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies
+        working-directory: devtrack_server
         run: uv sync
 
       - name: Run pytest
+        working-directory: devtrack_server
         run: uv run pytest backend/tests/ -q --tb=short

@@ -19,8 +19,8 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: devtrack-bin/go.mod
-          cache-dependency-path: devtrack-bin/go.sum
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -28,6 +28,7 @@ jobs:
           distribution: goreleaser
           version: "~> v2"
           args: release --clean
+          workdir: devtrack_client
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
