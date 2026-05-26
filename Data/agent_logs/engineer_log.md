@@ -2,6 +2,210 @@
 
 ---
 
+### [2026-05-24] TASK-047 — Update CLAUDE.md and docs for three-codebase split
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `20d2e4f` — docs(split): update CLAUDE.md and component docs for three-codebase split (TASK-047)
+
+**Work done**:
+- Root `CLAUDE.md`: added Codebase Map section listing all five directories with
+  legacy flags on devtrack-bin/ and root backend/; replaced monolith architecture
+  ASCII diagram with three-codebase diagram showing devtrack_client / devtrack_server /
+  devtrack_wiki with HTTPS POST boundary; updated Build & Run Commands to show both
+  devtrack_client/ (canonical) and devtrack_server/ (canonical) with legacy section;
+  updated all Go file table entries from devtrack-bin/ to devtrack_client/ paths,
+  added devtrack_client/git_sage/ row; updated Python layer heading and module table
+  to devtrack_server/backend/ paths; added note that git_sage is NOT in devtrack_server;
+  updated Key Patterns to name devtrack_client/main.go as client entry and
+  devtrack_server/backend/webhook_server.py as server entry (python_bridge.py is legacy only);
+  updated IPC pattern to reference devtrack_client/ipc.go and devtrack_server/backend/ipc_client.py;
+  added links to docs/HTTP_API.md and docs/split-manifest.md.
+- `README.md`: added three-codebase summary line under the tagline; updated Testing
+  section from `cd devtrack-bin` to `cd devtrack_client` and `uv run pytest backend/tests/`
+  to `cd devtrack_server && uv run pytest backend/tests/`.
+- `devtrack_client/CLAUDE.md`: expanded from one-line stub to full document —
+  build/test/cross-compile commands, file table (all 15+ files), git-sage ownership
+  note, config var summary, server communication reference to docs/HTTP_API.md.
+- `devtrack_server/CLAUDE.md`: expanded from one-line stub to full document —
+  run/test commands, architecture diagram, module table (15 modules), explicit note
+  that git_sage is NOT here, config and client-server boundary docs.
+- `docs/ARCHITECTURE.md`: added EPIC-SPLIT notice at top, added three-codebase
+  table section, updated component table to reference devtrack_client/ and
+  devtrack_server/, updated ASCII diagram devtrack-bin/ → devtrack_client/,
+  updated component heading.
+- Pushed to origin with GIT_NO_DEVTRACK=1.
+
+---
+
+### [2026-05-24] TASK-046 — GitLab CI for devtrack_server standalone
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `2f1fb4e` — ci(split): add GitLab CI for devtrack_server standalone (TASK-046)
+
+**Work done**:
+- Created `ci/devtrack_server_new.gitlab-ci.yml` (named `_new` to avoid conflict with existing
+  `ci/devtrack_server.gitlab-ci.yml`).
+- Mirrored structure of existing server CI: stages [test, docker], same image (python:3.12-slim),
+  same uv cache pattern, same docker:27-dind pattern for docker stage.
+- All test jobs use `changes: [devtrack_server/**]` in rules to avoid spurious triggers on
+  client-only commits. Two rule entries per job: MR event + branch push.
+- Cache keys prefixed `uv-server-core-` and `uv-server-full-` to avoid collision with any
+  existing monorepo cache keys.
+- before_script for all test jobs: `cd devtrack_server` before `uv sync` — ensures pytest
+  resolves `backend/tests/` relative to the server root, not the monorepo root.
+- Four jobs:
+  - `core-tests`: uv sync --group dev; pytest backend/tests/ excluding test_nlp_parser.py
+  - `full-tests`: uv sync --extra ai --group dev; full pytest run
+  - `api-contract`: same setup as core-tests; pytest backend/tests/test_api_contract.py -v
+  - `docker`: docker:27-dind; builds with `-f devtrack_server/Dockerfile.server devtrack_server/`
+    from repo root; gated on `v*` tags + devtrack_server/** changes
+- No reference to devtrack-bin/ or root backend/ anywhere in the file.
+- Pushed to `features/SPLIT-001-monorepo-restructure` with GIT_NO_DEVTRACK=1
+
+---
+
+### [2026-05-24] TASK-045 — GitHub Actions CI for devtrack_client standalone
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `4f3b9d2` — ci(split): add GitHub Actions CI for devtrack_client standalone (TASK-045)
+
+**Work done**:
+- Created `.github/workflows/client.yml`.
+- Trigger: push or PR to `dev` or `main` with `paths: devtrack_client/**` filter.
+  Does NOT trigger on `devtrack-bin/` changes (old path not listed).
+- Uses `actions/checkout@v5` and `actions/setup-go@v5` with `go-version-file: devtrack_client/go.mod`
+  (Go 1.24.4 per go.mod; matrix uses `1.24` label).
+- Three jobs:
+  - `build`: matrix [ubuntu-latest, windows-latest]; `working-directory: devtrack_client`;
+    runs `go build ./...` then `go vet ./...`. fail-fast: false.
+  - `test`: ubuntu-latest only; needs: build; `go test ./... -timeout 60s`
+  - `api-contract`: ubuntu-latest only; needs: build; `go test -run TestAPIContract ./...`
+- Pushed to `features/SPLIT-001-monorepo-restructure` with GIT_NO_DEVTRACK=1
+
+---
+
+### [2026-05-24] TASK-044 — HTTP API boundary documentation and contract tests
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `56e3ab3` — docs(split): add HTTP API contract document and stub contract tests (TASK-044)
+
+**Work done**:
+- Created `docs/HTTP_API.md` — formal specification of all 21 endpoints from split-manifest.md
+  Section 5. Schemas derived directly from Go structs in `devtrack-bin/http_trigger.go` and
+  FastAPI handlers in `backend/webhook_server.py` as source of truth.
+  Covers: /health, /version, /status, /trigger/commit, /trigger/timer, /trigger/workspace_reload,
+  /trigger/shutdown, /trigger/ping, /trigger/work_session_start, /trigger/work_session_stop,
+  /trigger/plan/preview, /trigger/plan/create, /trigger/boardroom, /trigger/boardroom/chat,
+  /webhooks/azure-devops, /webhooks/github, /webhooks/gitlab, /webhooks/jira,
+  /admin/*, /spec/{spec_id}/review. Auth, error format, versioning sections included.
+- Created `devtrack_client/api_contract_test.go` — 4 Go contract tests using httptest.NewServer:
+  TestAPIContractHealth, TestAPIContractHealthShape, TestAPIContractPingRejectsNon200,
+  TestAPIContractAPIKeyHeader, TestAPIContractCommitPayloadShape.
+  Pure Go, no Python imports. `go test -run TestAPIContract ./...`: PASS
+- Created `devtrack_server/backend/tests/test_api_contract.py` — 31 Python contract tests
+  using FastAPI TestClient. Covers: /health (4), /version (4), /status (3), /trigger/ping (3),
+  /trigger/commit (5), /trigger/timer (4), /trigger/workspace_reload (3),
+  /trigger/work_session_start (3), /trigger/work_session_stop (2).
+  `uv run pytest backend/tests/test_api_contract.py -v`: 31 passed in 1.32s
+- `go build ./...` in devtrack_client: exit 0
+- Pushed to `features/SPLIT-001-monorepo-restructure` with GIT_NO_DEVTRACK=1
+
+---
+
+### [2026-05-24] TASK-043 — devtrack_server/ skeleton
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `962ec03` — feat(split): create devtrack_server/ skeleton with Python backend copy (TASK-043)
+
+**Work done**:
+- Created `devtrack_server/` at monorepo root
+- Copied `backend/` tree (excluding `git_sage/`) to `devtrack_server/backend/` — 24 subdirs, all Python modules
+- Confirmed `devtrack_server/backend/git_sage/` does NOT exist
+- Copied: `pyproject.toml`, `docker-compose.yml`, `Dockerfile`, `Dockerfile.server`, `python_bridge.py`
+- Copied `ci/devtrack_server.gitlab-ci.yml` → `devtrack_server/.gitlab-ci.yml`
+- Updated `pyproject.toml` name from "devtrack" to "devtrack-server"
+- Copied `uv.lock` from monorepo root (required for uv sync)
+- Created `devtrack_server/CLAUDE.md` stub
+- Created `devtrack_server/.env_sample` (Python-consumed vars only; IPC_, GIT_SAGE_, Go-only vars excluded)
+- `uv sync --no-install-project`: exit 0
+- `uv run pytest backend/tests/ -q`: 549 pass, 1 skipped, 1 pre-existing env failure (test_ollama_host_returns_string reads OLLAMA_HOST=0.0.0.0 from shell — confirmed identical in monorepo root, not a regression)
+- Pushed to `features/SPLIT-001-monorepo-restructure`
+
+---
+
+### [2026-05-24] TASK-042 — devtrack_client/ skeleton
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `c0a6c5b` — feat(split): create devtrack_client/ skeleton with Go files and git_sage copy (TASK-042)
+
+**Work done**:
+- Removed `devtrack_client/` and `devtrack_server/` from `.gitignore` (they are source dirs in this epic, not git repo clones)
+- Created `devtrack_client/` at monorepo root
+- Copied all Go source files from `devtrack-bin/` to `devtrack_client/` (flat layout) — 62 `.go` files + go.mod, go.sum, versioninfo.json, resource_windows_amd64.syso, devtrack.ico, test_manual_triggers.sh, .gitlab-ci.yml
+- Excluded: `daemon.log` (stale log), `go-cli/` (empty dir)
+- Copied `devtrack-bin/gitsage/` → `devtrack_client/gitsage/` (3 Go files: agent.go, context.go, llm.go)
+- Copied `backend/git_sage/` → `devtrack_client/git_sage/` (12 Python files: cli.py, agent.py, config.py, context.py, git_operations.py, conflict_resolver.py, pr_finder.py, llm.py, __init__.py, __main__.py, setup.py, README.md)
+- Fixed nested gitsage/ directory created by the copy — moved files to correct path
+- `go.mod` module name: `gitlab.com/devtrack3_cloud/devtrack_client` (no change required — already correct)
+- No `replace` directives in go.mod
+- `go build ./...`: exit 0
+- `go vet ./...`: exit 0
+- `go test ./...`: ok + no test files in gitsage (exit 0)
+- Created `devtrack_client/CLAUDE.md` stub
+- Created `devtrack_client/.env_sample` (Go-consumed vars only — verified against config_env.go)
+- Pushed to `features/SPLIT-001-monorepo-restructure`
+
+---
+
+### [2026-05-24] TASK-041 — Monorepo split manifest (audit)
+
+**Branch**: `features/SPLIT-001-monorepo-restructure`
+**Commit**: `b1434df` — docs(split): add monorepo split manifest cataloguing all files by owner (TASK-041)
+
+**Work done**:
+- Created branch `features/SPLIT-001-monorepo-restructure` from `dev`
+- Surveyed all top-level dirs and representative files in the monorepo
+- Classified every file in `devtrack-bin/` (65+ files, all CLIENT)
+- Classified every file in `backend/` (~120 files); `backend/git_sage/` marked CLIENT
+- Classified docs/, scripts/, ci/, .github/workflows/, infra/, demo/, bin/, root files
+- Extracted HTTP API boundary from `http_trigger.go` and `webhook_server.py` (19 endpoints)
+- Confirmed Go module name `gitlab.com/devtrack3_cloud/devtrack_client` already in go.mod
+- Produced `docs/split-manifest.md` — 7 sections, full coverage, no UNKNOWN entries
+- Pushed branch to GitHub
+
+**All 7 acceptance criteria met**:
+- [x] `docs/split-manifest.md` exists and covers all top-level directories
+- [x] Every file in `devtrack-bin/` is marked CLIENT
+- [x] Every file in `backend/` is classified (CLIENT/SERVER per module)
+- [x] `backend/git_sage/` classified CLIENT with bundling note
+- [x] HTTP endpoint boundary section present with all trigger endpoints plus /health, /version
+- [x] Go module name recommendation included (`gitlab.com/devtrack3_cloud/devtrack_client`)
+- [x] No files marked UNKNOWN
+
+---
+
+### [2026-05-11 00:30] TASK-040 — DevTrack logo added to website and icon embedded in Windows binary
+
+**Original message**: "feat(branding): add DevTrack logo to website and embed icon in Windows binary (TASK-040)"
+**DevTrack enhanced it to**: "feat(branding): add DevTrack logo to website and embed icon in Windows binary (TASK-040)" (no AI enhancement shown in output — message accepted as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated with COMPLETE status, PR URL recorded
+**Time**: ~25 minutes
+**Friction**: LOW
+**Notes**: devtrack.png found at wiki/assets/ (untracked). devtrack_wiki/ is gitignored in monorepo — it is a separate GitLab repo; wiki changes committed there with raw git. goversioninfo installed via `go install`, PIL used via `python3 --break-system-packages pillow` to convert PNG to ICO. goversioninfo -64 flag required (plain -o produced relocation type 7 error). go build/vet/test all pass after resource.syso added. macOS/Linux: no action needed (no app bundle). go:generate directive added to main.go for future regeneration.
+
+## Task Summary — TASK-040: Add DevTrack logo to website and embed Windows icon — 2026-05-11
+
+- Total commits: 2 (monorepo via devtrack: 85d67e2; devtrack_wiki via raw git: d22a76d)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0
+- Estimated daily time saved: N/A (one-off branding task)
+- Blockers encountered: none — goversioninfo -64 flag needed (discovered by fixing relocation error)
+- One thing that still feels rough: "The devtrack_wiki/ separate repo requires raw git commits; devtrack daemon is not scoped to it"
+- Ready for PM review: YES
+
+---
+
 ### [2026-05-09] TASK-029 DONE — pyproject.toml restructured: spacy/chromadb/sentence-transformers/en-core-web-sm moved to [project.optional-dependencies] ai; pytest/pytest-asyncio/pandas-stubs moved to [dependency-groups] dev
 
 ### [2026-05-09] TASK-030 DONE — is_ai_available() added to backend/config.py using importlib.util.find_spec('spacy')

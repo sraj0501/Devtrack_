@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-04-10 by PM (CS-3 TASK-011 through TASK-015 complete)_
+_Last updated: 2026-05-24 by PM (EPIC-SPLIT TASK-048 complete)_
 
 ---
 
@@ -31,6 +31,40 @@ _Last updated: 2026-04-10 by PM (CS-3 TASK-011 through TASK-015 complete)_
 ---
 
 ## Task History
+
+## 2026-05-24 — TASK-048: Retire legacy directories
+**Phase**: EPIC-SPLIT / Phase 3 — cleanup
+**Status**: DONE
+**Files deleted**:
+- `devtrack-bin/` (65+ files — fully superseded by `devtrack_client/`)
+- `backend/` at monorepo root (190+ files — fully superseded by `devtrack_server/backend/`)
+- `bin/` (2 pre-built binaries)
+- `demo/` (9 files)
+- `python_bridge.py` (legacy root entry point)
+- `scripts/setup_claude_memory.py`
+- `docs/build-runner-plan.md`
+**Files updated**:
+- `Makefile` — all devtrack-bin/ and backend/ references replaced with devtrack_client/ and devtrack_server/
+**Vision check**: PASS — pure deletion; canonical copies in devtrack_client/ and devtrack_server/ unaffected; offline-first unchanged
+**Engineer notes**: 281 files changed, 69,068 lines deleted. Post-deletion builds: go build ./... EXIT 0; pytest 584 pass (1 pre-existing failure unchanged). Pushed to origin.
+
+---
+
+## 2026-05-24 — TASK-047: Update CLAUDE.md and docs for three-codebase split
+**Phase**: EPIC-SPLIT / Phase 2 — docs
+**Status**: DONE
+**Files**:
+- `CLAUDE.md` (Codebase Map, three-codebase architecture diagram, devtrack_client/ paths, HTTP_API.md link)
+- `README.md` (three-codebase summary, testing section updated to devtrack_client/)
+- `devtrack_client/CLAUDE.md` (expanded from stub — build/test/arch/config reference)
+- `devtrack_server/CLAUDE.md` (expanded from stub — run/test/arch/boundary reference)
+- `docs/ARCHITECTURE.md` (EPIC-SPLIT notice, three-codebase table, diagram updated)
+**Vision check**: PASS — pure documentation; no product logic; offline-first unaffected
+**Engineer notes**: No new files created. All devtrack-bin/ references updated to devtrack_client/
+in developer-facing docs. Legacy flags added on devtrack-bin/ and root backend/. git-sage ownership
+clarified as client-owned (devtrack_client/git_sage/). HTTP_API.md and split-manifest.md linked.
+
+---
 
 ## 2026-04-10 — TASK-011 through TASK-015: CS-3 Admin GUI MVP
 **Phase**: CS-3
