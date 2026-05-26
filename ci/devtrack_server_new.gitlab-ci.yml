@@ -8,7 +8,6 @@ variables:
 # ---------------------------------------------------------------------------
 # core-tests
 # Runs the server test suite without AI/spaCy extras.
-# Triggered on any branch push or MR that touches devtrack_server/.
 # ---------------------------------------------------------------------------
 core-tests:
   stage: test
@@ -20,17 +19,12 @@ core-tests:
       - .uv-cache/
   before_script:
     - pip install uv --quiet
-    - cd devtrack_server
     - uv sync --group dev
   script:
     - uv run pytest backend/tests/ -x -q --tb=short --ignore=backend/tests/test_nlp_parser.py
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - devtrack_server/**
     - if: $CI_COMMIT_BRANCH
-      changes:
-        - devtrack_server/**
 
 # ---------------------------------------------------------------------------
 # full-tests
@@ -46,21 +40,16 @@ full-tests:
       - .uv-cache/
   before_script:
     - pip install uv --quiet
-    - cd devtrack_server
     - uv sync --extra ai --group dev
   script:
     - uv run pytest backend/tests/ -x -q --tb=short
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - devtrack_server/**
     - if: $CI_COMMIT_BRANCH
-      changes:
-        - devtrack_server/**
 
 # ---------------------------------------------------------------------------
 # api-contract
-# Verifies the HTTP API contract tests introduced in TASK-044.
+# Verifies the HTTP API contract tests.
 # ---------------------------------------------------------------------------
 api-contract:
   stage: test
@@ -72,22 +61,16 @@ api-contract:
       - .uv-cache/
   before_script:
     - pip install uv --quiet
-    - cd devtrack_server
     - uv sync --group dev
   script:
     - uv run pytest backend/tests/test_api_contract.py -v
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - devtrack_server/**
     - if: $CI_COMMIT_BRANCH
-      changes:
-        - devtrack_server/**
 
 # ---------------------------------------------------------------------------
 # docker
 # Builds the server Docker image. Gated on version tags only.
-# No client (Go) code referenced here.
 # ---------------------------------------------------------------------------
 docker:
   stage: docker
@@ -100,10 +83,8 @@ docker:
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - docker build -t $IMAGE -t $IMAGE_LATEST -f devtrack_server/Dockerfile.server devtrack_server/
+    - docker build -t $IMAGE -t $IMAGE_LATEST -f Dockerfile .
     - docker push $IMAGE
     - docker push $IMAGE_LATEST
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
-      changes:
-        - devtrack_server/**
