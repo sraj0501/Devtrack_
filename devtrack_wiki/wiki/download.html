@@ -16,16 +16,16 @@
     :root {
       --sans: 'Inter', system-ui, sans-serif;
       --mono: 'JetBrains Mono', monospace;
-      --bg: #080808;
-      --bg1: #0f0f0f;
-      --bg2: #161616;
-      --bg3: #1e1e1e;
-      --border: rgba(255,255,255,.08);
-      --border2: rgba(255,255,255,.14);
+      --bg: #07090e;
+      --bg1: #090d16;
+      --bg2: #0c1020;
+      --bg3: #111827;
+      --border: rgba(255,255,255,.07);
+      --border2: rgba(255,255,255,.12);
       --text: #f0f0f0;
       --muted: #888;
       --faint: #444;
-      --blue: #3b82f6;
+      --blue: #22d3ee;
       --violet: #8b5cf6;
       --teal: #14b8a6;
       --green: #22c55e;
@@ -225,27 +225,51 @@
       .nav-links { display: none; }
       footer { padding: 24px 20px; flex-direction: column; text-align: center; }
     }
+
+    /* ── Grid overlay ────────────────────────────────────────────────── */
+    .grid-overlay {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 3rem 3rem;
+      -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 50%, transparent 100%);
+      mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 50%, transparent 100%);
+    }
+
+    /* ── Card hover glow ─────────────────────────────────────────────── */
+    .platform-card {
+      transition: border-color .2s, transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
+    }
+    .platform-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(34,211,238,.3);
+      box-shadow: 0 12px 36px rgba(34,211,238,.08);
+    }
+    .step-num { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); }
   </style>
 </head>
 <body>
+<div class="grid-overlay"></div>
 
 <!-- ── Nav ── -->
 <nav>
   <a class="nav-brand" href="index.html">
-    <img class="nav-logo" src="assets/devtrack.png" alt="DevTrack logo" width="28" height="28" style="object-fit:contain;background:none;" />
+    <span style="position:relative;display:inline-flex;">
+      <img class="nav-logo" src="assets/devtrack.png" alt="DevTrack logo" width="28" height="28" style="object-fit:contain;background:none;" />
+      <span style="position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:#22c55e;border:2px solid #07090e;animation:pulse 2s infinite;"></span>
+    </span>
     <span class="nav-name">DevTrack</span>
   </a>
   <div class="nav-links">
     <a href="index.html#features">Features</a>
     <a href="index.html#how">How It Works</a>
     <a href="index.html#integrations">Integrations</a>
-    <a href="download.html" class="active">Download</a>
+    <a href="index.html#demo">Demo</a>
+    <a href="index.html#about">About</a>
     <a href="index.html#contact">Contact</a>
   </div>
-  <div class="nav-right">
-    <a class="btn-ghost" href="wiki.html">Documentation →</a>
-    <a class="btn-primary" href="download.html">Download CLI</a>
-  </div>
+  <div class="nav-right"></div>
 </nav>
 
 <div class="page">

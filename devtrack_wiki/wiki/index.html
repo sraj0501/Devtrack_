@@ -17,16 +17,16 @@
     :root {
       --sans: 'Inter', system-ui, sans-serif;
       --mono: 'JetBrains Mono', monospace;
-      --bg: #080808;
-      --bg1: #0f0f0f;
-      --bg2: #161616;
-      --bg3: #1e1e1e;
-      --border: rgba(255,255,255,.08);
-      --border2: rgba(255,255,255,.14);
+      --bg: #07090e;
+      --bg1: #090d16;
+      --bg2: #0c1020;
+      --bg3: #111827;
+      --border: rgba(255,255,255,.07);
+      --border2: rgba(255,255,255,.12);
       --text: #f0f0f0;
       --muted: #888;
       --faint: #444;
-      --blue: #3b82f6;
+      --blue: #22d3ee;
       --violet: #8b5cf6;
       --teal: #14b8a6;
       --green: #22c55e;
@@ -36,7 +36,8 @@
       --radius: 8px;
       --radius-lg: 14px;
       --radius-xl: 20px;
-      --glow: 0 0 60px rgba(59,130,246,.15);
+      --glow: 0 0 60px rgba(34,211,238,.12);
+      --cyan-glow: 0 0 24px rgba(34,211,238,.18);
     }
 
     body {
@@ -546,6 +547,78 @@
     .form-submit:hover { opacity: .9; transform: translateY(-1px); }
     .form-note { font-size: .74rem; color: var(--faint); text-align: center; margin-top: 12px; }
 
+    /* ── Grid overlay ───────────────────────────────────────────────── */
+    .grid-overlay {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 3rem 3rem;
+      -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 50%, transparent 100%);
+      mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 50%, transparent 100%);
+    }
+
+    /* ── Nav live dot ────────────────────────────────────────────────── */
+    .nav-logo-wrap { position: relative; display: inline-flex; }
+    .nav-live-dot {
+      position: absolute; top: -3px; right: -3px;
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #22c55e; border: 2px solid var(--bg);
+      animation: pulse 2s infinite;
+    }
+
+    /* ── Scan line ───────────────────────────────────────────────────── */
+    @keyframes scanline {
+      0%   { transform: translateY(-4px); opacity: 0; }
+      5%   { opacity: 1; }
+      95%  { opacity: 1; }
+      100% { transform: translateY(300px); opacity: 0; }
+    }
+    .term-scanline {
+      position: absolute; inset-x: 0; top: 0; height: 2px;
+      background: linear-gradient(to right, transparent 0%, rgba(34,211,238,.6) 50%, transparent 100%);
+      animation: scanline 5s linear infinite;
+      pointer-events: none; z-index: 10;
+    }
+    .terminal { position: relative; }
+
+    /* ── Hero badge → cyan ───────────────────────────────────────────── */
+    .hero-badge {
+      border-color: rgba(34,211,238,.3) !important;
+      background: rgba(34,211,238,.06) !important;
+      color: #a5f3fc !important;
+    }
+    .hero-badge .dot { background: #22d3ee !important; }
+
+    /* ── Button glows → cyan ─────────────────────────────────────────── */
+    .btn-hero-primary { box-shadow: 0 8px 32px rgba(34,211,238,.2) !important; }
+    .btn-hero-primary:hover { box-shadow: 0 12px 40px rgba(34,211,238,.3) !important; transform: translateY(-2px); }
+
+    /* ── Feature card hover → cyan glow ─────────────────────────────── */
+    .feat-card {
+      transition: border-color .2s, transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
+    }
+    .feat-card:hover {
+      transform: translateY(-5px) scale(1.01) !important;
+      border-color: rgba(34,211,238,.3) !important;
+      box-shadow: 0 16px 48px rgba(34,211,238,.08), 0 0 0 1px rgba(34,211,238,.05) !important;
+    }
+
+    /* ── Integration card hover → cyan ──────────────────────────────── */
+    .integration-card:hover {
+      border-color: rgba(34,211,238,.25) !important;
+      box-shadow: 0 4px 20px rgba(34,211,238,.06);
+    }
+
+    /* ── About / contact link hover → cyan ──────────────────────────── */
+    .about-link:hover { border-color: rgba(34,211,238,.45) !important; }
+    .contact-channel:hover { border-color: rgba(34,211,238,.35) !important; }
+
+    /* ── Callout box → cyan radial ───────────────────────────────────── */
+    .callout-box::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(34,211,238,.08) 0%, transparent 60%) !important;
+    }
+
     /* ── Scrollbar ───────────────────────────────────────────────────── */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -570,18 +643,23 @@
 </head>
 <body>
 
+<div class="grid-overlay"></div>
+
 <!-- ── Dev Banner ─────────────────────────────────────────────────────────── -->
 <div class="dev-banner" id="devBanner">
   <span class="dev-banner-dot"></span>
   <strong>Active Development</strong> — DevTrack is being actively built. Features may change and some are still experimental.
-  <a href="https://gitlab.com/devtrack3_cloud/devtrack_client" target="_blank" rel="noopener">Follow progress on GitLab →</a>
+  <a href="https://github.com/sraj0501/Devtrack_" target="_blank" rel="noopener">Follow progress on GitHub →</a>
   <button class="dev-banner-close" onclick="dismissBanner()" aria-label="Dismiss">✕</button>
 </div>
 
 <!-- ── Nav ───────────────────────────────────────────────────────────────── -->
 <nav id="navbar">
   <a class="nav-brand" href="#">
-    <img class="nav-logo" src="assets/devtrack.png" alt="DevTrack logo" width="28" height="28" style="object-fit:contain;background:none;" />
+    <span class="nav-logo-wrap">
+      <img class="nav-logo" src="assets/devtrack.png" alt="DevTrack logo" width="28" height="28" style="object-fit:contain;background:none;" />
+      <span class="nav-live-dot"></span>
+    </span>
     <span class="nav-name">DevTrack</span>
   </a>
   <div class="nav-links">
@@ -589,14 +667,10 @@
     <a href="#how">How It Works</a>
     <a href="#integrations">Integrations</a>
     <a href="#demo">Demo</a>
-    <a href="download.html">Download</a>
     <a href="#about">About</a>
     <a href="#contact">Contact</a>
   </div>
-  <div class="nav-right">
-    <a class="btn-ghost" href="wiki.html">Documentation →</a>
-    <a class="btn-primary" href="wiki.html#QUICK_START">Get Started</a>
-  </div>
+  <div class="nav-right"></div>
 </nav>
 
 <!-- ── Hero ──────────────────────────────────────────────────────────────── -->
@@ -604,6 +678,7 @@
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
   <div class="orb orb-3"></div>
+  <div class="orb" style="width:350px;height:350px;background:#22d3ee;top:60%;right:-80px;opacity:.07;"></div>
 
   <div class="hero-badge">
     <span class="dot"></span>
@@ -620,9 +695,9 @@
   </p>
 
   <div class="hero-cta">
-    <a class="btn-hero btn-hero-primary" href="wiki.html#QUICK_START">
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-      Get Started Free
+    <a class="btn-hero btn-hero-primary" href="download.html">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      Get Started
     </a>
     <a class="btn-hero btn-hero-secondary" href="wiki.html">
       <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
@@ -632,6 +707,7 @@
 
   <div class="hero-terminal-wrap">
     <div class="terminal">
+      <div class="term-scanline"></div>
       <div class="term-topbar">
         <div class="term-dot term-dot-r"></div>
         <div class="term-dot term-dot-y"></div>
@@ -951,9 +1027,9 @@
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
             GitHub
           </a>
-          <a class="about-link" href="https://gitlab.com/devtrack3_cloud/devtrack_client" target="_blank" rel="noopener">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 000 2h1v8H3a1 1 0 100 2h14a1 1 0 100-2h-1V6h1a1 1 0 100-2H3zm3 2h8v8H6V6z" clip-rule="evenodd"/></svg>
-            View Repository
+          <a class="about-link" href="https://github.com/sraj0501/Devtrack_" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+            View on GitHub
           </a>
           <a class="about-link" href="#contact">
             <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
@@ -1004,18 +1080,18 @@
         <p class="section-sub reveal reveal-delay-2" style="margin-bottom:0">DevTrack is open source and community-driven. Reach out through any of these channels.</p>
 
         <div class="contact-channels reveal reveal-delay-2">
-          <a class="contact-channel" href="https://gitlab.com/devtrack3_cloud/devtrack_client/-/issues" target="_blank" rel="noopener">
+          <a class="contact-channel" href="https://github.com/sraj0501/Devtrack_/issues" target="_blank" rel="noopener">
             <div class="contact-channel-icon" style="background:rgba(255,255,255,.06);">🐛</div>
             <div>
-              <div class="contact-channel-title">GitLab Issues</div>
+              <div class="contact-channel-title">GitHub Issues</div>
               <div class="contact-channel-sub">Bug reports, feature requests, questions</div>
             </div>
             <span class="contact-channel-arrow">→</span>
           </a>
-          <a class="contact-channel" href="https://gitlab.com/devtrack3_cloud/devtrack_client/-/issues" target="_blank" rel="noopener">
-            <div class="contact-channel-icon" style="background:rgba(59,130,246,.1);">💬</div>
+          <a class="contact-channel" href="https://github.com/sraj0501/Devtrack_/discussions" target="_blank" rel="noopener">
+            <div class="contact-channel-icon" style="background:rgba(34,211,238,.08);">💬</div>
             <div>
-              <div class="contact-channel-title">GitLab Issues</div>
+              <div class="contact-channel-title">GitHub Discussions</div>
               <div class="contact-channel-sub">Ideas, show &amp; tell, general chat</div>
             </div>
             <span class="contact-channel-arrow">→</span>
