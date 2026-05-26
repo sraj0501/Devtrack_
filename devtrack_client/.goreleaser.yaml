@@ -9,7 +9,6 @@ before:
 builds:
   - id: devtrack
     main: .
-    dir: devtrack_client
     binary: devtrack
     goos:
       - linux
