@@ -38,29 +38,3 @@ jobs:
             git tag -f "$TAG" "$SPLIT_SHA"
             git push --force gitlab-client "refs/tags/${TAG}"
           fi
-
-  sync-server:
-    name: Sync devtrack_server → gitlab-server dev
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Configure git
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Split subtree and push to gitlab-server dev
-        env:
-          GITLAB_TOKEN: ${{ secrets.GITLAB_SYNC_TOKEN }}
-        run: |
-          git remote add gitlab-server \
-            "https://oauth2:${GITLAB_TOKEN}@gitlab.com/devtrack3_cloud/devtrack_server.git"
-
-          git subtree split --prefix=devtrack_server/ -b split-server
-          SPLIT_SHA=$(git rev-parse split-server)
-
-          git push --force gitlab-server split-server:dev
-          git branch -D split-server
