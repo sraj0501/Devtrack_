@@ -73,25 +73,22 @@ release:
 create-release:
   stage: publish-release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
+  before_script:
+    - apk add --no-cache curl
   script:
     - |
+      # Delete existing release if present — release-cli create always POSTs
+      # and returns 409 if the release exists, so we delete first to make
+      # re-runs (e.g. after a tag force-push) idempotent.
+      curl -sf --header "JOB-TOKEN: ${CI_JOB_TOKEN}" -X DELETE \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases/${CI_COMMIT_TAG}" || true
+
       BASE="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/devtrack/${CI_COMMIT_TAG}"
-      DESC="DevTrack CLI ${CI_COMMIT_TAG} — pre-built binaries for Linux, macOS, and Windows.
-
-      **Install (Linux/macOS):**
-      \`\`\`sh
-      curl -fsSL https://devtrack.cloud/install.sh | sh
-      \`\`\`
-
-      **Install (Windows PowerShell):**
-      \`\`\`powershell
-      irm https://devtrack.cloud/install.ps1 | iex
-      \`\`\`"
 
       release-cli create \
         --name "DevTrack ${CI_COMMIT_TAG}" \
         --tag-name "${CI_COMMIT_TAG}" \
-        --description "${DESC}" \
+        --description "DevTrack CLI ${CI_COMMIT_TAG} — pre-built binaries for Linux, macOS, and Windows." \
         --assets-link "{\"name\":\"devtrack_linux_amd64.tar.gz\",\"url\":\"${BASE}/devtrack_linux_amd64.tar.gz\",\"link_type\":\"package\"}" \
         --assets-link "{\"name\":\"devtrack_linux_arm64.tar.gz\",\"url\":\"${BASE}/devtrack_linux_arm64.tar.gz\",\"link_type\":\"package\"}" \
         --assets-link "{\"name\":\"devtrack_darwin_amd64.tar.gz\",\"url\":\"${BASE}/devtrack_darwin_amd64.tar.gz\",\"link_type\":\"package\"}" \
