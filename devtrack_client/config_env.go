@@ -222,8 +222,7 @@ func fileExists(path string) bool {
 func GetDevTrackDir() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.DevTrackHome
 }
@@ -232,8 +231,7 @@ func GetDevTrackDir() string {
 func GetIPCAddress() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.IPCHost + ":" + config.IPCPort
 }
@@ -259,8 +257,7 @@ func GetEmailReporterPath() (string, error) {
 func GetConfigFileName() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.ConfigFileName
 }
@@ -268,8 +265,7 @@ func GetConfigFileName() string {
 func GetConfigDirPath() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.ConfigDirPath
 }
@@ -278,8 +274,7 @@ func GetConfigDirPath() string {
 func GetDatabaseFileName() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.DatabaseFileName
 }
@@ -287,8 +282,7 @@ func GetDatabaseFileName() string {
 func GetDatabaseDir() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.DatabaseDir
 }
@@ -301,8 +295,7 @@ func GetDatabasePath() string {
 func GetPIDFileName() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.PIDFileName
 }
@@ -310,8 +303,7 @@ func GetPIDFileName() string {
 func GetPIDDir() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.PIDDir
 }
@@ -324,8 +316,7 @@ func GetPIDFilePath() string {
 func GetLogFileName() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.LogFileName
 }
@@ -333,8 +324,7 @@ func GetLogFileName() string {
 func GetLogDir() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.LogDir
 }
@@ -347,8 +337,7 @@ func GetLogFilePath() string {
 func GetLearningDirName() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.LearningDirName
 }
@@ -356,8 +345,7 @@ func GetLearningDirName() string {
 func GetLearningDirPath() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.LearningDirPath
 }
@@ -366,8 +354,7 @@ func GetLearningDirPath() string {
 func GetCLIAppName() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.CLIAppName
 }
@@ -375,8 +362,7 @@ func GetCLIAppName() string {
 func mustParseInt(name, raw string) int {
 	value, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Invalid integer value for %s: %s\n", name, raw)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: %s must be an integer, got %q", name, raw))
 	}
 	return value
 }
@@ -384,8 +370,7 @@ func mustParseInt(name, raw string) int {
 func mustParseBool(name, raw string) bool {
 	value, err := strconv.ParseBool(strings.TrimSpace(raw))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Invalid boolean value for %s: %s\n", name, raw)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: %s must be a boolean (true/false/1/0), got %q", name, raw))
 	}
 	return value
 }
@@ -405,8 +390,7 @@ func splitCSV(raw string) []string {
 func GetPromptInterval() int {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return mustParseInt("PROMPT_INTERVAL", config.PromptInterval)
 }
@@ -414,8 +398,7 @@ func GetPromptInterval() int {
 func GetWorkHoursOnly() bool {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return mustParseBool("WORK_HOURS_ONLY", config.WorkHoursOnly)
 }
@@ -423,8 +406,7 @@ func GetWorkHoursOnly() bool {
 func GetWorkStartHour() int {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return mustParseInt("WORK_START_HOUR", config.WorkStartHour)
 }
@@ -432,8 +414,7 @@ func GetWorkStartHour() int {
 func GetWorkEndHour() int {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return mustParseInt("WORK_END_HOUR", config.WorkEndHour)
 }
@@ -441,8 +422,7 @@ func GetWorkEndHour() int {
 func GetTimezone() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.Timezone
 }
@@ -450,8 +430,7 @@ func GetTimezone() string {
 func GetLogLevel() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.LogLevel
 }
@@ -459,8 +438,7 @@ func GetLogLevel() string {
 func GetAutoSync() bool {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return mustParseBool("AUTO_SYNC", config.AutoSync)
 }
@@ -468,8 +446,7 @@ func GetAutoSync() bool {
 func GetOutputType() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.OutputType
 }
@@ -477,8 +454,7 @@ func GetOutputType() string {
 func GetDailyReportTime() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.DailyReportTime
 }
@@ -486,8 +462,7 @@ func GetDailyReportTime() string {
 func GetWeeklyReportDay() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.WeeklyReportDay
 }
@@ -495,8 +470,7 @@ func GetWeeklyReportDay() string {
 func GetSendOnTrigger() bool {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return mustParseBool("SEND_ON_TRIGGER", config.SendOnTrigger)
 }
@@ -504,8 +478,7 @@ func GetSendOnTrigger() bool {
 func GetSendDailySummary() bool {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return mustParseBool("SEND_DAILY_SUMMARY", config.SendDailySummary)
 }
@@ -513,8 +486,7 @@ func GetSendDailySummary() bool {
 func GetEmailToAddresses() []string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return splitCSV(config.EmailToAddresses)
 }
@@ -522,8 +494,7 @@ func GetEmailToAddresses() []string {
 func GetEmailCCAddresses() []string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return splitCSV(config.EmailCCAddresses)
 }
@@ -531,8 +502,7 @@ func GetEmailCCAddresses() []string {
 func GetEmailManager() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.EmailManager
 }
@@ -540,8 +510,7 @@ func GetEmailManager() string {
 func GetEmailSubject() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.EmailSubject
 }
@@ -549,8 +518,7 @@ func GetEmailSubject() string {
 func GetTeamsChannelID() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.TeamsChannelID
 }
@@ -558,8 +526,7 @@ func GetTeamsChannelID() string {
 func GetTeamsChannelName() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.TeamsChannelName
 }
@@ -567,8 +534,7 @@ func GetTeamsChannelName() string {
 func GetTeamsChatID() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.TeamsChatID
 }
@@ -576,8 +542,7 @@ func GetTeamsChatID() string {
 func GetTeamsChatType() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.TeamsChatType
 }
@@ -585,8 +550,7 @@ func GetTeamsChatType() string {
 func GetTeamsWebhookURL() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.TeamsWebhookURL
 }
@@ -594,8 +558,7 @@ func GetTeamsWebhookURL() string {
 func GetTeamsMentionUser() bool {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return mustParseBool("TEAMS_MENTION_USER", config.TeamsMentionUser)
 }
@@ -603,8 +566,7 @@ func GetTeamsMentionUser() bool {
 func GetLearningPythonPath() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.LearningPythonPath
 }
@@ -612,8 +574,7 @@ func GetLearningPythonPath() string {
 func GetLearningScriptPath() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return expandPath(config.LearningScriptPath)
 }
@@ -642,8 +603,7 @@ func GetLearningDailyScriptPath() (string, error) {
 func GetLearningDefaultDays() int {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return mustParseInt("LEARNING_DEFAULT_DAYS", config.LearningDefaultDays)
 }
@@ -666,8 +626,7 @@ func GetDevTrackVersion() string {
 func GetDevTrackBuildDate() string {
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return config.DevTrackBuildDate
 }
@@ -677,13 +636,11 @@ func GetDevTrackBuildDate() string {
 func GetIPCConnectTimeoutSecs() int {
 	val := os.Getenv("IPC_CONNECT_TIMEOUT_SECS")
 	if val == "" {
-		fmt.Fprintf(os.Stderr, "ERROR: IPC_CONNECT_TIMEOUT_SECS not set in .env\n")
-		os.Exit(1)
+		panic("devtrack: IPC_CONNECT_TIMEOUT_SECS not set — add it to .env")
 	}
 	secs := mustParseInt("IPC_CONNECT_TIMEOUT_SECS", val)
 	if secs <= 0 {
-		fmt.Fprintf(os.Stderr, "ERROR: IPC_CONNECT_TIMEOUT_SECS must be > 0, got: %d\n", secs)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: IPC_CONNECT_TIMEOUT_SECS must be > 0, got %d", secs))
 	}
 	return secs
 }
@@ -697,8 +654,7 @@ func GetWorkspacesFilePath() string {
 	}
 	config, err := LoadEnvConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: config: %v", err))
 	}
 	return filepath.Join(config.ProjectRoot, "workspaces.yaml")
 }
@@ -717,8 +673,7 @@ func IsWebhookEnabled() bool {
 func GetGitHubToken() string {
 	val := os.Getenv("GITHUB_TOKEN")
 	if val == "" {
-		fmt.Fprintf(os.Stderr, "ERROR: GITHUB_TOKEN not set in .env\n")
-		os.Exit(1)
+		panic("devtrack: GITHUB_TOKEN not set — add it to .env")
 	}
 	return val
 }
@@ -728,8 +683,7 @@ func GetGitHubToken() string {
 func GetGitHubDefaultRepo() string {
 	val := os.Getenv("GITHUB_DEFAULT_REPO")
 	if val == "" {
-		fmt.Fprintf(os.Stderr, "ERROR: GITHUB_DEFAULT_REPO not set in .env\n")
-		os.Exit(1)
+		panic("devtrack: GITHUB_DEFAULT_REPO not set — add it to .env")
 	}
 	return val
 }
@@ -739,8 +693,7 @@ func GetGitHubDefaultRepo() string {
 func GetGitHubAssignee() string {
 	val := os.Getenv("GITHUB_ASSIGNEE")
 	if val == "" {
-		fmt.Fprintf(os.Stderr, "ERROR: GITHUB_ASSIGNEE not set in .env\n")
-		os.Exit(1)
+		panic("devtrack: GITHUB_ASSIGNEE not set — add it to .env")
 	}
 	return val
 }
@@ -754,12 +707,10 @@ func GetWebhookPort() int {
 	}
 	port, err := strconv.Atoi(strings.TrimSpace(val))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Invalid integer value for WEBHOOK_PORT: %s\n", val)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: WEBHOOK_PORT must be an integer, got %q", val))
 	}
 	if port <= 0 || port > 65535 {
-		fmt.Fprintf(os.Stderr, "ERROR: WEBHOOK_PORT must be between 1 and 65535, got: %d\n", port)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: WEBHOOK_PORT must be 1–65535, got %d", port))
 	}
 	return port
 }
@@ -772,8 +723,7 @@ func GetHealthCheckIntervalSecs() int {
 	}
 	secs := mustParseInt("HEALTH_CHECK_INTERVAL_SECS", val)
 	if secs <= 0 {
-		fmt.Fprintf(os.Stderr, "ERROR: HEALTH_CHECK_INTERVAL_SECS must be > 0, got: %d\n", secs)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: HEALTH_CHECK_INTERVAL_SECS must be > 0, got %d", secs))
 	}
 	return secs
 }
@@ -804,8 +754,7 @@ func GetHealthMaxRestartsPerHour() int {
 	}
 	n := mustParseInt("HEALTH_MAX_RESTARTS_PER_HOUR", val)
 	if n < 0 {
-		fmt.Fprintf(os.Stderr, "ERROR: HEALTH_MAX_RESTARTS_PER_HOUR must be >= 0, got: %d\n", n)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: HEALTH_MAX_RESTARTS_PER_HOUR must be >= 0, got %d", n))
 	}
 	return n
 }
@@ -818,8 +767,7 @@ func GetQueueDrainIntervalSecs() int {
 	}
 	secs := mustParseInt("QUEUE_DRAIN_INTERVAL_SECS", val)
 	if secs <= 0 {
-		fmt.Fprintf(os.Stderr, "ERROR: QUEUE_DRAIN_INTERVAL_SECS must be > 0, got: %d\n", secs)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: QUEUE_DRAIN_INTERVAL_SECS must be > 0, got %d", secs))
 	}
 	return secs
 }
@@ -832,8 +780,7 @@ func GetQueueMaxRetries() int {
 	}
 	n := mustParseInt("QUEUE_MAX_RETRIES", val)
 	if n < 0 {
-		fmt.Fprintf(os.Stderr, "ERROR: QUEUE_MAX_RETRIES must be >= 0, got: %d\n", n)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: QUEUE_MAX_RETRIES must be >= 0, got %d", n))
 	}
 	return n
 }
@@ -846,8 +793,7 @@ func GetQueueRetentionDays() int {
 	}
 	days := mustParseInt("QUEUE_RETENTION_DAYS", val)
 	if days <= 0 {
-		fmt.Fprintf(os.Stderr, "ERROR: QUEUE_RETENTION_DAYS must be > 0, got: %d\n", days)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: QUEUE_RETENTION_DAYS must be > 0, got %d", days))
 	}
 	return days
 }
@@ -860,8 +806,7 @@ func GetDeferredCommitExpiryHours() int {
 	}
 	hours := mustParseInt("DEFERRED_COMMIT_EXPIRY_HOURS", val)
 	if hours <= 0 {
-		fmt.Fprintf(os.Stderr, "ERROR: DEFERRED_COMMIT_EXPIRY_HOURS must be > 0, got: %d\n", hours)
-		os.Exit(1)
+		panic(fmt.Sprintf("devtrack: DEFERRED_COMMIT_EXPIRY_HOURS must be > 0, got %d", hours))
 	}
 	return hours
 }

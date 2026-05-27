@@ -168,7 +168,7 @@ func (cli *CLI) handleCloudLogout() error {
 		return fmt.Errorf("failed to remove cloud config: %w", err)
 	}
 	fmt.Printf("✓ Disconnected from %s\n", url)
-	fmt.Println("  Reverted to managed mode — devtrack start will spawn a local Python backend.")
+	fmt.Println("  Cloud credentials removed. Daemon will use DEVTRACK_SERVER_MODE from .env (default: managed).")
 	return nil
 }
 
@@ -176,11 +176,15 @@ func (cli *CLI) handleCloudStatus() error {
 	if !IsCloudMode() {
 		url := os.Getenv("DEVTRACK_SERVER_URL")
 		mode := os.Getenv("DEVTRACK_SERVER_MODE")
-		if url != "" && mode == "external" {
-			fmt.Printf("External mode (env vars): %s\n", url)
-			fmt.Println("Tip: run 'devtrack cloud login --url URL --key KEY' for managed credentials.")
+		if url != "" {
+			fmt.Printf("External server (env vars): %s\n", url)
+			fmt.Println("Tip: run 'devtrack cloud login --url URL --key KEY' to store credentials in cloud.json.")
+		} else if mode == "external" {
+			fmt.Println("External mode but DEVTRACK_SERVER_URL is not set — AI triggers will be skipped.")
+			fmt.Println("Set DEVTRACK_SERVER_URL in .env or run: devtrack cloud login --url URL --key KEY")
 		} else {
-			fmt.Println("Not in cloud mode. Run 'devtrack cloud login --url URL --key KEY' to connect.")
+			fmt.Println("Running in managed mode (daemon spawns Python locally).")
+			fmt.Println("To connect to a remote server: devtrack cloud login --url URL --key KEY")
 		}
 		return nil
 	}

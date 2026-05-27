@@ -54,7 +54,7 @@ type IPCMessage struct {
 	Type      MessageType            `json:"type"`
 	Timestamp time.Time              `json:"timestamp"`
 	ID        string                 `json:"id"`
-	Data      map[string]interface{} `json:"data"`
+	Data      map[string]any `json:"data"`
 	Error     string                 `json:"error,omitempty"`
 }
 
@@ -239,8 +239,12 @@ func (s *IPCServer) handleClient(clientID string, conn net.Conn) {
 		log.Printf("IPC client disconnected: %s", clientID)
 	}()
 
+	// Set a generous read deadline; reset per message to keep long-idle connections alive.
+	const idleTimeout = 5 * time.Minute
 	scanner := bufio.NewScanner(conn)
+	conn.SetReadDeadline(time.Now().Add(idleTimeout)) //nolint:errcheck
 	for scanner.Scan() {
+		conn.SetReadDeadline(time.Now().Add(idleTimeout)) //nolint:errcheck
 		line := scanner.Text()
 
 		var msg IPCMessage
@@ -444,7 +448,7 @@ func getSocketPath() (string, error) {
 
 // CreateCommitTriggerMessage creates a commit trigger message
 func CreateCommitTriggerMessage(data CommitTriggerData) IPCMessage {
-	msgData := map[string]interface{}{
+	msgData := map[string]any{
 		"repo_path":      data.RepoPath,
 		"commit_hash":    data.CommitHash,
 		"commit_message": data.CommitMessage,
@@ -484,7 +488,7 @@ func CreateCommitTriggerMessage(data CommitTriggerData) IPCMessage {
 
 // CreateTimerTriggerMessage creates a timer trigger message
 func CreateTimerTriggerMessage(data TimerTriggerData) IPCMessage {
-	msgData := map[string]interface{}{
+	msgData := map[string]any{
 		"timestamp":     data.Timestamp,
 		"interval_mins": data.IntervalMins,
 		"trigger_count": data.TriggerCount,
@@ -520,7 +524,7 @@ func CreateTimerTriggerMessage(data TimerTriggerData) IPCMessage {
 
 // CreateTaskUpdateMessage creates a task update message
 func CreateTaskUpdateMessage(data TaskUpdateData) IPCMessage {
-	msgData := map[string]interface{}{
+	msgData := map[string]any{
 		"project":     data.Project,
 		"ticket_id":   data.TicketID,
 		"description": data.Description,
@@ -543,7 +547,7 @@ func CreateTaskUpdateMessage(data TaskUpdateData) IPCMessage {
 }
 
 // CreateResponseMessage creates a response message
-func CreateResponseMessage(requestID string, data map[string]interface{}) IPCMessage {
+func CreateResponseMessage(requestID string, data map[string]any) IPCMessage {
 	return IPCMessage{
 		Type:      MsgTypeResponse,
 		Timestamp: time.Now(),
@@ -559,6 +563,6 @@ func CreateErrorMessage(requestID string, errorMsg string) IPCMessage {
 		Timestamp: time.Now(),
 		ID:        requestID,
 		Error:     errorMsg,
-		Data:      make(map[string]interface{}),
+		Data:      make(map[string]any),
 	}
 }

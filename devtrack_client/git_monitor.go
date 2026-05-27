@@ -15,6 +15,14 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
+// fsnotify op aliases used by daemon.go for its .git/refs watcher.
+const (
+	fsnotifyWrite  = fsnotify.Write
+	fsnotifyCreate = fsnotify.Create
+)
+
+func newFsnotifyWatcher() (*fsnotify.Watcher, error) { return fsnotify.NewWatcher() }
+
 // GitMonitor handles Git repository monitoring and commit detection
 type GitMonitor struct {
 	repoPath string

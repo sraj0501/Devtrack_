@@ -190,6 +190,11 @@ func NewDatabase() (*Database, error) {
 	return database, nil
 }
 
+// DB returns the underlying *sql.DB for use by connector packages.
+func (d *Database) DB() *sql.DB {
+	return d.db
+}
+
 // Close closes the database connection
 func (d *Database) Close() error {
 	if d.db != nil {

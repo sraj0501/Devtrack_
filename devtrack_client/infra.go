@@ -61,8 +61,8 @@ func writeInfraState(s infraState) {
 const (
 	mongoContainerName = "devtrack-mongo"
 	redisContainerName = "devtrack-redis"
-	mongoImage         = "mongo:7"
-	redisImage         = "redis:7-alpine"
+	mongoImage         = "mongo:7.0"
+	redisImage         = "redis:7.2-alpine"
 )
 
 // EnsureLocalInfra verifies MongoDB and Redis are reachable before the daemon starts.

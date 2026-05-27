@@ -2,36 +2,38 @@ package main
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 )
 
-// ServerMode defines how the Python backend is managed
+// ServerMode defines how the Python backend is managed.
 type ServerMode string
 
 const (
-	// ServerModeManaged — daemon spawns Python backend as subprocess (default for local use)
+	// ServerModeManaged — daemon spawns Python backend as subprocess (default).
+	// Python must be installed locally. URL defaults to localhost.
 	ServerModeManaged ServerMode = "managed"
-	// ServerModeExternal — Python backend runs independently; daemon does not spawn it
+	// ServerModeExternal — Python backend is managed outside the Go daemon.
+	// This covers all external cases: same machine separate process, different
+	// machine on the LAN, or a remote cloud server. Set DEVTRACK_SERVER_URL to
+	// point at the server. Credentials can be stored via `devtrack cloud login`.
+	// If DEVTRACK_SERVER_URL is unset, AI-requiring triggers are skipped silently.
 	ServerModeExternal ServerMode = "external"
-	// ServerModeCloud — Python backend is a remote cloud-hosted server; credentials in ~/.devtrack/cloud.json
-	ServerModeCloud ServerMode = "cloud"
-	// ServerModeLightweight — git monitoring + scheduling only; no Python backend spawned
-	ServerModeLightweight ServerMode = "lightweight"
 )
 
 // GetServerMode returns the configured server mode.
-// Cloud credentials (~/.devtrack/cloud.json) take priority over env vars.
-// Defaults to "managed" (spawn subprocess) if nothing is configured.
+// Cloud credentials (~/.devtrack/cloud.json) map to external mode — the stored
+// URL is used as DEVTRACK_SERVER_URL. Defaults to managed if nothing is configured.
 func GetServerMode() ServerMode {
+	// Cloud credentials present → external mode (URL comes from cloud.json)
 	if IsCloudMode() {
-		return ServerModeCloud
+		return ServerModeExternal
 	}
-	if os.Getenv("DEVTRACK_SERVER_MODE") == "lightweight" {
-		return ServerModeLightweight
-	}
-	if os.Getenv("DEVTRACK_SERVER_MODE") == "external" {
+	if os.Getenv("DEVTRACK_SERVER_MODE") == "external" ||
+		os.Getenv("DEVTRACK_SERVER_MODE") == "lightweight" {
 		return ServerModeExternal
 	}
 	return ServerModeManaged
@@ -40,18 +42,24 @@ func GetServerMode() ServerMode {
 // GetServerURL returns the base URL of the Python backend server.
 //
 // Resolution order:
-//  1. ~/.devtrack/cloud.json URL (when in cloud mode)
+//  1. ~/.devtrack/cloud.json URL (when cloud credentials are stored)
 //  2. DEVTRACK_SERVER_URL env var (explicit override)
 //  3. Managed mode default — https://127.0.0.1:<WEBHOOK_PORT>
+//
+// Returns empty string in external mode with no URL configured.
 func GetServerURL() string {
-	if IsCloudMode() {
-		if url := GetCloudURL(); url != "" {
-			return url
-		}
+	// Cloud credentials take priority
+	if url := GetCloudURL(); url != "" {
+		return url
 	}
 	if v := os.Getenv("DEVTRACK_SERVER_URL"); v != "" {
 		return v
 	}
+	if GetServerMode() == ServerModeExternal {
+		// External with no URL — triggers will be skipped
+		return ""
+	}
+	// Managed: default to localhost
 	port := os.Getenv("WEBHOOK_PORT")
 	if port == "" {
 		port = "8089"
@@ -68,7 +76,7 @@ func GetServerURL() string {
 func IsTLSEnabled() bool {
 	v := os.Getenv("DEVTRACK_TLS")
 	if v == "" {
-		return true // on by default
+		return true
 	}
 	b, err := strconv.ParseBool(v)
 	if err != nil {
@@ -95,52 +103,64 @@ func GetTLSKeyPath() string {
 	return filepath.Join(filepath.Dir(GetDatabaseDir()), "tls", "server.key")
 }
 
-// IsExternalServer returns true when the Python backend is managed externally
-// (i.e. the daemon should NOT spawn it as a subprocess).
-// This includes Lightweight mode, where no Python backend is used at all.
+// IsExternalServer returns true when the daemon should NOT spawn a Python subprocess.
 func IsExternalServer() bool {
-	mode := GetServerMode()
-	return mode == ServerModeExternal || mode == ServerModeCloud || mode == ServerModeLightweight
+	return GetServerMode() == ServerModeExternal
 }
 
-// IsLightweightMode returns true when the daemon is running in Lightweight mode
-// (git monitoring + scheduling only; Python backend is disabled).
-func IsLightweightMode() bool {
-	return GetServerMode() == ServerModeLightweight
-}
-
-// IsLocalTLS reports whether TLS cert-pinning (self-signed) should be used.
-// True for managed/external-local mode; false for cloud mode where the remote
-// server has a CA-signed cert and system roots are used instead.
+// IsLocalTLS reports whether TLS cert-pinning (self-signed cert) should be used.
+// True when the server URL resolves to localhost — managed mode and local external processes.
+// False for remote URLs (different machine or cloud), which use system CA roots.
 func IsLocalTLS() bool {
-	return IsTLSEnabled() && !IsCloudMode()
+	if !IsTLSEnabled() {
+		return false
+	}
+	serverURL := GetServerURL()
+	if serverURL == "" {
+		return false
+	}
+	u, err := url.Parse(serverURL)
+	if err != nil {
+		return false
+	}
+	host, _, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		host = u.Host
+	}
+	ip := net.ParseIP(host)
+	if ip != nil {
+		return ip.IsLoopback()
+	}
+	return host == "localhost"
 }
 
 // RunInstall is called by `devtrack install`. It explains the client-server setup.
 func RunInstall() error {
 	fmt.Println("DevTrack uses a client-server architecture:")
 	fmt.Println()
-	fmt.Println("  Go binary (devtrack)  — client/daemon: git monitoring, scheduling, CLI")
-	fmt.Println("  Python backend server — AI processing, integrations, reports")
+	fmt.Println("  Go binary (devtrack)  — client/daemon: git monitoring, scheduling, CLI, git-sage")
+	fmt.Println("  Python backend server — AI processing, integrations, reports, boardroom")
 	fmt.Println()
-	fmt.Println("Setup options:")
+	fmt.Println("Two modes:")
 	fmt.Println()
-	fmt.Println("  LOCAL — managed (default)")
-	fmt.Println("    DEVTRACK_SERVER_MODE=managed in .env")
-	fmt.Println("    devtrack start           (daemon spawns Python automatically)")
+	fmt.Println("  MANAGED (default)")
+	fmt.Println("    DEVTRACK_SERVER_MODE=managed  (or unset)")
+	fmt.Println("    devtrack start                  daemon spawns the Python server automatically")
+	fmt.Println("    Python must be installed on this machine.")
 	fmt.Println()
-	fmt.Println("  LOCAL — external (separate process)")
-	fmt.Println("    DEVTRACK_SERVER_MODE=external in .env")
-	fmt.Println("    python python_bridge.py  (start Python server manually)")
-	fmt.Println("    devtrack start           (then start the Go daemon)")
-	fmt.Println()
-	fmt.Println("  DOCKER")
-	fmt.Println("    docker compose up        (starts Python server + infra)")
-	fmt.Println()
-	fmt.Println("  CLOUD")
-	fmt.Println("    DEVTRACK_SERVER_URL=https://your-server.com in .env")
+	fmt.Println("  EXTERNAL")
 	fmt.Println("    DEVTRACK_SERVER_MODE=external")
-	fmt.Println("    devtrack start")
+	fmt.Println("    DEVTRACK_SERVER_URL=https://<host>:<port>")
+	fmt.Println("    DEVTRACK_API_KEY=<key>")
+	fmt.Println("    devtrack start                  daemon connects to the external server")
+	fmt.Println()
+	fmt.Println("  The external server can be:")
+	fmt.Println("    • a separate process on this machine  (DEVTRACK_SERVER_URL=https://localhost:8089)")
+	fmt.Println("    • a server on your LAN                (DEVTRACK_SERVER_URL=https://192.168.1.x:8089)")
+	fmt.Println("    • a remote cloud server               (use: devtrack cloud login --url URL --key KEY)")
+	fmt.Println()
+	fmt.Println("  If DEVTRACK_SERVER_URL is not set in external mode,")
+	fmt.Println("  AI features are unavailable but git monitoring and scheduling still run.")
 	fmt.Println()
 	fmt.Println("See docs/INSTALLATION.md for full setup instructions.")
 	return nil

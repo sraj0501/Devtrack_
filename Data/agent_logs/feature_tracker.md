@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-05-24 by PM (EPIC-SPLIT TASK-048 complete)_
+_Last updated: 2026-05-27 by PM (TASK-A + TASK-B: Go-client standalone initiative)_
 
 ---
 
@@ -47,6 +47,33 @@ _Last updated: 2026-05-24 by PM (EPIC-SPLIT TASK-048 complete)_
 - `Makefile` — all devtrack-bin/ and backend/ references replaced with devtrack_client/ and devtrack_server/
 **Vision check**: PASS — pure deletion; canonical copies in devtrack_client/ and devtrack_server/ unaffected; offline-first unchanged
 **Engineer notes**: 281 files changed, 69,068 lines deleted. Post-deletion builds: go build ./... EXIT 0; pytest 584 pass (1 pre-existing failure unchanged). Pushed to origin.
+
+---
+
+## 2026-05-27 — TASK-A: Port PM Connectors to Go
+**Phase**: Go-Client Standalone initiative / Phase 8 (Integrations)
+**Status**: DONE (working tree, branch `feature/go-client-standalone` — not yet pushed)
+**Files**:
+- `devtrack_client/connectors/github/` — client.go, list.go, view.go, sync.go, check.go (new)
+- `devtrack_client/connectors/gitlab/` — client.go, list.go, view.go, sync.go, check.go (new)
+- `devtrack_client/connectors/azure/` — client.go, list.go, view.go, sync.go, check.go (new)
+- `devtrack_client/database.go` — added `DB() *sql.DB` accessor
+- `devtrack_client/cli.go` — replaced 12 Python subprocess handler bodies with Go connector calls; added connector/sage imports; removed requiresManagedMode from all connector commands
+**Vision check**: PASS — offline-first (no cloud dependency; auth via env vars), CLI-only, no browser
+**Engineer notes**: All 12 connector CLI commands now work without Python server. Tables created lazily on first sync. Hardcoded scan clean.
+
+## 2026-05-27 — TASK-B: Port git-sage to Go (gitsage package extension)
+**Phase**: Go-Client Standalone initiative / Phase 6 (Context + Intelligence)
+**Status**: DONE (working tree, branch `feature/go-client-standalone` — not yet pushed)
+**Files**:
+- `devtrack_client/gitsage/config.go` — Config struct, LoadConfig(), multi-provider support (Ollama/OpenAI/Groq) (new)
+- `devtrack_client/gitsage/git_ops.go` — GitOps struct, 16 structured git operation methods (new)
+- `devtrack_client/gitsage/conflict.go` — Resolver (4 strategies), ParseConflicts, DetectConflicts, Resolve, Report (new)
+- `devtrack_client/gitsage/cli.go` — ApprovalMode, ShowApprovalDialog, PromptCommandApproval, CommandHistory, RunFollowUpLoop, RunAsk/RunDo/RunInteractive (new)
+- `devtrack_client/gitsage/agent.go` — added unmarshalAgentStep() helper
+- `devtrack_client/cli.go` — added sage case, handleSage() dispatcher
+**Vision check**: PASS — fully offline with Ollama; no browser; Python server optional (personalization HTTP call degrades gracefully)
+**Engineer notes**: Built on existing gitsage/ Go stubs. Undo via ResetSoft available in git_ops.go; dedicated undo command deferred to TASK-C. Follow-up loop retains full conversation context for up to 5 questions.
 
 ---
 

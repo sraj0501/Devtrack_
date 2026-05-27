@@ -281,7 +281,7 @@ func TestGetServerMode_Defaults_Managed(t *testing.T) {
 	os.Unsetenv("DEVTRACK_SERVER_MODE")
 	// Ensure no cloud.json can be found (we're in test; cloud.go will return false)
 	mode := GetServerMode()
-	if mode != ServerModeManaged && mode != ServerModeCloud {
+	if mode != ServerModeManaged {
 		t.Errorf("unexpected default server mode: %s", mode)
 	}
 }

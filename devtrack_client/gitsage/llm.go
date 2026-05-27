@@ -34,11 +34,13 @@ type chatResponseChunk struct {
 
 // LLMConfig holds the provider configuration for git-sage.
 type LLMConfig struct {
-	Host  string // Ollama base URL, e.g. http://localhost:11434
-	Model string // e.g. llama3.2
+	Host     string // base URL: Ollama or OpenAI-compatible endpoint
+	Model    string // model name (provider/ prefix already stripped)
+	Token    string // API key for OpenAI-compatible providers; empty for Ollama
+	Provider string // "ollama" | "openai" | "groq" | "lmstudio"
 }
 
-// LoadLLMConfig reads provider config from environment variables.
+// LoadLLMConfig reads provider config from environment variables (Ollama default).
 func LoadLLMConfig() LLMConfig {
 	host := os.Getenv("OLLAMA_HOST")
 	if host == "" {
@@ -51,7 +53,7 @@ func LoadLLMConfig() LLMConfig {
 	if model == "" {
 		model = "llama3.2"
 	}
-	return LLMConfig{Host: host, Model: model}
+	return LLMConfig{Host: host, Model: model, Provider: "ollama"}
 }
 
 // Chat sends messages to the LLM and returns the complete response text.
@@ -65,6 +67,14 @@ func (cfg LLMConfig) ChatJSON(messages []Message) (string, error) {
 }
 
 func (cfg LLMConfig) chat(messages []Message, jsonMode bool) (string, error) {
+	if cfg.Provider == "openai" || cfg.Provider == "groq" || cfg.Provider == "lmstudio" {
+		return cfg.chatOpenAI(messages, jsonMode)
+	}
+	return cfg.chatOllama(messages, jsonMode)
+}
+
+// chatOllama calls the Ollama /api/chat streaming endpoint.
+func (cfg LLMConfig) chatOllama(messages []Message, jsonMode bool) (string, error) {
 	req := chatRequest{
 		Model:    cfg.Model,
 		Messages: messages,
@@ -103,9 +113,6 @@ func (cfg LLMConfig) chat(messages []Message, jsonMode bool) (string, error) {
 	for {
 		var chunk chatResponseChunk
 		if err := decoder.Decode(&chunk); err != nil {
-			if err == io.EOF {
-				break
-			}
 			break
 		}
 		result.WriteString(chunk.Message.Content)
@@ -116,10 +123,100 @@ func (cfg LLMConfig) chat(messages []Message, jsonMode bool) (string, error) {
 	return strings.TrimSpace(result.String()), nil
 }
 
-// Ping checks whether the Ollama server is reachable.
+// openAIRequest is the request body for OpenAI-compatible /v1/chat/completions.
+type openAIRequest struct {
+	Model          string         `json:"model"`
+	Messages       []Message      `json:"messages"`
+	Stream         bool           `json:"stream"`
+	ResponseFormat *responseFormat `json:"response_format,omitempty"`
+}
+
+type responseFormat struct {
+	Type string `json:"type"`
+}
+
+type openAIResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+		Delta struct {
+			Content string `json:"content"`
+		} `json:"delta"`
+		FinishReason string `json:"finish_reason"`
+	} `json:"choices"`
+}
+
+// chatOpenAI calls an OpenAI-compatible /v1/chat/completions endpoint.
+// Supports OpenAI, Groq, LM Studio, and any other OpenAI-compatible provider.
+func (cfg LLMConfig) chatOpenAI(messages []Message, jsonMode bool) (string, error) {
+	req := openAIRequest{
+		Model:    cfg.Model,
+		Messages: messages,
+		Stream:   false, // non-streaming for simplicity; easier to parse
+	}
+	if jsonMode {
+		req.ResponseFormat = &responseFormat{Type: "json_object"}
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", err
+	}
+
+	url := strings.TrimRight(cfg.Host, "/") + "/chat/completions"
+	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	if cfg.Token != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+cfg.Token)
+	}
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("%s unreachable at %s: %w", cfg.Provider, cfg.Host, err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("%s returned %d: %s", cfg.Provider, resp.StatusCode, string(raw))
+	}
+
+	var result openAIResponse
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return "", fmt.Errorf("openai response parse: %w", err)
+	}
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("openai returned empty choices")
+	}
+	return strings.TrimSpace(result.Choices[0].Message.Content), nil
+}
+
+// Ping checks whether the LLM provider is reachable.
+// OpenAI-compatible providers check /models; Ollama checks /api/tags.
 func (cfg LLMConfig) Ping() bool {
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get(strings.TrimRight(cfg.Host, "/") + "/api/tags")
+	var checkURL string
+	if cfg.Provider == "openai" || cfg.Provider == "groq" || cfg.Provider == "lmstudio" {
+		checkURL = strings.TrimRight(cfg.Host, "/") + "/models"
+	} else {
+		checkURL = strings.TrimRight(cfg.Host, "/") + "/api/tags"
+	}
+	req, err := http.NewRequest(http.MethodGet, checkURL, nil)
+	if err != nil {
+		return false
+	}
+	if cfg.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+cfg.Token)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return false
 	}
