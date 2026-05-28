@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-05-27 by PM (TASK-A + TASK-B: Go-client standalone initiative)_
+_Last updated: 2026-05-29 by PM (TASK-C done, TASK-D done, gitsage undo wiring, TASK-E planned)_
 
 ---
 
@@ -47,6 +47,18 @@ _Last updated: 2026-05-27 by PM (TASK-A + TASK-B: Go-client standalone initiativ
 - `Makefile` — all devtrack-bin/ and backend/ references replaced with devtrack_client/ and devtrack_server/
 **Vision check**: PASS — pure deletion; canonical copies in devtrack_client/ and devtrack_server/ unaffected; offline-first unchanged
 **Engineer notes**: 281 files changed, 69,068 lines deleted. Post-deletion builds: go build ./... EXIT 0; pytest 584 pass (1 pre-existing failure unchanged). Pushed to origin.
+
+---
+
+## 2026-05-29 — gitsage undo wiring + TASK-D download page
+**Phase**: Go-Client Standalone initiative / gitsage polish
+**Status**: DONE (working tree, branch `feature/go-client-standalone`)
+**Files**:
+- `devtrack_client/gitsage/agent.go` — `Do()` now returns `(*StepLog, error)` instead of `error`; records HEAD snapshot via `log.Record(repoPath)` before each command batch
+- `devtrack_client/gitsage/cli.go` — `RunFollowUpLoop` accepts `*StepLog`; intercepts "undo [N]" input before LLM call, calls `log.Undo(repoPath, n)`, refreshes conversation context after rollback; `RunDoVerbose` passes StepLog from both auto and review/suggest-only paths
+- `devtrack_wiki/wiki/download.html` — hero sub, "Getting started" section, step 2, and req-chips updated for two-mode messaging (Standalone vs Full, Python server optional)
+**Vision check**: PASS — offline-first; undo works via local git reset; no browser
+**Engineer notes**: Undo in follow-up loop now works for all approval modes. Auto mode captures StepLog from Do(). Review/suggest-only mode creates StepLog and records before each batch. "undo N" is intercepted before LLM so it doesn't get interpreted as a question.
 
 ---
 

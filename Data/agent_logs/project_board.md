@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-05-27 by PM_
+_Last updated: 2026-05-29 by PM_
 _Next DevTrack task ID: TASK-052_
 _Branch for all current work: `feature/go-client-standalone`_
 
@@ -17,11 +17,68 @@ _Branch for all current work: `feature/go-client-standalone`_
 
 ## IN PROGRESS
 
-_None — both active tasks complete. TASK-C and TASK-D pending developer dispatch._
+_None — TASK-A through TASK-D complete. Next: package refactor (TASK-E, dedicated session)._
+
+---
+
+## PLANNED
+
+### TASK-E — Full Go package refactor
+**Priority**: HIGH (deferred from 2026-05-29 — requires dedicated session)
+**Branch**: new `feature/package-refactor`
+
+**Spec**:
+Move `devtrack_client` from monolithic `package main` into proper Go sub-packages. The dependency graph is fully acyclic (confirmed 2026-05-29). No circular import risks.
+
+Target packages:
+- `internal/config` — config.go, config_env.go, server_config.go, cloud.go, loadenv.go
+- `internal/db` — database.go, migrations.go
+- `internal/health` — health.go
+- `internal/infra` — ipc.go, integrated.go, scheduler.go, git_monitor.go, infra.go
+- `internal/learning` — learning.go, license.go
+- `internal/tui` — tui.go, tui_activity.go, tui_alerts.go, tui_overview.go, tui_workspaces.go
+- `internal/daemon` — daemon.go, daemon_unix.go, daemon_windows.go
+- CLI files (cli.go, cli_*.go) and main.go stay in `package main`
+
+**Scope**: ~25 files to move, ~22 caller files to update, ~300+ symbol prefixes. Use a dedicated session with IDE tooling (gopls) or script-based approach.
+
+**Acceptance criteria**:
+- [ ] All source files in their correct packages
+- [ ] `go build ./...` passes
+- [ ] `go vet ./...` passes
+- [ ] No remaining cross-package symbol references without proper import
 
 ---
 
 ## DONE (this initiative)
+
+### TASK-D — Update release script for standalone binary
+**GitHub Issue**: https://github.com/sraj0501/Devtrack_/issues/140
+**Completed**: 2026-05-29
+**Branch**: `feature/go-client-standalone`
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
+
+**Changes**:
+- `scripts/release.ps1` — release notes template already had correct two-mode messaging (Standalone / Full); no change needed
+- `devtrack_wiki/wiki/download.html` — hero description updated to mention standalone capability; "Everything is in the single binary" section rewritten to explain two deployment modes; Docker chip replaced with "Python server (optional, for AI features)"; step 2 description removed MongoDB/Redis reference
+
+**Acceptance criteria**:
+- [x] release.ps1 release notes mention Python server as optional
+- [x] devtrack_wiki download page updated with two-mode messaging
+- [ ] Manual test: binary starts, `github-list` runs, `sage ask` runs — no Python server required (developer to verify)
+
+---
+
+### TASK-C — Clean up Go daemon subprocess list
+**GitHub Issue**: https://github.com/sraj0501/Devtrack_/issues/139
+**Completed**: 2026-05-27 (completed implicitly in commit 117bd58)
+**Branch**: `feature/go-client-standalone`
+**Vision check**: PASS
+
+**Notes**: Acceptance criteria were satisfied by commit 117bd58 ("Making the client side actions independent of python server"). `run_sync.py` and `python -m backend.git_sage` subprocess spawning were removed as part of TASK-A/B implementation. Remaining Python spawns (webhook_server.py, Telegram, Slack, alert_poller.py) are unchanged.
+
+---
 
 ### TASK-A — Port PM Connectors to Go
 **GitHub Issue**: https://github.com/sraj0501/Devtrack_/issues/137
@@ -139,36 +196,6 @@ Do NOT push or create PRs. Leave as working tree edits on `feature/go-client-sta
 
 ## PLANNED
 
-### TASK-C — Clean up Go daemon subprocess list
-**GitHub Issue**: https://github.com/sraj0501/Devtrack_/issues/139
-**Priority**: MEDIUM
-**Depends on**: TASK-A and TASK-B
-
-**Spec**:
-Remove subprocess spawning for Python connector scripts and git-sage from `daemon.go` and `integrated.go`. Keep spawning: `webhook_server.py`, `backend.telegram`, `backend.slack`, `alert_poller.py`.
-
-**Acceptance criteria**:
-- [ ] `daemon.go` no longer spawns azure/run_sync.py, github/run_sync.py, gitlab/run_sync.py
-- [ ] `daemon.go` no longer spawns `python -m backend.git_sage`
-- [ ] Remaining spawns (webhook_server.py, bots, alert_poller) unchanged
-- [ ] `go build ./...` passes
-
----
-
-### TASK-D — Update release script for standalone binary
-**GitHub Issue**: https://github.com/sraj0501/Devtrack_/issues/140
-**Priority**: LOW
-**Depends on**: TASK-C
-
-**Spec**:
-Update `scripts/release.ps1` release notes template and `devtrack_wiki` download page to reflect that Python server is now optional (AI features only). Verify binary runs without server archive.
-
-**Acceptance criteria**:
-- [ ] release.ps1 release notes mention Python server as optional
-- [ ] devtrack_wiki download page updated
-- [ ] Manual test: binary starts, `github-list` runs, `sage ask` runs — no Python server required
-
----
 
 ## DONE (summary carried from previous board)
 

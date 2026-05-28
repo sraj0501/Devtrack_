@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -97,9 +98,13 @@ func (h *CommandHistory) Print() {
 // RunFollowUpLoop offers the user up to maxFollowUps follow-up questions
 // after a "do" task completes. Uses the existing conversation context
 // so the LLM retains awareness of what was done.
-func RunFollowUpLoop(repoPath string, cfg LLMConfig, conversationMessages []Message) {
+// log may be nil; if provided, "undo [N]" input resets the repo instead of going to the LLM.
+func RunFollowUpLoop(repoPath string, cfg LLMConfig, conversationMessages []Message, log *StepLog) {
 	fmt.Println()
 	fmt.Println("sage: task complete. You can ask follow-up questions (or press Enter to exit).")
+	if log != nil && len(log.heads) > 0 {
+		fmt.Printf("  (%d step(s) recorded — type 'undo [N]' to roll back)\n", len(log.heads))
+	}
 	fmt.Printf("  (%d follow-ups remaining)\n\n", maxFollowUps)
 
 	reader := bufio.NewReader(os.Stdin)
@@ -126,8 +131,33 @@ func RunFollowUpLoop(repoPath string, cfg LLMConfig, conversationMessages []Mess
 			break
 		}
 		if input == "history" {
-			// History is managed by the caller; acknowledge
 			fmt.Println("sage: history is printed by the parent command.")
+			continue
+		}
+
+		// Intercept "undo [N]" before sending to LLM.
+		if strings.HasPrefix(input, "undo") {
+			n := 1
+			parts := strings.Fields(input)
+			if len(parts) >= 2 {
+				if parsed, parseErr := strconv.Atoi(parts[1]); parseErr == nil && parsed > 0 {
+					n = parsed
+				}
+			}
+			if log == nil || len(log.heads) == 0 {
+				fmt.Fprintln(os.Stderr, "sage: no steps recorded — cannot undo")
+			} else if undoErr := log.Undo(repoPath, n); undoErr != nil {
+				fmt.Fprintf(os.Stderr, "sage: %v\n", undoErr)
+			} else {
+				// Refresh conversation context so follow-up questions see the rolled-back state.
+				if refreshCtx, ctxErr := CollectContext(repoPath); ctxErr == nil {
+					refreshMsg := fmt.Sprintf("The user ran undo. Updated repository context:\n%s", refreshCtx.Format())
+					conversationMessages = append(conversationMessages,
+						Message{Role: "user", Content: refreshMsg},
+						Message{Role: "assistant", Content: "Understood. I've rolled back the changes."},
+					)
+				}
+			}
 			continue
 		}
 
@@ -173,109 +203,112 @@ func RunDoVerbose(repoPath, task string, verbose bool) error {
 	// For review/suggest-only modes, wrap Do in a way that intercepts commands.
 	// For auto mode, use Do directly.
 	if mode == ApprovalAuto {
-		// Standard agentic loop
-		if err := Do(repoPath, task, cfg, verbose); err != nil {
+		// Standard agentic loop — captures a StepLog for undo support in the follow-up.
+		stepLog, err := Do(repoPath, task, cfg, verbose)
+		if err != nil {
 			return err
 		}
-	} else {
-		// Build initial context and messages
-		ctx, err := CollectContext(repoPath)
-		if err != nil {
-			return fmt.Errorf("failed to collect git context: %w", err)
+		ctx, _ := CollectContext(repoPath)
+		systemMsg := "You are git-sage, a helpful git assistant. Answer questions about the repository concisely."
+		userMsg := ""
+		if ctx != nil {
+			userMsg = fmt.Sprintf("Repository context after completing task:\n%s", ctx.Format())
 		}
-
-		systemMsg := agentSystemPrompt
-		userMsg := fmt.Sprintf("Git repository context:\n%s\nTask: %s", ctx.Format(), task)
-		messages := []Message{
+		RunFollowUpLoop(repoPath, cfg, []Message{
 			{Role: "system", Content: systemMsg},
 			{Role: "user", Content: userMsg},
-		}
-
-		// Run the loop manually so we can intercept commands
-		fmt.Printf("sage: planning task — %s\n\n", task)
-		for range maxSteps {
-			raw, err := cfg.ChatJSON(messages)
-			if err != nil {
-				return err
-			}
-
-			var parsed agentStep
-			if err := parseAgentStep(raw, &parsed); err != nil {
-				fmt.Println(raw)
-				return nil
-			}
-
-			if parsed.Thought != "" {
-				fmt.Printf("  → %s\n", parsed.Thought)
-			}
-
-			if parsed.Done {
-				fmt.Println()
-				if parsed.Summary != "" {
-					fmt.Printf("done: %s\n", parsed.Summary)
-				} else {
-					fmt.Println("done.")
-				}
-				// Offer follow-ups
-				RunFollowUpLoop(repoPath, cfg, messages)
-				history.Print()
-				return nil
-			}
-
-			if len(parsed.Commands) == 0 {
-				return fmt.Errorf("sage: model returned no commands and done=false — stopping")
-			}
-
-			var execOutput strings.Builder
-			for _, cmdStr := range parsed.Commands {
-				if mode == ApprovalSuggestOnly {
-					fmt.Printf("  would run: %s\n", cmdStr)
-					history.Add("[suggest] " + cmdStr)
-					fmt.Fprintf(&execOutput, "$ %s\n[not executed — suggest-only mode]\n", cmdStr)
-					continue
-				}
-
-				if mode == ApprovalReview && !PromptCommandApproval(cmdStr) {
-					fmt.Println("  skipped.")
-					fmt.Fprintf(&execOutput, "$ %s\n[skipped by user]\n", cmdStr)
-					continue
-				}
-
-				fmt.Printf("  $ %s\n", cmdStr)
-				out, runErr := runCommand(repoPath, cmdStr)
-				history.Add(cmdStr)
-				if out != "" {
-					fmt.Println("   ", strings.ReplaceAll(out, "\n", "\n    "))
-					fmt.Fprintf(&execOutput, "$ %s\n%s\n", cmdStr, out)
-				}
-				if runErr != nil {
-					fmt.Fprintf(&execOutput, "$ %s\nERROR: %v\n", cmdStr, runErr)
-				}
-			}
-
-			messages = append(messages,
-				Message{Role: "assistant", Content: raw},
-				Message{Role: "user", Content: fmt.Sprintf("Command output:\n%s\nContinue.", execOutput.String())},
-			)
-			fmt.Println()
-		}
-		return fmt.Errorf("sage: reached max steps (%d) without completing task", maxSteps)
+			{Role: "assistant", Content: "Task complete. What else can I help you with?"},
+		}, stepLog)
+		history.Print()
+		return nil
 	}
 
-	// After auto Do, offer follow-ups too
-	ctx, _ := CollectContext(repoPath)
-	systemMsg := "You are git-sage, a helpful git assistant. Answer questions about the repository concisely."
-	userMsg := ""
-	if ctx != nil {
-		userMsg = fmt.Sprintf("Repository context after completing task:\n%s", ctx.Format())
+	// Build initial context and messages for review/suggest-only modes.
+	ctx, err := CollectContext(repoPath)
+	if err != nil {
+		return fmt.Errorf("failed to collect git context: %w", err)
 	}
-	RunFollowUpLoop(repoPath, cfg, []Message{
+
+	systemMsg := agentSystemPrompt
+	userMsg := fmt.Sprintf("Git repository context:\n%s\nTask: %s", ctx.Format(), task)
+	messages := []Message{
 		{Role: "system", Content: systemMsg},
 		{Role: "user", Content: userMsg},
-		{Role: "assistant", Content: "Task complete. What else can I help you with?"},
-	})
-	history.Print()
-	return nil
+	}
+
+	stepLog := &StepLog{}
+
+	// Run the loop manually so we can intercept commands
+	fmt.Printf("sage: planning task — %s\n\n", task)
+	for range maxSteps {
+		raw, err := cfg.ChatJSON(messages)
+		if err != nil {
+			return err
+		}
+
+		var parsed agentStep
+		if err := parseAgentStep(raw, &parsed); err != nil {
+			fmt.Println(raw)
+			return nil
+		}
+
+		if parsed.Thought != "" {
+			fmt.Printf("  → %s\n", parsed.Thought)
+		}
+
+		if parsed.Done {
+			fmt.Println()
+			if parsed.Summary != "" {
+				fmt.Printf("done: %s\n", parsed.Summary)
+			} else {
+				fmt.Println("done.")
+			}
+			RunFollowUpLoop(repoPath, cfg, messages, stepLog)
+			history.Print()
+			return nil
+		}
+
+		if len(parsed.Commands) == 0 {
+			return fmt.Errorf("sage: model returned no commands and done=false — stopping")
+		}
+
+		// Snapshot HEAD before executing so this batch is undoable.
+		stepLog.Record(repoPath)
+
+		var execOutput strings.Builder
+		for _, cmdStr := range parsed.Commands {
+			if mode == ApprovalSuggestOnly {
+				fmt.Printf("  would run: %s\n", cmdStr)
+				history.Add("[suggest] " + cmdStr)
+				fmt.Fprintf(&execOutput, "$ %s\n[not executed — suggest-only mode]\n", cmdStr)
+				continue
+			}
+
+			if mode == ApprovalReview && !PromptCommandApproval(cmdStr) {
+				fmt.Println("  skipped.")
+				fmt.Fprintf(&execOutput, "$ %s\n[skipped by user]\n", cmdStr)
+				continue
+			}
+
+			fmt.Printf("  $ %s\n", cmdStr)
+			out, runErr := runCommand(repoPath, cmdStr)
+			history.Add(cmdStr)
+			if out != "" {
+				fmt.Println("   ", strings.ReplaceAll(out, "\n", "\n    "))
+				fmt.Fprintf(&execOutput, "$ %s\n%s\n", cmdStr, out)
+			}
+			if runErr != nil {
+				fmt.Fprintf(&execOutput, "$ %s\nERROR: %v\n", cmdStr, runErr)
+			}
+		}
+
+		messages = append(messages,
+			Message{Role: "assistant", Content: raw},
+			Message{Role: "user", Content: fmt.Sprintf("Command output:\n%s\nContinue.", execOutput.String())},
+		)
+		fmt.Println()
+	}
+	return fmt.Errorf("sage: reached max steps (%d) without completing task", maxSteps)
 }
 
 // RunInteractive is the entry point for "devtrack sage" (no subcommand).

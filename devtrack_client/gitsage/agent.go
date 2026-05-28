@@ -79,14 +79,15 @@ func UndoStep(repoPath string, log *StepLog, n int) error {
 }
 
 // Do executes a task autonomously using an agentic loop.
-func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
+// It returns a StepLog of HEAD snapshots so the caller can offer undo in the follow-up loop.
+func Do(repoPath, task string, cfg LLMConfig, verbose bool) (*StepLog, error) {
 	if !cfg.Ping() {
-		return fmt.Errorf("Ollama is not running at %s\nStart it with: ollama serve", cfg.Host)
+		return nil, fmt.Errorf("Ollama is not running at %s\nStart it with: ollama serve", cfg.Host)
 	}
 
 	ctx, err := CollectContext(repoPath)
 	if err != nil {
-		return fmt.Errorf("failed to collect git context: %w", err)
+		return nil, fmt.Errorf("failed to collect git context: %w", err)
 	}
 
 	systemMsg := agentSystemPrompt
@@ -97,12 +98,13 @@ func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
 		{Role: "user", Content: userMsg},
 	}
 
+	log := &StepLog{}
 	fmt.Printf("sage: starting task — %s\n\n", task)
 
 	for range maxSteps {
 		raw, err := cfg.ChatJSON(messages)
 		if err != nil {
-			return err
+			return log, err
 		}
 
 		if verbose {
@@ -113,7 +115,7 @@ func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
 		var parsed agentStep
 		if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
 			fmt.Println(raw)
-			return nil
+			return log, nil
 		}
 
 		if parsed.Thought != "" {
@@ -127,12 +129,15 @@ func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
 			} else {
 				fmt.Println("done.")
 			}
-			return nil
+			return log, nil
 		}
 
 		if len(parsed.Commands) == 0 {
-			return fmt.Errorf("sage: model returned no commands and done=false — stopping")
+			return log, fmt.Errorf("sage: model returned no commands and done=false — stopping")
 		}
+
+		// Snapshot HEAD before executing so this batch can be undone.
+		log.Record(repoPath)
 
 		// Execute each command and collect output
 		var execOutput strings.Builder
@@ -161,7 +166,7 @@ func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
 		fmt.Println()
 	}
 
-	return fmt.Errorf("sage: reached max steps (%d) without completing task", maxSteps)
+	return log, fmt.Errorf("sage: reached max steps (%d) without completing task", maxSteps)
 }
 
 // runCommand executes a single shell command string in the repo directory.
