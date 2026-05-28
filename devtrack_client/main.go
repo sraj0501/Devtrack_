@@ -19,6 +19,10 @@ func main() {
 	// Existing env vars (shell exports, CI, secret managers) are never overridden.
 	AutoLoadEnv()
 
+	// Propagate the ldflags-injected version into internal/config so that
+	// GetDevTrackVersion() returns the correct value everywhere.
+	SetBuildVersion(Version)
+
 	// Check if CLI command is provided
 	if len(os.Args) > 1 {
 		cmd := os.Args[1]

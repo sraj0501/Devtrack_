@@ -439,7 +439,7 @@ func (s *Scheduler) scheduleIdleSessionStop() {
 			endedAt := time.Now().UTC().Format("2006-01-02 15:04:05")
 			if stopErr := db.EndWorkSession(active.ID, endedAt, elapsedMins); stopErr == nil {
 				// Mark auto_stopped flag
-				db.db.Exec("UPDATE work_sessions SET auto_stopped = 1 WHERE id = ?", active.ID)
+				db.Exec("UPDATE work_sessions SET auto_stopped = 1 WHERE id = ?", active.ID) //nolint:errcheck
 				log.Printf("⏱️  Work session #%d auto-stopped after %d idle minutes", active.ID, elapsedMins)
 			}
 		}
