@@ -25,7 +25,10 @@ Step "Preflight checks"
 
 Push-Location $PSScriptRoot\..   # repo root
 
-if ((git status --porcelain) -ne "") {
+if (git status --porcelain) {
+    # Non-empty output = dirty. On a clean tree `git status --porcelain` yields
+    # no output, which PowerShell captures as $null; `if ($null)` is correctly
+    # false. (The old `-ne ""` check mis-fired because `$null -ne ""` is $true.)
     Die "Working tree is dirty. Commit or stash changes first."
 }
 if ((git rev-parse --abbrev-ref HEAD) -ne "main") {
@@ -151,7 +154,7 @@ Pop-Location
 Step "Computing checksums"
 
 Push-Location $dist
-$files = Get-ChildItem -Filter "devtrack_*.tar.gz","devtrack_*.zip","devtrack-server-*.tar.gz"
+$files = Get-ChildItem -File -Path "devtrack_*.tar.gz","devtrack_*.zip","devtrack-server-*.tar.gz"
 $checksums = $files | ForEach-Object {
     $hash = (Get-FileHash $_.Name -Algorithm SHA256).Hash.ToLower()
     "$hash  $($_.Name)"
