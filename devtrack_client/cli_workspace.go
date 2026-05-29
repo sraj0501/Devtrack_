@@ -176,7 +176,7 @@ func (wc *WorkspaceCommands) sendWorkspaceReload() {
 		fmt.Println("(Daemon not running — changes will take effect on next start.)")
 		return
 	}
-	if !checkProcessAlive(pid) {
+	if !CheckProcessAlive(pid) {
 		fmt.Println("(Daemon not running — changes will take effect on next start.)")
 		return
 	}
@@ -185,7 +185,7 @@ func (wc *WorkspaceCommands) sendWorkspaceReload() {
 		fmt.Println("(Daemon not running — changes will take effect on next start.)")
 		return
 	}
-	if err := sendReloadSignal(proc); err != nil {
+	if err := SendReloadSignal(proc); err != nil {
 		fmt.Printf("(%v)\n", err)
 		return
 	}
@@ -202,7 +202,7 @@ func (wc *WorkspaceCommands) Reload() error {
 	if err != nil {
 		return fmt.Errorf("process not found: %w", err)
 	}
-	if err := sendReloadSignal(proc); err != nil {
+	if err := SendReloadSignal(proc); err != nil {
 		return err
 	}
 	fmt.Println("Workspace reload signal sent to daemon.")

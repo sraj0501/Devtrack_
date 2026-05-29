@@ -17,40 +17,59 @@ _Branch for all current work: `feature/go-client-standalone`_
 
 ## IN PROGRESS
 
-_None — TASK-A through TASK-D complete. Next: package refactor (TASK-E, dedicated session)._
-
----
-
-## PLANNED
-
-### TASK-E — Full Go package refactor
-**Priority**: HIGH (deferred from 2026-05-29 — requires dedicated session)
-**Branch**: new `feature/package-refactor`
-
-**Spec**:
-Move `devtrack_client` from monolithic `package main` into proper Go sub-packages. The dependency graph is fully acyclic (confirmed 2026-05-29). No circular import risks.
-
-Target packages:
-- `internal/config` — config.go, config_env.go, server_config.go, cloud.go, loadenv.go
-- `internal/db` — database.go, migrations.go
-- `internal/health` — health.go
-- `internal/infra` — ipc.go, integrated.go, scheduler.go, git_monitor.go, infra.go
-- `internal/learning` — learning.go, license.go
-- `internal/tui` — tui.go, tui_activity.go, tui_alerts.go, tui_overview.go, tui_workspaces.go
-- `internal/daemon` — daemon.go, daemon_unix.go, daemon_windows.go
-- CLI files (cli.go, cli_*.go) and main.go stay in `package main`
-
-**Scope**: ~25 files to move, ~22 caller files to update, ~300+ symbol prefixes. Use a dedicated session with IDE tooling (gopls) or script-based approach.
-
-**Acceptance criteria**:
-- [ ] All source files in their correct packages
-- [ ] `go build ./...` passes
-- [ ] `go vet ./...` passes
-- [ ] No remaining cross-package symbol references without proper import
+_None — TASK-A through TASK-F complete. Package refactor finished: package main is now CLI-only + shims._
 
 ---
 
 ## DONE (this initiative)
+
+### TASK-F — Complete Go package refactor (trigger / infra / daemon / tui)
+**Completed**: 2026-05-29
+**Branch**: `feature/package-refactor`
+**Build**: `go build ./...` ✓  `go vet ./...` ✓  cross-compile linux/darwin (amd64+arm64) ✓  binary smoke-test ✓
+
+**Layered split (deviated from original infra/daemon/tui plan — see below):**
+The board's 3-package plan (infra + daemon + tui) was **not acyclic as written**: `HTTPTriggerClient` (http_trigger.go) is used by both the CLI and the runtime, yet depends on the trigger data structs in ipc.go. Resolved by extracting a 4th, lower-layer `internal/trigger` package. Final dependency layering is acyclic:
+
+`config/db/health/learning` ← `trigger` ← `infra` ← `daemon`, plus `trigger` ← `tui`, and `package main` (CLI) on top.
+
+**What moved**:
+- `internal/trigger` — http_trigger.go, tls_cert.go, + CommitTriggerData/TimerTriggerData/TaskUpdateData (split out of ipc.go into types.go). Tests: http_trigger_test.go, api_contract_test.go moved here; config-only tests relocated to internal/config/server_config_test.go.
+- `internal/infra` — ipc.go (IPC server/client + Create*Message), integrated.go, scheduler.go, git_monitor.go, infra.go. Added `IntegratedMonitor.Scheduler()` / `.Database()` accessors.
+- `internal/daemon` — daemon.go, daemon_unix.go, daemon_windows.go, http_api.go, lock_unix.go, lock_windows.go, process_unix.go, process_windows.go, queue.go, ping.go. Exported `CheckProcessAlive` / `ReadPID` / `SendReloadSignal`; added `Daemon.Monitor()` accessor; HealthMonitor wiring + `health.IsProcessAlive` init moved here from package main.
+- `internal/tui` — tui.go, tui_activity.go, tui_alerts.go, tui_overview.go, tui_workspaces.go.
+- `internal/config` — gained `DevtrackDataHome()` (moved from setup.go).
+
+**Shims** (package main): trigger_shim.go, infra_shim.go, daemon_shim.go, tui_shim.go — type aliases + function forwards for the symbols the CLI still references. health_shim.go trimmed to the `isProcessAlive` wrapper.
+
+**Cleanup**: removed 10 empty 1-line `package main` stub files left over from TASK-E (config.go, config_env.go, server_config.go, cloud.go, loadenv.go, database.go, migrations.go, health.go, learning.go, license.go).
+
+**Acceptance criteria**:
+- [x] All packages compile independently
+- [x] `go build ./...` passes
+- [x] `go vet ./...` passes
+- [x] No remaining cross-package symbol refs without proper import
+
+---
+
+### TASK-E — Full Go package refactor
+**Completed**: 2026-05-29
+**Branch**: `feature/package-refactor`
+**Build**: `go build ./...` ✓  `go vet ./...` ✓
+
+**What moved**:
+- `internal/config` — config.go, config_env.go, server_config.go, cloud.go, loadenv.go
+- `internal/db` — database.go, migrations.go (+ Database.Exec() method)
+- `internal/health` — health.go
+- `internal/learning` — learning.go, license.go
+
+**Shims**: config_shim.go, db_shim.go, health_shim.go, learning_shim.go — type aliases + function forwards; zero call-sites changed.
+
+**CLI split**: cloud_cli.go (cloud login/logout/status), license_cli.go (login/logout/license/terms/telemetry/EnsureTermsAccepted) extracted from cloud.go and license.go.
+
+**Not moved** (deferred — higher complexity): internal/infra (ipc, integrated, scheduler, git_monitor), internal/tui, internal/daemon.
+
+---
 
 ### TASK-D — Update release script for standalone binary
 **GitHub Issue**: https://github.com/sraj0501/Devtrack_/issues/140

@@ -138,3 +138,4 @@ func AutoLoadEnv()                                           { cfg.AutoLoadEnv()
 func RegisterEnvFile(p string) error                         { return cfg.RegisterEnvFile(p) }
 func resolveEnvFilePath() string                             { return cfg.ResolveEnvFilePath() }
 func SetBuildVersion(v string)                               { cfg.SetBuildVersion(v) }
+func devtrackDataHome() (string, error)                      { return cfg.DevtrackDataHome() }

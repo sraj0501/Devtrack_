@@ -26,7 +26,7 @@ func setSetsid(cmd *exec.Cmd) {
 // that the daemon exposes for exactly this purpose.
 func sendForceTriggerSignal(process *os.Process) error {
 	// Verify the process is still alive before attempting the HTTP call.
-	if !checkProcessAlive(process.Pid) {
+	if !CheckProcessAlive(process.Pid) {
 		return fmt.Errorf("daemon process is not running")
 	}
 	client := NewHTTPTriggerClient()
@@ -45,7 +45,7 @@ func sendForceTriggerSignal(process *os.Process) error {
 // sendReloadConfigSignal triggers a config reload on Windows via the daemon's
 // internal HTTP endpoint. SIGHUP is not reliably supported on Windows.
 func sendReloadConfigSignal(process *os.Process) error {
-	if !checkProcessAlive(process.Pid) {
+	if !CheckProcessAlive(process.Pid) {
 		return fmt.Errorf("daemon process is not running")
 	}
 	url := fmt.Sprintf("http://%s:%d%s", GetIPCHost(), GetDevTrackServerHTTPPort(), RouteInternalReloadConfig)

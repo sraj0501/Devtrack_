@@ -12,7 +12,7 @@ import (
 // handleStart starts the daemon
 func (cli *CLI) handleStart() error {
 	if cli.daemon.IsRunning() {
-		pid, _ := cli.daemon.readPID()
+		pid, _ := cli.daemon.ReadPID()
 		fmt.Printf("❌ Daemon is already running (PID: %d)\n", pid)
 		fmt.Println("\nUse 'devtrack status' to see details")
 		fmt.Println("Use 'devtrack restart' to restart")
@@ -231,9 +231,9 @@ func (cli *CLI) handleStatus() error {
 
 	if status.Running {
 		// Scheduler info
-		if cli.daemon.monitor != nil && cli.daemon.monitor.scheduler != nil {
-			stats := cli.daemon.monitor.scheduler.GetStats()
-			workStatus := cli.daemon.monitor.scheduler.GetWorkHoursStatus()
+		if cli.daemon.Monitor() != nil && cli.daemon.Monitor().Scheduler() != nil {
+			stats := cli.daemon.Monitor().Scheduler().GetStats()
+			workStatus := cli.daemon.Monitor().Scheduler().GetWorkHoursStatus()
 
 			interval := stats["interval_minutes"]
 			nextTrigger := stats["time_until_next"]
@@ -390,7 +390,7 @@ func (cli *CLI) handleForceTrigger() error {
 		return nil
 	}
 
-	pid, err := cli.daemon.readPID()
+	pid, err := cli.daemon.ReadPID()
 	if err != nil {
 		fmt.Printf("❌ Could not read daemon PID: %v\n", err)
 		return err
@@ -431,7 +431,7 @@ func (cli *CLI) handleReloadConfig() error {
 		return nil
 	}
 
-	pid, err := cli.daemon.readPID()
+	pid, err := cli.daemon.ReadPID()
 	if err != nil {
 		fmt.Printf("❌ Could not read daemon PID: %v\n", err)
 		return err
@@ -477,8 +477,8 @@ func (cli *CLI) handleSendSummary() error {
 		"triggers": 0,
 	}
 
-	if cli.daemon.monitor != nil && cli.daemon.monitor.scheduler != nil {
-		schedulerStats := cli.daemon.monitor.scheduler.GetStats()
+	if cli.daemon.Monitor() != nil && cli.daemon.Monitor().Scheduler() != nil {
+		schedulerStats := cli.daemon.Monitor().Scheduler().GetStats()
 		stats["triggers"] = schedulerStats["trigger_count"]
 	}
 
@@ -504,21 +504,21 @@ func (cli *CLI) handleSkipNext() error {
 		return nil
 	}
 
-	if cli.daemon.monitor == nil || cli.daemon.monitor.scheduler == nil {
+	if cli.daemon.Monitor() == nil || cli.daemon.Monitor().Scheduler() == nil {
 		fmt.Println("❌ Scheduler not initialized")
 		return fmt.Errorf("scheduler not available")
 	}
 
 	// Get current stats to show what's being skipped
-	stats := cli.daemon.monitor.scheduler.GetStats()
+	stats := cli.daemon.Monitor().Scheduler().GetStats()
 	nextTrigger := stats["time_until_next"]
 
 	fmt.Printf("⏭️  Skipping next trigger (was due in %v)\n", nextTrigger)
 
-	cli.daemon.monitor.scheduler.SkipNext()
+	cli.daemon.Monitor().Scheduler().SkipNext()
 
 	// Get updated stats
-	stats = cli.daemon.monitor.scheduler.GetStats()
+	stats = cli.daemon.Monitor().Scheduler().GetStats()
 	newNextTrigger := stats["time_until_next"]
 
 	fmt.Println("✓ Next trigger skipped")

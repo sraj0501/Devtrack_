@@ -1,37 +1,15 @@
 package main
 
-// health_shim.go — forwarding aliases from package main to internal/health.
+// health_shim.go — package-main convenience wrapper around the platform-specific
+// process-alive check, which now lives in internal/daemon (process_unix.go /
+// process_windows.go) and is exported as CheckProcessAlive.
+//
+// The HealthMonitor type and its wiring (PingServerFn / GetServerURL /
+// IsProcessAlive) now live entirely in internal/daemon and internal/health — the
+// daemon package's init() wires internal/health.IsProcessAlive at startup.
 
-import (
-	ihealth "github.com/sraj0501/Devtrack_/devtrack_client/internal/health"
-)
-
-// ── Type alias ────────────────────────────────────────────────────────────────
-
-type HealthMonitor = ihealth.HealthMonitor
-
-// ── Function forwards ─────────────────────────────────────────────────────────
-
-func NewHealthMonitor(db *Database) *HealthMonitor {
-	hm := ihealth.NewHealthMonitor(db)
-	// Wire platform-specific process check (defined in process_unix.go / process_windows.go)
-	hm.PingServerFn = func() bool {
-		c := NewHTTPTriggerClient()
-		return c.Ping()
-	}
-	hm.GetServerURL = GetServerURL
-	return hm
-}
-
-func init() {
-	// Wire platform-specific process-alive check into internal/health.
-	// checkProcessAlive is defined in process_unix.go / process_windows.go.
-	ihealth.IsProcessAlive = checkProcessAlive
-}
-
-// isProcessAlive is a package main convenience wrapper around the platform-specific
-// checkProcessAlive function. Used by upgrade.go and other callers that were
-// previously calling the function defined in health.go.
+// isProcessAlive reports whether a process with the given PID is running.
+// Used by upgrade.go and other lifecycle callers in package main.
 func isProcessAlive(pid int) bool {
-	return checkProcessAlive(pid)
+	return CheckProcessAlive(pid)
 }
