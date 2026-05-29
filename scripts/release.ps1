@@ -113,8 +113,11 @@ go build -ldflags $ldflags -o "..\$dist\devtrack_windows_amd64.exe" .
 $env:GOOS = ""; $env:GOARCH = ""; $env:CGO_ENABLED = ""
 
 Push-Location ..\$dist
-Compress-Archive -Path devtrack_windows_amd64.exe -DestinationPath devtrack_windows_amd64.zip
-Remove-Item devtrack_windows_amd64.exe
+# Rename to devtrack.exe inside the zip so the installer finds it under a stable
+# name (mirrors the macOS/Linux tarballs which archive the binary as `devtrack`).
+Rename-Item devtrack_windows_amd64.exe devtrack.exe
+Compress-Archive -Path devtrack.exe -DestinationPath devtrack_windows_amd64.zip
+Remove-Item devtrack.exe
 Pop-Location
 
 Pop-Location  # back to repo root
