@@ -113,8 +113,8 @@ func (cli *CLI) handleCloudStatus() error {
 			fmt.Printf("External server (env vars): %s\n", url)
 			fmt.Println("Tip: run 'devtrack cloud login --url URL --key KEY' to store credentials in cloud.json.")
 		} else if mode == "external" {
-			fmt.Println("External mode but DEVTRACK_SERVER_URL is not set — AI triggers will be skipped.")
-			fmt.Println("Set DEVTRACK_SERVER_URL in .env or run: devtrack cloud login --url URL --key KEY")
+			fmt.Println("External mode, no DEVTRACK_SERVER_URL set — defaulting to a server on this machine (localhost).")
+			fmt.Println("To target a server on another host, set DEVTRACK_SERVER_URL in .env or run: devtrack cloud login --url URL --key KEY")
 		} else {
 			fmt.Println("Running in managed mode (daemon spawns Python locally).")
 			fmt.Println("To connect to a remote server: devtrack cloud login --url URL --key KEY")

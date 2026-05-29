@@ -162,8 +162,8 @@ func (d *Daemon) Start() error {
 		// Wait up to 10 s for the Python HTTP server to become healthy
 		d.waitForPythonHTTP(10)
 	}
-	if config.IsExternalServer() && config.GetServerURL() == "" {
-		log.Println("External mode: no DEVTRACK_SERVER_URL set — AI triggers will be skipped")
+	if config.IsExternalServer() {
+		log.Printf("External mode: AI triggers will be sent to %s (set DEVTRACK_SERVER_URL to target another host)", config.GetServerURL())
 	}
 
 	// Start Telegram bot if enabled

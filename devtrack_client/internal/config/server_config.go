@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // ServerMode defines how the Python backend is managed.
@@ -55,11 +56,11 @@ func GetServerURL() string {
 	if v := os.Getenv("DEVTRACK_SERVER_URL"); v != "" {
 		return v
 	}
-	if GetServerMode() == ServerModeExternal {
-		// External with no URL — triggers will be skipped
-		return ""
-	}
-	// Managed: default to localhost
+	// No explicit URL configured. This covers managed mode AND external mode
+	// where the server runs on this same machine (the common case) — both
+	// default to localhost. If nothing is actually listening, the connection
+	// fails gracefully and the daemon's git monitoring / scheduling keep running.
+	// To target a server on another host, set DEVTRACK_SERVER_URL explicitly.
 	port := os.Getenv("WEBHOOK_PORT")
 	if port == "" {
 		port = "8089"
@@ -108,12 +109,28 @@ func IsExternalServer() bool {
 	return GetServerMode() == ServerModeExternal
 }
 
-// IsLocalTLS reports whether TLS cert-pinning (self-signed cert) should be used.
-// True when the server URL resolves to localhost — managed mode and local external processes.
-// False for remote URLs (different machine or cloud), which use system CA roots.
+// IsLocalTLS reports whether the client should cert-pin the DevTrack self-signed
+// certificate (GetTLSCertPath) instead of verifying against the system CA roots.
+//
+// Pinning is used when:
+//   - DEVTRACK_TLS_CERT is set explicitly (the user pointed us at a specific
+//     self-signed cert — e.g. a copy of a LAN server's cert), or
+//   - the server URL host is loopback / localhost, or
+//   - the server URL host is one of THIS machine's own addresses (LAN IP or
+//     hostname) — i.e. the server is on this machine, reached via a non-loopback
+//     address.
+//
+// For genuinely remote hosts (a different machine on the LAN with no shared cert,
+// or a cloud server) it returns false so the system CA roots are used. Secure
+// cross-machine self-signed setups should copy the server cert to the client and
+// set DEVTRACK_TLS_CERT, or disable TLS with DEVTRACK_TLS=false.
 func IsLocalTLS() bool {
 	if !IsTLSEnabled() {
 		return false
+	}
+	// Explicit cert override: the user provided a specific self-signed cert to pin.
+	if os.Getenv("DEVTRACK_TLS_CERT") != "" {
+		return true
 	}
 	serverURL := GetServerURL()
 	if serverURL == "" {
@@ -127,11 +144,43 @@ func IsLocalTLS() bool {
 	if err != nil {
 		host = u.Host
 	}
-	ip := net.ParseIP(host)
-	if ip != nil {
-		return ip.IsLoopback()
+	if host == "localhost" {
+		return true
 	}
-	return host == "localhost"
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() {
+			return true
+		}
+	}
+	// Server reached via this machine's own LAN IP or hostname → still local.
+	return isLocalMachineHost(host)
+}
+
+// isLocalMachineHost reports whether host (an IP or hostname) refers to this
+// machine — i.e. it matches the local hostname or one of the addresses bound to
+// a local network interface. Used so a same-machine server reached via its LAN
+// IP / hostname is still treated as local for cert-pinning.
+func isLocalMachineHost(host string) bool {
+	if host == "" {
+		return false
+	}
+	if h, err := os.Hostname(); err == nil && strings.EqualFold(host, h) {
+		return true
+	}
+	target := net.ParseIP(host)
+	if target == nil {
+		return false
+	}
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return false
+	}
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && ipnet.IP.Equal(target) {
+			return true
+		}
+	}
+	return false
 }
 
 // RunInstall is called by `devtrack install`. It explains the client-server setup.

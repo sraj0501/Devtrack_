@@ -15,9 +15,36 @@ import (
 	"time"
 )
 
+// localSANs returns the SANs for the self-signed cert: loopback addresses,
+// this machine's hostname, and every non-loopback, non-link-local IP bound to a
+// local network interface (so the cert is valid via localhost or a LAN IP).
+func localSANs() ([]net.IP, []string) {
+	ips := []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")}
+	dns := []string{"localhost"}
+
+	if host, err := os.Hostname(); err == nil && host != "" && host != "localhost" {
+		dns = append(dns, host)
+	}
+
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		for _, a := range addrs {
+			ipnet, ok := a.(*net.IPNet)
+			if !ok || ipnet.IP.IsLoopback() || ipnet.IP.IsLinkLocalUnicast() {
+				continue
+			}
+			ips = append(ips, ipnet.IP)
+		}
+	}
+	return ips, dns
+}
+
 // GenerateSelfSignedCert creates an ECDSA P-256 self-signed TLS certificate
 // valid for 1 year.  Both files are written with mode 0600.
 // Existing files are overwritten (cert is regenerated on every daemon start).
+//
+// SANs cover loopback (127.0.0.1, ::1, localhost) plus this machine's hostname
+// and every non-loopback address bound to a local interface, so the cert is
+// valid whether the server is reached via localhost or its LAN IP/hostname.
 func GenerateSelfSignedCert(certPath, keyPath string) error {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -29,6 +56,8 @@ func GenerateSelfSignedCert(certPath, keyPath string) error {
 		return fmt.Errorf("generate serial: %w", err)
 	}
 
+	ips, dnsNames := localSANs()
+
 	template := &x509.Certificate{
 		SerialNumber: serial,
 		Subject:      pkix.Name{Organization: []string{"DevTrack"}},
@@ -36,8 +65,8 @@ func GenerateSelfSignedCert(certPath, keyPath string) error {
 		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
-		DNSNames:     []string{"localhost"},
+		IPAddresses:  ips,
+		DNSNames:     dnsNames,
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
