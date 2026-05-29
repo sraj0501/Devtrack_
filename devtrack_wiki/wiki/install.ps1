@@ -30,7 +30,15 @@ try {
     $archivePath = Join-Path $tmpDir $ARCHIVE
     Invoke-WebRequest -Uri $URL -OutFile $archivePath -UseBasicParsing
     Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force
-    Copy-Item -Path (Join-Path $tmpDir "devtrack.exe") `
+
+    # The archived binary may be named devtrack.exe or devtrack_windows_amd64.exe
+    # depending on how the release was packaged. Locate it regardless of name.
+    $exe = Get-ChildItem -Path $tmpDir -Filter "*.exe" -Recurse | Select-Object -First 1
+    if (-not $exe) {
+        Write-Error "Downloaded archive did not contain a devtrack executable."
+        exit 1
+    }
+    Copy-Item -Path $exe.FullName `
               -Destination (Join-Path $INSTALL_DIR "devtrack.exe") -Force
 } finally {
     Remove-Item -Recurse -Force $tmpDir -ErrorAction SilentlyContinue
