@@ -556,7 +556,7 @@
         </div>
       </a>
       <div class="sidebar-version">
-        <span class="sidebar-version-tag">v2.2.22</span>
+        <span class="sidebar-version-tag">v3.0.0</span>
         <span class="sidebar-version-status">
           <span class="sidebar-version-dot"></span>
           live
@@ -1706,6 +1706,24 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.0 — major release</div>
+
+<h2>v3.0.0 — Standalone Client, Full Package Refactor &amp; Connection Hardening</h2>
+<p>The headline of v3.0 is <strong>standalone-first</strong>: the DevTrack client now does git tracking, the full CLI, and AI commit messages entirely on your machine — <strong>no account, no cloud, no Python server required</strong>. The Python backend becomes optional, only needed for AI work-updates, PM sync, and reporting. Under the hood the Go client was restructured into clean internal packages, and two long-standing client↔server connection issues were fixed.</p>
+
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>Standalone client — runs with no backend</h4><p>Git monitoring, scheduling, the TUI dashboard, git-sage, and AI-assisted commit messages all run locally with zero server dependency. Point DevTrack at a <code>devtrack-server</code> later (managed, external, or cloud) only when you want AI work-updates, project-management sync, and reports. Your data stays on your machine until you choose to sync.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>Full Go package refactor — <code>internal/</code> layout</h4><p>The client binary was split out of a monolithic <code>package main</code> into focused, acyclic internal packages: <code>internal/config</code>, <code>internal/db</code>, <code>internal/health</code>, <code>internal/learning</code>, <code>internal/trigger</code> (HTTP trigger client + TLS), <code>internal/infra</code> (IPC server, scheduler, git monitor), <code>internal/daemon</code> (lifecycle, internal HTTP API, locks, queue), and <code>internal/tui</code>. <code>package main</code> is now CLI-only. No behaviour change — purely structural, with cross-compiled Linux/macOS/Windows builds verified.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">3</div><div><h4>Connection fix — local server "just works"</h4><p>In external mode with no <code>DEVTRACK_SERVER_URL</code> set, the client previously dropped every trigger silently. It now defaults to <code>https://127.0.0.1:&lt;WEBHOOK_PORT&gt;</code>, so a server running on the same machine connects automatically; if none is present, git monitoring keeps running and the trigger simply fails gracefully.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">4</div><div><h4>TLS over the LAN — broader cert SANs + smarter pinning</h4><p>The auto-generated self-signed certificate now includes your hostname and every local network-interface IP as SANs (not just loopback), and the client pins it for loopback, this machine's own LAN IP/hostname, or any cert you supply via <code>DEVTRACK_TLS_CERT</code>. Genuinely remote hosts still use the system CA roots. This makes same-machine and LAN deployments work over HTTPS without manual cert wrangling.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">5</div><div><h4>Server config: <code>\${VAR}</code> path expansion</h4><p>The Python server now expands <code>\${PROJECT_ROOT}</code> / <code>\${DATA_DIR}</code> style references in path config (recursively), so it no longer creates a directory literally named <code>\${PROJECT_ROOT}</code> when a template <code>.env</code> reaches it unexpanded. The sample <code>.env</code> was also repaired so it loads cleanly with <code>docker --env-file</code> and shell sourcing.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">6</div><div><h4>git-sage <code>undo [N]</code></h4><p>After <code>devtrack sage do &lt;task&gt;</code>, git-sage snapshots HEAD before each command batch. Type <code>undo</code> (or <code>undo 2</code>) in the follow-up loop to roll back the last N steps — no manual <code>git reset</code> needed.</p></div></div>
+</div>
+
+<h2>Upgrading to v3.0.0</h2>
+<p>Existing installs upgrade in place with <code>devtrack upgrade</code> (or re-run the install script). No configuration changes are required — the localhost default and TLS SAN improvements apply automatically once the daemon restarts and regenerates its certificate. Server operators: restart <code>devtrack-server</code> so the <code>\${VAR}</code> path expansion takes effect.</p>
+
+<hr>
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-note);border-color:var(--callout-note-border);color:#1e40af;">v2.2.11 — released</div>
 
 <h2>v2.2.11 — Uninstall Command, Upgrade Fixes &amp; Daemon Hardening</h2>
@@ -3483,7 +3501,7 @@ function renderHome() {
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v2.2.11: <code>devtrack uninstall</code>, upgrade now uses GitLab Releases API + Windows .zip, concurrent health checks, Redis/SQLite monitors, Windows single-instance lock. v2.1.0: <code>devtrack-server</code> CLI, self-update, Lightweight mode. v2.0.0: CS-3 Admin GUI MVP.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.0: standalone client (no backend needed), full Go <code>internal/</code> package refactor, local-server connection fix, broader TLS SANs for LAN, server <code>\${VAR}</code> path expansion, git-sage <code>undo</code>. v2.2.11: <code>devtrack uninstall</code>, upgrade fixes, daemon hardening.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitLab Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },

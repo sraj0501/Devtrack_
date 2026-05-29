@@ -80,6 +80,30 @@
     .orb-2 { width: 500px; height: 500px; background: var(--violet); top: 0; right: -150px; }
     .orb-3 { width: 400px; height: 400px; background: var(--teal); bottom: -100px; left: 30%; }
 
+    /* ── v3.0 hero watermark (silhouette behind the whole hero) ─────────── */
+    .hero-watermark {
+      position: absolute; top: 0; left: 0; right: 0; height: 78vh; z-index: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none; user-select: none; overflow: hidden;
+    }
+    .hero-watermark span {
+      font-family: var(--sans); font-weight: 900;
+      font-size: clamp(14rem, 48vw, 54rem);
+      line-height: .8; letter-spacing: .04em; white-space: nowrap;
+      /* very faint silhouette — sits in the background, not attention-grabbing */
+      color: rgba(130,200,255,.06);
+      -webkit-text-stroke: 2px rgba(150,215,255,.09);
+      text-shadow: 0 0 90px rgba(34,211,238,.05);
+      transform: translateY(-4%);
+      animation: fadeWatermark 1.2s .15s ease both;
+    }
+    @keyframes fadeWatermark { from { opacity: 0; transform: translateY(-4%) scale(.985); } to { opacity: 1; transform: translateY(-4%) scale(1); } }
+    /* hero content sits above the watermark */
+    .hero-inner {
+      position: relative; z-index: 1; width: 100%;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
     /* ── Nav ─────────────────────────────────────────────────────────── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 999;
@@ -648,6 +672,7 @@
       nav { padding: 0 20px; }
       .nav-links { display: none; }
       .hero { padding: 120px 20px 80px; }
+      .hero-watermark span { font-size: 40vw; -webkit-text-stroke-width: 1px; }
       .container { padding: 0 20px; }
       .features-grid { grid-template-columns: 1fr; }
       .feat-card.large { grid-column: auto; }
@@ -699,6 +724,9 @@
   <div class="orb orb-3"></div>
   <div class="orb" style="width:350px;height:350px;background:#22d3ee;top:60%;right:-80px;opacity:.07;"></div>
 
+  <div class="hero-watermark" aria-hidden="true"><span>v3.0</span></div>
+
+  <div class="hero-inner">
   <div class="hero-badge">
     <span class="dot"></span>
     Local-First · No Cloud Required · Open Source
@@ -739,6 +767,7 @@
       </div>
     </div>
   </div>
+  </div><!-- /.hero-inner -->
 
 </section>
 
