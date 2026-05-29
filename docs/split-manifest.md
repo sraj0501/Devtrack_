@@ -37,7 +37,6 @@ Excluded from this audit per spec: `.git/`, `devtrack_wiki/`, `Data/`, `.claude/
 | `docker-compose.yml` | SERVER | Starts MongoDB, Redis, PostgreSQL for Python backend |
 | `Dockerfile` | SERVER | Builds Python backend image |
 | `Dockerfile.server` | SERVER | Alternate/named server Dockerfile |
-| `devtrack-git-wrapper.sh` | CLIENT | Shell wrapper for `devtrack git` sub-command; ships with client binary |
 | `devtrack-server` | SERVER | `devtrack-server` CLI script (Python server management binary) |
 | `LICENSE` | BOTH | MIT licence; copy to both repos unchanged |
 | `TERMS.md` | BOTH | Terms of service; copy to both repos unchanged |
@@ -162,9 +161,7 @@ Everything else in `backend/` is SERVER unless noted.
 | `backlog_manager.py` | SERVER | Backlog management (PM) |
 | `project_manager.py` | SERVER | Project management API client |
 | `pm_agent.py` | SERVER | PM agent orchestration |
-| `log_work.py` | SERVER | Work log helpers |
 | `license_manager.py` | SERVER | License tier enforcement |
-| `ticket_picker.py` | SERVER | Interactive ticket selection |
 
 ### `backend/git_sage/` — CLIENT (bundled with devtrack_client)
 

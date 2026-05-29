@@ -11,6 +11,7 @@ import (
 
 	"github.com/robfig/cron/v3"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/connectors/pm"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 )
@@ -113,6 +114,9 @@ func (s *Scheduler) Start() error {
 
 	// Optional: auto-stop idle sessions
 	s.scheduleIdleSessionStop()
+
+	// Drain the offline PM update queue periodically
+	s.schedulePMQueueFlush()
 
 	return nil
 }
@@ -452,6 +456,28 @@ func (s *Scheduler) scheduleIdleSessionStop() {
 		return
 	}
 	log.Printf("✓ Work session idle auto-stop enabled (%d minutes)", idleMins)
+}
+
+// schedulePMQueueFlush periodically drains the offline PM update queue
+// (pm_update_queue), retrying ticket comments that failed to post at commit
+// time. Runs every 5 minutes and is silent when there is nothing to send.
+func (s *Scheduler) schedulePMQueueFlush() {
+	_, err := s.cron.AddFunc("0 */5 * * * *", func() {
+		database, dbErr := db.NewDatabase()
+		if dbErr != nil {
+			return
+		}
+		defer database.Close()
+		sent, failed := pm.FlushQueue(database)
+		if sent > 0 || failed > 0 {
+			log.Printf("📤 PM queue flush: %d sent, %d still pending", sent, failed)
+		}
+	})
+	if err != nil {
+		log.Printf("⚠️  Could not schedule PM queue flush: %v", err)
+		return
+	}
+	log.Printf("✓ PM update queue flusher enabled (every 5 min)")
 }
 
 // GetWorkHoursStatus returns current work hours status

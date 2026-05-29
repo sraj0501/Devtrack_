@@ -137,8 +137,7 @@ Copy-Item -Recurse devtrack_server\backend "$serverDir\backend"
 }
 if (Test-Path "devtrack_server\uv.lock")  { Copy-Item devtrack_server\uv.lock  $serverDir }
 if (Test-Path ".env_sample")              { Copy-Item .env_sample              $serverDir }
-@("devtrack_client\workspaces.yaml.example","devtrack_client\workspaces.yaml.sample",
-  "devtrack_client\devtrack-git-wrapper.sh") | ForEach-Object {
+@("devtrack_client\workspaces.yaml.example","devtrack_client\workspaces.yaml.sample") | ForEach-Object {
     if (Test-Path $_) { Copy-Item $_ $serverDir }
 }
 Set-Content "$serverDir\VERSION" $ver

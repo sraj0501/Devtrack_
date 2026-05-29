@@ -33,7 +33,7 @@ The client is a single Go binary that wires together:
 
 | File | Purpose |
 |---|---|
-| `main.go` | Entry point; routes CLI args or delegates `git` subcommand to shell wrapper |
+| `main.go` | Entry point; routes CLI args. The `git` subcommand is handled Go-natively via `gitsage.RunGit` (no bash/Python wrapper) |
 | `cli.go` | All CLI command implementations (`start`, `stop`, `status`, `logs`, etc.) |
 | `daemon.go` | Lifecycle management (PID file, signals, webhook server subprocess) |
 | `integrated.go` | `IntegratedMonitor` — wires together git monitor, scheduler, and IPC server |

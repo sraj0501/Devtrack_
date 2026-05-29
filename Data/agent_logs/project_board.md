@@ -1,8 +1,9 @@
 # DevTrack Project Board
 
 _Last updated: 2026-05-29 by PM_
-_Next DevTrack task ID: TASK-052_
+_Next DevTrack task ID: TASK-055_
 _Branch for all current work: `feature/go-client-standalone`_
+_Shipped: v3.0.0 (2026-05-29) — package refactor + client-standalone + connection/config fixes._
 
 ---
 
@@ -18,6 +19,67 @@ _Branch for all current work: `feature/go-client-standalone`_
 ## IN PROGRESS
 
 _None — TASK-A through TASK-F complete. Package refactor finished: package main is now CLI-only + shims._
+
+---
+
+## INITIATIVE: v3.x — Polish & Growth
+
+**Vision**: Now that the v3.0 standalone client is shipped and stable, the next arc is about making DevTrack *delightful* and *visible* — a beautiful themed CLI, a quiet "look how much I saved you" signal, and the first round of how-to videos to drive adoption. Keep the project visibly alive and earn user trust.
+
+**Sequencing**: TASK-052 (CLI aesthetics) first — it's the highest-impact item and makes the videos (TASK-054) look great. TASK-053 (savings counter) can run in parallel as a small self-contained win. Videos last, recording the polished CLI.
+
+---
+
+## PLANNED — v3.x
+
+### TASK-052 — CLI aesthetics & theming  ⭐ HIGHEST PRIORITY
+**Goal**: Make the `devtrack` CLI genuinely good-looking, consistent, and themeable.
+
+**Approach**:
+- Adopt **lipgloss** (Charmbracelet — already using bubbletea for the TUI) as the styling layer.
+- Define a **Theme** = palette (primary / accent / success / warn / error / muted) + styled primitives (headers, boxes, tables, badges, spinners, key-value rows).
+- **Theme selection**: `DEVTRACK_THEME` env var + config file + `devtrack theme list` / `devtrack theme set <name>`.
+- **Graceful degradation**: honor `NO_COLOR`, auto-plain on non-TTY / piped output, handle Windows terminal color quirks.
+- Route all CLI output through styled helpers (retire ad-hoc `fmt.Println`).
+
+**Phases**:
+- [ ] Phase 1 — theme engine + palette types + the default (cyan/dark, matches website brand)
+- [ ] Phase 2 — restyle high-traffic commands: `status`, `git commit`, `plan`, `boardroom`
+- [ ] Phase 3 — roll out to remaining commands + ship a theme set (cyan/dark, dracula, solarized, mono/no-color, light)
+
+**Acceptance**: consistent styling across commands; theme switch works and persists; plain output when piped / `NO_COLOR`; no Windows rendering regressions.
+
+---
+
+### TASK-053 — "Work you didn't write" savings counter
+**Goal**: Silently track and subtly surface how much manual effort DevTrack saved the user.
+
+**Metric (decided)**: proxy from the text DevTrack auto-generated *for* the user — commit messages, work updates, reports, PM comments, plans. Sum characters → approx tokens (≈ chars/4). Framed as "typing/effort you skipped," not AI cost.
+
+**Approach**:
+- SQLite counter table (cumulative + per-category: commits / updates / reports / comments / plans), incremented wherever DevTrack emits generated text on the user's behalf.
+- Display **silently / unobtrusively**: a line in `devtrack status` (e.g. "DevTrack has saved you ~48,200 tokens — 180 commit messages, 92 ticket updates, 14 reports") and optionally a tiny footer after an enhanced commit.
+- Counts accrue in standalone mode too (commit-message generation is local).
+
+**Acceptance**: counter persists across restarts; categories tracked; display is subtle and opt-out-able; works offline.
+
+---
+
+### TASK-054 — "How-to" video series  (due 2026-06-30)
+**Goal**: Publish the first round of how-to videos before the end of June 2026. **Do after TASK-052** so the CLI looks polished on camera.
+
+**Proposed topics (script + record each)**:
+- [ ] Install & setup (`devtrack setup`) — 0 → first run
+- [ ] Your first auto-standup (commit → standup update)
+- [ ] Plan command — plain-English → Epics/Stories/Tasks
+- [ ] The Boardroom — 7-persona plan review + verdict
+- [ ] Offline mode — 100% local (Ollama + SQLite)
+- [ ] Telegram bot — control DevTrack from your phone
+- [ ] PM sync — GitHub / Azure DevOps / Jira
+
+**Tooling**: terminal demos via asciinema or `vhs` (reproducible, clean) showcasing the themed CLI from TASK-052.
+
+**Acceptance**: first batch published (devtrack.cloud / YouTube) before 2026-06-30.
 
 ---
 

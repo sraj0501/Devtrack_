@@ -1,56 +1,27 @@
 # Known Issues & Debugging Notes
 
-## AI Enhancement Intermittent Failure
+## AI Commit Enhancement (Go-native)
 
-**Status:** Investigated, root cause identified
+**Status:** Resolved — reimplemented in Go (v3.0)
 
-**Issue:** The `devtrack git commit` wrapper's AI enhancement sometimes fails silently with "AI enhancement failed" message, even though the LLM provider is available.
+As of v3.0, `devtrack git commit` is handled **natively in Go** (`devtrack_client/gitsage/commit.go`). The legacy `devtrack-git-wrapper.sh` shell wrapper — which shelled out to the Python backend and relied on a fragile stdout `grep -q "enhanced"` check — has been **removed**, along with the wrapper-only scripts `log_work.py` and `ticket_picker.py`. The old stdout/stderr mismatch failure mode no longer applies.
 
-### Investigation Results
+### Current behaviour
 
-- ✅ Ollama is running and responsive (`curl http://localhost:11434/api/tags` works)
-- ✅ Ollama API responds correctly to test prompts (curl returns proper JSON responses)
-- ✅ `backend.ai.ollama_client.generate()` works when called directly
-- ✅ `backend.llm.OllamaProvider` works when tested in isolation
-- ✅ Provider chain works when tested directly
-- ⚠️ `CommitMessageEnhancer.enhance_message_with_ai()` returns original message unchanged
-- ⚠️ The wrapper script's grep check for "enhanced" in stdout doesn't find it (because Python logging goes to stderr, not stdout)
+- `devtrack git commit [-m msg]` generates a Conventional-Commits message from the staged diff using the same LLM provider config as `devtrack sage` (`SAGE_PROVIDER` / `GIT_SAGE_PROVIDER`, model via `GIT_SAGE_DEFAULT_MODEL` / `SAGE_MODEL` / `GROQ_MODEL`).
+- Interactive **A**ccept / **E**nhance / **R**egenerate / **C**ancel loop; auto-accepts when stdin is not a TTY (piped / CI).
+- `--dry-run` previews the message without committing; `--no-enhance` commits your message as-is.
+- `add`, `history`, and all other git subcommands pass straight through to `git`.
+- **Graceful degradation:** if the LLM provider is unreachable, the commit proceeds with your message as-is (a standalone client has no server fallback).
+- **Interactive extras (v3.0, native Go):** an interactive terminal also gets a ticket picker (links the commit and appends a `Refs: <id>` trailer), a time-tracking prompt, immediate PM sync of a commit comment, and an auto-push prompt. PM posting uses the Go connectors (GitHub/GitLab/Azure); failures are queued to `pm_update_queue` and drained by the daemon when back online. All extras skip gracefully without PM credentials, on `pm_platform: none`, or with no open tickets.
 
-### Root Causes
+### Caveat: reasoning models
 
-1. **Stdout/Stderr Issue (FIXED)**
-   - The `commit_message_enhancer.py` script only logs via Python's logging module (stderr)
-   - The wrapper script checks stdout for the word "enhanced": `if echo "$ENHANCEMENT_OUTPUT" | grep -q "enhanced"`
-   - **Fix applied:** Added `print("enhanced", file=sys.stdout)` when enhancement succeeds
-   - **Status:** Fix is in place but needs testing with actual git commits
+Reasoning models (e.g. `qwen3`) stream `thinking` tokens before the answer; the shared 120s client timeout in `gitsage/llm.go` can elapse before the real `content` arrives, yielding an empty message and triggering the plain-commit fallback. Use a non-reasoning model (e.g. `gemma`) for reliable AI commits.
 
-2. **Enhancement Logic Issue (NOT FULLY RESOLVED)**
-   - The `enhance_message_with_ai()` method is returning the original message unchanged
-   - Direct LLM calls work, but something in the enhancement logic is swallowing the response
-   - Possible causes:
-     - The LLM response is being filtered/rejected by the cleanup logic
-     - An exception is being caught silently
-     - The prompt is malformed
+### Debugging checklist
 
-### Recommendations
-
-1. **Short term:** Test with actual commits to verify the stdout fix works
-2. **Medium term:** Add detailed logging to `enhance_message_with_ai()` to track:
-   - Whether LLM is called
-   - What prompt is sent
-   - What response is received
-   - What filtering/rejection conditions are met
-3. **Long term:** Consider moving enhancement to be optional (with fallback to original message)
-
-### Files Modified
-
-- `backend/commit_message_enhancer.py`: Added stdout output on success
-- `devtrack-git-wrapper.sh`: Already checks for "enhanced" in output (uses `grep -q`)
-
-### Testing Checklist
-
-- [ ] Test `devtrack git commit -m "message"` with actual staged changes
-- [ ] Verify "✓ AI-enhanced commit message:" appears
-- [ ] Check that message is actually enhanced (not original)
-- [ ] Test with different types of commits (bugfix, feature, docs, etc.)
-- [ ] Verify fallback to original message works when enhancement fails
+- [ ] Verify the LLM provider is reachable (`curl $OLLAMA_HOST/api/tags`)
+- [ ] Confirm `GIT_SAGE_DEFAULT_MODEL` names a model you actually have installed
+- [ ] Test `devtrack git commit -m "message"` with staged changes
+- [ ] Confirm fallback works: with the provider stopped, the commit still goes through with your message

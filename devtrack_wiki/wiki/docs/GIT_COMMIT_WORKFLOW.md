@@ -289,9 +289,13 @@ Run without --dry-run to commit with interactive refinement.
 
 ## Architecture Notes
 
-The wrapper script manages:
+As of v3.0 this flow is implemented **natively in Go** (`devtrack_client/gitsage/commit.go`); the legacy `devtrack-git-wrapper.sh` shell wrapper and its Python helpers (`log_work.py`, `ticket_picker.py`) have been removed. The Go-native commit flow manages:
 - **Attempt counting**: Tracks which attempt (1-5) you're on
 - **Message state**: Keeps track of current message vs. original message
 - **Input routing**: Maps E/R correctly to next attempt's input
-- **Fallback handling**: If AI unavailable, shows message anyway
+- **Fallback handling**: If the LLM provider is unreachable, it commits with your message as-is
 - **Clean exit**: Preserves staged changes on cancel
+
+The interactive extras from the original wrapper are **reimplemented natively in Go** (v3.0): the **ticket picker** (bubbletea split-pane, with a numbered-list fallback on non-TTY), the **time-tracking** prompt, **immediate PM sync** of a commit comment (with an offline `pm_update_queue` fallback that the daemon drains), and the **auto-push** prompt. These run only in an interactive terminal and skip gracefully when there are no PM credentials, `pm_platform: none`, or no open tickets.
+
+> **Note:** The AI model is selected via `GIT_SAGE_DEFAULT_MODEL` / `SAGE_MODEL` / `GROQ_MODEL` (per `SAGE_PROVIDER` / `GIT_SAGE_PROVIDER`). PM ticket comments use the Go connectors (GitHub / GitLab / Azure); Jira workspaces skip the PM steps. Set credentials per platform (`GITHUB_TOKEN`, `AZURE_DEVOPS_PAT`/`AZURE_ORG`/`AZURE_PROJECT`, `GITLAB_PAT`).

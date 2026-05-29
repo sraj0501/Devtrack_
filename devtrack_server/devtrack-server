@@ -90,7 +90,6 @@ cmd_install() {
     cp -r "$src_dir/backend"               "$SERVER_HOME/"
     cp    "$src_dir/python_bridge.py"      "$SERVER_HOME/"
     cp    "$src_dir/pyproject.toml"        "$SERVER_HOME/"
-    cp    "$src_dir/devtrack-git-wrapper.sh" "$SERVER_HOME/"
     [[ -f "$src_dir/uv.lock" ]]      && cp "$src_dir/uv.lock"      "$SERVER_HOME/"
     [[ -f "$src_dir/.env_sample" ]]  && cp "$src_dir/.env_sample"  "$SERVER_HOME/"
     [[ -f "$src_dir/VERSION" ]]      && cp "$src_dir/VERSION"       "$SERVER_HOME/"
