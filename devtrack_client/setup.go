@@ -17,9 +17,8 @@ import (
 type DevTrackMode string
 
 const (
-	ModeLightweight DevTrackMode = "lightweight"
-	ModeExternal    DevTrackMode = "external"
-	ModeManaged     DevTrackMode = "managed"
+	ModeExternal DevTrackMode = "external"
+	ModeManaged  DevTrackMode = "managed"
 )
 
 // SetupConfig holds all values collected during the setup wizard.
@@ -66,9 +65,16 @@ func RunSetup() error {
 
 	// ── 0. Mode selection ─────────────────────────────────────────────────────
 	fmt.Println("Which mode do you want to run DevTrack in?")
-	fmt.Println("  [1] Managed    (default) — full AI features. Requires Python backend/ on this machine.")
-	fmt.Println("  [2] Lightweight           — git monitoring + scheduling only. No Python needed.")
-	fmt.Println("  [3] External              — daemon only; Python runs on a separate server.")
+	fmt.Println("  [1] Managed   (default) — daemon spawns Python server automatically.")
+	fmt.Println("                            Full AI features: reports, commit enhancement, integrations.")
+	fmt.Println("                            Python must be installed on this machine.")
+	fmt.Println("  [2] External            — daemon connects to a Python server elsewhere.")
+	fmt.Println("                            Same machine (separate process), LAN, or cloud.")
+	fmt.Println("                            Set DEVTRACK_SERVER_URL and DEVTRACK_API_KEY in .env,")
+	fmt.Println("                            or use: devtrack cloud login --url URL --key KEY")
+	fmt.Println()
+	fmt.Println("  Note: git monitoring, scheduling, git-sage, and connector sync work in both modes.")
+	fmt.Println("        AI enrichment (NLP, reports, boardroom) requires the Python server.")
 	fmt.Println()
 	fmt.Print("Choice [1]: ")
 	modeChoice := readLine(reader)
@@ -77,8 +83,6 @@ func RunSetup() error {
 	var selectedMode DevTrackMode
 	switch modeChoice {
 	case "2":
-		selectedMode = ModeLightweight
-	case "3":
 		selectedMode = ModeExternal
 	default:
 		selectedMode = ModeManaged
@@ -412,7 +416,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 
 	b.WriteString("## PATHS\n")
 	b.WriteString("PROJECT_ROOT=" + cfg.ProjectRoot + "\n")
-	b.WriteString("DEVTRACK_HOME=" + filepath.Join(cfg.ProjectRoot, "devtrack-bin") + "\n")
+	b.WriteString("DEVTRACK_HOME=" + filepath.Join(cfg.ProjectRoot, "devtrack_client") + "\n")
 	b.WriteString("DEVTRACK_WORKSPACE=" + cfg.WorkspacePath + "\n")
 	b.WriteString("WORKSPACES_FILE=" + filepath.Join(filepath.Dir(dataDir), "workspaces.yaml") + "\n")
 	b.WriteString("DATA_DIR=" + dataDir + "\n")
@@ -854,7 +858,7 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 		"# pm_platform options: azure | github | gitlab | jira | none\n\n" +
 		"version: \"1\"\nworkspaces:\n" +
 		"  - name: \"" + name + "\"\n" +
-		"    path: \"" + workspacePath + "\"\n" +
+		"    path: \"" + filepath.ToSlash(workspacePath) + "\"\n" +
 		"    pm_platform: \"" + pmPlatform + "\"\n" +
 		"    pm_project: \"\"\n" +
 		"    enabled: true\n" +
@@ -865,20 +869,6 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 		"    pm_area_path: \"\"\n" +
 		"    pm_milestone: 0\n"
 	return os.WriteFile(path, []byte(content), 0644)
-}
-
-// devtrackDataHome returns the XDG data home directory for DevTrack.
-// Default: ~/.local/share/devtrack. Honours $XDG_DATA_HOME if set.
-func devtrackDataHome() (string, error) {
-	base := os.Getenv("XDG_DATA_HOME")
-	if base == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		base = filepath.Join(home, ".local", "share")
-	}
-	return filepath.Join(base, "devtrack"), nil
 }
 
 // printAutostartInstructions shows the autostart command.
@@ -929,11 +919,13 @@ func printSetupComplete(projectRoot string, mode DevTrackMode) {
 		fmt.Println("Edit .env at any time to add integrations (GitHub, Azure, Jira, etc.)")
 	} else {
 		fmt.Println("Next steps:")
-		fmt.Println("  1. Start DevTrack:  devtrack start")
-		fmt.Println("  2. Check status:    devtrack status")
+		fmt.Println("  1. Set DEVTRACK_SERVER_URL in .env to point at your Python server.")
+		fmt.Println("     Or run: devtrack cloud login --url https://<host> --key <key>")
+		fmt.Println("  2. Start DevTrack:  devtrack start")
+		fmt.Println("  3. Check status:    devtrack status")
 		fmt.Println()
-		fmt.Println("Note: AI features (reports, integrations, commit enhancement) require Managed mode.")
-		fmt.Println("Re-run 'devtrack setup' and choose [1] to enable them.")
+		fmt.Println("Note: AI features require the Python server to be reachable at DEVTRACK_SERVER_URL.")
+		fmt.Println("Without a server URL, git monitoring and scheduling still run normally.")
 	}
 	fmt.Println()
 }

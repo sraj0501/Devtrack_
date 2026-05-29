@@ -1,12 +1,12 @@
 ---
 name: Deployment operations
-description: devtrack upgrade command and devtrack-server bash CLI for External-mode deployments
+description: Release script, devtrack-server bash CLI, and versioned migrations
 type: project
 ---
 
-## `devtrack upgrade`
+## Releases
 
-Fetches from **GitLab** Releases API (`devtrack3_cloud/devtrack_client`) — not GitHub. Assets: `devtrack_{GOOS}_{GOARCH}.zip` (Windows) / `.tar.gz` (others). Auto-runs versioned migrations then restarts daemon.
+`scripts/release.ps1 [-Bump patch|minor|major]` — local release script. Builds 5 cross-compile targets, creates GitHub release via `gh`, updates wiki version badge, pushes to main. No CI/CD.
 
 **Migrations** (`~/.devtrack/migrations.json`): idempotent, append-only. Add new entries only at end of `allMigrations` in `migrations.go`.
 

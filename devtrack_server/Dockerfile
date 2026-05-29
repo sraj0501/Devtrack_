@@ -49,8 +49,6 @@ ENV VIRTUAL_ENV="/opt/venv"
 
 # Copy backend source
 COPY backend/ ./backend/
-COPY python_bridge.py ./
-COPY .env_sample ./
 
 # Data directory for SQLite, logs, etc.
 RUN mkdir -p /app/Data
@@ -59,6 +57,6 @@ RUN mkdir -p /app/Data
 EXPOSE 35893 8089
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import socket; s=socket.socket(); s.connect(('127.0.0.1', 35893)); s.close()" 2>/dev/null || exit 1
+    CMD curl -sf http://localhost:8089/health || exit 1
 
-CMD ["python", "python_bridge.py"]
+CMD ["python", "-m", "backend.webhook_server"]

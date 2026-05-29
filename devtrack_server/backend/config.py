@@ -14,6 +14,27 @@ from pathlib import Path
 from typing import Optional
 
 
+def _expand(val: str) -> str:
+    """Expand ${VAR} / $VAR references in a value against the environment.
+
+    .env templates use ${PROJECT_ROOT}/Data style references. Several launch
+    paths reach this process without expanding them: the Go .env loader does not
+    do interpolation, nor do PowerShell `set`/plain `uv run`. Without expansion a
+    literal value like "${PROJECT_ROOT}/Data" is used verbatim and a directory
+    literally named "${PROJECT_ROOT}" gets created. Expand here, recursively, so
+    nested references (DATABASE_DIR=${DATA_DIR}/db, DATA_DIR=${PROJECT_ROOT}/Data)
+    resolve. Unresolved references are left untouched by os.path.expandvars.
+    """
+    if not val or "$" not in val:
+        return val
+    for _ in range(10):
+        expanded = os.path.expandvars(val)
+        if expanded == val:
+            break
+        val = expanded
+    return val
+
+
 def _find_project_root() -> Path:
     """Find project root without loading any .env file.
 
@@ -24,7 +45,7 @@ def _find_project_root() -> Path:
     """
     proot = os.getenv("PROJECT_ROOT")
     if proot:
-        p = Path(proot).expanduser()
+        p = Path(_expand(proot)).expanduser()
         if p.exists():
             return p
 
@@ -65,11 +86,16 @@ def get_bool(key: str, default: bool = False) -> bool:
 
 
 def get_path(key: str, default: Optional[str] = None) -> Path:
-    """Get config value as expanded path."""
+    """Get config value as an expanded path.
+
+    Expands ${VAR}/$VAR references (see _expand) and ~, so values like
+    DATA_DIR=${PROJECT_ROOT}/Data resolve to a real path instead of creating a
+    directory literally named "${PROJECT_ROOT}".
+    """
     val = get(key, default)
     if not val:
         return Path(default or ".").expanduser()
-    return Path(val).expanduser()
+    return Path(_expand(val)).expanduser()
 
 
 # --- Project paths ---

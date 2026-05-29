@@ -1,20 +1,21 @@
 ---
 name: Project current state
-description: v2.2.14 — completed work and immediate next tasks
+description: v2.2.22 — GitLab retired, GitHub is sole source of truth, devtrack.cloud live
 type: project
 ---
 
-**Version:** v2.2.14. Active branch: `features/SPLIT-001-monorepo-restructure`.
+**Version:** v2.2.22 (2026-05-27). Branch: `main`.
 
-**Done:**
-- EPIC-SPLIT (TASK-041–TASK-048): `devtrack_client/`, `devtrack_server/`, `devtrack_wiki/` canonical; `devtrack-bin/` and root `backend/` deleted.
-- TASK-049 (wiki rewrite): COMPLETE 2026-05-24. Wiki is how-to only — no ADRs, no phase docs.
-- Boardroom (`devtrack boardroom` / `devtrack plan`, 7 AI personas), upgrade via GitLab Releases, uninstall, health, Windows single-instance lock.
-- Server port: **8089**.
+**Monorepo layout (all on GitHub `sraj0501/Devtrack_`):**
+- `devtrack_client/` — Go binary + bundled git-sage
+- `devtrack_server/` — Python AI pipeline, NLP, LLM, boardroom, admin UI. Port: **8089**
+- `devtrack_wiki/` — docs site, Netlify auto-deploys from `devtrack_wiki/wiki/` on push to main
+- `devtrack-bin/` and root `backend/` — LEGACY, being retired in TASK-048, no new code
 
-**What's next (in order):**
-1. TASK-050: GitLab cut-over — subtree-push after full e2e testing.
-2. Delete `devtrack_contract` GitLab repo (DEAD).
-3. Build-runner: create `devtrack3_cloud/build-runner` repo, then run engineer against `docs/build-runner-plan.md` (BR-001–BR-009 on board).
+**GitLab: fully retired.** All repos deleted/archived as of 2026-05-27.
+
+**Releases:** Local only — `.\scripts\release.ps1 [-Bump patch|minor|major]`. Builds 5 targets, creates GitHub release via `gh`, updates wiki version badge, pushes to main. No GitHub Actions workflows remain.
+
+**Website:** devtrack.cloud on Netlify (paid). `install.sh` / `install.ps1` at devtrack.cloud/install.* fetch from GitHub releases.
 
 **Keep:** `migration` branch — historical reference, do NOT delete.

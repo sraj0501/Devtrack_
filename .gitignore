@@ -38,7 +38,3 @@ workspaces.yaml
 .claude/settings.local.json
 .claude/worktrees/
 
-# Local clones of GitLab split repos (separate git repos, not submodules)
-# NOTE: devtrack_client/ and devtrack_server/ are tracked as part of the EPIC-SPLIT
-# restructure (TASK-042/TASK-043). They are source directories, not git repo clones.
-devtrack_wiki/

@@ -1,19 +1,22 @@
 ---
-name: Local Claude Code agents
-description: project-vision, devtrack-engineer, git-agent, memory-compactor, post-generator — roles and board format
+name: Agent system
+description: 6 global agents at ~/.claude/agents/; pm-config.md drives project-specific values
 type: project
 ---
 
-Five agents in `.claude/agents/`. Always invoke `project-vision` first; it creates board tasks and dispatches the engineer. Never invoke `devtrack-engineer` without a board task.
+**Global agents** at `~/.claude/agents/` (6): project-vision, engineer, git-agent, memory-compactor, post-generator, production-engineer. Same agents reused across all projects via `.claude/pm-config.md`.
 
-**Runtime files** (gitignored): `Data/agent_logs/project_board.md` (task board), `Data/agent_logs/engineer_log.md` (per-commit log).
+**DevTrack pm-config:** `D:\git_apps\Devtrack_\.claude\pm-config.md`
 
-**Core rules:** commits via `devtrack git commit` only; every task on a typed branch; board+log updated after every commit; PRs require developer approval before merge.
+**Invocation rules:**
+- Always invoke `project-vision` first; it creates board tasks and dispatches the engineer.
+- Never invoke `engineer` without a board task.
+- Use `git-agent` for branch/push/PR (not raw commands). `git-agent` never commits code.
+- `memory-compactor` runs Sunday 9:13am cron; compacts both `.claude/memory/` dirs.
+- `post-generator` weekly: engineer log → dev.to / HN / LinkedIn posts.
+
+**Runtime files** (gitignored): `Data/agent_logs/project_board.md`, `Data/agent_logs/engineer_log.md`.
 
 **Engineer log format:** `### [YYYY-MM-DD HH:MM] TASK-NNN — <what> / Original: "..." / Enhanced: "..." / Ticket: YES/NO / PM: YES/NO / Friction: LOW|MED|HIGH`
 
-**git-agent:** pure plumbing — branches, push, merge to dev, PR (`--base dev`). Never commits code.
-
-**memory-compactor:** Sunday 9:13am cron; compacts both `.claude/memory/` dirs; no manual action needed.
-
-**post-generator:** weekly — engineer log → dev.to / HN / LinkedIn posts.
+**Bootstrap any new project:** run `/init` — generates CLAUDE.md + .claude/pm-config.md. Fill `vision.rules` and `posts.author` manually.
