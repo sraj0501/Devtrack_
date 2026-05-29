@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -73,6 +74,39 @@ func LoadWorkspacesConfig() (*WorkspacesConfig, error) {
 	}
 
 	return cfg, nil
+}
+
+// ResolveWorkspaceForPath returns the enabled workspace whose Path best matches
+// (longest prefix of) the given filesystem path. Returns (nil, nil) when there
+// is no workspaces.yaml or no matching workspace (single-repo / unconfigured mode).
+func ResolveWorkspaceForPath(p string) (*WorkspaceConfig, error) {
+	cfg, err := LoadWorkspacesConfig()
+	if err != nil || cfg == nil {
+		return nil, err
+	}
+
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		abs = p
+	}
+	abs = filepath.Clean(abs)
+
+	var best *WorkspaceConfig
+	bestLen := -1
+	for i := range cfg.Workspaces {
+		ws := &cfg.Workspaces[i]
+		if !ws.Enabled {
+			continue
+		}
+		wp := filepath.Clean(ws.Path)
+		if abs == wp || strings.HasPrefix(abs, wp+string(filepath.Separator)) {
+			if len(wp) > bestLen {
+				best = ws
+				bestLen = len(wp)
+			}
+		}
+	}
+	return best, nil
 }
 
 // expandWorkspacePath expands ~ to home directory in workspace paths

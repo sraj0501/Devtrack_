@@ -19,10 +19,16 @@ type Message struct {
 
 // chatRequest is sent to Ollama's /api/chat endpoint.
 type chatRequest struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-	Stream   bool      `json:"stream"`
-	Format   string    `json:"format,omitempty"` // "json" for structured output
+	Model    string         `json:"model"`
+	Messages []Message      `json:"messages"`
+	Stream   bool           `json:"stream"`
+	Format   string         `json:"format,omitempty"` // "json" for structured output
+	Options  *ollamaOptions `json:"options,omitempty"`
+}
+
+// ollamaOptions carries generation tunables for the Ollama /api/chat endpoint.
+type ollamaOptions struct {
+	NumPredict int `json:"num_predict,omitempty"` // max tokens to generate; 0 = model default
 }
 
 type chatResponseChunk struct {
@@ -58,23 +64,28 @@ func LoadLLMConfig() LLMConfig {
 
 // Chat sends messages to the LLM and returns the complete response text.
 func (cfg LLMConfig) Chat(messages []Message) (string, error) {
-	return cfg.chat(messages, false)
+	return cfg.chat(messages, false, 0)
 }
 
 // ChatJSON sends messages requesting structured JSON output.
 func (cfg LLMConfig) ChatJSON(messages []Message) (string, error) {
-	return cfg.chat(messages, true)
+	return cfg.chat(messages, true, 0)
 }
 
-func (cfg LLMConfig) chat(messages []Message, jsonMode bool) (string, error) {
+// ChatWithTokens sends messages with an explicit max-token budget (0 = model default).
+func (cfg LLMConfig) ChatWithTokens(messages []Message, maxTokens int) (string, error) {
+	return cfg.chat(messages, false, maxTokens)
+}
+
+func (cfg LLMConfig) chat(messages []Message, jsonMode bool, maxTokens int) (string, error) {
 	if cfg.Provider == "openai" || cfg.Provider == "groq" || cfg.Provider == "lmstudio" {
-		return cfg.chatOpenAI(messages, jsonMode)
+		return cfg.chatOpenAI(messages, jsonMode, maxTokens)
 	}
-	return cfg.chatOllama(messages, jsonMode)
+	return cfg.chatOllama(messages, jsonMode, maxTokens)
 }
 
 // chatOllama calls the Ollama /api/chat streaming endpoint.
-func (cfg LLMConfig) chatOllama(messages []Message, jsonMode bool) (string, error) {
+func (cfg LLMConfig) chatOllama(messages []Message, jsonMode bool, maxTokens int) (string, error) {
 	req := chatRequest{
 		Model:    cfg.Model,
 		Messages: messages,
@@ -82,6 +93,9 @@ func (cfg LLMConfig) chatOllama(messages []Message, jsonMode bool) (string, erro
 	}
 	if jsonMode {
 		req.Format = "json"
+	}
+	if maxTokens > 0 {
+		req.Options = &ollamaOptions{NumPredict: maxTokens}
 	}
 
 	body, err := json.Marshal(req)
@@ -125,10 +139,11 @@ func (cfg LLMConfig) chatOllama(messages []Message, jsonMode bool) (string, erro
 
 // openAIRequest is the request body for OpenAI-compatible /v1/chat/completions.
 type openAIRequest struct {
-	Model          string         `json:"model"`
-	Messages       []Message      `json:"messages"`
-	Stream         bool           `json:"stream"`
+	Model          string          `json:"model"`
+	Messages       []Message       `json:"messages"`
+	Stream         bool            `json:"stream"`
 	ResponseFormat *responseFormat `json:"response_format,omitempty"`
+	MaxTokens      int             `json:"max_tokens,omitempty"`
 }
 
 type responseFormat struct {
@@ -149,7 +164,7 @@ type openAIResponse struct {
 
 // chatOpenAI calls an OpenAI-compatible /v1/chat/completions endpoint.
 // Supports OpenAI, Groq, LM Studio, and any other OpenAI-compatible provider.
-func (cfg LLMConfig) chatOpenAI(messages []Message, jsonMode bool) (string, error) {
+func (cfg LLMConfig) chatOpenAI(messages []Message, jsonMode bool, maxTokens int) (string, error) {
 	req := openAIRequest{
 		Model:    cfg.Model,
 		Messages: messages,
@@ -157,6 +172,9 @@ func (cfg LLMConfig) chatOpenAI(messages []Message, jsonMode bool) (string, erro
 	}
 	if jsonMode {
 		req.ResponseFormat = &responseFormat{Type: "json_object"}
+	}
+	if maxTokens > 0 {
+		req.MaxTokens = maxTokens
 	}
 
 	body, err := json.Marshal(req)

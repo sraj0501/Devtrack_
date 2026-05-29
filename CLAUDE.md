@@ -97,7 +97,7 @@ The Go client sends triggers to the Python server over HTTPS POST (CS-1 transpor
 
 | File | Purpose |
 |---|---|
-| `devtrack_client/main.go` | Entry point; routes CLI args or delegates `git` subcommand to shell wrapper |
+| `devtrack_client/main.go` | Entry point; routes CLI args. The `git` subcommand runs Go-natively via `gitsage.RunGit` (no shell wrapper) |
 | `devtrack_client/cli.go` | All CLI command implementations (`start`, `stop`, `status`, `logs`, etc.) |
 | `devtrack_client/daemon.go` | Lifecycle management (PID file, signals, webhook server subprocess) |
 | `devtrack_client/integrated.go` | `IntegratedMonitor` — wires together git monitor, scheduler, and IPC server |
@@ -483,7 +483,7 @@ All user-facing documentation has been reorganized for clarity:
 
 ## Key Patterns
 
-- **Client entry point**: `devtrack_client/main.go` is the Go binary entry point. It routes CLI args or delegates `git` subcommand to the shell wrapper. The legacy `devtrack-bin/main.go` is a mirror being retired in TASK-048.
+- **Client entry point**: `devtrack_client/main.go` is the Go binary entry point. It routes CLI args; the `git` subcommand is handled Go-natively by `gitsage.RunGit` (`devtrack_client/gitsage/commit.go`) — AI-enhanced commit, `add`, `history`, and transparent pass-through for all other git commands, with no dependency on `devtrack-git-wrapper.sh` or the Python backend. The legacy `devtrack-bin/main.go` is a mirror being retired in TASK-048.
 - **Server entry point**: `devtrack_server/backend/webhook_server.py` is the Python process the Go client spawns (in managed mode) or connects to (in external mode). It handles both inbound webhook events (Azure/GitHub/GitLab/Jira) and trigger calls from the Go client (`/trigger/commit`, `/trigger/timer`, etc.). `python_bridge.py` at the monorepo root is a legacy reference only — do not use it for new code.
 - **HTTP API boundary**: Client and server share no compiled artefact. The only interface is HTTPS POST to `/trigger/*` and related endpoints. See `docs/HTTP_API.md` for the full contract. The legacy TCP IPC channel (`127.0.0.1:35893`) is retained but new trigger types must use HTTP.
 - **git-sage ownership**: git-sage is client-owned Python, bundled at `devtrack_client/git_sage/`. It is NOT in `devtrack_server/`. Invoke as `python -m backend.git_sage` from the client's Python environment.
