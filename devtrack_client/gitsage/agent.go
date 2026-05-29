@@ -37,15 +37,57 @@ Commands must be safe: no force-push to main/master, no destructive resets witho
 Each command is a single shell command string. Use only git, echo, cat, ls, mkdir.
 `)
 
+// StepLog records HEAD snapshots taken before each command batch,
+// enabling undo of any individual agent step.
+type StepLog struct {
+	heads []string
+}
+
+// Record snapshots the current HEAD into the log.
+func (s *StepLog) Record(repoPath string) {
+	g := NewGitOps(repoPath)
+	head, err := g.HEAD()
+	if err == nil && head != "" {
+		s.heads = append(s.heads, head)
+	}
+}
+
+// Undo resets the repository to the HEAD recorded N steps ago.
+// n=1 undoes the last step, n=2 the one before that, etc.
+func (s *StepLog) Undo(repoPath string, n int) error {
+	if n <= 0 || n > len(s.heads) {
+		return fmt.Errorf("undo: only %d step(s) recorded (requested %d)", len(s.heads), n)
+	}
+	target := s.heads[len(s.heads)-n]
+	g := NewGitOps(repoPath)
+	if _, err := g.ResetToRef(target); err != nil {
+		return fmt.Errorf("undo: reset to %s failed: %w", target[:8], err)
+	}
+	s.heads = s.heads[:len(s.heads)-n]
+	fmt.Printf("undo: reset to %s\n", target[:8])
+	return nil
+}
+
+// UndoStep is the standalone entry point for "devtrack sage undo [N]".
+// It re-runs a minimal agentic context to undo N steps using a StepLog
+// passed in from the caller. If log is nil, reports no history.
+func UndoStep(repoPath string, log *StepLog, n int) error {
+	if log == nil || len(log.heads) == 0 {
+		return fmt.Errorf("undo: no steps recorded in this session")
+	}
+	return log.Undo(repoPath, n)
+}
+
 // Do executes a task autonomously using an agentic loop.
-func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
+// It returns a StepLog of HEAD snapshots so the caller can offer undo in the follow-up loop.
+func Do(repoPath, task string, cfg LLMConfig, verbose bool) (*StepLog, error) {
 	if !cfg.Ping() {
-		return fmt.Errorf("Ollama is not running at %s\nStart it with: ollama serve", cfg.Host)
+		return nil, fmt.Errorf("Ollama is not running at %s\nStart it with: ollama serve", cfg.Host)
 	}
 
 	ctx, err := CollectContext(repoPath)
 	if err != nil {
-		return fmt.Errorf("failed to collect git context: %w", err)
+		return nil, fmt.Errorf("failed to collect git context: %w", err)
 	}
 
 	systemMsg := agentSystemPrompt
@@ -56,12 +98,13 @@ func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
 		{Role: "user", Content: userMsg},
 	}
 
+	log := &StepLog{}
 	fmt.Printf("sage: starting task — %s\n\n", task)
 
 	for range maxSteps {
 		raw, err := cfg.ChatJSON(messages)
 		if err != nil {
-			return err
+			return log, err
 		}
 
 		if verbose {
@@ -72,7 +115,7 @@ func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
 		var parsed agentStep
 		if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
 			fmt.Println(raw)
-			return nil
+			return log, nil
 		}
 
 		if parsed.Thought != "" {
@@ -86,16 +129,24 @@ func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
 			} else {
 				fmt.Println("done.")
 			}
-			return nil
+			return log, nil
 		}
 
 		if len(parsed.Commands) == 0 {
-			return fmt.Errorf("sage: model returned no commands and done=false — stopping")
+			return log, fmt.Errorf("sage: model returned no commands and done=false — stopping")
 		}
+
+		// Snapshot HEAD before executing so this batch can be undone.
+		log.Record(repoPath)
 
 		// Execute each command and collect output
 		var execOutput strings.Builder
 		for _, cmdStr := range parsed.Commands {
+			if err := safetyCheck(cmdStr); err != nil {
+				fmt.Printf("  blocked: %v\n", err)
+				fmt.Fprintf(&execOutput, "$ %s\nBLOCKED: %v\n", cmdStr, err)
+				continue
+			}
 			fmt.Printf("  $ %s\n", cmdStr)
 			out, runErr := runCommand(repoPath, cmdStr)
 			if out != "" {
@@ -115,7 +166,7 @@ func Do(repoPath, task string, cfg LLMConfig, verbose bool) error {
 		fmt.Println()
 	}
 
-	return fmt.Errorf("sage: reached max steps (%d) without completing task", maxSteps)
+	return log, fmt.Errorf("sage: reached max steps (%d) without completing task", maxSteps)
 }
 
 // runCommand executes a single shell command string in the repo directory.
@@ -160,6 +211,11 @@ func splitCommand(s string) []string {
 		args = append(args, current.String())
 	}
 	return args
+}
+
+// unmarshalAgentStep decodes raw JSON into an agentStep. Exported for use in cli.go.
+func unmarshalAgentStep(raw string, out *agentStep) error {
+	return json.Unmarshal([]byte(raw), out)
 }
 
 // safetyCheck returns an error if the command would be destructive on protected branches.

@@ -193,7 +193,7 @@ func (dcm *DeferredCommitManager) ExpireOldCommits() (int, error) {
 	cutoff := time.Now().Add(-time.Duration(expiryHours) * time.Hour)
 
 	// This would need a new DB method; for now use inline query
-	result, err := dcm.db.db.Exec(`
+	result, err := dcm.db.Exec(`
 		UPDATE deferred_commits
 		SET status = 'expired', updated_at = ?
 		WHERE status IN ('pending', 'enhanced') AND created_at < ?

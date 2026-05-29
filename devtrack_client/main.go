@@ -12,14 +12,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
 )
 
 func main() {
 	// Auto-load .env before any command processing.
 	// Existing env vars (shell exports, CI, secret managers) are never overridden.
 	AutoLoadEnv()
+
+	// Propagate the ldflags-injected version into internal/config so that
+	// GetDevTrackVersion() returns the correct value everywhere.
+	SetBuildVersion(Version)
 
 	// Check if CLI command is provided
 	if len(os.Args) > 1 {
@@ -28,12 +30,6 @@ func main() {
 		// Delegate "git" to devtrack-git-wrapper.sh for AI-enhanced commits
 		if cmd == "git" {
 			runGitWrapper()
-			return
-		}
-
-		// Delegate "sage" to the Python git-sage module
-		if cmd == "sage" {
-			runGitSage()
 			return
 		}
 
@@ -105,6 +101,7 @@ func main() {
 				os.Exit(1)
 			}
 			if err := cli.Execute(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
 			return
@@ -133,12 +130,10 @@ func main() {
 			cmd == "shell-init" || cmd == "is-workspace" || cmd == "enable-git" || cmd == "disable-git" ||
 			cmd == "launchd-install" || cmd == "launchd-uninstall" ||
 			cmd == "alerts" ||
+			cmd == "sage" ||
 			cmd == "work" ||
-			cmd == "github-check" || cmd == "github-list" || cmd == "github-sync" ||
-			cmd == "github-view" || cmd == "github-create" ||
-			cmd == "gitlab-check" || cmd == "gitlab-list" || cmd == "gitlab-sync" ||
-			cmd == "gitlab-view" || cmd == "gitlab-create" ||
-			cmd == "jira-check" || cmd == "jira-list" || cmd == "jira-view" ||
+			cmd == "github-check" || cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
+			cmd == "gitlab-check" || cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
 			cmd == "newproject" {
 			cli, err := NewCLI()
 			if err != nil {
@@ -147,6 +142,7 @@ func main() {
 			}
 
 			if err := cli.Execute(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
 			return
@@ -167,134 +163,37 @@ func printBasicUsage() {
 	fmt.Println()
 	fmt.Println("Usage: devtrack <command> [options]")
 	fmt.Println()
-	fmt.Println("SETUP:      setup                             (first-run configuration wizard)")
+	fmt.Println("SETUP:      setup                              first-run configuration wizard")
 	fmt.Println("DAEMON:     start | stop | restart | status")
 	fmt.Println("SCHEDULER:  pause | resume | force-trigger | skip-next | send-summary")
-	fmt.Println("INFO:       logs | db-stats | stats | version | help")
-	fmt.Println("GIT:        git add | git commit -m 'msg'    (AI-enhanced; shell-init required)")
-	fmt.Println("SAGE:       sage ask '<question>' | sage do '<task>' | sage interactive")
-	fmt.Println("WORKSPACES: workspace list                    (show monitored repos)")
-	fmt.Println("            workspace add <name> <path>       (add repo to workspaces.yaml)")
-	fmt.Println("            workspace remove <name>           (remove a repo)")
-	fmt.Println("            workspace enable|disable <name>   (toggle without removing)")
-	fmt.Println("            workspace reload                   (hot-reload running daemon)")
+	fmt.Println("INFO:       logs | db-stats | stats | version | settings | help")
+	fmt.Println()
+	fmt.Println("GIT:        git add | git commit -m 'msg'     AI-enhanced; shell-init required")
+	fmt.Println("SAGE:       sage ask '<question>'              one-shot Q&A about the repo")
+	fmt.Println("            sage do '<task>' [--verbose]       agentic task execution")
+	fmt.Println("            sage pr                            show current branch PR info")
+	fmt.Println("            sage interactive                   multi-turn chat")
+	fmt.Println()
+	fmt.Println("GITHUB:     github-check | github-list | github-sync | github-view <number>")
+	fmt.Println("GITLAB:     gitlab-check | gitlab-list | gitlab-sync | gitlab-view <proj> <iid>")
+	fmt.Println("AZURE:      azure-check  | azure-list  | azure-sync  | azure-view <id>")
+	fmt.Println("            (use devtrack help for filter flags and full options)")
+	fmt.Println()
+	fmt.Println("WORKSPACES: workspace list | add <name> <path> | remove <name>")
+	fmt.Println("            workspace enable|disable <name> | workspace reload")
 	fmt.Println("COMMITS:    commits pending | commits review")
 	fmt.Println("ALERTS:     alerts | alerts --all | alerts --clear")
 	fmt.Println("REPORTS:    preview-report | send-report | save-report")
+	fmt.Println("CLOUD:      cloud login --url URL --key KEY    connect to external server")
+	fmt.Println("            cloud status | cloud logout")
 	fmt.Println("ACCOUNT:    login | logout | whoami | license | terms | telemetry [on|off]")
 	fmt.Println()
-	fmt.Println("UPDATE:     upgrade                          (download latest binary + apply migrations)")
-	fmt.Println("            upgrade --check                  (check for updates without installing)")
-	fmt.Println("UNINSTALL:  uninstall                        (remove all DevTrack components)")
-	fmt.Println("            uninstall --keep-data            (keep database and logs)")
+	fmt.Println("UPDATE:     upgrade | upgrade --check")
+	fmt.Println("UNINSTALL:  uninstall | uninstall --keep-data")
 	fmt.Println()
 	fmt.Println("New install? Run: devtrack setup")
-	fmt.Println("Run 'devtrack help' for full usage.")
+	fmt.Println("Run 'devtrack help' for full usage and flags.")
 	fmt.Println()
-}
-
-// runGitSage dispatches to the Go native implementation in lightweight mode,
-// or delegates to the Python backend in managed mode for full AI features.
-func runGitSage() {
-	args := os.Args[2:] // everything after "sage"
-
-	// Managed mode: delegate to Python for full git-sage (NLP, RAG, conflict resolution).
-	if !IsLightweightMode() {
-		runGitSagePython(args)
-		return
-	}
-
-	// Lightweight mode: native Go implementation via Ollama.
-	cfg := gitsage.LoadLLMConfig()
-	repoPath, _ := os.Getwd()
-	verbose := false
-
-	// Strip --verbose flag before dispatching
-	var cleanArgs []string
-	for _, a := range args {
-		if a == "--verbose" || a == "-v" {
-			verbose = true
-		} else {
-			cleanArgs = append(cleanArgs, a)
-		}
-	}
-	args = cleanArgs
-
-	sub := ""
-	if len(args) > 0 {
-		sub = args[0]
-	}
-	rest := strings.Join(args[1:], " ")
-
-	var err error
-	switch sub {
-	case "ask":
-		if rest == "" {
-			fmt.Fprintln(os.Stderr, "usage: devtrack sage ask '<question>'")
-			os.Exit(1)
-		}
-		err = gitsage.Ask(repoPath, rest, cfg)
-	case "do":
-		if rest == "" {
-			fmt.Fprintln(os.Stderr, "usage: devtrack sage do '<task>'")
-			os.Exit(1)
-		}
-		err = gitsage.Do(repoPath, rest, cfg, verbose)
-	case "interactive", "":
-		err = gitsage.Interactive(repoPath, cfg)
-	default:
-		// Treat the whole args as a question (e.g. devtrack sage what branch am I on)
-		err = gitsage.Ask(repoPath, strings.Join(args, " "), cfg)
-	}
-
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "sage:", err)
-		os.Exit(1)
-	}
-}
-
-// runGitSagePython delegates to the Python git-sage module (managed mode only).
-func runGitSagePython(args []string) {
-	projectRoot := os.Getenv("PROJECT_ROOT")
-	if projectRoot == "" {
-		execPath, _ := os.Executable()
-		execPath, _ = filepath.Abs(execPath)
-		searchDir := filepath.Dir(execPath)
-		for i := 0; i < 6; i++ {
-			if _, err := os.Stat(filepath.Join(searchDir, "gitsage")); err == nil {
-				projectRoot = searchDir
-				break
-			}
-			parent := filepath.Dir(searchDir)
-			if parent == searchDir {
-				break
-			}
-			searchDir = parent
-		}
-	}
-	if projectRoot == "" {
-		fmt.Fprintln(os.Stderr, "error: could not find gitsage — set PROJECT_ROOT or use lightweight mode")
-		os.Exit(1)
-	}
-
-	sageArgs := append([]string{"run", "python", "-m", "gitsage"}, args...)
-	env := append(os.Environ(),
-		"PROJECT_ROOT="+projectRoot,
-		"DEVTRACK_ENV_FILE="+filepath.Join(projectRoot, ".env"),
-	)
-
-	cmd := exec.Command("uv", sageArgs...)
-	cmd.Dir = projectRoot
-	cmd.Env = env
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitErr.ExitCode())
-		}
-		os.Exit(1)
-	}
 }
 
 // runGitWrapper execs devtrack-git-wrapper.sh for AI-enhanced git commits

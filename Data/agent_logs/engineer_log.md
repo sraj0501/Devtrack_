@@ -2,6 +2,59 @@
 
 ---
 
+### [2026-05-27] TASK-A — Port PM Connectors to Go (GitHub Issue #137)
+
+**Branch**: `feature/go-client-standalone`
+**Status**: Working tree edits — not committed (per spec)
+
+**Work done**:
+- Created `devtrack_client/connectors/github/` — client.go, list.go, view.go, sync.go, check.go
+  - Native GitHub REST API v4 client using net/http
+  - ListIssues (paginated, all assigned), ViewIssue (owner/repo/number), Sync to SQLite, Check connectivity
+- Created `devtrack_client/connectors/gitlab/` — client.go, list.go, view.go, sync.go, check.go
+  - GitLab API v4 client; username auto-detected from /user if GITLAB_USERNAME not set
+  - ListIssues (paginated), ViewIssue (projectPath + IID), Sync to SQLite, Check connectivity
+- Created `devtrack_client/connectors/azure/` — client.go, list.go, view.go, sync.go, check.go
+  - Azure DevOps REST API with Basic/PAT auth
+  - ListWorkItems via WIQL query (@Me, excluding Closed/Resolved/Done)
+  - ViewWorkItem with HTML stripping for terminal display
+  - Sync to SQLite, Check org connectivity
+- Added `Database.DB() *sql.DB` accessor to `database.go` (unexported field was inaccessible)
+- Updated `cli.go`:
+  - Added connector imports (azureconn, githubconn, gitlabconn, gitsage)
+  - Added `strconv` import
+  - Replaced all 12 Python subprocess handler bodies with native Go connector calls
+  - Removed `requiresManagedMode()` guards from all connector commands (Python no longer needed)
+  - Added connector/sage commands to no-daemon whitelist in NewCLI()
+
+**Build verification**: `go build ./...` clean, `go vet ./...` clean
+**Hardcoded scan**: CLEAN (Bearer and ghp_ are in string literals/error messages, not credentials)
+
+---
+
+### [2026-05-27] TASK-B — Extend gitsage package to Go (GitHub Issue #138)
+
+**Branch**: `feature/go-client-standalone`
+**Status**: Working tree edits — not committed (per spec)
+
+**Work done**:
+- `devtrack_client/gitsage/` already had agent.go, llm.go, context.go — built on top
+- Added `gitsage/config.go` — full Config struct, LoadConfig(), buildLLMConfig() supporting Ollama/OpenAI/Groq providers, SageModelName()
+- Added `gitsage/git_ops.go` — GitOps struct with typed methods: Status (parsed entries), StagedFiles, UnstagedFiles, DiffCached, DiffFull, Log (structured LogEntry), HEAD, CurrentBranch, Branches, CreateBranch, CheckoutBranch, Add, Commit, CommitAmend, ResetSoft, ResetMixed, ResetToRef, Stash/StashPop/StashList, Merge, MergeAbort, Pull, Push, BlameLine, IsRepo, RemoteURL
+- Added `gitsage/conflict.go` — Resolver with 4 strategies (ours/theirs/both/smart), ParseConflicts (diff3 marker parser), DetectConflicts (git status + grep), Resolve (applies strategy + stages), Report
+- Added `gitsage/cli.go` — ApprovalMode (auto/review/suggest-only), ShowApprovalDialog (terminal prompt), PromptCommandApproval, CommandHistory, RunFollowUpLoop (up to 5 questions with refreshed context), RunAsk/RunDo/RunInteractive entry points
+- Added `unmarshalAgentStep()` helper to agent.go for cross-file JSON decoding
+- Updated `cli.go` in devtrack_client/:
+  - Added `gitsage` import
+  - Added `case "sage"` to Execute switch
+  - Added `handleSage()` — routes `sage ask`, `sage do`, `sage` (interactive)
+  - Added `sage` to no-daemon whitelist
+
+**Build verification**: `go build ./...` clean, `go vet ./...` clean
+**Hardcoded scan**: CLEAN (localhost:11434 default pre-existed in llm.go, acceptable Ollama default)
+
+---
+
 ### [2026-05-24] TASK-047 — Update CLAUDE.md and docs for three-codebase split
 
 **Branch**: `features/SPLIT-001-monorepo-restructure`
