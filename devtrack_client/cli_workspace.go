@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -49,7 +51,9 @@ func (wc *WorkspaceCommands) Add(name, path, pmPlatform string) error {
 	path = expandWorkspacePath(path)
 
 	if !IsGitRepository(path) {
-		return fmt.Errorf("not a git repository: %s", path)
+		if err := offerGitInit(path); err != nil {
+			return err
+		}
 	}
 
 	cfg, err := LoadWorkspacesConfig()
@@ -237,6 +241,70 @@ func (wc *WorkspaceCommands) InstallHooks() error {
 		fmt.Printf(", %d failed", failed)
 	}
 	fmt.Println()
+	return nil
+}
+
+// offerGitInit prompts the user to initialize path as a git repository when
+// it is not already one. If accepted it runs git init + an initial commit so
+// the directory is immediately usable as a DevTrack workspace.
+// Returns nil if the user accepts and init succeeds, or an error otherwise
+// (including when the user declines — the caller decides whether to continue).
+func offerGitInit(path string) error {
+	fmt.Printf("\n%s is not a git repository.\n", path)
+	fmt.Print("Initialize it with git init and an initial commit? [Y/n]: ")
+
+	reader := bufio.NewReader(os.Stdin)
+	answer, _ := reader.ReadString('\n')
+	answer = strings.TrimSpace(strings.ToLower(answer))
+
+	if answer != "" && answer != "y" && answer != "yes" {
+		return fmt.Errorf("%s is not a git repository", path)
+	}
+
+	// Ensure the directory exists.
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return fmt.Errorf("cannot create directory %s: %w", path, err)
+	}
+
+	run := func(args ...string) error {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = path
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
+
+	fmt.Println()
+	if err := run("git", "init"); err != nil {
+		return fmt.Errorf("git init failed: %w", err)
+	}
+
+	// Create a .gitkeep so there is something to commit in an empty directory.
+	keepFile := path + "/.gitkeep"
+	if _, err := os.Stat(keepFile); os.IsNotExist(err) {
+		// Only create .gitkeep if the directory is empty.
+		entries, _ := os.ReadDir(path)
+		hasFiles := false
+		for _, e := range entries {
+			if e.Name() != ".git" {
+				hasFiles = true
+				break
+			}
+		}
+		if !hasFiles {
+			_ = os.WriteFile(keepFile, nil, 0644)
+		}
+	}
+
+	if err := run("git", "add", "."); err != nil {
+		return fmt.Errorf("git add failed: %w", err)
+	}
+	if err := run("git", "commit", "-m", "Initial commit"); err != nil {
+		return fmt.Errorf("git commit failed: %w", err)
+	}
+
+	fmt.Println()
+	fmt.Printf("Initialized git repository at %s\n", path)
 	return nil
 }
 
