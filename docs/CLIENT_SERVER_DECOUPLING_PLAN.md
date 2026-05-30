@@ -4,8 +4,9 @@
 > the editable source of truth for what each side owns. This file is the
 > execution plan for closing the gaps that doc marks with ⚠.
 >
-> _Status: Phase 1 complete (branch: `feat/client-server-decoupling`). Phase 2 pending._
-> _Phase 1a+1b committed d5f8f36. Phase 1c+1d committed on the same branch (see git log)._
+> _Status: **Phase 1 complete** (branch: `feat/client-server-decoupling`). Phase 2 pending._
+> _Phase 1a+1b: d5f8f36. Phase 1c+1d: 3dd17f8. Connector config refactor: 8d3113a._
+> _Workspace git-init helper: ed11bba. Help/status rewrite: e3726e0._
 
 ## Context
 
@@ -41,23 +42,41 @@ native Go and the daemon spawns no per-feature Python modules.
 
 ---
 
+## Phase 1 completion summary (2026-05-31)
+
+All four sub-phases landed on `feat/client-server-decoupling`.
+
+| Sub-phase | Commit | What was done |
+|---|---|---|
+| 1a | d5f8f36 | Deleted `server-tui` and `admin-start` commands from the client CLI. |
+| 1b | d5f8f36 | Removed redundant `github_ticket_sync.py` invocation; routes to Go-native `handleGitHubSync`. |
+| 1c | 3dd17f8 | Reports, learning, auth, and license commands now call `devtrack_server` over HTTP (`/reports/*`, `/learning/*`, `/auth/*`, `/license/*`). New HTTP methods added to `devtrack_client/internal/trigger/http_trigger.go`; corresponding FastAPI routes added to `devtrack_server/backend/webhook_server.py`. Only remaining `uv run` calls in the client: managed-mode `webhook_server` launch; `backend.alert_poller` and `backend.telegram`/`slack` (Phase 2). |
+| 1d | 3dd17f8 | Daemon comments updated to state managed mode = deploy + run server, not feature host. |
+| extra | 8d3113a | `workspaces.yaml` is now the sole non-secret PM connector config source. `.env` holds secrets only (`GITHUB_TOKEN`, `GITLAB_PAT`, `AZURE_DEVOPS_PAT`). All connector `NewClient()` signatures take explicit workspace params; free functions converted to methods on `*Client`. Single-repo env-var fallback removed. |
+| extra | ed11bba | `devtrack workspace add` now offers to run `git init` + initial commit when the path is not a git repo (`offerGitInit()` in `cli_workspace.go`; also called from the setup wizard). |
+| extra | e3726e0 | `devtrack help` fully rewritten. `devtrack status` now shows workspaces list, PM token presence, and AI server ping. |
+
+**Verification**: `cd devtrack_client && go build ./... && go vet ./... && go test ./...` green after every commit above.
+
+---
+
 ## Phase 1 — Remove server-mgmt commands + convert server-owned features to HTTP
 
 Two-sided: add HTTP endpoints in `devtrack_server` (thin wrappers over existing
 modules) and convert the client commands to thin callers.
 
-### 1a. Remove server-management tools from the client (pure deletions)
+### 1a. Remove server-management tools from the client (pure deletions) ✅ d5f8f36
 - `server-tui`, `admin-start`/`admin` — delete the routes in
   `devtrack_client/cli.go` and the handlers in `devtrack_client/cli_work.go`
   (the `uv run … backend.server_tui` / `backend.admin` calls). Update help text
   in `cli_info.go`. These are managed only on the server.
 
-### 1b. Delete redundant Python ticket-sync (client already has Go-native sync)
+### 1b. Delete redundant Python ticket-sync (client already has Go-native sync) ✅ d5f8f36
 - Remove the `backend/github_ticket_sync.py` invocation in `cli.go` (~line 479)
   and route any sync entry to the existing Go-native `github-sync`
   (`connectors/github/sync.go`, `handleGitHubSync`).
 
-### 1c. Convert server-owned, user-facing commands to HTTP
+### 1c. Convert server-owned, user-facing commands to HTTP ✅ 3dd17f8
 Server side — add FastAPI routes in `devtrack_server/backend/webhook_server.py`
 that wrap existing modules (no new logic):
 - `POST /reports/preview|send|save` → `backend/email_reporter.py`,
@@ -83,7 +102,7 @@ existing `HTTPTriggerClient` (`devtrack_client/http_trigger.go`, already used by
 All client commands degrade gracefully when `DEVTRACK_SERVER_URL` is
 unreachable (clear message), the same way triggers/boardroom already do.
 
-### 1d. Managed-mode reframe (minimal in Phase 1)
+### 1d. Managed-mode reframe (minimal in Phase 1) ✅ 3dd17f8
 - `internal/daemon/daemon.go`: keep the `webhook_server` launch as the
   managed/deploy convenience (already gated by `DEVTRACK_SERVER_MODE=external`).
   Leave the `telegram`/`slack`/`alert_poller` subprocess spawns **untouched in

@@ -3,6 +3,8 @@
 Complete overview of DevTrack's system design, components, and data flow.
 
 > **Monorepo split in progress (EPIC-SPLIT)**: The canonical sources have moved to `devtrack_client/` (Go) and `devtrack_server/` (Python). The legacy `devtrack-bin/` and root `backend/` directories are being retired. See `docs/split-manifest.md` for the full ownership catalogue and `docs/HTTP_API.md` for the client-server API contract.
+>
+> **Client-server decoupling Phase 1 complete** (`feat/client-server-decoupling`): server-management commands removed from the client; reports, learning, auth, and license commands now call the server over HTTP; `workspaces.yaml` is the sole non-secret PM connector config source. Phase 2 (Go-native alerts + Telegram/Slack) is pending. See `docs/CLIENT_SERVER_DECOUPLING_PLAN.md`.
 
 ---
 
@@ -180,7 +182,7 @@ All trigger requests include an `X-DevTrack-API-Key` header (when `DEVTRACK_API_
 
 #### Multi-Repo Mode
 
-When `workspaces.yaml` is present, `IntegratedMonitor` starts one `WorkspaceMonitor` per enabled workspace instead of a single `GitMonitor`. Each monitor fires `handleCommitForWorkspace`, embedding `workspace_name`, `pm_platform`, and `pm_project` into the IPC trigger message.
+`workspaces.yaml` is always required — the single-repo env-var fallback has been removed. `IntegratedMonitor` starts one `WorkspaceMonitor` per enabled workspace. Each monitor fires `handleCommitForWorkspace`, embedding `workspace_name`, `pm_platform`, and `pm_project` into the trigger message.
 
 ```
 workspaces.yaml
@@ -197,7 +199,21 @@ IntegratedMonitor
 
 Python bridge reads `pm_platform` from the trigger data and calls `_route_pm_sync()`, which dispatches directly to the declared platform without running the priority chain.
 
-When `workspaces.yaml` is absent, a single `WorkspaceMonitor` is created from `DEVTRACK_WORKSPACE` with empty workspace fields — the priority chain runs as before.
+#### PM Connector Configuration
+
+PM connectors use a two-layer configuration model (as of `feat/client-server-decoupling`):
+
+| Layer | Source | Contents |
+|---|---|---|
+| Secrets | `.env` | `GITHUB_TOKEN`, `GITLAB_PAT`, `AZURE_DEVOPS_PAT` |
+| Non-secret config | `workspaces.yaml` | `pm_org`, `pm_username`, `pm_api_url` |
+
+Each workspace entry in `workspaces.yaml` carries:
+- `pm_org` — Azure org name, or GitHub/GitLab owner/org
+- `pm_username` — assignee filter (GitHub login / GitLab username / Azure email)
+- `pm_api_url` — optional self-hosted URL override (GitHub Enterprise, self-hosted GitLab, etc.)
+
+All connector constructors (`pm.NewGitHubClient(ws)`, `pm.NewGitLabClient(ws)`, `pm.NewAzureClient(ws)`) take an explicit workspace struct and never read non-secret config from env.
 
 #### Data Storage
 
@@ -498,8 +514,9 @@ All configuration flows from a single `.env` file with **no hardcoded defaults**
 | `OLLAMA_URL` | Python | Ollama server URL | `http://localhost:11434` |
 | `OPENAI_API_KEY` | Python | OpenAI credentials | (secret) |
 | `ANTHROPIC_API_KEY` | Python | Anthropic credentials | (secret) |
-| `AZURE_DEVOPS_TOKEN` | Python | Azure DevOps PAT | (secret) |
-| `GITHUB_TOKEN` | Python | GitHub personal access token | (secret) |
+| `AZURE_DEVOPS_PAT` | Go + Python | Azure DevOps PAT (secret only — org/username in workspaces.yaml) | (secret) |
+| `GITHUB_TOKEN` | Go + Python | GitHub PAT (secret only — org/username in workspaces.yaml) | (secret) |
+| `GITLAB_PAT` | Go | GitLab PAT (secret only — org/username in workspaces.yaml) | (secret) |
 | `TEAMS_BOT_ID` | Python | Teams bot ID | (secret) |
 
 ---

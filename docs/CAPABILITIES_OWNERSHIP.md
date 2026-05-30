@@ -64,7 +64,7 @@ _Last updated: 2026-05-30 (Phase 1a–1d complete; Phase 2 pending)._
 | Offline ticket cache | (in commit flow) | Go-native (SQLite) | Client | `ticket_cache` table |
 | Smart matching + likelihood | (in commit flow) | Go-native (fuzzy + optional Ollama embeddings) | Client | `internal/match` |
 | Jira | — | **None in client** | Server | ⚠ No Go Jira connector; Jira handled only server-side today |
-| GitHub ticket sync (legacy) | (internal) | Python (in client) | Client | ⚠ Redundant — Go-native `github-sync` exists; remove the `github_ticket_sync.py` call |
+| GitHub ticket sync (legacy) | (internal) | Go-native | Client | ✅ Removed Python `github_ticket_sync.py` call (Phase 1b — d5f8f36); routes to Go-native `github-sync` |
 
 ## 4. Work tracking & workspaces — Owner: **Client**
 
@@ -129,8 +129,8 @@ _Last updated: 2026-05-30 (Phase 1a–1d complete; Phase 2 pending)._
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Server TUI | `server-tui` | Python (in client) | Server | ⚠ Remove from client — server-management only |
-| Admin web GUI | `admin-start` | Python (in client) | Server | ⚠ Remove from client — server-management only |
+| Server TUI | `server-tui` | Removed from client | Server | ✅ Deleted from client CLI (Phase 1a — d5f8f36) |
+| Admin web GUI | `admin-start` | Removed from client | Server | ✅ Deleted from client CLI (Phase 1a — d5f8f36) |
 | Webhook server (managed mode) | (daemon) | Python subprocess | Server | Launched by managed/deploy mode only; external mode connects via HTTP |
 
 ---
