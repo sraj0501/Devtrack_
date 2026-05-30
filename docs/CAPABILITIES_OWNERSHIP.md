@@ -6,7 +6,7 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-05-30 (audit during client/server-decoupling planning)._
+_Last updated: 2026-05-30 (Phase 1a–1d complete; Phase 2 pending)._
 
 ## Ownership model (intended)
 
@@ -91,39 +91,39 @@ _Last updated: 2026-05-30 (audit during client/server-decoupling planning)._
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Enable / sync learning | `enable-learning`, `learning-sync`, `learning-status` | Python (in client) | Server | ⚠ Convert client commands to `HTTP → server` |
-| Cron management | `learning-setup-cron`, `learning-remove-cron`, `learning-cron-status` | Python (in client) | Server | ⚠ Convert to HTTP |
-| Reset | `learning-reset` | Python (in client) | Server | ⚠ Convert to HTTP |
-| Profile / test response / revoke | `show-profile`, `test-response`, `revoke-consent` | Python (in client) | Server | ⚠ Convert to HTTP |
+| Enable / sync learning | `enable-learning`, `learning-sync`, `learning-status` | HTTP → server | Server | `/learning/enable`, `/learning/sync`, `/learning/status` |
+| Cron management | `learning-setup-cron`, `learning-remove-cron`, `learning-cron-status` | HTTP → server | Server | `/learning/cron/*` |
+| Reset | `learning-reset` | HTTP → server | Server | `/learning/reset` |
+| Profile / test response / revoke | `show-profile`, `test-response`, `revoke-consent` | HTTP → server | Server | `/learning/profile`, `/learning/test-response`, `/learning/revoke` |
 
 ## 7. Reporting — Owner: **Server** (AI-enhanced generation)
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Preview / send / save report | `preview-report`, `send-report`, `save-report` | Python (in client) | Server | ⚠ Convert to `HTTP → server` (`/reports/*`) |
-| Summary delivery | `send-summary` | Python (in client) | Server | ⚠ Convert to HTTP |
-| End-of-day report (scheduled) | (scheduler) | Python (in client) | Server | ⚠ Scheduler should call `/reports` via HTTP |
+| Preview / send / save report | `preview-report`, `send-report`, `save-report` | HTTP → server | Server | `/reports/preview`, `/reports/send`, `/reports/save` |
+| Summary delivery | `send-summary` | HTTP → server | Server | `/reports/eod` |
+| End-of-day report (scheduled) | (scheduler) | HTTP → server | Server | Scheduler calls `/reports/eod` |
 
 ## 8. Ticket alerts — Owner: **Client** (ticket events = client)
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Alert polling (GitHub/Azure/Jira) | (daemon) | Python (in client) | Client | ⚠ Port to Go (reuse connectors + SQLite); remove `backend.alert_poller` |
-| Read / clear alerts | `alerts` | Python (in client) | Client | ⚠ Read from SQLite natively |
+| Alert polling (GitHub/Azure/Jira) | (daemon) | Python (in client) | Client | ⚠ Phase 2: Port to Go (reuse connectors + SQLite); remove `backend.alert_poller` |
+| Read / clear alerts | `alerts` | Python (in client) | Client | ⚠ Phase 2: Read from SQLite natively |
 
 ## 9. Notifications (delivery) — Owner: **Client**
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Telegram delivery | `telegram-status` | Python (in client) | Client | ⚠ Port delivery to Go (Telegram Bot API). AI-conversational processing → Server |
-| Slack delivery | (daemon) | Python (in client) | Client | ⚠ Port delivery to Go (Slack webhook) |
+| Telegram delivery | `telegram-status` | Python (in client) | Client | ⚠ Phase 2: Port delivery to Go (Telegram Bot API). AI-conversational processing → Server |
+| Slack delivery | (daemon) | Python (in client) | Client | ⚠ Phase 2: Port delivery to Go (Slack webhook) |
 
 ## 10. Cloud / auth / license — Owner: **Server** (cloud), local gating client-side
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Login / logout / whoami | `login`, `logout`, `whoami`, `cloud` | Python (in client) | Server | ⚠ Convert to `HTTP → server`/cloud auth |
-| License / terms | `license`, `terms` | Python (in client) | Server | ⚠ Convert to HTTP, or keep T&C acceptance as local Go state |
+| Login / logout / whoami | `login`, `logout`, `whoami`, `cloud` | HTTP → server | Server | `/auth/request-magic-link`, `/auth/verify-magic-link`, `/auth/logout`, `/auth/whoami` |
+| License / terms | `license`, `terms` | HTTP → server | Server | `/license/status`, `/license/terms`, `/license/accept`, `/license/check` |
 
 ## 11. Server-management tools — Owner: **Server** (remove from client)
 
@@ -137,19 +137,17 @@ _Last updated: 2026-05-30 (audit during client/server-decoupling planning)._
 
 ## Summary of current mismatches (⚠ = decoupling work)
 
-These are the only places where **current state ≠ intended owner**. The
-client/server-decoupling plan handles them in two phases (Phase 1: remove +
-convert-to-HTTP; Phase 2: native-Go ports of alerts + telegram/slack).
+Phase 1 (remove + convert-to-HTTP) is **complete**. Only Phase 2 items remain.
 
-| Capability | Intended owner | Action |
+| Capability | Intended owner | Status |
 |---|---|---|
-| `server-tui`, `admin-start` | Server | **Remove** from client |
-| GitHub ticket sync (`github_ticket_sync.py`) | Client | **Remove** Python call (Go-native exists) |
-| Reports (preview/send/save/summary/EOD) | Server | **Convert to HTTP** |
-| Learning suite (all `learning-*`, profile, test-response, revoke) | Server | **Convert to HTTP** |
-| Cloud/auth/license (`login/logout/whoami/cloud/license/terms`) | Server | **Convert to HTTP** (license may stay local) |
-| Ticket alerts (`alerts`, poller) | Client | **Port to Go** (Phase 2) |
-| Telegram / Slack delivery | Client | **Port to Go** (Phase 2) |
+| `server-tui`, `admin-start` | Server | ✅ Removed from client (Phase 1a — d5f8f36) |
+| GitHub ticket sync (`github_ticket_sync.py`) | Client | ✅ Python call removed (Phase 1b — d5f8f36) |
+| Reports (preview/send/save/summary/EOD) | Server | ✅ HTTP → server (Phase 1c) |
+| Learning suite (all `learning-*`, profile, test-response, revoke) | Server | ✅ HTTP → server (Phase 1c) |
+| Cloud/auth/license (`login/logout/whoami/license/terms`) | Server | ✅ HTTP → server (Phase 1c) |
+| Ticket alerts (`alerts`, poller) | Client | ⚠ **Port to Go** (Phase 2) |
+| Telegram / Slack delivery | Client | ⚠ **Port to Go** (Phase 2) |
 
 Everything not marked ⚠ already matches its intended owner.
 

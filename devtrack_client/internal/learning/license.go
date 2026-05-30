@@ -1,293 +1,157 @@
 package learning
 
+// license.go — Auth/license helpers for the learning package.
+// All calls route through the devtrack_server HTTP API (Phase 1c).
+// The package-main versions of these handlers live in license_cli.go.
+
 import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
+
+	trig "github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
-// ── License / Auth CLI handlers ───────────────────────────────────────────────
-
-// HandleLogin runs the interactive login flow via Python auth module.
+// HandleLogin runs the interactive magic-link login flow via the server.
 func HandleLogin(projectRoot string) error {
-	return runPythonAuthCommand(projectRoot, "login")
+	c := trig.NewHTTPTriggerClient()
+
+	fmt.Print("Enter your email address: ")
+	reader := bufio.NewReader(os.Stdin)
+	email, _ := reader.ReadString('\n')
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return fmt.Errorf("email address required")
+	}
+
+	msg, err := c.AuthRequestMagicLink(email)
+	if err != nil {
+		return fmt.Errorf("login: %w (is the server running?)", err)
+	}
+	fmt.Println(msg)
+
+	fmt.Print("Enter the code from your email: ")
+	code, _ := reader.ReadString('\n')
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return fmt.Errorf("verification code required")
+	}
+
+	session, err := c.AuthVerifyMagicLink(email, code)
+	if err != nil {
+		return fmt.Errorf("login: %w", err)
+	}
+	if !session.Success {
+		return fmt.Errorf("login failed: %s", session.Message)
+	}
+	fmt.Printf("Logged in as %s (%s tier)\n", session.Email, session.Tier)
+	return nil
 }
 
-// HandleLogout clears the local session.
+// HandleLogout clears the session via the server.
 func HandleLogout(projectRoot string) error {
-	return runPythonAuthCommand(projectRoot, "logout")
+	msg, err := trig.NewHTTPTriggerClient().AuthLogout()
+	if err != nil {
+		return fmt.Errorf("logout: %w (is the server running?)", err)
+	}
+	fmt.Println(msg)
+	return nil
 }
 
-// HandleWhoami shows the current session info.
+// HandleWhoami shows the current session info via the server.
 func HandleWhoami(projectRoot string) error {
-	return runPythonAuthCommand(projectRoot, "whoami")
+	s, err := trig.NewHTTPTriggerClient().AuthWhoami()
+	if err != nil {
+		return fmt.Errorf("whoami: %w (is the server running?)", err)
+	}
+	if !s.LoggedIn {
+		fmt.Println("Not logged in.")
+		fmt.Println("Run 'devtrack login' to authenticate (optional for personal use).")
+		return nil
+	}
+	fmt.Printf("Email    : %s\n", s.Email)
+	fmt.Printf("Name     : %s\n", s.DisplayName)
+	fmt.Printf("Tier     : %s\n", s.Tier)
+	fmt.Printf("Mode     : %s\n", s.Mode)
+	telemetry := "disabled"
+	if s.TelemetryEnabled {
+		telemetry = "enabled"
+	}
+	fmt.Printf("Telemetry: %s\n", telemetry)
+	if s.TokenExpiresAt != "" {
+		fmt.Printf("Expires  : %s\n", s.TokenExpiresAt)
+	}
+	return nil
 }
 
 // HandleLicense shows the current licence status and tier.
 func HandleLicense(projectRoot string, args []string) error {
 	if len(args) > 0 && args[0] == "--accept" {
-		return runPythonAuthCommand(projectRoot, "terms", "--accept")
+		msg, err := trig.NewHTTPTriggerClient().LicenseAccept()
+		if err != nil {
+			return fmt.Errorf("license --accept: %w (is the server running?)", err)
+		}
+		fmt.Println(msg)
+		return nil
 	}
-	return runPythonAuthCommand(projectRoot, "license")
+	output, err := trig.NewHTTPTriggerClient().LicenseStatus()
+	if err != nil {
+		return fmt.Errorf("license: %w (is the server running?)", err)
+	}
+	fmt.Print(output)
+	return nil
 }
 
-// HandleTerms shows the Terms of Service and optionally prompts acceptance.
+// HandleTerms shows the Terms of Service.
 func HandleTerms(projectRoot string, args []string) error {
 	if len(args) > 0 && args[0] == "--accept" {
-		return runPythonAuthCommand(projectRoot, "terms", "--accept")
+		msg, err := trig.NewHTTPTriggerClient().LicenseAccept()
+		if err != nil {
+			return fmt.Errorf("terms --accept: %w (is the server running?)", err)
+		}
+		fmt.Println(msg)
+		return nil
 	}
-	return runPythonAuthCommand(projectRoot, "terms")
+	output, err := trig.NewHTTPTriggerClient().LicenseTerms()
+	if err != nil {
+		return fmt.Errorf("terms: %w (is the server running?)", err)
+	}
+	fmt.Print(output)
+	fmt.Println()
+	fmt.Println("To accept: devtrack terms --accept")
+	return nil
 }
 
 // HandleTelemetry enables or disables telemetry.
 func HandleTelemetry(projectRoot string, args []string) error {
-	if len(args) == 0 {
-		fmt.Println("Usage: devtrack telemetry [on|off|status]")
-		return nil
+	action := "status"
+	if len(args) > 0 {
+		action = args[0]
 	}
-	return runPythonAuthCommand(projectRoot, "telemetry", args...)
+	msg, err := trig.NewHTTPTriggerClient().AuthTelemetry(action)
+	if err != nil {
+		return fmt.Errorf("telemetry: %w (is the server running?)", err)
+	}
+	fmt.Println(msg)
+	return nil
 }
 
-// ── First-run T&C check ───────────────────────────────────────────────────────
-
 // EnsureTermsAccepted checks if T&C have been accepted, prompting if not.
-// Returns false if the user declines — caller should exit.
-// Never fails on errors (offline-safe).
+// Fails open on any error (offline-safe). cmdArgs is os.Args-style.
 func EnsureTermsAccepted(projectRoot string, cmdArgs []string) bool {
-	// Skip for non-interactive commands where T&C don't apply
 	if len(cmdArgs) > 1 {
-		cmd := cmdArgs[1]
-		switch cmd {
+		switch cmdArgs[1] {
 		case "terms", "license", "help", "version", "shell-init":
 			return true
 		}
 	}
-
-	// Check via Python license_manager
-	accepted, err := checkTermsAccepted(projectRoot)
-	if err != nil || accepted {
-		return true // On error, don't block — offline safety
-	}
-
-	// Not yet accepted — show prompt
-	return promptTermsAcceptance(projectRoot)
-}
-
-// checkTermsAccepted returns true if terms are already accepted locally.
-func checkTermsAccepted(projectRoot string) (bool, error) {
-	uvPath, err := exec.LookPath("uv")
-	if err != nil {
-		return true, nil // uv not available, don't block
-	}
-
-	cmd := exec.Command(uvPath, "run", "python", "-c",
-		"from backend.license_manager import is_accepted; print('yes' if is_accepted() else 'no')")
-	cmd.Dir = projectRoot
-	cmd.Env = append(os.Environ(),
-		"PROJECT_ROOT="+projectRoot,
-		"DEVTRACK_ENV_FILE="+filepath.Join(projectRoot, ".env"),
-	)
-
-	out, err := cmd.Output()
-	if err != nil {
-		return true, nil // On error, don't block
-	}
-
-	return strings.TrimSpace(string(out)) == "yes", nil
-}
-
-// promptTermsAcceptance runs the interactive T&C prompt.
-func promptTermsAcceptance(projectRoot string) bool {
-	uvPath, err := exec.LookPath("uv")
-	if err != nil {
-		return true // uv not available, don't block
-	}
-
-	nonInteractive := "False"
-	if os.Getenv("DEVTRACK_AUTO_ACCEPT_TERMS") == "1" {
-		nonInteractive = "True"
-	}
-
-	cmd := exec.Command(uvPath, "run", "python", "-c",
-		fmt.Sprintf(
-			"from backend.license_manager import ensure_accepted; import sys; sys.exit(0 if ensure_accepted(non_interactive=%s) else 1)",
-			nonInteractive,
-		),
-	)
-	cmd.Dir = projectRoot
-	cmd.Env = append(os.Environ(),
-		"PROJECT_ROOT="+projectRoot,
-		"DEVTRACK_ENV_FILE="+filepath.Join(projectRoot, ".env"),
-	)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Run()
-	return err == nil
-}
-
-// ── Python bridge helpers ────────────────────────────────────────────────────
-
-// runPythonAuthCommand delegates auth/license commands to the Python layer.
-func runPythonAuthCommand(projectRoot, subcmd string, extraArgs ...string) error {
-	if projectRoot == "" {
-		projectRoot = resolveProjectRoot()
-	}
-
-	uvPath, err := exec.LookPath("uv")
-	if err != nil {
-		return fmt.Errorf("uv not found — is DevTrack installed correctly?")
-	}
-
-	pyCode := buildAuthPyCode(subcmd, extraArgs)
-
-	cmd := exec.Command(uvPath, "run", "python", "-c", pyCode)
-	cmd.Dir = projectRoot
-	cmd.Env = append(os.Environ(),
-		"PROJECT_ROOT="+projectRoot,
-		"DEVTRACK_ENV_FILE="+filepath.Join(projectRoot, ".env"),
-	)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitErr.ExitCode())
-		}
-		return err
-	}
-	return nil
-}
-
-func buildAuthPyCode(subcmd string, args []string) string {
-	switch subcmd {
-	case "login":
-		return `
-from backend.auth.cloud_auth import interactive_login
-interactive_login()
-`
-	case "logout":
-		return `
-from backend.auth.session import clear_session, is_logged_in
-if is_logged_in():
-    clear_session()
-    print("Logged out successfully.")
-else:
-    print("Not currently logged in.")
-`
-	case "whoami":
-		return `
-from backend.auth.session import get_session, is_logged_in
-if is_logged_in():
-    s = get_session()
-    print(f"Email   : {s.email}")
-    print(f"Name    : {s.display_name}")
-    print(f"Tier    : {s.tier}")
-    print(f"Mode    : {s.mode}")
-    print(f"Telemetry: {'enabled' if s.telemetry_enabled else 'disabled'}")
-    print(f"Expires : {s.token_expires_at}")
-else:
-    print("Not logged in.")
-    print("Run 'devtrack login' to authenticate (optional for personal use).")
-`
-	case "license":
-		return `
-from backend.license_manager import show_license_status, detect_tier
-show_license_status()
-`
-	case "terms":
-		if len(args) > 0 && args[0] == "--accept" {
-			return `
-from backend.license_manager import ensure_accepted
-import sys
-sys.exit(0 if ensure_accepted() else 1)
-`
-		}
-		return `
-from backend.license_manager import show_terms
-show_terms()
-print()
-print("To accept: devtrack terms --accept")
-print("Full file: TERMS.md")
-`
-	case "telemetry":
-		if len(args) > 0 {
-			switch args[0] {
-			case "on":
-				return `
-from backend.auth.session import get_session, set_session, is_logged_in
-if not is_logged_in():
-    print("Telemetry requires login. Run: devtrack login")
-else:
-    s = get_session()
-    s.telemetry_enabled = True
-    s.save()
-    print("Telemetry enabled.")
-`
-			case "off":
-				return `
-from backend.auth.session import get_session, is_logged_in
-if is_logged_in():
-    s = get_session()
-    s.telemetry_enabled = False
-    s.save()
-    print("Telemetry disabled.")
-else:
-    print("Telemetry is already off (not logged in).")
-`
-			}
-		}
-		return `
-from backend.auth.session import get_session, is_logged_in
-if is_logged_in():
-    s = get_session()
-    status = "enabled" if s.telemetry_enabled else "disabled"
-    print(f"Telemetry: {status}")
-else:
-    print("Telemetry: disabled (not logged in)")
-print()
-print("devtrack telemetry on   — enable")
-print("devtrack telemetry off  — disable")
-`
-	default:
-		return fmt.Sprintf(`print("Unknown auth command: %s")`, subcmd)
-	}
-}
-
-// resolveProjectRoot finds the project root from env or binary location.
-func resolveProjectRoot() string {
-	if root := os.Getenv("PROJECT_ROOT"); root != "" {
-		return root
-	}
-	execPath, err := os.Executable()
-	if err != nil {
-		return "."
-	}
-	execPath, _ = filepath.Abs(execPath)
-	searchDir := filepath.Dir(execPath)
-	for i := 0; i < 6; i++ {
-		if _, err := os.Stat(filepath.Join(searchDir, "backend")); err == nil {
-			return searchDir
-		}
-		parent := filepath.Dir(searchDir)
-		if parent == searchDir {
-			break
-		}
-		searchDir = parent
-	}
-	return "."
+	c := trig.NewHTTPTriggerClient()
+	accepted, _ := c.LicenseIsAccepted()
+	return accepted // fails open
 }
 
 // PrintLicenseSection writes the license help line to a bufio.Writer.
 func PrintLicenseSection(w *bufio.Writer) {
 	fmt.Fprintln(w, "ACCOUNT:   login | logout | whoami | license | terms | telemetry [on|off]")
 }
-
-// Ensure bufio import is used
-var _ = bufio.NewWriter
-var _ = strings.TrimSpace

@@ -3,62 +3,31 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 )
 
-// handlePreviewReport previews today's email report
+// handlePreviewReport previews today's email report via the server.
 func (cli *CLI) handlePreviewReport() error {
-	if err := requiresManagedMode("preview-report"); err != nil {
-		return err
-	}
 	date := ""
 	if len(os.Args) > 2 {
 		date = os.Args[2]
 	}
 
-	fmt.Println("📊 Generating daily report preview...")
+	fmt.Println("Generating daily report preview...")
 	fmt.Println()
 
-	scriptPath, err := GetEmailReporterPath()
+	client := NewHTTPTriggerClient()
+	output, err := client.ReportPreview(date)
 	if err != nil {
-		return fmt.Errorf("cannot generate report: %w", err)
+		return fmt.Errorf("preview-report: %w (is the server running?)", err)
 	}
-	config, _ := LoadEnvConfig()
-	projectRoot := ""
-	if config != nil {
-		projectRoot = config.ProjectRoot
-	}
-	if projectRoot == "" {
-		projectRoot = os.Getenv("PROJECT_ROOT")
-	}
-
-	args := []string{"run", "--directory", projectRoot, "python", scriptPath, "preview"}
-	if date != "" {
-		args = append(args, date)
-	}
-
-	cmd := exec.Command("uv", args...)
-	if projectRoot != "" {
-		cmd.Dir = projectRoot
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("❌ Failed to generate report: %v\n", err)
-		return err
-	}
-
+	fmt.Print(output)
 	return nil
 }
 
-// handleSendReport sends email report
+// handleSendReport emails the report via the server.
 func (cli *CLI) handleSendReport() error {
-	if err := requiresManagedMode("send-report"); err != nil {
-		return err
-	}
 	if len(os.Args) < 3 {
-		fmt.Println("❌ Usage: devtrack send-report <email> [date]")
+		fmt.Println("Usage: devtrack send-report <email> [date]")
 		return fmt.Errorf("missing email argument")
 	}
 
@@ -68,84 +37,33 @@ func (cli *CLI) handleSendReport() error {
 		date = os.Args[3]
 	}
 
-	fmt.Printf("📧 Sending report to %s...\n", email)
+	fmt.Printf("Sending report to %s...\n", email)
 	fmt.Println()
 
-	scriptPath, err := GetEmailReporterPath()
+	client := NewHTTPTriggerClient()
+	output, err := client.ReportSend(email, date)
 	if err != nil {
-		return fmt.Errorf("cannot send report: %w", err)
+		return fmt.Errorf("send-report: %w (is the server running?)", err)
 	}
-	config, _ := LoadEnvConfig()
-	projectRoot := ""
-	if config != nil {
-		projectRoot = config.ProjectRoot
-	}
-	if projectRoot == "" {
-		projectRoot = os.Getenv("PROJECT_ROOT")
-	}
-
-	args := []string{"run", "--directory", projectRoot, "python", scriptPath, "send", email}
-	if date != "" {
-		args = append(args, date)
-	}
-
-	cmd := exec.Command("uv", args...)
-	if projectRoot != "" {
-		cmd.Dir = projectRoot
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("❌ Failed to send report: %v\n", err)
-		return err
-	}
-
+	fmt.Print(output)
 	return nil
 }
 
-// handleSaveReport saves report to file
+// handleSaveReport saves the report to disk via the server.
 func (cli *CLI) handleSaveReport() error {
-	if err := requiresManagedMode("save-report"); err != nil {
-		return err
-	}
 	date := ""
 	if len(os.Args) > 2 {
 		date = os.Args[2]
 	}
 
-	fmt.Println("💾 Saving report to file...")
+	fmt.Println("Saving report to file...")
 	fmt.Println()
 
-	scriptPath, err := GetEmailReporterPath()
+	client := NewHTTPTriggerClient()
+	output, err := client.ReportSave(date)
 	if err != nil {
-		return fmt.Errorf("cannot save report: %w", err)
+		return fmt.Errorf("save-report: %w (is the server running?)", err)
 	}
-	config, _ := LoadEnvConfig()
-	projectRoot := ""
-	if config != nil {
-		projectRoot = config.ProjectRoot
-	}
-	if projectRoot == "" {
-		projectRoot = os.Getenv("PROJECT_ROOT")
-	}
-
-	args := []string{"run", "--directory", projectRoot, "python", scriptPath, "save"}
-	if date != "" {
-		args = append(args, date)
-	}
-
-	cmd := exec.Command("uv", args...)
-	if projectRoot != "" {
-		cmd.Dir = projectRoot
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("❌ Failed to save report: %v\n", err)
-		return err
-	}
-
+	fmt.Print(output)
 	return nil
 }

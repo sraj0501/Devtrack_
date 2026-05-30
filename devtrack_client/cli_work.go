@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"time"
 )
@@ -280,34 +279,24 @@ func (cli *CLI) handleWorkStatus() error {
 	return nil
 }
 
-// handleWorkReport delegates EOD report generation to the Python layer
+// handleWorkReport runs the EOD report generator via the server.
 func (cli *CLI) handleWorkReport() error {
-	if err := requiresManagedMode("work report"); err != nil {
-		return err
-	}
-	config, _ := LoadEnvConfig()
-	projectRoot := ""
-	if config != nil {
-		projectRoot = config.ProjectRoot
-	}
-	if projectRoot == "" {
-		projectRoot = os.Getenv("PROJECT_ROOT")
-	}
-
-	uvArgs := []string{"run", "--directory", projectRoot, "python", "-m", "backend.work_tracker.eod_report_generator"}
-
-	// Forward --email flag if present
-	for i, arg := range os.Args[3:] {
-		if arg == "--email" && i+1 < len(os.Args[3:]) {
-			uvArgs = append(uvArgs, "--email", os.Args[3+i+1])
+	email := ""
+	args := os.Args[3:]
+	for i, arg := range args {
+		if arg == "--email" && i+1 < len(args) {
+			email = args[i+1]
 			break
 		}
 	}
 
-	cmd := exec.Command("uv", uvArgs...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	client := NewHTTPTriggerClient()
+	output, err := client.ReportEOD(email, "")
+	if err != nil {
+		return fmt.Errorf("work report: %w (is the server running?)", err)
+	}
+	fmt.Print(output)
+	return nil
 }
 
 // server-tui and admin-start were removed from the client: the server TUI and

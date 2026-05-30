@@ -644,7 +644,9 @@ func (d *Daemon) restartGitLabPoller() error {
 	return d.startGitLabPoller()
 }
 
-// startTelegramBot starts the Telegram bot process if TELEGRAM_ENABLED=true
+// startTelegramBot starts the Telegram bot process if TELEGRAM_ENABLED=true.
+// Phase 2 target: replace this Python subprocess with a native Go notifier
+// in internal/notify/ (see docs/CLIENT_SERVER_DECOUPLING_PLAN.md §2b).
 func (d *Daemon) startTelegramBot() error {
 	if !config.IsTelegramEnabled() {
 		log.Println("Telegram bot disabled (TELEGRAM_ENABLED is not true)")
@@ -654,7 +656,7 @@ func (d *Daemon) startTelegramBot() error {
 	// Kill any stale bot processes from a previous daemon run before starting a new one
 	exec.Command("pkill", "-f", "backend.telegram").Run() //nolint
 
-	log.Println("Starting Telegram bot...")
+	log.Println("Starting Telegram bot (Phase 2: will be replaced by native Go notifier)...")
 
 	var cmd *exec.Cmd
 	projectRoot := os.Getenv("PROJECT_ROOT")
@@ -700,7 +702,9 @@ func (d *Daemon) restartTelegramBot() error {
 	return nil
 }
 
-// startSlackBot starts the Slack bot process if SLACK_ENABLED=true
+// startSlackBot starts the Slack bot process if SLACK_ENABLED=true.
+// Phase 2 target: replace this Python subprocess with a native Go notifier
+// in internal/notify/ (see docs/CLIENT_SERVER_DECOUPLING_PLAN.md §2b).
 func (d *Daemon) startSlackBot() error {
 	if !config.IsSlackEnabled() {
 		log.Println("Slack bot disabled (SLACK_ENABLED is not true)")
@@ -710,7 +714,7 @@ func (d *Daemon) startSlackBot() error {
 	// Kill any stale bot process from a previous run
 	exec.Command("pkill", "-f", "backend.slack").Run() //nolint
 
-	log.Println("Starting Slack bot...")
+	log.Println("Starting Slack bot (Phase 2: will be replaced by native Go notifier)...")
 
 	var cmd *exec.Cmd
 	projectRoot := os.Getenv("PROJECT_ROOT")
