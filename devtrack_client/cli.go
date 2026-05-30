@@ -210,10 +210,6 @@ func (cli *CLI) Execute() error {
 		return cli.handleVacation()
 	case "work":
 		return cli.handleWork()
-	case "server-tui":
-		return cli.handleServerTUI()
-	case "admin-start":
-		return cli.handleAdminStart()
 	case "cloud":
 		return cli.handleCloud()
 	case "tui":
@@ -450,39 +446,19 @@ func (cli *CLI) handleTelegramStatus() error {
 }
 
 // handleInit runs one-time DevTrack initialisation for the current repository.
-// After completing existing setup steps it triggers github_ticket_sync.py to
-// warm the ticket cache. Sync failures are non-fatal — init always succeeds.
+// It warms the ticket cache via the Go-native GitHub sync (connectors/github,
+// SQLite) — no Python backend involved. Sync failures are non-fatal — init
+// always succeeds.
 func (cli *CLI) handleInit() error {
-	config, _ := LoadEnvConfig()
-	projectRoot := ""
-	if config != nil {
-		projectRoot = config.ProjectRoot
-	}
-	if projectRoot == "" {
-		projectRoot = os.Getenv("PROJECT_ROOT")
-	}
-	if projectRoot == "" {
-		fmt.Println("PROJECT_ROOT not set — skipping ticket sync")
-		return nil
-	}
-
-	// Determine repo and assignee from env; fall back gracefully if not set.
-	repo := os.Getenv("GITHUB_DEFAULT_REPO")
-	assignee := os.Getenv("GITHUB_ASSIGNEE")
-	if repo == "" || assignee == "" {
-		fmt.Println("GITHUB_DEFAULT_REPO or GITHUB_ASSIGNEE not set — skipping ticket sync")
+	if os.Getenv("GITHUB_TOKEN") == "" {
+		fmt.Println("GITHUB_TOKEN not set — skipping ticket sync")
 		return nil
 	}
 
 	fmt.Println("Syncing tickets from GitHub...")
 
-	syncScript := filepath.Join(projectRoot, "backend", "github_ticket_sync.py")
-	cmd := exec.Command("uv", "run", "--directory", projectRoot, "python", syncScript, "sync", repo, assignee)
-	cmd.Dir = projectRoot
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
+	// Reuse the Go-native sync (writes to the github_issues SQLite table).
+	if err := cli.handleGitHubSync(); err != nil {
 		fmt.Printf("Ticket sync failed (non-fatal): %v\n", err)
 		// Do not return an error — init continues regardless of sync outcome.
 	} else {

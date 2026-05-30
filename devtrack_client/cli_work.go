@@ -310,42 +310,7 @@ func (cli *CLI) handleWorkReport() error {
 	return cmd.Run()
 }
 
-// handleServerTUI launches the Textual-based server process monitor.
-// Usage: devtrack server-tui
-func (cli *CLI) handleServerTUI() error {
-	if err := requiresManagedMode("server-tui"); err != nil {
-		return err
-	}
-	projectRoot := os.Getenv("PROJECT_ROOT")
-	if projectRoot == "" {
-		return fmt.Errorf("PROJECT_ROOT is not set — cannot locate Python backend")
-	}
-	cmd := exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.server_tui")
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-// handleAdminStart starts the Admin Console web server (CS-3).
-// Usage: devtrack admin-start
-func (cli *CLI) handleAdminStart() error {
-	if err := requiresManagedMode("admin-start"); err != nil {
-		return err
-	}
-	projectRoot := os.Getenv("PROJECT_ROOT")
-	if projectRoot == "" {
-		return fmt.Errorf("PROJECT_ROOT is not set — cannot locate Python backend")
-	}
-	adminPort := os.Getenv("ADMIN_PORT")
-	if adminPort == "" {
-		adminPort = "8090"
-	}
-	fmt.Printf("Starting Admin Console on http://localhost:%s/admin/\n", adminPort)
-	fmt.Println("Press Ctrl+C to stop.")
-	cmd := exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.admin")
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
+// server-tui and admin-start were removed from the client: the server TUI and
+// admin web GUI are server-management tools owned by devtrack_server, not the
+// standalone client. See docs/CAPABILITIES_OWNERSHIP.md (§11) and the
+// client/server-decoupling plan (Phase 1a).
