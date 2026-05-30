@@ -47,11 +47,7 @@ func (c *Client) postJSON(path string, body any, out any) error {
 
 // AddIssueNote posts a note (comment) to an issue. projectPath is "group/project"
 // (URL-encoded automatically); iid is the issue's project-scoped IID.
-func AddIssueNote(projectPath string, iid int, body string) error {
-	c, err := NewClient()
-	if err != nil {
-		return err
-	}
+func (c *Client) AddIssueNote(projectPath string, iid int, body string) error {
 	path := fmt.Sprintf("/projects/%s/issues/%d/notes", url.QueryEscape(projectPath), iid)
 	return c.postJSON(path, map[string]string{"body": body}, nil)
 }

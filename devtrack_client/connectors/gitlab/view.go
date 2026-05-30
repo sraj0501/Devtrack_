@@ -8,12 +8,7 @@ import (
 // ViewIssue fetches a single GitLab issue by project ID (URL-encoded path) and IID.
 // projectPath is the URL-encoded "group%2Fproject" string, or numeric project ID.
 // iid is the issue IID (project-scoped number shown in the UI).
-func ViewIssue(projectPath string, iid int) (*Issue, error) {
-	c, err := NewClient()
-	if err != nil {
-		return nil, err
-	}
-
+func (c *Client) ViewIssue(projectPath string, iid int) (*Issue, error) {
 	var issue Issue
 	path := fmt.Sprintf("/projects/%s/issues/%d", projectPath, iid)
 	if err := c.do(path, &issue); err != nil {

@@ -9,16 +9,73 @@ import (
 	azureconn "github.com/sraj0501/Devtrack_/devtrack_client/connectors/azure"
 	githubconn "github.com/sraj0501/Devtrack_/devtrack_client/connectors/github"
 	gitlabconn "github.com/sraj0501/Devtrack_/devtrack_client/connectors/gitlab"
+	"github.com/sraj0501/Devtrack_/devtrack_client/connectors/pm"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 )
 
-// handleAzureCheck verifies Azure DevOps config and connectivity
-func (cli *CLI) handleAzureCheck() error {
-	return azureconn.Check()
+// workspaceFor finds the workspace for the given platform from workspaces.yaml.
+// It first tries to match the current directory; falls back to the first enabled
+// workspace for that platform. Returns an error if none is found.
+func workspaceFor(platform string) (*config.WorkspaceConfig, error) {
+	wsCfg, err := config.LoadWorkspacesConfig()
+	if err != nil {
+		return nil, fmt.Errorf("cannot load workspaces.yaml: %w", err)
+	}
+	if wsCfg == nil || len(wsCfg.Workspaces) == 0 {
+		return nil, fmt.Errorf("workspaces.yaml not found or empty — add a workspace entry for %s", platform)
+	}
+
+	cwd, _ := os.Getwd()
+
+	// Prefer a workspace that matches the current directory AND the platform.
+	for i := range wsCfg.Workspaces {
+		ws := &wsCfg.Workspaces[i]
+		if !ws.Enabled {
+			continue
+		}
+		if platform != "" && !strings.EqualFold(ws.PMPlatform, platform) {
+			continue
+		}
+		if strings.HasPrefix(cwd, ws.Path) {
+			return ws, nil
+		}
+	}
+
+	// Fall back to first enabled workspace for this platform.
+	for i := range wsCfg.Workspaces {
+		ws := &wsCfg.Workspaces[i]
+		if ws.Enabled && strings.EqualFold(ws.PMPlatform, platform) {
+			return ws, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no enabled %s workspace found in workspaces.yaml", platform)
 }
 
-// handleAzureList lists work items assigned to the user
+// ── Azure ─────────────────────────────────────────────────────────────────────
+
+func (cli *CLI) handleAzureCheck() error {
+	ws, err := workspaceFor("azure")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewAzureClient(ws)
+	if err != nil {
+		return err
+	}
+	return c.Check()
+}
+
 func (cli *CLI) handleAzureList() error {
-	items, err := azureconn.ListWorkItems()
+	ws, err := workspaceFor("azure")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewAzureClient(ws)
+	if err != nil {
+		return err
+	}
+	items, err := c.ListWorkItems()
 	if err != nil {
 		return fmt.Errorf("azure list: %w", err)
 	}
@@ -27,23 +84,29 @@ func (cli *CLI) handleAzureList() error {
 		return nil
 	}
 	for _, item := range items {
-		fmt.Printf("#%d  [%s] (%s)  %s\n  %s\n\n",
+		fmt.Printf("AB#%d  [%s] (%s)  %s\n  %s\n\n",
 			item.ID, item.State(), item.WorkItemType(), item.Title(), item.WebURL)
 	}
 	return nil
 }
 
-// handleAzureSync runs a manual sync with Azure DevOps and stores results in SQLite.
 func (cli *CLI) handleAzureSync() error {
+	ws, err := workspaceFor("azure")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewAzureClient(ws)
+	if err != nil {
+		return err
+	}
 	db, err := NewDatabase()
 	if err != nil {
 		return fmt.Errorf("azure sync: open database: %w", err)
 	}
 	defer db.Close()
-	return azureconn.Sync(db.DB())
+	return c.Sync(db.DB())
 }
 
-// handleAzureView shows details for a specific Azure DevOps work item
 func (cli *CLI) handleAzureView() error {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: devtrack azure-view <work-item-id>")
@@ -53,7 +116,15 @@ func (cli *CLI) handleAzureView() error {
 	if err != nil {
 		return fmt.Errorf("azure-view: invalid work item ID %q: %w", os.Args[2], err)
 	}
-	item, err := azureconn.ViewWorkItem(id)
+	ws, err := workspaceFor("azure")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewAzureClient(ws)
+	if err != nil {
+		return err
+	}
+	item, err := c.ViewWorkItem(id)
 	if err != nil {
 		return fmt.Errorf("azure view: %w", err)
 	}
@@ -61,14 +132,34 @@ func (cli *CLI) handleAzureView() error {
 	return nil
 }
 
-// handleGitLabCheck verifies GitLab config and connectivity
+// ── GitLab ────────────────────────────────────────────────────────────────────
+
 func (cli *CLI) handleGitLabCheck() error {
-	return gitlabconn.Check()
+	ws, err := workspaceFor("gitlab")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewGitLabClient(ws)
+	if err != nil {
+		return err
+	}
+	return c.Check()
 }
 
-// handleGitLabList lists GitLab issues assigned to the user
 func (cli *CLI) handleGitLabList() error {
-	issues, err := gitlabconn.ListIssues()
+	ws, err := workspaceFor("gitlab")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewGitLabClient(ws)
+	if err != nil {
+		return err
+	}
+	username := ""
+	if ws != nil {
+		username = ws.PMUsername
+	}
+	issues, err := c.ListIssues(username)
 	if err != nil {
 		return fmt.Errorf("gitlab list: %w", err)
 	}
@@ -82,18 +173,27 @@ func (cli *CLI) handleGitLabList() error {
 	return nil
 }
 
-// handleGitLabSync runs a manual sync with GitLab and stores results in SQLite.
 func (cli *CLI) handleGitLabSync() error {
+	ws, err := workspaceFor("gitlab")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewGitLabClient(ws)
+	if err != nil {
+		return err
+	}
+	username := ""
+	if ws != nil {
+		username = ws.PMUsername
+	}
 	db, err := NewDatabase()
 	if err != nil {
 		return fmt.Errorf("gitlab sync: open database: %w", err)
 	}
 	defer db.Close()
-	return gitlabconn.Sync(db.DB())
+	return c.Sync(db.DB(), username)
 }
 
-// handleGitLabView shows details for a specific GitLab issue.
-// Usage: devtrack gitlab-view <project_id_or_path> <issue_iid>
 func (cli *CLI) handleGitLabView() error {
 	if len(os.Args) < 4 {
 		fmt.Println("Usage: devtrack gitlab-view <project_id_or_path> <issue_iid>")
@@ -104,7 +204,15 @@ func (cli *CLI) handleGitLabView() error {
 	if err != nil {
 		return fmt.Errorf("gitlab-view: invalid issue IID %q: %w", os.Args[3], err)
 	}
-	issue, err := gitlabconn.ViewIssue(projectPath, iid)
+	ws, err := workspaceFor("gitlab")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewGitLabClient(ws)
+	if err != nil {
+		return err
+	}
+	issue, err := c.ViewIssue(projectPath, iid)
 	if err != nil {
 		return fmt.Errorf("gitlab view: %w", err)
 	}
@@ -112,19 +220,34 @@ func (cli *CLI) handleGitLabView() error {
 	return nil
 }
 
-// handleGitHubCheck verifies GitHub config and connectivity
+// ── GitHub ────────────────────────────────────────────────────────────────────
+
 func (cli *CLI) handleGitHubCheck() error {
-	return githubconn.Check()
+	ws, err := workspaceFor("github")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewGitHubClient(ws)
+	if err != nil {
+		return err
+	}
+	return c.Check()
 }
 
-// handleGitHubList lists GitHub issues assigned to the user
 func (cli *CLI) handleGitHubList() error {
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		return fmt.Errorf("GITHUB_TOKEN is not set")
+	ws, err := workspaceFor("github")
+	if err != nil {
+		return err
 	}
-	username := os.Getenv("GITHUB_USERNAME")
-	issues, err := githubconn.ListIssues(token, username)
+	c, err := pm.NewGitHubClient(ws)
+	if err != nil {
+		return err
+	}
+	username := ""
+	if ws != nil {
+		username = ws.PMUsername
+	}
+	issues, err := c.ListIssues(username)
 	if err != nil {
 		return fmt.Errorf("github list: %w", err)
 	}
@@ -139,32 +262,45 @@ func (cli *CLI) handleGitHubList() error {
 	return nil
 }
 
-// handleGitHubSync runs a manual sync with GitHub and stores results in SQLite.
 func (cli *CLI) handleGitHubSync() error {
+	ws, err := workspaceFor("github")
+	if err != nil {
+		return err
+	}
+	c, err := pm.NewGitHubClient(ws)
+	if err != nil {
+		return err
+	}
+	username := ""
+	if ws != nil {
+		username = ws.PMUsername
+	}
 	db, err := NewDatabase()
 	if err != nil {
 		return fmt.Errorf("github sync: open database: %w", err)
 	}
 	defer db.Close()
-	return githubconn.Sync(db.DB())
+	return c.Sync(db.DB(), username)
 }
 
 // handleGitHubView shows details for a specific GitHub issue.
-// Usage: devtrack github-view <owner>/<repo> <issue_number>
-// OR:    devtrack github-view <issue_number>  (uses GITHUB_REPO env var)
+// Usage: devtrack github-view <owner/repo> <issue_number>
+//
+//	devtrack github-view <issue_number>  (uses pm_project from workspaces.yaml)
 func (cli *CLI) handleGitHubView() error {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: devtrack github-view <owner/repo> <issue_number>")
-		fmt.Println("   or: devtrack github-view <issue_number>  (requires GITHUB_REPO=owner/repo)")
+		fmt.Println("   or: devtrack github-view <issue_number>  (uses pm_project from workspaces.yaml)")
 		return fmt.Errorf("missing arguments")
 	}
+
+	ws, wsErr := workspaceFor("github")
 
 	var owner, repo string
 	var number int
 	var err error
 
 	if len(os.Args) >= 4 {
-		// devtrack github-view owner/repo 42
 		parts := strings.SplitN(os.Args[2], "/", 2)
 		if len(parts) != 2 {
 			return fmt.Errorf("github-view: expected owner/repo, got %q", os.Args[2])
@@ -172,14 +308,16 @@ func (cli *CLI) handleGitHubView() error {
 		owner, repo = parts[0], parts[1]
 		number, err = strconv.Atoi(os.Args[3])
 	} else {
-		// devtrack github-view 42  — requires GITHUB_REPO
-		repoEnv := os.Getenv("GITHUB_REPO")
-		if repoEnv == "" {
-			return fmt.Errorf("GITHUB_REPO not set — use: devtrack github-view <owner/repo> <number>")
+		// Single-arg form: issue number only — use pm_project from workspace.
+		if wsErr != nil {
+			return fmt.Errorf("github-view: %w — or specify owner/repo explicitly", wsErr)
 		}
-		parts := strings.SplitN(repoEnv, "/", 2)
+		if ws.PMProject == "" {
+			return fmt.Errorf("github-view: set pm_project in workspaces.yaml, or use: devtrack github-view <owner/repo> <number>")
+		}
+		parts := strings.SplitN(ws.PMProject, "/", 2)
 		if len(parts) != 2 {
-			return fmt.Errorf("GITHUB_REPO must be in owner/repo format, got %q", repoEnv)
+			return fmt.Errorf("github-view: pm_project must be owner/repo, got %q", ws.PMProject)
 		}
 		owner, repo = parts[0], parts[1]
 		number, err = strconv.Atoi(os.Args[2])
@@ -188,7 +326,11 @@ func (cli *CLI) handleGitHubView() error {
 		return fmt.Errorf("github-view: invalid issue number: %w", err)
 	}
 
-	issue, err := githubconn.ViewIssue(owner, repo, number)
+	c, err := pm.NewGitHubClient(ws)
+	if err != nil {
+		return err
+	}
+	issue, err := c.ViewIssue(owner, repo, number)
 	if err != nil {
 		return fmt.Errorf("github view: %w", err)
 	}

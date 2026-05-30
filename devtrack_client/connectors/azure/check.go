@@ -1,9 +1,6 @@
 package azure
 
-import (
-	"fmt"
-	"os"
-)
+import "fmt"
 
 // projectsResponse is the response from the projects list endpoint.
 type projectsResponse struct {
@@ -15,18 +12,7 @@ type projectsResponse struct {
 }
 
 // Check verifies Azure DevOps connectivity and prints org/project info.
-func Check() error {
-	for _, v := range []string{"AZURE_DEVOPS_PAT", "AZURE_ORG", "AZURE_PROJECT"} {
-		if os.Getenv(v) == "" {
-			return fmt.Errorf("%s is not set\nSet it in your .env file", v)
-		}
-	}
-
-	c, err := NewClient()
-	if err != nil {
-		return err
-	}
-
+func (c *Client) Check() error {
 	url := fmt.Sprintf("%s/_apis/projects?api-version=%s", c.orgURL(), apiVersion)
 	var projs projectsResponse
 	if err := c.get(url, &projs); err != nil {
@@ -34,11 +20,10 @@ func Check() error {
 	}
 
 	fmt.Printf("Azure DevOps: connected\n")
-	fmt.Printf("  Org:        %s\n", c.org)
-	fmt.Printf("  Project:    %s\n", c.project)
+	fmt.Printf("  Org:     %s\n", c.org)
+	fmt.Printf("  Project: %s\n", c.project)
 	fmt.Printf("  Projects in org: %d\n", projs.Count)
 
-	// Show that the configured project is accessible
 	found := false
 	for _, p := range projs.Value {
 		if p.Name == c.project {
@@ -48,11 +33,10 @@ func Check() error {
 		}
 	}
 	if !found && projs.Count > 0 {
-		fmt.Printf("  Warning: project '%s' not found in org. Available projects:\n", c.project)
+		fmt.Printf("  Warning: project %q not found in org. Available:\n", c.project)
 		for _, p := range projs.Value {
 			fmt.Printf("    - %s\n", p.Name)
 		}
 	}
-
 	return nil
 }

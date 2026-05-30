@@ -26,11 +26,7 @@ type createdWorkItem struct {
 // returns its id and web URL. The work-item create endpoint requires a
 // JSON-Patch document and the application/json-patch+json content type, so this
 // builds the request directly rather than reusing post().
-func CreateWorkItem(title, description, workItemType string) (int, string, error) {
-	c, err := NewClient()
-	if err != nil {
-		return 0, "", err
-	}
+func (c *Client) CreateWorkItem(title, description, workItemType string) (int, string, error) {
 	if strings.TrimSpace(workItemType) == "" {
 		workItemType = "Task"
 	}

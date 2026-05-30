@@ -19,13 +19,13 @@ CREATE TABLE IF NOT EXISTS azure_workitems (
 	synced_at      DATETIME
 )`
 
-// Sync fetches all assigned open work items and upserts them into the azure_workitems SQLite table.
-func Sync(db *sql.DB) error {
+// Sync fetches all assigned open work items and upserts them into azure_workitems.
+func (c *Client) Sync(db *sql.DB) error {
 	if _, err := db.Exec(createAzureTable); err != nil {
 		return fmt.Errorf("azure sync: create table: %w", err)
 	}
 
-	items, err := ListWorkItems()
+	items, err := c.ListWorkItems()
 	if err != nil {
 		return fmt.Errorf("azure sync: list work items: %w", err)
 	}

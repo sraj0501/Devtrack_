@@ -23,14 +23,8 @@ type workItemsResponse struct {
 	Value []WorkItem `json:"value"`
 }
 
-// ListWorkItems returns all open work items assigned to the current user.
-func ListWorkItems() ([]WorkItem, error) {
-	c, err := NewClient()
-	if err != nil {
-		return nil, err
-	}
-
-	// WIQL query — @Me resolves to the PAT's owner
+// ListWorkItems returns all open work items assigned to the current user (@Me).
+func (c *Client) ListWorkItems() ([]WorkItem, error) {
 	query := wiqlRequest{
 		Query: `SELECT [System.Id],[System.Title],[System.State],[System.AssignedTo],[System.WorkItemType],[System.ChangedDate]
 FROM WorkItems
@@ -51,14 +45,12 @@ ORDER BY [System.ChangedDate] DESC`,
 		return nil, nil
 	}
 
-	// Build comma-separated IDs for batch fetch
 	ids := make([]string, len(wiqlResp.WorkItems))
 	for i, wi := range wiqlResp.WorkItems {
 		ids[i] = fmt.Sprintf("%d", wi.ID)
 	}
 	idsStr := strings.Join(ids, ",")
 
-	// Batch fetch work item details
 	batchURL := fmt.Sprintf("%s/_apis/wit/workitems?ids=%s&fields=System.Id,System.Title,System.State,System.AssignedTo,System.WorkItemType,System.ChangedDate&api-version=%s",
 		c.orgURL(), idsStr, apiVersion)
 
@@ -67,7 +59,6 @@ ORDER BY [System.ChangedDate] DESC`,
 		return nil, fmt.Errorf("azure list: batch fetch failed: %w", err)
 	}
 
-	// Populate WebURL for each item
 	for i := range batchResp.Value {
 		batchResp.Value[i].WebURL = fmt.Sprintf("%s/%s/_workitems/edit/%d",
 			c.baseURL, c.org, batchResp.Value[i].ID)
@@ -75,4 +66,3 @@ ORDER BY [System.ChangedDate] DESC`,
 
 	return batchResp.Value, nil
 }
-

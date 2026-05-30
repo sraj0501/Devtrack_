@@ -2,7 +2,9 @@ package pm
 
 import (
 	"encoding/json"
+	"strings"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 )
 
@@ -38,6 +40,10 @@ func FlushQueue(database *db.Database) (sent, failed int) {
 	if err != nil {
 		return 0, 0
 	}
+
+	// Load all workspaces once so we can find the right config per ticket.
+	wsCfg, _ := config.LoadWorkspacesConfig()
+
 	for _, rec := range pending {
 		if rec.Action != ActionComment {
 			continue
@@ -48,7 +54,9 @@ func FlushQueue(database *db.Database) (sent, failed int) {
 			failed++
 			continue
 		}
-		if err := AddComment(qc.Ticket, qc.Body); err != nil {
+		// Find the best workspace for this ticket's platform.
+		ws := workspaceForPlatform(wsCfg, qc.Ticket.Platform)
+		if err := AddComment(ws, qc.Ticket, qc.Body); err != nil {
 			_ = database.MarkPMUpdateFailed(rec.ID, err.Error())
 			failed++
 			continue
@@ -57,4 +65,19 @@ func FlushQueue(database *db.Database) (sent, failed int) {
 		sent++
 	}
 	return sent, failed
+}
+
+// workspaceForPlatform returns the first enabled workspace matching platform,
+// or nil if none found (AddComment will use default API URLs for GitHub/GitLab).
+func workspaceForPlatform(wsCfg *config.WorkspacesConfig, platform string) *config.WorkspaceConfig {
+	if wsCfg == nil {
+		return nil
+	}
+	for i := range wsCfg.Workspaces {
+		ws := &wsCfg.Workspaces[i]
+		if ws.Enabled && strings.EqualFold(ws.PMPlatform, platform) {
+			return ws
+		}
+	}
+	return nil
 }
