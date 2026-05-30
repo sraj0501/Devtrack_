@@ -152,8 +152,10 @@ func RunSetup() error {
 	}
 	ws = expandHomePath(ws)
 	if !IsGitRepository(ws) {
-		fmt.Printf("\nWarning: %s does not appear to be a git repository.\n", ws)
-		fmt.Println("You can update DEVTRACK_WORKSPACE in .env later.")
+		if err := offerGitInit(ws); err != nil {
+			// User declined or init failed — warn and continue; they can fix it later.
+			fmt.Printf("  Note: %s is not a git repository. Update DEVTRACK_WORKSPACE in .env when ready.\n", ws)
+		}
 	}
 	cfg.WorkspacePath = ws
 	fmt.Println()
