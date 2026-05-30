@@ -71,10 +71,7 @@ type EnvConfig struct {
 	TeamsMentionUser string
 
 	// Learning command settings
-	LearningPythonPath      string
-	LearningScriptPath      string
-	LearningDailyScriptPath string
-	LearningDefaultDays     string
+	LearningDefaultDays string
 
 	// Build metadata
 	DevTrackVersion   string
@@ -191,10 +188,7 @@ func LoadEnvConfig() (*EnvConfig, error) {
 		TeamsChatType:       os.Getenv("TEAMS_CHAT_TYPE"),
 		TeamsWebhookURL:     os.Getenv("TEAMS_WEBHOOK_URL"),
 		TeamsMentionUser:    os.Getenv("TEAMS_MENTION_USER"),
-		LearningPythonPath:      os.Getenv("LEARNING_PYTHON_PATH"),
-		LearningScriptPath:      os.Getenv("LEARNING_SCRIPT_PATH"),
-		LearningDailyScriptPath: os.Getenv("LEARNING_DAILY_SCRIPT_PATH"),
-		LearningDefaultDays:     os.Getenv("LEARNING_DEFAULT_DAYS"),
+		LearningDefaultDays: os.Getenv("LEARNING_DEFAULT_DAYS"),
 		DevTrackVersion:     os.Getenv("DEVTRACK_VERSION"),
 		DevTrackBuildDate:   os.Getenv("DEVTRACK_BUILD_DATE"),
 	}
@@ -210,12 +204,6 @@ func expandPath(path string) string {
 		return filepath.Join(homeDir, path[2:])
 	}
 	return path
-}
-
-// fileExists checks if a file exists
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }
 
 // GetDevTrackDir returns the DevTrack home directory
@@ -546,43 +534,6 @@ func GetTeamsMentionUser() bool {
 	return mustParseBool("TEAMS_MENTION_USER", config.TeamsMentionUser)
 }
 
-func GetLearningPythonPath() string {
-	config, err := LoadEnvConfig()
-	if err != nil {
-		panic(fmt.Sprintf("devtrack: config: %v", err))
-	}
-	return config.LearningPythonPath
-}
-
-func GetLearningScriptPath() string {
-	config, err := LoadEnvConfig()
-	if err != nil {
-		panic(fmt.Sprintf("devtrack: config: %v", err))
-	}
-	return expandPath(config.LearningScriptPath)
-}
-
-// GetLearningDailyScriptPath returns the path to the daily learning Python script.
-// Returns an error instead of calling os.Exit so Lightweight mode callers can
-// handle the missing backend gracefully.
-func GetLearningDailyScriptPath() (string, error) {
-	config, err := LoadEnvConfig()
-	if err != nil {
-		return "", fmt.Errorf("config load failed: %w", err)
-	}
-	var path string
-	// Use explicit env var if set, otherwise derive from PROJECT_ROOT
-	if config.LearningDailyScriptPath != "" {
-		path = expandPath(config.LearningDailyScriptPath)
-	} else {
-		path = filepath.Join(config.ProjectRoot, "backend", "run_daily_learning.py")
-	}
-	if !fileExists(path) {
-		return "", fmt.Errorf("daily learning script not found at %s (Managed mode required)", path)
-	}
-	return path, nil
-}
-
 func GetLearningDefaultDays() int {
 	config, err := LoadEnvConfig()
 	if err != nil {
@@ -806,32 +757,6 @@ func GetDeferredCommitExpiryHours() int {
 // IsTelegramEnabled returns whether the Telegram bot is enabled
 func IsTelegramEnabled() bool {
 	val := os.Getenv("TELEGRAM_ENABLED")
-	return strings.EqualFold(val, "true") || val == "1"
-}
-
-// IsSlackEnabled returns whether the Slack bot is enabled
-func IsSlackEnabled() bool {
-	val := os.Getenv("SLACK_ENABLED")
-	return strings.EqualFold(val, "true") || val == "1"
-}
-
-func IsAzurePollerEnabled() bool {
-	val := os.Getenv("AZURE_POLL_ENABLED")
-	return strings.EqualFold(val, "true") || val == "1"
-}
-
-// IsGitLabPollerEnabled returns whether the GitLab assignment poller is enabled
-func IsGitLabPollerEnabled() bool {
-	val := os.Getenv("GITLAB_POLL_ENABLED")
-	return strings.EqualFold(val, "true") || val == "1"
-}
-
-// GetHealthAutoRestartTelegram returns whether to auto-restart the Telegram bot
-func GetHealthAutoRestartTelegram() bool {
-	val := os.Getenv("HEALTH_AUTO_RESTART_TELEGRAM")
-	if val == "" {
-		return true // default: auto-restart
-	}
 	return strings.EqualFold(val, "true") || val == "1"
 }
 
