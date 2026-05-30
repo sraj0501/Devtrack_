@@ -6,6 +6,7 @@ package pm
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/connectors/azure"
@@ -96,6 +97,102 @@ func ListOpenTickets(ws *config.WorkspaceConfig) ([]Ticket, error) {
 	}
 
 	return nil, nil
+}
+
+// CreateTicket opens a new ticket on the workspace's PM platform and returns
+// the created Ticket. For github/gitlab the target repo is taken from the
+// workspace's pm_project (falling back to the repo's origin remote).
+func CreateTicket(ws *config.WorkspaceConfig, repoPath, title, body string) (Ticket, error) {
+	platform := ""
+	if ws != nil {
+		platform = strings.ToLower(ws.PMPlatform)
+	}
+
+	milestone := 0
+	if ws != nil {
+		milestone = ws.PMMilestone
+	}
+
+	switch platform {
+	case "github":
+		repo := repoForWorkspace(ws, repoPath)
+		if repo == "" {
+			return Ticket{}, fmt.Errorf("github: cannot determine owner/repo (set pm_project or an origin remote)")
+		}
+		num, url, err := github.CreateIssue(repo, title, body, milestone)
+		if err != nil {
+			return Ticket{}, err
+		}
+		return Ticket{
+			Platform: "github", Number: num, ID: fmt.Sprintf("#%d", num),
+			Title: title, Body: body, State: "open", URL: url, Repo: repo,
+		}, nil
+
+	case "gitlab":
+		repo := repoForWorkspace(ws, repoPath)
+		if repo == "" {
+			return Ticket{}, fmt.Errorf("gitlab: cannot determine group/project (set pm_project or an origin remote)")
+		}
+		iid, url, err := gitlab.CreateIssue(repo, title, body, milestone)
+		if err != nil {
+			return Ticket{}, err
+		}
+		return Ticket{
+			Platform: "gitlab", Number: iid, ID: fmt.Sprintf("#%d", iid),
+			Title: title, Body: body, State: "opened", URL: url, Repo: repo,
+		}, nil
+
+	case "azure":
+		id, url, err := azure.CreateWorkItem(title, body, "")
+		if err != nil {
+			return Ticket{}, err
+		}
+		return Ticket{
+			Platform: "azure", Number: id, ID: fmt.Sprintf("AB#%d", id),
+			Title: title, Body: body, State: "New", URL: url,
+		}, nil
+	}
+
+	return Ticket{}, fmt.Errorf("unsupported PM platform: %q", platform)
+}
+
+// repoForWorkspace returns the github "owner/repo" / gitlab "group/project"
+// for ticket creation: the workspace's pm_project if set, else parsed from the
+// repo's origin remote.
+func repoForWorkspace(ws *config.WorkspaceConfig, repoPath string) string {
+	if ws != nil && strings.TrimSpace(ws.PMProject) != "" {
+		return strings.TrimSpace(ws.PMProject)
+	}
+	return parseRemoteRepo(repoPath)
+}
+
+// parseRemoteRepo reads origin's URL for repoPath and extracts owner/repo.
+func parseRemoteRepo(repoPath string) string {
+	cmd := exec.Command("git", "remote", "get-url", "origin")
+	cmd.Dir = repoPath
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return parseOwnerRepo(strings.TrimSpace(string(out)))
+}
+
+// parseOwnerRepo extracts "owner/repo" (or "group/sub/project") from a git
+// remote URL in either SSH (git@host:owner/repo.git) or HTTPS
+// (https://host/owner/repo.git) form.
+func parseOwnerRepo(remote string) string {
+	remote = strings.TrimSuffix(remote, ".git")
+	if i := strings.Index(remote, "://"); i >= 0 {
+		rest := remote[i+3:]
+		if s := strings.IndexByte(rest, '/'); s >= 0 {
+			return strings.Trim(rest[s+1:], "/")
+		}
+		return ""
+	}
+	if i := strings.LastIndex(remote, ":"); i >= 0 {
+		return strings.Trim(remote[i+1:], "/")
+	}
+	return ""
 }
 
 // AddComment posts body as a comment/note on the ticket.

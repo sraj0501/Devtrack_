@@ -227,6 +227,7 @@ func (wc *WorkspaceCommands) InstallHooks() error {
 			fmt.Printf("  ✗ %-20s %s — %v\n", ws.Name, ws.Path, err)
 			failed++
 		} else {
+			_ = InstallPrePushHook(ws.Path) // best-effort; never blocks setup
 			fmt.Printf("  ✓ %-20s %s\n", ws.Name, ws.Path)
 			ok++
 		}

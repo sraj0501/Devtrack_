@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/infra"
 )
 
 // handleCommitQueue handles the internal commit-queue command (called by git wrapper)
@@ -107,11 +109,24 @@ func (cli *CLI) handleCommits() error {
 		return mgr.ListPending()
 	case "review":
 		return mgr.ReviewEnhanced()
+	case "enhance":
+		// Retry AI enhancement of queued commits (used by the pre-push hook and
+		// available manually). Never fails the caller — pushes must not be blocked.
+		n, err := infra.EnhanceDeferredCommits(db)
+		if err != nil {
+			fmt.Printf("commits enhance: %v\n", err)
+			return nil
+		}
+		if n > 0 {
+			fmt.Printf("✨ Enhanced %d queued commit(s) — run 'devtrack commits review'\n", n)
+		}
+		return nil
 	default:
 		fmt.Printf("Unknown commits subcommand: %s\n", subCmd)
 		fmt.Println("Usage:")
 		fmt.Println("  devtrack commits pending  - List deferred commits")
 		fmt.Println("  devtrack commits review   - Review enhanced commits")
+		fmt.Println("  devtrack commits enhance  - Retry AI enhancement of queued commits")
 		return nil
 	}
 }

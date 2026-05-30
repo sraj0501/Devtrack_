@@ -43,20 +43,65 @@ func TestFormatMinutes(t *testing.T) {
 }
 
 func TestBuildCommentBody(t *testing.T) {
-	hash := "a689ae8f1234"
-	msg := "feat(date): add parser\n\nLong body here."
+	hash := "a689ae8f1234ffff"
+	msg := "feat(date): add parser"
 
-	// Without time
-	got := buildCommentBody(hash, msg, 0, false)
-	want := "Commit a689ae8f: feat(date): add parser"
+	// Without time, default status — no Time spent / Status lines.
+	got := buildCommentBody(hash, "Ada", msg, "in_progress", 0, false)
+	want := "**Commit**: `a689ae8f1234`\n\n**Author**: Ada\n\n**Message**: feat(date): add parser"
 	if got != want {
-		t.Errorf("buildCommentBody (no time) = %q, want %q", got, want)
+		t.Errorf("buildCommentBody (no time) =\n%q\nwant\n%q", got, want)
 	}
 
-	// With time
-	got = buildCommentBody(hash, msg, 90, true)
-	want = "Commit a689ae8f: feat(date): add parser\n\nTime spent: 1h30m"
+	// With time and a done status.
+	got = buildCommentBody(hash, "Ada", msg, "done", 90, true)
+	want = "**Commit**: `a689ae8f1234`\n\n**Author**: Ada\n\n**Message**: feat(date): add parser\n\n**Time spent**: 1h30m\n\n**Status**: done"
 	if got != want {
-		t.Errorf("buildCommentBody (with time) = %q, want %q", got, want)
+		t.Errorf("buildCommentBody (with time+status) =\n%q\nwant\n%q", got, want)
+	}
+
+	// Empty author omits the Author line.
+	got = buildCommentBody(hash, "", msg, "in_progress", 0, false)
+	if want := "**Commit**: `a689ae8f1234`\n\n**Message**: feat(date): add parser"; got != want {
+		t.Errorf("buildCommentBody (no author) =\n%q\nwant\n%q", got, want)
+	}
+}
+
+func TestParseTicketRefs(t *testing.T) {
+	cases := map[string][]int{
+		"fix login bug":             nil,
+		"fixes #42":                 {42},
+		"closes #7 and #13":         {7, 13},
+		"AB#1234 work item":         {1234},
+		"dup #5 #5":                 {5},
+		"no number #":               nil,
+	}
+	for in, want := range cases {
+		got := parseTicketRefs(in)
+		if len(got) != len(want) {
+			t.Errorf("parseTicketRefs(%q) = %v, want %v", in, got, want)
+			continue
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("parseTicketRefs(%q) = %v, want %v", in, got, want)
+				break
+			}
+		}
+	}
+}
+
+func TestDetectStatus(t *testing.T) {
+	cases := map[string]string{
+		"feat: add thing":     "in_progress",
+		"fixes #42 login":     "done",
+		"closes the redirect": "done",
+		"resolve crash":       "done",
+		"refactor module":     "in_progress",
+	}
+	for in, want := range cases {
+		if got := detectStatus(in); got != want {
+			t.Errorf("detectStatus(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

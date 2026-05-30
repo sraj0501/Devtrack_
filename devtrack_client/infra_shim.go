@@ -26,4 +26,5 @@ func NewGitMonitor(repoPath string) (*GitMonitor, error) { return infra.NewGitMo
 func EnsureLocalInfra() error                            { return infra.EnsureLocalInfra() }
 func IsGitRepository(path string) bool                   { return infra.IsGitRepository(path) }
 func InstallPostCommitHook(repoPath string) error        { return infra.InstallPostCommitHook(repoPath) }
+func InstallPrePushHook(repoPath string) error           { return infra.InstallPrePushHook(repoPath) }
 func TestIntegrated()                                    { infra.TestIntegrated() }
