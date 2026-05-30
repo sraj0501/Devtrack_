@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"strconv"
 	"sync"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/connectors/pm"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	trigger "github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
 // TriggerType represents the type of trigger event
@@ -384,23 +384,12 @@ func (s *Scheduler) scheduleEODReport() {
 			}
 		}
 
-		// Run Python EOD report generator
-		projectRoot := os.Getenv("PROJECT_ROOT")
-		if projectRoot == "" {
-			log.Println("⚠️  EOD report: PROJECT_ROOT not set — cannot run report generator")
-			return
-		}
-
-		args := []string{"run", "--directory", projectRoot, "python", "-m", "backend.work_tracker.eod_report_generator"}
+		// Send EOD report via server HTTP API.
 		recipient := os.Getenv("EOD_REPORT_EMAIL")
-		if recipient != "" {
-			args = append(args, "--email", recipient)
-		}
-
-		cmd := exec.Command("uv", args...)
-		cmd.Dir = projectRoot
-		if out, runErr := cmd.CombinedOutput(); runErr != nil {
-			log.Printf("⚠️  EOD report generator error: %v\n%s", runErr, string(out))
+		trig := trigger.NewHTTPTriggerClient()
+		out, reportErr := trig.ReportEOD(recipient, "")
+		if reportErr != nil {
+			log.Printf("⚠️  EOD report error: %v", reportErr)
 		} else {
 			log.Printf("✅ EOD report generated%s", func() string {
 				if recipient != "" {
@@ -408,6 +397,9 @@ func (s *Scheduler) scheduleEODReport() {
 				}
 				return ""
 			}())
+			if out != "" {
+				log.Printf("EOD report output:\n%s", out)
+			}
 		}
 	})
 	if err != nil {

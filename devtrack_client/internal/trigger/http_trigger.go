@@ -340,3 +340,313 @@ func (c *HTTPTriggerClient) post(path string, payload interface{}) error {
 	log.Printf("✓ Trigger sent via HTTP → %s%s (%d)", c.serverURL, path, resp.StatusCode)
 	return nil
 }
+
+// getWithResult performs a GET and decodes the JSON response body into dest.
+func (c *HTTPTriggerClient) getWithResult(path string, dest interface{}) error {
+	if c.serverURL == "" {
+		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
+	}
+	req, err := http.NewRequest("GET", c.serverURL+path, nil)
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	if c.apiKey != "" {
+		req.Header.Set("X-DevTrack-API-Key", c.apiKey)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("GET %s%s: %w", c.serverURL, path, err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var errResp struct{ Detail string `json:"detail"` }
+		if json.Unmarshal(respBody, &errResp) == nil && errResp.Detail != "" {
+			return fmt.Errorf("server error (HTTP %d): %s", resp.StatusCode, errResp.Detail)
+		}
+		return fmt.Errorf("server returned HTTP %d for %s", resp.StatusCode, path)
+	}
+	if dest != nil {
+		if err := json.Unmarshal(respBody, dest); err != nil {
+			return fmt.Errorf("decode response: %w", err)
+		}
+	}
+	return nil
+}
+
+// deleteWithResult performs a DELETE and decodes the JSON response body into dest.
+func (c *HTTPTriggerClient) deleteWithResult(path string, dest interface{}) error {
+	if c.serverURL == "" {
+		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
+	}
+	req, err := http.NewRequest("DELETE", c.serverURL+path, nil)
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	if c.apiKey != "" {
+		req.Header.Set("X-DevTrack-API-Key", c.apiKey)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("DELETE %s%s: %w", c.serverURL, path, err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("server returned HTTP %d for %s", resp.StatusCode, path)
+	}
+	if dest != nil {
+		if err := json.Unmarshal(respBody, dest); err != nil {
+			return fmt.Errorf("decode response: %w", err)
+		}
+	}
+	return nil
+}
+
+// textOutput is the standard response shape for commands that return text output.
+type textOutput struct {
+	Output  string `json:"output"`
+	Success bool   `json:"success"`
+}
+
+// postText POSTs payload and returns the "output" string from the response.
+func (c *HTTPTriggerClient) postText(path string, payload interface{}) (string, error) {
+	var r textOutput
+	if err := c.postWithResult(path, payload, &r); err != nil {
+		return "", err
+	}
+	if !r.Success {
+		return r.Output, fmt.Errorf("server reported failure: %s", r.Output)
+	}
+	return r.Output, nil
+}
+
+// getText GETs path and returns the "output" string from the response.
+func (c *HTTPTriggerClient) getText(path string) (string, error) {
+	var r textOutput
+	if err := c.getWithResult(path, &r); err != nil {
+		return "", err
+	}
+	if !r.Success {
+		return r.Output, fmt.Errorf("server reported failure: %s", r.Output)
+	}
+	return r.Output, nil
+}
+
+// ── Report methods ────────────────────────────────────────────────────────────
+
+// ReportPreview calls POST /reports/preview and returns the formatted preview text.
+func (c *HTTPTriggerClient) ReportPreview(date string) (string, error) {
+	return c.postText("/reports/preview", map[string]string{"date": date})
+}
+
+// ReportSend calls POST /reports/send to email the report to the given address.
+func (c *HTTPTriggerClient) ReportSend(email, date string) (string, error) {
+	return c.postText("/reports/send", map[string]string{"email": email, "date": date})
+}
+
+// ReportSave calls POST /reports/save and returns the saved-file message.
+func (c *HTTPTriggerClient) ReportSave(date string) (string, error) {
+	return c.postText("/reports/save", map[string]string{"date": date})
+}
+
+// ReportEOD calls POST /reports/eod (used by the daemon scheduler).
+func (c *HTTPTriggerClient) ReportEOD(email, date string) (string, error) {
+	return c.postText("/reports/eod", map[string]string{"email": email, "date": date})
+}
+
+// ── Learning methods ──────────────────────────────────────────────────────────
+
+// LearningStatusResponse mirrors the /learning/status JSON payload.
+type LearningStatusResponse struct {
+	Enabled      bool   `json:"enabled"`
+	ConsentGiven bool   `json:"consent_given"`
+	SampleCount  int    `json:"sample_count"`
+	LastUpdated  string `json:"last_updated"`
+	Success      bool   `json:"success"`
+}
+
+// LearningStatus calls GET /learning/status.
+func (c *HTTPTriggerClient) LearningStatus() (*LearningStatusResponse, error) {
+	var r LearningStatusResponse
+	if err := c.getWithResult("/learning/status", &r); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// LearningEnable calls POST /learning/enable.
+func (c *HTTPTriggerClient) LearningEnable(days int) (string, error) {
+	return c.postText("/learning/enable", map[string]interface{}{"days": days})
+}
+
+// LearningSync calls POST /learning/sync.
+func (c *HTTPTriggerClient) LearningSync(full bool) (string, error) {
+	return c.postText("/learning/sync", map[string]interface{}{"full": full})
+}
+
+// LearningReset calls POST /learning/reset.
+func (c *HTTPTriggerClient) LearningReset() (string, error) {
+	return c.postText("/learning/reset", map[string]interface{}{})
+}
+
+// LearningSetupCron calls POST /learning/cron/setup.
+func (c *HTTPTriggerClient) LearningSetupCron() (string, error) {
+	return c.postText("/learning/cron/setup", map[string]interface{}{})
+}
+
+// LearningRemoveCron calls DELETE /learning/cron.
+func (c *HTTPTriggerClient) LearningRemoveCron() (string, error) {
+	var r textOutput
+	if err := c.deleteWithResult("/learning/cron", &r); err != nil {
+		return "", err
+	}
+	if !r.Success {
+		return r.Output, fmt.Errorf("server reported failure: %s", r.Output)
+	}
+	return r.Output, nil
+}
+
+// LearningCronStatus calls GET /learning/cron/status.
+func (c *HTTPTriggerClient) LearningCronStatus() (string, error) {
+	return c.getText("/learning/cron/status")
+}
+
+// LearningProfile calls GET /learning/profile.
+func (c *HTTPTriggerClient) LearningProfile() (string, error) {
+	return c.getText("/learning/profile")
+}
+
+// LearningTestResponse calls POST /learning/test-response.
+func (c *HTTPTriggerClient) LearningTestResponse(text string) (string, error) {
+	return c.postText("/learning/test-response", map[string]string{"text": text})
+}
+
+// LearningRevoke calls POST /learning/revoke.
+func (c *HTTPTriggerClient) LearningRevoke() (string, error) {
+	return c.postText("/learning/revoke", map[string]interface{}{})
+}
+
+// ── Auth methods ──────────────────────────────────────────────────────────────
+
+// AuthSessionResponse mirrors the session payload returned by auth endpoints.
+type AuthSessionResponse struct {
+	Success          bool   `json:"success"`
+	Message          string `json:"message"`
+	LoggedIn         bool   `json:"logged_in"`
+	Email            string `json:"email"`
+	DisplayName      string `json:"display_name"`
+	Tier             string `json:"tier"`
+	Mode             string `json:"mode"`
+	TelemetryEnabled bool   `json:"telemetry_enabled"`
+	TokenExpiresAt   string `json:"token_expires_at"`
+}
+
+// AuthRequestMagicLink calls POST /auth/request-magic-link.
+func (c *HTTPTriggerClient) AuthRequestMagicLink(email string) (string, error) {
+	var r struct {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+	}
+	if err := c.postWithResult("/auth/request-magic-link", map[string]string{"email": email}, &r); err != nil {
+		return "", err
+	}
+	if !r.Success {
+		return r.Message, fmt.Errorf("%s", r.Message)
+	}
+	return r.Message, nil
+}
+
+// AuthVerifyMagicLink calls POST /auth/verify-magic-link.
+func (c *HTTPTriggerClient) AuthVerifyMagicLink(email, code string) (*AuthSessionResponse, error) {
+	var r AuthSessionResponse
+	if err := c.postWithResult("/auth/verify-magic-link",
+		map[string]string{"email": email, "code": code}, &r); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// AuthLogout calls POST /auth/logout.
+func (c *HTTPTriggerClient) AuthLogout() (string, error) {
+	var r struct {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+	}
+	if err := c.postWithResult("/auth/logout", map[string]interface{}{}, &r); err != nil {
+		return "", err
+	}
+	return r.Message, nil
+}
+
+// AuthWhoami calls GET /auth/whoami.
+func (c *HTTPTriggerClient) AuthWhoami() (*AuthSessionResponse, error) {
+	var r AuthSessionResponse
+	if err := c.getWithResult("/auth/whoami", &r); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// AuthTelemetry calls POST /auth/telemetry with action "on"|"off"|"status".
+func (c *HTTPTriggerClient) AuthTelemetry(action string) (string, error) {
+	var r struct {
+		Success          bool   `json:"success"`
+		Message          string `json:"message"`
+		TelemetryEnabled bool   `json:"telemetry_enabled"`
+	}
+	if err := c.postWithResult("/auth/telemetry", map[string]string{"action": action}, &r); err != nil {
+		return "", err
+	}
+	return r.Message, nil
+}
+
+// ── License methods ───────────────────────────────────────────────────────────
+
+// LicenseCheckResponse mirrors the /license/check response.
+type LicenseCheckResponse struct {
+	Accepted bool   `json:"accepted"`
+	Success  bool   `json:"success"`
+}
+
+// LicenseIsAccepted calls GET /license/check and returns whether terms are accepted.
+// Fails open (returns true) when the server is unreachable.
+func (c *HTTPTriggerClient) LicenseIsAccepted() (bool, error) {
+	if c.serverURL == "" {
+		return true, nil // offline-safe: don't block
+	}
+	var r LicenseCheckResponse
+	if err := c.getWithResult("/license/check", &r); err != nil {
+		return true, nil // offline-safe: don't block on server error
+	}
+	return r.Accepted, nil
+}
+
+// LicenseStatus calls GET /license/status and returns formatted text.
+func (c *HTTPTriggerClient) LicenseStatus() (string, error) {
+	return c.getText("/license/status")
+}
+
+// LicenseTerms calls GET /license/terms and returns the T&C text.
+func (c *HTTPTriggerClient) LicenseTerms() (string, error) {
+	return c.getText("/license/terms")
+}
+
+// LicenseAccept calls POST /license/accept.
+func (c *HTTPTriggerClient) LicenseAccept() (string, error) {
+	var r struct {
+		Accepted bool   `json:"accepted"`
+		Success  bool   `json:"success"`
+		Message  string `json:"message"`
+	}
+	if err := c.postWithResult("/license/accept", map[string]interface{}{}, &r); err != nil {
+		return "", err
+	}
+	return r.Message, nil
+}

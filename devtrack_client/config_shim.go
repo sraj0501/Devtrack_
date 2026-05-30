@@ -45,7 +45,6 @@ func expandWorkspacePath(path string) string                { return cfg.ExpandW
 func LoadEnvConfig() (*EnvConfig, error)                    { return cfg.LoadEnvConfig() }
 func GetDevTrackDir() string                                 { return cfg.GetDevTrackDir() }
 func GetIPCAddress() string                                  { return cfg.GetIPCAddress() }
-func GetEmailReporterPath() (string, error)                  { return cfg.GetEmailReporterPath() }
 func GetConfigFileName() string                              { return cfg.GetConfigFileName() }
 func GetConfigDirPath() string                               { return cfg.GetConfigDirPath() }
 func GetDatabaseFileName() string                            { return cfg.GetDatabaseFileName() }

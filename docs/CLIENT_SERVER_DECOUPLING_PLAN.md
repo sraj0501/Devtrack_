@@ -4,8 +4,8 @@
 > the editable source of truth for what each side owns. This file is the
 > execution plan for closing the gaps that doc marks with ⚠.
 >
-> _Status: approved, not yet started. Begins on a fresh branch after the current
-> git-flow work on `feat/go-native-git-commit-flow` is E2E-tested and committed._
+> _Status: Phase 1 complete (branch: `feat/client-server-decoupling`). Phase 2 pending._
+> _Phase 1a+1b committed d5f8f36. Phase 1c+1d committed on the same branch (see git log)._
 
 ## Context
 

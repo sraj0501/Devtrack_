@@ -328,6 +328,9 @@ func (cli *CLI) handleSage() error {
 }
 
 // handleAlerts shows ticket alert notifications or marks them as read.
+// Phase 2 target: port to Go using connectors/{github,azure} + SQLite
+// (see docs/CLIENT_SERVER_DECOUPLING_PLAN.md §2a). For now, delegates to
+// the Python backend.alert_poller subprocess.
 //
 // Usage:
 //

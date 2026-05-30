@@ -236,23 +236,6 @@ func GetIPCAddress() string {
 	return config.IPCHost + ":" + config.IPCPort
 }
 
-// GetEmailReporterPath returns the path to backend/email_reporter.py.
-// Returns an error instead of calling os.Exit so Lightweight mode callers can
-// handle the missing backend gracefully.
-func GetEmailReporterPath() (string, error) {
-	config, err := LoadEnvConfig()
-	if err != nil {
-		return "", fmt.Errorf("config load failed: %w", err)
-	}
-
-	path := filepath.Join(config.ProjectRoot, "backend", "email_reporter.py")
-	if !fileExists(path) {
-		return "", fmt.Errorf("email reporter script not found at %s (Managed mode required)", path)
-	}
-
-	return path, nil
-}
-
 // GetConfigFileName returns the config file name
 func GetConfigFileName() string {
 	config, err := LoadEnvConfig()

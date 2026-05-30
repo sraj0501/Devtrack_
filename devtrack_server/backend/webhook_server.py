@@ -1161,6 +1161,529 @@ async def http_boardroom_chat(
 
 
 # ---------------------------------------------------------------------------
+# Phase 1c: Reports, Learning, Auth, License — previously uv run in client
+# All routes use the same _verify_trigger_key dependency.
+# ---------------------------------------------------------------------------
+
+import io
+from contextlib import redirect_stdout
+
+# ── Reports ─────────────────────────────────────────────────────────────────
+
+try:
+    from backend.email_reporter import EmailReporter as _EmailReporter
+    _email_reporter_available = True
+except Exception as _er_err:
+    _email_reporter_available = False
+    logger.warning(f"EmailReporter not available: {_er_err}")
+
+try:
+    from backend.work_tracker.eod_report_generator import EODReportGenerator as _EODGenerator
+    _eod_generator_available = True
+except Exception as _eod_err:
+    _eod_generator_available = False
+    logger.warning(f"EODReportGenerator not available: {_eod_err}")
+
+
+@app.post("/reports/preview")
+async def http_report_preview(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Generate a daily report preview and return formatted text."""
+    if not _email_reporter_available:
+        raise HTTPException(status_code=503, detail="EmailReporter not available")
+    data = await request.json()
+    date_str = data.get("date") or None
+    try:
+        from datetime import datetime as _dt
+        date_obj = _dt.strptime(date_str, "%Y-%m-%d") if date_str else None
+        reporter = _EmailReporter()
+        report = await asyncio.to_thread(reporter.generate_daily_report, date_obj)
+        output = reporter.format_report_text(report, style="professional")
+        return {"output": output, "success": True}
+    except Exception as exc:
+        logger.error(f"/reports/preview failed: {exc}")
+        return {"output": str(exc), "success": False}
+
+
+@app.post("/reports/send")
+async def http_report_send(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Send a daily report to the given email address."""
+    if not _email_reporter_available:
+        raise HTTPException(status_code=503, detail="EmailReporter not available")
+    data = await request.json()
+    email = data.get("email", "")
+    date_str = data.get("date") or None
+    if not email:
+        raise HTTPException(status_code=400, detail="'email' field required")
+    try:
+        from datetime import datetime as _dt
+        date_obj = _dt.strptime(date_str, "%Y-%m-%d") if date_str else None
+        reporter = _EmailReporter()
+        report = await asyncio.to_thread(reporter.generate_daily_report, date_obj)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            await reporter.send_email_report(email, report)
+        return {"output": buf.getvalue() or f"Report sent to {email}", "success": True}
+    except Exception as exc:
+        logger.error(f"/reports/send failed: {exc}")
+        return {"output": str(exc), "success": False}
+
+
+@app.post("/reports/save")
+async def http_report_save(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Save a daily report to disk and return the path."""
+    if not _email_reporter_available:
+        raise HTTPException(status_code=503, detail="EmailReporter not available")
+    data = await request.json()
+    date_str = data.get("date") or None
+    try:
+        from datetime import datetime as _dt
+        date_obj = _dt.strptime(date_str, "%Y-%m-%d") if date_str else None
+        reporter = _EmailReporter()
+        report = await asyncio.to_thread(reporter.generate_daily_report, date_obj)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            await asyncio.to_thread(reporter.save_report, report)
+        return {"output": buf.getvalue(), "success": True}
+    except Exception as exc:
+        logger.error(f"/reports/save failed: {exc}")
+        return {"output": str(exc), "success": False}
+
+
+@app.post("/reports/eod")
+async def http_report_eod(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Run the EOD report generator (used by the daemon scheduler)."""
+    if not _eod_generator_available:
+        raise HTTPException(status_code=503, detail="EODReportGenerator not available")
+    data = await request.json()
+    email = data.get("email") or None
+    date_str = data.get("date") or None
+    try:
+        gen = _EODGenerator()
+        report = await gen.generate(target_date=date_str)
+        total_h, total_m = divmod(report.total_minutes, 60)
+        lines = [
+            f"EOD Report — {report.date}",
+            f"Total: {total_h}h {total_m}m across {len(report.sessions)} session(s)",
+        ]
+        if report.narrative:
+            lines.append("")
+            lines.append(report.narrative)
+        output = "\n".join(lines)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        logger.error(f"/reports/eod failed: {exc}")
+        return {"output": str(exc), "success": False}
+
+
+# ── Learning ─────────────────────────────────────────────────────────────────
+
+try:
+    from backend.learning_integration import LearningIntegration as _LearningIntegration
+    _learning_available = True
+except Exception as _li_err:
+    _learning_available = False
+    logger.warning(f"LearningIntegration not available: {_li_err}")
+
+
+def _run_learning(fn, *args, **kwargs) -> str:
+    """Run a LearningIntegration method, capturing stdout, return output string."""
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        fn(*args, **kwargs)
+    return buf.getvalue()
+
+
+@app.get("/learning/status")
+async def http_learning_status(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return learning consent/sample status as JSON."""
+    if not _learning_available:
+        return {"enabled": False, "consent_given": False, "sample_count": 0,
+                "last_updated": "", "success": True}
+    try:
+        li = _LearningIntegration()
+        status = await asyncio.to_thread(li.get_status)
+        return {"enabled": status.get("enabled", False),
+                "consent_given": status.get("consent_given", False),
+                "sample_count": status.get("sample_count", 0),
+                "last_updated": status.get("last_updated", ""),
+                "success": True}
+    except Exception as exc:
+        logger.error(f"/learning/status failed: {exc}")
+        return {"enabled": False, "consent_given": False, "sample_count": 0,
+                "last_updated": "", "success": False, "error": str(exc)}
+
+
+@app.post("/learning/enable")
+async def http_learning_enable(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Enable personalized AI learning."""
+    if not _learning_available:
+        raise HTTPException(status_code=503, detail="Learning not available")
+    data = await request.json()
+    days = int(data.get("days", 30))
+    try:
+        li = _LearningIntegration()
+        output = await asyncio.to_thread(_run_learning, li.enable, days)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.post("/learning/sync")
+async def http_learning_sync(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Run a delta (or full) learning sync."""
+    if not _learning_available:
+        raise HTTPException(status_code=503, detail="Learning not available")
+    data = await request.json()
+    full = bool(data.get("full", False))
+    try:
+        li = _LearningIntegration()
+        output = await asyncio.to_thread(_run_learning, li.sync, full)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.post("/learning/reset")
+async def http_learning_reset(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Wipe all learning data."""
+    if not _learning_available:
+        raise HTTPException(status_code=503, detail="Learning not available")
+    try:
+        li = _LearningIntegration()
+        output = await asyncio.to_thread(_run_learning, li.reset)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.post("/learning/cron/setup")
+async def http_learning_cron_setup(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Install the learning cron entry."""
+    if not _learning_available:
+        raise HTTPException(status_code=503, detail="Learning not available")
+    try:
+        li = _LearningIntegration()
+        output = await asyncio.to_thread(_run_learning, li.setup_cron)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.delete("/learning/cron")
+async def http_learning_cron_remove(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Remove the learning cron entry."""
+    if not _learning_available:
+        raise HTTPException(status_code=503, detail="Learning not available")
+    try:
+        li = _LearningIntegration()
+        output = await asyncio.to_thread(_run_learning, li.remove_cron)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.get("/learning/cron/status")
+async def http_learning_cron_status(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return cron entry status."""
+    if not _learning_available:
+        raise HTTPException(status_code=503, detail="Learning not available")
+    try:
+        li = _LearningIntegration()
+        output = await asyncio.to_thread(_run_learning, li.cron_status)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.get("/learning/profile")
+async def http_learning_profile(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return the current learning profile as text."""
+    if not _learning_available:
+        raise HTTPException(status_code=503, detail="Learning not available")
+    try:
+        li = _LearningIntegration()
+        output = await asyncio.to_thread(_run_learning, li.show_profile)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.post("/learning/test-response")
+async def http_learning_test_response(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Generate a personalized test response."""
+    if not _learning_available:
+        raise HTTPException(status_code=503, detail="Learning not available")
+    data = await request.json()
+    text = data.get("text", "")
+    if not text:
+        raise HTTPException(status_code=400, detail="'text' field required")
+    try:
+        li = _LearningIntegration()
+        output = await asyncio.to_thread(_run_learning, li.test_response, text)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.post("/learning/revoke")
+async def http_learning_revoke(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Revoke learning consent."""
+    if not _learning_available:
+        raise HTTPException(status_code=503, detail="Learning not available")
+    try:
+        li = _LearningIntegration()
+        output = await asyncio.to_thread(_run_learning, li.revoke_consent)
+        return {"output": output, "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+
+try:
+    from backend.auth.cloud_auth import request_magic_link as _req_magic, verify_magic_link as _verify_magic
+    from backend.auth.session import (
+        get_session as _get_session, is_logged_in as _is_logged_in,
+        clear_session as _clear_session, set_session as _set_session,
+    )
+    _auth_available = True
+except Exception as _auth_err:
+    _auth_available = False
+    logger.warning(f"Auth not available: {_auth_err}")
+
+
+@app.post("/auth/request-magic-link")
+async def http_auth_request_magic_link(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Send a magic-link login code to the given email."""
+    if not _auth_available:
+        raise HTTPException(status_code=503, detail="Auth not available")
+    data = await request.json()
+    email = data.get("email", "")
+    if not email:
+        raise HTTPException(status_code=400, detail="'email' field required")
+    success, msg = await asyncio.to_thread(_req_magic, email)
+    return {"success": success, "message": msg}
+
+
+@app.post("/auth/verify-magic-link")
+async def http_auth_verify_magic_link(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Verify a magic-link code and return session data."""
+    if not _auth_available:
+        raise HTTPException(status_code=503, detail="Auth not available")
+    data = await request.json()
+    email = data.get("email", "")
+    code = data.get("code", "")
+    if not email or not code:
+        raise HTTPException(status_code=400, detail="'email' and 'code' fields required")
+    success, msg, session = await asyncio.to_thread(_verify_magic, email, code)
+    if not success or session is None:
+        return {"success": False, "message": msg}
+    _set_session(session)
+    return {
+        "success": True,
+        "message": msg,
+        "email": session.email,
+        "display_name": session.display_name,
+        "tier": session.tier,
+        "mode": session.mode,
+        "telemetry_enabled": session.telemetry_enabled,
+        "token_expires_at": str(session.token_expires_at) if session.token_expires_at else "",
+    }
+
+
+@app.post("/auth/logout")
+async def http_auth_logout(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Clear the local session."""
+    if not _auth_available:
+        raise HTTPException(status_code=503, detail="Auth not available")
+    try:
+        if _is_logged_in():
+            _clear_session()
+            return {"success": True, "message": "Logged out successfully."}
+        return {"success": True, "message": "Not currently logged in."}
+    except Exception as exc:
+        return {"success": False, "message": str(exc)}
+
+
+@app.get("/auth/whoami")
+async def http_auth_whoami(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return current session info."""
+    if not _auth_available:
+        return {"logged_in": False, "success": True}
+    try:
+        if not _is_logged_in():
+            return {"logged_in": False, "success": True}
+        s = _get_session()
+        return {
+            "logged_in": True,
+            "success": True,
+            "email": s.email,
+            "display_name": s.display_name,
+            "tier": s.tier,
+            "mode": s.mode,
+            "telemetry_enabled": s.telemetry_enabled,
+            "token_expires_at": str(s.token_expires_at) if s.token_expires_at else "",
+        }
+    except Exception as exc:
+        return {"logged_in": False, "success": False, "error": str(exc)}
+
+
+@app.post("/auth/telemetry")
+async def http_auth_telemetry(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Enable, disable, or query telemetry status."""
+    if not _auth_available:
+        raise HTTPException(status_code=503, detail="Auth not available")
+    data = await request.json()
+    action = data.get("action", "status")  # "on" | "off" | "status"
+    try:
+        if not _is_logged_in():
+            if action == "status":
+                return {"success": True, "message": "Telemetry: disabled (not logged in)",
+                        "telemetry_enabled": False}
+            return {"success": False, "message": "Telemetry requires login. Run: devtrack login"}
+        s = _get_session()
+        if action == "on":
+            s.telemetry_enabled = True
+            _set_session(s)
+            return {"success": True, "message": "Telemetry enabled.", "telemetry_enabled": True}
+        elif action == "off":
+            s.telemetry_enabled = False
+            _set_session(s)
+            return {"success": True, "message": "Telemetry disabled.", "telemetry_enabled": False}
+        else:
+            status = "enabled" if s.telemetry_enabled else "disabled"
+            return {"success": True, "message": f"Telemetry: {status}",
+                    "telemetry_enabled": s.telemetry_enabled}
+    except Exception as exc:
+        return {"success": False, "message": str(exc)}
+
+
+# ── License ───────────────────────────────────────────────────────────────────
+
+try:
+    from backend.license_manager import (
+        is_accepted as _lic_is_accepted,
+        ensure_accepted as _lic_ensure_accepted,
+        show_license_status as _lic_show_status,
+        show_terms as _lic_show_terms,
+        TERMS_VERSION as _TERMS_VERSION,
+    )
+    _license_available = True
+except Exception as _lic_err:
+    _license_available = False
+    logger.warning(f"LicenseManager not available: {_lic_err}")
+
+
+@app.get("/license/check")
+async def http_license_check(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return whether the current terms version has been accepted."""
+    if not _license_available:
+        return {"accepted": True, "success": True}  # fail open
+    try:
+        accepted = await asyncio.to_thread(_lic_is_accepted)
+        return {"accepted": accepted, "success": True}
+    except Exception as exc:
+        return {"accepted": True, "success": False, "error": str(exc)}  # fail open
+
+
+@app.get("/license/status")
+async def http_license_status(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return formatted license status text."""
+    if not _license_available:
+        raise HTTPException(status_code=503, detail="License manager not available")
+    try:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            await asyncio.to_thread(_lic_show_status)
+        return {"output": buf.getvalue(), "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.get("/license/terms")
+async def http_license_terms(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return the Terms of Service text."""
+    if not _license_available:
+        raise HTTPException(status_code=503, detail="License manager not available")
+    try:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            await asyncio.to_thread(_lic_show_terms)
+        return {"output": buf.getvalue(), "success": True}
+    except Exception as exc:
+        return {"output": str(exc), "success": False}
+
+
+@app.post("/license/accept")
+async def http_license_accept(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Accept the current terms of service."""
+    if not _license_available:
+        raise HTTPException(status_code=503, detail="License manager not available")
+    try:
+        accepted = await asyncio.to_thread(_lic_ensure_accepted, True)
+        return {"accepted": accepted, "success": True,
+                "message": "Terms accepted." if accepted else "Terms not accepted."}
+    except Exception as exc:
+        return {"accepted": False, "success": False, "error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
 # Startup
 # ---------------------------------------------------------------------------
 
