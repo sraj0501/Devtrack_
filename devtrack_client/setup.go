@@ -576,7 +576,6 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("AZURE_SYNC_CREATE_ON_NO_MATCH=false\n")
 	b.WriteString("AZURE_SYNC_MATCH_THRESHOLD=0.7\n")
 	b.WriteString("AZURE_SYNC_WINDOW_HOURS=0\n")
-	b.WriteString("AZURE_POLL_ENABLED=false\n")
 	b.WriteString("AZURE_POLL_INTERVAL_MINS=5\n\n")
 
 	b.WriteString("## GITLAB\n")
@@ -592,7 +591,6 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("GITLAB_DONE_STATE=closed\n")
 	b.WriteString("GITLAB_SYNC_LABEL=devtrack\n")
 	b.WriteString("GITLAB_AUTO_UPDATE_DESCRIPTION=false\n")
-	b.WriteString("GITLAB_POLL_ENABLED=false\n")
 	b.WriteString("GITLAB_POLL_INTERVAL_MINS=5\n\n")
 
 	b.WriteString("## JIRA\n")
@@ -627,9 +625,6 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("ALERT_JIRA_ENABLED=true\n\n")
 
 	b.WriteString("## LEARNING AND PERSONALIZATION\n")
-	b.WriteString("LEARNING_PYTHON_PATH=python3\n")
-	b.WriteString("LEARNING_SCRIPT_PATH=" + filepath.Join(cfg.ProjectRoot, "backend", "learning_integration.py") + "\n")
-	b.WriteString("LEARNING_DAILY_SCRIPT_PATH=" + filepath.Join(cfg.ProjectRoot, "backend", "run_daily_learning.py") + "\n")
 	b.WriteString("LEARNING_DEFAULT_DAYS=30\n")
 	b.WriteString("LEARNING_CRON_ENABLED=false\n")
 	b.WriteString("LEARNING_CRON_SCHEDULE=0 20 * * *\n")

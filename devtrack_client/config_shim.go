@@ -81,9 +81,6 @@ func GetTeamsChatID() string                                 { return cfg.GetTea
 func GetTeamsChatType() string                               { return cfg.GetTeamsChatType() }
 func GetTeamsWebhookURL() string                             { return cfg.GetTeamsWebhookURL() }
 func GetTeamsMentionUser() bool                              { return cfg.GetTeamsMentionUser() }
-func GetLearningPythonPath() string                          { return cfg.GetLearningPythonPath() }
-func GetLearningScriptPath() string                          { return cfg.GetLearningScriptPath() }
-func GetLearningDailyScriptPath() (string, error)            { return cfg.GetLearningDailyScriptPath() }
 func GetLearningDefaultDays() int                            { return cfg.GetLearningDefaultDays() }
 func GetDevTrackVersion() string                             { return cfg.GetDevTrackVersion() }
 func GetDevTrackBuildDate() string                           { return cfg.GetDevTrackBuildDate() }
@@ -103,10 +100,6 @@ func GetQueueMaxRetries() int                                { return cfg.GetQue
 func GetQueueRetentionDays() int                             { return cfg.GetQueueRetentionDays() }
 func GetDeferredCommitExpiryHours() int                      { return cfg.GetDeferredCommitExpiryHours() }
 func IsTelegramEnabled() bool                                { return cfg.IsTelegramEnabled() }
-func IsSlackEnabled() bool                                   { return cfg.IsSlackEnabled() }
-func IsAzurePollerEnabled() bool                             { return cfg.IsAzurePollerEnabled() }
-func IsGitLabPollerEnabled() bool                            { return cfg.IsGitLabPollerEnabled() }
-func GetHealthAutoRestartTelegram() bool                     { return cfg.GetHealthAutoRestartTelegram() }
 func GetIPCHost() string                                     { return cfg.GetIPCHost() }
 func GetDevTrackServerHTTPPort() int                         { return cfg.GetDevTrackServerHTTPPort() }
 func GetHTTPTimeoutShort() int                               { return cfg.GetHTTPTimeoutShort() }

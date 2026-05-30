@@ -49,11 +49,11 @@ func (cli *CLI) handleVersion() error {
 	fmt.Println("Components:")
 	fmt.Println("  • Git monitoring (go-git)")
 	fmt.Println("  • Time-based scheduler (robfig/cron)")
-	fmt.Println("  • Background daemon + Python bridge")
-	fmt.Println("  • IPC communication, SQLite database")
-	fmt.Println("  • NLP task parsing (spaCy)")
-	fmt.Println("  • Task matching, email reports")
-	fmt.Println("  • AI-enhanced daily reports (Ollama)")
+	fmt.Println("  • Background daemon + HTTP boundary to AI server")
+	fmt.Println("  • SQLite database, ticket cache, alert poller")
+	fmt.Println("  • Native Go connectors: GitHub, GitLab, Azure DevOps")
+	fmt.Println("  • Notifications: terminal, Telegram, Slack, OS")
+	fmt.Println("  • AI features (NLP, LLM, reports) via devtrack_server")
 	return nil
 }
 
