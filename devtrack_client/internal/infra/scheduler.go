@@ -118,6 +118,9 @@ func (s *Scheduler) Start() error {
 	// Drain the offline PM update queue periodically
 	s.schedulePMQueueFlush()
 
+	// Retry AI enhancement of queued (deferred) commits when the LLM is back
+	s.scheduleDeferredEnhance()
+
 	return nil
 }
 
@@ -478,6 +481,34 @@ func (s *Scheduler) schedulePMQueueFlush() {
 		return
 	}
 	log.Printf("✓ PM update queue flusher enabled (every 5 min)")
+}
+
+// scheduleDeferredEnhance periodically retries AI enhancement of queued
+// (deferred) commits. Commits get queued when the LLM was unreachable at commit
+// time; this drains them once the provider is back, promoting them to "enhanced"
+// for review. Runs every 30 minutes and is silent when there is nothing pending
+// or the provider is still down — so by end of day a reachable LLM will have
+// processed the backlog.
+func (s *Scheduler) scheduleDeferredEnhance() {
+	_, err := s.cron.AddFunc("0 */30 * * * *", func() {
+		database, dbErr := db.NewDatabase()
+		if dbErr != nil {
+			return
+		}
+		defer database.Close()
+		if n, eErr := EnhanceDeferredCommits(database); eErr == nil && n > 0 {
+			log.Printf("✨ Enhanced %d queued commit(s) — run 'devtrack commits review'", n)
+		}
+		// Prune commits left queued past their expiry, removing their snapshot refs.
+		if n, xErr := ExpireDeferredCommits(database, config.GetDeferredCommitExpiryHours()); xErr == nil && n > 0 {
+			log.Printf("🧹 Expired %d stale queued commit(s) and pruned their snapshot refs", n)
+		}
+	})
+	if err != nil {
+		log.Printf("⚠️  Could not schedule deferred-commit enhancer: %v", err)
+		return
+	}
+	log.Printf("✓ Deferred-commit enhancer enabled (every 30 min)")
 }
 
 // GetWorkHoursStatus returns current work hours status

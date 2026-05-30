@@ -30,6 +30,10 @@ type CommitHooks struct {
 	// AfterCommit runs after a successful commit, with the real HEAD hash/branch
 	// and the (possibly rewritten) message, plus the state from BeforeCommit.
 	AfterCommit func(repoPath, hash, branch, message string, state any)
+	// QueueForLater stores the staged changes + message for later AI enhancement
+	// (the offline-first hold-diff model): the work is NOT committed now. Returns
+	// true when successfully queued, in which case the caller skips the commit.
+	QueueForLater func(repoPath, message, branch, diffPatch string, files []string) (bool, error)
 }
 
 // IsInteractive reports whether stdin is a terminal (exported for hosts/hooks).
@@ -199,16 +203,14 @@ func handleGitCommit(repoPath string, args []string, hooks *CommitHooks) error {
 
 	cfg := LoadConfig().LLM
 
-	// If the LLM is unreachable, degrade gracefully to a plain commit rather
-	// than blocking the user. A standalone client has no server fallback.
+	// If the LLM is unreachable, offer to queue the change for later enhancement
+	// (offline-first) rather than silently committing a plain message.
 	if !cfg.Ping() {
-		if !f.dryRun {
-			fmt.Println("⚠️  AI provider unreachable — committing with your message as-is.")
-		} else {
+		if f.dryRun {
 			fmt.Println("⚠️  AI provider unreachable — cannot preview an enhanced message.")
 			return nil
 		}
-		return commitWith(repoPath, f, f.message, hooks)
+		return offlineCommitChoice(repoPath, f, hooks)
 	}
 
 	branch, _ := g.CurrentBranch()
@@ -274,8 +276,8 @@ func interactiveCommit(repoPath string, cfg LLMConfig, f commitFlags, diff, bran
 		fmt.Println(strings.Repeat("━", 44))
 		fmt.Println(indent(message, "  "))
 		fmt.Println(strings.Repeat("━", 44))
-		fmt.Println("  [A]ccept and commit   [E]nhance   [R]egenerate   [C]ancel")
-		fmt.Print("Choice (A/E/R/C): ")
+		fmt.Println("  [A]ccept and commit   [E]nhance   [R]egenerate   [Q]ueue for later   [C]ancel")
+		fmt.Print("Choice (A/E/R/Q/C): ")
 
 		input, err := reader.ReadString('\n')
 		if err != nil {
@@ -285,6 +287,18 @@ func interactiveCommit(repoPath string, cfg LLMConfig, f commitFlags, diff, bran
 		switch strings.ToLower(strings.TrimSpace(input)) {
 		case "a", "accept", "":
 			return commitWith(repoPath, f, message, hooks)
+		case "q", "queue":
+			done, err := queueForLater(repoPath, message, hooks)
+			if err != nil {
+				fmt.Printf("⚠️  Could not queue (%v) — choose another option.\n", err)
+				attempt-- // don't consume an attempt on failure
+				continue
+			}
+			if done {
+				return nil
+			}
+			fmt.Println("Queueing is not available here — choose another option.")
+			attempt--
 		case "e", "enhance":
 			if attempt == maxAttempts {
 				fmt.Println("✗ Maximum attempts reached — accept or cancel.")
@@ -307,17 +321,95 @@ func interactiveCommit(repoPath string, cfg LLMConfig, f commitFlags, diff, bran
 			} else {
 				fmt.Printf("⚠️  Regenerate failed (%v) — keeping current message.\n", err)
 			}
-		case "c", "cancel", "q", "quit":
+		case "c", "cancel":
 			fmt.Println("✗ Commit cancelled.")
 			return nil
 		default:
-			fmt.Println("Please enter A, E, R, or C.")
+			fmt.Println("Please enter A, E, R, Q, or C.")
 			attempt-- // don't count invalid input
 		}
 	}
 
 	fmt.Printf("✗ Maximum attempts (%d) reached without acceptance. Commit cancelled.\n", maxAttempts)
 	return &ExitCodeError{Code: 1}
+}
+
+// queueForLater captures the staged diff and hands it to the QueueForLater hook
+// (offline-first hold-diff model). done is true when the work was queued and the
+// caller should stop. (false, nil) means no queue hook is wired.
+func queueForLater(repoPath, message string, hooks *CommitHooks) (done bool, err error) {
+	if hooks == nil || hooks.QueueForLater == nil {
+		return false, nil
+	}
+	g := NewGitOps(repoPath)
+	branch, _ := g.CurrentBranch()
+	patch, _ := g.DiffCached()
+	files, _ := g.StagedFiles()
+
+	queued, err := hooks.QueueForLater(repoPath, message, branch, patch, files)
+	if err != nil {
+		return false, err
+	}
+	if !queued {
+		return false, nil
+	}
+	fmt.Println("✓ Commit queued for AI enhancement later (changes left staged, not committed).")
+	fmt.Println("  Run 'devtrack commits review' when the AI provider is available.")
+	return true, nil
+}
+
+// offlineCommitChoice handles the LLM-unreachable path: let the user commit the
+// message as-is, queue the change for later enhancement, or abort.
+func offlineCommitChoice(repoPath string, f commitFlags, hooks *CommitHooks) error {
+	// No message to enhance later or no queue hook / non-interactive: just commit.
+	if strings.TrimSpace(f.message) == "" || hooks == nil || hooks.QueueForLater == nil || !isInteractive() {
+		fmt.Println("⚠️  AI provider unreachable — committing with your message as-is.")
+		return commitWith(repoPath, f, f.message, hooks)
+	}
+
+	fmt.Println("⚠️  AI provider unreachable.")
+	fmt.Println("  [C]ommit as-is   [Q]ueue for AI enhancement later   [A]bort")
+	fmt.Print("Choice (C/Q/A): ")
+
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return commitWith(repoPath, f, f.message, hooks)
+	}
+	switch strings.ToLower(strings.TrimSpace(input)) {
+	case "q", "queue":
+		done, qErr := queueForLater(repoPath, f.message, hooks)
+		if qErr != nil || !done {
+			fmt.Printf("✗ Could not queue (%v) — committing as-is.\n", qErr)
+			return commitWith(repoPath, f, f.message, hooks)
+		}
+		return nil
+	case "a", "abort":
+		fmt.Println("✗ Commit aborted (changes left staged).")
+		return nil
+	default:
+		return commitWith(repoPath, f, f.message, hooks)
+	}
+}
+
+// EnhanceForDiff produces an enhanced commit message from a stored diff. It is
+// the entry point used by the deferred-commit re-enhancer. Returns an error when
+// the LLM is unreachable or yields nothing usable.
+func EnhanceForDiff(message, diff, branch string) (string, error) {
+	cfg := LoadConfig().LLM
+	if !cfg.Ping() {
+		return "", fmt.Errorf("AI provider unreachable")
+	}
+	if strings.TrimSpace(message) == "" {
+		return generateCommitMessage(cfg, diff, "", branch)
+	}
+	return enhanceCommitMessage(cfg, diff, message, branch, commitTokenBudget*2)
+}
+
+// LLMReachable reports whether the configured LLM provider is currently
+// reachable (used by the re-enhancer to skip work when offline).
+func LLMReachable() bool {
+	return LoadConfig().LLM.Ping()
 }
 
 // commitWith creates the commit. A non-empty message is written to a temp file

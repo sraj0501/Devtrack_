@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	cfg "github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
@@ -93,6 +94,8 @@ type DeferredCommitRecord struct {
 	FilesChanged    string // JSON array
 	Status          string // "pending", "enhanced", "committed", "expired"
 	EnhancedMessage string
+	BaseSHA         string // HEAD at queue time (merge base for 3-way apply)
+	SnapshotSHA     string // dangling commit pinning the staged snapshot (GC-safe)
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -314,6 +317,8 @@ func (d *Database) initSchema() error {
 		files_changed TEXT,
 		status TEXT NOT NULL DEFAULT 'pending',
 		enhanced_message TEXT,
+		base_sha TEXT,
+		snapshot_sha TEXT,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
@@ -435,8 +440,22 @@ func (d *Database) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_pm_queue_ticket       ON pm_update_queue(ticket_id);
 	`
 
-	_, err := d.db.Exec(schema)
-	return err
+	if _, err := d.db.Exec(schema); err != nil {
+		return err
+	}
+
+	// Additive column migrations for pre-existing databases (CREATE TABLE
+	// IF NOT EXISTS won't add columns to a table that already exists). Each
+	// ALTER errors harmlessly with "duplicate column name" once applied.
+	for _, alter := range []string{
+		`ALTER TABLE deferred_commits ADD COLUMN base_sha TEXT`,
+		`ALTER TABLE deferred_commits ADD COLUMN snapshot_sha TEXT`,
+	} {
+		if _, err := d.db.Exec(alter); err != nil && !strings.Contains(err.Error(), "duplicate column") {
+			return fmt.Errorf("migration failed (%s): %w", alter, err)
+		}
+	}
+	return nil
 }
 
 // InsertTrigger inserts a trigger record into the database
@@ -1183,8 +1202,8 @@ func (d *Database) CleanOldMessages(retentionDays int) error {
 // InsertDeferredCommit inserts a deferred commit record
 func (d *Database) InsertDeferredCommit(record DeferredCommitRecord) (int64, error) {
 	query := `
-		INSERT INTO deferred_commits (original_message, diff_patch, branch, repo_path, files_changed, status, enhanced_message, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO deferred_commits (original_message, diff_patch, branch, repo_path, files_changed, status, enhanced_message, base_sha, snapshot_sha, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	now := time.Now()
@@ -1196,6 +1215,8 @@ func (d *Database) InsertDeferredCommit(record DeferredCommitRecord) (int64, err
 		record.FilesChanged,
 		"pending",
 		"",
+		record.BaseSHA,
+		record.SnapshotSHA,
 		now,
 		now,
 	)
@@ -1214,7 +1235,7 @@ func (d *Database) InsertDeferredCommit(record DeferredCommitRecord) (int64, err
 // GetPendingDeferredCommits retrieves deferred commits awaiting enhancement
 func (d *Database) GetPendingDeferredCommits() ([]DeferredCommitRecord, error) {
 	query := `
-		SELECT id, original_message, diff_patch, branch, repo_path, files_changed, status, enhanced_message, created_at, updated_at
+		SELECT id, original_message, diff_patch, branch, repo_path, files_changed, status, enhanced_message, COALESCE(base_sha,''), COALESCE(snapshot_sha,''), created_at, updated_at
 		FROM deferred_commits
 		WHERE status = 'pending'
 		ORDER BY created_at ASC
@@ -1238,6 +1259,8 @@ func (d *Database) GetPendingDeferredCommits() ([]DeferredCommitRecord, error) {
 			&record.FilesChanged,
 			&record.Status,
 			&record.EnhancedMessage,
+			&record.BaseSHA,
+			&record.SnapshotSHA,
 			&record.CreatedAt,
 			&record.UpdatedAt,
 		)
@@ -1253,7 +1276,7 @@ func (d *Database) GetPendingDeferredCommits() ([]DeferredCommitRecord, error) {
 // GetEnhancedDeferredCommits retrieves deferred commits that have been enhanced
 func (d *Database) GetEnhancedDeferredCommits() ([]DeferredCommitRecord, error) {
 	query := `
-		SELECT id, original_message, diff_patch, branch, repo_path, files_changed, status, enhanced_message, created_at, updated_at
+		SELECT id, original_message, diff_patch, branch, repo_path, files_changed, status, enhanced_message, COALESCE(base_sha,''), COALESCE(snapshot_sha,''), created_at, updated_at
 		FROM deferred_commits
 		WHERE status = 'enhanced'
 		ORDER BY created_at ASC
@@ -1277,6 +1300,8 @@ func (d *Database) GetEnhancedDeferredCommits() ([]DeferredCommitRecord, error) 
 			&record.FilesChanged,
 			&record.Status,
 			&record.EnhancedMessage,
+			&record.BaseSHA,
+			&record.SnapshotSHA,
 			&record.CreatedAt,
 			&record.UpdatedAt,
 		)
@@ -1287,6 +1312,31 @@ func (d *Database) GetEnhancedDeferredCommits() ([]DeferredCommitRecord, error) 
 	}
 
 	return records, nil
+}
+
+// GetExpirableDeferredCommits returns the id, repo_path and snapshot_sha of
+// pending/enhanced deferred commits created before cutoff. Used to prune their
+// pinned snapshot refs before marking them expired.
+func (d *Database) GetExpirableDeferredCommits(cutoff time.Time) ([]DeferredCommitRecord, error) {
+	rows, err := d.db.Query(`
+		SELECT id, repo_path, COALESCE(snapshot_sha,'')
+		FROM deferred_commits
+		WHERE status IN ('pending','enhanced') AND created_at < ?
+	`, cutoff)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query expirable deferred commits: %w", err)
+	}
+	defer rows.Close()
+
+	var out []DeferredCommitRecord
+	for rows.Next() {
+		var r DeferredCommitRecord
+		if err := rows.Scan(&r.ID, &r.RepoPath, &r.SnapshotSHA); err != nil {
+			return nil, fmt.Errorf("failed to scan expirable deferred commit: %w", err)
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
 
 // MarkDeferredCommitEnhanced marks a deferred commit as enhanced with the new message

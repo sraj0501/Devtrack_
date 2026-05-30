@@ -149,6 +149,7 @@ func enableGitForWorkspaces() {
 		if err := InstallPostCommitHook(ws.Path); err != nil {
 			fmt.Printf("  ⚠ Git integration enabled for %s but hook install failed: %v\n", ws.Name, err)
 		} else {
+			_ = InstallPrePushHook(ws.Path) // best-effort; never blocks setup
 			fmt.Printf("  ✓ Git integration enabled: %s\n", ws.Name)
 		}
 	}

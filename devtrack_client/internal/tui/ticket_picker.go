@@ -20,27 +20,35 @@ type PickItem struct {
 }
 
 // PickTicket shows an interactive split-pane picker over items and returns the
-// selected index into items. skip is true when the user chooses to skip
-// (Esc/q) or there are no items. On a non-interactive stdin (piped/CI) it
-// falls back to a numbered-list prompt.
-func PickTicket(items []PickItem) (selected int, skip bool, err error) {
+// selected index into items. preselect is the row the cursor starts on (e.g.
+// the highest-likelihood match); pass 0 for the first row. skip is true when
+// the user chooses to skip (Esc/q) or there are no items. createNew is true
+// when the user asks to create a new ticket (the 'n' key). On a non-interactive
+// stdin (piped/CI) it falls back to a numbered-list prompt.
+func PickTicket(items []PickItem, preselect int) (selected int, skip bool, createNew bool, err error) {
 	if len(items) == 0 {
-		return -1, true, nil
+		return -1, true, false, nil
 	}
 	if !pickerIsTTY() {
 		return pickTicketFallback(items)
 	}
 
-	p := tea.NewProgram(newPickerModel(items), tea.WithAltScreen())
+	p := tea.NewProgram(newPickerModel(items, preselect), tea.WithAltScreen())
 	res, err := p.Run()
 	if err != nil {
-		return -1, true, err
+		return -1, true, false, err
 	}
 	fm, ok := res.(pickerModel)
-	if !ok || fm.chosen < 0 {
-		return -1, true, nil
+	if !ok {
+		return -1, true, false, nil
 	}
-	return fm.chosen, false, nil
+	if fm.create {
+		return -1, false, true, nil
+	}
+	if fm.chosen < 0 {
+		return -1, true, false, nil
+	}
+	return fm.chosen, false, false, nil
 }
 
 // --- bubbletea model ---
@@ -50,15 +58,19 @@ type pickerModel struct {
 	visible   []int // indices into items, after filtering
 	cursor    int   // index into visible
 	chosen    int   // chosen items[] index; -1 = none
+	create    bool  // true when the user asked to create a new ticket
 	filtering bool
 	filter    string
 	width     int
 	height    int
 }
 
-func newPickerModel(items []PickItem) pickerModel {
+func newPickerModel(items []PickItem, preselect int) pickerModel {
 	m := pickerModel{items: items, chosen: -1, width: 80, height: 24}
 	m.recompute()
+	if preselect > 0 && preselect < len(m.visible) {
+		m.cursor = preselect
+	}
 	return m
 }
 
@@ -121,6 +133,9 @@ func (m pickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "/":
 			m.filtering = true
+		case "n":
+			m.create = true
+			return m, tea.Quit
 		case "enter":
 			if len(m.visible) > 0 {
 				m.chosen = m.visible[m.cursor]
@@ -193,7 +208,7 @@ func (m pickerModel) View() string {
 	if m.filtering {
 		help = dimStyle.Render(fmt.Sprintf("filter: %s_  (enter to apply · esc to clear)", m.filter))
 	} else {
-		help = dimStyle.Render("↑/↓ move · / filter · enter link · esc/q skip")
+		help = dimStyle.Render("↑/↓ move · / filter · enter link · n new · esc/q skip")
 	}
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, listPane, bodyPane)
@@ -223,20 +238,23 @@ func pickerIsTTY() bool {
 	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
-func pickTicketFallback(items []PickItem) (int, bool, error) {
+func pickTicketFallback(items []PickItem) (int, bool, bool, error) {
 	fmt.Println("Link this commit to a ticket:")
 	for i, it := range items {
 		fmt.Printf("  %d. %s  %s\n", i+1, it.Subtitle, it.Title)
 	}
-	fmt.Print("Enter number to link (or 's'/Enter to skip): ")
+	fmt.Print("Enter number to link ('n' to create new, 's'/Enter to skip): ")
 	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 	line = strings.TrimSpace(line)
+	if strings.EqualFold(line, "n") {
+		return -1, false, true, nil
+	}
 	if line == "" || strings.EqualFold(line, "s") {
-		return -1, true, nil
+		return -1, true, false, nil
 	}
 	n, err := strconv.Atoi(line)
 	if err != nil || n < 1 || n > len(items) {
-		return -1, true, nil
+		return -1, true, false, nil
 	}
-	return n - 1, false, nil
+	return n - 1, false, false, nil
 }
