@@ -197,7 +197,7 @@ Note: `git_sage/` is **client-owned** and lives at `devtrack_client/git_sage/`, 
 
 ## Configuration Architecture
 
-All configuration flows from environment variables. There are **no hardcoded fallback values** for paths or credentials. The env-first model means variables must be in the process environment before the daemon starts — the daemon does not reload `.env` at runtime.
+All configuration flows from environment variables and `workspaces.yaml`. There are **no hardcoded fallback values** for paths or credentials. The env-first model means variables must be in the process environment before the daemon starts — the daemon does not reload `.env` at runtime.
 
 - **Shell**: `source .env` before running `devtrack start` in a terminal session
 - **Autostart**: `devtrack autostart-install` bakes all `.env` vars into launchd (macOS) / systemd (Linux) so the daemon always starts with the correct env
@@ -205,6 +205,22 @@ All configuration flows from environment variables. There are **no hardcoded fal
 - Go reads env vars via `config_env.go` (`LoadEnvConfig()` reads from the process environment)
 - Python reads via `backend/config.py` functions (`get()`, `get_int()`, `get_bool()`, `get_path()`)
 - Runtime data lives under `Data/` (db, logs, reports, pids) — paths configurable via `DATA_DIR`, `DATABASE_DIR`, etc.
+
+### PM Connector Configuration (two-layer model)
+
+Configuration for PM connectors (GitHub, GitLab, Azure DevOps) is split across two sources:
+
+| Source | What it holds |
+|---|---|
+| `.env` | Secrets only: `GITHUB_TOKEN`, `GITLAB_PAT`, `AZURE_DEVOPS_PAT` |
+| `workspaces.yaml` | All non-secret PM config: `pm_org`, `pm_username`, `pm_api_url` |
+
+`workspaces.yaml` is **always required** — the single-repo fallback mode that read these values from env vars has been removed. Each workspace entry carries:
+- `pm_org` — Azure org name (Azure) or owner/org (GitHub/GitLab)
+- `pm_username` — assignee filter: GitHub login / GitLab username / Azure email
+- `pm_api_url` — optional self-hosted URL override (GitHub Enterprise, self-hosted GitLab, etc.)
+
+All connector `NewClient()` constructors (`pm.NewGitHubClient(ws)`, `pm.NewGitLabClient(ws)`, `pm.NewAzureClient(ws)`) take an explicit workspace parameter and read token secrets from env — they never call `os.Getenv` for non-secret fields.
 
 The LLM provider is selected by `LLM_PROVIDER` (`ollama` | `openai` | `anthropic`). Providers with available credentials are added as automatic fallbacks in `backend/llm/provider_factory.py`.
 
@@ -315,7 +331,7 @@ except ConfigError as e:
 
 ## Session Completion Status (Current)
 
-**Last Updated**: May 11, 2026
+**Last Updated**: May 31, 2026
 
 **Phases Completed**:
 
@@ -338,6 +354,7 @@ except ConfigError as e:
 - Wiki folder consolidation: `devtrack_wiki/` is canonical; `wiki/` subfolder removed from monorepo ✅
 - ARM64 cross-compilation fix: `.syso` renamed to `resource_windows_amd64.syso` ✅
 - Boardroom feature: multi-persona AI plan review (`devtrack boardroom`, `devtrack plan`) 🔄 IN PROGRESS
+- **Client-server decoupling Phase 1 (1a–1d)** ✅ — server-mgmt commands removed from client; reports/learning/auth/license commands converted to HTTP; workspaces.yaml is sole non-secret PM config source; `devtrack workspace add` offers git init; `devtrack help`/`status` fully rewritten. Phase 2 (Go-native alerts + Telegram/Slack) pending.
 
 **Production Readiness**: VERY HIGH
 
