@@ -12,10 +12,12 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/alerts"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/health"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/infra"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/notify"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
@@ -37,21 +39,18 @@ func newHealthMonitor(database *db.Database) *health.HealthMonitor {
 
 // Daemon manages the background process lifecycle
 type Daemon struct {
-	monitor          *infra.IntegratedMonitor
-	config           *config.Config
-	pidFile          string
-	logFile          string
-	lockFile         *os.File // exclusive lock — held for process lifetime
-	ctx              context.Context
-	cancel           context.CancelFunc
-	isRunning        bool
-	webhookServer    *exec.Cmd
-	telegramBot      *exec.Cmd
-	slackBot         *exec.Cmd
-	assignmentPoller *exec.Cmd
-	gitlabPoller     *exec.Cmd
-	startTime        time.Time
-	healthMonitor    *health.HealthMonitor
+	monitor       *infra.IntegratedMonitor
+	config        *config.Config
+	pidFile       string
+	logFile       string
+	lockFile      *os.File // exclusive lock — held for process lifetime
+	ctx           context.Context
+	cancel        context.CancelFunc
+	isRunning     bool
+	webhookServer *exec.Cmd
+	alertPoller   *alerts.Poller // native Go alert poller (Phase 2)
+	startTime     time.Time
+	healthMonitor *health.HealthMonitor
 }
 
 // DaemonStatus represents the current daemon state
@@ -166,27 +165,8 @@ func (d *Daemon) Start() error {
 		log.Printf("External mode: AI triggers will be sent to %s (set DEVTRACK_SERVER_URL to target another host)", config.GetServerURL())
 	}
 
-	// Start Telegram bot if enabled
-	if err := d.startTelegramBot(); err != nil {
-		log.Printf("Warning: Failed to start Telegram bot: %v", err)
-		log.Println("Telegram remote control will be unavailable")
-	}
-
-	// Start Slack bot if enabled
-	if err := d.startSlackBot(); err != nil {
-		log.Printf("Warning: Failed to start Slack bot: %v", err)
-		log.Println("Slack remote control will be unavailable")
-	}
-
-	// Start Azure assignment poller if enabled
-	if err := d.startAssignmentPoller(); err != nil {
-		log.Printf("Warning: Failed to start Azure assignment poller: %v", err)
-	}
-
-	// Start GitLab assignment poller if enabled
-	if err := d.startGitLabPoller(); err != nil {
-		log.Printf("Warning: Failed to start GitLab assignment poller: %v", err)
-	}
+	// Start native Go alert poller (Phase 2 — replaces Python assignment/telegram/slack subprocesses)
+	d.startAlertPoller()
 
 	d.isRunning = true
 	d.startTime = time.Now()
@@ -197,11 +177,7 @@ func (d *Daemon) Start() error {
 	if d.webhookServer != nil && d.webhookServer.Process != nil {
 		hm.SetWebhookPID(d.webhookServer.Process.Pid)
 	}
-	if d.telegramBot != nil && d.telegramBot.Process != nil {
-		hm.SetTelegramPID(d.telegramBot.Process.Pid)
-	}
 	hm.SetRestartCallbacks(nil, d.restartWebhookServer)
-	hm.SetTelegramRestartCallback(d.restartTelegramBot)
 	hm.Start()
 	d.healthMonitor = hm
 	log.Println("✓ Health monitor started")
@@ -235,30 +211,9 @@ func (d *Daemon) Stop() error {
 		d.healthMonitor.Stop()
 	}
 
-	// Stop Telegram bot
-	if d.telegramBot != nil {
-		log.Println("Stopping Telegram bot...")
-		if err := d.telegramBot.Process.Kill(); err != nil {
-			log.Printf("Warning: error stopping Telegram bot: %v", err)
-		}
-	}
-
-	// Stop Slack bot
-	if d.slackBot != nil {
-		log.Println("Stopping Slack bot...")
-		if err := d.slackBot.Process.Kill(); err != nil {
-			log.Printf("Warning: error stopping Slack bot: %v", err)
-		}
-	}
-
-	// Stop Azure assignment poller
-	if d.assignmentPoller != nil {
-		d.assignmentPoller.Process.Kill()
-	}
-
-	// Stop GitLab assignment poller
-	if d.gitlabPoller != nil {
-		d.gitlabPoller.Process.Kill()
+	// Stop Go alert poller
+	if d.alertPoller != nil {
+		d.alertPoller.Stop()
 	}
 
 	// Stop webhook server
@@ -561,184 +516,25 @@ func (d *Daemon) restartWebhookServer() error {
 	return nil
 }
 
-// startAssignmentPoller starts the Azure DevOps assignment poller if configured
-func (d *Daemon) startAssignmentPoller() error {
-	if !config.IsAzurePollerEnabled() {
-		log.Println("Azure assignment poller disabled (AZURE_POLL_ENABLED is not true)")
-		return nil
+// startAlertPoller starts the native Go ticket alert poller if ALERT_ENABLED=true.
+// Polls GitHub and Azure for assigned/comment/review events, writes to SQLite,
+// and delivers via terminal + Telegram + Slack notifiers.
+func (d *Daemon) startAlertPoller() {
+	if !config.IsAlertEnabled() {
+		log.Println("Alert poller disabled (ALERT_ENABLED is not true)")
+		return
 	}
 
-	// Kill any stale poller from a previous run
-	exec.Command("pkill", "-f", "assignment_poller").Run() //nolint
+	notifier := notify.NewMulti(
+		notify.Terminal{},
+		notify.NewTelegramFromConfig(),
+		notify.NewSlackFromConfig(),
+		notify.OS{},
+	)
 
-	projectRoot := os.Getenv("PROJECT_ROOT")
-	scriptPath := filepath.Join(projectRoot, "backend", "azure", "assignment_poller.py")
-
-	var cmd *exec.Cmd
-	if projectRoot != "" {
-		cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", scriptPath)
-		cmd.Dir = projectRoot
-	} else {
-		cmd = exec.Command("python3", scriptPath)
-	}
-
-	logFile, err := os.OpenFile(d.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open log file for assignment poller: %w", err)
-	}
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start assignment poller: %w", err)
-	}
-
-	d.assignmentPoller = cmd
-	log.Printf("✓ Azure assignment poller started (PID: %d)", cmd.Process.Pid)
-	return nil
-}
-
-// startGitLabPoller starts the GitLab assignment poller if GITLAB_POLL_ENABLED=true
-func (d *Daemon) startGitLabPoller() error {
-	if !config.IsGitLabPollerEnabled() {
-		log.Println("GitLab assignment poller disabled (GITLAB_POLL_ENABLED is not true)")
-		return nil
-	}
-
-	// Kill any stale poller from a previous run
-	exec.Command("pkill", "-f", "gitlab/assignment_poller").Run() //nolint
-
-	projectRoot := os.Getenv("PROJECT_ROOT")
-	scriptPath := filepath.Join(projectRoot, "backend", "gitlab", "assignment_poller.py")
-
-	var cmd *exec.Cmd
-	if projectRoot != "" {
-		cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", scriptPath)
-		cmd.Dir = projectRoot
-	} else {
-		cmd = exec.Command("python3", scriptPath)
-	}
-
-	logFile, err := os.OpenFile(d.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open log file for GitLab poller: %w", err)
-	}
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start GitLab assignment poller: %w", err)
-	}
-
-	d.gitlabPoller = cmd
-	log.Printf("✓ GitLab assignment poller started (PID: %d)", cmd.Process.Pid)
-	return nil
-}
-
-// restartGitLabPoller restarts the GitLab assignment poller process
-func (d *Daemon) restartGitLabPoller() error {
-	if d.gitlabPoller != nil && d.gitlabPoller.Process != nil {
-		d.gitlabPoller.Process.Kill()
-		d.gitlabPoller.Process.Wait()
-	}
-	return d.startGitLabPoller()
-}
-
-// startTelegramBot starts the Telegram bot process if TELEGRAM_ENABLED=true.
-// Phase 2 target: replace this Python subprocess with a native Go notifier
-// in internal/notify/ (see docs/CLIENT_SERVER_DECOUPLING_PLAN.md §2b).
-func (d *Daemon) startTelegramBot() error {
-	if !config.IsTelegramEnabled() {
-		log.Println("Telegram bot disabled (TELEGRAM_ENABLED is not true)")
-		return nil
-	}
-
-	// Kill any stale bot processes from a previous daemon run before starting a new one
-	exec.Command("pkill", "-f", "backend.telegram").Run() //nolint
-
-	log.Println("Starting Telegram bot (Phase 2: will be replaced by native Go notifier)...")
-
-	var cmd *exec.Cmd
-	projectRoot := os.Getenv("PROJECT_ROOT")
-	if projectRoot != "" {
-		cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.telegram")
-		cmd.Dir = projectRoot
-	} else {
-		cmd = exec.Command("python3", "-m", "backend.telegram")
-	}
-
-	logFile, err := os.OpenFile(d.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open log file for Telegram bot: %w", err)
-	}
-
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start Telegram bot: %w", err)
-	}
-
-	d.telegramBot = cmd
-	log.Printf("✓ Telegram bot started (PID: %d)", cmd.Process.Pid)
-
-	return nil
-}
-
-// restartTelegramBot restarts the Telegram bot process
-func (d *Daemon) restartTelegramBot() error {
-	if d.telegramBot != nil && d.telegramBot.Process != nil {
-		d.telegramBot.Process.Kill()
-		d.telegramBot.Process.Wait()
-	}
-
-	if err := d.startTelegramBot(); err != nil {
-		return err
-	}
-
-	if d.healthMonitor != nil && d.telegramBot != nil && d.telegramBot.Process != nil {
-		d.healthMonitor.SetTelegramPID(d.telegramBot.Process.Pid)
-	}
-	return nil
-}
-
-// startSlackBot starts the Slack bot process if SLACK_ENABLED=true.
-// Phase 2 target: replace this Python subprocess with a native Go notifier
-// in internal/notify/ (see docs/CLIENT_SERVER_DECOUPLING_PLAN.md §2b).
-func (d *Daemon) startSlackBot() error {
-	if !config.IsSlackEnabled() {
-		log.Println("Slack bot disabled (SLACK_ENABLED is not true)")
-		return nil
-	}
-
-	// Kill any stale bot process from a previous run
-	exec.Command("pkill", "-f", "backend.slack").Run() //nolint
-
-	log.Println("Starting Slack bot (Phase 2: will be replaced by native Go notifier)...")
-
-	var cmd *exec.Cmd
-	projectRoot := os.Getenv("PROJECT_ROOT")
-	if projectRoot != "" {
-		cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.slack")
-		cmd.Dir = projectRoot
-	} else {
-		cmd = exec.Command("python3", "-m", "backend.slack")
-	}
-
-	logFile, err := os.OpenFile(d.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open log file for Slack bot: %w", err)
-	}
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start Slack bot: %w", err)
-	}
-
-	d.slackBot = cmd
-	log.Printf("✓ Slack bot started (PID: %d)", cmd.Process.Pid)
-	return nil
+	poller := alerts.NewPoller(d.monitor.Database(), notifier)
+	poller.Start(d.ctx)
+	d.alertPoller = poller
 }
 
 // startWorkspacesFileWatcher watches workspaces.yaml for changes and triggers

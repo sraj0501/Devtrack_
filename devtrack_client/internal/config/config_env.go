@@ -883,3 +883,102 @@ func GetHTTPTimeoutShort() int {
 	}
 	return secs
 }
+
+// --- Alert poller config ---
+
+// IsAlertEnabled returns true when ALERT_ENABLED=true/1.
+func IsAlertEnabled() bool {
+	val := os.Getenv("ALERT_ENABLED")
+	return strings.EqualFold(val, "true") || val == "1"
+}
+
+// IsAlertGitHubEnabled returns true when ALERT_GITHUB_ENABLED=true/1.
+// Defaults to true when unset and GITHUB_TOKEN is present.
+func IsAlertGitHubEnabled() bool {
+	val := os.Getenv("ALERT_GITHUB_ENABLED")
+	if val == "" {
+		return os.Getenv("GITHUB_TOKEN") != ""
+	}
+	return strings.EqualFold(val, "true") || val == "1"
+}
+
+// IsAlertAzureEnabled returns true when ALERT_AZURE_ENABLED=true/1.
+// Defaults to true when unset and AZURE_DEVOPS_PAT is present.
+func IsAlertAzureEnabled() bool {
+	val := os.Getenv("ALERT_AZURE_ENABLED")
+	if val == "" {
+		return os.Getenv("AZURE_DEVOPS_PAT") != ""
+	}
+	return strings.EqualFold(val, "true") || val == "1"
+}
+
+// GetAlertPollIntervalSecs returns ALERT_POLL_INTERVAL_SECS (default 300).
+func GetAlertPollIntervalSecs() int {
+	val := os.Getenv("ALERT_POLL_INTERVAL_SECS")
+	if val == "" {
+		return 300
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || n <= 0 {
+		return 300
+	}
+	return n
+}
+
+// GetAlertUserID returns the user identifier for alert delta-state keys.
+// Priority: GITHUB_USER → EMAIL → empty string.
+func GetAlertUserID() string {
+	if v := os.Getenv("GITHUB_USER"); v != "" {
+		return v
+	}
+	return os.Getenv("EMAIL")
+}
+
+// IsAlertNotifyAssigned returns ALERT_NOTIFY_ASSIGNED (default true).
+func IsAlertNotifyAssigned() bool {
+	val := os.Getenv("ALERT_NOTIFY_ASSIGNED")
+	return val == "" || strings.EqualFold(val, "true") || val == "1"
+}
+
+// IsAlertNotifyComments returns ALERT_NOTIFY_COMMENTS (default true).
+func IsAlertNotifyComments() bool {
+	val := os.Getenv("ALERT_NOTIFY_COMMENTS")
+	return val == "" || strings.EqualFold(val, "true") || val == "1"
+}
+
+// IsAlertNotifyStatusChanges returns ALERT_NOTIFY_STATUS_CHANGES (default true).
+func IsAlertNotifyStatusChanges() bool {
+	val := os.Getenv("ALERT_NOTIFY_STATUS_CHANGES")
+	return val == "" || strings.EqualFold(val, "true") || val == "1"
+}
+
+// IsAlertNotifyReviewRequested returns ALERT_NOTIFY_REVIEW_REQUESTED (default true).
+func IsAlertNotifyReviewRequested() bool {
+	val := os.Getenv("ALERT_NOTIFY_REVIEW_REQUESTED")
+	return val == "" || strings.EqualFold(val, "true") || val == "1"
+}
+
+// GetTelegramBotToken returns TELEGRAM_BOT_TOKEN.
+func GetTelegramBotToken() string {
+	return os.Getenv("TELEGRAM_BOT_TOKEN")
+}
+
+// GetTelegramChatIDs parses TELEGRAM_CHAT_ID (comma-separated) into a slice.
+func GetTelegramChatIDs() []string {
+	val := os.Getenv("TELEGRAM_CHAT_ID")
+	if val == "" {
+		return nil
+	}
+	var ids []string
+	for _, id := range strings.Split(val, ",") {
+		if s := strings.TrimSpace(id); s != "" {
+			ids = append(ids, s)
+		}
+	}
+	return ids
+}
+
+// GetSlackWebhookURL returns SLACK_WEBHOOK_URL.
+func GetSlackWebhookURL() string {
+	return os.Getenv("SLACK_WEBHOOK_URL")
+}

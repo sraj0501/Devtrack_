@@ -26,12 +26,10 @@ type HealthMonitor struct {
 	dbMu          sync.Mutex // serializes SQLite writes from concurrent check goroutines
 
 	// Process PIDs to monitor
-	webhookPID  int
-	telegramPID int
+	webhookPID int
 
 	// Auto-restart callbacks
-	restartWebhook  func() error
-	restartTelegram func() error
+	restartWebhook func() error
 
 	// Restart tracking
 	restartCounts   map[string][]time.Time // service -> timestamps of restarts
@@ -60,25 +58,11 @@ func (hm *HealthMonitor) SetWebhookPID(pid int) {
 	hm.webhookPID = pid
 }
 
-// SetTelegramPID sets the Telegram bot PID to monitor
-func (hm *HealthMonitor) SetTelegramPID(pid int) {
-	hm.mu.Lock()
-	defer hm.mu.Unlock()
-	hm.telegramPID = pid
-}
-
 // SetRestartCallbacks sets the functions to call when auto-restart is needed
 func (hm *HealthMonitor) SetRestartCallbacks(_, restartWebhook func() error) {
 	hm.mu.Lock()
 	defer hm.mu.Unlock()
 	hm.restartWebhook = restartWebhook
-}
-
-// SetTelegramRestartCallback sets the function to call when the Telegram bot needs restart
-func (hm *HealthMonitor) SetTelegramRestartCallback(fn func() error) {
-	hm.mu.Lock()
-	defer hm.mu.Unlock()
-	hm.restartTelegram = fn
 }
 
 // Start begins periodic health checking
@@ -306,7 +290,9 @@ func (hm *HealthMonitor) checkWebhookServer() {
 	hm.recordSnapshot(snap)
 }
 
-// checkTelegramBot checks if the Telegram bot process is alive
+// checkTelegramBot checks if the Telegram notifier is properly configured.
+// Phase 2: Telegram is now a native Go notifier (not a subprocess), so we
+// check whether the required credentials are present rather than a PID.
 func (hm *HealthMonitor) checkTelegramBot() {
 	snap := idb.HealthSnapshot{
 		Service:   "telegram_bot",
@@ -320,22 +306,14 @@ func (hm *HealthMonitor) checkTelegramBot() {
 		return
 	}
 
-	hm.mu.Lock()
-	pid := hm.telegramPID
-	hm.mu.Unlock()
-
-	if pid == 0 {
+	token := cfg.GetTelegramBotToken()
+	ids := cfg.GetTelegramChatIDs()
+	if token == "" || len(ids) == 0 {
 		snap.Status = "down"
-		snap.Details = `{"error":"not started"}`
-	} else if IsProcessAlive(pid) {
-		snap.Status = "up"
-		snap.Details = fmt.Sprintf(`{"pid":%d}`, pid)
+		snap.Details = `{"error":"TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set"}`
 	} else {
-		snap.Status = "down"
-		snap.Details = fmt.Sprintf(`{"pid":%d,"error":"process not running"}`, pid)
-		if cfg.GetHealthAutoRestartTelegram() {
-			hm.tryRestart("telegram_bot")
-		}
+		snap.Status = "up"
+		snap.Details = fmt.Sprintf(`{"chat_ids":%d}`, len(ids))
 	}
 
 	hm.recordSnapshot(snap)
@@ -455,8 +433,6 @@ func (hm *HealthMonitor) tryRestart(service string) {
 	switch service {
 	case "webhook_server":
 		restartFn = hm.restartWebhook
-	case "telegram_bot":
-		restartFn = hm.restartTelegram
 	}
 
 	if restartFn == nil {
