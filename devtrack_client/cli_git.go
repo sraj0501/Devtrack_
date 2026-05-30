@@ -261,7 +261,8 @@ func gitAfterCommit(repoPath, hash, branch, message string, state any) {
 		// --- Immediate PM sync with offline-queue fallback ---
 		if hasTicket {
 			if confirmYN(reader, fmt.Sprintf("→ Post commit update to %s?", ticket.ID), true) {
-				if err := pm.AddComment(ticket, body); err != nil {
+				ws, _ := config.ResolveWorkspaceForPath(repoPath)
+				if err := pm.AddComment(ws, ticket, body); err != nil {
 					if qErr := pm.EnqueueComment(database, ticket, body, hash); qErr == nil {
 						fmt.Printf("  ⚠️  %s unreachable — queued for sync when back online.\n", ticket.Platform)
 					} else {
@@ -276,7 +277,8 @@ func gitAfterCommit(repoPath, hash, branch, message string, state any) {
 	} else if hasTicket {
 		// No DB available — still attempt an immediate post, no queue fallback.
 		if confirmYN(reader, fmt.Sprintf("→ Post commit update to %s?", ticket.ID), true) {
-			if err := pm.AddComment(ticket, body); err != nil {
+			ws, _ := config.ResolveWorkspaceForPath(repoPath)
+			if err := pm.AddComment(ws, ticket, body); err != nil {
 				fmt.Printf("  ✗ Sync failed: %v\n", err)
 			} else {
 				fmt.Printf("  ✓ Posted to %s\n", ticket.ID)

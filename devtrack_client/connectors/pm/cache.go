@@ -1,7 +1,6 @@
 package pm
 
 import (
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -32,23 +31,14 @@ func ListOpenTicketsCached(ws *config.WorkspaceConfig, database *db.Database) (t
 	return nil, false, liveErr
 }
 
-// assigneeKey is the stable key tickets are cached/retrieved under for a
-// workspace: the configured pm_assignee, else a platform username, else "self".
+// assigneeKey is the stable key tickets are cached under for a workspace.
+// Uses pm_assignee if set, then pm_username, then "self".
 func assigneeKey(ws *config.WorkspaceConfig) string {
 	if ws != nil && strings.TrimSpace(ws.PMAssignee) != "" {
 		return strings.ToLower(strings.TrimSpace(ws.PMAssignee))
 	}
-	if ws != nil {
-		switch strings.ToLower(ws.PMPlatform) {
-		case "github":
-			if u := os.Getenv("GITHUB_USERNAME"); u != "" {
-				return strings.ToLower(u)
-			}
-		case "gitlab":
-			if u := os.Getenv("GITLAB_USERNAME"); u != "" {
-				return strings.ToLower(u)
-			}
-		}
+	if ws != nil && strings.TrimSpace(ws.PMUsername) != "" {
+		return strings.ToLower(strings.TrimSpace(ws.PMUsername))
 	}
 	return "self"
 }

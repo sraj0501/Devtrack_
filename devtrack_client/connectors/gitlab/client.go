@@ -13,20 +13,23 @@ import (
 const defaultGitLabURL = "https://gitlab.com"
 
 // Client is a minimal GitLab REST API v4 client.
+// Construct with NewClient — token is read from GITLAB_PAT in .env;
+// all other config (apiURL) comes from workspaces.yaml via the caller.
 type Client struct {
 	token   string
 	baseURL string
 	http    *http.Client
 }
 
-// NewClient creates a GitLab client using GITLAB_PAT from the environment.
-// GITLAB_URL overrides the base URL (useful for self-hosted GitLab).
-func NewClient() (*Client, error) {
+// NewClient creates a GitLab client.
+// token is read from GITLAB_PAT (.env — the only env read this package does).
+// apiURL overrides the base URL (self-hosted GitLab); pass "" for gitlab.com.
+func NewClient(apiURL string) (*Client, error) {
 	token := os.Getenv("GITLAB_PAT")
 	if token == "" {
 		return nil, fmt.Errorf("GITLAB_PAT is not set")
 	}
-	base := os.Getenv("GITLAB_URL")
+	base := apiURL
 	if base == "" {
 		base = defaultGitLabURL
 	}

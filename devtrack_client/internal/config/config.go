@@ -26,19 +26,25 @@ type RepositoryConfig struct {
 	Ignore  []string `yaml:"ignore"` // Branches or paths to ignore
 }
 
-// WorkspaceConfig represents a single monitored repo in workspaces.yaml
+// WorkspaceConfig represents a single monitored repo in workspaces.yaml.
+//
+// API keys / tokens (GITHUB_TOKEN, GITLAB_PAT, AZURE_DEVOPS_PAT) are the
+// only connector values that live in .env — everything else is here.
 type WorkspaceConfig struct {
 	Name           string   `yaml:"name"`
 	Path           string   `yaml:"path"`
-	PMPlatform     string   `yaml:"pm_platform"`    // "azure" | "gitlab" | "github" | "jira" | "none" | ""
-	PMProject      string   `yaml:"pm_project"`     // optional platform-specific project ID/key
+	PMPlatform     string   `yaml:"pm_platform"` // "azure" | "gitlab" | "github" | "jira" | "none" | ""
+	PMProject      string   `yaml:"pm_project"`  // owner/repo (GitHub), group/project or ID (GitLab), project name (Azure)
+	PMOrg          string   `yaml:"pm_org"`      // Azure: org name (e.g. "mycompany"); not used by GitHub/GitLab
+	PMUsername     string   `yaml:"pm_username"` // assignee filter: GitHub login, GitLab username, Azure email
+	PMAPIURL       string   `yaml:"pm_api_url"`  // self-hosted override: GitHub Enterprise, GitLab self-hosted, Azure DevOps Server
 	Enabled        bool     `yaml:"enabled"`
 	IgnoreBranches []string `yaml:"ignore_branches"`
 	Tags           []string `yaml:"tags"`
-	// Per-workspace PM settings (override global .env defaults)
-	PMAssignee      string `yaml:"pm_assignee"`       // Azure: assigned_to; GitHub: assignees[0] override
-	PMIterationPath string `yaml:"pm_iteration_path"` // Azure: sprint/iteration path (e.g. MyProject\Sprint 5)
-	PMAreaPath      string `yaml:"pm_area_path"`      // Azure: area path (e.g. MyProject\Backend)
+	// Azure-specific sprint / area settings
+	PMAssignee      string `yaml:"pm_assignee"`       // Azure: assigned_to display name
+	PMIterationPath string `yaml:"pm_iteration_path"` // Azure: sprint path (e.g. "MyProject\\Sprint 5")
+	PMAreaPath      string `yaml:"pm_area_path"`      // Azure: area path (e.g. "MyProject\\Backend")
 	PMMilestone     int    `yaml:"pm_milestone"`      // GitHub: milestone number; GitLab: milestone_id
 }
 

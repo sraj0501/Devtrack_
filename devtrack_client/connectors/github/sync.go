@@ -3,7 +3,6 @@ package github
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"time"
 )
 
@@ -22,20 +21,14 @@ CREATE TABLE IF NOT EXISTS github_issues (
 	UNIQUE(number, repo)
 )`
 
-// Sync fetches all assigned open issues and upserts them into the github_issues SQLite table.
-func Sync(db *sql.DB) error {
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		return fmt.Errorf("GITHUB_TOKEN is not set")
-	}
-	username := os.Getenv("GITHUB_USERNAME")
-
-	// Ensure table exists
+// Sync fetches all assigned open issues and upserts them into github_issues.
+// username comes from workspaces.yaml pm_username; pass "" to auto-detect.
+func (c *Client) Sync(db *sql.DB, username string) error {
 	if _, err := db.Exec(createGitHubTable); err != nil {
 		return fmt.Errorf("github sync: create table: %w", err)
 	}
 
-	issues, err := ListIssues(token, username)
+	issues, err := c.ListIssues(username)
 	if err != nil {
 		return fmt.Errorf("github sync: list issues: %w", err)
 	}

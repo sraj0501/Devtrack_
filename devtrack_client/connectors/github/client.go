@@ -13,20 +13,23 @@ import (
 const defaultBaseURL = "https://api.github.com"
 
 // Client is a minimal GitHub REST API client.
+// Construct with NewClient — token is read from GITHUB_TOKEN in .env;
+// all other config (apiURL) comes from workspaces.yaml via the caller.
 type Client struct {
 	token   string
 	baseURL string
 	http    *http.Client
 }
 
-// NewClient creates a GitHub client using GITHUB_TOKEN from the environment.
-// GITHUB_API_URL overrides the base URL (useful for GitHub Enterprise).
-func NewClient() (*Client, error) {
+// NewClient creates a GitHub client.
+// token is read from GITHUB_TOKEN (.env — the only env read this package does).
+// apiURL overrides the base URL (GitHub Enterprise); pass "" for github.com.
+func NewClient(apiURL string) (*Client, error) {
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
 		return nil, fmt.Errorf("GITHUB_TOKEN is not set")
 	}
-	base := os.Getenv("GITHUB_API_URL")
+	base := apiURL
 	if base == "" {
 		base = defaultBaseURL
 	}
@@ -73,14 +76,14 @@ func (c *Client) do(path string, out any) error {
 
 // Issue represents a GitHub issue returned by the API.
 type Issue struct {
-	Number    int      `json:"number"`
-	Title     string   `json:"title"`
-	Body      string   `json:"body"`
-	URL       string   `json:"html_url"`
-	State     string   `json:"state"`
-	UpdatedAt string   `json:"updated_at"`
-	Labels    []label  `json:"labels"`
-	Repo      string   // populated by caller from context
+	Number    int     `json:"number"`
+	Title     string  `json:"title"`
+	Body      string  `json:"body"`
+	URL       string  `json:"html_url"`
+	State     string  `json:"state"`
+	UpdatedAt string  `json:"updated_at"`
+	Labels    []label `json:"labels"`
+	Repo      string  // populated by caller from context
 }
 
 type label struct {
@@ -98,10 +101,6 @@ func (i Issue) LabelNames() string {
 
 // AuthenticatedUser holds minimal user info from /user.
 type AuthenticatedUser struct {
-	Login     string `json:"login"`
-	Name      string `json:"name"`
-	RateLimit struct {
-		Limit     int `json:"limit"`
-		Remaining int `json:"remaining"`
-	}
+	Login string `json:"login"`
+	Name  string `json:"name"`
 }

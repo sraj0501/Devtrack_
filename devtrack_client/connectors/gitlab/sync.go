@@ -21,13 +21,14 @@ CREATE TABLE IF NOT EXISTS gitlab_issues (
 	UNIQUE(iid, repo)
 )`
 
-// Sync fetches all assigned open issues and upserts them into the gitlab_issues SQLite table.
-func Sync(db *sql.DB) error {
+// Sync fetches all assigned open issues and upserts them into gitlab_issues.
+// username comes from workspaces.yaml pm_username; pass "" to auto-detect.
+func (c *Client) Sync(db *sql.DB, username string) error {
 	if _, err := db.Exec(createGitLabTable); err != nil {
 		return fmt.Errorf("gitlab sync: create table: %w", err)
 	}
 
-	issues, err := ListIssues()
+	issues, err := c.ListIssues(username)
 	if err != nil {
 		return fmt.Errorf("gitlab sync: list issues: %w", err)
 	}

@@ -15,6 +15,8 @@ import (
 const apiVersion = "7.0"
 
 // Client is a minimal Azure DevOps REST API client.
+// Construct with NewClient — PAT is read from AZURE_DEVOPS_PAT in .env;
+// all other config (org, project, apiURL) comes from workspaces.yaml.
 type Client struct {
 	pat     string
 	org     string
@@ -23,28 +25,26 @@ type Client struct {
 	http    *http.Client
 }
 
-// NewClient creates an Azure DevOps client using env vars:
-// AZURE_DEVOPS_PAT, AZURE_ORG, AZURE_PROJECT.
-// AZURE_DEVOPS_URL overrides the base URL (useful for Azure DevOps Server).
-func NewClient() (*Client, error) {
+// NewClient creates an Azure DevOps client.
+// pat is read from AZURE_DEVOPS_PAT (.env — the only env read this package does).
+// org and project come from workspaces.yaml (pm_org and pm_project).
+// apiURL overrides the base URL (Azure DevOps Server self-hosted); pass "" for
+// dev.azure.com.
+func NewClient(org, project, apiURL string) (*Client, error) {
 	pat := os.Getenv("AZURE_DEVOPS_PAT")
 	if pat == "" {
 		return nil, fmt.Errorf("AZURE_DEVOPS_PAT is not set")
 	}
-	org := os.Getenv("AZURE_ORG")
 	if org == "" {
-		return nil, fmt.Errorf("AZURE_ORG is not set")
+		return nil, fmt.Errorf("pm_org is not set in workspaces.yaml (Azure org name required)")
 	}
-	project := os.Getenv("AZURE_PROJECT")
 	if project == "" {
-		return nil, fmt.Errorf("AZURE_PROJECT is not set")
+		return nil, fmt.Errorf("pm_project is not set in workspaces.yaml (Azure project name required)")
 	}
-
-	base := os.Getenv("AZURE_DEVOPS_URL")
+	base := apiURL
 	if base == "" {
 		base = "https://dev.azure.com"
 	}
-
 	return &Client{
 		pat:     pat,
 		org:     org,
@@ -141,10 +141,10 @@ func (c *Client) projectURL() string {
 
 // WorkItem represents an Azure DevOps work item.
 type WorkItem struct {
-	ID     int                    `json:"id"`
+	ID     int            `json:"id"`
 	Fields map[string]any `json:"fields"`
-	URL    string                 `json:"url"`
-	WebURL string                 // populated from _links if present
+	URL    string         `json:"url"`
+	WebURL string         // populated from _links if present
 }
 
 // Title returns the work item title from fields.

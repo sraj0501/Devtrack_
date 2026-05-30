@@ -10,11 +10,7 @@ type createdIssue struct {
 
 // CreateIssue opens a new issue in repo ("owner/repo") and returns its number
 // and HTML URL. milestone is the milestone number, or 0 for none.
-func CreateIssue(repo, title, body string, milestone int) (int, string, error) {
-	c, err := NewClient()
-	if err != nil {
-		return 0, "", err
-	}
+func (c *Client) CreateIssue(repo, title, body string, milestone int) (int, string, error) {
 	payload := map[string]any{"title": title}
 	if body != "" {
 		payload["body"] = body

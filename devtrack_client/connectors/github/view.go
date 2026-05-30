@@ -6,12 +6,7 @@ import (
 )
 
 // ViewIssue fetches a single GitHub issue by owner, repo, and number.
-func ViewIssue(owner, repo string, number int) (*Issue, error) {
-	c, err := NewClient()
-	if err != nil {
-		return nil, err
-	}
-
+func (c *Client) ViewIssue(owner, repo string, number int) (*Issue, error) {
 	var issue Issue
 	path := fmt.Sprintf("/repos/%s/%s/issues/%d", owner, repo, number)
 	if err := c.do(path, &issue); err != nil {

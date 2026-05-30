@@ -1,47 +1,79 @@
 # workspaces.yaml — Multi-repo monitoring configuration
 #
 # Place this file at your PROJECT_ROOT (or set WORKSPACES_FILE in .env).
-# Absence of this file = backward-compat single-repo mode (DEVTRACK_WORKSPACE used).
 #
-# pm_platform options: azure | gitlab | github | jira | none
-# pm_project: optional platform-specific project key (GitLab project ID, Azure project name, etc.)
+# ── What goes where ──────────────────────────────────────────────────────────
+# .env:            API keys / secrets ONLY:
+#                    GITHUB_TOKEN, GITLAB_PAT, AZURE_DEVOPS_PAT
+# workspaces.yaml: everything else — paths, org, project, username, URLs.
 #
-# Per-workspace PM settings (pm_assignee, pm_iteration_path, pm_area_path, pm_milestone):
-#   These override the global defaults previously set via .env.
-#   Leave blank / 0 to use the platform default (e.g. unassigned, no sprint, no milestone).
+# There is no single-repo fallback mode. workspaces.yaml is always required.
+# For a single-repo setup, just add one entry.
 #
+# ── pm_platform options ──────────────────────────────────────────────────────
+# azure  — Azure DevOps (requires pm_org + pm_project)
+# github — GitHub Issues (pm_project = "owner/repo")
+# gitlab — GitLab Issues (pm_project = project ID or "group/project")
+# jira   — Jira (server-side only; no Go connector yet)
+# none   — no PM integration for this repo
+#
+# ── Field reference ──────────────────────────────────────────────────────────
+# pm_project:       owner/repo (GitHub), group/project or ID (GitLab),
+#                   project name (Azure)
+# pm_org:           Azure DevOps org name (e.g. "mycompany"); not used by
+#                   GitHub or GitLab
+# pm_username:      your login/email for assignee filtering:
+#                     GitHub  → your GitHub login (e.g. "jsmith")
+#                     GitLab  → your GitLab username (e.g. "jsmith")
+#                     Azure   → your Azure email (e.g. "j.smith@company.com")
+#                   Leave blank to auto-detect from the API.
+# pm_api_url:       Base URL for self-hosted instances:
+#                     GitHub Enterprise: "https://github.mycompany.com"
+#                     GitLab self-hosted: "https://gitlab.mycompany.com"
+#                     Azure DevOps Server: "https://ado.mycompany.com"
+#                   Leave blank for github.com / gitlab.com / dev.azure.com.
+# pm_milestone:     GitHub milestone number or GitLab milestone_id (0 = none)
+# pm_assignee:      Azure: assigned_to display name for sprint filtering
+# pm_iteration_path: Azure: sprint path (e.g. "MyProject\\Sprint 5")
+# pm_area_path:     Azure: area path (e.g. "MyProject\\Backend")
 
 version: "1"
 workspaces:
   - name: "work-api"
     path: "~/work/api"
     pm_platform: "azure"
-    pm_project: ""          # leave blank to use AZURE_DEVOPS_PROJECT from .env
+    pm_org: "mycompany"             # Azure org name
+    pm_project: "MyProject"         # Azure project name
+    pm_username: "j.smith@co.com"   # your Azure email (assignee filter)
+    pm_api_url: ""                  # blank = dev.azure.com
     enabled: true
     ignore_branches: ["main", "master"]
     tags: ["work"]
-    # Per-workspace PM settings:
-    pm_assignee: ""              # Azure: assigned_to (e.g. john@company.com)
-    pm_iteration_path: ""        # Azure: sprint/iteration path (e.g. "MyProject\\Sprint 5")
-    pm_area_path: ""             # Azure: area path (e.g. "MyProject\\Backend")
-    pm_milestone: 0              # GitHub: milestone number; GitLab: milestone_id (0 = none)
+    pm_assignee: ""
+    pm_iteration_path: ""           # e.g. "MyProject\\Sprint 5"
+    pm_area_path: ""                # e.g. "MyProject\\Backend"
+    pm_milestone: 0
 
   - name: "oss-lib"
     path: "~/oss/my-lib"
     pm_platform: "github"
-    pm_project: ""          # uses GITHUB_OWNER/GITHUB_REPO from .env
+    pm_project: "myuser/my-lib"     # owner/repo
+    pm_username: "myuser"           # your GitHub login
+    pm_api_url: ""                  # blank = api.github.com
+    pm_org: ""                      # not used for GitHub
     enabled: true
     ignore_branches: []
     tags: ["oss"]
-    pm_assignee: ""
     pm_milestone: 0
 
   - name: "internal-tools"
     path: "~/work/tools"
     pm_platform: "gitlab"
-    pm_project: "12345"     # GitLab project ID (overrides GITLAB_PROJECT_ID from .env)
+    pm_project: "12345"             # GitLab project ID (or "group/project")
+    pm_username: "jsmith"           # your GitLab username
+    pm_api_url: ""                  # blank = gitlab.com; or "https://gitlab.mycompany.com"
+    pm_org: ""                      # not used for GitLab
     enabled: true
     ignore_branches: []
     tags: ["work"]
-    pm_assignee: ""
-    pm_milestone: 0              # GitLab: milestone_id
+    pm_milestone: 0

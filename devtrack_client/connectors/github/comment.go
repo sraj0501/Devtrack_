@@ -47,11 +47,7 @@ func (c *Client) postJSON(path string, body any, out any) error {
 }
 
 // AddIssueComment posts a comment to an issue. repo is "owner/repo".
-func AddIssueComment(repo string, number int, body string) error {
-	c, err := NewClient()
-	if err != nil {
-		return err
-	}
+func (c *Client) AddIssueComment(repo string, number int, body string) error {
 	path := fmt.Sprintf("/repos/%s/issues/%d/comments", repo, number)
 	return c.postJSON(path, map[string]string{"body": body}, nil)
 }

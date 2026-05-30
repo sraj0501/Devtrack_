@@ -14,11 +14,7 @@ type createdIssue struct {
 // CreateIssue opens a new issue in projectPath ("group/project", URL-encoded
 // automatically) and returns its project-scoped IID and web URL. milestoneID is
 // the milestone id, or 0 for none.
-func CreateIssue(projectPath, title, description string, milestoneID int) (int, string, error) {
-	c, err := NewClient()
-	if err != nil {
-		return 0, "", err
-	}
+func (c *Client) CreateIssue(projectPath, title, description string, milestoneID int) (int, string, error) {
 	payload := map[string]any{"title": title}
 	if description != "" {
 		payload["description"] = description

@@ -1,18 +1,18 @@
 package github
 
-import (
-	"fmt"
-	"os"
-)
+import "fmt"
 
-// ListIssues returns all open issues assigned to the authenticated user (or username if provided).
-// It pages through results until all issues are collected.
-func ListIssues(token, username string) ([]Issue, error) {
-	c, err := NewClient()
-	if err != nil {
-		return nil, err
+// ListIssues returns all open issues assigned to username across all repos.
+// username comes from workspaces.yaml pm_username; pass "" to use the
+// authenticated user's login (determined via /user API).
+func (c *Client) ListIssues(username string) ([]Issue, error) {
+	if username == "" {
+		var u AuthenticatedUser
+		if err := c.do("/user", &u); err != nil {
+			return nil, fmt.Errorf("github list: cannot determine username: %w", err)
+		}
+		username = u.Login
 	}
-	c.token = token
 
 	var all []Issue
 	page := 1
@@ -25,7 +25,6 @@ func ListIssues(token, username string) ([]Issue, error) {
 		if len(batch) == 0 {
 			break
 		}
-		// Populate repo from the issue URL
 		for i := range batch {
 			batch[i].Repo = extractRepo(batch[i].URL)
 		}
@@ -38,14 +37,8 @@ func ListIssues(token, username string) ([]Issue, error) {
 	return all, nil
 }
 
-// ListIssuesForRepo returns open issues in a specific repo assigned to the user.
-func ListIssuesForRepo(owner, repo string) ([]Issue, error) {
-	c, err := NewClient()
-	if err != nil {
-		return nil, err
-	}
-
-	username := os.Getenv("GITHUB_USERNAME")
+// ListIssuesForRepo returns open issues in a specific repo assigned to username.
+func (c *Client) ListIssuesForRepo(owner, repo, username string) ([]Issue, error) {
 	var all []Issue
 	page := 1
 	for {
@@ -71,15 +64,12 @@ func ListIssuesForRepo(owner, repo string) ([]Issue, error) {
 }
 
 // extractRepo parses "owner/repo" from a GitHub issue HTML URL.
-// e.g. https://github.com/owner/repo/issues/42 → owner/repo
 func extractRepo(htmlURL string) string {
-	// strip https://github.com/
 	prefix := "https://github.com/"
 	if len(htmlURL) <= len(prefix) {
 		return ""
 	}
 	rest := htmlURL[len(prefix):]
-	// rest = owner/repo/issues/42
 	parts := splitN(rest, "/", 3)
 	if len(parts) >= 2 {
 		return parts[0] + "/" + parts[1]

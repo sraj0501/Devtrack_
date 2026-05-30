@@ -6,12 +6,7 @@ import (
 )
 
 // ViewWorkItem fetches a single Azure DevOps work item by ID.
-func ViewWorkItem(id int) (*WorkItem, error) {
-	c, err := NewClient()
-	if err != nil {
-		return nil, err
-	}
-
+func (c *Client) ViewWorkItem(id int) (*WorkItem, error) {
 	url := fmt.Sprintf("%s/_apis/wit/workitems/%d?$expand=all&api-version=%s",
 		c.orgURL(), id, apiVersion)
 
