@@ -137,22 +137,24 @@ func (cli *CLI) handleStatus() error {
 			fmt.Println("DevTrack Daemon        ● Stopped")
 		} else {
 			fmt.Printf("DevTrack Daemon        ● Running (PID: %s)\n", strings.TrimSpace(string(data)))
-			fmt.Println()
-			fmt.Println("Use 'devtrack status' from repository directory for full details")
 		}
 		fmt.Println()
+		printStatusWorkspaces()
+		printStatusPMTokens()
+		printStatusServer()
 		fmt.Println("Config files:")
 		if envPath := resolveEnvFilePath(); envPath != "" {
-			fmt.Printf("  .env           %s\n", envPath)
+			fmt.Printf("  .env          %s\n", envPath)
 		} else {
-			fmt.Println("  .env           (not found — run 'devtrack setup')")
+			fmt.Println("  .env          (not found — run 'devtrack setup')")
 		}
 		wsPath := GetWorkspacesFilePath()
 		if _, err := os.Stat(wsPath); err == nil {
-			fmt.Printf("  workspaces     %s\n", wsPath)
+			fmt.Printf("  workspaces    %s\n", wsPath)
 		} else {
-			fmt.Printf("  workspaces     %s (not found)\n", wsPath)
+			fmt.Printf("  workspaces    %s (not found — run 'devtrack setup')\n", wsPath)
 		}
+		fmt.Println()
 		return nil
 	}
 
@@ -261,22 +263,101 @@ func (cli *CLI) handleStatus() error {
 		}
 	}
 
-	// Config file locations
+	// Workspaces
 	fmt.Println()
+	printStatusWorkspaces()
+
+	// PM token presence (secrets only — values never shown)
+	printStatusPMTokens()
+
+	// Server connection
+	printStatusServer()
+
+	// Config file locations
 	fmt.Println("Config files:")
 	if envPath := resolveEnvFilePath(); envPath != "" {
-		fmt.Printf("  .env           %s\n", envPath)
+		fmt.Printf("  .env          %s\n", envPath)
 	} else {
-		fmt.Println("  .env           (not found — run 'devtrack setup')")
+		fmt.Println("  .env          (not found — run 'devtrack setup')")
 	}
 	wsPath := GetWorkspacesFilePath()
 	if _, err := os.Stat(wsPath); err == nil {
-		fmt.Printf("  workspaces     %s\n", wsPath)
+		fmt.Printf("  workspaces    %s\n", wsPath)
 	} else {
-		fmt.Printf("  workspaces     %s (not found)\n", wsPath)
+		fmt.Printf("  workspaces    %s (not found — run 'devtrack setup')\n", wsPath)
 	}
+	fmt.Println()
 
 	return nil
+}
+
+// printStatusWorkspaces prints configured workspaces from workspaces.yaml.
+func printStatusWorkspaces() {
+	wsCfg, err := LoadWorkspacesConfig()
+	if err != nil || wsCfg == nil || len(wsCfg.Workspaces) == 0 {
+		fmt.Println("Workspaces:    (none configured — run 'devtrack setup' or 'devtrack workspace add')")
+		fmt.Println()
+		return
+	}
+	fmt.Println("Workspaces:")
+	for _, ws := range wsCfg.Workspaces {
+		state := "enabled"
+		if !ws.Enabled {
+			state = "disabled"
+		}
+		platform := ws.PMPlatform
+		if platform == "" || platform == "none" {
+			platform = "no PM"
+		}
+		gitOK := ""
+		if !IsGitRepository(ws.Path) {
+			gitOK = " [not a git repo]"
+		}
+		fmt.Printf("  %-18s %-12s  %s%s  (%s)\n", ws.Name, platform, ws.Path, gitOK, state)
+	}
+	fmt.Println()
+}
+
+// printStatusPMTokens shows which PM API tokens are configured in .env.
+func printStatusPMTokens() {
+	tokens := []struct{ name, env string }{
+		{"GitHub token", "GITHUB_TOKEN"},
+		{"GitLab PAT", "GITLAB_PAT"},
+		{"Azure DevOps PAT", "AZURE_DEVOPS_PAT"},
+		{"Jira token", "JIRA_API_TOKEN"},
+	}
+	anySet := false
+	for _, t := range tokens {
+		if os.Getenv(t.env) != "" {
+			anySet = true
+			break
+		}
+	}
+	if !anySet {
+		return
+	}
+	fmt.Println("PM tokens (.env):")
+	for _, t := range tokens {
+		if os.Getenv(t.env) != "" {
+			fmt.Printf("  %-20s set\n", t.name)
+		}
+	}
+	fmt.Println()
+}
+
+// printStatusServer shows the AI server connection state.
+func printStatusServer() {
+	serverURL := os.Getenv("DEVTRACK_SERVER_URL")
+	if serverURL == "" {
+		return
+	}
+	client := NewHTTPTriggerClient()
+	if client.Ping() {
+		fmt.Printf("AI server:     connected  (%s)\n", serverURL)
+	} else {
+		fmt.Printf("AI server:     unreachable (%s)\n", serverURL)
+	}
+	fmt.Println()
 }
 
 // serviceDisplayName returns a human-friendly name for a service
