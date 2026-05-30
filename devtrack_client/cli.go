@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -328,53 +327,76 @@ func (cli *CLI) handleSage() error {
 }
 
 // handleAlerts shows ticket alert notifications or marks them as read.
-// Phase 2 target: port to Go using connectors/{github,azure} + SQLite
-// (see docs/CLIENT_SERVER_DECOUPLING_PLAN.md §2a). For now, delegates to
-// the Python backend.alert_poller subprocess.
+// Reads directly from SQLite — no Python subprocess required.
 //
 // Usage:
 //
-//	devtrack alerts           — show unread notifications (last 24h)
-//	devtrack alerts --all     — show all notifications
+//	devtrack alerts           — show unread notifications
+//	devtrack alerts --all     — show all notifications (read + unread)
 //	devtrack alerts --clear   — mark all as read
 func (cli *CLI) handleAlerts() error {
-	config, _ := LoadEnvConfig()
-	projectRoot := ""
-	if config != nil {
-		projectRoot = config.ProjectRoot
+	d, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("could not open database: %w", err)
 	}
-	if projectRoot == "" {
-		projectRoot = os.Getenv("PROJECT_ROOT")
-	}
+	defer d.Close()
 
-	// Build uv run python -m backend.alert_poller [flags]
-	uvArgs := []string{"run", "--directory", projectRoot, "python", "-m", "backend.alert_poller"}
-
-	// Forward flags: --all, --clear (default is --show)
-	showFlag := true
+	showAll := false
+	markRead := false
 	for _, arg := range os.Args[2:] {
 		switch arg {
 		case "--all":
-			uvArgs = append(uvArgs, "--show", "--all")
-			showFlag = false
+			showAll = true
 		case "--clear":
-			uvArgs = append(uvArgs, "--clear")
-			showFlag = false
+			markRead = true
 		}
 	}
-	if showFlag {
-		uvArgs = append(uvArgs, "--show")
+
+	if markRead {
+		if err := d.MarkAllNotificationsRead(); err != nil {
+			return fmt.Errorf("could not mark notifications read: %w", err)
+		}
+		fmt.Println("All notifications marked as read.")
+		return nil
 	}
 
-	cmd := exec.Command("uv", uvArgs...)
-	if projectRoot != "" {
-		cmd.Dir = projectRoot
+	var records []NotificationRecord
+	if showAll {
+		records, err = d.GetAllNotifications(100)
+	} else {
+		records, err = d.GetUnreadNotifications(50)
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
+	if err != nil {
+		return fmt.Errorf("could not fetch notifications: %w", err)
 	}
+
+	if len(records) == 0 {
+		if showAll {
+			fmt.Println("No notifications found.")
+		} else {
+			fmt.Println("No unread notifications. (Use --all to see everything)")
+		}
+		return nil
+	}
+
+	fmt.Printf("\n  %-8s %-20s %-16s %s\n", "Source", "Event", "Time", "Title")
+	fmt.Println("  " + strings.Repeat("-", 72))
+	for _, r := range records {
+		dot := "○"
+		if !r.Read {
+			dot = "●"
+		}
+		ts := r.CreatedAt.Format("01/02 15:04")
+		title := r.Title
+		if len(title) > 38 {
+			title = title[:35] + "..."
+		}
+		fmt.Printf("  %s %-8s %-20s %-16s %s\n", dot, r.Source, r.EventType, ts, title)
+		if r.URL != "" {
+			fmt.Printf("    %s\n", r.URL)
+		}
+	}
+	fmt.Printf("\n  %d notification(s)\n", len(records))
 	return nil
 }
 

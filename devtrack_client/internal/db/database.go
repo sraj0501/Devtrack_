@@ -1794,6 +1794,20 @@ func (d *Database) InsertNotification(r NotificationRecord) error {
 	return err
 }
 
+// InsertNotificationNew inserts a notification and returns true when the row was
+// actually inserted (i.e. not a duplicate of an existing ticket_id+event_type+title).
+func (d *Database) InsertNotificationNew(r NotificationRecord) (bool, error) {
+	result, err := d.db.Exec(`
+		INSERT OR IGNORE INTO notifications (source, event_type, ticket_id, title, body, url)
+		VALUES (?,?,?,?,?,?)`,
+		r.Source, r.EventType, r.TicketID, r.Title, r.Body, r.URL)
+	if err != nil {
+		return false, err
+	}
+	n, _ := result.RowsAffected()
+	return n > 0, nil
+}
+
 // MarkAllNotificationsRead marks every unread notification as read.
 func (d *Database) MarkAllNotificationsRead() error {
 	_, err := d.db.Exec(`UPDATE notifications SET read=1 WHERE read=0`)

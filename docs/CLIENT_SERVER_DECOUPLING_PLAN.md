@@ -111,28 +111,28 @@ unreachable (clear message), the same way triggers/boardroom already do.
 
 ---
 
-## Phase 2 — Native-Go ports of client-owned features (later)
+## Phase 2 — Native-Go ports of client-owned features ✅ COMPLETE (2026-05-31)
 
-### 2a. Ticket alerts → native Go
-- New `internal/alerts/` (Go): poll GitHub/Azure/Jira for assigned/comment/
-  state-change events, **reusing** `connectors/{github,gitlab,azure}`
-  (`ListIssues`/`ListWorkItems`, `View*`) and persisting to **SQLite**
-  (`internal/db`, alongside `ticket_cache`) instead of MongoDB. Go notifier
-  (OS notification + terminal).
-- Rewire `handleAlerts` (`cli.go`) to read from SQLite (Go), remove the
-  `backend.alert_poller` call; run polling from the daemon scheduler
-  (`internal/infra/scheduler.go`) like the existing PM-queue flusher / deferred
-  enhancer. Remove the `alert_poller` daemon spawn.
-- Jira note: a Go Jira connector does not exist yet; either add a minimal one or
-  keep Jira alerts out of scope (document it).
+### 2a. Ticket alerts → native Go ✅
+- `internal/alerts/` — `Poller` goroutine polls GitHub (`ListNotificationsSince` via
+  GitHub Notifications API) and Azure (`ListWorkItemsChangedAfter` WIQL delta) on
+  `ALERT_POLL_INTERVAL_SECS` (default 300 s). Writes new records to SQLite
+  `notifications` table via `InsertNotificationNew`; reads `alert_state` for delta tracking.
+- `handleAlerts` in `cli.go` reads directly from SQLite (no Python call).
+  `--all` / `--clear` flags retained.
+- Daemon starts `alerts.Poller` via `startAlertPoller()` — no subprocess.
+- Jira: out of scope (no Go Jira connector); alerts continue to be absent for Jira.
 
-### 2b. Telegram / Slack delivery → native Go
-- New `internal/notify/` (Go): send notifications via the Telegram Bot API /
-  Slack webhook over HTTP (simple `net/http`). Wire into the alert notifier.
-- Remove `backend.telegram` / `backend.slack` daemon spawns
-  (`internal/daemon/daemon.go`) and the `telegram-status` Python call. Any
-  AI-conversational telegram processing (if ever needed) calls the server over
-  HTTP — not implemented client-side.
+### 2b. Telegram / Slack delivery → native Go ✅
+- `internal/notify/` — `Notifier` interface; `Multi` fan-out; `Terminal` stdout;
+  `Telegram` (Bot API POST `/sendMessage`); `Slack` (incoming webhook POST);
+  `OS` (platform-split: PowerShell balloon on Windows, osascript/notify-send on Unix).
+- `NewTelegramFromConfig()` / `NewSlackFromConfig()` return nil when unconfigured — safe to pass to `Multi`.
+- Daemon no longer spawns `backend.telegram`, `backend.slack`, `backend.azure.assignment_poller`,
+  or `backend.gitlab.assignment_poller`. All four subprocess fields and start/restart
+  functions removed from `internal/daemon/daemon.go`.
+- Health monitor: `checkTelegramBot()` now checks `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`
+  are set (config-based) rather than checking a subprocess PID.
 
 ---
 
