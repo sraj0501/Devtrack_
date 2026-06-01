@@ -26,7 +26,7 @@ func NewCLI() (*CLI, error) {
 			cmd == "azure-list" || cmd == "azure-sync" || cmd == "azure-view" ||
 			cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
 			cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
-			cmd == "ticket-sync" {
+			cmd == "ticket-sync" || cmd == "narrative" {
 			return &CLI{}, nil
 		}
 	}
@@ -180,6 +180,8 @@ func (cli *CLI) Execute() error {
 		return cli.handleGitHubSync()
 	case "ticket-sync":
 		return cli.handleTicketSync()
+	case "narrative":
+		return cli.handleNarrativeLogs()
 	case "github-view":
 		return cli.handleGitHubView()
 	case "sage":

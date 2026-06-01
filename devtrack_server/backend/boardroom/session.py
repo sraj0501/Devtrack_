@@ -11,6 +11,14 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
+try:
+    from runtime_narrative import stage as _stage
+except ImportError:
+    from contextlib import contextmanager as _cm
+    @_cm
+    def _stage(name):  # type: ignore[misc]
+        yield
+
 from backend.boardroom.personas import (
     PERSONAS,
     Persona,
@@ -108,7 +116,8 @@ class BoardroomSession:
             focus=persona.focus,
             plan_text=plan_text,
         )
-        raw = self._llm(prompt, temperature=persona.temperature, max_tokens=600)
+        with _stage(f"Persona: {persona.name}"):
+            raw = self._llm(prompt, temperature=persona.temperature, max_tokens=600)
         return _parse_persona_result(persona, raw)
 
     async def _run_persona_async(self, persona: Persona, plan_text: str) -> PersonaResult:
@@ -127,7 +136,8 @@ class BoardroomSession:
             plan_text=plan_text,
             analyses=analyses_text,
         )
-        raw = self._llm(prompt, temperature=0.3, max_tokens=1200)
+        with _stage("Moderator synthesis"):
+            raw = self._llm(prompt, temperature=0.3, max_tokens=1200)
         return _parse_json_response(raw), raw
 
     # -- public entry point --------------------------------------------------

@@ -38,3 +38,5 @@ workspaces.yaml
 .claude/settings.local.json
 .claude/worktrees/
 
+# Log Files
+*.log

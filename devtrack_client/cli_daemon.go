@@ -357,7 +357,7 @@ func printStatusPMTokens() {
 	fmt.Println()
 }
 
-// printStatusServer shows the AI server connection state.
+// printStatusServer shows the AI server connection state and last narrative failure.
 func printStatusServer() {
 	serverURL := os.Getenv("DEVTRACK_SERVER_URL")
 	if serverURL == "" {
@@ -366,6 +366,26 @@ func printStatusServer() {
 	client := NewHTTPTriggerClient()
 	if client.Ping() {
 		fmt.Printf("AI server:     connected  (%s)\n", serverURL)
+		// Surface the most recent server-side failure from narrative.log.
+		if f, err := client.GetNarrativeLastFailure(); err == nil && f != nil {
+			ts := f.Timestamp
+			if len(ts) >= 19 {
+				ts = ts[11:19]
+			}
+			msg := f.ErrorMsg
+			if len(msg) > 80 {
+				msg = msg[:80] + "..."
+			}
+			fmt.Printf("Last failure:  %s  \"%s\"  %s — %s: %s\n",
+				ts, f.StageName, f.StoryName, f.ErrorType, msg)
+			if f.LLMAnalysis != "" {
+				analysis := f.LLMAnalysis
+				if len(analysis) > 120 {
+					analysis = analysis[:120] + "..."
+				}
+				fmt.Printf("  LLM:         %s\n", analysis)
+			}
+		}
 	} else {
 		fmt.Printf("AI server:     unreachable (%s)\n", serverURL)
 	}

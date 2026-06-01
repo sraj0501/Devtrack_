@@ -210,6 +210,20 @@ async def partial_processes(request: Request, current_user: str = Depends(requir
     )
 
 
+@router.get("/_partials/narrative", response_class=HTMLResponse)
+async def partial_narrative(request: Request, current_user: str = Depends(require_auth)):
+    stories = []
+    try:
+        from backend.narrative_reader import get_recent_stories
+        stories = [s.to_dict() for s in get_recent_stories(20)]
+    except Exception:
+        pass
+    return templates.TemplateResponse(
+        "_narrative_panel.html",
+        {"request": request, "stories": stories},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Process control (HTMX POST — returns updated proc rows)
 # ---------------------------------------------------------------------------

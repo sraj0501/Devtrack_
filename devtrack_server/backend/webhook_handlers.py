@@ -12,6 +12,14 @@ from backend.webhook_notifier import WebhookNotifier
 
 logger = logging.getLogger(__name__)
 
+try:
+    from runtime_narrative import stage as _stage
+except ImportError:
+    from contextlib import contextmanager as _cm
+    @_cm
+    def _stage(name):  # type: ignore[misc]
+        yield
+
 
 class WebhookEventHandler:
     """Routes and processes incoming webhook events."""
@@ -39,7 +47,8 @@ class WebhookEventHandler:
             logger.info(f"Unhandled Azure DevOps event type: {event_type}")
             return {"status": "ignored", "reason": f"unhandled event type: {event_type}"}
 
-        return await handler(resource, raw_payload)
+        with _stage(f"Azure: {event_type}"):
+            return await handler(resource, raw_payload)
 
     async def _handle_azure_work_item_updated(self, resource: Dict[str, Any], raw_payload: Dict[str, Any]) -> Dict[str, Any]:
         """Work item fields changed (state, assignment, etc.)."""
@@ -154,7 +163,8 @@ class WebhookEventHandler:
         if not handler:
             logger.info(f"Unhandled GitLab event type: {event_type}")
             return {"handled": False, "reason": f"unknown event type: {event_type}"}
-        return await handler(payload)
+        with _stage(f"GitLab: {event_type}"):
+            return await handler(payload)
 
     async def _handle_gitlab_issue(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """GitLab Issue Hook — issue opened/closed/updated."""
