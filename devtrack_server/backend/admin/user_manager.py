@@ -1,88 +1,135 @@
 """
-User manager — CRUD for admin console users stored in SQLite.
+User manager — CRUD for admin console users.
 
-Schema:
-    admin_users (id, username, password_hash, role, created_at, last_login)
-    admin_api_keys (id, user_id, key_prefix, key_hash, label, created_at, last_used)
-    audit_log (id, username, action, detail, ip, ts)
+Schema
+------
+admin_users    (id, username, password_hash, role, created_at, last_login, disabled)
+admin_api_keys (id, user_id, key_prefix, key_hash, label, created_at, last_used)
+audit_log      (id, username, action, detail, ip, ts)
 
-The admin DB lives at DATABASE_DIR/admin.db (separate from devtrack.db).
+Backend selection
+-----------------
+PostgreSQL mode (POSTGRES_URL set)  → tables live in the main PostgreSQL DB.
+SQLite mode                         → separate admin.db at DATABASE_DIR/admin.db
+                                      (backwards-compatible with existing deployments).
 """
 from __future__ import annotations
 
 import hashlib
-import os
 import secrets
-import sqlite3
-from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from sqlalchemy import Column, ForeignKey, Index, Integer, Table, Text, select
+from sqlalchemy.engine import Engine
+
 from backend.admin.auth import hash_password, verify_password
 
+# We maintain a separate metadata for admin tables so they don't pollute
+# the shared metadata used by init_all_tables() on the main DB.
+from sqlalchemy import MetaData as _MetaData
 
-def _admin_db_path() -> Path:
-    from backend.config import get_database_dir, get_project_root
-    db_dir = get_database_dir() or (
-        Path(get_project_root() or ".") / "Data" / "db"
-    )
-    return Path(db_dir) / "admin.db"
+_admin_metadata = _MetaData()
+
+# ---------------------------------------------------------------------------
+# Table definitions
+# ---------------------------------------------------------------------------
+
+admin_users_table = Table(
+    "admin_users", _admin_metadata,
+    Column("id",            Integer, primary_key=True, autoincrement=True),
+    Column("username",      Text, nullable=False, unique=True),
+    Column("password_hash", Text, nullable=False),
+    Column("role",          Text, nullable=False),
+    Column("created_at",    Text, nullable=False),
+    Column("last_login",    Text),
+    Column("disabled",      Integer, nullable=False),
+)
+
+admin_api_keys_table = Table(
+    "admin_api_keys", _admin_metadata,
+    Column("id",         Integer, primary_key=True, autoincrement=True),
+    Column("user_id",    Integer, ForeignKey("admin_users.id", ondelete="CASCADE"), nullable=False),
+    Column("key_prefix", Text, nullable=False),
+    Column("key_hash",   Text, nullable=False),
+    Column("label",      Text, nullable=False),
+    Column("created_at", Text, nullable=False),
+    Column("last_used",  Text),
+)
+
+audit_log_table = Table(
+    "audit_log", _admin_metadata,
+    Column("id",       Integer, primary_key=True, autoincrement=True),
+    Column("username", Text, nullable=False),
+    Column("action",   Text, nullable=False),
+    Column("detail",   Text, nullable=False),
+    Column("ip",       Text, nullable=False),
+    Column("ts",       Text, nullable=False),
+)
+
+# ---------------------------------------------------------------------------
+# Engine: shared PostgreSQL or separate admin.db
+# ---------------------------------------------------------------------------
+
+_admin_engine: Optional[Engine] = None
+_schema_done: bool = False
 
 
-@contextmanager
-def _conn():
-    path = _admin_db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(str(path))
-    con.row_factory = sqlite3.Row
-    try:
-        yield con
-        con.commit()
-    finally:
-        con.close()
+def _get_admin_engine() -> Engine:
+    global _admin_engine
+    if _admin_engine is not None:
+        return _admin_engine
+
+    from backend.config import postgres_url
+    if postgres_url():
+        # In PostgreSQL mode: admin tables live in the same main DB.
+        from backend.db.engine import get_engine
+        _admin_engine = get_engine()
+    else:
+        # In SQLite mode: keep separate admin.db for backwards compatibility.
+        from sqlalchemy import create_engine, event as sa_event
+        from backend.config import get_database_dir, get_project_root
+        db_dir = get_database_dir() or str(Path(get_project_root() or ".") / "Data" / "db")
+        admin_path = Path(db_dir) / "admin.db"
+        admin_path.parent.mkdir(parents=True, exist_ok=True)
+        _admin_engine = create_engine(
+            f"sqlite:///{admin_path}",
+            connect_args={"check_same_thread": False, "timeout": 30},
+        )
+
+        @sa_event.listens_for(_admin_engine, "connect")
+        def _pragmas(conn, _record):
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
+
+    return _admin_engine
 
 
-def init_db() -> None:
-    with _conn() as con:
-        con.executescript("""
-            CREATE TABLE IF NOT EXISTS admin_users (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                username      TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                role          TEXT NOT NULL DEFAULT 'viewer',
-                created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-                last_login    TEXT
-            );
-            CREATE TABLE IF NOT EXISTS admin_api_keys (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id     INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
-                key_prefix  TEXT NOT NULL,
-                key_hash    TEXT NOT NULL,
-                label       TEXT NOT NULL DEFAULT '',
-                created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-                last_used   TEXT
-            );
-            CREATE TABLE IF NOT EXISTS audit_log (
-                id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                action   TEXT NOT NULL,
-                detail   TEXT NOT NULL DEFAULT '',
-                ip       TEXT NOT NULL DEFAULT '',
-                ts       TEXT NOT NULL DEFAULT (datetime('now'))
-            );
-        """)
-        # Idempotent migration: add `disabled` column if it doesn't exist yet.
-        try:
-            con.execute(
-                "ALTER TABLE admin_users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0"
-            )
-        except Exception:
-            pass  # column already exists — safe to ignore
+def _init() -> Engine:
+    global _schema_done
+    eng = _get_admin_engine()
+    if not _schema_done:
+        _admin_metadata.create_all(eng)
+        _schema_done = True
+    return eng
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 # ---------------------------------------------------------------------------
-# User dataclass
+# init_db — kept for call-site compatibility
+# ---------------------------------------------------------------------------
+
+def init_db() -> None:
+    _init()
+
+
+# ---------------------------------------------------------------------------
+# User dataclasses
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -109,107 +156,156 @@ class ApiKey:
 # User CRUD
 # ---------------------------------------------------------------------------
 
+def _row_to_user(row) -> AdminUser:
+    d = dict(row)
+    return AdminUser(
+        id=d["id"],
+        username=d["username"],
+        role=d["role"],
+        created_at=d["created_at"],
+        last_login=d.get("last_login"),
+        disabled=bool(d.get("disabled", 0)),
+    )
+
+
 def list_users() -> list[AdminUser]:
-    with _conn() as con:
-        rows = con.execute(
-            "SELECT id, username, role, created_at, last_login, disabled "
-            "FROM admin_users ORDER BY id"
-        ).fetchall()
-    return [AdminUser(**{**dict(r), "disabled": bool(r["disabled"])}) for r in rows]
+    eng = _init()
+    with eng.connect() as conn:
+        rows = conn.execute(
+            select(admin_users_table).order_by(admin_users_table.c.id)
+        ).mappings().all()
+    return [_row_to_user(r) for r in rows]
 
 
 def get_user(username: str) -> Optional[AdminUser]:
-    with _conn() as con:
-        row = con.execute(
-            "SELECT id, username, role, created_at, last_login, disabled "
-            "FROM admin_users WHERE username=?",
-            (username,),
-        ).fetchone()
-    return AdminUser(**{**dict(row), "disabled": bool(row["disabled"])}) if row else None
+    eng = _init()
+    with eng.connect() as conn:
+        row = conn.execute(
+            select(admin_users_table).where(admin_users_table.c.username == username)
+        ).mappings().first()
+    return _row_to_user(row) if row else None
 
 
 def create_user(username: str, password: str, role: str = "viewer") -> AdminUser:
     hashed = hash_password(password)
-    with _conn() as con:
-        con.execute(
-            "INSERT INTO admin_users (username, password_hash, role) VALUES (?, ?, ?)",
-            (username, hashed, role),
+    now = _now()
+    eng = _init()
+    with eng.begin() as conn:
+        conn.execute(
+            admin_users_table.insert().values(
+                username=username,
+                password_hash=hashed,
+                role=role,
+                created_at=now,
+                disabled=0,
+            )
         )
     return get_user(username)  # type: ignore[return-value]
 
 
 def update_password(username: str, new_password: str) -> bool:
     hashed = hash_password(new_password)
-    with _conn() as con:
-        cur = con.execute(
-            "UPDATE admin_users SET password_hash=? WHERE username=?",
-            (hashed, username),
+    eng = _init()
+    with eng.begin() as conn:
+        result = conn.execute(
+            admin_users_table.update()
+            .where(admin_users_table.c.username == username)
+            .values(password_hash=hashed)
         )
-    return cur.rowcount > 0
+    return result.rowcount > 0
 
 
 def update_role(username: str, role: str) -> bool:
-    with _conn() as con:
-        cur = con.execute(
-            "UPDATE admin_users SET role=? WHERE username=?",
-            (role, username),
+    eng = _init()
+    with eng.begin() as conn:
+        result = conn.execute(
+            admin_users_table.update()
+            .where(admin_users_table.c.username == username)
+            .values(role=role)
         )
-    return cur.rowcount > 0
+    return result.rowcount > 0
 
 
 def delete_user(username: str) -> bool:
-    with _conn() as con:
-        cur = con.execute("DELETE FROM admin_users WHERE username=?", (username,))
-    return cur.rowcount > 0
+    eng = _init()
+    with eng.begin() as conn:
+        result = conn.execute(
+            admin_users_table.delete().where(admin_users_table.c.username == username)
+        )
+    return result.rowcount > 0
 
 
 def disable_user(username: str) -> bool:
-    """Set disabled=1 for the given user. Returns True if a row was updated."""
-    with _conn() as con:
-        cur = con.execute(
-            "UPDATE admin_users SET disabled=1 WHERE username=?", (username,)
+    eng = _init()
+    with eng.begin() as conn:
+        result = conn.execute(
+            admin_users_table.update()
+            .where(admin_users_table.c.username == username)
+            .values(disabled=1)
         )
-    return cur.rowcount > 0
+    return result.rowcount > 0
 
 
 def enable_user(username: str) -> bool:
-    """Set disabled=0 for the given user. Returns True if a row was updated."""
-    with _conn() as con:
-        cur = con.execute(
-            "UPDATE admin_users SET disabled=0 WHERE username=?", (username,)
+    eng = _init()
+    with eng.begin() as conn:
+        result = conn.execute(
+            admin_users_table.update()
+            .where(admin_users_table.c.username == username)
+            .values(disabled=0)
         )
-    return cur.rowcount > 0
+    return result.rowcount > 0
 
 
 def touch_last_login(username: str) -> None:
-    with _conn() as con:
-        con.execute(
-            "UPDATE admin_users SET last_login=datetime('now') WHERE username=?",
-            (username,),
+    eng = _init()
+    with eng.begin() as conn:
+        conn.execute(
+            admin_users_table.update()
+            .where(admin_users_table.c.username == username)
+            .values(last_login=_now())
         )
 
 
 def verify_user_password(username: str, password: str) -> bool:
-    with _conn() as con:
-        row = con.execute(
-            "SELECT password_hash FROM admin_users WHERE username=?", (username,)
-        ).fetchone()
+    eng = _init()
+    with eng.connect() as conn:
+        row = conn.execute(
+            select(admin_users_table.c.password_hash).where(
+                admin_users_table.c.username == username
+            )
+        ).first()
     if not row:
         return False
-    return verify_password(password, row["password_hash"])
+    return verify_password(password, row.password_hash)
 
 
 def ensure_default_admin(username: str, password: str) -> None:
     """Create the initial admin account if no users exist yet."""
-    with _conn() as con:
-        count = con.execute("SELECT COUNT(*) FROM admin_users").fetchone()[0]
-    if count == 0:
+    eng = _init()
+    with eng.connect() as conn:
+        count = conn.execute(
+            select(admin_users_table.c.id).limit(1)
+        ).first()
+    if not count:
         create_user(username, password, role="admin")
 
 
 # ---------------------------------------------------------------------------
 # API key management
 # ---------------------------------------------------------------------------
+
+def _row_to_api_key(row) -> ApiKey:
+    d = dict(row)
+    return ApiKey(
+        id=d["id"],
+        user_id=d["user_id"],
+        key_prefix=d["key_prefix"],
+        label=d["label"],
+        created_at=d["created_at"],
+        last_used=d.get("last_used"),
+    )
+
 
 def create_api_key(username: str, label: str = "") -> tuple[str, ApiKey]:
     """Returns (raw_key, ApiKey) — raw_key is shown once only."""
@@ -219,36 +315,49 @@ def create_api_key(username: str, label: str = "") -> tuple[str, ApiKey]:
     raw = secrets.token_urlsafe(32)
     prefix = raw[:8]
     key_hash = hashlib.sha256(raw.encode()).hexdigest()
-    with _conn() as con:
-        con.execute(
-            "INSERT INTO admin_api_keys (user_id, key_prefix, key_hash, label) VALUES (?,?,?,?)",
-            (user.id, prefix, key_hash, label),
+    now = _now()
+    eng = _init()
+    with eng.begin() as conn:
+        conn.execute(
+            admin_api_keys_table.insert().values(
+                user_id=user.id,
+                key_prefix=prefix,
+                key_hash=key_hash,
+                label=label,
+                created_at=now,
+            )
         )
-        row = con.execute(
-            "SELECT id, user_id, key_prefix, label, created_at, last_used "
-            "FROM admin_api_keys WHERE user_id=? ORDER BY id DESC LIMIT 1",
-            (user.id,),
-        ).fetchone()
-    return raw, ApiKey(**dict(row))
+    with eng.connect() as conn:
+        row = conn.execute(
+            select(admin_api_keys_table)
+            .where(admin_api_keys_table.c.user_id == user.id)
+            .order_by(admin_api_keys_table.c.id.desc())
+            .limit(1)
+        ).mappings().first()
+    return raw, _row_to_api_key(row)  # type: ignore[arg-type]
 
 
 def list_api_keys(username: str) -> list[ApiKey]:
     user = get_user(username)
     if not user:
         return []
-    with _conn() as con:
-        rows = con.execute(
-            "SELECT id, user_id, key_prefix, label, created_at, last_used "
-            "FROM admin_api_keys WHERE user_id=? ORDER BY id",
-            (user.id,),
-        ).fetchall()
-    return [ApiKey(**dict(r)) for r in rows]
+    eng = _init()
+    with eng.connect() as conn:
+        rows = conn.execute(
+            select(admin_api_keys_table)
+            .where(admin_api_keys_table.c.user_id == user.id)
+            .order_by(admin_api_keys_table.c.id)
+        ).mappings().all()
+    return [_row_to_api_key(r) for r in rows]
 
 
 def revoke_api_key(key_id: int) -> bool:
-    with _conn() as con:
-        cur = con.execute("DELETE FROM admin_api_keys WHERE id=?", (key_id,))
-    return cur.rowcount > 0
+    eng = _init()
+    with eng.begin() as conn:
+        result = conn.execute(
+            admin_api_keys_table.delete().where(admin_api_keys_table.c.id == key_id)
+        )
+    return result.rowcount > 0
 
 
 # ---------------------------------------------------------------------------
@@ -256,10 +365,16 @@ def revoke_api_key(key_id: int) -> bool:
 # ---------------------------------------------------------------------------
 
 def log_action(username: str, action: str, detail: str = "", ip: str = "") -> None:
-    with _conn() as con:
-        con.execute(
-            "INSERT INTO audit_log (username, action, detail, ip) VALUES (?,?,?,?)",
-            (username, action, detail, ip),
+    eng = _init()
+    with eng.begin() as conn:
+        conn.execute(
+            audit_log_table.insert().values(
+                username=username,
+                action=action,
+                detail=detail,
+                ip=ip,
+                ts=_now(),
+            )
         )
 
 
@@ -267,8 +382,11 @@ def get_audit_log(limit: int | None = None) -> list[dict]:
     if limit is None:
         from backend.config import get_audit_log_limit
         limit = get_audit_log_limit()
-    with _conn() as con:
-        rows = con.execute(
-            "SELECT * FROM audit_log ORDER BY id DESC LIMIT ?", (limit,)
-        ).fetchall()
+    eng = _init()
+    with eng.connect() as conn:
+        rows = conn.execute(
+            select(audit_log_table)
+            .order_by(audit_log_table.c.id.desc())
+            .limit(limit)
+        ).mappings().all()
     return [dict(r) for r in rows]

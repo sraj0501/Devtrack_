@@ -1440,6 +1440,29 @@ def get_mongodb_db() -> str:
     return get("MONGODB_DB", "") or get("MONGODB_DB_NAME", "devtrack")
 
 
+def postgres_url() -> Optional[str]:
+    """PostgreSQL connection URL. POSTGRES_URL — optional.
+
+    When set the Python server uses PostgreSQL for all Python-owned tables.
+    When absent (or empty) SQLite at database_path() is used instead.
+    Install the driver: uv sync --extra postgres
+    """
+    val = get("POSTGRES_URL", "")
+    return val if val else None
+
+
+def redis_url() -> Optional[str]:
+    """Redis connection URL. REDIS_URL — optional.
+
+    Used for the Go→Python stats bridge (R-2), HTMX stats cache (R-3),
+    WebSocket pub/sub (R-5), and admin JWT revocation (R-6).
+    When absent all Redis features degrade gracefully to stubs/zeros.
+    Install the driver: uv add redis
+    """
+    val = get("REDIS_URL", "")
+    return val if val else None
+
+
 def get_notification_enabled() -> bool:
     """Whether cross-platform desktop notifications are enabled. NOTIFICATION_ENABLED (default: true)."""
     return get_bool("NOTIFICATION_ENABLED", default=True)

@@ -18,7 +18,50 @@ _Shipped: v3.0.0 (2026-05-29) — package refactor + client-standalone + connect
 
 ## IN PROGRESS
 
-_None — TASK-A through TASK-F complete. Package refactor finished: package main is now CLI-only + shims._
+### TASK-055 — Client-Server Decoupling Phase 2: Native Go alert poller and notifiers
+**Branch**: `feat/client-server-decoupling`
+**Goal**: Replace Python subprocess spawns for alert polling and notifications with native Go implementations.
+**Engineer status**: 6/6 criteria done — last commit: abad449 "feat(alerts): Phase 2 — native Go alert poller and notifiers" — 2026-05-31
+
+**New files**:
+- `devtrack_client/connectors/github/notifications.go` — ListNotificationsSince via GitHub Notifications API
+- `devtrack_client/connectors/azure/list.go` — added ListWorkItemsChangedAfter (WIQL delta)
+- `devtrack_client/internal/alerts/alerts.go` — NotificationFilter type
+- `devtrack_client/internal/alerts/github.go` — GitHub alerter
+- `devtrack_client/internal/alerts/azure.go` — Azure alerter (per workspace)
+- `devtrack_client/internal/alerts/poller.go` — Poller goroutine
+- `devtrack_client/internal/notify/notify.go` — Notifier interface, Multi, Terminal
+- `devtrack_client/internal/notify/telegram.go` — Telegram Bot API delivery
+- `devtrack_client/internal/notify/slack.go` — Slack incoming webhook
+- `devtrack_client/internal/notify/os_windows.go` — Windows PowerShell balloon
+- `devtrack_client/internal/notify/os_unix.go` — macOS/Linux OS notifications
+
+**Modified files**:
+- `devtrack_client/internal/config/config_env.go` — added 12 alert config functions
+- `devtrack_client/internal/db/database.go` — added InsertNotificationNew (bool return)
+- `devtrack_client/internal/daemon/daemon.go` — removed Python subprocess fields + spawn/restart functions; added startAlertPoller()
+- `devtrack_client/internal/health/health.go` — removed telegramPID field, SetTelegramPID, SetTelegramRestartCallback; checkTelegramBot now config-based
+- `devtrack_client/cli.go` — handleAlerts() reads SQLite directly (removed uv run call)
+- `docs/CLIENT_SERVER_DECOUPLING_PLAN.md` — marked Phase 2 complete
+
+**Acceptance criteria**:
+- [x] `go build ./...` passes
+- [x] `go vet ./...` passes
+- [x] `go test ./...` passes
+- [x] Python subprocess spawns for alerts removed from daemon.go
+- [x] Native Go alert poller wired into daemon startup
+- [x] All notifiers (Terminal, Telegram, Slack, OS) implemented
+
+**COMPLETE** — ready for PM review — 2026-05-31 (commit abad449 on feat/client-server-decoupling)
+
+**Follow-up housekeeping** — commit e993507 "chore: remove stale Python-era config, env vars, and help text" — 2026-05-31
+Removed 7 dead functions (GetLearningPythonPath/ScriptPath/DailyScriptPath, IsAzurePollerEnabled, IsGitLabPollerEnabled, IsSlackEnabled, GetHealthAutoRestartTelegram), fileExists helper, 3 EnvConfig fields, 5 stale env vars from setup.go + .env_sample, updated cli_info.go component list to reflect HTTP-boundary architecture. No behaviour changes. build/vet/test clean.
+
+**Follow-up housekeeping** — commit c74179f "chore: clean up .env_sample for client and server" — 2026-05-31
+devtrack_client/.env_sample: removed PYTHON_BRIDGE_SCRIPT; replaced Python Telegram/Slack bot vars (TELEGRAM_ALLOWED_CHAT_IDS, TELEGRAM_NOTIFY_*, HEALTH_AUTO_RESTART_TELEGRAM, SLACK_ENABLED, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_ALLOWED_CHANNEL_IDS) with TELEGRAM_CHAT_ID + SLACK_WEBHOOK_URL (native Go notifiers); updated section headings; bumped version to v3.0.0. devtrack_server/.env_sample: removed LEARNING_PYTHON_PATH/SCRIPT_PATH/DAILY_SCRIPT_PATH (server imports modules directly) and AZURE_POLL_ENABLED (wrong key); bumped version to v3.0.0. Documentation only — no code changes.
+
+**Follow-up housekeeping** — commit d4d9b5f "chore(server): normalise .env_sample to single-# comments and literal values" — 2026-05-31
+devtrack_server/.env_sample: converted all ## / ### section headers to universally valid single-# separator style; unquoted EMAIL_SUBJECT and LEARNING_CRON_SCHEDULE; expanded ${VAR} interpolation in MONGODB_URI/REDIS_URL/POSTGRES_URL to literal defaults; re-added Telegram and Slack bot sections (backend/telegram/ and backend/slack/ are still live Python server modules). Documentation only — no code changes.
 
 ---
 

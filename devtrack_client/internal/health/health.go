@@ -118,8 +118,6 @@ func (hm *HealthMonitor) RunAllChecks() {
 		hm.checkAzureDevOps,
 		hm.checkWebhookServer,
 		hm.checkTelegramBot,
-		hm.checkMongoDB,
-		hm.checkRedis,
 		hm.checkSQLite,
 	}
 	for _, check := range checks {
@@ -319,39 +317,6 @@ func (hm *HealthMonitor) checkTelegramBot() {
 	hm.recordSnapshot(snap)
 }
 
-// checkRedis checks if Redis is reachable
-func (hm *HealthMonitor) checkRedis() {
-	snap := idb.HealthSnapshot{
-		Service:   "redis",
-		CheckedAt: time.Now(),
-	}
-
-	if os.Getenv("REDIS_URL") == "" {
-		snap.Status = "unconfigured"
-		snap.Details = `{"error":"REDIS_URL not set"}`
-		hm.recordSnapshot(snap)
-		return
-	}
-
-	redisHost, redisPort, _ := resolveRedisConfig()
-	host := net.JoinHostPort(redisHost, redisPort)
-
-	start := time.Now()
-	conn, err := net.DialTimeout("tcp", host, 2*time.Second)
-	latency := time.Since(start)
-
-	if err != nil {
-		snap.Status = "down"
-		snap.Details = fmt.Sprintf(`{"url":%q,"error":%q}`, host, err.Error())
-	} else {
-		conn.Close()
-		snap.Status = "up"
-		snap.LatencyMs = int(latency.Milliseconds())
-		snap.Details = fmt.Sprintf(`{"url":%q,"latency_ms":%d}`, host, snap.LatencyMs)
-	}
-
-	hm.recordSnapshot(snap)
-}
 
 // checkSQLite checks if the local SQLite database file is accessible
 func (hm *HealthMonitor) checkSQLite() {
@@ -373,39 +338,6 @@ func (hm *HealthMonitor) checkSQLite() {
 	hm.recordSnapshot(snap)
 }
 
-// checkMongoDB checks if MongoDB is reachable
-func (hm *HealthMonitor) checkMongoDB() {
-	snap := idb.HealthSnapshot{
-		Service:   "mongodb",
-		CheckedAt: time.Now(),
-	}
-
-	if os.Getenv("MONGODB_URI") == "" {
-		snap.Status = "unconfigured"
-		snap.Details = `{"error":"MONGODB_URI not set"}`
-		hm.recordSnapshot(snap)
-		return
-	}
-
-	mongoHost, mongoPort, _, _, _ := resolveMongoConfig()
-	host := net.JoinHostPort(mongoHost, mongoPort)
-
-	start := time.Now()
-	conn, err := net.DialTimeout("tcp", host, 2*time.Second)
-	latency := time.Since(start)
-
-	if err != nil {
-		snap.Status = "down"
-		snap.Details = fmt.Sprintf(`{"url":%q,"error":%q}`, host, err.Error())
-	} else {
-		conn.Close()
-		snap.Status = "up"
-		snap.LatencyMs = int(latency.Milliseconds())
-		snap.Details = fmt.Sprintf(`{"url":%q,"latency_ms":%d}`, host, snap.LatencyMs)
-	}
-
-	hm.recordSnapshot(snap)
-}
 
 // tryRestart attempts to restart a service if within rate limits
 func (hm *HealthMonitor) tryRestart(service string) {
@@ -467,81 +399,3 @@ func (hm *HealthMonitor) recordSnapshot(snap idb.HealthSnapshot) {
 // Must be set by the main package (platform-specific) before using HealthMonitor.
 var IsProcessAlive func(pid int) bool
 
-// --- helpers copied from infra.go (package main) ---
-
-func resolveMongoConfig() (host, port, user, pass, db string) {
-	user = envOr("MONGO_USER", "devtrack")
-	pass = envOr("MONGO_PASSWORD", "devtrack")
-	port = envOr("MONGO_PORT", "27017")
-	db = envOr("MONGODB_DB_NAME", "devtrack")
-
-	uri := os.Getenv("MONGODB_URI")
-	if uri == "" {
-		return "localhost", port, user, pass, db
-	}
-	h, p := parseMongoURI(uri)
-	if h == "" {
-		h = "localhost"
-	}
-	if p == "" {
-		p = port
-	}
-	return h, p, user, pass, db
-}
-
-func resolveRedisConfig() (host, port, pass string) {
-	pass = envOr("REDIS_PASSWORD", "devtrack")
-	port = envOr("REDIS_PORT", "6379")
-
-	rawURL := os.Getenv("REDIS_URL")
-	if rawURL == "" {
-		return "localhost", port, pass
-	}
-	h, p := parseRedisURL(rawURL)
-	if h == "" {
-		h = "localhost"
-	}
-	if p == "" {
-		p = port
-	}
-	return h, p, pass
-}
-
-func parseMongoURI(uri string) (host, port string) {
-	s := strings.TrimPrefix(uri, "mongodb://")
-	if i := strings.IndexByte(s, '?'); i >= 0 {
-		s = s[:i]
-	}
-	if i := strings.IndexByte(s, '/'); i >= 0 {
-		s = s[:i]
-	}
-	if i := strings.LastIndexByte(s, '@'); i >= 0 {
-		s = s[i+1:]
-	}
-	return splitHostPort(s)
-}
-
-func parseRedisURL(rawURL string) (host, port string) {
-	s := strings.TrimPrefix(rawURL, "redis://")
-	if i := strings.IndexByte(s, '/'); i >= 0 {
-		s = s[:i]
-	}
-	if i := strings.LastIndexByte(s, '@'); i >= 0 {
-		s = s[i+1:]
-	}
-	return splitHostPort(s)
-}
-
-func splitHostPort(s string) (host, port string) {
-	if i := strings.LastIndexByte(s, ':'); i >= 0 {
-		return s[:i], s[i+1:]
-	}
-	return s, ""
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}

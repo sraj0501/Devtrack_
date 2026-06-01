@@ -1,18 +1,44 @@
 """
-Async SQLite interface for the work_sessions table.
+Interface for the work_sessions table (Go-owned).
 
-The table is managed by the Go daemon (database.go) which creates it on startup.
-This module provides a read/write interface for the Python layer so commit
-auto-linking and EOD report generation can access session data.
+The table is created and written by the Go daemon (database.go).
+This module provides read/write access for the Python layer.
+
+Boundary rule
+-------------
+work_sessions is a Go-owned table.  In PostgreSQL mode (POSTGRES_URL set),
+Python and Go may run on different machines — Python MUST NOT open the Go
+SQLite file directly.
+
+  SQLite mode  (POSTGRES_URL unset)  — all methods use direct SQLite access.
+  PostgreSQL mode (POSTGRES_URL set) — read methods call Go's internal HTTP
+    endpoints (GET /internal/sessions/active).  Write methods (append_commit,
+    end_session) log a warning and no-op; they require Go API support to work
+    in multi-machine mode (deferred to a later phase).
 """
 
 import json
 import logging
+import os
 import sqlite3
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _is_postgres_mode() -> bool:
+    try:
+        from backend.config import postgres_url
+        return postgres_url() is not None
+    except Exception:
+        return False
+
+
+def _go_internal_base_url() -> str:
+    host = os.getenv("IPC_HOST", "127.0.0.1")
+    port = os.getenv("DEVTRACK_SERVER_HTTP_PORT", "35894")
+    return f"http://{host}:{port}"
 
 
 def _db_path() -> str:
@@ -21,7 +47,6 @@ def _db_path() -> str:
         return str(database_path())
     except Exception:
         from backend.config import get_project_root
-        import os
         root = get_project_root() or "."
         return os.path.join(root, "Data", "db", "devtrack.db")
 
@@ -45,7 +70,30 @@ class WorkSessionStore:
     # ------------------------------------------------------------------
 
     def get_active_session(self) -> Optional[Dict[str, Any]]:
-        """Return the most-recently started open session, or None."""
+        """Return the most-recently started open session, or None.
+
+        In PostgreSQL mode calls the Go daemon's /internal/sessions/active endpoint.
+        In SQLite mode reads the shared devtrack.db directly.
+        """
+        if _is_postgres_mode():
+            return self._get_active_session_via_http()
+        return self._get_active_session_sqlite()
+
+    def _get_active_session_via_http(self) -> Optional[Dict[str, Any]]:
+        """Call GET /internal/sessions/active on the Go daemon."""
+        try:
+            import urllib.request, json as _json
+            url = f"{_go_internal_base_url()}/internal/sessions/active"
+            with urllib.request.urlopen(url, timeout=2) as resp:
+                data = _json.loads(resp.read())
+            if not data.get("active"):
+                return None
+            return {k: v for k, v in data.items() if k != "active"}
+        except Exception as exc:
+            logger.debug("get_active_session (http): %s", exc)
+            return None
+
+    def _get_active_session_sqlite(self) -> Optional[Dict[str, Any]]:
         try:
             conn = _connect()
             row = conn.execute(
@@ -58,8 +106,8 @@ class WorkSessionStore:
             ).fetchone()
             conn.close()
             return dict(row) if row else None
-        except Exception as e:
-            logger.debug(f"WorkSessionStore.get_active_session error: {e}")
+        except Exception as exc:
+            logger.debug("get_active_session (sqlite): %s", exc)
             return None
 
     def get_sessions_for_date(self, date: str) -> List[Dict[str, Any]]:
@@ -84,7 +132,14 @@ class WorkSessionStore:
     # ------------------------------------------------------------------
 
     def append_commit(self, session_id: int, commit_hash: str) -> None:
-        """Append *commit_hash* to the JSON commits array of a session."""
+        """Append *commit_hash* to the JSON commits array of a session.
+
+        No-op in PostgreSQL mode — work_sessions is a Go-owned table and cannot
+        be written directly when Python and Go are on separate machines.
+        """
+        if _is_postgres_mode():
+            logger.debug("append_commit: skipped in PostgreSQL mode (Go-owned table)")
+            return
         try:
             conn = _connect()
             row = conn.execute(
@@ -114,7 +169,13 @@ class WorkSessionStore:
             logger.debug(f"WorkSessionStore.append_commit error: {e}")
 
     def end_session(self, session_id: int) -> None:
-        """Mark a session as ended, computing duration from started_at."""
+        """Mark a session as ended, computing duration from started_at.
+
+        No-op in PostgreSQL mode — work_sessions is a Go-owned table.
+        """
+        if _is_postgres_mode():
+            logger.debug("end_session: skipped in PostgreSQL mode (Go-owned table)")
+            return
         try:
             conn = _connect()
             row = conn.execute(

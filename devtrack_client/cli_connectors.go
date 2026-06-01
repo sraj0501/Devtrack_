@@ -5,12 +5,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	azureconn "github.com/sraj0501/Devtrack_/devtrack_client/connectors/azure"
 	githubconn "github.com/sraj0501/Devtrack_/devtrack_client/connectors/github"
 	gitlabconn "github.com/sraj0501/Devtrack_/devtrack_client/connectors/gitlab"
 	"github.com/sraj0501/Devtrack_/devtrack_client/connectors/pm"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
 // workspaceFor finds the workspace for the given platform from workspaces.yaml.
@@ -104,7 +106,14 @@ func (cli *CLI) handleAzureSync() error {
 		return fmt.Errorf("azure sync: open database: %w", err)
 	}
 	defer db.Close()
-	return c.Sync(db.DB())
+	if err := c.Sync(db.DB()); err != nil {
+		return err
+	}
+	if err := pushToServer(trigger.NewHTTPTriggerClient(), "azure", ws.Name, false,
+		time.Now().UTC().Format(time.RFC3339), readAzureCached(db.DB())); err != nil {
+		fmt.Fprintf(os.Stderr, "⚠  Server push failed — local sync complete, server cache not updated.\n    Check 'devtrack logs' for details.\n")
+	}
+	return nil
 }
 
 func (cli *CLI) handleAzureView() error {
@@ -191,7 +200,18 @@ func (cli *CLI) handleGitLabSync() error {
 		return fmt.Errorf("gitlab sync: open database: %w", err)
 	}
 	defer db.Close()
-	return c.Sync(db.DB(), username)
+	if err := c.Sync(db.DB(), username); err != nil {
+		return err
+	}
+	repo := ""
+	if ws != nil {
+		repo = ws.PMProject
+	}
+	if err := pushToServer(trigger.NewHTTPTriggerClient(), "gitlab", ws.Name, false,
+		time.Now().UTC().Format(time.RFC3339), readGitLabCached(db.DB(), repo)); err != nil {
+		fmt.Fprintf(os.Stderr, "⚠  Server push failed — local sync complete, server cache not updated.\n    Check 'devtrack logs' for details.\n")
+	}
+	return nil
 }
 
 func (cli *CLI) handleGitLabView() error {
@@ -280,7 +300,54 @@ func (cli *CLI) handleGitHubSync() error {
 		return fmt.Errorf("github sync: open database: %w", err)
 	}
 	defer db.Close()
-	return c.Sync(db.DB(), username)
+	if err := c.Sync(db.DB(), username); err != nil {
+		return err
+	}
+	repo := ""
+	if ws != nil {
+		repo = ws.PMProject
+	}
+	if err := pushToServer(trigger.NewHTTPTriggerClient(), "github", ws.Name, false,
+		time.Now().UTC().Format(time.RFC3339), readGitHubCached(db.DB(), repo)); err != nil {
+		fmt.Fprintf(os.Stderr, "⚠  Server push failed — local sync complete, server cache not updated.\n    Check 'devtrack logs' for details.\n")
+	}
+	return nil
+}
+
+// handleTicketSync syncs all configured PM platforms and pushes to the server.
+// --force drops the server-side cache before reloading (clean slate).
+func (cli *CLI) handleTicketSync() error {
+	force := false
+	for _, arg := range os.Args[2:] {
+		if arg == "--force" {
+			force = true
+		}
+	}
+
+	db, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("ticket-sync: open database: %w", err)
+	}
+	defer db.Close()
+
+	if force {
+		fmt.Println("Force-refreshing ticket cache (drop + reload)...")
+	} else {
+		fmt.Println("Syncing tickets (update existing + add new)...")
+	}
+
+	// SyncAllTickets logs push failures internally. The local SQLite cache is
+	// always updated regardless of whether Python is reachable.
+	SyncAllTickets(db, force)
+
+	fmt.Println("✓ Local cache updated.")
+	if !trigger.NewHTTPTriggerClient().Ping() {
+		fmt.Fprintln(os.Stderr, "⚠  Server unreachable — ticket data will be pushed on next successful connection.")
+		fmt.Fprintln(os.Stderr, "    Check 'devtrack logs' for details.")
+	} else {
+		fmt.Println("✓ Server cache updated.")
+	}
+	return nil
 }
 
 // handleGitHubView shows details for a specific GitHub issue.

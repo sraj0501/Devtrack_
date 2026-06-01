@@ -40,12 +40,6 @@ func (cli *CLI) handleStart() error {
 		return nil
 	}
 
-	// Ensure local MongoDB/Redis are reachable; auto-start Docker containers if needed.
-	// Returns an error only if the user explicitly chose to exit without a working DB.
-	if err := EnsureLocalInfra(); err != nil {
-		return err
-	}
-
 	// Parent process - fork to background
 	fmt.Println("🚀 Starting DevTrack daemon...")
 
@@ -229,6 +223,24 @@ func (cli *CLI) handleStatus() error {
 			fmt.Printf("Deferred Commits:      %s\n", strings.Join(parts, ", "))
 		}
 		fmt.Println()
+
+		// Ticket cache per PM source
+		summaries := db.GetTicketCacheSummary()
+		if len(summaries) > 0 {
+			fmt.Println("Ticket cache (local):")
+			for _, s := range summaries {
+				line := fmt.Sprintf("  %-8s  %d entries", s.Source, s.Count)
+				if !s.LastSync.IsZero() {
+					line += fmt.Sprintf("  (synced %s ago)", formatDuration(time.Since(s.LastSync)))
+				}
+				fmt.Println(line)
+			}
+			interval := getEnvOrDefault("TICKET_SYNC_INTERVAL_HOURS", "4")
+			onStart := getEnvOrDefault("TICKET_SYNC_ON_START", "true")
+			fmt.Printf("  auto-sync every %sh · on-start push: %s\n", interval, onStart)
+			fmt.Printf("  Run 'devtrack ticket-sync' to refresh manually.\n")
+			fmt.Println()
+		}
 	}
 
 	if status.Running {
@@ -375,10 +387,6 @@ func serviceDisplayName(service string) string {
 		return "Webhook Server"
 	case "telegram_bot":
 		return "Telegram Bot"
-	case "mongodb":
-		return "MongoDB"
-	case "redis":
-		return "Redis"
 	case "sqlite":
 		return "SQLite"
 	default:

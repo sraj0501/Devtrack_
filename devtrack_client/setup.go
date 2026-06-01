@@ -447,7 +447,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("CONFIG_DIR_NAME=.devtrack\n")
 	b.WriteString("CLI_APP_NAME=DevTrack\n")
 	b.WriteString("CLI_DAEMON_NAME=devtrack\n")
-	b.WriteString("DEVTRACK_COMMIT_ONLY=false\n\n")
+	b.WriteString("DEVTRACK_SERVER_HTTP_PORT=35894\n\n")
 
 	b.WriteString("## LLM PROVIDERS\n")
 	b.WriteString("LLM_PROVIDER=" + cfg.LLMProvider + "\n\n")
@@ -503,7 +503,8 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("DESCRIPTION_LLM_MAX_TOKENS=300\n\n")
 
 	b.WriteString("## TIMEOUTS AND DELAYS\n")
-	b.WriteString("HTTP_TIMEOUT_SHORT=10\n")
+	b.WriteString("HTTP_TIMEOUT_SHORT=10\n")      // Python server reads this name
+	b.WriteString("HTTP_TIMEOUT_SHORT_SECS=10\n") // Go client reads this name
 	b.WriteString("HTTP_TIMEOUT=30\n")
 	b.WriteString("HTTP_TIMEOUT_LONG=60\n")
 	b.WriteString("LLM_REQUEST_TIMEOUT_SECS=120\n")
@@ -543,47 +544,34 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("SENTIMENT_TARGET_SENDER=\n\n")
 
 	b.WriteString("## GITHUB\n")
+	b.WriteString("# Secret + alert user only — owner/repo/api_url go in workspaces.yaml\n")
 	b.WriteString("GITHUB_TOKEN=" + cfg.GitHubToken + "\n")
-	b.WriteString("GITHUB_OWNER=" + cfg.GitHubOwner + "\n")
-	b.WriteString("GITHUB_REPO=\n")
-	b.WriteString("GITHUB_API_URL=\n")
-	b.WriteString("GITHUB_API_VERSION=2022-11-28\n")
-	b.WriteString("GITHUB_SYNC_ENABLED=false\n")
-	b.WriteString("GITHUB_AUTO_COMMENT=true\n")
-	b.WriteString("GITHUB_AUTO_TRANSITION=false\n")
-	b.WriteString("GITHUB_CREATE_ON_NO_MATCH=false\n")
-	b.WriteString("GITHUB_MATCH_THRESHOLD=0.6\n")
-	b.WriteString("GITHUB_DONE_STATE=closed\n")
-	b.WriteString("GITHUB_SYNC_LABEL=devtrack\n")
-	b.WriteString("GITHUB_AUTO_UPDATE_DESCRIPTION=false\n")
-	b.WriteString("GITHUB_SYNC_WINDOW_HOURS=0\n")
-	b.WriteString("GITHUB_LOG_PATH=\n\n")
+	b.WriteString("GITHUB_USER=" + cfg.GitHubOwner + "\n\n") // Go alert poller user ID (falls back to EMAIL)
 
 	b.WriteString("## AZURE DEVOPS\n")
+	b.WriteString("# Secrets + identity — org/project/api_url go in workspaces.yaml\n")
 	b.WriteString("AZURE_DEVOPS_PAT=" + cfg.AzurePAT + "\n")
-	b.WriteString("AZURE_ORGANIZATION=" + cfg.AzureOrganization + "\n")
-	b.WriteString("AZURE_PROJECT=" + cfg.AzureProject + "\n")
-	b.WriteString("AZURE_API_KEY=\n")
-	b.WriteString("AZURE_API_VERSION=7.1\n")
-	b.WriteString("AZURE_EXCEL_FILE=" + filepath.Join(cfg.ProjectRoot, "backend", "data", "tasks.xlsx") + "\n")
-	b.WriteString("AZURE_EXCEL_SHEET=my_tasks\n")
-	b.WriteString("AZURE_PARENT_WORK_ITEM_ID=\n")
-	b.WriteString("AZURE_STARTING_WORK_ITEM_ID=0\n")
-	b.WriteString("AZURE_EMAIL=" + cfg.UserEmail + "\n")
+	b.WriteString("AZURE_API_KEY=\n")                                     // alias for AZURE_DEVOPS_PAT accepted by Python server + cli_info
+	b.WriteString("AZURE_ORGANIZATION=" + cfg.AzureOrganization + "\n")  // Go health check + devtrack settings + Python server
+	b.WriteString("AZURE_PROJECT=" + cfg.AzureProject + "\n")            // Go health check + devtrack settings + Python server
+	b.WriteString("AZURE_EMAIL=" + cfg.UserEmail + "\n")                  // alert poller: skip own comments
 	b.WriteString("AZURE_SYNC_ENABLED=false\n")
 	b.WriteString("AZURE_SYNC_AUTO_COMMENT=true\n")
 	b.WriteString("AZURE_SYNC_AUTO_TRANSITION=false\n")
 	b.WriteString("AZURE_SYNC_CREATE_ON_NO_MATCH=false\n")
 	b.WriteString("AZURE_SYNC_MATCH_THRESHOLD=0.7\n")
 	b.WriteString("AZURE_SYNC_WINDOW_HOURS=0\n")
+	b.WriteString("AZURE_SYNC_STATES=New,Active,In Progress\n")
+	b.WriteString("AZURE_SYNC_WORK_ITEM_TYPE=Task\n")
 	b.WriteString("AZURE_POLL_INTERVAL_MINS=5\n\n")
 
 	b.WriteString("## GITLAB\n")
-	b.WriteString("GITLAB_URL=https://gitlab.com\n")
+	b.WriteString("# Secret only — all other config goes in workspaces.yaml\n")
 	b.WriteString("GITLAB_PAT=\n")
+	b.WriteString("GITLAB_API_KEY=\n") // alias for GITLAB_PAT accepted by Python server
+	b.WriteString("GITLAB_URL=https://gitlab.com\n")
 	b.WriteString("GITLAB_PROJECT_ID=\n")
 	b.WriteString("GITLAB_SYNC_ENABLED=false\n")
-	b.WriteString("GITLAB_SYNC_WINDOW_HOURS=0\n")
 	b.WriteString("GITLAB_AUTO_COMMENT=true\n")
 	b.WriteString("GITLAB_AUTO_TRANSITION=false\n")
 	b.WriteString("GITLAB_CREATE_ON_NO_MATCH=false\n")
@@ -678,11 +666,12 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("TELEGRAM_ALLOWED_CHAT_IDS=\n")
 	b.WriteString("TELEGRAM_NOTIFY_COMMITS=false\n")
 	b.WriteString("TELEGRAM_NOTIFY_TRIGGERS=true\n")
-	b.WriteString("TELEGRAM_NOTIFY_HEALTH=true\n")
-	b.WriteString("HEALTH_AUTO_RESTART_TELEGRAM=true\n\n")
+	b.WriteString("TELEGRAM_CHAT_ID=\n")        // Go native notifier: chat to send to
+	b.WriteString("TELEGRAM_NOTIFY_HEALTH=true\n\n")
 
 	b.WriteString("## SLACK\n")
-	b.WriteString("SLACK_ENABLED=false\n")
+	b.WriteString("SLACK_WEBHOOK_URL=\n")        // Go native notifier: incoming webhook URL
+	b.WriteString("SLACK_ENABLED=false\n")       // Python bot
 	b.WriteString("SLACK_BOT_TOKEN=\n")
 	b.WriteString("SLACK_APP_TOKEN=\n")
 	b.WriteString("SLACK_ALLOWED_CHANNEL_IDS=\n\n")
@@ -700,24 +689,6 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("NEWPROJECT_ENABLED=true\n")
 	b.WriteString("SPEC_REVIEW_BASE_URL=http://localhost:8089\n\n")
 
-	b.WriteString("## COMMIT ENHANCEMENT\n")
-	b.WriteString("COMMIT_ENHANCE_MODE=false\n\n")
-
-	b.WriteString("## INFRASTRUCTURE (optional — only needed for MongoDB/Redis/PostgreSQL)\n")
-	b.WriteString("MONGO_USER=devtrack\n")
-	b.WriteString("MONGO_PASSWORD=devtrack\n")
-	b.WriteString("MONGO_PORT=27017\n")
-	b.WriteString("MONGODB_DB_NAME=devtrack\n")
-	b.WriteString("MONGODB_URI=\n")
-	b.WriteString("REDIS_PASSWORD=devtrack\n")
-	b.WriteString("REDIS_PORT=6379\n")
-	b.WriteString("REDIS_MAX_MEMORY=256mb\n")
-	b.WriteString("REDIS_URL=\n")
-	b.WriteString("POSTGRES_USER=devtrack\n")
-	b.WriteString("POSTGRES_PASSWORD=devtrack\n")
-	b.WriteString("POSTGRES_DB=devtrack\n")
-	b.WriteString("POSTGRES_PORT=5432\n")
-	b.WriteString("POSTGRES_URL=\n\n")
 
 	b.WriteString("## AZURE AD (optional — for MS Graph / Teams / email)\n")
 	b.WriteString("AZURE_CLIENT_ID=\n")
@@ -791,7 +762,83 @@ func checkPythonBackend(projectRoot string) {
 
 // installShellIntegration appends the devtrack eval line to the active shell RC file.
 // It is idempotent: a second run will not add a duplicate line.
+// On Windows it targets the PowerShell profile; on Unix it targets bash/zsh/fish.
 func installShellIntegration() {
+	if runtime.GOOS == "windows" {
+		installShellIntegrationWindows()
+	} else {
+		installShellIntegrationUnix()
+	}
+}
+
+// installShellIntegrationWindows writes the PowerShell shim to $PROFILE.
+func installShellIntegrationWindows() {
+	profilePath := resolvePowerShellProfile()
+	if profilePath == "" {
+		fmt.Println("  ✗ Could not locate PowerShell profile; add integration manually.")
+		fmt.Println("    Add this line to your $PROFILE:")
+		fmt.Println("      devtrack shell-init --powershell | Out-String | Invoke-Expression")
+		return
+	}
+
+	evalLine := `devtrack shell-init --powershell | Out-String | Invoke-Expression`
+
+	if data, err := os.ReadFile(profilePath); err == nil {
+		if strings.Contains(string(data), "devtrack shell-init") {
+			fmt.Printf("  ✓ Shell integration already present in %s\n", profilePath)
+			return
+		}
+	}
+
+	// Ensure the profile's parent directory exists (profile may not exist yet).
+	if err := os.MkdirAll(filepath.Dir(profilePath), 0755); err != nil {
+		fmt.Printf("  ✗ Could not create profile directory: %v\n", err)
+		return
+	}
+
+	f, err := os.OpenFile(profilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Printf("  ✗ Could not write to %s: %v\n", profilePath, err)
+		fmt.Printf("    Add manually: %s\n", evalLine)
+		return
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString("\n# DevTrack shell integration\n" + evalLine + "\n"); err != nil {
+		fmt.Printf("  ✗ Write error on %s: %v\n", profilePath, err)
+		return
+	}
+
+	fmt.Printf("  ✓ Added to %s\n", profilePath)
+	fmt.Println("    Reload with:  . $PROFILE   (or open a new terminal)")
+}
+
+// resolvePowerShellProfile returns the path to the current user's PowerShell
+// profile by asking pwsh (7+) or powershell.exe (5.x). Falls back to the
+// conventional Documents\PowerShell path when neither is available.
+func resolvePowerShellProfile() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	// Try pwsh (PowerShell 7+) first, then legacy powershell.exe.
+	for _, ps := range []string{"pwsh", "powershell"} {
+		out, err := exec.Command(ps, "-NoProfile", "-NonInteractive", "-Command", "echo $PROFILE").Output()
+		if err == nil {
+			p := strings.TrimSpace(string(out))
+			if p != "" {
+				return p
+			}
+		}
+	}
+
+	// Conventional fallback: PowerShell 7 profile location.
+	return filepath.Join(home, "Documents", "PowerShell", "Microsoft.PowerShell_profile.ps1")
+}
+
+// installShellIntegrationUnix appends the eval line to ~/.zshrc, ~/.bashrc, or fish config.
+func installShellIntegrationUnix() {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Println("  ✗ Could not determine home directory; add shell integration manually.")
@@ -836,11 +883,12 @@ func installShellIntegration() {
 	fmt.Printf("    Run: source %s  (or open a new terminal)\n", rcFile)
 }
 
-// createWorkspacesFile writes an initial workspaces.yaml with the workspace
-// collected during setup. Skips if the file already exists.
+// createWorkspacesFile writes workspaces.yaml with the workspace collected
+// during setup. Always overwrites — setup is an authoritative write of the
+// initial config, so a stale file with path:"." must be replaced.
 func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
-	if _, err := os.Stat(path); err == nil {
-		return nil // already exists — don't overwrite
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("cannot create config directory: %w", err)
 	}
 	if pmPlatform == "" || pmPlatform == "none" {
 		pmPlatform = "none"

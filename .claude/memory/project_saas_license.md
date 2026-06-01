@@ -9,7 +9,7 @@ type: project
 
 **Tiers:** Personal (1 user, free), Team (2–10, free self-hosted), Enterprise (11+, commercial). `detect_tier()` / `check_seat_limit()` in `backend/license_manager.py`. Bump `TERMS_VERSION` to force re-acceptance. CI bypass: `DEVTRACK_AUTO_ACCEPT_TERMS=1`.
 
-**Auth:** `local` mode = offline UUID token; `cloud` = magic-link → JWT, 90-day TTL in `Data/license/session.json` (chmod 600). Key files: `backend/auth/session.py`, `local_auth.py`, `cloud_auth.py`, `devtrack-bin/license.go`.
+**Auth:** `local` mode = offline UUID token; `cloud` = magic-link → JWT, 90-day TTL in `Data/license/session.json` (chmod 600). Key files: `devtrack_server/backend/auth/session.py`, `local_auth.py`, `cloud_auth.py`; Go side in `devtrack_client/` license CLI (`license_cli.go`).
 
 **Rule:** never gate offline functionality behind a login check.
 

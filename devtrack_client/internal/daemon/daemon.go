@@ -51,6 +51,12 @@ type Daemon struct {
 	alertPoller   *alerts.Poller // native Go alert poller (Phase 2)
 	startTime     time.Time
 	healthMonitor *health.HealthMonitor
+
+	// TicketSyncFns are set by package main (which owns the connector code).
+	// PushCachedFn reads from local SQLite and pushes to Python (no API call).
+	// FullSyncFn fetches from PM APIs, updates local SQLite, then pushes.
+	PushCachedFn func()
+	FullSyncFn   func()
 }
 
 // DaemonStatus represents the current daemon state
@@ -184,6 +190,10 @@ func (d *Daemon) Start() error {
 
 	// Start internal HTTP server for platform-agnostic control endpoints.
 	d.startInternalHTTPServer()
+
+	// Ticket sync: push cached tickets immediately (no API call), then
+	// run a full sync + push on a periodic interval.
+	d.startTicketSyncLoop()
 
 	// Setup signal handlers for graceful shutdown
 	d.setupSignalHandlers()

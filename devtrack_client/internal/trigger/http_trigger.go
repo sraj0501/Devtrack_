@@ -113,6 +113,36 @@ func (c *HTTPTriggerClient) SendWorkSessionStop(sessionID int64) error {
 	})
 }
 
+// SlimTicket is the minimal ticket representation sent to the Python server
+// for fuzzy/semantic matching. Body/description is truncated to 500 chars to
+// keep payloads small — Python only needs enough text for embedding.
+type SlimTicket struct {
+	ID          string `json:"id"`           // composite: "github:owner/repo#123"
+	ExternalID  string `json:"external_id"`  // raw platform identifier: "123"
+	Source      string `json:"source"`       // "github" | "azure" | "gitlab"
+	Repo        string `json:"repo"`         // "owner/repo" (empty for Azure)
+	Title       string `json:"title"`
+	Description string `json:"description"`  // truncated to 500 chars
+	Status      string `json:"status"`       // "open", "In Progress", etc.
+	Assignee    string `json:"assignee"`
+	URL         string `json:"url"`
+}
+
+// TicketSyncPayload is the body of POST /trigger/ticket_sync.
+type TicketSyncPayload struct {
+	Source    string       `json:"source"`     // "github" | "azure" | "gitlab"
+	Workspace string       `json:"workspace"`  // workspace name from workspaces.yaml
+	Force     bool         `json:"force"`      // true → Python drops+reloads, false → upsert
+	SyncedAt  string       `json:"synced_at"`  // RFC3339 timestamp of this sync
+	Tickets   []SlimTicket `json:"tickets"`
+}
+
+// SendTicketSync pushes a slim ticket list to POST /trigger/ticket_sync.
+// Non-blocking best-effort: if Python is down the commit pipeline still works.
+func (c *HTTPTriggerClient) SendTicketSync(payload TicketSyncPayload) error {
+	return c.post("/trigger/ticket_sync", payload)
+}
+
 // PlanPreviewRequest is the payload sent to POST /trigger/plan/preview.
 type PlanPreviewRequest struct {
 	Problem        string `json:"problem,omitempty"`

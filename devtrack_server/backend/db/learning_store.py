@@ -1,130 +1,115 @@
 """
-Learning data store — SQLite-backed persistence for the personalization system.
+Learning data store — SQLAlchemy persistence for the personalization system.
 
-Replaces the file-based storage previously used by:
-  - backend/personalized_ai.py       → Data/learning/consent.json
-                                        Data/learning/user_profile.json
-                                        Data/learning/communication_samples.jsonl
-  - backend/learning_integration.py  → Data/learning/consent.json
-                                        Data/learning/state.json
+Runs against SQLite (local) or PostgreSQL (multi-user), selected via POSTGRES_URL.
+MongoDB remains the primary store when MONGODB_URI is set; this module provides
+the SQLite/PostgreSQL fallback for offline / local deployments.
 
-All data lives in the main devtrack.db (same as work_sessions, triggers, etc.).
-Tables are created lazily on first access.
-
-MongoDB remains the primary store when MONGODB_URI is set. SQLite is the
-offline / local fallback — exactly as before, but backed by a DB table instead
-of flat files.
+Tables
+------
+learning_consent        — per-user consent record
+learning_sync_state     — delta collection timestamp per user
+learning_user_profiles  — computed style profile per user
+learning_samples        — communication samples for RAG (local fallback for MongoDB)
 """
 from __future__ import annotations
 
 import json
-import sqlite3
-from contextlib import contextmanager
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import Boolean, Column, Index, Integer, Table, Text, func, select
+from sqlalchemy.engine import Engine
+
+from backend.db.engine import get_engine, metadata, upsert
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Connection helper
+# Table definitions
 # ---------------------------------------------------------------------------
 
-def _db_path() -> str:
-    try:
-        from backend.config import database_path
-        return str(database_path())
-    except Exception:
-        from backend.config import get_project_root
-        root = get_project_root() or "."
-        import os
-        return os.path.join(root, "Data", "db", "devtrack.db")
+learning_consent_table = Table(
+    "learning_consent", metadata,
+    Column("id",             Integer, primary_key=True, autoincrement=True),
+    Column("user_email",     Text, nullable=False, unique=True),
+    Column("user_object_id", Text),
+    Column("consent_given",  Integer, nullable=False),
+    Column("consented_at",   Text),
+    Column("version",        Text, nullable=False),
+    Column("features_json",  Text, nullable=False),
+    Column("updated_at",     Text, nullable=False),
+)
 
+learning_sync_state_table = Table(
+    "learning_sync_state", metadata,
+    Column("user_email",     Text, primary_key=True),
+    Column("last_collected", Text),
+    Column("source",         Text, nullable=False),
+)
 
-@contextmanager
-def _conn():
-    con = sqlite3.connect(_db_path())
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA journal_mode=WAL")
-    try:
-        yield con
-        con.commit()
-    finally:
-        con.close()
+learning_user_profiles_table = Table(
+    "learning_user_profiles", metadata,
+    Column("user_email",    Text, primary_key=True),
+    Column("profile_json",  Text, nullable=False),
+    Column("last_updated",  Text, nullable=False),
+    Column("total_samples", Integer, nullable=False),
+)
 
-
-# ---------------------------------------------------------------------------
-# Schema init
-# ---------------------------------------------------------------------------
-
-def _ensure_schema() -> None:
-    with _conn() as con:
-        con.executescript("""
-            CREATE TABLE IF NOT EXISTS learning_consent (
-                id              INTEGER PRIMARY KEY,
-                user_email      TEXT NOT NULL UNIQUE,
-                user_object_id  TEXT,
-                consent_given   INTEGER NOT NULL DEFAULT 0,
-                consented_at    TEXT,
-                version         TEXT NOT NULL DEFAULT '1',
-                features_json   TEXT NOT NULL DEFAULT '[]',
-                updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS learning_sync_state (
-                user_email      TEXT PRIMARY KEY,
-                last_collected  TEXT,
-                source          TEXT NOT NULL DEFAULT 'teams'
-            );
-
-            CREATE TABLE IF NOT EXISTS learning_user_profiles (
-                user_email      TEXT PRIMARY KEY,
-                profile_json    TEXT NOT NULL DEFAULT '{}',
-                last_updated    TEXT NOT NULL DEFAULT (datetime('now')),
-                total_samples   INTEGER NOT NULL DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS learning_samples (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                sample_id       TEXT NOT NULL UNIQUE,
-                user_email      TEXT,
-                source          TEXT NOT NULL DEFAULT 'unknown',
-                timestamp       TEXT NOT NULL DEFAULT (datetime('now')),
-                context_type    TEXT NOT NULL DEFAULT 'general',
-                trigger_text    TEXT NOT NULL DEFAULT '',
-                response_text   TEXT NOT NULL DEFAULT '',
-                metadata_json   TEXT NOT NULL DEFAULT '{}'
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_learning_samples_email
-                ON learning_samples(user_email);
-            CREATE INDEX IF NOT EXISTS idx_learning_samples_context
-                ON learning_samples(context_type);
-        """)
-
+learning_samples_table = Table(
+    "learning_samples", metadata,
+    Column("id",            Integer, primary_key=True, autoincrement=True),
+    Column("sample_id",     Text, nullable=False, unique=True),
+    Column("user_email",    Text),
+    Column("source",        Text, nullable=False),
+    Column("timestamp",     Text, nullable=False),
+    Column("context_type",  Text, nullable=False),
+    Column("trigger_text",  Text, nullable=False),
+    Column("response_text", Text, nullable=False),
+    Column("metadata_json", Text, nullable=False),
+    Index("idx_learning_samples_email",   "user_email"),
+    Index("idx_learning_samples_context", "context_type"),
+)
 
 _schema_done: bool = False
+_own_tables = [
+    learning_consent_table,
+    learning_sync_state_table,
+    learning_user_profiles_table,
+    learning_samples_table,
+]
 
 
-def _init() -> None:
+def _init(engine: Optional[Engine] = None) -> Engine:
     global _schema_done
+    eng = engine or get_engine()
     if not _schema_done:
-        _ensure_schema()
+        metadata.create_all(eng, tables=_own_tables)
         _schema_done = True
+    return eng
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 # ---------------------------------------------------------------------------
 # Consent
 # ---------------------------------------------------------------------------
 
-def load_consent(user_email: str) -> Optional[Dict[str, Any]]:
-    _init()
-    with _conn() as con:
-        row = con.execute(
-            "SELECT * FROM learning_consent WHERE user_email=?", (user_email,)
-        ).fetchone()
+def load_consent(user_email: str, engine: Optional[Engine] = None) -> Optional[Dict[str, Any]]:
+    eng = _init(engine)
+    with eng.connect() as conn:
+        row = conn.execute(
+            select(learning_consent_table).where(
+                learning_consent_table.c.user_email == user_email
+            )
+        ).mappings().first()
     if not row:
         return None
     d = dict(row)
-    d["features"] = json.loads(d.pop("features_json", "[]"))
+    d["features"] = json.loads(d.pop("features_json", None) or "[]")
     return d
 
 
@@ -134,67 +119,85 @@ def save_consent(
     user_object_id: Optional[str] = None,
     version: str = "1",
     features: Optional[list] = None,
+    engine: Optional[Engine] = None,
 ) -> None:
-    _init()
-    with _conn() as con:
-        con.execute(
-            """INSERT INTO learning_consent
-               (user_email, user_object_id, consent_given, consented_at, version, features_json, updated_at)
-               VALUES (?, ?, ?, datetime('now'), ?, ?, datetime('now'))
-               ON CONFLICT(user_email) DO UPDATE SET
-                 user_object_id = COALESCE(excluded.user_object_id, user_object_id),
-                 consent_given  = excluded.consent_given,
-                 consented_at   = CASE WHEN excluded.consent_given THEN excluded.consented_at ELSE consented_at END,
-                 version        = excluded.version,
-                 features_json  = excluded.features_json,
-                 updated_at     = excluded.updated_at
-            """,
-            (
-                user_email,
-                user_object_id,
-                int(consent_given),
-                version,
-                json.dumps(features or []),
-            ),
+    # Fetch existing row to apply merge logic in Python (simpler than dialect SQL)
+    existing = load_consent(user_email, engine)
+    now = _now()
+
+    if existing:
+        final_obj_id = user_object_id or existing.get("user_object_id")
+        final_consented_at = now if consent_given else existing.get("consented_at")
+    else:
+        final_obj_id = user_object_id
+        final_consented_at = now if consent_given else None
+
+    row = {
+        "user_email":    user_email,
+        "user_object_id": final_obj_id,
+        "consent_given": int(consent_given),
+        "consented_at":  final_consented_at,
+        "version":       version,
+        "features_json": json.dumps(features or []),
+        "updated_at":    now,
+    }
+    update_cols = {k: v for k, v in row.items() if k != "user_email"}
+    eng = _init(engine)
+    with eng.begin() as conn:
+        conn.execute(
+            upsert(learning_consent_table)
+            .values(**row)
+            .on_conflict_do_update(index_elements=["user_email"], set_=update_cols)
         )
 
 
-def update_user_object_id(user_email: str, user_object_id: str) -> None:
-    _init()
-    with _conn() as con:
-        con.execute(
-            "UPDATE learning_consent SET user_object_id=? WHERE user_email=?",
-            (user_object_id, user_email),
+def update_user_object_id(
+    user_email: str, user_object_id: str, engine: Optional[Engine] = None
+) -> None:
+    eng = _init(engine)
+    with eng.begin() as conn:
+        conn.execute(
+            learning_consent_table.update()
+            .where(learning_consent_table.c.user_email == user_email)
+            .values(user_object_id=user_object_id)
         )
 
 
 # ---------------------------------------------------------------------------
-# Sync state (delta collection timestamp)
+# Sync state
 # ---------------------------------------------------------------------------
 
-def load_last_collected(user_email: str) -> Optional[datetime]:
-    _init()
-    with _conn() as con:
-        row = con.execute(
-            "SELECT last_collected FROM learning_sync_state WHERE user_email=?", (user_email,)
-        ).fetchone()
-    if not row or not row["last_collected"]:
+def load_last_collected(
+    user_email: str, engine: Optional[Engine] = None
+) -> Optional[datetime]:
+    eng = _init(engine)
+    with eng.connect() as conn:
+        row = conn.execute(
+            select(learning_sync_state_table.c.last_collected).where(
+                learning_sync_state_table.c.user_email == user_email
+            )
+        ).first()
+    if not row or not row.last_collected:
         return None
     try:
-        return datetime.fromisoformat(row["last_collected"])
+        return datetime.fromisoformat(row.last_collected)
     except ValueError:
         return None
 
 
-def save_last_collected(user_email: str, ts: datetime) -> None:
-    _init()
+def save_last_collected(
+    user_email: str, ts: datetime, engine: Optional[Engine] = None
+) -> None:
     ts_str = ts.isoformat()
-    with _conn() as con:
-        con.execute(
-            """INSERT INTO learning_sync_state (user_email, last_collected)
-               VALUES (?, ?)
-               ON CONFLICT(user_email) DO UPDATE SET last_collected=excluded.last_collected""",
-            (user_email, ts_str),
+    eng = _init(engine)
+    with eng.begin() as conn:
+        conn.execute(
+            upsert(learning_sync_state_table)
+            .values(user_email=user_email, last_collected=ts_str, source="teams")
+            .on_conflict_do_update(
+                index_elements=["user_email"],
+                set_={"last_collected": ts_str},
+            )
         )
 
 
@@ -202,34 +205,45 @@ def save_last_collected(user_email: str, ts: datetime) -> None:
 # User profiles
 # ---------------------------------------------------------------------------
 
-def load_profile(user_email: str) -> Optional[Dict[str, Any]]:
-    _init()
-    with _conn() as con:
-        row = con.execute(
-            "SELECT profile_json, last_updated, total_samples FROM learning_user_profiles WHERE user_email=?",
-            (user_email,),
-        ).fetchone()
+def load_profile(user_email: str, engine: Optional[Engine] = None) -> Optional[Dict[str, Any]]:
+    eng = _init(engine)
+    with eng.connect() as conn:
+        row = conn.execute(
+            select(
+                learning_user_profiles_table.c.profile_json,
+                learning_user_profiles_table.c.last_updated,
+                learning_user_profiles_table.c.total_samples,
+            ).where(learning_user_profiles_table.c.user_email == user_email)
+        ).first()
     if not row:
         return None
-    profile = json.loads(row["profile_json"])
-    profile["_last_updated"] = row["last_updated"]
-    profile["_total_samples"] = row["total_samples"]
+    profile = json.loads(row.profile_json)
+    profile["_last_updated"] = row.last_updated
+    profile["_total_samples"] = row.total_samples
     return profile
 
 
-def save_profile(user_email: str, profile: Dict[str, Any], total_samples: int = 0) -> None:
-    _init()
-    # Strip internal keys before storing
+def save_profile(
+    user_email: str,
+    profile: Dict[str, Any],
+    total_samples: int = 0,
+    engine: Optional[Engine] = None,
+) -> None:
     clean = {k: v for k, v in profile.items() if not k.startswith("_")}
-    with _conn() as con:
-        con.execute(
-            """INSERT INTO learning_user_profiles (user_email, profile_json, last_updated, total_samples)
-               VALUES (?, ?, datetime('now'), ?)
-               ON CONFLICT(user_email) DO UPDATE SET
-                 profile_json  = excluded.profile_json,
-                 last_updated  = excluded.last_updated,
-                 total_samples = excluded.total_samples""",
-            (user_email, json.dumps(clean, default=str), total_samples),
+    now = _now()
+    row = {
+        "user_email":    user_email,
+        "profile_json":  json.dumps(clean, default=str),
+        "last_updated":  now,
+        "total_samples": total_samples,
+    }
+    update_cols = {k: v for k, v in row.items() if k != "user_email"}
+    eng = _init(engine)
+    with eng.begin() as conn:
+        conn.execute(
+            upsert(learning_user_profiles_table)
+            .values(**row)
+            .on_conflict_do_update(index_elements=["user_email"], set_=update_cols)
         )
 
 
@@ -237,26 +251,32 @@ def save_profile(user_email: str, profile: Dict[str, Any], total_samples: int = 
 # Communication samples (local fallback for MongoDB)
 # ---------------------------------------------------------------------------
 
-def count_samples(user_email: str) -> int:
-    _init()
-    with _conn() as con:
-        row = con.execute(
-            "SELECT COUNT(*) FROM learning_samples WHERE user_email=?", (user_email,)
-        ).fetchone()
-    return row[0] if row else 0
+def count_samples(user_email: str, engine: Optional[Engine] = None) -> int:
+    eng = _init(engine)
+    with eng.connect() as conn:
+        result = conn.execute(
+            select(func.count()).select_from(learning_samples_table).where(
+                learning_samples_table.c.user_email == user_email
+            )
+        ).scalar()
+    return int(result or 0)
 
 
-def load_samples(user_email: str, limit: int = 1000) -> List[Dict[str, Any]]:
-    _init()
-    with _conn() as con:
-        rows = con.execute(
-            "SELECT * FROM learning_samples WHERE user_email=? ORDER BY id DESC LIMIT ?",
-            (user_email, limit),
-        ).fetchall()
+def load_samples(
+    user_email: str, limit: int = 1000, engine: Optional[Engine] = None
+) -> List[Dict[str, Any]]:
+    eng = _init(engine)
+    with eng.connect() as conn:
+        rows = conn.execute(
+            select(learning_samples_table)
+            .where(learning_samples_table.c.user_email == user_email)
+            .order_by(learning_samples_table.c.id.desc())
+            .limit(limit)
+        ).mappings().all()
     result = []
     for r in rows:
         d = dict(r)
-        d["metadata"] = json.loads(d.pop("metadata_json", "{}"))
+        d["metadata"] = json.loads(d.pop("metadata_json", None) or "{}")
         result.append(d)
     return result
 
@@ -270,40 +290,59 @@ def save_sample(
     trigger_text: str,
     response_text: str,
     metadata: Optional[Dict] = None,
+    engine: Optional[Engine] = None,
 ) -> bool:
     """Insert sample; returns False if sample_id already exists (dedup)."""
-    _init()
+    row = {
+        "sample_id":     sample_id,
+        "user_email":    user_email,
+        "source":        source,
+        "timestamp":     timestamp,
+        "context_type":  context_type,
+        "trigger_text":  trigger_text,
+        "response_text": response_text,
+        "metadata_json": json.dumps(metadata or {}),
+    }
+    eng = _init(engine)
     try:
-        with _conn() as con:
-            con.execute(
-                """INSERT OR IGNORE INTO learning_samples
-                   (sample_id, user_email, source, timestamp, context_type,
-                    trigger_text, response_text, metadata_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    sample_id, user_email, source, timestamp, context_type,
-                    trigger_text, response_text, json.dumps(metadata or {}),
-                ),
+        with eng.begin() as conn:
+            result = conn.execute(
+                upsert(learning_samples_table)
+                .values(**row)
+                .on_conflict_do_nothing()
             )
-        return True
-    except Exception:
+        return result.rowcount > 0
+    except Exception as exc:
+        logger.debug("save_sample: error: %s", exc)
         return False
 
 
-def delete_all_samples(user_email: str) -> int:
-    _init()
-    with _conn() as con:
-        cur = con.execute(
-            "DELETE FROM learning_samples WHERE user_email=?", (user_email,)
+def delete_all_samples(user_email: str, engine: Optional[Engine] = None) -> int:
+    eng = _init(engine)
+    with eng.begin() as conn:
+        result = conn.execute(
+            learning_samples_table.delete().where(
+                learning_samples_table.c.user_email == user_email
+            )
         )
-    return cur.rowcount
+    return result.rowcount
 
 
-def delete_consent_and_profile(user_email: str) -> None:
-    _init()
-    with _conn() as con:
-        con.execute("DELETE FROM learning_consent WHERE user_email=?", (user_email,))
-        con.execute("DELETE FROM learning_user_profiles WHERE user_email=?", (user_email,))
-        con.execute("DELETE FROM learning_sync_state WHERE user_email=?", (user_email,))
-
-
+def delete_consent_and_profile(user_email: str, engine: Optional[Engine] = None) -> None:
+    eng = _init(engine)
+    with eng.begin() as conn:
+        conn.execute(
+            learning_consent_table.delete().where(
+                learning_consent_table.c.user_email == user_email
+            )
+        )
+        conn.execute(
+            learning_user_profiles_table.delete().where(
+                learning_user_profiles_table.c.user_email == user_email
+            )
+        )
+        conn.execute(
+            learning_sync_state_table.delete().where(
+                learning_sync_state_table.c.user_email == user_email
+            )
+        )

@@ -1,150 +1,161 @@
 """
-Platform sync cache — SQLite-backed store for external platform state.
+Platform sync cache — SQLAlchemy-backed store for external platform state.
 
-Replaces the JSON files previously used by:
-  - backend/azure/sync.py          → Data/azure/sync_state.json
-  - backend/azure/assignment_poller.py → Data/azure/seen_assignments.json
-  - backend/gitlab/sync.py         → Data/gitlab/sync_state.json
-  - backend/gitlab/assignment_poller.py → Data/gitlab/seen_assignments.json
-  - backend/github/ (similar pattern)
-  - backend/jira/ (similar pattern)
+Replaces the JSON files previously used by azure/, gitlab/, github/, jira/ sync
+modules.  Runs against SQLite (local) or PostgreSQL (multi-user), selected via
+POSTGRES_URL.
 
-All data lives in the main devtrack.db to keep a single DB file.
-Tables are created on first use (Python-side, follows session_store.py pattern).
+Tables
+------
+platform_sync_cache   — work item / issue snapshots keyed by (platform, item_id)
+platform_sync_meta    — last_sync timestamp per platform
+platform_seen_events  — dedup set of event_keys per platform (assignment / comment)
 """
 from __future__ import annotations
 
 import json
-import sqlite3
-from contextlib import contextmanager
+import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Set
 
+from sqlalchemy import Column, Table, Text, select
+from sqlalchemy.engine import Engine
+
+from backend.db.engine import get_engine, metadata, upsert
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Connection helpers (mirrors session_store.py pattern)
+# Table definitions
 # ---------------------------------------------------------------------------
 
-def _db_path() -> str:
-    try:
-        from backend.config import database_path
-        return str(database_path())
-    except Exception:
-        from backend.config import get_project_root
-        root = get_project_root() or "."
-        import os
-        return os.path.join(root, "Data", "db", "devtrack.db")
+platform_sync_cache_table = Table(
+    "platform_sync_cache", metadata,
+    Column("platform",  Text, primary_key=True),
+    Column("item_id",   Text, primary_key=True),
+    Column("data_json", Text, nullable=False),
+    Column("synced_at", Text, nullable=False),
+)
 
+platform_sync_meta_table = Table(
+    "platform_sync_meta", metadata,
+    Column("platform",  Text, primary_key=True),
+    Column("last_sync", Text),
+)
 
-@contextmanager
-def _conn():
-    con = sqlite3.connect(_db_path())
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA journal_mode=WAL")
-    try:
-        yield con
-        con.commit()
-    finally:
-        con.close()
-
+platform_seen_events_table = Table(
+    "platform_seen_events", metadata,
+    Column("platform",  Text, primary_key=True),
+    Column("event_key", Text, primary_key=True),
+    Column("seen_at",   Text, nullable=False),
+)
 
 # ---------------------------------------------------------------------------
 # Schema init
 # ---------------------------------------------------------------------------
 
-def _ensure_schema() -> None:
-    with _conn() as con:
-        con.executescript("""
-            CREATE TABLE IF NOT EXISTS platform_sync_cache (
-                platform    TEXT NOT NULL,
-                item_id     TEXT NOT NULL,
-                data_json   TEXT NOT NULL DEFAULT '{}',
-                synced_at   TEXT NOT NULL DEFAULT (datetime('now')),
-                PRIMARY KEY (platform, item_id)
-            );
-
-            CREATE TABLE IF NOT EXISTS platform_sync_meta (
-                platform    TEXT PRIMARY KEY,
-                last_sync   TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS platform_seen_events (
-                platform    TEXT NOT NULL,
-                event_key   TEXT NOT NULL,
-                seen_at     TEXT NOT NULL DEFAULT (datetime('now')),
-                PRIMARY KEY (platform, event_key)
-            );
-        """)
-
-
 _schema_done: bool = False
+_own_tables = [platform_sync_cache_table, platform_sync_meta_table, platform_seen_events_table]
 
 
-def _init() -> None:
+def _init(engine: Optional[Engine] = None) -> Engine:
     global _schema_done
+    eng = engine or get_engine()
     if not _schema_done:
-        _ensure_schema()
+        metadata.create_all(eng, tables=_own_tables)
         _schema_done = True
+    return eng
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 # ---------------------------------------------------------------------------
 # Sync cache (work items / issues)
 # ---------------------------------------------------------------------------
 
-def load_sync_items(platform: str) -> Dict[str, Any]:
+def load_sync_items(platform: str, engine: Optional[Engine] = None) -> Dict[str, Any]:
     """Return {item_id: item_dict} for all cached items of a platform."""
-    _init()
-    with _conn() as con:
-        rows = con.execute(
-            "SELECT item_id, data_json FROM platform_sync_cache WHERE platform=?",
-            (platform,),
-        ).fetchall()
-    return {r["item_id"]: json.loads(r["data_json"]) for r in rows}
+    eng = _init(engine)
+    with eng.connect() as conn:
+        rows = conn.execute(
+            select(
+                platform_sync_cache_table.c.item_id,
+                platform_sync_cache_table.c.data_json,
+            ).where(platform_sync_cache_table.c.platform == platform)
+        ).all()
+    return {r.item_id: json.loads(r.data_json) for r in rows}
 
 
-def load_sync_meta(platform: str) -> Optional[str]:
+def load_sync_meta(platform: str, engine: Optional[Engine] = None) -> Optional[str]:
     """Return the last_sync ISO timestamp for a platform, or None."""
-    _init()
-    with _conn() as con:
-        row = con.execute(
-            "SELECT last_sync FROM platform_sync_meta WHERE platform=?", (platform,)
-        ).fetchone()
-    return row["last_sync"] if row else None
+    eng = _init(engine)
+    with eng.connect() as conn:
+        row = conn.execute(
+            select(platform_sync_meta_table.c.last_sync).where(
+                platform_sync_meta_table.c.platform == platform
+            )
+        ).first()
+    return row.last_sync if row else None
 
 
-def save_sync_items(platform: str, items: Dict[str, Any], last_sync: Optional[str] = None) -> None:
+def save_sync_items(
+    platform: str,
+    items: Dict[str, Any],
+    last_sync: Optional[str] = None,
+    engine: Optional[Engine] = None,
+) -> None:
     """Persist work items/issues for a platform.
 
     Each value in `items` must be JSON-serialisable.
-    If `last_sync` is provided, the sync_meta row is updated too.
+    If `last_sync` is provided the sync_meta row is updated too.
     """
-    _init()
-    with _conn() as con:
-        # Upsert each item
+    eng = _init(engine)
+    now = _now()
+    with eng.begin() as conn:
         for item_id, data in items.items():
-            con.execute(
-                """INSERT INTO platform_sync_cache (platform, item_id, data_json, synced_at)
-                   VALUES (?, ?, ?, datetime('now'))
-                   ON CONFLICT(platform, item_id) DO UPDATE
-                   SET data_json=excluded.data_json, synced_at=excluded.synced_at""",
-                (platform, str(item_id), json.dumps(data, default=str)),
+            row = {
+                "platform":  platform,
+                "item_id":   str(item_id),
+                "data_json": json.dumps(data, default=str),
+                "synced_at": now,
+            }
+            stmt = (
+                upsert(platform_sync_cache_table)
+                .values(**row)
+                .on_conflict_do_update(
+                    index_elements=["platform", "item_id"],
+                    set_={"data_json": row["data_json"], "synced_at": now},
+                )
             )
+            conn.execute(stmt)
+
         if last_sync is not None:
-            con.execute(
-                """INSERT INTO platform_sync_meta (platform, last_sync) VALUES (?, ?)
-                   ON CONFLICT(platform) DO UPDATE SET last_sync=excluded.last_sync""",
-                (platform, last_sync),
+            meta_row = {"platform": platform, "last_sync": last_sync}
+            conn.execute(
+                upsert(platform_sync_meta_table)
+                .values(**meta_row)
+                .on_conflict_do_update(
+                    index_elements=["platform"],
+                    set_={"last_sync": last_sync},
+                )
             )
 
 
-def clear_sync_items(platform: str) -> None:
+def clear_sync_items(platform: str, engine: Optional[Engine] = None) -> None:
     """Delete all cached items for a platform (full resync)."""
-    _init()
-    with _conn() as con:
-        con.execute("DELETE FROM platform_sync_cache WHERE platform=?", (platform,))
-        con.execute(
-            "INSERT INTO platform_sync_meta (platform, last_sync) VALUES (?, NULL) "
-            "ON CONFLICT(platform) DO UPDATE SET last_sync=NULL",
-            (platform,),
+    eng = _init(engine)
+    with eng.begin() as conn:
+        conn.execute(
+            platform_sync_cache_table.delete().where(
+                platform_sync_cache_table.c.platform == platform
+            )
+        )
+        conn.execute(
+            upsert(platform_sync_meta_table)
+            .values(platform=platform, last_sync=None)
+            .on_conflict_do_update(index_elements=["platform"], set_={"last_sync": None})
         )
 
 
@@ -152,34 +163,41 @@ def clear_sync_items(platform: str) -> None:
 # Seen events (assignment / comment dedup)
 # ---------------------------------------------------------------------------
 
-def load_seen_events(platform: str) -> Set[str]:
+def load_seen_events(platform: str, engine: Optional[Engine] = None) -> Set[str]:
     """Return the set of event_keys already seen for a platform."""
-    _init()
-    with _conn() as con:
-        rows = con.execute(
-            "SELECT event_key FROM platform_seen_events WHERE platform=?", (platform,)
-        ).fetchall()
-    return {r["event_key"] for r in rows}
+    eng = _init(engine)
+    with eng.connect() as conn:
+        rows = conn.execute(
+            select(platform_seen_events_table.c.event_key).where(
+                platform_seen_events_table.c.platform == platform
+            )
+        ).all()
+    return {r.event_key for r in rows}
 
 
-def mark_event_seen(platform: str, event_key: str) -> None:
+def mark_event_seen(platform: str, event_key: str, engine: Optional[Engine] = None) -> None:
     """Record an event_key as seen (idempotent)."""
-    _init()
-    with _conn() as con:
-        con.execute(
-            """INSERT OR IGNORE INTO platform_seen_events (platform, event_key)
-               VALUES (?, ?)""",
-            (platform, event_key),
+    eng = _init(engine)
+    with eng.begin() as conn:
+        conn.execute(
+            upsert(platform_seen_events_table)
+            .values(platform=platform, event_key=event_key, seen_at=_now())
+            .on_conflict_do_nothing()
         )
 
 
-def mark_events_seen(platform: str, event_keys: Set[str]) -> None:
+def mark_events_seen(
+    platform: str, event_keys: Set[str], engine: Optional[Engine] = None
+) -> None:
     """Bulk-record multiple event_keys as seen."""
-    _init()
-    with _conn() as con:
-        con.executemany(
-            "INSERT OR IGNORE INTO platform_seen_events (platform, event_key) VALUES (?, ?)",
-            [(platform, k) for k in event_keys],
-        )
-
-
+    if not event_keys:
+        return
+    eng = _init(engine)
+    now = _now()
+    with eng.begin() as conn:
+        for key in event_keys:
+            conn.execute(
+                upsert(platform_seen_events_table)
+                .values(platform=platform, event_key=key, seen_at=now)
+                .on_conflict_do_nothing()
+            )

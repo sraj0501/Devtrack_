@@ -18,4 +18,5 @@ type: feedback
 - **CLI stays CLI/TUI.** Go binary never launches browser or serves HTML. Admin GUI is Python-side only.
 - **No hardcoded values.** Go: `config_env.go`. Python: `backend/config.py`. `os.getenv` banned outside `config.py`.
 - **No API keys/credentials in committed files.** Use `<placeholder>` in `.env_sample`. (Tokens were once committed to markdown — scrubbed from history.)
-- **Wiki GIFs only when feature works end-to-end.** VHS `.tape` files live in `wiki/tapes/` until verified.
+- **`docs/HTTP_API.md` is the client↔server boundary doc.** All new trigger types must go through HTTP, not legacy TCP IPC.
+- **Python deps use `uv` throughout — never `pip`.**
