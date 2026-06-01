@@ -395,7 +395,7 @@ func (d *Database) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_notifications_read    ON notifications(read);
 	CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
 
-	-- Alert state table: delta tracking for alert pollers (SQLite fallback when MongoDB unavailable)
+	-- Alert state table: delta tracking for alert pollers
 	CREATE TABLE IF NOT EXISTS alert_state (
 		id           TEXT PRIMARY KEY,  -- "<user_id>:<source>"
 		user_id      TEXT NOT NULL,
@@ -1651,6 +1651,87 @@ func scanWorkSessionRow(rows *sql.Rows) (*WorkSessionRecord, error) {
 	}
 	s.AutoStopped = autoStopped == 1
 	return &s, nil
+}
+
+// TriggerStats holds the trigger throughput snapshot served by GET /internal/stats.
+// Fields match what Python's stats_client.py expects.
+type TriggerStats struct {
+	TriggersToday int    `json:"triggers_today"`
+	CommitsToday  int    `json:"commits_today"`
+	LastTrigger   string `json:"last_trigger"` // "HH:MM" local time, or "—"
+	Errors24h     int    `json:"errors_24h"`
+}
+
+// GetTriggerStats returns a snapshot of today's trigger activity.
+// All queries degrade gracefully: missing table → zero values, no error.
+func (d *Database) GetTriggerStats() TriggerStats {
+	stats := TriggerStats{LastTrigger: "—"}
+
+	// triggers today (all types)
+	_ = d.db.QueryRow(
+		"SELECT COUNT(*) FROM triggers WHERE date(timestamp) = date('now')",
+	).Scan(&stats.TriggersToday)
+
+	// commit triggers today
+	_ = d.db.QueryRow(
+		"SELECT COUNT(*) FROM triggers WHERE trigger_type='commit' AND date(timestamp)=date('now')",
+	).Scan(&stats.CommitsToday)
+
+	// last trigger timestamp → HH:MM
+	var lastTS string
+	if d.db.QueryRow("SELECT timestamp FROM triggers ORDER BY timestamp DESC LIMIT 1").Scan(&lastTS) == nil && lastTS != "" {
+		for _, layout := range []string{"2006-01-02T15:04:05Z", "2006-01-02T15:04:05", "2006-01-02 15:04:05"} {
+			if t, err := time.Parse(layout, lastTS); err == nil {
+				stats.LastTrigger = t.Local().Format("15:04")
+				break
+			}
+		}
+	}
+
+	// unprocessed triggers older than 5 min and within last 24 h → errors
+	_ = d.db.QueryRow(`
+		SELECT COUNT(*) FROM triggers
+		WHERE processed = 0
+		  AND timestamp >= datetime('now','-24 hours')
+		  AND timestamp <= datetime('now','-5 minutes')
+	`).Scan(&stats.Errors24h)
+
+	return stats
+}
+
+// TicketSourceSummary holds cached ticket counts per PM source (github/azure/gitlab).
+type TicketSourceSummary struct {
+	Source   string
+	Count    int
+	LastSync time.Time
+}
+
+// GetTicketCacheSummary returns row counts and latest sync timestamps for each PM
+// connector table.  Tables absent from the database (pre-first-sync) are skipped.
+func (d *Database) GetTicketCacheSummary() []TicketSourceSummary {
+	type q struct{ source, sql string }
+	queries := []q{
+		{"github", "SELECT COUNT(*), COALESCE(MAX(synced_at),'') FROM github_issues"},
+		{"azure", "SELECT COUNT(*), COALESCE(MAX(synced_at),'') FROM azure_workitems"},
+		{"gitlab", "SELECT COUNT(*), COALESCE(MAX(synced_at),'') FROM gitlab_issues"},
+	}
+	var out []TicketSourceSummary
+	for _, qr := range queries {
+		var count int
+		var lastSync string
+		if err := d.db.QueryRow(qr.sql).Scan(&count, &lastSync); err != nil || count == 0 {
+			continue
+		}
+		s := TicketSourceSummary{Source: qr.source, Count: count}
+		for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02 15:04:05"} {
+			if t, err := time.Parse(layout, lastSync); err == nil {
+				s.LastSync = t
+				break
+			}
+		}
+		out = append(out, s)
+	}
+	return out
 }
 
 // splitJSONStringArray splits the inner content of a JSON string array

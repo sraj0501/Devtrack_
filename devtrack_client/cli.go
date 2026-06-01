@@ -25,7 +25,8 @@ func NewCLI() (*CLI, error) {
 			cmd == "reload-config" || cmd == "plan" || cmd == "boardroom" || cmd == "sage" ||
 			cmd == "azure-list" || cmd == "azure-sync" || cmd == "azure-view" ||
 			cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
-			cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" {
+			cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
+			cmd == "ticket-sync" {
 			return &CLI{}, nil
 		}
 	}
@@ -177,6 +178,8 @@ func (cli *CLI) Execute() error {
 		return cli.handleGitHubList()
 	case "github-sync":
 		return cli.handleGitHubSync()
+	case "ticket-sync":
+		return cli.handleTicketSync()
 	case "github-view":
 		return cli.handleGitHubView()
 	case "sage":

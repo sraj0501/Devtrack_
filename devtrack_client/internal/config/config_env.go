@@ -777,6 +777,31 @@ func GetIPCHost() string {
 	return "127.0.0.1"
 }
 
+// GetTicketSyncIntervalHours returns how often the background ticket sync runs.
+// Reads TICKET_SYNC_INTERVAL_HOURS; default 4.
+func GetTicketSyncIntervalHours() int {
+	val := os.Getenv("TICKET_SYNC_INTERVAL_HOURS")
+	if val == "" {
+		return 4
+	}
+	h, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || h <= 0 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid TICKET_SYNC_INTERVAL_HOURS %q — using default 4\n", val)
+		return 4
+	}
+	return h
+}
+
+// GetTicketSyncOnStart returns whether the daemon syncs tickets when it starts.
+// Reads TICKET_SYNC_ON_START; default true.
+func GetTicketSyncOnStart() bool {
+	val := strings.TrimSpace(strings.ToLower(os.Getenv("TICKET_SYNC_ON_START")))
+	if val == "" {
+		return true
+	}
+	return val == "true" || val == "1" || val == "yes"
+}
+
 // GetDevTrackServerHTTPPort returns the port the daemon exposes for its internal
 // HTTP control server (e.g. /internal/force-trigger).
 // Reads DEVTRACK_SERVER_HTTP_PORT; default 35894.

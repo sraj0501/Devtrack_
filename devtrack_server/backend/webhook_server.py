@@ -826,6 +826,70 @@ async def http_work_session_stop(
     return {"status": "ok", "session_id": session_id}
 
 
+@app.post("/trigger/ticket_sync")
+async def http_ticket_sync(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Receive a slim ticket list from the Go client and upsert into ticket_cache.
+
+    Go calls this after each github-sync / azure-sync / gitlab-sync (and on the
+    periodic background sync).  Python uses ticket_cache for fuzzy/semantic
+    matching during commit and timer triggers.
+
+    force=true  → drop all existing entries for the source (and repo if given)
+                  before inserting the fresh list.  Use for force-refresh.
+    force=false → upsert only: add new + update existing, keep stale entries.
+    """
+    data = await request.json()
+    source    = data.get("source", "")
+    workspace = data.get("workspace", "")
+    force     = bool(data.get("force", False))
+    synced_at = data.get("synced_at", "")
+    tickets   = data.get("tickets", [])
+
+    if not source:
+        return {"status": "error", "message": "source is required"}, 400
+
+    try:
+        from backend.db.ticket_db import TicketDB
+        with TicketDB.from_config() as db:
+            if force:
+                # Determine repos in the payload so we only drop what we're replacing.
+                repos = {t.get("repo", "") for t in tickets if t.get("repo")}
+                if repos:
+                    for repo in repos:
+                        deleted = db.clear_by_source(source, repo)
+                        logger.info(f"ticket_sync: force-cleared {deleted} rows for {source}:{repo}")
+                else:
+                    deleted = db.clear_by_source(source)
+                    logger.info(f"ticket_sync: force-cleared {deleted} rows for source={source}")
+
+            for ticket in tickets:
+                db.upsert_ticket({
+                    "id":          ticket.get("id", ""),
+                    "source":      source,
+                    "external_id": ticket.get("external_id", ""),
+                    "repo":        ticket.get("repo", ""),
+                    "title":       ticket.get("title", ""),
+                    "description": ticket.get("description", ""),
+                    "status":      ticket.get("status", ""),
+                    "assignee":    ticket.get("assignee", ""),
+                    "url":         ticket.get("url", ""),
+                    "synced_at":   synced_at,
+                })
+
+        logger.info(
+            f"ticket_sync: upserted {len(tickets)} tickets "
+            f"(source={source}, workspace={workspace}, force={force})"
+        )
+        return {"status": "ok", "upserted": len(tickets), "source": source}
+
+    except Exception as exc:
+        logger.error(f"ticket_sync: failed: {exc}")
+        return {"status": "error", "message": str(exc)}
+
+
 # ---------------------------------------------------------------------------
 # PM Agent — plan preview & create
 # ---------------------------------------------------------------------------

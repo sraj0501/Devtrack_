@@ -52,6 +52,8 @@ func LoadLLMConfig() LLMConfig {
 	if host == "" {
 		host = "http://localhost:11434"
 	}
+	host = normaliseOllamaHost(host)
+
 	model := os.Getenv("GIT_SAGE_DEFAULT_MODEL")
 	if model == "" {
 		model = os.Getenv("OLLAMA_MODEL")
@@ -60,6 +62,37 @@ func LoadLLMConfig() LLMConfig {
 		model = "llama3.2"
 	}
 	return LLMConfig{Host: host, Model: model, Provider: "ollama"}
+}
+
+// normaliseOllamaHost converts an Ollama bind-address (e.g. "0.0.0.0" or
+// "0.0.0.0:11434") to a connectable URL. Ollama exports OLLAMA_HOST as its
+// bind address, which is not directly usable as a client URL.
+func normaliseOllamaHost(host string) string {
+	// Already looks like a full URL — leave it alone.
+	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
+		// Replace 0.0.0.0 with 127.0.0.1 inside a full URL.
+		host = strings.Replace(host, "//0.0.0.0", "//127.0.0.1", 1)
+		return host
+	}
+
+	// Bare host or host:port — add scheme and replace the unroutable bind address.
+	if strings.HasPrefix(host, "0.0.0.0") {
+		host = "127.0.0.1" + host[7:] // keep :port if present
+	}
+
+	// Add scheme if missing.
+	if !strings.Contains(host, "://") {
+		host = "http://" + host
+	}
+
+	// Add default port if host has no port component.
+	// Simple heuristic: no colon after the scheme means no port.
+	withoutScheme := host[strings.Index(host, "://")+3:]
+	if !strings.Contains(withoutScheme, ":") {
+		host = host + ":11434"
+	}
+
+	return host
 }
 
 // Chat sends messages to the LLM and returns the complete response text.
@@ -215,6 +248,14 @@ func (cfg LLMConfig) chatOpenAI(messages []Message, jsonMode bool, maxTokens int
 		return "", fmt.Errorf("openai returned empty choices")
 	}
 	return strings.TrimSpace(result.Choices[0].Message.Content), nil
+}
+
+// PingURL returns the URL that Ping() checks.
+func (cfg LLMConfig) PingURL() string {
+	if cfg.Provider == "openai" || cfg.Provider == "groq" || cfg.Provider == "lmstudio" {
+		return strings.TrimRight(cfg.Host, "/") + "/models"
+	}
+	return strings.TrimRight(cfg.Host, "/") + "/api/tags"
 }
 
 // Ping checks whether the LLM provider is reachable.

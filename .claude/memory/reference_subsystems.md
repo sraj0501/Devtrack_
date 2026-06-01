@@ -18,4 +18,6 @@ Env: `GIT_SAGE_PROVIDER`, `GIT_SAGE_DEFAULT_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`
 
 ## Azure DevOps
 
-Required: `AZURE_DEVOPS_PAT`, `AZURE_ORGANIZATION`, `AZURE_PROJECT`. PAT scopes: `Work Items (Read & Write)`, `Code (Read)`. Config: `backend/config.py` → `azure_org()`, `azure_pat()`.
+Secret (.env only): `AZURE_DEVOPS_PAT`. PAT scopes: `Work Items (Read & Write)`, `Code (Read)`.
+All other config lives in **workspaces.yaml** per-workspace: `pm_org` (org name), `pm_project` (project name), `pm_username` (email for assignee filter), `pm_api_url` (ADO Server URL, blank = dev.azure.com).
+Server-side: `backend/config.py` → `azure_org()`, `azure_pat()` (for the Python AI pipeline; separate from the Go connector).

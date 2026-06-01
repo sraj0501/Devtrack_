@@ -207,7 +207,7 @@ func handleGitCommit(repoPath string, args []string, hooks *CommitHooks) error {
 	// (offline-first) rather than silently committing a plain message.
 	if !cfg.Ping() {
 		if f.dryRun {
-			fmt.Println("⚠️  AI provider unreachable — cannot preview an enhanced message.")
+			fmt.Printf("⚠️  AI provider unreachable (%s) — cannot preview an enhanced message.\n", cfg.PingURL())
 			return nil
 		}
 		return offlineCommitChoice(repoPath, f, hooks)
@@ -361,13 +361,14 @@ func queueForLater(repoPath, message string, hooks *CommitHooks) (done bool, err
 // offlineCommitChoice handles the LLM-unreachable path: let the user commit the
 // message as-is, queue the change for later enhancement, or abort.
 func offlineCommitChoice(repoPath string, f commitFlags, hooks *CommitHooks) error {
+	cfg := LoadConfig().LLM
 	// No message to enhance later or no queue hook / non-interactive: just commit.
 	if strings.TrimSpace(f.message) == "" || hooks == nil || hooks.QueueForLater == nil || !isInteractive() {
-		fmt.Println("⚠️  AI provider unreachable — committing with your message as-is.")
+		fmt.Printf("⚠️  AI provider unreachable (%s) — committing with your message as-is.\n", cfg.PingURL())
 		return commitWith(repoPath, f, f.message, hooks)
 	}
 
-	fmt.Println("⚠️  AI provider unreachable.")
+	fmt.Printf("⚠️  AI provider unreachable (%s).\n", cfg.PingURL())
 	fmt.Println("  [C]ommit as-is   [Q]ueue for AI enhancement later   [A]bort")
 	fmt.Print("Choice (C/Q/A): ")
 

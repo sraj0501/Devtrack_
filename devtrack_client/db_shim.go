@@ -22,6 +22,7 @@ type NotificationRecord = idb.NotificationRecord
 type VacationState = idb.VacationState
 type TicketCacheRecord = idb.TicketCacheRecord
 type PMUpdateQueueRecord = idb.PMUpdateQueueRecord
+type TicketSourceSummary = idb.TicketSourceSummary
 
 // ── Function forwards ─────────────────────────────────────────────────────────
 

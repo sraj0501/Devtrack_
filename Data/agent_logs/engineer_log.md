@@ -2,6 +2,72 @@
 
 ---
 
+### [2026-05-31 16:00] TASK-055 (follow-up) — chore: remove stale Python-era config, env vars, and help text
+
+**Original message**: "chore: remove stale Python-era config, env vars, and help text"
+**DevTrack enhanced it to**: N/A — devtrack binary not available in shell (env vars not sourced); raw git used
+**Ticket auto-linked**: NO
+**PM system updated**: YES — engineer_log.md updated; board note added under TASK-055
+**Time**: ~3 minutes
+**Friction**: LOW — clean dead-code removal; build/vet/test all green before commit
+**Notes**: Removed 5 stale functions (GetLearningPythonPath, GetLearningScriptPath, GetLearningDailyScriptPath, IsAzurePollerEnabled, IsGitLabPollerEnabled, IsSlackEnabled, GetHealthAutoRestartTelegram), fileExists helper, 3 EnvConfig struct fields, 5 .env vars (AZURE_POLL_ENABLED, GITLAB_POLL_ENABLED, LEARNING_PYTHON_PATH, LEARNING_SCRIPT_PATH, LEARNING_DAILY_SCRIPT_PATH) and their stale section headers; updated cli_info.go component list. 5 files changed, 8 insertions, 108 deletions.
+
+[DEVTRACK PAUSED — using raw git for this commit: devtrack binary requires sourced .env / running daemon; env not available in this shell session]
+
+---
+
+### [2026-05-31 18:00] housekeeping — chore: clean up .env_sample for client and server
+
+**Original message**: "chore: clean up .env_sample for client and server"
+**DevTrack enhanced it to**: N/A — devtrack daemon not running (env not sourced); raw git used
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md follow-up note added; engineer_log.md updated
+**Time**: ~3 minutes
+**Friction**: LOW — documentation-only changes; no build required
+**Notes**: devtrack_client/.env_sample: removed PYTHON_BRIDGE_SCRIPT, replaced 6 Python Telegram/Slack bot vars with TELEGRAM_CHAT_ID + SLACK_WEBHOOK_URL (native Go notifiers), updated section headings, bumped version to v3.0.0. devtrack_server/.env_sample: removed 3 LEARNING_*_PATH vars (server imports modules directly) and AZURE_POLL_ENABLED (wrong key — Python uses ALERT_AZURE_ENABLED), bumped version to v3.0.0. 2 files changed, 9 insertions, 18 deletions. Commit c74179f pushed to feat/client-server-decoupling.
+
+[DEVTRACK PAUSED — using raw git for this commit: devtrack binary requires sourced .env / running daemon; env not available in this shell session]
+
+---
+
+### [2026-05-31 19:00] housekeeping — chore(server): normalise .env_sample to single-# comments and literal values
+
+**Original message**: "chore(server): normalise .env_sample to single-# comments and literal values"
+**DevTrack enhanced it to**: N/A — devtrack daemon not running (env not sourced); raw git used
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md follow-up note added; engineer_log.md updated
+**Time**: ~2 minutes
+**Friction**: LOW — documentation-only change; no build required
+**Notes**: devtrack_server/.env_sample only. Converted all ## / ### section headers to # --------------- / # SECTION style (universally valid dotenv); unquoted EMAIL_SUBJECT and LEARNING_CRON_SCHEDULE; expanded ${VAR} interpolation in MONGODB_URI, REDIS_URL, POSTGRES_URL to literal defaults; re-added Telegram and Slack bot sections (live Python server modules). 1 file changed, 116 insertions, 37 deletions. Commit d4d9b5f pushed to feat/client-server-decoupling.
+
+[DEVTRACK PAUSED — using raw git for this commit: devtrack binary requires sourced .env / running daemon; env not available in this shell session]
+
+---
+
+### [2026-05-31 HH:MM] TASK-055 — Phase 2 native Go alert poller and notifiers
+
+**Original message**: "feat(alerts): Phase 2 — native Go alert poller and notifiers"
+**DevTrack enhanced it to**: N/A — devtrack daemon not running (env vars not sourced in CI shell); raw git used for this commit
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-055 marked COMPLETE
+**Time**: ~2 minutes
+**Friction**: MEDIUM — devtrack binary panics without sourced .env; had to fall back to raw git
+**Notes**: Build verified clean before commit (go build ./..., go vet ./..., go test ./... all pass). 17 files changed, 853 insertions, 327 deletions. 11 new files across internal/alerts and internal/notify packages.
+
+[DEVTRACK PAUSED — using raw git for this commit: devtrack binary requires sourced .env / running daemon; env not available in this shell session]
+
+## Task Summary — TASK-055: Client-Server Decoupling Phase 2 — native Go alert poller and notifiers — 2026-05-31
+
+- Total commits: 1
+- Acceptance criteria met: 6/6
+- Tickets auto-updated: 0 (devtrack not running)
+- Estimated daily time saved: ~15 min (no more Python subprocess management for alerts)
+- Blockers encountered: none
+- One thing that still feels rough: "devtrack git commit" requires a fully sourced .env to run — agent sessions in clean shells always fall back to raw git"
+- Ready for PM review: YES
+
+---
+
 ### [2026-05-27] TASK-A — Port PM Connectors to Go (GitHub Issue #137)
 
 **Branch**: `feature/go-client-standalone`

@@ -5,13 +5,30 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-// handleShellInit outputs shell integration code for eval "$(devtrack shell-init)"
-// This defines a git() function that transparently routes commit/history/messages
-// through DevTrack for monitored workspaces, passing everything else to real git.
+// handleShellInit outputs shell integration code appropriate for the requested shell.
+// Bash/zsh (default): eval "$(devtrack shell-init)"
+// PowerShell:         devtrack shell-init --powershell | Out-String | Invoke-Expression
 func (cli *CLI) handleShellInit() error {
+	args := os.Args[2:] // everything after "shell-init"
+	powershell := false
+	for _, a := range args {
+		if a == "--powershell" || a == "-ps" {
+			powershell = true
+		}
+	}
+
+	if powershell {
+		return cli.handleShellInitPowerShell()
+	}
+	return cli.handleShellInitBash()
+}
+
+// handleShellInitBash outputs the bash/zsh git() shim.
+func (cli *CLI) handleShellInitBash() error {
 	fmt.Print(`# DevTrack shell integration
 # Transparently routes git commands through DevTrack for monitored workspaces.
 # Add to ~/.zshrc or ~/.bashrc:
@@ -57,6 +74,63 @@ git() {
   fi
 
   command git "$@"
+}
+`)
+	return nil
+}
+
+// handleShellInitPowerShell outputs the PowerShell git function shim.
+// Usage: devtrack shell-init --powershell | Out-String | Invoke-Expression
+// Or add to $PROFILE: devtrack shell-init --powershell | Out-String | Invoke-Expression
+func (cli *CLI) handleShellInitPowerShell() error {
+	fmt.Print(`# DevTrack shell integration for PowerShell
+# Add to your PowerShell profile ($PROFILE):
+#   devtrack shell-init --powershell | Out-String | Invoke-Expression
+#
+# To find your profile path: echo $PROFILE
+# To edit it: notepad $PROFILE
+
+function git {
+    param([Parameter(ValueFromRemainingArguments)]$gitArgs)
+
+    # Honour explicit bypass: $env:GIT_NO_DEVTRACK = "1"
+    if ($env:GIT_NO_DEVTRACK -eq "1") {
+        & (Get-Command git -CommandType Application).Source @gitArgs
+        return
+    }
+
+    # Only intercept inside a git repo
+    $null = & (Get-Command git -CommandType Application).Source rev-parse --git-dir 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        & (Get-Command git -CommandType Application).Source @gitArgs
+        return
+    }
+
+    # Fast path: per-repo opt-in/out via git config
+    $dtEnabled = & (Get-Command git -CommandType Application).Source config --local devtrack.enabled 2>$null
+
+    # Explicit opt-out
+    if ($dtEnabled -eq "false") {
+        & (Get-Command git -CommandType Application).Source @gitArgs
+        return
+    }
+
+    # Slow path: check workspaces.yaml
+    if ([string]::IsNullOrEmpty($dtEnabled) -and (Get-Command devtrack -ErrorAction SilentlyContinue)) {
+        devtrack is-workspace 2>$null
+        if ($LASTEXITCODE -eq 0) { $dtEnabled = "true" }
+    }
+
+    if ($dtEnabled -eq "true" -and $gitArgs.Count -gt 0) {
+        switch ($gitArgs[0]) {
+            { $_ -in 'commit','history','messages','add' } {
+                devtrack git @gitArgs
+                return
+            }
+        }
+    }
+
+    & (Get-Command git -CommandType Application).Source @gitArgs
 }
 `)
 	return nil
@@ -109,11 +183,22 @@ func (cli *CLI) handleEnableGit() error {
 	fmt.Println("✓ DevTrack git integration enabled for this repo.")
 	fmt.Println("  git add, git commit, git history will now route through DevTrack.")
 	fmt.Println()
-	fmt.Println("  Shell integration required — add to ~/.zshrc or ~/.bashrc if not done yet:")
-	fmt.Println(`    eval "$(devtrack shell-init)"`)
-	fmt.Println()
-	fmt.Println("  If already set up, reload your shell function to pick up any updates:")
-	fmt.Println(`    eval "$(devtrack shell-init)"`)
+	if runtime.GOOS == "windows" {
+		fmt.Println("  Shell integration required — add to your PowerShell profile ($PROFILE):")
+		fmt.Println(`    devtrack shell-init --powershell | Out-String | Invoke-Expression`)
+		fmt.Println()
+		fmt.Println("  To find your profile path:  echo $PROFILE")
+		fmt.Println("  To reload without restarting: . $PROFILE")
+		fmt.Println()
+		fmt.Println("  Using Git Bash instead? Add to ~/.bashrc:")
+		fmt.Println(`    eval "$(devtrack shell-init)"`)
+	} else {
+		fmt.Println("  Shell integration required — add to ~/.zshrc or ~/.bashrc if not done yet:")
+		fmt.Println(`    eval "$(devtrack shell-init)"`)
+		fmt.Println()
+		fmt.Println("  If already set up, reload your shell function to pick up any updates:")
+		fmt.Println(`    eval "$(devtrack shell-init)"`)
+	}
 	fmt.Println()
 	fmt.Println("  To disable: devtrack disable-git")
 	return nil
