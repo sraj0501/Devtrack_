@@ -439,6 +439,62 @@ func (c *HTTPTriggerClient) deleteWithResult(path string, dest interface{}) erro
 	return nil
 }
 
+// NarrativeStage is one stage record within a NarrativeStory.
+type NarrativeStage struct {
+	Name       string   `json:"name"`
+	DurationMs *float64 `json:"duration_ms"`
+	Failed     bool     `json:"failed"`
+}
+
+// NarrativeStory is one completed request story from narrative.log.
+type NarrativeStory struct {
+	StoryID          string           `json:"story_id"`
+	Name             string           `json:"name"`
+	StartedAt        string           `json:"started_at"`
+	CompletedAt      string           `json:"completed_at"`
+	Success          bool             `json:"success"`
+	DurationMs       *float64         `json:"duration_ms"`
+	TotalStages      int              `json:"total_stages"`
+	CompletedStages  int              `json:"completed_stages"`
+	Stages           []NarrativeStage `json:"stages"`
+	Failure          map[string]any   `json:"failure"`
+}
+
+// NarrativeLastFailure is the FailureOccurred event returned by /narrative/last-failure.
+type NarrativeLastFailure struct {
+	StoryName   string `json:"story_name"`
+	StageName   string `json:"stage_name"`
+	ErrorType   string `json:"error_type"`
+	ErrorMsg    string `json:"error_message"`
+	Timestamp   string `json:"timestamp"`
+	LLMAnalysis string `json:"llm_analysis"`
+}
+
+// GetNarrativeRecent fetches the last n request stories from the server's narrative.log.
+func (c *HTTPTriggerClient) GetNarrativeRecent(n int) ([]NarrativeStory, error) {
+	var resp struct {
+		Stories []NarrativeStory `json:"stories"`
+	}
+	path := fmt.Sprintf("/narrative/recent?n=%d", n)
+	if err := c.getWithResult(path, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Stories, nil
+}
+
+// GetNarrativeLastFailure fetches the most recent FailureOccurred event from narrative.log.
+// Returns nil, nil when no failure has occurred.
+func (c *HTTPTriggerClient) GetNarrativeLastFailure() (*NarrativeLastFailure, error) {
+	var f NarrativeLastFailure
+	if err := c.getWithResult("/narrative/last-failure", &f); err != nil {
+		return nil, err
+	}
+	if f.StoryName == "" && f.StageName == "" {
+		return nil, nil // empty object — no failure recorded
+	}
+	return &f, nil
+}
+
 // textOutput is the standard response shape for commands that return text output.
 type textOutput struct {
 	Output  string `json:"output"`

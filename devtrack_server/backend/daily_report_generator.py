@@ -17,6 +17,14 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 
+try:
+    from runtime_narrative import stage as _stage
+except ImportError:
+    from contextlib import contextmanager as _cm
+    @_cm
+    def _stage(name):  # type: ignore[misc]
+        yield
+
 # Add paths for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -284,12 +292,14 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
             EnhancedReport with base data and optional AI insights
         """
         # Get base report from EmailReporter
-        base_report = self.email_reporter.generate_daily_report(date)
-        
+        with _stage("Gather report data"):
+            base_report = self.email_reporter.generate_daily_report(date)
+
         # Generate AI insights if requested and available
         ai_insights = None
         if include_ai and self.check_ollama_available():
-            ai_insights = self.generate_ai_insights(base_report)
+            with _stage("LLM insights"):
+                ai_insights = self.generate_ai_insights(base_report)
         
         return EnhancedReport(
             base_report=base_report,
@@ -1532,14 +1542,14 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         if subject is None:
             date_str = report.base_report.date.strftime('%B %d, %Y')
             subject = f"Daily Status Report - {date_str}"
-        
-        # Note: body formatting is handled by send_email_report
-        return await self.email_reporter.send_email_report(
-            recipient=recipient,
-            report=report.base_report,
-            subject=subject,
-            format='html' if output_format == OutputFormat.HTML else 'text'
-        )
+
+        with _stage(f"Email delivery → {recipient}"):
+            return await self.email_reporter.send_email_report(
+                recipient=recipient,
+                report=report.base_report,
+                subject=subject,
+                format='html' if output_format == OutputFormat.HTML else 'text'
+            )
     
     async def send_weekly_via_email(
         self,

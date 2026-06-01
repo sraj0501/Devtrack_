@@ -1,0 +1,67 @@
+{% if stories %}
+<table style="width:100%;border-collapse:collapse;font-size:12px">
+  <thead>
+    <tr style="border-bottom:1px solid var(--border)">
+      <th style="text-align:left;padding:6px 8px;color:var(--text-muted)">Endpoint</th>
+      <th style="text-align:left;padding:6px 8px;color:var(--text-muted)">Stages</th>
+      <th style="text-align:right;padding:6px 8px;color:var(--text-muted)">Total</th>
+      <th style="text-align:center;padding:6px 8px;color:var(--text-muted)">Result</th>
+      <th style="text-align:right;padding:6px 8px;color:var(--text-muted)">Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in stories %}
+    <tr style="border-bottom:1px solid var(--border);{% if not s.success %}background:rgba(248,113,113,0.05){% endif %}">
+      <td class="mono" style="padding:7px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        {{ s.name }}
+      </td>
+      <td style="padding:7px 8px">
+        {% for stage in s.stages %}
+          <span title="{{ stage.name }}{% if stage.duration_ms is not none %} — {{ '%.0f'|format(stage.duration_ms) }}ms{% endif %}"
+                style="display:inline-block;margin:1px 2px;padding:1px 6px;border-radius:3px;font-size:10px;
+                       background:{% if stage.failed %}rgba(248,113,113,0.2);color:#f87171{% else %}rgba(99,102,241,0.15);color:#a5b4fc{% endif %}">
+            {% if stage.name|length > 22 %}{{ stage.name[:20] }}…{% else %}{{ stage.name }}{% endif %}
+            {% if stage.duration_ms is not none and stage.duration_ms >= 500 %}
+              <span style="color:#fbbf24">{{ '%.0f'|format(stage.duration_ms) }}ms</span>
+            {% elif stage.failed %}✗{% endif %}
+          </span>
+        {% else %}
+          <span style="color:var(--text-muted)">—</span>
+        {% endfor %}
+      </td>
+      <td class="mono" style="padding:7px 8px;text-align:right;white-space:nowrap">
+        {% if s.duration_ms %}{{ '%.0f'|format(s.duration_ms) }}ms{% else %}—{% endif %}
+      </td>
+      <td style="padding:7px 8px;text-align:center">
+        {% if s.success %}
+          <span class="badge badge-green"><span class="dot"></span>ok</span>
+        {% else %}
+          <span class="badge badge-red"><span class="dot"></span>fail</span>
+        {% endif %}
+      </td>
+      <td class="mono" style="padding:7px 8px;text-align:right;color:var(--text-muted);font-size:11px">
+        {{ s.started_at[11:19] if s.started_at|length >= 19 else s.started_at }}
+      </td>
+    </tr>
+    {% if s.failure %}
+    <tr style="background:rgba(248,113,113,0.08)">
+      <td colspan="5" style="padding:5px 12px;font-size:11px;border-bottom:1px solid var(--border)">
+        <strong style="color:#f87171">{{ s.failure.stage_name }}</strong>
+        &nbsp;—&nbsp;
+        <span class="mono">{{ s.failure.error_type }}: {{ s.failure.error_message[:120] }}</span>
+        {% if s.failure.llm_analysis %}
+          <br><span style="color:#fbbf24;margin-top:3px;display:block">
+            LLM: {{ s.failure.llm_analysis[:250] }}
+          </span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="text-muted" style="padding:12px 0;font-size:13px">
+  No request stories yet — make a trigger call to populate the narrative log.
+</div>
+{% endif %}

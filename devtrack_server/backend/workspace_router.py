@@ -11,6 +11,14 @@ from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+try:
+    from runtime_narrative import stage as _stage
+except ImportError:
+    from contextlib import contextmanager as _cm
+    @_cm
+    def _stage(name):  # type: ignore[misc]
+        yield
+
 # Sentinel: (work_item_id, platform) tuple returned by route()
 RouteResult = Tuple[Optional[int], Optional[str]]
 
@@ -255,13 +263,13 @@ class WorkspaceRouter:
 
         # ---- Azure ----
         if platform == "azure":
-            try:
-                work_items = await client.get_my_work_items()
-                if not work_items:
-                    work_items = []
-            except Exception as e:
-                logger.error(f"Azure get_my_work_items failed: {e}")
-                return None, None
+            work_items = []
+            with _stage("Azure: fetch work items"):
+                try:
+                    work_items = await client.get_my_work_items() or []
+                except Exception as e:
+                    logger.error(f"Azure get_my_work_items failed: {e}")
+                    return None, None
 
             matched_item = None
             if task_matcher and work_items:
@@ -283,51 +291,53 @@ class WorkspaceRouter:
                 comment += f"\nAuthor: {author}"
 
             if matched_item:
-                try:
-                    await client.add_comment(matched_item.id, comment)
-                    logger.info(f"Azure: commented on work item #{matched_item.id}")
-                    if config and config.is_azure_auto_transition() and status in ("done", "completed", "closed"):
-                        done_state = "Done"
-                        try:
-                            done_state = config.get_azure_done_state()
-                        except Exception:
-                            pass
-                        await client.update_work_item_state(matched_item.id, done_state)
-                    return matched_item.id, "azure"
-                except Exception as e:
-                    logger.error(f"Azure comment/transition failed: {e}")
-                    return None, None
+                with _stage(f"Azure: comment on AB#{matched_item.id}"):
+                    try:
+                        await client.add_comment(matched_item.id, comment)
+                        logger.info(f"Azure: commented on work item #{matched_item.id}")
+                        if config and config.is_azure_auto_transition() and status in ("done", "completed", "closed"):
+                            done_state = "Done"
+                            try:
+                                done_state = config.get_azure_done_state()
+                            except Exception:
+                                pass
+                            await client.update_work_item_state(matched_item.id, done_state)
+                        return matched_item.id, "azure"
+                    except Exception as e:
+                        logger.error(f"Azure comment/transition failed: {e}")
+                        return None, None
             elif config and config.is_azure_create_on_no_match():
-                try:
-                    title = description[:120] if description else commit_msg[:120]
-                    new_item = await client.create_work_item(
-                        title=title,
-                        description=description,
-                        assigned_to=pm_assignee or None,
-                        area_path=pm_area_path or None,
-                        iteration_path=pm_iteration_path or None,
-                    )
-                    logger.info(f"Azure: created work item #{new_item.id}")
-                    return new_item.id, "azure"
-                except Exception as e:
-                    logger.error(f"Azure create work item failed: {e}")
-                    return None, None
+                with _stage("Azure: create work item"):
+                    try:
+                        title = description[:120] if description else commit_msg[:120]
+                        new_item = await client.create_work_item(
+                            title=title,
+                            description=description,
+                            assigned_to=pm_assignee or None,
+                            area_path=pm_area_path or None,
+                            iteration_path=pm_iteration_path or None,
+                        )
+                        logger.info(f"Azure: created work item #{new_item.id}")
+                        return new_item.id, "azure"
+                    except Exception as e:
+                        logger.error(f"Azure create work item failed: {e}")
+                        return None, None
             return None, None
 
         # ---- GitLab ----
         if platform == "gitlab":
-            try:
-                if project_id is None and config:
-                    try:
-                        project_id = config.get_gitlab_default_project_id()
-                    except Exception:
-                        pass
-                issues = await client.get_my_issues(project_id=project_id)
-                if not issues:
-                    issues = []
-            except Exception as e:
-                logger.error(f"GitLab get_my_issues failed: {e}")
-                return None, None
+            issues = []
+            with _stage("GitLab: fetch issues"):
+                try:
+                    if project_id is None and config:
+                        try:
+                            project_id = config.get_gitlab_default_project_id()
+                        except Exception:
+                            pass
+                    issues = await client.get_my_issues(project_id=project_id) or []
+                except Exception as e:
+                    logger.error(f"GitLab get_my_issues failed: {e}")
+                    return None, None
 
             matched_issue = None
             if task_matcher and issues:
@@ -355,56 +365,58 @@ class WorkspaceRouter:
                 if issue_project_id is None:
                     logger.warning("GitLab: no project_id for matched issue, skipping")
                     return None, None
-                try:
-                    await client.add_comment(issue_project_id, matched_issue.iid, comment)
-                    logger.info(f"GitLab: commented on issue #{matched_issue.iid}")
-                    if config and config.is_gitlab_auto_transition() and status in ("done", "completed", "closed"):
-                        await client.close_issue(issue_project_id, matched_issue.iid)
-                    return matched_issue.id, "gitlab"
-                except Exception as e:
-                    logger.error(f"GitLab comment/close failed: {e}")
-                    return None, None
+                with _stage(f"GitLab: comment on #{matched_issue.iid}"):
+                    try:
+                        await client.add_comment(issue_project_id, matched_issue.iid, comment)
+                        logger.info(f"GitLab: commented on issue #{matched_issue.iid}")
+                        if config and config.is_gitlab_auto_transition() and status in ("done", "completed", "closed"):
+                            await client.close_issue(issue_project_id, matched_issue.iid)
+                        return matched_issue.id, "gitlab"
+                    except Exception as e:
+                        logger.error(f"GitLab comment/close failed: {e}")
+                        return None, None
             elif config and config.is_gitlab_create_on_no_match():
                 if issue_project_id is None:
                     logger.warning("GitLab: no project_id for create-on-no-match, skipping")
                     return None, None
-                try:
-                    title = description[:120] if description else commit_msg[:120]
-                    gl_assignee_ids = None
-                    if pm_assignee:
-                        try:
-                            gl_assignee_ids = [int(pm_assignee)]
-                        except ValueError:
-                            logger.warning(f"GitLab pm_assignee={pm_assignee!r} is not an integer user ID, ignoring")
-                    gl_milestone_id = None
-                    if pm_milestone:
-                        try:
-                            gl_milestone_id = int(pm_milestone)
-                        except ValueError:
-                            logger.warning(f"GitLab pm_milestone={pm_milestone!r} is not an integer, ignoring")
-                    new_issue = await client.create_issue(
-                        issue_project_id,
-                        title=title,
-                        description=description,
-                        assignee_ids=gl_assignee_ids,
-                        milestone_id=gl_milestone_id,
-                    )
-                    logger.info(f"GitLab: created issue #{new_issue.iid}")
-                    return new_issue.id, "gitlab"
-                except Exception as e:
-                    logger.error(f"GitLab create issue failed: {e}")
-                    return None, None
+                with _stage("GitLab: create issue"):
+                    try:
+                        title = description[:120] if description else commit_msg[:120]
+                        gl_assignee_ids = None
+                        if pm_assignee:
+                            try:
+                                gl_assignee_ids = [int(pm_assignee)]
+                            except ValueError:
+                                logger.warning(f"GitLab pm_assignee={pm_assignee!r} is not an integer user ID, ignoring")
+                        gl_milestone_id = None
+                        if pm_milestone:
+                            try:
+                                gl_milestone_id = int(pm_milestone)
+                            except ValueError:
+                                logger.warning(f"GitLab pm_milestone={pm_milestone!r} is not an integer, ignoring")
+                        new_issue = await client.create_issue(
+                            issue_project_id,
+                            title=title,
+                            description=description,
+                            assignee_ids=gl_assignee_ids,
+                            milestone_id=gl_milestone_id,
+                        )
+                        logger.info(f"GitLab: created issue #{new_issue.iid}")
+                        return new_issue.id, "gitlab"
+                    except Exception as e:
+                        logger.error(f"GitLab create issue failed: {e}")
+                        return None, None
             return None, None
 
         # ---- GitHub ----
         if platform == "github":
-            try:
-                issues = await client.get_my_issues(state="open")
-                if not issues:
-                    issues = []
-            except Exception as e:
-                logger.error(f"GitHub get_my_issues failed: {e}")
-                return None, None
+            issues = []
+            with _stage("GitHub: fetch issues"):
+                try:
+                    issues = await client.get_my_issues(state="open") or []
+                except Exception as e:
+                    logger.error(f"GitHub get_my_issues failed: {e}")
+                    return None, None
 
             matched_issue = None
             if task_matcher and issues:
@@ -426,45 +438,47 @@ class WorkspaceRouter:
                 comment += f"\nAuthor: {author}"
 
             if matched_issue:
-                try:
-                    await client.add_comment(matched_issue.number, comment)
-                    logger.info(f"GitHub: commented on issue #{matched_issue.number}")
-                    if config and config.is_github_auto_transition() and status in ("done", "completed", "closed"):
-                        await client.close_issue(matched_issue.number)
-                    return matched_issue.number, "github"
-                except Exception as e:
-                    logger.error(f"GitHub comment/close failed: {e}")
-                    return None, None
+                with _stage(f"GitHub: comment on #{matched_issue.number}"):
+                    try:
+                        await client.add_comment(matched_issue.number, comment)
+                        logger.info(f"GitHub: commented on issue #{matched_issue.number}")
+                        if config and config.is_github_auto_transition() and status in ("done", "completed", "closed"):
+                            await client.close_issue(matched_issue.number)
+                        return matched_issue.number, "github"
+                    except Exception as e:
+                        logger.error(f"GitHub comment/close failed: {e}")
+                        return None, None
             elif config and config.is_github_create_on_no_match():
-                try:
-                    title = description[:120] if description else commit_msg[:120]
-                    labels = []
-                    if config:
-                        try:
-                            label = config.get_github_sync_label()
-                            if label:
-                                labels = [label]
-                        except Exception:
-                            pass
-                    gh_assignees = [pm_assignee] if pm_assignee else None
-                    gh_milestone = None
-                    if pm_milestone:
-                        try:
-                            gh_milestone = int(pm_milestone)
-                        except ValueError:
-                            logger.warning(f"GitHub pm_milestone={pm_milestone!r} is not an integer, ignoring")
-                    new_issue = await client.create_issue(
-                        title=title,
-                        body=description,
-                        labels=labels,
-                        assignees=gh_assignees,
-                        milestone=gh_milestone,
-                    )
-                    logger.info(f"GitHub: created issue #{new_issue.number}")
-                    return new_issue.number, "github"
-                except Exception as e:
-                    logger.error(f"GitHub create issue failed: {e}")
-                    return None, None
+                with _stage("GitHub: create issue"):
+                    try:
+                        title = description[:120] if description else commit_msg[:120]
+                        labels = []
+                        if config:
+                            try:
+                                label = config.get_github_sync_label()
+                                if label:
+                                    labels = [label]
+                            except Exception:
+                                pass
+                        gh_assignees = [pm_assignee] if pm_assignee else None
+                        gh_milestone = None
+                        if pm_milestone:
+                            try:
+                                gh_milestone = int(pm_milestone)
+                            except ValueError:
+                                logger.warning(f"GitHub pm_milestone={pm_milestone!r} is not an integer, ignoring")
+                        new_issue = await client.create_issue(
+                            title=title,
+                            body=description,
+                            labels=labels,
+                            assignees=gh_assignees,
+                            milestone=gh_milestone,
+                        )
+                        logger.info(f"GitHub: created issue #{new_issue.number}")
+                        return new_issue.number, "github"
+                    except Exception as e:
+                        logger.error(f"GitHub create issue failed: {e}")
+                        return None, None
             return None, None
 
         logger.warning(f"WorkspaceRouter: unhandled platform {platform!r}")

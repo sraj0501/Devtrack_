@@ -21,6 +21,14 @@ from backend.llm.base import LLMOptions, LLMProvider
 
 logger = logging.getLogger(__name__)
 
+try:
+    from runtime_narrative import stage as _stage
+except ImportError:
+    from contextlib import contextmanager as _cm
+    @_cm
+    def _stage(name):  # type: ignore[misc]
+        yield
+
 _provider_cache: Optional["ProviderChain"] = None
 
 
@@ -51,9 +59,16 @@ class ProviderChain:
             if not provider.is_available():
                 logger.debug(f"LLM provider '{provider.provider_name}' unavailable, skipping")
                 continue
-            result = provider.generate(prompt, options, timeout)
+            is_primary = provider is self._providers[0]
+            stage_name = (
+                f"LLM [{provider.provider_name}]"
+                if is_primary
+                else f"LLM fallback [{provider.provider_name}]"
+            )
+            with _stage(stage_name):
+                result = provider.generate(prompt, options, timeout)
             if result is not None:
-                if provider is not self._providers[0]:
+                if not is_primary:
                     logger.info(
                         f"Used fallback LLM provider: '{provider.provider_name}' "
                         f"(primary '{self._providers[0].provider_name}' failed)"

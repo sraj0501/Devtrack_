@@ -211,6 +211,78 @@ func (cli *CLI) handleSettings() error {
 	return nil
 }
 
+// handleNarrativeLogs fetches the last N request stories from narrative.log via the
+// server's /narrative/recent endpoint and pretty-prints them to stdout.
+func (cli *CLI) handleNarrativeLogs() error {
+	client := NewHTTPTriggerClient()
+	if !client.Ping() {
+		return fmt.Errorf("server unreachable — start the daemon first (devtrack start)")
+	}
+
+	n := 20
+	for i, arg := range os.Args[2:] {
+		if arg == "-n" && i+1 < len(os.Args[2:]) {
+			if v, err := fmt.Sscanf(os.Args[3+i], "%d", &n); v == 0 || err != nil {
+				n = 20
+			}
+		}
+	}
+
+	stories, err := client.GetNarrativeRecent(n)
+	if err != nil {
+		return fmt.Errorf("narrative: %w", err)
+	}
+	if len(stories) == 0 {
+		fmt.Println("No stories yet — make a trigger call to populate narrative.log.")
+		return nil
+	}
+
+	fmt.Printf("Last %d request stories from narrative.log:\n\n", len(stories))
+	for _, s := range stories {
+		status := "SUCCESS"
+		if !s.Success {
+			status = "FAILED "
+		}
+		dur := "—"
+		if s.DurationMs != nil {
+			dur = fmt.Sprintf("%.0fms", *s.DurationMs)
+		}
+		ts := s.StartedAt
+		if len(ts) >= 19 {
+			ts = ts[11:19]
+		}
+		fmt.Printf("  %s  %-40s  %6s  [%s]\n", status, s.Name, dur, ts)
+		for _, st := range s.Stages {
+			icon := "  ok"
+			if st.Failed {
+				icon = "FAIL"
+			}
+			sdur := ""
+			if st.DurationMs != nil {
+				sdur = fmt.Sprintf("  %.0fms", *st.DurationMs)
+			}
+			fmt.Printf("         %s  %s%s\n", icon, st.Name, sdur)
+		}
+		if s.Failure != nil {
+			errType, _ := s.Failure["error_type"].(string)
+			errMsg, _ := s.Failure["error_message"].(string)
+			stage, _ := s.Failure["stage_name"].(string)
+			if len(errMsg) > 100 {
+				errMsg = errMsg[:100] + "..."
+			}
+			fmt.Fprintf(os.Stderr, "         FAIL  %s — %s: %s\n", stage, errType, errMsg)
+			if llm, ok := s.Failure["llm_analysis"].(string); ok && llm != "" {
+				if len(llm) > 200 {
+					llm = llm[:200] + "..."
+				}
+				fmt.Fprintf(os.Stderr, "         LLM:  %s\n", llm)
+			}
+		}
+		fmt.Println()
+	}
+	return nil
+}
+
 // printUsage prints CLI usage information
 func (cli *CLI) printUsage() {
 	fmt.Println("DevTrack — developer automation: git monitoring, AI commits, PM sync")
@@ -360,11 +432,12 @@ func (cli *CLI) printUsage() {
 	fmt.Println("  devtrack autostart-status       Show auto-start status")
 	fmt.Println()
 	fmt.Println("INFO:")
-	fmt.Println("  devtrack status        Daemon, workspaces, and services")
-	fmt.Println("  devtrack version       Version and build info")
-	fmt.Println("  devtrack settings      Config paths and key env settings")
-	fmt.Println("  devtrack db-stats      Database statistics and recent activity")
-	fmt.Println("  devtrack help          This message")
+	fmt.Println("  devtrack status             Daemon, workspaces, services, last server failure")
+	fmt.Println("  devtrack narrative [-n N]   Last N request stories from server narrative.log")
+	fmt.Println("  devtrack version            Version and build info")
+	fmt.Println("  devtrack settings           Config paths and key env settings")
+	fmt.Println("  devtrack db-stats           Database statistics and recent activity")
+	fmt.Println("  devtrack help               This message")
 	fmt.Println()
 }
 

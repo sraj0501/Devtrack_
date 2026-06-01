@@ -45,6 +45,35 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
+# Inject current narrative story_id into every log record so that logger.*
+# output and narrative.log can be correlated by story_id.  The filter always
+# sets record.story_id so the formatter can safely reference %(story_id)s.
+class _NarrativeLogFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            from runtime_narrative.context import current_story as _cs
+            s = _cs.get(None)
+            record.story_id = str(s.story_id) if s else "-"
+        except Exception:
+            record.story_id = "-"
+        return True
+
+logging.getLogger().addFilter(_NarrativeLogFilter())
+
+# Formatter that includes story_id and supplies "-" when the attribute is
+# absent (e.g. on records from loggers that bypass the filter).
+class _NarrativeFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        if not hasattr(record, "story_id"):
+            record.story_id = "-"
+        return super().format(record)
+
+_narrative_fmt = _NarrativeFormatter(
+    "%(asctime)s - %(name)s - %(levelname)s - [%(story_id)s] %(message)s"
+)
+for _h in logging.getLogger().handlers:
+    _h.setFormatter(_narrative_fmt)
+
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
@@ -63,11 +92,84 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="DevTrack Webhooks", version="1.0", lifespan=lifespan)
 
 try:
-    from runtime_narrative import RuntimeNarrativeMiddleware
-    app.add_middleware(RuntimeNarrativeMiddleware)
-    logger.info("runtime-narrative middleware enabled for webhook server")
+    from runtime_narrative import RuntimeNarrativeMiddleware, JsonRenderer, OllamaFailureAnalyzer
+
+    # Log path: NARRATIVE_LOG_PATH > LOG_DIR/narrative.log
+    _narrative_log_dir = os.environ.get("LOG_DIR", "Data/logs")
+    os.makedirs(_narrative_log_dir, exist_ok=True)
+    _narrative_log_path = os.environ.get(
+        "NARRATIVE_LOG_PATH",
+        os.path.join(_narrative_log_dir, "narrative.log"),
+    )
+    _narrative_fh = open(_narrative_log_path, "a", encoding="utf-8")  # noqa: SIM115
+
+    # OllamaFailureAnalyzer: wire only when Ollama is reachable at startup.
+    # Uses GIT_SAGE_DEFAULT_MODEL (same model as git-sage) for consistency.
+    _failure_analyzer = None
+    _ollama_host = os.environ.get("OLLAMA_HOST", "").rstrip("/")
+    # OLLAMA_HOST=0.0.0.0 leaks from Ollama's own process into the shell env.
+    # Normalise to localhost so the ping and API calls actually work.
+    if _ollama_host in ("http://0.0.0.0", "0.0.0.0"):
+        _ollama_host = "http://localhost:11434"
+    if _ollama_host:
+        try:
+            import urllib.request as _ur
+            _ur.urlopen(f"{_ollama_host}/api/tags", timeout=2)
+            # Prefer a small fast model for failure analysis — gemma4/large
+            # models take >12s cold-start and will always time out.
+            # Override with NARRATIVE_FAILURE_MODEL in .env if needed.
+            _sage_model = (
+                os.environ.get("NARRATIVE_FAILURE_MODEL")
+                or os.environ.get("GIT_SAGE_DEFAULT_MODEL")
+                or os.environ.get("OLLAMA_MODEL", "llama3.2")
+            )
+            _timeout = float(os.environ.get("NARRATIVE_FAILURE_TIMEOUT_SECS", "30"))
+            _failure_analyzer = OllamaFailureAnalyzer(
+                model=_sage_model,
+                endpoint=f"{_ollama_host}/api/generate",
+                timeout_seconds=_timeout,
+            )
+            logger.info(
+                "runtime-narrative: OllamaFailureAnalyzer wired (model=%s, timeout=%.0fs)",
+                _sage_model, _timeout,
+            )
+        except Exception as _e:
+            logger.debug("runtime-narrative: OllamaFailureAnalyzer skipped — Ollama unreachable: %s", _e)
+
+    # Renderers: JsonRenderer always; ConsoleRenderer added in dev mode.
+    # Set NARRATIVE_RENDERER=console (requires PYTHONIOENCODING=utf-8 on Windows).
+    _renderers = [JsonRenderer(output=_narrative_fh)]
+    if os.environ.get("NARRATIVE_RENDERER") == "console":
+        from runtime_narrative.renderer.console import ConsoleRenderer as _CR
+        _renderers.append(_CR())
+
+    app.add_middleware(
+        RuntimeNarrativeMiddleware,
+        renderers=_renderers,
+        failure_analyzer=_failure_analyzer,
+    )
+    logger.info("runtime-narrative middleware enabled → %s", _narrative_log_path)
 except (ImportError, TypeError):
     pass
+
+# stage() and story_id helper — both fall back to no-ops if runtime_narrative absent.
+try:
+    from runtime_narrative import stage as _stage
+    from runtime_narrative.context import current_story as _current_story
+
+    def _story_id() -> str | None:
+        s = _current_story.get(None)
+        return str(s.story_id) if s else None
+
+except ImportError:
+    from contextlib import contextmanager as _cm
+
+    @_cm
+    def _stage(name):  # type: ignore[misc]
+        yield
+
+    def _story_id() -> None:  # type: ignore[misc]
+        return None
 
 # Optionally embed the admin console directly on this app (single-process mode).
 # Controlled by ADMIN_EMBED=true in .env.  When false (default) the admin app
@@ -214,52 +316,55 @@ class TriggerProcessor:
         actions: list[str] = []
 
         # Auto-link commit to active work session
-        if commit_hash:
-            try:
-                from backend.work_tracker.session_store import WorkSessionStore
-                store   = WorkSessionStore()
-                active  = store.get_active_session()
-                if active:
-                    store.append_commit(active["id"], commit_hash)
-                    actions.append(f"session_linked:{active['id']}")
-                    logger.info(f"📎 Commit {commit_hash[:12]} linked to session #{active['id']}")
-            except Exception as e:
-                logger.debug(f"Work session link failed (non-fatal): {e}")
+        with _stage("Link work session"):
+            if commit_hash:
+                try:
+                    from backend.work_tracker.session_store import WorkSessionStore
+                    store   = WorkSessionStore()
+                    active  = store.get_active_session()
+                    if active:
+                        store.append_commit(active["id"], commit_hash)
+                        actions.append(f"session_linked:{active['id']}")
+                        logger.info(f"📎 Commit {commit_hash[:12]} linked to session #{active['id']}")
+                except Exception as e:
+                    logger.debug(f"Work session link failed (non-fatal): {e}")
 
         # NLP parse
         task_data = None
-        if self.nlp_parser and commit_msg:
-            try:
-                task_data = self.nlp_parser.parse(commit_msg, repo_path=repo_path)
-            except Exception as e:
-                logger.warning(f"NLP parse failed: {e}")
+        with _stage("NLP parse"):
+            if self.nlp_parser and commit_msg:
+                try:
+                    task_data = self.nlp_parser.parse(commit_msg, repo_path=repo_path)
+                except Exception as e:
+                    logger.warning(f"NLP parse failed: {e}")
 
         # PM sync via workspace router
-        if task_data and self.workspace_router:
-            try:
-                self.workspace_router.route(
-                    pm_platform=pm_platform,
-                    description=task_data.get("description", commit_msg),
-                    ticket_id=task_data.get("ticket_id", ""),
-                    status=task_data.get("status", ""),
-                    pm_project=pm_project,
-                    pm_assignee=pm_assignee,
-                    pm_iteration_path=pm_iteration_path,
-                    pm_area_path=pm_area_path,
-                    pm_milestone=pm_milestone,
-                    commit_info={
-                        "hash": commit_hash,
-                        "message": commit_msg,
-                        "author": author,
-                        "branch": branch,
-                    },
-                )
-                actions.append(f"pm_sync:{pm_platform or 'auto'}")
-                logger.info(f"✓ PM sync complete (platform={pm_platform or 'auto'})")
-            except Exception as e:
-                logger.warning(f"PM sync failed: {e}")
+        with _stage("PM sync"):
+            if task_data and self.workspace_router:
+                try:
+                    self.workspace_router.route(
+                        pm_platform=pm_platform,
+                        description=task_data.get("description", commit_msg),
+                        ticket_id=task_data.get("ticket_id", ""),
+                        status=task_data.get("status", ""),
+                        pm_project=pm_project,
+                        pm_assignee=pm_assignee,
+                        pm_iteration_path=pm_iteration_path,
+                        pm_area_path=pm_area_path,
+                        pm_milestone=pm_milestone,
+                        commit_info={
+                            "hash": commit_hash,
+                            "message": commit_msg,
+                            "author": author,
+                            "branch": branch,
+                        },
+                    )
+                    actions.append(f"pm_sync:{pm_platform or 'auto'}")
+                    logger.info(f"✓ PM sync complete (platform={pm_platform or 'auto'})")
+                except Exception as e:
+                    logger.warning(f"PM sync failed: {e}")
 
-        return {"actions": actions, "commit_hash": commit_hash}
+        return {"actions": actions, "commit_hash": commit_hash, "narrative_id": _story_id()}
 
     # ------------------------------------------------------------------
     # Timer trigger
@@ -283,68 +388,72 @@ class TriggerProcessor:
         logger.info(f"[HTTP timer] trigger #{trigger_count} (every {interval_mins}m, workspace={workspace_name})")
 
         # Check vacation mode — auto-respond instead of nudging
-        try:
-            from backend.vacation.auto_responder import is_vacation_active, VacationAutoResponder
-            if is_vacation_active():
-                logger.info("[vacation mode] active — auto-generating work update")
-                import asyncio
-                responder = VacationAutoResponder()
-                result = asyncio.run(responder.handle(data))
-                logger.info(
-                    "[vacation mode] confidence=%.2f submitted=%s reason=%s",
-                    result.get("confidence", 0),
-                    result.get("submitted"),
-                    result.get("skipped_reason"),
-                )
-                return {
-                    "status": "vacation_auto",
-                    "trigger_count": trigger_count,
-                    "confidence": result.get("confidence", 0),
-                    "submitted": result.get("submitted", False),
-                    "skipped_reason": result.get("skipped_reason"),
-                }
-        except Exception as e:
-            logger.debug(f"Vacation auto-responder error (non-fatal): {e}")
+        with _stage("Check vacation mode"):
+            try:
+                from backend.vacation.auto_responder import is_vacation_active, VacationAutoResponder
+                if is_vacation_active():
+                    logger.info("[vacation mode] active — auto-generating work update")
+                    import asyncio
+                    responder = VacationAutoResponder()
+                    result = asyncio.run(responder.handle(data))
+                    logger.info(
+                        "[vacation mode] confidence=%.2f submitted=%s reason=%s",
+                        result.get("confidence", 0),
+                        result.get("submitted"),
+                        result.get("skipped_reason"),
+                    )
+                    return {
+                        "status": "vacation_auto",
+                        "trigger_count": trigger_count,
+                        "confidence": result.get("confidence", 0),
+                        "submitted": result.get("submitted", False),
+                        "skipped_reason": result.get("skipped_reason"),
+                    }
+            except Exception as e:
+                logger.debug(f"Vacation auto-responder error (non-fatal): {e}")
 
         # Check active work session
         active_session = None
-        try:
-            from backend.work_tracker.session_store import WorkSessionStore
-            active_session = WorkSessionStore().get_active_session()
-        except Exception as e:
-            logger.debug(f"Work session check failed: {e}")
+        with _stage("Check active session"):
+            try:
+                from backend.work_tracker.session_store import WorkSessionStore
+                active_session = WorkSessionStore().get_active_session()
+            except Exception as e:
+                logger.debug(f"Work session check failed: {e}")
 
         # Attempt Telegram nudge (non-fatal)
         telegram_sent = False
-        try:
-            from backend.telegram.notifier import send_work_reminder as _tg_reminder
-            _tg_reminder(
-                interval_mins=interval_mins,
-                trigger_count=trigger_count,
-                active_session=active_session,
-                pm_platform=pm_platform,
-                workspace_name=workspace_name,
-            )
-            telegram_sent = True
-            logger.info("✓ Work reminder sent via Telegram")
-        except Exception:
-            logger.debug("Telegram reminder unavailable (non-fatal)")
+        with _stage("Send Telegram reminder"):
+            try:
+                from backend.telegram.notifier import send_work_reminder as _tg_reminder
+                _tg_reminder(
+                    interval_mins=interval_mins,
+                    trigger_count=trigger_count,
+                    active_session=active_session,
+                    pm_platform=pm_platform,
+                    workspace_name=workspace_name,
+                )
+                telegram_sent = True
+                logger.info("✓ Work reminder sent via Telegram")
+            except Exception:
+                logger.debug("Telegram reminder unavailable (non-fatal)")
 
         # Attempt Slack nudge (non-fatal)
         slack_sent = False
-        try:
-            from backend.slack.notifier import send_work_reminder as _slack_reminder
-            slack_sent = _slack_reminder(
-                interval_mins=interval_mins,
-                trigger_count=trigger_count,
-                active_session=active_session,
-                pm_platform=pm_platform,
-                workspace_name=workspace_name,
-            )
-            if slack_sent:
-                logger.info("✓ Work reminder sent via Slack")
-        except Exception:
-            logger.debug("Slack reminder unavailable (non-fatal)")
+        with _stage("Send Slack reminder"):
+            try:
+                from backend.slack.notifier import send_work_reminder as _slack_reminder
+                slack_sent = _slack_reminder(
+                    interval_mins=interval_mins,
+                    trigger_count=trigger_count,
+                    active_session=active_session,
+                    pm_platform=pm_platform,
+                    workspace_name=workspace_name,
+                )
+                if slack_sent:
+                    logger.info("✓ Work reminder sent via Slack")
+            except Exception:
+                logger.debug("Slack reminder unavailable (non-fatal)")
 
         channels = []
         if telegram_sent:
@@ -357,6 +466,7 @@ class TriggerProcessor:
             "trigger_count": trigger_count,
             "prompt_channel": ",".join(channels) if channels else "none",
             "active_session": active_session is not None,
+            "narrative_id": _story_id(),
         }
 
 
@@ -525,6 +635,42 @@ async def handle_jira_webhook(request: Request) -> JSONResponse:
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "service": "devtrack-webhooks"}
+
+
+@app.get("/narrative/recent")
+async def narrative_recent(
+    _auth: None = Depends(_verify_trigger_key),
+    n: int = 20,
+) -> dict:
+    """Return the last n completed request stories from narrative.log.
+
+    Used by 'devtrack logs --narrative' and the admin UI panel.
+    """
+    try:
+        from backend.narrative_reader import get_recent_stories
+        stories = get_recent_stories(min(n, 100))
+        return {"stories": [s.to_dict() for s in stories]}
+    except Exception as exc:
+        logger.warning("narrative_recent: %s", exc)
+        return {"stories": []}
+
+
+@app.get("/narrative/last-failure")
+async def narrative_last_failure(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return the most recent FailureOccurred event from narrative.log.
+
+    Used by 'devtrack status' to surface the last known server failure.
+    Returns {} when no failure has been recorded.
+    """
+    try:
+        from backend.narrative_reader import get_last_failure
+        ev = get_last_failure()
+        return ev or {}
+    except Exception as exc:
+        logger.warning("narrative_last_failure: %s", exc)
+        return {}
 
 
 @app.get("/version")
@@ -849,13 +995,15 @@ async def http_ticket_sync(
     tickets   = data.get("tickets", [])
 
     if not source:
-        return {"status": "error", "message": "source is required"}, 400
+        raise HTTPException(status_code=400, detail="source is required")
 
-    try:
-        from backend.db.ticket_db import TicketDB
-        with TicketDB.from_config() as db:
-            if force:
-                # Determine repos in the payload so we only drop what we're replacing.
+    # Critical-path: exceptions propagate through _stage() so FailureOccurred
+    # fires in narrative.log with OllamaFailureAnalyzer diagnosis.
+    # Go handles non-2xx gracefully (logs + skips push, local cache intact).
+    from backend.db.ticket_db import TicketDB
+    with TicketDB.from_config() as db:
+        if force:
+            with _stage("Force clear cache"):
                 repos = {t.get("repo", "") for t in tickets if t.get("repo")}
                 if repos:
                     for repo in repos:
@@ -865,6 +1013,7 @@ async def http_ticket_sync(
                     deleted = db.clear_by_source(source)
                     logger.info(f"ticket_sync: force-cleared {deleted} rows for source={source}")
 
+        with _stage(f"Upsert {len(tickets)} {source} tickets"):
             for ticket in tickets:
                 db.upsert_ticket({
                     "id":          ticket.get("id", ""),
@@ -879,15 +1028,11 @@ async def http_ticket_sync(
                     "synced_at":   synced_at,
                 })
 
-        logger.info(
-            f"ticket_sync: upserted {len(tickets)} tickets "
-            f"(source={source}, workspace={workspace}, force={force})"
-        )
-        return {"status": "ok", "upserted": len(tickets), "source": source}
-
-    except Exception as exc:
-        logger.error(f"ticket_sync: failed: {exc}")
-        return {"status": "error", "message": str(exc)}
+    logger.info(
+        f"ticket_sync: upserted {len(tickets)} tickets "
+        f"(source={source}, workspace={workspace}, force={force})"
+    )
+    return {"status": "ok", "upserted": len(tickets), "source": source, "narrative_id": _story_id()}
 
 
 # ---------------------------------------------------------------------------
