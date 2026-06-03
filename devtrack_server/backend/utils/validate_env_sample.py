@@ -28,10 +28,10 @@ def parse_env_keys(env_sample_path: Path) -> set[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate .env_sample against requiredEnvVars in devtrack-bin/config_env.go")
+    parser = argparse.ArgumentParser(description="Validate .env_sample against requiredEnvVars in devtrack_client/config_env.go")
     parser.add_argument(
         "--config-env",
-        default="devtrack-bin/config_env.go",
+        default="devtrack_client/config_env.go",
         help="Path to config_env.go",
     )
     parser.add_argument(

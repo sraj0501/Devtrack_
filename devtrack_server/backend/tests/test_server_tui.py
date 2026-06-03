@@ -45,20 +45,20 @@ class TestProcessMonitorRefresh:
         }
         return proc
 
-    def test_refresh_matches_python_bridge(self):
-        """A process with 'python_bridge.py' in its cmdline should be detected."""
+    def test_refresh_matches_webhook_server(self):
+        """A process with 'webhook_server' in its cmdline should be detected."""
         from backend.server_tui.process_monitor import ProcessMonitor
 
         fake = self._make_fake_proc(
             pid=1234,
-            cmdline=["python3", "python_bridge.py"],
+            cmdline=["python3", "-m", "uvicorn", "backend.webhook_server:app"],
             status="sleeping",
         )
         with patch("psutil.process_iter", return_value=[fake]):
             mon = ProcessMonitor()
             mon.refresh()
 
-        info = mon.get("python_bridge")
+        info = mon.get("webhook_server")
         assert info is not None
         assert info.pid == 1234
         assert info.status == "sleeping"
@@ -121,7 +121,7 @@ class TestProcessMonitorRefresh:
         from backend.server_tui.process_monitor import ProcessMonitor
 
         good = self._make_fake_proc(
-            pid=200, cmdline=["python3", "python_bridge.py"], status="running"
+            pid=200, cmdline=["python3", "-m", "uvicorn", "backend.webhook_server:app"], status="running"
         )
         # bad_proc raises NoSuchProcess when .info is accessed
         bad_proc = MagicMock()
@@ -133,8 +133,8 @@ class TestProcessMonitorRefresh:
             mon = ProcessMonitor()
             mon.refresh()
 
-        # python_bridge was detected from the good process
-        assert mon.get("python_bridge").pid == 200
+        # webhook_server was detected from the good process
+        assert mon.get("webhook_server").pid == 200
 
 
 class TestProcessMonitorRestart:
@@ -145,7 +145,7 @@ class TestProcessMonitorRestart:
         from backend.server_tui.process_monitor import ProcessMonitor
 
         mon = ProcessMonitor()
-        info = mon.get("python_bridge")
+        info = mon.get("webhook_server")
         info.pid = 5678
 
         mock_proc = MagicMock()
@@ -153,14 +153,14 @@ class TestProcessMonitorRestart:
 
         with patch("psutil.Process", return_value=mock_proc) as mock_psutil_proc, \
              patch("subprocess.Popen") as mock_popen:
-            result = mon.restart("python_bridge")
+            result = mon.restart("webhook_server")
 
         assert result is True
         mock_psutil_proc.assert_called_once_with(5678)
         mock_proc.terminate.assert_called_once()
         mock_popen.assert_called_once()
         popen_args = mock_popen.call_args[0][0]
-        assert "python_bridge.py" in popen_args
+        assert any("webhook_server" in arg for arg in popen_args)
 
     def test_restart_no_pid_skips_kill_still_spawns(self):
         """When pid is None the kill step is skipped but Popen is still called."""
@@ -171,7 +171,7 @@ class TestProcessMonitorRestart:
 
         with patch("psutil.Process") as mock_psutil_proc, \
              patch("subprocess.Popen") as mock_popen:
-            result = mon.restart("python_bridge")
+            result = mon.restart("webhook_server")
 
         assert result is True
         mock_psutil_proc.assert_not_called()
@@ -194,7 +194,7 @@ class TestProcessMonitorRestart:
 
         mon = ProcessMonitor()
         with patch("subprocess.Popen", side_effect=OSError("spawn failed")):
-            result = mon.restart("python_bridge")
+            result = mon.restart("webhook_server")
 
         assert result is False
 
@@ -207,13 +207,13 @@ class TestProcessMonitorStop:
         from backend.server_tui.process_monitor import ProcessMonitor
 
         mon = ProcessMonitor()
-        mon.get("python_bridge").pid = 4321
+        mon.get("webhook_server").pid = 4321
 
         mock_proc = MagicMock()
         mock_proc.wait.return_value = None
 
         with patch("psutil.Process", return_value=mock_proc) as mock_psutil_proc:
-            result = mon.stop("python_bridge")
+            result = mon.stop("webhook_server")
 
         assert result is True
         mock_psutil_proc.assert_called_once_with(4321)
@@ -227,7 +227,7 @@ class TestProcessMonitorStop:
         # pid is None by default
 
         with patch("psutil.Process") as mock_psutil_proc:
-            result = mon.stop("python_bridge")
+            result = mon.stop("webhook_server")
 
         assert result is False
         mock_psutil_proc.assert_not_called()
@@ -245,10 +245,10 @@ class TestProcessMonitorStop:
         from backend.server_tui.process_monitor import ProcessMonitor
 
         mon = ProcessMonitor()
-        mon.get("python_bridge").pid = 9001
+        mon.get("webhook_server").pid = 9001
 
         with patch("psutil.Process", side_effect=psutil.NoSuchProcess(pid=9001)):
-            result = mon.stop("python_bridge")
+            result = mon.stop("webhook_server")
 
         assert result is False
 

@@ -21,7 +21,6 @@ def _log_dir() -> Optional[Path]:
 
 # Map display names → log file base names
 LOG_FILES: dict[str, str] = {
-    "python_bridge": "python_bridge.log",
     "webhook_server": "webhook_server.log",
     "telegram_bot":   "telegram.log",
     "alert_poller":   "alert_poller.log",

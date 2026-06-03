@@ -151,7 +151,7 @@ When `devtrack workspace enable/disable/add/remove` modifies `workspaces.yaml`, 
     {
         "title": "[Test] Integration tests for GitLab bidirectional sync",
         "body": """## Summary
-Write pytest tests for `backend/gitlab/client.py` and the GitLab sync path in `python_bridge.py`.
+Write pytest tests for `backend/gitlab/client.py` and the GitLab sync path in `backend/webhook_server.py`.
 
 ## Test Cases
 - [ ] `GitLabClient.is_configured()` returns False when env vars missing
@@ -173,7 +173,7 @@ Write pytest tests for `backend/gitlab/client.py` and the GitLab sync path in `p
     {
         "title": "[Test] Integration tests for GitHub bidirectional sync",
         "body": """## Summary
-Write pytest tests for `backend/github/client.py` and the GitHub sync path in `python_bridge.py`.
+Write pytest tests for `backend/github/client.py` and the GitHub sync path in `backend/webhook_server.py`.
 
 ## Test Cases
 - [ ] `GitHubClient.is_configured()` returns False when env vars missing
