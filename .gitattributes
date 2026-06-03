@@ -1,3 +1,6 @@
+# Line endings — shell scripts must always be LF so they run on Linux/macOS
+*.sh        text eol=lf
+
 # Files and directories excluded from git archive exports.
 # GitHub's auto-generated "Source code" zip/tar.gz respects these.
 

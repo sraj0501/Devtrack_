@@ -36,7 +36,7 @@ LICENSE_TIERS = {
 
 _TERMS_SUMMARY = """\
 ╔══════════════════════════════════════════════════════════════════╗
-║              DevTrack — Terms of Service v{version}                 ║
+║              DevTrack — Terms of Service v{version}              ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║                                                                  ║
 ║  LICENCE TIERS                                                   ║

@@ -74,6 +74,21 @@ _narrative_fmt = _NarrativeFormatter(
 for _h in logging.getLogger().handlers:
     _h.setFormatter(_narrative_fmt)
 
+# Passed to uvicorn.run() so it does not call dictConfig() and overwrite the
+# _NarrativeFormatter we just installed.  disable_existing_loggers=False keeps
+# all handlers intact.  uvicorn.access is set to CRITICAL to silence the
+# per-request "GET /path 200" lines — runtime-narrative covers all of that.
+_UVICORN_LOG_CONFIG: dict = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {},
+    "loggers": {
+        "uvicorn":        {"level": "WARNING", "propagate": True},
+        "uvicorn.error":  {"level": "WARNING", "propagate": True},
+        "uvicorn.access": {"level": "CRITICAL", "propagate": False},
+    },
+}
+
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
@@ -186,7 +201,11 @@ try:
         app.mount("/admin/static", StaticFiles(directory=str(_admin_static)), name="admin-static")
         logger.info("Admin console embedded on main webhook server at /admin")
 except Exception as _exc:
-    logger.warning("Admin embed skipped: %s", _exc)
+    logger.error(
+        "Admin embed FAILED — /admin will not be available. "
+        "Check SCRYPT_N/R/P/DKLEN, ADMIN_* vars in .env. Error: %s",
+        _exc, exc_info=True,
+    )
 
 _handler: WebhookEventHandler | None = None
 
@@ -1957,7 +1976,9 @@ def main() -> None:
         "backend.webhook_server:app",
         host=host,
         port=port,
-        log_level="info",
+        log_level="warning",
+        access_log=False,
+        log_config=_UVICORN_LOG_CONFIG,
         **ssl_kwargs,
     )
 

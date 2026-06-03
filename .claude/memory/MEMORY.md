@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-06-02_ | v3.0.0 | GitHub sole source of truth; devtrack.cloud live on Netlify
+_Last updated: 2026-06-04_ | v3.0.0 | GitHub sole source of truth; devtrack.cloud live on Netlify
 
 DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enriches with AI, routes to PM systems.
 
@@ -8,7 +8,7 @@ DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enri
 - [feedback_rules.md](feedback_rules.md) — Git/PR/commit rules, offline-first, CLI-only, no hardcoded values, GIT_NO_DEVTRACK, HTTP_API.md boundary, uv not pip
 
 ## Project State
-- [project_current_state.md](project_current_state.md) — v3.0.0; decoupling Phases 1+2 done; PG-1→PG-4 done; PG-5 + Redis next; ticket_sync shipped
+- [project_current_state.md](project_current_state.md) — v3.0.0; decoupling Phases 1+2 + runtime-narrative DONE; PG-5 + Redis next
 
 ## Project Context
 - [project_platform_modes.md](project_platform_modes.md) — Managed/Lightweight/External modes; Windows WSL2 dev; ARM64 .syso fix shipped
@@ -17,5 +17,5 @@ DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enri
 - [project_saas_license.md](project_saas_license.md) — License tiers, T&C, auth sessions; cloud server not yet built
 
 ## References
-- [reference_subsystems.md](reference_subsystems.md) — git-sage UX/config/Groq, RAG personalization, Azure DevOps (PAT in .env; org/project/username in workspaces.yaml)
+- [reference_subsystems.md](reference_subsystems.md) — gitsage (Go-native), RAG personalization, Azure DevOps connector config
 - [project_launch_strategy.md](project_launch_strategy.md) — Wedge, positioning rules, channel sequence, decision framework

@@ -33,11 +33,6 @@ class ProcessInfo:
 # `pattern` is matched against the full space-joined cmdline string.
 MANAGED_PROCESSES: list[dict] = [
     {
-        "name": "python_bridge",
-        "pattern": "python_bridge.py",
-        "restart_cmd": [sys.executable, "python_bridge.py"],
-    },
-    {
         "name": "webhook_server",
         "pattern": "webhook_server",
         "restart_cmd": [sys.executable, "-m", "uvicorn", "backend.webhook_server:app",
