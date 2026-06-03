@@ -63,7 +63,9 @@ def _find_project_root() -> Path:
 
 def get(key: str, default: Optional[str] = None) -> str:
     """Get a configuration value from the process environment."""
-    return os.getenv(key, default or "")
+    val = os.getenv(key, default or "")
+    # Strip CRLF (\r) that Windows-edited .env files can leave on values.
+    return val.strip() if val else val
 
 
 def get_int(key: str, default: int = 0) -> int:
