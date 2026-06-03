@@ -6,7 +6,7 @@ This module generates intelligent daily reports by combining:
 - AI-powered summaries using Ollama
 - TUI interactions for user feedback
 
-Integrates with python_bridge.py for end-of-day report generation.
+Used by the trigger processor for end-of-day report generation.
 """
 
 import os

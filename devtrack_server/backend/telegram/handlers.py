@@ -726,7 +726,6 @@ def _service_display_name(service: str) -> str:
     """Human-readable service name."""
     names = {
         "ipc": "Python IPC",
-        "python_bridge": "Python Bridge",
         "ollama": "Ollama",
         "azure_devops": "Azure DevOps",
         "webhook_server": "Webhook Server",

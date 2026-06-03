@@ -219,8 +219,7 @@ class TriggerProcessor:
 
     Used when DEVTRACK_SERVER_MODE=external — Go POSTs to /trigger/commit
     and /trigger/timer instead of sending over IPC.  Mirrors the component
-    initialization in DevTrackBridge (python_bridge.py) but without an IPC
-    connection.  All imports are lazy and guarded so missing deps degrade
+    All imports are lazy and guarded so missing deps degrade
     gracefully (Rule 0: everything still works locally too).
     """
 
