@@ -1,4 +1,12 @@
-# Line endings — shell scripts must always be LF so they run on Linux/macOS
+# Line endings — normalise all text files to LF in the repo, regardless of the
+# OS they were authored on. Prevents CRLF churn when moving between Windows/Linux.
+* text=auto eol=lf
+
+# Windows-only scripts genuinely require CRLF
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# Shell scripts must always be LF so they run on Linux/macOS
 *.sh        text eol=lf
 
 # Files and directories excluded from git archive exports.
