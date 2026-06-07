@@ -28,6 +28,8 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
+from sqlalchemy.engine import Engine
+
 from backend.models.backlog import (
     BacklogItem,
     ItemPriority,
@@ -55,6 +57,9 @@ _PRIORITY_ORDER = {
 
 class BacklogManager:
     """Manages backlog items and sprints for a project."""
+
+    def __init__(self, engine: Optional[Engine] = None) -> None:
+        self._engine = engine
 
     # ------------------------------------------------------------------
     # Backlog items
@@ -89,12 +94,12 @@ class BacklogManager:
             sprint_id=sprint_id,
             parent_id=parent_id,
         )
-        project_store.save_item(item.to_dict())
+        project_store.save_item(item.to_dict(), engine=self._engine)
         logger.info("BacklogManager: added item %s (%s) to project %s", item.id, item.title, project_id)
         return item
 
     def get_item(self, item_id: str) -> Optional[BacklogItem]:
-        row = project_store.load_item(item_id)
+        row = project_store.load_item(item_id, engine=self._engine)
         return BacklogItem.from_dict(row) if row else None
 
     def list_items(
@@ -110,6 +115,7 @@ class BacklogManager:
             status=status,
             sprint_id=sprint_id,
             item_type=item_type,
+            engine=self._engine,
         )
         items = [BacklogItem.from_dict(r) for r in rows]
         # Sort: critical → high → medium → low, then by created_at
@@ -120,7 +126,7 @@ class BacklogManager:
         return items
 
     def update_item(self, item_id: str, **changes) -> Optional[BacklogItem]:
-        row = project_store.load_item(item_id)
+        row = project_store.load_item(item_id, engine=self._engine)
         if not row:
             logger.warning("BacklogManager: item %s not found", item_id)
             return None
@@ -133,13 +139,13 @@ class BacklogManager:
                 val = _ENUM_FIELDS[key](val)
             setattr(item, key, val)
         item.updated_at = datetime.utcnow()
-        project_store.save_item(item.to_dict())
+        project_store.save_item(item.to_dict(), engine=self._engine)
         return item
 
     def delete_item(self, item_id: str) -> bool:
-        if not project_store.load_item(item_id):
+        if not project_store.load_item(item_id, engine=self._engine):
             return False
-        project_store.delete_item(item_id)
+        project_store.delete_item(item_id, engine=self._engine)
         return True
 
     def move_to_sprint(self, item_id: str, sprint_id: Optional[str]) -> bool:
@@ -222,12 +228,12 @@ class BacklogManager:
             end_date=end_date,
             capacity_points=capacity_points,
         )
-        project_store.save_sprint(sprint.to_dict())
+        project_store.save_sprint(sprint.to_dict(), engine=self._engine)
         logger.info("BacklogManager: created sprint %s (%s)", sprint.id, sprint.name)
         return sprint
 
     def get_sprint(self, sprint_id: str) -> Optional[Sprint]:
-        row = project_store.load_sprint(sprint_id)
+        row = project_store.load_sprint(sprint_id, engine=self._engine)
         return Sprint.from_dict(row) if row else None
 
     def list_sprints(
@@ -236,11 +242,11 @@ class BacklogManager:
         *,
         status: Optional[str] = None,
     ) -> List[Sprint]:
-        rows = project_store.load_sprints(project_id, status=status)
+        rows = project_store.load_sprints(project_id, status=status, engine=self._engine)
         return [Sprint.from_dict(r) for r in rows]
 
     def update_sprint(self, sprint_id: str, **changes) -> Optional[Sprint]:
-        row = project_store.load_sprint(sprint_id)
+        row = project_store.load_sprint(sprint_id, engine=self._engine)
         if not row:
             return None
         sprint = Sprint.from_dict(row)
@@ -251,7 +257,7 @@ class BacklogManager:
                 val = SprintStatus(val)
             setattr(sprint, key, val)
         sprint.updated_at = datetime.utcnow()
-        project_store.save_sprint(sprint.to_dict())
+        project_store.save_sprint(sprint.to_dict(), engine=self._engine)
         return sprint
 
     def close_sprint(self, sprint_id: str) -> Optional[Sprint]:
@@ -259,7 +265,7 @@ class BacklogManager:
         sprint = self.get_sprint(sprint_id)
         if not sprint:
             return None
-        completed = project_store.sprint_completed_points(sprint_id)
+        completed = project_store.sprint_completed_points(sprint_id, engine=self._engine)
         return self.update_sprint(
             sprint_id,
             status=SprintStatus.CLOSED.value,
@@ -267,9 +273,9 @@ class BacklogManager:
         )
 
     def delete_sprint(self, sprint_id: str) -> bool:
-        if not project_store.load_sprint(sprint_id):
+        if not project_store.load_sprint(sprint_id, engine=self._engine):
             return False
-        project_store.delete_sprint(sprint_id)
+        project_store.delete_sprint(sprint_id, engine=self._engine)
         return True
 
     def active_sprint(self, project_id: str) -> Optional[Sprint]:

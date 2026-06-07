@@ -7,46 +7,11 @@ so no persistent file is created or required.
 
 from __future__ import annotations
 
-import sqlite3
 from datetime import datetime, timezone
 from typing import Generator
-from unittest.mock import patch
 
 import pytest
-
-# ---------------------------------------------------------------------------
-# Helpers to bootstrap the schema in the in-memory DB
-# ---------------------------------------------------------------------------
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS ticket_cache (
-    id          TEXT PRIMARY KEY,
-    source      TEXT NOT NULL,
-    external_id TEXT NOT NULL,
-    repo        TEXT,
-    title       TEXT NOT NULL,
-    description TEXT,
-    status      TEXT,
-    assignee    TEXT,
-    labels      TEXT,
-    url         TEXT,
-    synced_at   DATETIME NOT NULL,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS pm_update_queue (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    ticket_id   TEXT NOT NULL,
-    action      TEXT NOT NULL,
-    payload     TEXT NOT NULL,
-    commit_hash TEXT,
-    status      TEXT DEFAULT 'pending',
-    attempts    INTEGER DEFAULT 0,
-    last_error  TEXT,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    sent_at     DATETIME
-);
-"""
+from sqlalchemy import create_engine
 
 
 # ---------------------------------------------------------------------------
@@ -54,47 +19,15 @@ CREATE TABLE IF NOT EXISTS pm_update_queue (
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
-def mem_db_path(tmp_path) -> Generator[str, None, None]:
-    """Create a temporary on-disk SQLite database with the ticket schema.
-
-    Using a real file (not ':memory:') avoids connection-sharing issues
-    between TicketDB and the setup connection.  The file is cleaned up by
-    pytest's tmp_path fixture.
-    """
-    db_file = str(tmp_path / "test_tickets.db")
-    conn = sqlite3.connect(db_file)
-    conn.executescript(_SCHEMA)
-    conn.commit()
-    conn.close()
-    yield db_file
-
-
-@pytest.fixture()
-def ticket_db(mem_db_path) -> Generator:
-    """Return a TicketDB instance pointed at the in-memory schema.
-
-    DATABASE_PATH is patched so TicketDB.from_config() uses our temp file.
-    """
-    # Patch backend.config.get to return our temp path for DATABASE_PATH
-    original_get = None
-
-    import backend.config as cfg
-
-    original_get = cfg.get
-
-    def patched_get(key: str, default=None) -> str:  # type: ignore[override]
-        if key == "DATABASE_PATH":
-            return mem_db_path
-        return original_get(key, default)
-
-    with patch("backend.config.get", side_effect=patched_get):
-        # Also patch database_path() to return the same path
-        from pathlib import Path
-        with patch("backend.config.database_path", return_value=Path(mem_db_path)):
-            from backend.db.ticket_db import TicketDB
-            db = TicketDB.from_config()
-            yield db
-            db.close()
+def ticket_db(tmp_path) -> Generator:
+    """Return a TicketDB instance backed by a fresh temp SQLite file."""
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'test_tickets.db'}",
+        connect_args={"check_same_thread": False},
+    )
+    from backend.db.ticket_db import TicketDB, _init
+    _init(engine)
+    yield TicketDB(engine=engine)
 
 
 # ---------------------------------------------------------------------------
