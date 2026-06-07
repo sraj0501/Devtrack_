@@ -1,14 +1,14 @@
 ---
 name: Agent system
-description: 6 global agents at ~/.claude/agents/; pm-config.md drives project-specific values
+description: Local project agents (archived); pm-config.md drives project-specific values
 type: project
 ---
 
-**Agents** at `~/.claude/agents/` (6): project-vision, engineer, git-agent, memory-compactor, post-generator, production-engineer.
-**pm-config:** `D:\git_apps\Devtrack_\.claude\pm-config.md`
+**Agents** at `.claude/agents/` (all archived in `_archive/`): devtrack-engineer, git-agent, memory-compactor, post-generator, project-vision.
+**pm-config:** `.claude/pm-config.md` drives project-specific values.
 
-**Rules:** project-vision always first (creates board task) → engineer (only when dispatched) → git-agent for push/PR (never commits). memory-compactor: Sunday 9:13am cron. post-generator: weekly engineer log → posts.
+**Rules when active:** project-vision first (creates board task) → engineer (only when dispatched) → git-agent for push/PR (never commits).
 
-**Runtime files** (gitignored): `Data/agent_logs/project_board.md`, `Data/agent_logs/engineer_log.md`.
+**Runtime files** (gitignored): `.claude/engineer_log.md`, `.claude/project_board.md`.
 
 **Bootstrap:** `/init` — generates CLAUDE.md + pm-config. Fill `vision.rules` + `posts.author` manually.
