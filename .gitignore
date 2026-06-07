@@ -28,6 +28,11 @@ Data/*
 !Data/agent_logs/
 !Data/agent_logs/**
 
+# devtrack_server runtime data (mirrors root Data/* pattern)
+devtrack_server/Data/*
+!devtrack_server/Data/agent_logs/
+!devtrack_server/Data/agent_logs/**
+
 # Local workspace config (contains machine-specific paths/tokens)
 workspaces.yaml
 
