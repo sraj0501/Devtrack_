@@ -4,15 +4,17 @@ Uses an in-memory (tmp) database so tests are hermetic and fast.
 """
 
 import pytest
-import tempfile
-import os
 from datetime import datetime
+from sqlalchemy import create_engine
 
 
 @pytest.fixture
 def db(tmp_path):
-    """Return a fresh temp database path for each test."""
-    return str(tmp_path / "test.db")
+    """Return a fresh SQLAlchemy engine backed by a temp SQLite file."""
+    return create_engine(
+        f"sqlite:///{tmp_path / 'test.db'}",
+        connect_args={"check_same_thread": False},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +176,7 @@ def test_load_items_filter_by_status(db_with_project):
     done = _item("i2", title="Done item")
     done["status"] = "done"
     save_item(done, db_with_project)
-    open_items = load_items("p1", status="open", db_path=db_with_project)
+    open_items = load_items("p1", status="open", engine=db_with_project)
     assert len(open_items) == 1
     assert open_items[0]["title"] == "Open item"
 
@@ -186,7 +188,7 @@ def test_load_items_unassigned_sprint(db_with_project):
     in_sprint = _item("i2", title="In sprint")
     in_sprint["sprint_id"] = "s1"
     save_item(in_sprint, db_with_project)
-    backlog = load_items("p1", sprint_id="", db_path=db_with_project)
+    backlog = load_items("p1", sprint_id="", engine=db_with_project)
     assert len(backlog) == 1
     assert backlog[0]["id"] == "i1"
 
@@ -245,7 +247,7 @@ def test_load_sprints_filter_status(db_with_project):
     s2 = _sprint("s2", name="Sprint 2")
     s2["status"] = "active"
     save_sprint(s2, db_with_project)
-    active = load_sprints("p1", status="active", db_path=db_with_project)
+    active = load_sprints("p1", status="active", engine=db_with_project)
     assert len(active) == 1
     assert active[0]["name"] == "Sprint 2"
 

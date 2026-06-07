@@ -123,11 +123,14 @@ _schema_done: bool = False
 def init_schema(engine: Optional[Engine] = None) -> None:
     """Create tables if they don't exist (idempotent)."""
     global _schema_done
-    if _schema_done:
-        return
-    eng = engine or get_engine()
-    metadata.create_all(eng, tables=[projects_table, sprints_table, backlog_items_table])
-    _schema_done = True
+    if engine is None:
+        if _schema_done:
+            return
+        eng = get_engine()
+        metadata.create_all(eng, tables=[projects_table, sprints_table, backlog_items_table])
+        _schema_done = True
+    else:
+        metadata.create_all(engine, tables=[projects_table, sprints_table, backlog_items_table])
     logger.debug("project_store: schema ready")
 
 

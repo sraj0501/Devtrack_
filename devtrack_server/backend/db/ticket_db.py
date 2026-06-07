@@ -54,8 +54,10 @@ _schema_done: bool = False
 def _init(engine: Optional[Engine] = None) -> Engine:
     global _schema_done
     eng = engine or get_engine()
-    if not _schema_done:
-        metadata.create_all(eng, tables=[ticket_cache_table, pm_update_queue_table])
+    if engine is None and _schema_done:
+        return eng
+    metadata.create_all(eng, tables=[ticket_cache_table, pm_update_queue_table])
+    if engine is None:
         _schema_done = True
     return eng
 
@@ -84,6 +86,9 @@ class TicketDB:
 
     def __exit__(self, *_) -> None:
         pass  # engine connections are managed per-operation
+
+    def close(self) -> None:
+        pass  # connections are managed per-operation; nothing to close
 
     # ------------------------------------------------------------------
     # ticket_cache
