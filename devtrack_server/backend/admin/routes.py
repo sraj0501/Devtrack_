@@ -80,22 +80,28 @@ def _ctx(request: Request, current_user: str, active: str, **extra) -> dict:
     return {"request": request, "current_user": current_user, "active": active, **extra}
 
 
-def _snapshot_ctx():
-    """Return a fresh server snapshot (non-blocking; errors are silenced)."""
+def _empty_snapshot():
+    from backend.admin.server_status import ServerSnapshot
     try:
-        return get_snapshot()
+        _wport = _get_webhook_port()
+    except ValueError:
+        _wport = 0
+    try:
+        _aport = _get_admin_port()
+    except ValueError:
+        _aport = 0
+    return ServerSnapshot(processes=[], services=[], llm_provider="—",
+                          llm_model="—", webhook_port=_wport, admin_port=_aport)
+
+
+async def _snapshot_ctx():
+    """Return a fresh server snapshot; runs blocking I/O in a thread executor."""
+    import asyncio
+    loop = asyncio.get_event_loop()
+    try:
+        return await loop.run_in_executor(None, get_snapshot)
     except Exception:
-        from backend.admin.server_status import ServerSnapshot
-        try:
-            _wport = _get_webhook_port()
-        except ValueError:
-            _wport = 0
-        try:
-            _aport = _get_admin_port()
-        except ValueError:
-            _aport = 0
-        return ServerSnapshot(processes=[], services=[], llm_provider="—",
-                              llm_model="—", webhook_port=_wport, admin_port=_aport)
+        return _empty_snapshot()
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +161,7 @@ def _trigger_stats_ctx():
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, current_user: str = Depends(require_auth)):
-    snapshot = _snapshot_ctx()
+    snapshot = await _snapshot_ctx()
     user_count = len(list_users())
     try:
         from backend.license_manager import detect_tier, get_tier_label
@@ -203,7 +209,7 @@ async def partial_stats(request: Request, current_user: str = Depends(require_au
 
 @router.get("/_partials/processes", response_class=HTMLResponse)
 async def partial_processes(request: Request, current_user: str = Depends(require_auth)):
-    snapshot = _snapshot_ctx()
+    snapshot = await _snapshot_ctx()
     return templates.TemplateResponse(
         "_proc_rows.html",
         {"request": request, "snapshot": snapshot},
@@ -240,7 +246,7 @@ async def process_restart(
                    ip=request.client.host if request.client else "")
     except Exception:
         pass
-    snapshot = _snapshot_ctx()
+    snapshot = await _snapshot_ctx()
     return templates.TemplateResponse("_proc_rows.html", {"request": request, "snapshot": snapshot})
 
 
@@ -256,7 +262,7 @@ async def process_stop(
                    ip=request.client.host if request.client else "")
     except Exception:
         pass
-    snapshot = _snapshot_ctx()
+    snapshot = await _snapshot_ctx()
     return templates.TemplateResponse("_proc_rows.html", {"request": request, "snapshot": snapshot})
 
 
@@ -272,7 +278,7 @@ async def process_start(
                    ip=request.client.host if request.client else "")
     except Exception:
         pass
-    snapshot = _snapshot_ctx()
+    snapshot = await _snapshot_ctx()
     return templates.TemplateResponse("_proc_rows.html", {"request": request, "snapshot": snapshot})
 
 
@@ -507,7 +513,7 @@ def _safe_license_email() -> str:
 
 @router.get("/server", response_class=HTMLResponse)
 async def server_page(request: Request, current_user: str = Depends(require_auth)):
-    snapshot = _snapshot_ctx()
+    snapshot = await _snapshot_ctx()
     from backend.config import (
         llm_provider, ollama_host, ollama_model, openai_model, anthropic_model, groq_model,
         azure_pat, get_github_token, get_gitlab_pat, jira_api_token, get_telegram_bot_token,
