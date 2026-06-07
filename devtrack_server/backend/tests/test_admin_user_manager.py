@@ -37,9 +37,9 @@ def tmp_admin_db(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 class TestInitDb:
-    def test_tables_created(self, tmp_admin_db):
+    def test_tables_created(self, tmp_admin_db, tmp_path):
         import sqlite3
-        db_path = tmp_admin_db._admin_db_path()
+        db_path = tmp_path / "admin.db"
         con = sqlite3.connect(str(db_path))
         tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
         con.close()
@@ -136,8 +136,8 @@ class TestUserCrud:
 
     def test_duplicate_username_raises(self, tmp_admin_db):
         tmp_admin_db.create_user("alice", "pass", "viewer")
-        import sqlite3
-        with pytest.raises(sqlite3.IntegrityError):
+        from sqlalchemy.exc import IntegrityError
+        with pytest.raises(IntegrityError):
             tmp_admin_db.create_user("alice", "pass2", "viewer")
 
 

@@ -157,7 +157,7 @@ class TestListPRsByAuthor:
     def test_returns_empty_when_github_auth_fails(self):
         from backend.github.pr_analyzer import PRAnalyzer
         analyzer = PRAnalyzer(token="ghp_bad", provider=_MockProvider())
-        with patch("github.Github", side_effect=Exception("Bad credentials")):
+        with patch("backend.github.pr_analyzer._Github", side_effect=Exception("Bad credentials")):
             result = analyzer.list_prs_by_author("alice", owner="org", repo_name="repo")
         assert result == []
 
@@ -168,7 +168,7 @@ class TestListPRsByAuthor:
         mock_g = MagicMock()
         mock_g.get_repo.side_effect = Exception("Not Found")
 
-        with patch("github.Github") as mock_gh_cls, patch("github.Auth.Token"):
+        with patch("backend.github.pr_analyzer._Github") as mock_gh_cls, patch("backend.github.pr_analyzer._GithubAuth"):
             mock_gh_cls.return_value = mock_g
             result = analyzer.list_prs_by_author("alice", owner="org", repo_name="repo")
 
@@ -187,7 +187,7 @@ class TestListPRsByAuthor:
         mock_g = MagicMock()
         mock_g.get_repo.return_value = mock_repo
 
-        with patch("github.Github") as mock_gh_cls, patch("github.Auth.Token"):
+        with patch("backend.github.pr_analyzer._Github") as mock_gh_cls, patch("backend.github.pr_analyzer._GithubAuth"):
             mock_gh_cls.return_value = mock_g
             results = analyzer.list_prs_by_author("alice", owner="org", repo_name="repo")
 
@@ -206,7 +206,7 @@ class TestListPRsByAuthor:
         mock_g = MagicMock()
         mock_g.get_repo.return_value = mock_repo
 
-        with patch("github.Github") as mock_gh_cls, patch("github.Auth.Token"):
+        with patch("backend.github.pr_analyzer._Github") as mock_gh_cls, patch("backend.github.pr_analyzer._GithubAuth"):
             mock_gh_cls.return_value = mock_g
             results = analyzer.list_prs_by_author("alice", owner="org", repo_name="repo", state="merged")
 
@@ -225,7 +225,7 @@ class TestListPRsByAuthor:
         mock_g = MagicMock()
         mock_g.get_repo.return_value = mock_repo
 
-        with patch("github.Github") as mock_gh_cls, patch("github.Auth.Token"):
+        with patch("backend.github.pr_analyzer._Github") as mock_gh_cls, patch("backend.github.pr_analyzer._GithubAuth"):
             mock_gh_cls.return_value = mock_g
             results = analyzer.list_prs_by_author("alice", owner="org", repo_name="repo", max_results=3)
 
@@ -235,7 +235,7 @@ class TestListPRsByAuthor:
         from backend.github.pr_analyzer import PRAnalyzer
         analyzer = PRAnalyzer(token="ghp_test", provider=_MockProvider())
 
-        with patch("github.Github"), patch("github.Auth.Token"):
+        with patch("backend.github.pr_analyzer._Github"), patch("backend.github.pr_analyzer._GithubAuth"):
             with patch.object(analyzer, "_default_owner_repo", return_value=("", "")):
                 result = analyzer.list_prs_by_author("alice")
 

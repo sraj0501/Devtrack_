@@ -168,3 +168,5 @@ def _query_sqlite(path: Path) -> TriggerStats:
         last_trigger=last_trigger,
         errors_24h=errors_24h,
     )
+
+_query_stats = _query_sqlite  # backwards-compatible alias used by tests

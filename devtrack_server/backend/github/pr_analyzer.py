@@ -16,6 +16,14 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+# Module-level imports of PyGithub so tests can patch them via
+# backend.github.pr_analyzer._Github / _GithubAuth.
+try:
+    from github import Auth as _GithubAuth, Github as _Github
+except (ImportError, AttributeError):
+    _Github = None  # type: ignore[assignment]
+    _GithubAuth = None  # type: ignore[assignment]
+
 
 @dataclass
 class PRSummary:
@@ -66,10 +74,11 @@ class PRAnalyzer:
 
     def _get_github(self):
         """Return an authenticated Github client, or raise if no token."""
-        from github import Auth, Github
+        if _Github is None:
+            raise RuntimeError("PyGithub is not installed")
         if not self._token:
             raise ValueError("GITHUB_TOKEN is required for PR analysis")
-        return Github(auth=Auth.Token(self._token))
+        return _Github(auth=_GithubAuth.Token(self._token))
 
     def _default_owner_repo(self) -> tuple:
         """Read GITHUB_OWNER and GITHUB_REPO from config."""

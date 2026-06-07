@@ -33,3 +33,18 @@ def pytest_configure(config):
     pass
 
 
+@pytest.fixture(autouse=True)
+def _runtime_narrative_story():
+    """Wrap every test in a runtime_narrative story() context.
+
+    stage() calls in production code require an active story context.
+    Falls back to a plain yield when runtime_narrative is not installed.
+    """
+    try:
+        from runtime_narrative import story
+        with story("pytest"):
+            yield
+    except ImportError:
+        yield
+
+

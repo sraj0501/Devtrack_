@@ -125,14 +125,16 @@ class TestProjectManager:
     def isolate_db(self, monkeypatch, tmp_path):
         """Point DATABASE_DIR at a fresh temp directory for every test.
 
-        ProjectManager._load_from_db() calls config.database_path() at
-        instantiation time, which reads DATABASE_DIR from the environment.
-        Without isolation the tests share the real devtrack.db and
-        find_related_projects returns stale rows from prior runs, causing
-        non-deterministic failures when max_results=5 is exhausted by
-        previously-created WEB_APP projects.
+        Must also reset the global engine singleton and _schema_done flag so
+        that the next get_engine() call creates a new SQLite file in tmp_path
+        rather than reusing the cached engine from a previous test.
         """
+        from backend.db.engine import reset_engine
         monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+        monkeypatch.setattr("backend.db.project_store._schema_done", False)
+        reset_engine()
+        yield
+        reset_engine()
 
     def test_manager_creation(self):
         """Test creating a ProjectManager"""
