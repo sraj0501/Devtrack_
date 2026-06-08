@@ -126,12 +126,13 @@ func RunUpgrade(checkOnly bool) error {
 	return nil
 }
 
-// platformAssetName returns the archive filename for the current OS/arch.
+// platformAssetName returns the asset filename for the current OS/arch.
+// Windows downloads the .exe directly to avoid zip extraction issues.
 func platformAssetName() string {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 	if goos == "windows" {
-		return fmt.Sprintf("devtrack_%s_%s.zip", goos, goarch)
+		return fmt.Sprintf("devtrack_%s_%s.exe", goos, goarch)
 	}
 	return fmt.Sprintf("devtrack_%s_%s.tar.gz", goos, goarch)
 }
@@ -231,6 +232,9 @@ func downloadBinary(url, assetName string) (string, error) {
 		return "", fmt.Errorf("read body: %w", err)
 	}
 
+	if strings.HasSuffix(assetName, ".exe") {
+		return writeTempBinary(bytes.NewReader(body))
+	}
 	if strings.HasSuffix(assetName, ".zip") {
 		return extractFromZip(body)
 	}
