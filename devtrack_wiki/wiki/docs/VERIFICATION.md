@@ -77,7 +77,7 @@ devtrack stop
 
 | Script | Purpose |
 |-------|---------|
-| `scripts/verify_setup.sh` | Verify .env, uv sync, spaCy, Go build |
+| `scripts/verify_setup.sh` | Verify .env, uv sync, LLM connectivity, Go build |
 | `scripts/test_commit_enhancer.sh` | Test commit message enhancer with staged changes (run in normal terminal; may fail in restricted sandbox due to .git writes) |
 | `scripts/test_commit_flow.sh` | Test full daemon + commit detection flow |
 | `scripts/test_force_trigger.sh` | Test force-trigger (SIGUSR2 → daemon → Python) |

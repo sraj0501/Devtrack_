@@ -76,7 +76,7 @@ SQLite (local)              Microsoft Graph (Teams/Email)
 | `devtrack` binary | Go | Daemon, git monitor, scheduler, CLI, git-sage |
 | `devtrack_server` | Python | AI pipeline, admin GUI, PM integrations |
 
-**The binary works standalone** — no server required. It runs git monitoring, git-sage, commit enhancement (via local Ollama), and all CLI commands. The server unlocks richer features: boardroom, spaCy NLP, admin web UI, and full PM integrations.
+**The binary works standalone** — no server required. It runs git monitoring, git-sage, commit enhancement (via local Ollama), and all CLI commands. The server unlocks richer features: boardroom, LLM-enhanced NLP, admin web UI, and full PM integrations.
 
 ---
 
@@ -166,7 +166,7 @@ devtrack force-trigger
 **A:** No. All data stays on your machine. Ollama runs locally. If you configure OpenAI or Anthropic, only AI requests go to those services — never your raw commit messages or personal context.
 
 ### Q: Do I need the server to use DevTrack?
-**A:** No. The `devtrack` binary works fully standalone. The server (`devtrack_server`) is optional — it unlocks the boardroom feature, spaCy NLP, the admin web UI, and the full PM integrations.
+**A:** No. The `devtrack` binary works fully standalone. The server (`devtrack_server`) is optional — it unlocks the boardroom feature, LLM-enhanced NLP, the admin web UI, and the full PM integrations.
 
 ### Q: Can I use DevTrack with multiple Git repositories?
 **A:** Yes. Set `DEVTRACK_WORKSPACE` to a parent directory containing multiple repos, or run multiple daemon instances with different `.env` files.

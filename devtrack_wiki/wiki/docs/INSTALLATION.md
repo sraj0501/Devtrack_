@@ -191,7 +191,7 @@ DevTrack server has two dependency tiers:
 | Tier | Command | What it includes |
 |---|---|---|
 | **Core** (always required) | `uv sync` | FastAPI, LLM providers, PM integrations |
-| **AI** (optional) | `uv sync --extra ai` | spaCy NLP, ChromaDB RAG, semantic matching |
+| **AI** (optional) | `uv sync --extra ai` | ChromaDB RAG for personalization, semantic matching |
 
 ```bash
 # Install uv if not already installed
@@ -200,11 +200,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Core (required)
 uv sync
 
-# AI tier (optional — adds NLP parsing, semantic matching)
+# AI tier (optional — adds ChromaDB RAG for personalization)
 uv sync --extra ai
-
-# If AI tier installed, download spaCy model
-uv run python -m spacy download en_core_web_sm
 ```
 
 ### Step 3: Configure Server URL in Client .env
@@ -297,7 +294,7 @@ in your client `.env`.
 - [ ] `.env` has all required variables set
 - [ ] `Data/` directory created under your project root
 - [ ] Ollama running (optional): `curl http://localhost:11434/api/tags`
-- [ ] NLP works (optional, AI tier): `uv run python -c "import spacy; spacy.load('en_core_web_sm'); print('OK')"`
+- [ ] RAG works (optional, AI tier): `uv run python -c "import chromadb; print('OK')"`
 
 ---
 
@@ -329,11 +326,11 @@ IPC_PORT=35894
 devtrack stop && devtrack start
 ```
 
-### "spaCy model not found" (server)
+### "ChromaDB not found" (server, AI tier)
 
 ```bash
 cd devtrack_server
-uv run python -m spacy download en_core_web_sm
+uv sync --extra ai
 ```
 
 ### "Ollama not running"

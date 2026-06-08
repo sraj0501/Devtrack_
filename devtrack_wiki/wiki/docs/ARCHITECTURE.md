@@ -29,7 +29,7 @@ flowchart TD
 
     subgraph Backend ["🟢 Python Backend — devtrack_server/backend/"]
         WS["FastAPI :8089\nwebhook_server.py"]
-        NLP["NLP Parser\nspaCy"]
+        NLP["NLP Parser\nLLM-first · regex fallback"]
         LLM["LLM Providers\nOllama · OpenAI · Anthropic"]
         TUI["Terminal UI\nwork prompts"]
         RPT["Reports\ndaily · HTML · email"]
@@ -103,7 +103,7 @@ The smart processing engine that handles AI, NLP, and integrations.
 
 | Module | Purpose |
 |--------|---------|
-| **backend/nlp_parser.py** | spaCy-based NLP for commit/user text → structured task data |
+| **backend/nlp_parser.py** | LLM-first NLP for commit/user text → structured task data; pure-regex fallback when LLM unavailable |
 | **backend/description_enhancer.py** | Ollama-based description enhancement and categorization |
 | **backend/llm/provider_factory.py** | Multi-provider LLM abstraction with fallback chain |
 | **backend/llm/ollama_provider.py** | Local Ollama integration |
@@ -181,7 +181,7 @@ flowchart TD
     C --> D["HTTPS POST /trigger/commit"]
     D --> E["webhook_server.py"]
     E --> F["Extract hash · message · diff\nGet git context — branch, PR, recent commits"]
-    F --> G["NLP parse with spaCy\nrepo_path support"]
+    F --> G["NLP parse (LLM-first, regex fallback)\nrepo_path support"]
     G --> H["AI enhancement\nOllama / OpenAI / Anthropic"]
     H --> I["Send task_update to PM"]
     I --> J["Log completion in SQLite"]
@@ -210,7 +210,7 @@ flowchart TD
 flowchart TD
     A(["💬 User prompt\n'Working on PR 123 — fixed auth, 2h'"]) --> B
 
-    B["NLP Parser — spaCy\nTokenize · POS tag · entity extraction\ntask refs · time · action detection"]
+    B["NLP Parser — LLM-first\nStructured JSON extraction via LLM\ntask refs · time · action · status detection\nPure-regex fallback when LLM unavailable"]
     B --> C["Work Update Enhancer\nGit context: branch · recent commits\nAuto-detect PR/issue from branch"]
     C --> D["AI Description Enhancer\nClarify · categorize · add technical context"]
     D --> E["Task Matcher\nFuzzy + semantic similarity\nVerify against PM system"]
@@ -400,9 +400,7 @@ Each message must end with a newline (`\n`).
 - `atlassian-python-api` - Jira API
 - `msgraph-core` - Microsoft Graph SDK
 
-**AI tier** (`uv sync --extra ai` — optional, adds NLP/ML):
-- `spacy[en_core_web_sm]` - NLP and entity extraction
-- `sentence-transformers` - Semantic task matching
+**AI tier** (`uv sync --extra ai` — optional, adds RAG/ML):
 - `chromadb` - RAG vector store for personalization
 
 ---

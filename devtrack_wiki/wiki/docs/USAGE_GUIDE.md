@@ -10,7 +10,7 @@ Once DevTrack is installed and running, it automatically tracks your coding acti
 DevTrack monitors your Git activity in real-time. Whenever you **commit code**, the daemon:
 
 1. **Detects the commit** (via fsnotify - instant detection)
-2. **Parses the commit message** with NLP (spaCy)
+2. **Parses the commit message** with NLP (LLM-first, regex fallback)
 3. **Extracts task information**:
    - Ticket IDs (#123, PROJ-456, etc.)
    - Action verbs (fixed, implemented, started, etc.)
@@ -282,12 +282,12 @@ grep "Git repository" ~/.devtrack/daemon.log
 
 ### Verify NLP Parser is Working
 ```bash
-# Check logs for spaCy model loading
-grep -i "spacy\|nlp" ~/.devtrack/daemon.log
+# Check logs for NLP initialization
+grep -i "nlp\|llm\|parser" ~/.devtrack/daemon.log
 
 # Should see:
-# - Loaded spaCy model: en_core_web_sm
-# - ✓ NLP parser initialized
+# - ✓ NLP parser initialized (LLM-first)
+# or: NLP parser using regex fallback (if LLM unavailable)
 ```
 
 ### Test Commit Detection

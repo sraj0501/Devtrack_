@@ -18,7 +18,7 @@ DevTrack is configured via a single `.env` file with **no hardcoded defaults or 
 | Tier | Command | What it enables |
 |------|---------|----------------|
 | **core** (default) | `uv sync` | Web server, LLM providers, PM integrations |
-| **ai** (optional) | `uv sync --extra ai` | spaCy NLP parsing, ChromaDB RAG, semantic task matching |
+| **ai** (optional) | `uv sync --extra ai` | ChromaDB RAG for personalization, semantic task matching |
 
 NLP-related config (`WORK_UPDATE_NLP_ENABLED`, `CONFLICT_RESOLUTION_ENABLED`) only take effect when the AI tier is installed.
 
@@ -725,7 +725,7 @@ WORK_UPDATE_ENABLED=true
 **What**: Use NLP parsing for work updates
 **Format**: `true` or `false`
 **Default**: `true`
-**Requires**: spaCy installed
+**Requires**: LLM provider configured (falls back to regex when LLM is unavailable)
 
 ```bash
 WORK_UPDATE_NLP_ENABLED=true

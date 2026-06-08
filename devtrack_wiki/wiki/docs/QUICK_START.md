@@ -122,10 +122,7 @@ cd devtrack_server
 
 # Install dependencies with uv (never pip)
 uv sync                    # core deps always required
-uv sync --extra ai         # optional: NLP, ChromaDB, semantic matching
-
-# If AI tier installed, get the spaCy model
-uv run python -m spacy download en_core_web_sm
+uv sync --extra ai         # optional: ChromaDB RAG for personalization
 
 # Start the server
 source .env
@@ -232,7 +229,7 @@ After `devtrack start`:
 │
 └─ Python webhook server (subprocess, :8089) — only if DEVTRACK_SERVER_URL set
    ├─ FastAPI HTTP server (receives HTTPS POST from Go daemon)
-   ├─ NLP processor (spaCy — only if AI tier installed)
+   ├─ NLP processor (LLM-first; pure-regex fallback when LLM unavailable)
    ├─ LLM client (Ollama / OpenAI / Anthropic)
    ├─ PM integrations (Azure, GitHub, Teams, Jira)
    └─ Admin UI (if ADMIN_EMBED=true)
@@ -251,11 +248,7 @@ devtrack status
 # 2. Health check
 devtrack health
 
-# 3. NLP ready (server + AI tier only)
-cd devtrack_server
-uv run python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('NLP ready')"
-
-# 4. Ollama running (if using AI)
+# 3. Ollama running (if using AI)
 curl http://localhost:11434/api/tags
 ```
 

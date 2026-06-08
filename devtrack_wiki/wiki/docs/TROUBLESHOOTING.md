@@ -262,9 +262,9 @@ chmod +x ~/.local/bin/devtrack
 
 ---
 
-### "Python version mismatch" / "spaCy incompatible with Python 3.14"
+### "Python version mismatch"
 
-**Problem**: Using Python 3.14+ which spaCy doesn't support yet.
+**Problem**: Using a Python version outside the supported range (3.12–3.13).
 
 **Solutions**:
 
@@ -324,26 +324,29 @@ PROJECT_ROOT=/home/user/automation_tools
 
 ---
 
-### "spaCy NLP model not found"
+### NLP parsing returns empty/wrong fields
 
-**Problem**: `ModuleNotFoundError: No module named 'en_core_web_sm'`
+**Problem**: Work update text is not being parsed correctly.
+
+The NLP parser uses your configured LLM provider. If the LLM is unavailable it falls back to pure-regex extraction — ticket IDs and time patterns still work, but semantic fields (project, status) may be empty.
 
 **Solutions**:
 
-1. Download the model:
+1. Verify LLM is reachable:
 ```bash
-uv run python -m spacy download en_core_web_sm
+curl http://localhost:11434/api/tags   # Ollama
 ```
 
-2. Verify installation:
+2. Test parsing directly:
 ```bash
-uv run python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('OK')"
+uv run python -c "
+from backend.nlp_parser import parse_task
+t = parse_task('Fixed auth bug in PROJ-123, spent 2h', use_ollama=True)
+print(t.to_dict())
+"
 ```
 
-3. Check where it's installed:
-```bash
-python -m spacy info
-```
+3. If LLM unavailable, regex fallback still extracts ticket IDs and time — set `WORK_UPDATE_NLP_ENABLED=false` to skip NLP entirely.
 
 ---
 
@@ -765,9 +768,10 @@ devtrack stop && devtrack start  # no restart command — stop then start
 
 **Solutions**:
 
-1. Check NLP model is loaded:
+1. Check LLM is reachable (NLP uses your configured LLM):
 ```bash
-uv run python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print(nlp('test'))"
+curl http://localhost:11434/api/tags   # Ollama
+# or: check LLM_PROVIDER and ensure the provider is running
 ```
 
 2. Test parsing directly:
@@ -1113,8 +1117,8 @@ echo "Python:"
 python3 --version
 echo ""
 
-echo "NLP model:"
-uv run python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('OK')" || echo "MISSING"
+echo "LLM (Ollama):"
+curl -s http://localhost:11434/api/tags | python3 -c "import sys,json; d=json.load(sys.stdin); print('OK -', len(d.get('models',[])), 'models')" || echo "NOT RUNNING"
 echo ""
 
 echo "Ollama:"

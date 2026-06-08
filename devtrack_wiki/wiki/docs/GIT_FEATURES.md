@@ -329,7 +329,7 @@ You type natural language
 "Working on PR #42 - fixing OAuth (2h)"
         │
         ▼
-NLP Parsing (spaCy)
+NLP Parsing (LLM-first · regex fallback)
 ├─ Extract task: PR #42
 ├─ Extract action: working on
 ├─ Extract duration: 2 hours
@@ -487,7 +487,7 @@ In `.env`:
 # Work update parsing
 WORK_UPDATE_ENABLED=true
 WORK_UPDATE_TIMER_INTERVAL=120        # Minutes between prompts
-WORK_UPDATE_NLP_ENABLED=true          # Use spaCy parsing
+WORK_UPDATE_NLP_ENABLED=true          # Use LLM-enhanced NLP (regex fallback when LLM unavailable)
 WORK_UPDATE_CONTEXT_ENABLED=true      # Add git context
 WORK_UPDATE_AI_ENHANCEMENT=true       # Improve descriptions
 
@@ -588,8 +588,8 @@ devtrack resolve-conflicts --manual
 ### Work Updates Not Parsing
 
 ```bash
-# Check NLP model
-uv run python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('OK')"
+# Check LLM is reachable
+curl http://localhost:11434/api/tags
 
 # Test NLP parsing
 uv run python -c "from backend.nlp_parser import parse_update; print(parse_update('Working on PR #42 (2h)'))"
