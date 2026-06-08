@@ -113,6 +113,7 @@ The Go client sends triggers to the Python server over HTTPS POST (CS-1 transpor
 | `devtrack_client/versioninfo.json` | Windows binary version metadata for `goversioninfo` (`go generate` embeds as `resource_windows_amd64.syso`) |
 | `devtrack_client/resource_windows_amd64.syso` | Pre-built Windows resource object (icon + version info); `_windows_amd64` suffix constrains linkage to that target only |
 | `devtrack_client/git_sage/` | Python git-sage agent (client-owned; bundled here, not in devtrack_server/) |
+| `devtrack_client/internal/telegram/` | Native Go Telegram bot — starts with daemon; handles /status /logs /health /trigger /pause /resume /stop /restart /reload /commits |
 
 ### Python layer (`devtrack_server/backend/`)
 
@@ -354,7 +355,8 @@ except ConfigError as e:
 - Wiki folder consolidation: `devtrack_wiki/` is canonical; `wiki/` subfolder removed from monorepo ✅
 - ARM64 cross-compilation fix: `.syso` renamed to `resource_windows_amd64.syso` ✅
 - Boardroom feature: multi-persona AI plan review (`devtrack boardroom`, `devtrack plan`) 🔄 IN PROGRESS
-- **Client-server decoupling Phase 1 (1a–1d)** ✅ — server-mgmt commands removed from client; reports/learning/auth/license commands converted to HTTP; workspaces.yaml is sole non-secret PM config source; `devtrack workspace add` offers git init; `devtrack help`/`status` fully rewritten. Phase 2 (Go-native alerts + Telegram/Slack) pending.
+- **Client-server decoupling Phase 1 (1a–1d)** ✅ — server-mgmt commands removed from client; reports/learning/auth/license commands converted to HTTP; workspaces.yaml is sole non-secret PM config source; `devtrack workspace add` offers git init; `devtrack help`/`status` fully rewritten.
+- **Client-server decoupling Phase 2** ✅ — Go-native alerts (`internal/alerts/`), notifiers (`internal/notify/`), and interactive Telegram bot (`internal/telegram/`). Daemon no longer spawns Python telegram/alert subprocesses. Bot starts automatically with `TELEGRAM_ENABLED=true`.
 
 **Production Readiness**: VERY HIGH
 

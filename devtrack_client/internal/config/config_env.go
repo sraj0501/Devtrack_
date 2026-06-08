@@ -928,6 +928,23 @@ func GetTelegramChatIDs() []string {
 	return ids
 }
 
+// GetTelegramAllowedChatIDs parses TELEGRAM_ALLOWED_CHAT_IDS (comma-separated) into a slice.
+// These are the chat IDs authorized to send commands to the bot.
+// If empty, the bot accepts commands from anyone (dev mode).
+func GetTelegramAllowedChatIDs() []string {
+	val := os.Getenv("TELEGRAM_ALLOWED_CHAT_IDS")
+	if val == "" {
+		return nil
+	}
+	var ids []string
+	for _, id := range strings.Split(val, ",") {
+		if s := strings.TrimSpace(id); s != "" {
+			ids = append(ids, s)
+		}
+	}
+	return ids
+}
+
 // GetSlackWebhookURL returns SLACK_WEBHOOK_URL.
 func GetSlackWebhookURL() string {
 	return os.Getenv("SLACK_WEBHOOK_URL")

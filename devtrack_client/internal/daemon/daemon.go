@@ -18,6 +18,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/health"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/infra"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/notify"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/telegram"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
@@ -48,7 +49,8 @@ type Daemon struct {
 	cancel        context.CancelFunc
 	isRunning     bool
 	webhookServer *exec.Cmd
-	alertPoller   *alerts.Poller // native Go alert poller (Phase 2)
+	alertPoller   *alerts.Poller   // native Go alert poller (Phase 2)
+	telegramBot   *telegram.Bot    // interactive Telegram bot (Phase 3)
 	startTime     time.Time
 	healthMonitor *health.HealthMonitor
 
@@ -171,6 +173,9 @@ func (d *Daemon) Start() error {
 		log.Printf("External mode: AI triggers will be sent to %s (set DEVTRACK_SERVER_URL to target another host)", config.GetServerURL())
 	}
 
+	// Start interactive Telegram bot first so alert poller can use it as notifier.
+	d.startTelegramBot()
+
 	// Start native Go alert poller (Phase 2 — replaces Python assignment/telegram/slack subprocesses)
 	d.startAlertPoller()
 
@@ -224,6 +229,11 @@ func (d *Daemon) Stop() error {
 	// Stop Go alert poller
 	if d.alertPoller != nil {
 		d.alertPoller.Stop()
+	}
+
+	// Stop Telegram bot
+	if d.telegramBot != nil {
+		d.telegramBot.Stop()
 	}
 
 	// Stop webhook server
@@ -535,9 +545,17 @@ func (d *Daemon) startAlertPoller() {
 		return
 	}
 
+	// Use the already-started Telegram bot as the notifier if available,
+	// otherwise fall back to the lightweight HTTP-only notifier.
+	var tgNotifier notify.Notifier
+	if d.telegramBot != nil {
+		tgNotifier = d.telegramBot
+	} else {
+		tgNotifier = notify.NewTelegramFromConfig()
+	}
 	notifier := notify.NewMulti(
 		notify.Terminal{},
-		notify.NewTelegramFromConfig(),
+		tgNotifier,
 		notify.NewSlackFromConfig(),
 		notify.OS{},
 	)
