@@ -146,6 +146,7 @@ func main() {
 			cmd == "work" ||
 			cmd == "github-check" || cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
 			cmd == "gitlab-check" || cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
+			cmd == "ticket-sync" || cmd == "narrative" ||
 			cmd == "newproject" {
 			cli, err := NewCLI()
 			if err != nil {
