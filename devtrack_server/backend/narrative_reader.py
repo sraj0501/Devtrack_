@@ -123,9 +123,8 @@ def _parse_log(path: str) -> tuple[dict[str, dict], list[str]]:
                 elif event == "StoryCompleted" and sid in stories:
                     stories[sid]["completed_at"] = ev.get("timestamp", "")
                     stories[sid]["success"] = ev.get("success", True)
-                    p = ev.get("progress", {})
-                    stories[sid]["total_stages"] = p.get("total_stages", 0)
-                    stories[sid]["completed_stages"] = p.get("completed_stages", 0)
+                    stories[sid]["total_stages"] = ev.get("total_stages", 0)
+                    stories[sid]["completed_stages"] = ev.get("completed_stages", 0)
                     order.append(sid)
 
     except OSError:
