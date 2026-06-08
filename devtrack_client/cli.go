@@ -180,6 +180,8 @@ func (cli *CLI) Execute() error {
 		return cli.handleGitHubSync()
 	case "ticket-sync":
 		return cli.handleTicketSync()
+	case "issues":
+		return cli.handleIssues()
 	case "narrative":
 		return cli.handleNarrativeLogs()
 	case "github-view":

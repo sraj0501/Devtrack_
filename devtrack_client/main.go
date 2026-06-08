@@ -136,17 +136,21 @@ func main() {
 			cmd == "learning-sync" || cmd == "learning-setup-cron" ||
 			cmd == "learning-remove-cron" || cmd == "learning-cron-status" ||
 			cmd == "learning-reset" ||
+			cmd == "reload-config" ||
 			cmd == "commit-queue" || cmd == "commits" || cmd == "queue" ||
 			cmd == "telegram-status" || cmd == "azure-check" || cmd == "azure-list" || cmd == "azure-sync" || cmd == "azure-view" || cmd == "settings" ||
 			cmd == "workspace" ||
 			cmd == "shell-init" || cmd == "is-workspace" || cmd == "enable-git" || cmd == "disable-git" ||
 			cmd == "launchd-install" || cmd == "launchd-uninstall" ||
+			cmd == "autostart-install" || cmd == "autostart-uninstall" || cmd == "autostart-status" ||
 			cmd == "alerts" ||
 			cmd == "sage" ||
-			cmd == "work" ||
+			cmd == "work" || cmd == "vacation" ||
+			cmd == "tui" || cmd == "cloud" || cmd == "init" ||
+			cmd == "plan" || cmd == "boardroom" ||
 			cmd == "github-check" || cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
 			cmd == "gitlab-check" || cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
-			cmd == "ticket-sync" || cmd == "narrative" ||
+			cmd == "ticket-sync" || cmd == "narrative" || cmd == "issues" ||
 			cmd == "newproject" {
 			cli, err := NewCLI()
 			if err != nil {
@@ -187,6 +191,7 @@ func printBasicUsage() {
 	fmt.Println("            sage pr                            show current branch PR info")
 	fmt.Println("            sage interactive                   multi-turn chat")
 	fmt.Println()
+	fmt.Println("ISSUES:     issues                                 browse assigned tickets (TUI)")
 	fmt.Println("GITHUB:     github-check | github-list | github-sync | github-view <number>")
 	fmt.Println("GITLAB:     gitlab-check | gitlab-list | gitlab-sync | gitlab-view <proj> <iid>")
 	fmt.Println("AZURE:      azure-check  | azure-list  | azure-sync  | azure-view <id>")

@@ -12,6 +12,7 @@ import (
 	gitlabconn "github.com/sraj0501/Devtrack_/devtrack_client/connectors/gitlab"
 	"github.com/sraj0501/Devtrack_/devtrack_client/connectors/pm"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/tui"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
@@ -403,4 +404,49 @@ func (cli *CLI) handleGitHubView() error {
 	}
 	fmt.Print(githubconn.FormatIssue(issue))
 	return nil
+}
+
+// handleIssues opens a TUI browser showing all open tickets assigned to the
+// user across every enabled workspace in workspaces.yaml.
+func (cli *CLI) handleIssues() error {
+	wsCfg, err := config.LoadWorkspacesConfig()
+	if err != nil {
+		return fmt.Errorf("cannot load workspaces.yaml: %w", err)
+	}
+	if wsCfg == nil || len(wsCfg.Workspaces) == 0 {
+		return fmt.Errorf("workspaces.yaml not found or empty — add a workspace with a PM platform configured")
+	}
+
+	var items []tui.BrowseItem
+	var fetchErrs []string
+
+	for i := range wsCfg.Workspaces {
+		ws := &wsCfg.Workspaces[i]
+		if !ws.Enabled || ws.PMPlatform == "" {
+			continue
+		}
+		tickets, err := pm.ListOpenTickets(ws)
+		if err != nil {
+			fetchErrs = append(fetchErrs, fmt.Sprintf("%s (%s): %v", ws.Name, ws.PMPlatform, err))
+			continue
+		}
+		for _, t := range tickets {
+			subtitle := fmt.Sprintf("[%s] %s · %s", t.Platform, t.ID, t.State)
+			if t.Repo != "" {
+				subtitle = fmt.Sprintf("[%s] %s · %s · %s", t.Platform, t.ID, t.State, t.Repo)
+			}
+			items = append(items, tui.BrowseItem{
+				Title:    t.Title,
+				Subtitle: subtitle,
+				Body:     t.Body,
+				URL:      t.URL,
+			})
+		}
+	}
+
+	for _, e := range fetchErrs {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", e)
+	}
+
+	return tui.BrowseTickets(items)
 }
