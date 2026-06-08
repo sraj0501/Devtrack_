@@ -214,10 +214,17 @@ gh release create $tag `
 # ---------------------------------------------------------------------------
 Step "Updating wiki version to $tag"
 
-$htmlPath = "devtrack_wiki\wiki\download.html"
-(Get-Content $htmlPath) -replace 'Latest: v[\d.]+', "Latest: $tag" | Set-Content $htmlPath
+$downloadPath = "devtrack_wiki\wiki\download.html"
+(Get-Content $downloadPath) -replace 'Latest: v[\d.]+', "Latest: $tag" | Set-Content $downloadPath
 
-git add $htmlPath
+$wikiPath = "devtrack_wiki\wiki\wiki.html"
+(Get-Content $wikiPath) `
+    -replace '(<span class="sidebar-version-tag">)v[\d.]+(</span>)', "`${1}$tag`${2}" `
+    -replace '(<span class="version-chip">)v[\d.]+(</span>)',         "`${1}$tag`${2}" `
+    -replace '(Local-First · )v[\d.]+',                               "`${1}$tag" |
+    Set-Content $wikiPath
+
+git add $downloadPath $wikiPath
 git commit -m "chore: bump wiki version to $tag"
 git push origin main
 
