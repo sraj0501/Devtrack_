@@ -629,6 +629,7 @@ const NAV = [
       { id: 'INDEX',           label: 'Doc Index',          icon: home_icon() },
       { id: 'CLI_REFERENCE',   label: 'CLI Reference',      icon: terminal_icon() },
       { id: 'CONFIGURATION',   label: 'Configuration',      icon: settings_icon() },
+      { id: 'WORKSPACES',      label: 'Workspaces',         icon: git_icon() },
       { id: 'MULTI_REPO',      label: 'Multi-Repo Setup',   icon: git_icon() },
       { id: 'ARCHITECTURE',    label: 'Architecture',       icon: arch_icon() },
     ]
@@ -2705,6 +2706,238 @@ def teardown_function():
 </ul>
 </div>`,
 
+  WORKSPACES: `<div class="md-body">
+<h1>Workspaces</h1>
+<p>A <strong>workspace</strong> is a git repository that DevTrack monitors. Each workspace in <code>workspaces.yaml</code> can route to a different project management platform with its own credentials, project, and assignment rules. This page covers every field for each supported platform.</p>
+
+<h2>File Location</h2>
+<p><code>devtrack setup</code> writes the file automatically. You can also manage it with CLI commands:</p>
+<pre><code class="language-bash">devtrack workspace list                           # show all workspaces
+devtrack workspace add myrepo ~/code/myrepo       # add a new workspace
+devtrack workspace remove myrepo                  # remove a workspace
+devtrack workspace enable myrepo                  # resume monitoring
+devtrack workspace disable myrepo                 # pause without removing
+devtrack workspace reload                         # hot-reload after manual edits</code></pre>
+<p>The file path is set by <code>WORKSPACES_FILE</code> in <code>.env</code> (default: <code>~/.devtrack/workspaces.yaml</code> or <code>$PROJECT_ROOT/workspaces.yaml</code>).</p>
+
+<h2>Universal Fields</h2>
+<p>Every workspace entry, regardless of platform, supports these fields:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>name</code></td><td>Yes</td><td>Display name used in logs, TUI, and CLI output</td></tr>
+<tr><td><code>path</code></td><td>Yes</td><td>Absolute path (or <code>~/</code>) to the git repository root</td></tr>
+<tr><td><code>pm_platform</code></td><td>Yes</td><td><code>github</code> | <code>gitlab</code> | <code>azure</code> | <code>jira</code> | <code>none</code></td></tr>
+<tr><td><code>enabled</code></td><td>No</td><td><code>true</code> (default) / <code>false</code> — pause monitoring without removing</td></tr>
+<tr><td><code>ignore_branches</code></td><td>No</td><td>List of branch patterns to skip (e.g. <code>main</code>, <code>release/*</code>)</td></tr>
+<tr><td><code>tags</code></td><td>No</td><td>Arbitrary labels for your own filtering</td></tr>
+<tr><td><code>pm_assignee</code></td><td>No</td><td>Default assignee for new issues/tasks (format varies by platform)</td></tr>
+</tbody>
+</table></div>
+
+<hr>
+
+<h2>GitHub</h2>
+<h3>Required .env secrets</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Variable</th><th>Value</th><th>Where to get it</th></tr></thead>
+<tbody>
+<tr><td><code>GITHUB_TOKEN</code></td><td>Personal access token</td><td>GitHub → Settings → Developer Settings → Personal access tokens → Generate new token. Scopes needed: <code>repo</code> (full) or <code>issues:write</code> + <code>pull_requests:write</code> for fine-grained tokens.</td></tr>
+</tbody>
+</table></div>
+
+<h3>workspaces.yaml fields</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Required</th><th>Format</th><th>Where to find it</th></tr></thead>
+<tbody>
+<tr><td><code>pm_platform</code></td><td>Yes</td><td><code>"github"</code></td><td>—</td></tr>
+<tr><td><code>pm_org</code></td><td>Yes</td><td>Owner login or org name</td><td>The <code>owner</code> part of <code>github.com/owner/repo</code></td></tr>
+<tr><td><code>pm_username</code></td><td>Yes</td><td>Your GitHub login</td><td>github.com → top-right avatar → Your profile → the username in the URL</td></tr>
+<tr><td><code>pm_project</code></td><td>No</td><td><code>"owner/repo"</code></td><td>Overrides the default repo for issue creation. Leave blank to use the repo the commit came from.</td></tr>
+<tr><td><code>pm_api_url</code></td><td>No</td><td>Base URL</td><td>Only for GitHub Enterprise: <code>https://github.mycompany.com/api/v3</code>. Leave blank for github.com.</td></tr>
+<tr><td><code>pm_milestone</code></td><td>No</td><td>Integer</td><td>Milestone number from the URL: <code>github.com/owner/repo/milestone/<strong>3</strong></code>. Use <code>0</code> or omit for no milestone.</td></tr>
+<tr><td><code>pm_assignee</code></td><td>No</td><td>GitHub username</td><td>The login to auto-assign on new issues (e.g. <code>sraj0501</code>)</td></tr>
+</tbody>
+</table></div>
+
+<h3>Complete GitHub example</h3>
+<pre><code class="language-yaml">- name: "my-api"
+  path: ~/code/my-api
+  pm_platform: github
+  pm_org: acme-corp          # github.com/acme-corp/...
+  pm_username: sraj0501       # your GitHub login
+  pm_project: "acme-corp/my-api"
+  pm_milestone: 4            # github.com/acme-corp/my-api/milestone/4
+  pm_assignee: sraj0501
+  enabled: true
+  ignore_branches:
+    - main
+    - "dependabot/*"</code></pre>
+
+<hr>
+
+<h2>GitLab</h2>
+<h3>Required .env secrets</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Variable</th><th>Value</th><th>Where to get it</th></tr></thead>
+<tbody>
+<tr><td><code>GITLAB_PAT</code></td><td>Personal access token</td><td>GitLab → User Settings → Access Tokens → Add new token. Scopes needed: <code>api</code> (or at minimum <code>read_api</code> + <code>write_repository</code>).</td></tr>
+</tbody>
+</table></div>
+
+<h3>workspaces.yaml fields</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Required</th><th>Format</th><th>Where to find it</th></tr></thead>
+<tbody>
+<tr><td><code>pm_platform</code></td><td>Yes</td><td><code>"gitlab"</code></td><td>—</td></tr>
+<tr><td><code>pm_org</code></td><td>Yes</td><td>Namespace (user or group)</td><td>The <code>namespace</code> part of <code>gitlab.com/namespace/project</code></td></tr>
+<tr><td><code>pm_username</code></td><td>Yes</td><td>Your GitLab username</td><td>GitLab → User Settings → Profile → Username field</td></tr>
+<tr><td><code>pm_project</code></td><td>No</td><td>Numeric project ID</td><td>GitLab project → Settings → General → Project ID (shown at the top). Must be a numeric string, e.g. <code>"12345"</code>. Overrides <code>GITLAB_PROJECT_ID</code> from <code>.env</code>.</td></tr>
+<tr><td><code>pm_api_url</code></td><td>No</td><td>Base URL</td><td>Only for self-hosted GitLab: <code>https://gitlab.mycompany.com</code>. Leave blank for gitlab.com.</td></tr>
+<tr><td><code>pm_milestone</code></td><td>No</td><td>Integer</td><td>Milestone ID from the GitLab API: <code>GET /projects/:id/milestones</code> → <code>id</code> field. Use <code>0</code> or omit for no milestone.</td></tr>
+<tr><td><code>pm_assignee</code></td><td>No</td><td>Numeric user ID</td><td>GitLab API: <code>GET /users?username=yourname</code> → <code>id</code> field. GitLab requires a numeric ID, not a username string.</td></tr>
+</tbody>
+</table></div>
+
+<h3>Complete GitLab example</h3>
+<pre><code class="language-yaml">- name: "backend-service"
+  path: ~/code/backend-service
+  pm_platform: gitlab
+  pm_org: acme-corp            # gitlab.com/acme-corp/...
+  pm_username: shashank.raj    # your GitLab username
+  pm_project: "54321"          # numeric project ID from Settings → General
+  pm_api_url: ""               # leave blank for gitlab.com; set for self-hosted
+  pm_milestone: 7              # milestone ID from GET /projects/54321/milestones
+  pm_assignee: "1042"          # numeric user ID from GET /users?username=shashank.raj
+  enabled: true
+  ignore_branches:
+    - main
+    - "release/*"</code></pre>
+
+<hr>
+
+<h2>Azure DevOps</h2>
+<h3>Required .env secrets</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Variable</th><th>Value</th><th>Where to get it</th></tr></thead>
+<tbody>
+<tr><td><code>AZURE_DEVOPS_PAT</code></td><td>Personal access token</td><td>Azure DevOps → User Settings (top-right) → Personal access tokens → New Token. Scopes needed: <code>Work Items (Read &amp; Write)</code>. Set expiry to at least 1 year.</td></tr>
+</tbody>
+</table></div>
+
+<h3>workspaces.yaml fields</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Required</th><th>Format</th><th>Where to find it</th></tr></thead>
+<tbody>
+<tr><td><code>pm_platform</code></td><td>Yes</td><td><code>"azure"</code></td><td>—</td></tr>
+<tr><td><code>pm_org</code></td><td>Yes</td><td>Organization name</td><td>The <code>org</code> part of <code>dev.azure.com/org/project</code></td></tr>
+<tr><td><code>pm_username</code></td><td>Yes</td><td>Your Azure DevOps email</td><td>The email shown in the top-right corner of Azure DevOps. Used to filter your own comments out of alert notifications.</td></tr>
+<tr><td><code>pm_project</code></td><td>No</td><td>Project name</td><td>Overrides <code>AZURE_PROJECT</code> from <code>.env</code>. The <code>project</code> part of <code>dev.azure.com/org/<strong>project</strong></code>.</td></tr>
+<tr><td><code>pm_api_url</code></td><td>No</td><td>Base URL</td><td>Only for Azure DevOps Server (on-prem): <code>https://ado.mycompany.com/tfs</code>. Leave blank for dev.azure.com.</td></tr>
+<tr><td><code>pm_assignee</code></td><td>No</td><td>Email or display name</td><td>The full email or display name of the assignee for new work items (e.g. <code>jane.doe@acme.com</code>)</td></tr>
+<tr><td><code>pm_iteration_path</code></td><td>No</td><td><code>"Project\\Sprint N"</code></td><td>Azure DevOps → Boards → Sprints → the path shown in the breadcrumb. Use <code>\\</code> as separator. Project prefix is added automatically.</td></tr>
+<tr><td><code>pm_area_path</code></td><td>No</td><td><code>"Project\\Team\\Area"</code></td><td>Azure DevOps → Project Settings → Project configuration → Area paths. Use <code>\\</code> as separator.</td></tr>
+</tbody>
+</table></div>
+
+<h3>Complete Azure DevOps example</h3>
+<pre><code class="language-yaml">- name: "platform-api"
+  path: ~/code/platform-api
+  pm_platform: azure
+  pm_org: acme-corp                         # dev.azure.com/acme-corp/...
+  pm_username: shashank.raj@acme.com        # your ADO login email
+  pm_project: CoreServices                  # dev.azure.com/acme-corp/CoreServices
+  pm_api_url: ""                            # leave blank for dev.azure.com
+  pm_assignee: shashank.raj@acme.com
+  pm_iteration_path: "CoreServices\\Sprint 42"
+  pm_area_path: "CoreServices\\Platform\\API"
+  enabled: true
+  ignore_branches:
+    - main
+    - "hotfix/*"</code></pre>
+
+<hr>
+
+<h2>No PM sync</h2>
+<p>Use <code>pm_platform: none</code> to monitor a repo for git activity (commits appear in the TUI and trigger work prompts) without syncing anything to a PM platform.</p>
+<pre><code class="language-yaml">- name: "scratch"
+  path: ~/code/scratch
+  pm_platform: none
+  enabled: true</code></pre>
+
+<hr>
+
+<h2>Full annotated workspaces.yaml</h2>
+<pre><code class="language-yaml">version: "1"
+workspaces:
+
+  # ── GitHub ──────────────────────────────────────────────────────────────────
+  - name: "oss-lib"
+    path: ~/code/oss-lib
+    pm_platform: github
+    pm_org: acme-corp           # github.com org or user
+    pm_username: sraj0501        # your GitHub login
+    pm_project: ""              # "owner/repo" override — leave blank to use origin
+    pm_api_url: ""              # blank = github.com; set for GitHub Enterprise
+    pm_milestone: 3             # milestone number from URL, 0 = none
+    pm_assignee: sraj0501
+    enabled: true
+    ignore_branches: [main, "dependabot/*"]
+    tags: [oss]
+
+  # ── GitLab ──────────────────────────────────────────────────────────────────
+  - name: "backend"
+    path: ~/code/backend
+    pm_platform: gitlab
+    pm_org: acme-corp           # gitlab.com namespace
+    pm_username: shashank.raj   # your GitLab username
+    pm_project: "54321"         # numeric project ID (required if GITLAB_PROJECT_ID not set)
+    pm_api_url: ""              # blank = gitlab.com; set for self-hosted
+    pm_milestone: 7             # milestone ID from API, 0 = none
+    pm_assignee: "1042"         # numeric user ID (NOT username string)
+    enabled: true
+    ignore_branches: [main, "release/*"]
+    tags: [work, backend]
+
+  # ── Azure DevOps ─────────────────────────────────────────────────────────────
+  - name: "platform-api"
+    path: ~/code/platform-api
+    pm_platform: azure
+    pm_org: acme-corp           # dev.azure.com org name
+    pm_username: shashank.raj@acme.com   # your ADO email
+    pm_project: CoreServices    # ADO project name
+    pm_api_url: ""              # blank = dev.azure.com; set for ADO Server
+    pm_assignee: shashank.raj@acme.com
+    pm_iteration_path: "CoreServices\\Sprint 42"
+    pm_area_path: "CoreServices\\Platform\\API"
+    enabled: true
+    ignore_branches: [main, "hotfix/*"]
+    tags: [work, platform]
+
+  # ── No sync ──────────────────────────────────────────────────────────────────
+  - name: "scratch"
+    path: ~/code/scratch
+    pm_platform: none
+    enabled: true</code></pre>
+
+<h2>Hot-reload</h2>
+<p>Save <code>workspaces.yaml</code> and DevTrack detects the change instantly (fsnotify). Only the monitors that changed are restarted — others keep running without interruption. Or reload manually:</p>
+<pre><code class="language-bash">devtrack workspace reload</code></pre>
+
+<h2>Common mistakes</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>Issues created but unassigned</td><td><code>pm_assignee</code> wrong format</td><td>GitHub: username string. GitLab: numeric user ID. Azure: full email.</td></tr>
+<tr><td>GitLab: pm_project ignored</td><td>Value is not a numeric string</td><td>Use <code>"12345"</code> not <code>my-project</code></td></tr>
+<tr><td>ADO work items in wrong sprint</td><td>Backslash not escaped in YAML</td><td>Use <code>"Project\\Sprint 42"</code> (double backslash)</td></tr>
+<tr><td>Workspace not monitoring</td><td><code>enabled: false</code> or invalid path</td><td>Run <code>devtrack workspace list</code> to check status</td></tr>
+<tr><td>All commits routing to wrong platform</td><td>Empty <code>pm_platform</code></td><td>Falls back to priority chain (Azure → GitLab → GitHub). Set explicitly.</td></tr>
+<tr><td>GitHub Enterprise not reached</td><td><code>pm_api_url</code> not set</td><td>Set to <code>https://github.mycompany.com/api/v3</code></td></tr>
+</tbody>
+</table></div>
+</div>`,
+
   MULTI_REPO: `<div class="md-body">
 <h1>Multi-Repo Monitoring</h1>
 <p>By default DevTrack monitors a single repository (<code>DEVTRACK_WORKSPACE</code>). <strong>Multi-repo mode</strong> lets you monitor any number of repositories simultaneously, each routing to its own project management platform.</p>
@@ -3529,6 +3762,7 @@ function renderHome() {
         // ── Reference ─────────────────────────────────────────────────────────
         { id:'CLI_REFERENCE',    icon:'⌨️', title:'CLI Reference',      desc:'All devtrack commands with flags and examples.' },
         { id:'CONFIGURATION',    icon:'🔧', title:'Configuration',      desc:'All .env variables with defaults, required vars, timeout settings, server modes, TLS, LLM providers, and feature flags.' },
+        { id:'WORKSPACES',       icon:'🗂️', title:'Workspaces',          desc:'Complete per-platform setup guide for <code>workspaces.yaml</code>. Covers every field for GitHub, GitLab, and Azure DevOps — what to set, where to find each value, and which <code>.env</code> secrets are required.' },
         { id:'MULTI_REPO',       icon:'🗃️', title:'Multi-Repo Setup',   desc:'Monitor multiple git repos simultaneously, each routing to its own PM platform. Configure in <code>workspaces.yaml</code> with <code>pm_platform</code>, <code>pm_project</code>, and <code>pm_milestone</code> per workspace. Hot-reloads on save.' },
         // ── Git & Shell ────────────────────────────────────────────────────────
         { id:'GIT_FEATURES',    icon:'🔀', title:'Git Features',        desc:'Shell integration, AI commits, and conflict resolution. Add <code>eval "$(devtrack shell-init)"</code> to <code>~/.zshrc</code> once. Type <code>git commit</code> — DevTrack intercepts, prompts for time spent, opens the ticket picker, then pushes on one keypress. <code>devtrack start</code> auto-enables git for all workspaces.' },
