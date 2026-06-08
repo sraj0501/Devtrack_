@@ -19,22 +19,18 @@ import (
 	"time"
 )
 
-const gitlabProject = "devtrack3_cloud/devtrack_client"
-const gitlabAPIBase = "https://gitlab.com/api/v4"
+const githubRepo    = "sraj0501/Devtrack_"
+const githubAPIBase = "https://api.github.com"
 
-type gitlabRelease struct {
-	TagName string       `json:"tag_name"`
-	Name    string       `json:"name"`
-	Assets  gitlabAssets `json:"assets"`
+type githubRelease struct {
+	TagName string        `json:"tag_name"`
+	Name    string        `json:"name"`
+	Assets  []githubAsset `json:"assets"`
 }
 
-type gitlabAssets struct {
-	Links []gitlabLink `json:"links"`
-}
-
-type gitlabLink struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+type githubAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
 // RunUpgrade implements `devtrack upgrade [--check]`.
@@ -43,7 +39,7 @@ func RunUpgrade(checkOnly bool) error {
 
 	latest, err := fetchLatestRelease()
 	if err != nil {
-		return fmt.Errorf("could not reach GitLab: %w", err)
+		return fmt.Errorf("could not reach GitHub: %w", err)
 	}
 
 	current := GetDevTrackVersion()
@@ -59,8 +55,13 @@ func RunUpgrade(checkOnly bool) error {
 	fmt.Printf("  Current version: %s\n", current)
 	fmt.Printf("  Latest release:  %s\n", latest.TagName)
 
-	if normaliseTag(current) == normaliseTag(latest.TagName) {
+	cmp := compareSemver(normaliseTag(current), normaliseTag(latest.TagName))
+	if cmp == 0 {
 		fmt.Println("  Already up to date.")
+		return nil
+	}
+	if cmp > 0 {
+		fmt.Println("  Already up to date (current build is newer than latest release).")
 		return nil
 	}
 
@@ -74,9 +75,9 @@ func RunUpgrade(checkOnly bool) error {
 	// Locate the asset for this platform
 	assetName := platformAssetName()
 	var downloadURL string
-	for _, link := range latest.Assets.Links {
-		if link.Name == assetName {
-			downloadURL = link.URL
+	for _, asset := range latest.Assets {
+		if asset.Name == assetName {
+			downloadURL = asset.BrowserDownloadURL
 			break
 		}
 	}
@@ -149,14 +150,14 @@ func isDaemonRunning() bool {
 	return isProcessAlive(pid)
 }
 
-// fetchLatestRelease queries the GitLab releases API for devtrack_client.
-func fetchLatestRelease() (*gitlabRelease, error) {
-	encoded := strings.ReplaceAll(gitlabProject, "/", "%2F")
-	url := gitlabAPIBase + "/projects/" + encoded + "/releases?per_page=1&order_by=released_at&sort=desc"
+// fetchLatestRelease queries the GitHub releases API for the latest release.
+func fetchLatestRelease() (*githubRelease, error) {
+	url := githubAPIBase + "/repos/" + githubRepo + "/releases/latest"
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	req.Header.Set("User-Agent", "devtrack-upgrade/1.0")
 
 	resp, err := client.Do(req)
@@ -166,17 +167,47 @@ func fetchLatestRelease() (*gitlabRelease, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("GitLab API returned %d", resp.StatusCode)
+		return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
 	}
 
-	var releases []gitlabRelease
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+	var release githubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
-	if len(releases) == 0 {
+	if release.TagName == "" {
 		return nil, fmt.Errorf("no releases found")
 	}
-	return &releases[0], nil
+	return &release, nil
+}
+
+// compareSemver compares two semver strings (without leading 'v').
+// Returns -1 if a < b, 0 if equal, +1 if a > b.
+func compareSemver(a, b string) int {
+	pa := parseSemver(a)
+	pb := parseSemver(b)
+	for i := range 3 {
+		if pa[i] < pb[i] {
+			return -1
+		}
+		if pa[i] > pb[i] {
+			return 1
+		}
+	}
+	return 0
+}
+
+func parseSemver(v string) [3]int {
+	// Strip any pre-release suffix (e.g. "1.2.3-beta" → "1.2.3")
+	v = strings.SplitN(v, "-", 2)[0]
+	parts := strings.SplitN(v, ".", 3)
+	var out [3]int
+	for i, p := range parts {
+		if i >= 3 {
+			break
+		}
+		out[i], _ = strconv.Atoi(p)
+	}
+	return out
 }
 
 // downloadBinary fetches the archive at url, extracts the devtrack binary,
