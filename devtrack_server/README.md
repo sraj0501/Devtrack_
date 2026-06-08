@@ -36,7 +36,7 @@ cd devtrack_server
 
 # 1. Install dependencies
 uv sync                    # core deps
-uv sync --extra ai         # + spaCy NLP and ChromaDB RAG
+uv sync --extra ai         # + ChromaDB RAG for personalization
 
 # 2. Configure
 cp .env_sample .env
@@ -65,7 +65,7 @@ docker compose down
 
 ```bash
 uv run pytest backend/tests/ -x -q               # all tests
-uv run pytest backend/tests/ -x -q --ignore=backend/tests/test_nlp_parser.py  # skip spaCy
+uv run pytest backend/tests/ -x -q
 uv run pytest backend/tests/test_api_contract.py -v   # HTTP contract tests only
 ```
 
@@ -143,7 +143,7 @@ Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Session is JWT cookie, valid for
 | `backend/webhook_server.py` | FastAPI app, all routes, entry point |
 | `backend/webhook_handlers.py` | Routes inbound platform webhook events |
 | `backend/config.py` | Centralized config — the only place `os.getenv` is called |
-| `backend/nlp_parser.py` | spaCy NLP: commit/user text → structured task data (optional) |
+| `backend/nlp_parser.py` | LLM-first NLP: commit/user text → structured task data; pure-regex fallback when LLM unavailable |
 | `backend/description_enhancer.py` | Ollama description enhancement |
 | `backend/llm/` | Multi-provider LLM abstraction with fallback chain |
 | `backend/admin/` | Admin console (FastAPI + HTMX, JWT auth) |
@@ -198,7 +198,7 @@ All are optional. The server degrades to SQLite and in-memory storage when they 
 ## Package extras
 
 ```bash
-uv sync --extra ai           # spaCy NLP + ChromaDB RAG
+uv sync --extra ai           # ChromaDB RAG (personalization)
 uv sync --extra openai       # OpenAI provider
 uv sync --extra anthropic    # Anthropic provider
 uv sync --extra cloud        # OpenAI + Anthropic

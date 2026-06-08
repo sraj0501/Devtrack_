@@ -119,7 +119,7 @@ After that, `git commit` routes through DevTrack automatically for monitored rep
 | **Jira** | Alert on assignments, comments, and status changes |
 | **Microsoft Teams** | Learn your communication style for personalized AI output |
 | **Outlook / MS Graph** | Send EOD reports by email |
-| **Telegram** | Remote control from your phone — `/workstart`, `/workreport`, `/plan` |
+| **Telegram** | Remote control from your phone — issue browsing, sync, alerts, work sessions, PM planning |
 | **Slack** | `/devtrack status`, `/devtrack trigger`, and more via Socket Mode |
 | **Ollama / OpenAI / Anthropic / Groq** | AI commit messages, reports, conflict resolution, git-sage agent |
 
@@ -203,9 +203,30 @@ Background poller watches **GitHub**, **Azure DevOps**, **Jira**, and **GitLab**
 
 Alert state (`last_checked` timestamps per source) persists to **SQLite** when MongoDB is unavailable, so poll continuity survives daemon restarts even without a MongoDB connection.
 
-### AI project planning (via Telegram)
+### Telegram bot — remote control from your phone
+
+Browse issues, trigger syncs, and plan work without opening a terminal:
 
 ```
+/github              Open GitHub issues assigned to you
+/githubsync          Sync issues to local cache
+/githubcheck         Verify GitHub connectivity
+
+/gitlab              Open GitLab issues (from cache)
+/gitlabsync          Sync issues to local cache
+/gitlabcheck         Verify GitLab connectivity
+
+/issues              Azure DevOps work items
+/azuresync           Sync work items to local cache
+/azurecheck          Verify Azure connectivity
+
+/ticketsync          Sync all PM platforms at once
+/ticketsync force    Force drop-and-reload of AI server cache
+
+/alerts              Unread ticket notifications
+/alertsall           All notifications
+/alertsclear         Mark all as read
+
 /plan Build a payment processing system
 → Decomposes into Epic + Stories + Tasks
 → Creates everything in Azure / GitLab / GitHub
@@ -214,7 +235,15 @@ Alert state (`last_checked` timestamps per source) persists to **SQLite** when M
 → Pick platform · Enter requirements + deadline
 → AI fetches team workload · Generates sprint YAML
 → PM approves via email link · Sprints created with dependencies
+
+/workstart AUTH-42   Start timing a ticket
+/workstop            Stop session (auto-measures duration)
+/workreport          EOD summary in chat
+
+/stop | /restart | /pause | /resume | /reloadconfig
 ```
+
+See [Telegram Bot setup guide](docs/TELEGRAM_BOT.md) for full configuration.
 
 ### Auto-start at login
 
@@ -447,7 +476,7 @@ devtrack-server logs      # tail recent log output
 | Layer | Stack |
 |-------|-------|
 | Daemon / CLI | Go 1.24+, fsnotify, robfig/cron, modernc/sqlite |
-| AI backend | Python 3.12+, uv, spaCy, aiohttp |
+| AI backend | Python 3.12+, uv, aiohttp, LLM-first NLP |
 | Local LLM | Ollama (default) · OpenAI · Anthropic · Groq · LM Studio |
 | Storage | SQLite (app state + projects/backlog/sprints), ChromaDB (RAG), optional MongoDB |
 | Remote control | Telegram (python-telegram-bot) · Slack (slack-bolt Socket Mode) |
