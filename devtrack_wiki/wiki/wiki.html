@@ -556,7 +556,7 @@
         </div>
       </a>
       <div class="sidebar-version">
-        <span class="sidebar-version-tag">v3.0.4</span>
+        <span class="sidebar-version-tag">v3.0.5</span>
         <span class="sidebar-version-status">
           <span class="sidebar-version-dot"></span>
           live
@@ -587,7 +587,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v3.0.4</span>
+        <span class="version-chip">v3.0.5</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -1707,7 +1707,33 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.2 — latest</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.5 — latest</div>
+
+<h2>v3.0.5 — Telegram Bot Migrated to Go Client</h2>
+<p>The interactive Telegram bot is now a native part of the Go daemon — no separate Python process needed. It starts automatically when <code>TELEGRAM_ENABLED=true</code> is set. The Windows upgrade command was also fixed to download the <code>.exe</code> directly instead of extracting from a zip.</p>
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>Telegram bot built into daemon</h4><p>The bot (<code>/status</code>, <code>/logs</code>, <code>/health</code>, <code>/trigger</code>, <code>/pause</code>, <code>/resume</code>, <code>/stop</code>, <code>/restart</code>, <code>/reload</code>, <code>/commits</code>) now starts with <code>devtrack start</code>. Set <code>TELEGRAM_ENABLED=true</code>, <code>TELEGRAM_BOT_TOKEN</code>, and <code>TELEGRAM_ALLOWED_CHAT_IDS</code> in <code>.env</code>. The separate <code>python -m backend.telegram</code> process is no longer needed.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>Windows upgrade fixed</h4><p><code>devtrack upgrade</code> on Windows now downloads <code>devtrack_windows_amd64.exe</code> directly instead of extracting from a zip archive. Eliminates the "binary not found in zip" error some v3.0.4 users encountered.</p></div></div>
+</div>
+
+<hr>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.4 — patch</div>
+
+<h2>v3.0.4 — PM Ticket Browser &amp; NLP Improvements</h2>
+<p>Adds an interactive ticket browser TUI (<code>devtrack issues</code>), improves connection pooling in the Python server, and shifts to LLM-first NLP with spaCy as fallback.</p>
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack issues — PM ticket browser</h4><p>Interactive TUI for browsing GitHub, GitLab, and Azure DevOps tickets. Filter by assignee, search by keyword, and open tickets in browser — all from the terminal.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>LLM-first NLP</h4><p>The server now attempts LLM-based entity extraction before falling back to spaCy, improving task parsing accuracy on commit messages and work updates.</p></div></div>
+</div>
+
+<hr>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.3 — patch</div>
+
+<h2>v3.0.3 — Telegram Commands &amp; Alert Sync</h2>
+<p>Adds Telegram sync/check/alert commands and daemon control over Telegram. Fixes the narrative reader <code>StoryCompleted</code> event handling.</p>
+
+<hr>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.2 — patch</div>
 
 <h2>v3.0.2 — Upgrade Command Fixed</h2>
 <p>The <code>devtrack upgrade</code> command was still querying the retired GitLab releases API (last tag: v2.2.19), causing all v3.x installs to downgrade themselves. v3.0.2 switches to the GitHub API and adds a semver comparison so the command never offers a downgrade.</p>
@@ -3744,7 +3770,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-First · v3.0.4</div>
+      <div class="home-badge">Local-First · v3.0.5</div>
       <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
       <p class="home-sub">DevTrack monitors your Git activity, prompts for work updates, routes them through AI, and keeps your project management systems in sync — all running locally on your machine.</p>
     </div>
@@ -3752,7 +3778,7 @@ function renderHome() {
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.2: upgrade cmd fixed (GitHub API + semver guard — no more downgrades). v3.0.1: MongoDB <code>motor</code> dep made optional. v3.0.0: standalone client (no backend needed), full Go <code>internal/</code> package refactor, connection fix, broader TLS SANs, git-sage <code>undo</code>.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.5: Telegram bot built into Go daemon (no separate Python process). Windows upgrade fixed (.exe direct download). v3.0.4: <code>devtrack issues</code> PM ticket browser, LLM-first NLP. v3.0.2: upgrade cmd fixed (GitHub API + semver guard).' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitHub Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
