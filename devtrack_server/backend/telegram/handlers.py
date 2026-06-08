@@ -73,6 +73,25 @@ def register_handlers(app: Application, bot: "DevTrackBot"):
     app.add_handler(CommandHandler("github", _make_handler(bot, _cmd_github)))
     app.add_handler(CommandHandler("githubissue", _make_handler(bot, _cmd_github_issue)))
     app.add_handler(CommandHandler("githubcreate", _make_handler(bot, _cmd_github_create)))
+    app.add_handler(CommandHandler("githubsync", _make_handler(bot, _cmd_github_sync)))
+    app.add_handler(CommandHandler("githubcheck", _make_handler(bot, _cmd_github_check)))
+    # GitLab sync / check
+    app.add_handler(CommandHandler("gitlabsync", _make_handler(bot, _cmd_gitlab_sync)))
+    app.add_handler(CommandHandler("gitlabcheck", _make_handler(bot, _cmd_gitlab_check)))
+    # Azure sync / check
+    app.add_handler(CommandHandler("azuresync", _make_handler(bot, _cmd_azure_sync)))
+    app.add_handler(CommandHandler("azurecheck", _make_handler(bot, _cmd_azure_check)))
+    # All-platform ticket sync
+    app.add_handler(CommandHandler("ticketsync", _make_handler(bot, _cmd_ticket_sync)))
+    # Alerts
+    app.add_handler(CommandHandler("alerts", _make_handler(bot, _cmd_alerts)))
+    app.add_handler(CommandHandler("alertsall", _make_handler(bot, _cmd_alerts_all)))
+    app.add_handler(CommandHandler("alertsclear", _make_handler(bot, _cmd_alerts_clear)))
+    # Missing daemon controls
+    app.add_handler(CommandHandler("stop", _make_handler(bot, _cmd_stop)))
+    app.add_handler(CommandHandler("restart", _make_handler(bot, _cmd_restart)))
+    app.add_handler(CommandHandler("skipnext", _make_handler(bot, _cmd_skip_next)))
+    app.add_handler(CommandHandler("reloadconfig", _make_handler(bot, _cmd_reload_config)))
     # PM Agent commands
     app.add_handler(CommandHandler("plan", _make_handler(bot, _cmd_plan)))
     app.add_handler(CallbackQueryHandler(_on_plan_platform_selected, pattern=r"^plan_platform:"))
@@ -120,24 +139,44 @@ async def _cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command (no auth needed)."""
     await update.message.reply_text(
         "*DevTrack Bot Commands*\n\n"
+        "*Daemon*\n"
         "/status -- Daemon status and service health\n"
         "/logs -- Recent daemon log lines\n"
-        "/trigger -- Force an immediate work update trigger\n"
+        "/stop -- Stop the daemon\n"
+        "/restart -- Restart the daemon\n"
         "/pause -- Pause the scheduler\n"
         "/resume -- Resume the scheduler\n"
-        "/queue -- Message queue statistics\n"
-        "/commits -- Deferred commit status\n"
-        "/health -- Detailed service health\n"
-        "/issues -- Azure DevOps work items assigned to you\n"
-        "/issue <id> -- Full details of a specific work item\n"
-        "/create <title> -- Create a Task (prefix with 'bug' or 'task' to set type)\n"
-        "/gitlab -- GitLab issues assigned to me (from cache)\n"
+        "/skipnext -- Skip the next scheduled trigger\n"
+        "/trigger -- Force an immediate work update trigger\n"
+        "/reloadconfig -- Reload .env + workspaces.yaml\n"
+        "/health -- Detailed service health\n\n"
+        "*GitHub*\n"
+        "/github -- Issues assigned to me\n"
+        "/githubissue <number> -- Full issue details\n"
+        "/githubcreate <title> -- Create a new issue\n"
+        "/githubsync -- Sync issues to local cache\n"
+        "/githubcheck -- Verify connectivity\n\n"
+        "*GitLab*\n"
+        "/gitlab -- Issues assigned to me (from cache)\n"
         "/gitlabissue <project\\_id> <iid> -- Fetch a single issue live\n"
-        "/gitlabcreate <title> -- Create a new GitLab issue\n"
-        "/github -- GitHub issues assigned to me\n"
-        "/githubissue <number> -- Full details of a specific issue\n"
-        "/githubcreate <title> -- Create a new GitHub issue\n"
-        "/plan <problem statement> -- Decompose into work items and create in PM platform\n"
+        "/gitlabcreate <title> -- Create a new issue\n"
+        "/gitlabsync -- Sync issues to local cache\n"
+        "/gitlabcheck -- Verify connectivity\n\n"
+        "*Azure DevOps*\n"
+        "/issues -- Work items assigned to you\n"
+        "/issue <id> -- Full work item details\n"
+        "/create <title> -- Create a work item\n"
+        "/azuresync -- Sync work items to local cache\n"
+        "/azurecheck -- Verify connectivity\n\n"
+        "*Sync*\n"
+        "/ticketsync -- Sync all platforms at once\n"
+        "/ticketsync force -- Force drop+reload of cache\n\n"
+        "*Alerts*\n"
+        "/alerts -- Unread notifications (last 24h)\n"
+        "/alertsall -- All notifications\n"
+        "/alertsclear -- Mark all as read\n\n"
+        "*PM Agent*\n"
+        "/plan <problem statement> -- Decompose into work items and create in PM platform\n\n"
         "/help -- Show this message",
         parse_mode="Markdown"
     )
@@ -733,6 +772,146 @@ def _service_display_name(service: str) -> str:
         "telegram_bot": "Telegram Bot",
     }
     return names.get(service, service)
+
+
+# ---------------------------------------------------------------------------
+# Missing daemon controls
+# ---------------------------------------------------------------------------
+
+async def _cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """Handle /stop -- stop the daemon."""
+    try:
+        result = subprocess.run(
+            [_devtrack_bin(), "stop"],
+            capture_output=True, text=True, timeout=15, env=_devtrack_env()
+        )
+        output = (result.stdout or result.stderr or "Stop command sent").strip()
+        await update.message.reply_text(output)
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+
+
+async def _cmd_restart(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """Handle /restart -- restart the daemon."""
+    try:
+        result = subprocess.run(
+            [_devtrack_bin(), "restart"],
+            capture_output=True, text=True, timeout=30, env=_devtrack_env()
+        )
+        output = (result.stdout or result.stderr or "Restart initiated").strip()
+        await update.message.reply_text(output)
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+
+
+async def _cmd_skip_next(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """Handle /skipnext -- skip the next scheduled trigger."""
+    try:
+        result = subprocess.run(
+            [_devtrack_bin(), "skip-next"],
+            capture_output=True, text=True, timeout=10, env=_devtrack_env()
+        )
+        output = (result.stdout or result.stderr or "Next trigger skipped").strip()
+        await update.message.reply_text(output)
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+
+
+async def _cmd_reload_config(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """Handle /reloadconfig -- reload .env + workspaces.yaml without restart."""
+    try:
+        result = subprocess.run(
+            [_devtrack_bin(), "reload-config"],
+            capture_output=True, text=True, timeout=10, env=_devtrack_env()
+        )
+        output = (result.stdout or result.stderr or "Config reloaded").strip()
+        await update.message.reply_text(output)
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Sync / check commands
+# ---------------------------------------------------------------------------
+
+async def _run_devtrack(update, args: list, timeout: int = 120) -> None:
+    """Run a devtrack subcommand and reply with its output."""
+    try:
+        result = subprocess.run(
+            [_devtrack_bin()] + args,
+            capture_output=True, text=True, timeout=timeout, env=_devtrack_env()
+        )
+        output = (result.stdout or result.stderr or "Done").strip()
+        if len(output) > MAX_MSG_LEN - 20:
+            output = output[:MAX_MSG_LEN - 20] + "\n... (truncated)"
+        await update.message.reply_text(f"```\n{output}\n```", parse_mode="Markdown")
+    except subprocess.TimeoutExpired:
+        await update.message.reply_text(f"`devtrack {' '.join(args)}` timed out after {timeout}s")
+    except FileNotFoundError:
+        await update.message.reply_text("`devtrack` binary not found in PATH")
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+
+
+async def _cmd_github_sync(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/githubsync — sync GitHub issues to local cache and server."""
+    await update.message.reply_text("Syncing GitHub issues...")
+    await _run_devtrack(update, ["github-sync"])
+
+
+async def _cmd_github_check(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/githubcheck — verify GitHub connectivity."""
+    await _run_devtrack(update, ["github-check"])
+
+
+async def _cmd_gitlab_sync(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/gitlabsync — sync GitLab issues to local cache and server."""
+    await update.message.reply_text("Syncing GitLab issues...")
+    await _run_devtrack(update, ["gitlab-sync"])
+
+
+async def _cmd_gitlab_check(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/gitlabcheck — verify GitLab connectivity."""
+    await _run_devtrack(update, ["gitlab-check"])
+
+
+async def _cmd_azure_sync(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/azuresync — sync Azure DevOps work items to local cache and server."""
+    await update.message.reply_text("Syncing Azure DevOps work items...")
+    await _run_devtrack(update, ["azure-sync"])
+
+
+async def _cmd_azure_check(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/azurecheck — verify Azure DevOps connectivity."""
+    await _run_devtrack(update, ["azure-check"])
+
+
+async def _cmd_ticket_sync(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/ticketsync [force] — sync all configured PM platforms."""
+    force = bool(context.args and context.args[0].lower() == "force")
+    args = ["ticket-sync"] + (["--force"] if force else [])
+    label = " (force)" if force else ""
+    await update.message.reply_text(f"Syncing all PM platforms{label}...")
+    await _run_devtrack(update, args, timeout=180)
+
+
+# ---------------------------------------------------------------------------
+# Alerts
+# ---------------------------------------------------------------------------
+
+async def _cmd_alerts(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/alerts — show unread notifications from the last 24h."""
+    await _run_devtrack(update, ["alerts"])
+
+
+async def _cmd_alerts_all(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/alertsall — show all notifications (read + unread)."""
+    await _run_devtrack(update, ["alerts", "--all"])
+
+
+async def _cmd_alerts_clear(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
+    """/alertsclear — mark all notifications as read."""
+    await _run_devtrack(update, ["alerts", "--clear"])
 
 
 # ---------------------------------------------------------------------------
