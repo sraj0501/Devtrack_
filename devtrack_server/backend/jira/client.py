@@ -12,9 +12,11 @@ Configuration (via .env):
 """
 
 import logging
+import requests
 from base64 import b64encode
 from dataclasses import dataclass, field
 from datetime import datetime
+from requests.adapters import HTTPAdapter
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -70,6 +72,11 @@ class JiraClient:
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
+        self._session = requests.Session()
+        self._session.headers.update(self._headers)
+        _adapter = HTTPAdapter(pool_connections=5, pool_maxsize=20)
+        self._session.mount("https://", _adapter)
+        self._session.mount("http://", _adapter)
 
     def is_configured(self) -> bool:
         """Return True if all required credentials are present."""
@@ -80,14 +87,17 @@ class JiraClient:
         if not self.is_configured():
             return None
         try:
-            import requests
             url = f"{self.base_url}/rest/api/3{path}"
-            resp = requests.get(url, headers=self._headers, params=params, timeout=timeout)
+            resp = self._session.get(url, params=params, timeout=timeout)
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
             logger.warning(f"Jira GET {path} failed: {e}")
             return None
+
+    def close(self) -> None:
+        """Close the underlying HTTP session."""
+        self._session.close()
 
     def get_my_issues(
         self,

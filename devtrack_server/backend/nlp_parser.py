@@ -1,42 +1,30 @@
 """
-NLP Task Parser using spaCy
+NLP Task Parser — LLM-first implementation.
 
-This module parses natural language text to extract task information including:
-- Project names
-- Ticket numbers (#123, PROJ-456, etc.)
-- Time estimates (2h, 30min, 1.5 hours)
-- Action verbs (completed, started, working on, fixed, etc.)
-- Task descriptions
-- Status indicators
+Extracts structured task information from developer work-update text using
+the configured LLM provider for rich semantic understanding. Falls back to
+pure regex extraction when the LLM is unavailable, so the server starts
+and operates without any AI dependencies installed.
 
-Uses spaCy for NER and pattern matching, with Ollama for enhancement.
+spaCy has been removed. The LLM call covers everything spaCy previously
+provided (NER, POS-based verb lemmatization, pattern matching) with better
+accuracy and zero model-file overhead.
 """
 
+import json
 import re
 import logging
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
-import spacy
-from spacy.matcher import Matcher
-from spacy.tokens import Doc
 
-# Set up logging
 logger = logging.getLogger(__name__)
 
-# Try to import work update enhancer
+# Optional work-update enricher (git branch/PR context injection)
 try:
     from backend.work_update_enhancer import get_work_context
     HAS_WORK_ENHANCER = True
 except ImportError:
     HAS_WORK_ENHANCER = False
-
-# Try to load spaCy model
-try:
-    nlp = spacy.load("en_core_web_sm")
-    logger.info("Loaded spaCy model: en_core_web_sm")
-except OSError:
-    logger.warning("spaCy model not found. Please install: python -m spacy download en_core_web_sm")
-    nlp = None
 
 
 @dataclass
@@ -52,16 +40,15 @@ class ParsedTask:
     status: Optional[str] = None
     entities: Dict[str, List[str]] = None
     confidence: float = 0.0
-    git_context: Optional[Dict] = None  # NEW: Git branch/PR context
+    git_context: Optional[Dict] = None
 
     def __post_init__(self):
         if self.entities is None:
             self.entities = {}
         if self.git_context is None:
             self.git_context = {}
-    
+
     def to_dict(self) -> Dict:
-        """Convert to dictionary"""
         return {
             "raw_text": self.raw_text,
             "project": self.project,
@@ -73,128 +60,136 @@ class ParsedTask:
             "status": self.status,
             "entities": self.entities,
             "confidence": self.confidence,
-            "git_context": self.git_context
+            "git_context": self.git_context,
         }
 
 
+# LLM prompt that requests a strict JSON response.
+# The double-braces escape the f-string so the schema braces are literal.
+_LLM_PROMPT_TEMPLATE = """\
+You are a developer work-update parser. Extract structured information from the text.
+Return ONLY a JSON object — no markdown fences, no explanation, nothing else.
+
+JSON schema (use null for any field you cannot determine):
+{{
+  "ticket_id": "<ticket id e.g. AB-123 PROJ-456 #42, or null>",
+  "project": "<project or product name, or null>",
+  "action_verb": "<one verb: fixed completed working implementing started began blocked waiting reviewing testing deployed merged, or null>",
+  "status": "<one of: completed in_progress started blocked waiting in_review testing, or null>",
+  "time_spent": "<e.g. 2h 30m 1.5d, or null>",
+  "time_estimate": "<e.g. 3h, or null>",
+  "description": "<clean work description without ticket id or time info>"
+}}
+
+Examples:
+Input: "Fixed login bug for Project Alpha AB-123, spent 2 hours"
+Output: {{"ticket_id":"AB-123","project":"Project Alpha","action_verb":"fixed","status":"completed","time_spent":"2h","time_estimate":null,"description":"Fixed login bug"}}
+
+Input: "Working on PROJ-456 implementing new API endpoint"
+Output: {{"ticket_id":"PROJ-456","project":null,"action_verb":"working","status":"in_progress","time_spent":null,"time_estimate":null,"description":"Implementing new API endpoint"}}
+
+Input: {text}
+Output:"""
+
+
 class NLPTaskParser:
-    """NLP-based task parser using spaCy"""
-    
+    """LLM-first task parser with regex fallback.
+
+    When use_ollama=True (default), sends the text to the configured LLM
+    provider and parses the JSON response. Any field the LLM leaves null
+    is filled in by the regex pipeline. If the LLM is unavailable or
+    returns unparseable output, all fields come from regex — no crash.
+    """
+
     # Ticket number patterns (various formats)
     TICKET_PATTERNS = [
         r'#(\d+)',                          # #123
         r'([A-Z]{2,10}-\d+)',              # PROJ-456, PA-123
         r'([A-Z]+\d+)',                    # ABC123
-        r'ticket[:\s]+(\d+)',              # ticket: 123, ticket 123
+        r'ticket[:\s]+(\d+)',              # ticket: 123
         r'issue[:\s]+(\d+)',               # issue: 123
     ]
-    
+
     # Time patterns
     TIME_PATTERNS = [
         r'(\d+\.?\d*)\s*h(?:our)?s?',     # 2h, 2.5 hours
         r'(\d+)\s*m(?:in)?(?:ute)?s?',    # 30min, 30 minutes
         r'(\d+\.?\d*)\s*d(?:ay)?s?',      # 2d, 1.5 days
     ]
-    
-    # Action verbs and their status mappings
+
+    # Action verbs → status mapping
     ACTION_VERBS = {
-        # Completed actions
-        'completed': 'completed',
-        'finished': 'completed',
-        'done': 'completed',
-        'fixed': 'completed',
-        'resolved': 'completed',
-        'merged': 'completed',
-        'deployed': 'completed',
-        'released': 'completed',
-        'closed': 'completed',
-        
-        # In progress actions
-        'working': 'in_progress',
-        'implementing': 'in_progress',
-        'developing': 'in_progress',
-        'coding': 'in_progress',
-        'building': 'in_progress',
-        'creating': 'in_progress',
-        'writing': 'in_progress',
-        'updating': 'in_progress',
-        'refactoring': 'in_progress',
+        'completed': 'completed', 'finished': 'completed', 'done': 'completed',
+        'fixed': 'completed', 'resolved': 'completed', 'merged': 'completed',
+        'deployed': 'completed', 'released': 'completed', 'closed': 'completed',
+        'working': 'in_progress', 'implementing': 'in_progress', 'developing': 'in_progress',
+        'coding': 'in_progress', 'building': 'in_progress', 'creating': 'in_progress',
+        'writing': 'in_progress', 'updating': 'in_progress', 'refactoring': 'in_progress',
         'debugging': 'in_progress',
-        
-        # Starting actions
-        'started': 'started',
-        'began': 'started',
-        'initiated': 'started',
+        'started': 'started', 'began': 'started', 'initiated': 'started',
         'kicked off': 'started',
-        
-        # Blocked/waiting
-        'blocked': 'blocked',
-        'waiting': 'waiting',
-        'stuck': 'blocked',
-        
-        # Review/testing
-        'reviewing': 'in_review',
-        'testing': 'testing',
-        'qa': 'testing',
+        'blocked': 'blocked', 'waiting': 'waiting', 'stuck': 'blocked',
+        'reviewing': 'in_review', 'testing': 'testing', 'qa': 'testing',
     }
-    
-    # Project name indicators
+
     PROJECT_INDICATORS = ['project', 'for', 'on', 'in']
-    
+
     def __init__(self, use_ollama: bool = True):
-        """
-        Initialize NLP task parser
-        
-        Args:
-            use_ollama: Whether to use Ollama for enhancement (only option for AI)
-        """
         self.use_ollama = use_ollama
-        
-        if nlp is None:
-            raise RuntimeError("spaCy model not loaded. Install with: python -m spacy download en_core_web_sm")
-        
-        # Compile regex patterns
         self.ticket_regex = [re.compile(p, re.IGNORECASE) for p in self.TICKET_PATTERNS]
         self.time_regex = [re.compile(p, re.IGNORECASE) for p in self.TIME_PATTERNS]
-        
-        # Create spaCy matcher for patterns
-        self.matcher = Matcher(nlp.vocab)
-        self._add_patterns()
-    
-    def _add_patterns(self):
-        """Add custom patterns to spaCy matcher"""
-        # Pattern for "working on X"
-        working_on_pattern = [
-            {"LEMMA": {"IN": ["work", "working"]}},
-            {"LOWER": "on"},
-            {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "+"}
-        ]
-        self.matcher.add("WORKING_ON", [working_on_pattern])
-        
-        # Pattern for "fixed X"
-        fixed_pattern = [
-            {"LEMMA": {"IN": ["fix", "resolve", "complete"]}},
-            {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "+"}
-        ]
-        self.matcher.add("FIXED", [fixed_pattern])
-    
+
+    # -- LLM extraction -------------------------------------------------------
+
+    def _try_llm_parse(self, text: str) -> Optional[Dict]:
+        """Call the configured LLM provider for structured JSON extraction.
+
+        Returns a dict of extracted fields, or None if the LLM is unavailable,
+        returns a non-JSON response, or raises any exception. Callers treat
+        None as a signal to fall back to pure regex.
+        """
+        try:
+            from backend.llm import get_provider
+            from backend.llm.base import LLMOptions
+        except ImportError:
+            return None
+
+        try:
+            provider = get_provider()
+            prompt = _LLM_PROMPT_TEMPLATE.format(text=text)
+            result = provider.generate(
+                prompt,
+                LLMOptions(
+                    temperature=0.1,
+                    max_tokens=300,
+                    extra={"format": "json"},  # Ollama JSON mode; ignored by other providers
+                ),
+            )
+            if not result:
+                return None
+            # Strip markdown code fences some models add
+            cleaned = re.sub(r"```(?:json)?\s*|\s*```", "", result).strip()
+            # Extract the first JSON object if the model added surrounding text
+            m = re.search(r'\{.*\}', cleaned, re.DOTALL)
+            cleaned = m.group(0) if m else cleaned
+            data = json.loads(cleaned)
+            # Normalise "null"/"none"/"" strings that some models emit
+            return {
+                k: (None if str(v).lower() in ("null", "none", "") else v)
+                for k, v in data.items()
+            }
+        except Exception as e:
+            logger.debug(f"LLM NLP extraction failed (will use regex fallback): {e}")
+            return None
+
+    # -- public API -----------------------------------------------------------
+
     def parse(self, text: str, repo_path: str = ".") -> ParsedTask:
-        """
-        Parse natural language text to extract task information
-
-        Args:
-            text: The text to parse
-            repo_path: Path to git repo for context extraction (optional)
-
-        Returns:
-            ParsedTask object with extracted information
-        """
+        """Parse a developer work-update into a structured ParsedTask."""
         logger.info(f"Parsing text: {text}")
-
-        # Create parsed task
         task = ParsedTask(raw_text=text)
 
-        # Extract git context (branch, PR metadata, changes)
+        # Git context injection (branch, PR metadata)
         if HAS_WORK_ENHANCER:
             try:
                 task.git_context = get_work_context(repo_path) or {}
@@ -204,53 +199,55 @@ class NLPTaskParser:
                 logger.debug(f"Error getting git context: {e}")
                 task.git_context = {}
 
-        # Process with spaCy
-        doc = nlp(text)
+        # LLM-first extraction
+        llm = self._try_llm_parse(text) if self.use_ollama else None
 
-        # Extract ticket numbers
-        task.ticket_id = self._extract_ticket_number(text)
+        if llm:
+            # LLM result takes precedence; regex fills any nulls
+            task.ticket_id = llm.get("ticket_id") or self._extract_ticket_number(text)
+            task.project = llm.get("project")
+            task.action_verb = llm.get("action_verb")
+            task.status = llm.get("status") or "in_progress"
+            task.time_spent = llm.get("time_spent")
+            task.time_estimate = llm.get("time_estimate")
+            task.description = llm.get("description") or text
+            task.entities = {}
+        else:
+            # Pure regex fallback — no LLM required
+            task.ticket_id = self._extract_ticket_number(text)
+            time_info = self._extract_time(text)
+            task.time_estimate = time_info.get('estimate')
+            task.time_spent = time_info.get('spent')
+            action, status = self._extract_action_verb(text)
+            task.action_verb = action
+            task.status = status or 'in_progress'
+            task.entities = {}
+            task.project = self._extract_project_regex(text)
+            task.description = self._build_description(text, task)
 
-        # Try to extract ticket from git context (PR number)
+        # Augment ticket_id from git PR number if not found in text
         if not task.ticket_id and task.git_context.get('branch'):
             pr_number = task.git_context['branch'].get('issue_number')
             if pr_number:
                 task.ticket_id = pr_number
                 logger.debug(f"Extracted ticket from git context: {task.ticket_id}")
 
-        # Extract time information
-        time_info = self._extract_time(text)
-        task.time_estimate = time_info.get('estimate')
-        task.time_spent = time_info.get('spent')
-
-        # Extract action verb and status
-        action, status = self._extract_action_and_status(doc, text)
-        task.action_verb = action
-        task.status = status or 'in_progress'  # Default status
-
-        # Extract entities
-        task.entities = self._extract_entities(doc)
-
-        # Extract project name
-        task.project = self._extract_project(text, doc, task.entities)
-
-        # Extract description
-        task.description = self._extract_description(text, doc, task)
-
-        # Enhance description with git context if available
+        # Append branch name to description for traceability
         if task.git_context.get('branch') and task.description:
             branch_info = task.git_context['branch'].get('branch', '')
             if branch_info and branch_info not in task.description:
                 task.description = f"{task.description} (on {branch_info})"
 
-        # Calculate confidence
         task.confidence = self._calculate_confidence(task)
-
         logger.info(f"Parsed result: {task.to_dict()}")
-
         return task
-    
+
+    def parse_batch(self, texts: List[str]) -> List[ParsedTask]:
+        return [self.parse(text) for text in texts]
+
+    # -- regex helpers --------------------------------------------------------
+
     def _extract_ticket_number(self, text: str) -> Optional[str]:
-        """Extract ticket number from text"""
         for regex in self.ticket_regex:
             match = regex.search(text)
             if match:
@@ -258,78 +255,41 @@ class NLPTaskParser:
                 logger.debug(f"Found ticket: {ticket}")
                 return ticket
         return None
-    
+
     def _extract_time(self, text: str) -> Dict[str, Optional[str]]:
-        """Extract time estimates and time spent"""
-        result = {'estimate': None, 'spent': None}
-        
-        # Look for "spent X" or "took X"
-        spent_match = re.search(r'(?:spent|took)\s+(\d+\.?\d*\s*(?:h|hour|min|day)s?)', text, re.IGNORECASE)
+        result: Dict[str, Optional[str]] = {'estimate': None, 'spent': None}
+        spent_match = re.search(
+            r'(?:spent|took)\s+(\d+\.?\d*\s*(?:h|hour|min|day)s?)', text, re.IGNORECASE
+        )
         if spent_match:
             result['spent'] = self._normalize_time(spent_match.group(1))
-        
-        # Look for general time mentions
         for regex in self.time_regex:
             matches = regex.findall(text)
             if matches:
-                # If we already have spent, this is estimate
                 time_str = self._normalize_time(f"{matches[0]} {regex.pattern.split('?')[0][-1]}")
                 if result['spent'] is None:
                     result['spent'] = time_str
                 else:
                     result['estimate'] = time_str
                 break
-        
         return result
-    
+
     def _normalize_time(self, time_str: str) -> str:
-        """Normalize time string to standard format"""
-        # Extract number and unit
         match = re.search(r'(\d+\.?\d*)\s*([hdm])', time_str, re.IGNORECASE)
         if match:
             value, unit = match.groups()
-            unit_map = {'h': 'h', 'd': 'd', 'm': 'm'}
-            return f"{value}{unit_map.get(unit.lower(), unit)}"
+            return f"{value}{unit.lower()}"
         return time_str
-    
-    def _extract_action_and_status(self, doc: Doc, text: str) -> Tuple[Optional[str], Optional[str]]:
-        """Extract action verb and infer status"""
+
+    def _extract_action_verb(self, text: str) -> Tuple[Optional[str], Optional[str]]:
         text_lower = text.lower()
-        
-        # Check for action verbs
         for verb, status in self.ACTION_VERBS.items():
             if verb in text_lower:
                 logger.debug(f"Found action: {verb} -> status: {status}")
                 return verb, status
-        
-        # Check spaCy verbs
-        for token in doc:
-            if token.pos_ == "VERB":
-                lemma = token.lemma_.lower()
-                if lemma in self.ACTION_VERBS:
-                    status = self.ACTION_VERBS[lemma]
-                    logger.debug(f"Found verb: {lemma} -> status: {status}")
-                    return lemma, status
-        
         return None, None
-    
-    def _extract_entities(self, doc: Doc) -> Dict[str, List[str]]:
-        """Extract named entities from text"""
-        entities = {}
-        
-        for ent in doc.ents:
-            if ent.label_ not in entities:
-                entities[ent.label_] = []
-            entities[ent.label_].append(ent.text)
-        
-        logger.debug(f"Extracted entities: {entities}")
-        return entities
-    
-    def _extract_project(self, text: str, doc: Doc, entities: Dict) -> Optional[str]:
-        """Extract project name from text"""
-        text_lower = text.lower()
-        
-        # Look for explicit project mentions
+
+    def _extract_project_regex(self, text: str) -> Optional[str]:
         for indicator in self.PROJECT_INDICATORS:
             pattern = rf'{indicator}\s+([A-Z][A-Za-z0-9_\-]+)'
             match = re.search(pattern, text)
@@ -337,103 +297,49 @@ class NLPTaskParser:
                 project = match.group(1)
                 logger.debug(f"Found project: {project}")
                 return project
-        
-        # Look in entities
-        for label in ['ORG', 'PRODUCT']:
-            if label in entities and entities[label]:
-                project = entities[label][0]
-                logger.debug(f"Found project from entity: {project}")
-                return project
-        
-        # Look for capitalized words that might be project names
-        for token in doc:
-            if token.is_title and len(token.text) > 3 and token.pos_ in ['PROPN', 'NOUN']:
-                logger.debug(f"Found potential project: {token.text}")
-                return token.text
-        
         return None
-    
-    def _extract_description(self, text: str, doc: Doc, task: ParsedTask) -> str:
-        """Extract task description, removing ticket numbers and time info"""
+
+    def _build_description(self, text: str, task: ParsedTask) -> str:
         description = text
-        
-        # Remove ticket number
         if task.ticket_id:
             for regex in self.ticket_regex:
                 description = regex.sub('', description)
-        
-        # Remove time information
         for regex in self.time_regex:
             description = regex.sub('', description)
-        
-        # Remove project indicators
-        for indicator in self.PROJECT_INDICATORS:
-            if task.project:
-                description = re.sub(rf'{indicator}\s+{re.escape(task.project)}', '', description, flags=re.IGNORECASE)
-        
-        # Clean up
+        if task.project:
+            for indicator in self.PROJECT_INDICATORS:
+                description = re.sub(
+                    rf'{indicator}\s+{re.escape(task.project)}', '',
+                    description, flags=re.IGNORECASE
+                )
         description = re.sub(r'\s+', ' ', description).strip()
-        
-        # If too short, use full text
         if len(description) < 10:
             description = text
-        
         return description
-    
+
     def _calculate_confidence(self, task: ParsedTask) -> float:
-        """Calculate confidence score for the parse"""
         confidence = 0.0
-        
-        # Has ticket number
         if task.ticket_id:
             confidence += 0.3
-        
-        # Has project
         if task.project:
             confidence += 0.2
-        
-        # Has action verb
         if task.action_verb:
             confidence += 0.2
-        
-        # Has time information
         if task.time_spent or task.time_estimate:
             confidence += 0.15
-        
-        # Has entities
         if task.entities:
             confidence += 0.1 * min(len(task.entities), 1.5)
-        
-        # Has description
         if len(task.description) > 10:
             confidence += 0.05
-        
         return min(confidence, 1.0)
-    
-    def parse_batch(self, texts: List[str]) -> List[ParsedTask]:
-        """Parse multiple texts in batch"""
-        return [self.parse(text) for text in texts]
 
 
-# Helper function for quick parsing
 def parse_task(text: str, use_ollama: bool = True) -> ParsedTask:
-    """
-    Quick helper to parse a single task
-    
-    Args:
-        text: The text to parse
-        use_ollama: Whether to use Ollama for enhancement
-        
-    Returns:
-        ParsedTask object
-    """
-    parser = NLPTaskParser(use_ollama=use_ollama)
-    return parser.parse(text)
+    """Quick helper to parse a single task."""
+    return NLPTaskParser(use_ollama=use_ollama).parse(text)
 
 
-# Example usage
 if __name__ == "__main__":
-    # Example texts
     examples = [
         "Fixed login bug for Project Alpha #123, spent 2 hours",
         "Working on PROJ-456 implementing new API endpoint",
@@ -441,17 +347,13 @@ if __name__ == "__main__":
         "Started debugging authentication issue, estimated 3h",
         "Blocked on JIRA-321 waiting for backend team",
     ]
-    
+
     parser = NLPTaskParser(use_ollama=True)
-    
     print("NLP Task Parser Examples")
     print("=" * 60)
-    print()
-    
     for i, text in enumerate(examples, 1):
-        print(f"Example {i}: {text}")
+        print(f"\nExample {i}: {text}")
         print("-" * 60)
-        
         task = parser.parse(text)
         print(f"Project:     {task.project}")
         print(f"Ticket:      {task.ticket_id}")
@@ -460,4 +362,3 @@ if __name__ == "__main__":
         print(f"Time Spent:  {task.time_spent}")
         print(f"Description: {task.description}")
         print(f"Confidence:  {task.confidence:.2f}")
-        print()

@@ -126,13 +126,13 @@ class TestGetMyIssues:
         raw = _make_raw_issue()
         mock_response = {"issues": [raw]}
 
-        with patch("requests.get") as mock_get:
-            mock_resp = MagicMock()
-            mock_resp.json.return_value = mock_response
-            mock_resp.raise_for_status.return_value = None
-            mock_get.return_value = mock_resp
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = mock_response
+        mock_resp.raise_for_status.return_value = None
+        client._session = MagicMock()
+        client._session.get.return_value = mock_resp
 
-            issues = client.get_my_issues()
+        issues = client.get_my_issues()
 
         assert len(issues) == 1
         assert issues[0].key == "PROJ-1"
@@ -151,15 +151,15 @@ class TestGetMyIssues:
         client = self._configured_client()
         mock_response = {"issues": []}
 
-        with patch("requests.get") as mock_get:
-            mock_resp = MagicMock()
-            mock_resp.json.return_value = mock_response
-            mock_resp.raise_for_status.return_value = None
-            mock_get.return_value = mock_resp
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = mock_response
+        mock_resp.raise_for_status.return_value = None
+        client._session = MagicMock()
+        client._session.get.return_value = mock_resp
 
-            client.get_my_issues(status_filter=["In Progress", "To Do"])
+        client.get_my_issues(status_filter=["In Progress", "To Do"])
 
-        call_kwargs = mock_get.call_args
+        call_kwargs = client._session.get.call_args
         jql = call_kwargs.kwargs.get("params", {}).get("jql", "")
         assert "In Progress" in jql
         assert "To Do" in jql
@@ -188,13 +188,13 @@ class TestGetIssue:
         client = self._configured_client()
         raw = _make_raw_issue(key="PROJ-42", summary="Add OAuth support")
 
-        with patch("requests.get") as mock_get:
-            mock_resp = MagicMock()
-            mock_resp.json.return_value = raw
-            mock_resp.raise_for_status.return_value = None
-            mock_get.return_value = mock_resp
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = raw
+        mock_resp.raise_for_status.return_value = None
+        client._session = MagicMock()
+        client._session.get.return_value = mock_resp
 
-            issue = client.get_issue("PROJ-42")
+        issue = client.get_issue("PROJ-42")
 
         assert issue is not None
         assert issue.key == "PROJ-42"

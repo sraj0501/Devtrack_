@@ -102,7 +102,8 @@ class GitLabClient:
         if self._session is None or self._session.closed:
             headers = {"Private-Token": self._pat, "Content-Type": "application/json"}
             timeout = aiohttp.ClientTimeout(total=self._timeout_secs)
-            self._session = aiohttp.ClientSession(headers=headers, timeout=timeout)
+            connector = aiohttp.TCPConnector(limit=20, ttl_dns_cache=300)
+            self._session = aiohttp.ClientSession(headers=headers, timeout=timeout, connector=connector)
         return self._session
 
     async def close(self) -> None:
