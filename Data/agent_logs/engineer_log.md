@@ -2,6 +2,27 @@
 
 ---
 
+### [2026-06-09 PM] TASK-056 — fix(pm): add skip_issues flag to suppress duplicate tickets from dual-platform workspaces
+
+**Commits**:
+- `648aee8` — fix(pm): add skip_issues flag to suppress duplicate tickets from dual-platform workspaces
+- `7230c34` — chore: bump versioninfo.json to 3.0.9
+- `64939e3` — chore: bump wiki to v3.0.9; add skip_issues dual-platform docs
+
+**Files changed**:
+- `devtrack_client/internal/config/config.go` — SkipIssues field added to WorkspaceConfig; ResolveWorkspaceForPath prefers non-skip at equal depth
+- `devtrack_client/cli_connectors.go` — handleIssues() skips ws.SkipIssues == true
+- `devtrack_client/ticket_sync.go` — SyncAllTickets() and PushCachedTickets() skip ws.SkipIssues == true
+- `devtrack_client/versioninfo.json` — bumped to 3.0.9
+- `devtrack_wiki/wiki/wiki.html` — v3.0.9 What's New entry; WORKSPACES page: skip_issues Universal Field, dual-platform example, Common mistakes row
+
+**Build**: `go build ./...` PASS | `go vet ./...` PASS
+**Hardcoded scan**: CLEAN
+**Branch**: dev — pushed; merged to main
+**Vision check**: PASS (offline-first: no cloud dependency; CLI stays CLI; no first-run changes)
+
+---
+
 ### [2026-05-31 16:00] TASK-055 (follow-up) — chore: remove stale Python-era config, env vars, and help text
 
 **Original message**: "chore: remove stale Python-era config, env vars, and help text"
