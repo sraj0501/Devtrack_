@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-06-09_ | v3.0.5 | GitHub sole source of truth; devtrack.cloud live on Netlify
+_Last updated: 2026-06-09_ | v3.0.9 | GitHub sole source of truth; devtrack.cloud live on Netlify
 
 DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enriches with AI, routes to PM systems.
 
