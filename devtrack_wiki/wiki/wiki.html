@@ -556,7 +556,7 @@
         </div>
       </a>
       <div class="sidebar-version">
-        <span class="sidebar-version-tag">v3.0.5</span>
+        <span class="sidebar-version-tag">v3.0.6</span>
         <span class="sidebar-version-status">
           <span class="sidebar-version-dot"></span>
           live
@@ -587,7 +587,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v3.0.5</span>
+        <span class="version-chip">v3.0.6</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -1667,7 +1667,7 @@ devtrack uninstall --yes</code></pre>
 <tbody>
 <tr><td><strong>macOS</strong></td><td><code>launchctl unload</code> + plist file deleted</td><td><code>os.Remove</code> — no extra permissions needed for user-owned installs</td></tr>
 <tr><td><strong>Linux</strong></td><td><code>systemctl --user disable --now</code> + unit file deleted</td><td><code>os.Remove</code></td></tr>
-<tr><td><strong>Windows</strong></td><td>Shell profile block removed (WSL) or no-op if no autostart was installed</td><td>Prints the binary path and instructs you to delete it manually if it cannot be removed (common when the process is still in memory)</td></tr>
+<tr><td><strong>Windows</strong></td><td><code>schtasks /Delete /TN DevTrack /F</code> (Task Scheduler task removed; no-op if not installed)</td><td>Binary renamed to <code>.old</code> (cannot delete a running .exe); safe to remove manually after stopping DevTrack</td></tr>
 </tbody>
 </table></div>
 
@@ -1707,7 +1707,18 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.5 — latest</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.6 — latest</div>
+
+<h2>v3.0.6 — Windows CLI Parity &amp; Autostart</h2>
+<p>Windows now has full feature parity with Unix/macOS. The autostart system correctly uses Windows Task Scheduler (previously fell through to a macOS default). Windows binary metadata updated to 3.0.6.</p>
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>Windows autostart via Task Scheduler</h4><p><code>devtrack autostart-install</code> on Windows now creates a Task Scheduler task (<code>ONLOGON / HIGHEST</code>) instead of silently falling back to the macOS launchd path. <code>autostart-status</code> queries the task; <code>autostart-uninstall</code> deletes it.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>Full cross-platform parity</h4><p>All CLI commands — autostart, force-trigger, reload-config, stop, upgrade, uninstall, notifications — now behave identically on Windows, macOS, and Linux. Platform differences are handled internally with OS-appropriate equivalents (e.g. SIGUSR2 → HTTP endpoint on Windows).</p></div></div>
+  <div class="feature-item"><div class="feature-dot">3</div><div><h4>Windows binary metadata corrected</h4><p>The embedded Windows version info (<code>versioninfo.json</code>) was stale at 2.2.14. Updated to 3.0.6 and the <code>.syso</code> resource file regenerated. The <code>go:generate</code> directive was also corrected to output <code>resource_windows_amd64.syso</code> (constrains linkage to Windows/amd64 only).</p></div></div>
+</div>
+
+<hr>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.5 — previous</div>
 
 <h2>v3.0.5 — Telegram Bot Migrated to Go Client</h2>
 <p>The interactive Telegram bot is now a native part of the Go daemon — no separate Python process needed. It starts automatically when <code>TELEGRAM_ENABLED=true</code> is set. The Windows upgrade command was also fixed to download the <code>.exe</code> directly instead of extracting from a zip.</p>
@@ -2204,7 +2215,7 @@ devtrack start</code></pre>
 <tr><td><code>devtrack server-tui</code></td><td>Launch the Textual process monitor</td></tr>
 <tr><td><code>devtrack admin-start</code></td><td>Launch the Admin Console web UI</td></tr>
 <tr><td><code>devtrack alerts [--all|--clear]</code></td><td>View or clear ticket notifications</td></tr>
-<tr><td><code>devtrack autostart-install</code></td><td>Install OS-native auto-start (launchd/systemd/profile)</td></tr>
+<tr><td><code>devtrack autostart-install</code></td><td>Install OS-native auto-start (launchd / systemd / Task Scheduler / profile)</td></tr>
 </tbody>
 </table></div>
 
@@ -2304,7 +2315,7 @@ devtrack start</code></pre>
 <thead><tr><th>Command</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>devtrack setup</code></td><td>Interactive first-run wizard — generates <code>.env</code>, creates Data dirs, registers env file</td></tr>
-<tr><td><code>devtrack autostart-install</code></td><td>Register as launchd (macOS) or systemd (Linux) service; bakes current env vars into the unit</td></tr>
+<tr><td><code>devtrack autostart-install</code></td><td>Register OS-native auto-start: launchd (macOS), systemd (Linux/WSL), Task Scheduler (Windows), or shell profile (WSL fallback); bakes current env vars into the unit</td></tr>
 <tr><td><code>devtrack autostart-uninstall</code></td><td>Remove the OS autostart registration</td></tr>
 <tr><td><code>devtrack autostart-status</code></td><td>Show whether autostart is registered and enabled</td></tr>
 </tbody>
@@ -3204,11 +3215,12 @@ devtrack autostart-uninstall  # Remove auto-start at any time</code></pre>
 <tr><td>Linux with systemd</td><td>systemd user service</td><td><code>~/.config/systemd/user/devtrack.service</code></td></tr>
 <tr><td>WSL with systemd</td><td>systemd user service</td><td><code>~/.config/systemd/user/devtrack.service</code></td></tr>
 <tr><td>WSL without systemd</td><td>Shell profile block</td><td><code>~/.zshrc</code> or <code>~/.bashrc</code></td></tr>
+<tr><td>Windows</td><td>Windows Task Scheduler task</td><td>Task name: <code>DevTrack</code> (runs at logon, highest privileges)</td></tr>
 </tbody>
 </table></div>
 
 <h2>Env-Baking (v1.4-dev)</h2>
-<p>As of v1.4-dev, <code>devtrack autostart-install</code> <strong>bakes all current environment variables</strong> into the generated plist (macOS) or systemd unit (Linux) at install time. This means the daemon inherits the exact same configuration that was active when you ran <code>autostart-install</code> — no wrapper scripts, no <code>EnvironmentFile=</code> hacks, and no separate <code>.env</code> file needed at runtime.</p>
+<p>As of v1.4-dev, <code>devtrack autostart-install</code> <strong>bakes all current environment variables</strong> into the generated plist (macOS), systemd unit (Linux), or Task Scheduler task (Windows) at install time. This means the daemon inherits the exact same configuration that was active when you ran <code>autostart-install</code> — no wrapper scripts, no <code>EnvironmentFile=</code> hacks, and no separate <code>.env</code> file needed at runtime.</p>
 
 <blockquote><p><strong>Important:</strong> Re-run <code>devtrack autostart-install</code> after changing any environment variable to refresh the baked configuration in the plist or service unit.</p></blockquote>
 
@@ -3264,10 +3276,27 @@ devtrack start 2&gt;/dev/null || true
 # End DevTrack auto-start</code></pre>
 <p>After installation, re-source your profile or open a new terminal to start DevTrack in the current session.</p>
 
+<h2>Windows — Task Scheduler</h2>
+<p>DevTrack creates a <strong>Task Scheduler task</strong> named <code>DevTrack</code> that runs <code>devtrack start</code> at logon with highest privileges.</p>
+
+<h3>Install</h3>
+<pre><code class="language-bash">devtrack autostart-install</code></pre>
+<p>Runs <code>schtasks /Create /SC ONLOGON /RL HIGHEST /TN DevTrack</code> — the task starts automatically each time you log in.</p>
+
+<h3>Status &amp; Manual Control</h3>
+<pre><code class="language-bash">devtrack autostart-status
+schtasks /Query /TN DevTrack /FO LIST    # Detailed task info
+schtasks /Run /TN DevTrack               # Start immediately without waiting for logon</code></pre>
+
+<h3>Uninstall</h3>
+<pre><code class="language-bash">devtrack autostart-uninstall</code></pre>
+<p>Runs <code>schtasks /Delete /TN DevTrack /F</code>. If the task was never registered, the command exits silently.</p>
+
 <h2>Troubleshooting</h2>
 <ul>
 <li><strong>Daemon did not start after login (macOS)</strong> — run <code>tail -50 Data/logs/launchd.log</code> and <code>plutil ~/Library/LaunchAgents/dev.devtrack.plist</code>. If env vars are missing, re-run <code>autostart-install</code> after sourcing <code>.env</code>.</li>
 <li><strong>Daemon did not start after login (Linux)</strong> — run <code>systemctl --user status devtrack</code> and <code>journalctl --user -u devtrack --no-pager | tail -50</code>. Check the <code>Environment=</code> lines in the unit file match your expected values.</li>
+<li><strong>Daemon did not start after login (Windows)</strong> — open Task Scheduler, find the <code>DevTrack</code> task, and check the Last Run Result. Run <code>devtrack autostart-status</code> to query from the CLI. If the task is missing, re-run <code>devtrack autostart-install</code>.</li>
 <li><strong>Config changes not taking effect</strong> — remember to re-run <code>devtrack autostart-install</code> after changing env vars; the new values are only baked in on reinstall.</li>
 <li><strong>"autostart-install already present" warning (WSL no-systemd)</strong> — run <code>devtrack autostart-uninstall</code> first, then reinstall.</li>
 </ul>
@@ -3770,7 +3799,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-First · v3.0.5</div>
+      <div class="home-badge">Local-First · v3.0.6</div>
       <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
       <p class="home-sub">DevTrack monitors your Git activity, prompts for work updates, routes them through AI, and keeps your project management systems in sync — all running locally on your machine.</p>
     </div>
@@ -3778,7 +3807,7 @@ function renderHome() {
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.5: Telegram bot built into Go daemon (no separate Python process). Windows upgrade fixed (.exe direct download). v3.0.4: <code>devtrack issues</code> PM ticket browser, LLM-first NLP. v3.0.2: upgrade cmd fixed (GitHub API + semver guard).' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.6: Windows CLI fully on par with Unix/macOS — autostart via Task Scheduler, correct version metadata. v3.0.5: Telegram bot built into Go daemon. v3.0.4: <code>devtrack issues</code> PM ticket browser, LLM-first NLP. v3.0.2: upgrade cmd fixed.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitHub Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
@@ -3808,7 +3837,7 @@ function renderHome() {
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
         { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'"Talk Like You" — AI that learns your communication style from Teams messages and writes in your voice using RAG-powered few-shot examples.' },
         // ── System Integration ────────────────────────────────────────────────
-        { id:'AUTOSTART',       icon:'🔌', title:'Auto-Start',          desc:'Auto-start DevTrack at login — OS-aware. Run <code>devtrack autostart-install</code>: launchd LaunchAgent on macOS, systemd user service on Linux/WSL, or a shell profile block on WSL without systemd. <strong>v1.4-dev:</strong> all env vars are now baked into the plist/unit at install time — no separate <code>.env</code> file needed at runtime.' },
+        { id:'AUTOSTART',       icon:'🔌', title:'Auto-Start',          desc:'Auto-start DevTrack at login — OS-aware. Run <code>devtrack autostart-install</code>: launchd LaunchAgent on macOS, systemd user service on Linux/WSL, Windows Task Scheduler task on Windows, or a shell profile block on WSL without systemd. All env vars are baked into the unit at install time — no separate <code>.env</code> file needed at runtime.' },
         { id:'SERVER_TUI',      icon:'🖥️', title:'Server TUI',          desc:'Textual process monitor for the Python backend. Shows all server processes with live CPU/MEM/status, a health bar, and a trigger throughput stats panel (triggers today, commits today, errors in last 24 h). Navigate with ↑↓, restart with r, toggle logs with l.' },
         { id:'ADMIN_CONSOLE',   icon:'🛡️', title:'Admin Console',       desc:'Web UI at <code>http://localhost:8090/admin/</code> — manage users, roles, API keys; soft disable/enable users; reset passwords; license status page; HTMX trigger stats panel (30s auto-refresh); LLM config, integration credentials, and a full audit log. Run with <code>devtrack admin-start</code> or set <code>ADMIN_EMBED=true</code> to co-host on port 8089.' },
         { id:'TELEMETRY',       icon:'📊', title:'Telemetry',           desc:'Optional usage tracking: download counts, command frequencies, version adoption. Fully transparent, no PII. Designed for a real-time admin dashboard via Server-Sent Events. See the plan in <code>docs/TELEMETRY_PLAN.md</code>.' },
@@ -3868,7 +3897,7 @@ devtrack start</code></pre>
         { n:'Richer AI Messages',  d:'In the commit refinement loop, pressing <kbd>E</kbd> to enhance gives the AI double the normal token allowance for that call, producing more detailed and thorough commit messages.' },
         { n:'Personalized AI',     d:'Learns your style from Teams messages and writes in your voice.' },
         { n:'Ticket Alerter',      d:'Polls GitHub, Azure DevOps, and Jira for events relevant to you — assigned issues/PRs/work items, comments on threads you are in, state changes, and review requests. Delivers macOS OS notifications (via osascript) and terminal output. Delta-synced via MongoDB so you never see the same notification twice. Configure with <code>ALERT_ENABLED=true</code>, <code>ALERT_GITHUB_ENABLED=true</code>, <code>ALERT_AZURE_ENABLED=true</code>, <code>ALERT_JIRA_ENABLED=true</code> and the <code>ALERT_*</code> variables in <code>.env</code>.' },
-        { n:'OS-Aware Auto-Start', d:'Run <code>devtrack autostart-install</code> — DevTrack detects your OS and picks the right mechanism: launchd LaunchAgent on macOS, systemd user service on Linux/WSL with systemd, or a shell profile block on WSL without systemd. The daemon starts automatically each time you log in — no cron, no manual <code>devtrack start</code> after reboot. v1.4-dev: all env vars are baked into the plist/unit at install time so the daemon gets the right config without a <code>.env</code> file.' },
+        { n:'OS-Aware Auto-Start', d:'Run <code>devtrack autostart-install</code> — DevTrack detects your OS and picks the right mechanism: launchd LaunchAgent on macOS, systemd user service on Linux/WSL with systemd, Windows Task Scheduler task on Windows, or a shell profile block on WSL without systemd. The daemon starts automatically each time you log in — no cron, no manual <code>devtrack start</code> after reboot. All env vars are baked into the plist/unit/task at install time so the daemon gets the right config without a <code>.env</code> file.' },
         { n:'Offline-First',       d:'Queues everything and syncs when connectivity returns.' },
         { n:'Remote Control',      d:'Full Telegram bot: status, logs, create items, trigger updates. Plus a Slack bot (<code>/devtrack &lt;cmd&gt;</code>) via Socket Mode — no public URL required.' },
         { n:'AI Project Planning', d:'<code>/newproject</code> in Telegram — describe a project in plain text, pick developers from the live team roster, and let AI auto-fetch each person\'s workload from the PM tool. Generates a full YAML spec (features, stories, sprints, capacity analysis, skill-gap risks), emails it to the PM with an approve/edit link, and creates everything in Azure/GitHub/GitLab on approval.' },
