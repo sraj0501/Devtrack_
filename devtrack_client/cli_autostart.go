@@ -299,6 +299,7 @@ const (
 	osLinuxSystemd osType = "linux-systemd"
 	osWSLSystemd   osType = "wsl-systemd"
 	osWSLNoSystemd osType = "wsl-nosystemd"
+	osWindows      osType = "windows"
 )
 
 // detectOSType returns the appropriate autostart mechanism for the current OS.
@@ -318,6 +319,8 @@ func detectOSType() osType {
 		}
 		// Linux without systemd — fall back to profile-based (same as WSL-nosystemd)
 		return osWSLNoSystemd
+	case "windows":
+		return osWindows
 	default:
 		return osDarwin // best guess for unknown OS
 	}
@@ -647,6 +650,8 @@ func (cli *CLI) handleAutostartInstall() error {
 		return installSystemdService(projectRoot, binaryPath, "")
 	case osWSLNoSystemd:
 		return installProfileAutostart(binaryPath, "")
+	case osWindows:
+		return installWindowsTask(binaryPath)
 	default:
 		return cli.handleLaunchdInstall()
 	}
@@ -661,6 +666,8 @@ func (cli *CLI) handleAutostartUninstall() error {
 		return uninstallSystemdService()
 	case osWSLNoSystemd:
 		return uninstallProfileAutostart()
+	case osWindows:
+		return removeWindowsScheduledTask()
 	default:
 		return cli.handleLaunchdUninstall()
 	}
@@ -719,7 +726,44 @@ func (cli *CLI) handleAutostartStatus() error {
 		fmt.Println()
 		// Also show daemon status.
 		return cli.handleStatus()
+
+	case osWindows:
+		fmt.Println("Auto-start mechanism: Windows Task Scheduler")
+		fmt.Println()
+		cmd := exec.Command("schtasks", "/Query", "/TN", "DevTrack", "/FO", "LIST")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			s := string(out)
+			if strings.Contains(s, "does not exist") || strings.Contains(s, "not found") ||
+				strings.Contains(strings.ToLower(s), "cannot find") {
+				fmt.Println("  Task not registered (run 'devtrack autostart-install' to add it).")
+			} else {
+				fmt.Printf("  schtasks query failed: %s\n", strings.TrimSpace(s))
+			}
+		} else {
+			fmt.Print(string(out))
+		}
+		fmt.Println()
 	}
 
+	return nil
+}
+
+// installWindowsTask creates a Task Scheduler task that runs 'devtrack start' at logon.
+func installWindowsTask(binaryPath string) error {
+	cmd := exec.Command("schtasks", "/Create", "/F",
+		"/TN", "DevTrack",
+		"/TR", fmt.Sprintf(`"%s" start`, binaryPath),
+		"/SC", "ONLOGON",
+		"/RL", "HIGHEST",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("schtasks create failed: %s", strings.TrimSpace(string(out)))
+	}
+	fmt.Println("DevTrack will now start automatically at logon.")
+	fmt.Println("Tip: re-run 'devtrack autostart-install' after changing env vars.")
+	fmt.Println("Use 'devtrack status' to verify it is running.")
+	fmt.Println("Use 'devtrack autostart-uninstall' to remove auto-start.")
 	return nil
 }

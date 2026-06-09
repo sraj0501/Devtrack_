@@ -1,14 +1,14 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-06-04_ | v3.0.0 | GitHub sole source of truth; devtrack.cloud live on Netlify
+_Last updated: 2026-06-09_ | v3.0.5 | GitHub sole source of truth; devtrack.cloud live on Netlify
 
 DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enriches with AI, routes to PM systems.
 
 ## Rules
-- [feedback_rules.md](feedback_rules.md) — Git/PR/commit rules, offline-first, CLI-only, no hardcoded values, GIT_NO_DEVTRACK, HTTP_API.md boundary, uv not pip
+- [feedback_rules.md](feedback_rules.md) — Git/PR/commit rules, offline-first, CLI-only, no hardcoded values, GIT_NO_DEVTRACK, ARCHITECTURE.md boundary, uv not pip
 
 ## Project State
-- [project_current_state.md](project_current_state.md) — v3.0.0; decoupling Phases 1+2 + runtime-narrative DONE; PG-5 + Redis next; internal package layer order
+- [project_current_state.md](project_current_state.md) — v3.0.5; Telegram→Go done; boardroom done; PG-5 + Redis next
 
 ## Project Context
 - [project_platform_modes.md](project_platform_modes.md) — Managed/Lightweight/External modes; Windows WSL2 dev; ARM64 .syso fix shipped
@@ -18,4 +18,4 @@ DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enri
 - [project_launch_strategy.md](project_launch_strategy.md) — Wedge, positioning rules, channel sequence, decision framework
 
 ## References
-- [reference_subsystems.md](reference_subsystems.md) — gitsage (Go-native), RAG personalization, Azure DevOps connector config
+- [reference_subsystems.md](reference_subsystems.md) — gitsage (Go-native), Telegram bot, RAG personalization, Azure DevOps config
