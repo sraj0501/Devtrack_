@@ -556,7 +556,7 @@
         </div>
       </a>
       <div class="sidebar-version">
-        <span class="sidebar-version-tag">v3.0.8</span>
+        <span class="sidebar-version-tag">v3.0.9</span>
         <span class="sidebar-version-status">
           <span class="sidebar-version-dot"></span>
           live
@@ -587,7 +587,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v3.0.8</span>
+        <span class="version-chip">v3.0.9</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -1707,7 +1707,17 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.8 — latest</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.9 — latest</div>
+
+<h2>v3.0.9 — Dual-Platform Workspace Deduplication</h2>
+<p>When a project uses both GitHub (for code review) and Azure DevOps (for project management), two workspace entries share the same repository path. <code>devtrack issues</code> previously iterated all enabled workspaces and concatenated results, producing a duplicate-looking ticket list. The new <code>skip_issues: true</code> field marks a workspace as code-only so it is excluded from <code>devtrack issues</code>, ticket sync, and the commit-time ticket picker.</p>
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>skip_issues flag for workspaces.yaml</h4><p>Add <code>skip_issues: true</code> to the GitHub (or any code-hosting) workspace entry. <code>devtrack issues</code> skips it, <code>SyncAllTickets</code> and <code>PushCachedTickets</code> skip it, and the commit-time ticket picker ignores it — so only the Azure DevOps workspace drives PM operations.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>Smart workspace resolution at equal path depth</h4><p><code>ResolveWorkspaceForPath</code> now prefers non-skip workspaces when two entries share the same path length, ensuring commit triggers always route to the PM-authoritative workspace even when both are enabled.</p></div></div>
+</div>
+
+<hr>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.8 — previous</div>
 
 <h2>v3.0.8 — Stale Health Snapshot Fix</h2>
 <p>Users who upgraded from a Python Telegram bot install saw Redis and MongoDB listed as "down" in <code>devtrack status</code>, even though the Go client never checks those services. The status display now filters out snapshots older than 10 minutes, and a one-time migration deletes the legacy rows on first daemon start.</p>
@@ -2789,6 +2799,7 @@ devtrack workspace reload                         # hot-reload after manual edit
 <tr><td><code>ignore_branches</code></td><td>No</td><td>List of branch patterns to skip (e.g. <code>main</code>, <code>release/*</code>)</td></tr>
 <tr><td><code>tags</code></td><td>No</td><td>Arbitrary labels for your own filtering</td></tr>
 <tr><td><code>pm_assignee</code></td><td>No</td><td>Default assignee for new issues/tasks (format varies by platform)</td></tr>
+<tr><td><code>skip_issues</code></td><td>No</td><td><code>false</code> (default). Set <code>true</code> to mark this workspace as code-only: excluded from <code>devtrack issues</code>, ticket sync, and the commit-time ticket picker. Use when a repo is tracked in two platforms (e.g. GitHub for code, Azure DevOps for PM) to prevent duplicate ticket lists.</td></tr>
 </tbody>
 </table></div>
 
@@ -2977,6 +2988,31 @@ workspaces:
     pm_platform: none
     enabled: true</code></pre>
 
+<h2>Dual-platform setup (GitHub + Azure DevOps)</h2>
+<p>When a repo uses GitHub for code review and Azure DevOps for project management, add two workspace entries for the same path. Mark the GitHub workspace <code>skip_issues: true</code> so only ADO drives <code>devtrack issues</code> and ticket sync:</p>
+<pre><code class="language-yaml">workspaces:
+
+  # GitHub — code review only; issues suppressed
+  - name: "my-api-github"
+    path: ~/code/my-api
+    pm_platform: github
+    pm_org: acme-corp
+    pm_username: sraj0501
+    enabled: true
+    skip_issues: true          # exclude from devtrack issues + ticket sync
+
+  # Azure DevOps — authoritative PM platform
+  - name: "my-api-ado"
+    path: ~/code/my-api
+    pm_platform: azure
+    pm_org: acme-corp
+    pm_username: shashank.raj@acme.com
+    pm_project: CoreServices
+    enabled: true</code></pre>
+<p>With this config <code>devtrack issues</code> shows only ADO work items, and commits route to ADO for PM updates.</p>
+
+<hr>
+
 <h2>Hot-reload</h2>
 <p>Save <code>workspaces.yaml</code> and DevTrack detects the change instantly (fsnotify). Only the monitors that changed are restarted — others keep running without interruption. Or reload manually:</p>
 <pre><code class="language-bash">devtrack workspace reload</code></pre>
@@ -2991,6 +3027,7 @@ workspaces:
 <tr><td>Workspace not monitoring</td><td><code>enabled: false</code> or invalid path</td><td>Run <code>devtrack workspace list</code> to check status</td></tr>
 <tr><td>All commits routing to wrong platform</td><td>Empty <code>pm_platform</code></td><td>Falls back to priority chain (Azure → GitLab → GitHub). Set explicitly.</td></tr>
 <tr><td>GitHub Enterprise not reached</td><td><code>pm_api_url</code> not set</td><td>Set to <code>https://github.mycompany.com/api/v3</code></td></tr>
+<tr><td>Duplicate issues from GitHub + Azure DevOps</td><td>Both workspaces included in issue listing</td><td>Add <code>skip_issues: true</code> to the code-hosting workspace (usually GitHub). See the dual-platform setup example above.</td></tr>
 </tbody>
 </table></div>
 </div>`,
@@ -3819,7 +3856,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-First · v3.0.8</div>
+      <div class="home-badge">Local-First · v3.0.9</div>
       <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
       <p class="home-sub">DevTrack monitors your Git activity, prompts for work updates, routes them through AI, and keeps your project management systems in sync — all running locally on your machine.</p>
     </div>
@@ -3827,7 +3864,7 @@ function renderHome() {
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.8: Stale Redis/MongoDB health rows fixed — <code>devtrack status</code> no longer shows removed services. v3.0.7: Automated release pipeline via GitHub Actions. v3.0.6: Windows CLI fully on par with Unix/macOS.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.9: <code>skip_issues: true</code> workspace flag prevents duplicate tickets when a project uses both GitHub and Azure DevOps. v3.0.8: Stale Redis/MongoDB health rows fixed. v3.0.7: Automated release pipeline via GitHub Actions.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitHub Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
