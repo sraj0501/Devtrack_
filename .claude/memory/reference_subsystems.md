@@ -1,15 +1,19 @@
 ---
 name: Subsystem references
-description: gitsage (Go-native), RAG personalization, Azure DevOps config
+description: gitsage (Go-native), RAG personalization, Azure DevOps config, Telegram bot
 type: reference
 ---
 
-## gitsage (`devtrack_client/gitsage/`) — Go-native only
+## gitsage (`devtrack_client/gitsage/`) — Go-native
 
 Approval: `[a]` auto / `[r]` review / `[s]` suggest-only. `--yes` skips. Up to 5 follow-ups. `undo [N]` = `git reset --hard <pre-step-HEAD>`.
 Squash: `git reset --soft HEAD~N && git commit` — never `git rebase -i`.
 JSON mode: Ollama `"format":"json"`; OpenAI/Groq `response_format:{"type":"json_object"}` with `BadRequestError` fallback. Strip `provider/` prefix.
 Groq: prefer `llama-3.3-70b-versatile` over `compound-beta` (better JSON). openai SDK avoids Cloudflare 403.
+
+## Telegram Bot (`devtrack_client/internal/telegram/`)
+
+Go-native bot (`bot.go` + `handlers.go`). Starts automatically with daemon when `TELEGRAM_ENABLED=true`. Implements `notify.Notifier`. Commands: /start /help /status /logs /health /trigger /pause /resume /stop /restart /reload /commits. `TELEGRAM_ALLOWED_CHAT_IDS` in config_env.go.
 
 ## RAG Personalization
 

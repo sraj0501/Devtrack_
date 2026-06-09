@@ -427,7 +427,7 @@ func (cli *CLI) printUsage() {
 	fmt.Println("  devtrack telemetry [on|off|status]  Manage telemetry")
 	fmt.Println()
 	fmt.Println("AUTO-START:")
-	fmt.Println("  devtrack autostart-install      macOS launchd / Linux systemd / WSL")
+	fmt.Println("  devtrack autostart-install      macOS launchd / Linux systemd / WSL / Windows Task Scheduler")
 	fmt.Println("  devtrack autostart-uninstall    Remove auto-start")
 	fmt.Println("  devtrack autostart-status       Show auto-start status")
 	fmt.Println()
