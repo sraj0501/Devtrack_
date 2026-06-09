@@ -142,9 +142,23 @@ workspaces:
     path: ~/oss/my-lib
     pm_platform: github
     pm_milestone: 3
+  # Dual-platform: same repo tracked in GitHub (code) + Azure DevOps (PM)
+  - name: my-api-github
+    path: ~/work/my-api
+    pm_platform: github
+    pm_org: acme-corp
+    pm_username: sraj0501
+    skip_issues: true          # code-only: excluded from devtrack issues + ticket sync
+  - name: my-api-ado
+    path: ~/work/my-api
+    pm_platform: azure
+    pm_org: acme-corp
+    pm_username: jane@acme.com
 ```
 
 Per-workspace PM overrides (`pm_assignee`, `pm_iteration_path`, `pm_area_path`, `pm_milestone`) are applied when DevTrack creates work items or issues for that repo — Azure uses `assigned_to`/`area_path`/`iteration_path`, GitHub/GitLab use `assignees` and `milestone`. Omit any field to use the global default.
+
+`skip_issues: true` marks a workspace as code-only — it is excluded from `devtrack issues`, ticket sync, and the commit-time ticket picker. Use this when the same repo is tracked in two PM platforms (e.g. GitHub for code review, Azure DevOps for sprint planning) to prevent duplicate ticket lists.
 
 ```bash
 devtrack workspace list

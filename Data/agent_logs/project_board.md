@@ -128,6 +128,18 @@ devtrack_server/.env_sample: converted all ## / ### section headers to universal
 
 ## DONE (this initiative)
 
+### TASK-056 — fix(pm): skip_issues flag for dual-platform workspaces
+**Completed**: 2026-06-09
+**Commit(s)**:
+- `648aee8` — fix(pm): add skip_issues flag to suppress duplicate tickets from dual-platform workspaces
+- `7230c34` — chore: bump versioninfo.json to 3.0.9
+- `64939e3` — chore: bump wiki to v3.0.9; add skip_issues dual-platform docs
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
+**Notes**: Three files changed in devtrack_client/. SkipIssues bool field added to WorkspaceConfig; handleIssues(), SyncAllTickets(), PushCachedTickets() all skip workspaces with skip_issues: true. ResolveWorkspaceForPath prefers non-skip at equal depth. Wiki updated: WORKSPACES page (Universal Fields, dual-platform example, Common mistakes row), What's New v3.0.9, version badges. dev pushed and merged to main. Version bumped to 3.0.9.
+
+---
+
 ### TASK-F — Complete Go package refactor (trigger / infra / daemon / tui)
 **Completed**: 2026-05-29
 **Branch**: `feature/package-refactor`

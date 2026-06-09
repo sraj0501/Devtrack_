@@ -212,6 +212,7 @@ Each workspace entry in `workspaces.yaml` carries:
 - `pm_org` — Azure org name, or GitHub/GitLab owner/org
 - `pm_username` — assignee filter (GitHub login / GitLab username / Azure email)
 - `pm_api_url` — optional self-hosted URL override (GitHub Enterprise, self-hosted GitLab, etc.)
+- `skip_issues` — `true` marks the workspace as code-only; excluded from `devtrack issues`, `SyncAllTickets`, `PushCachedTickets`, and the commit-time ticket picker. Use when one repo is tracked in two platforms (e.g. GitHub for code, Azure DevOps for PM) to prevent duplicate ticket lists. `ResolveWorkspaceForPath` prefers non-skip workspaces at equal path depth so PM-authoritative entries win commit routing.
 
 All connector constructors (`pm.NewGitHubClient(ws)`, `pm.NewGitLabClient(ws)`, `pm.NewAzureClient(ws)`) take an explicit workspace struct and never read non-secret config from env.
 

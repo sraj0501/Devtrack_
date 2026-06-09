@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-05-29 by PM (TASK-C done, TASK-D done, gitsage undo wiring, TASK-E planned)_
+_Last updated: 2026-06-09 by PM (TASK-056 done: skip_issues dual-platform fix, v3.0.9 released)_
 
 ---
 
@@ -31,6 +31,20 @@ _Last updated: 2026-05-29 by PM (TASK-C done, TASK-D done, gitsage undo wiring, 
 ---
 
 ## Task History
+
+## 2026-06-09 — TASK-056: skip_issues flag for dual-platform workspaces
+**Phase**: Phase 4A (PM connectors)
+**Status**: DONE
+**Files**:
+- `devtrack_client/internal/config/config.go` — SkipIssues bool added to WorkspaceConfig; ResolveWorkspaceForPath prefers non-skip at equal path depth
+- `devtrack_client/cli_connectors.go` — handleIssues() respects SkipIssues
+- `devtrack_client/ticket_sync.go` — SyncAllTickets() and PushCachedTickets() respect SkipIssues
+- `devtrack_client/versioninfo.json` — bumped to 3.0.9
+- `devtrack_wiki/wiki/wiki.html` — WORKSPACES page: skip_issues field, dual-platform example, Common mistakes row; What's New v3.0.9; version badges
+**Vision check**: PASS
+**Engineer notes**: Bug: two workspace entries for the same repo path (GitHub + Azure DevOps) caused devtrack issues to concatenate results from both platforms. Fixed by skip_issues: true field. 3 code files + version + wiki committed on dev, merged to main. Released as v3.0.9.
+
+---
 
 ## 2026-05-24 — TASK-048: Retire legacy directories
 **Phase**: EPIC-SPLIT / Phase 3 — cleanup
