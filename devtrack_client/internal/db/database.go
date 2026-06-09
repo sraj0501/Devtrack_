@@ -1457,20 +1457,24 @@ func (d *Database) InsertHealthSnapshot(snap HealthSnapshot) error {
 	return nil
 }
 
-// GetLatestHealthSnapshots retrieves the latest health snapshot per service
+// GetLatestHealthSnapshots retrieves the latest health snapshot per service,
+// excluding any snapshot older than 10 minutes so stale entries from removed
+// services (e.g. the legacy Python-era Redis/MongoDB checks) never appear.
 func (d *Database) GetLatestHealthSnapshots() ([]HealthSnapshot, error) {
+	threshold := time.Now().Add(-10 * time.Minute)
 	query := `
 		SELECT h.id, h.service, h.status, h.latency_ms, h.details, h.checked_at
 		FROM health_snapshots h
 		INNER JOIN (
 			SELECT service, MAX(checked_at) AS max_checked
 			FROM health_snapshots
+			WHERE checked_at > ?
 			GROUP BY service
 		) latest ON h.service = latest.service AND h.checked_at = latest.max_checked
 		ORDER BY h.service ASC
 	`
 
-	rows, err := d.db.Query(query)
+	rows, err := d.db.Query(query, threshold)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query latest health snapshots: %w", err)
 	}

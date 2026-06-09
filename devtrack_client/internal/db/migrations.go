@@ -78,6 +78,22 @@ var allMigrations = []Migration{
 			return patchEnvKey("ADMIN_SECRET_KEY", generateSecret(32))
 		},
 	},
+	{
+		ID:          "005-prune-legacy-health-services",
+		Description: "Remove stale MongoDB/Redis/IPC health snapshots (legacy Python-era services no longer checked by the Go daemon)",
+		Apply: func() error {
+			db, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer db.Close()
+			_, err = db.db.Exec(`
+				DELETE FROM health_snapshots
+				WHERE service IN ('redis', 'mongodb', 'mongo', 'python_bridge', 'ipc')
+			`)
+			return err
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded
