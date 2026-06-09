@@ -422,7 +422,7 @@ func (cli *CLI) handleIssues() error {
 
 	for i := range wsCfg.Workspaces {
 		ws := &wsCfg.Workspaces[i]
-		if !ws.Enabled || ws.PMPlatform == "" {
+		if !ws.Enabled || ws.PMPlatform == "" || ws.SkipIssues {
 			continue
 		}
 		tickets, err := pm.ListOpenTickets(ws)

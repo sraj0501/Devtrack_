@@ -51,6 +51,10 @@ func SyncAllTickets(database *Database, force bool) {
 
 	for i := range wsCfg.GetEnabledWorkspaces() {
 		ws := wsCfg.GetEnabledWorkspaces()[i]
+		if ws.SkipIssues {
+			log.Printf("ticket-sync: skipping workspace %q (skip_issues=true)", ws.Name)
+			continue
+		}
 		switch strings.ToLower(ws.PMPlatform) {
 		case "github":
 			syncGitHub(database.DB(), &ws, httpClient, force, syncedAt)
@@ -77,6 +81,9 @@ func PushCachedTickets(database *Database) {
 	syncedAt := time.Now().UTC().Format(time.RFC3339)
 
 	for _, ws := range wsCfg.GetEnabledWorkspaces() {
+		if ws.SkipIssues {
+			continue
+		}
 		switch strings.ToLower(ws.PMPlatform) {
 		case "github":
 			tickets := readGitHubCached(database.DB(), ws.PMProject)
