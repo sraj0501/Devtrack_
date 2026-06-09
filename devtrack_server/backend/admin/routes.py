@@ -159,6 +159,14 @@ def _trigger_stats_ctx():
             return None
 
 
+def _list_clients_safe() -> list[dict]:
+    try:
+        from backend.admin.user_manager import list_clients
+        return list_clients(stale_minutes=5)
+    except Exception:
+        return []
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, current_user: str = Depends(require_auth)):
     snapshot = await _snapshot_ctx()
@@ -171,6 +179,7 @@ async def dashboard(request: Request, current_user: str = Depends(require_auth))
         tier = "personal"
         tier_label = "Personal (Free)"
     stats = _trigger_stats_ctx()
+    clients = _list_clients_safe()
     try:
         stats_refresh_secs = _get_stats_refresh_secs()
     except ValueError:
@@ -188,6 +197,7 @@ async def dashboard(request: Request, current_user: str = Depends(require_auth))
             tier=tier,
             tier_label=tier_label,
             stats=stats,
+            clients=clients,
             stats_refresh_secs=stats_refresh_secs,
             process_refresh_secs=process_refresh_secs,
         ),
@@ -204,6 +214,15 @@ async def partial_stats(request: Request, current_user: str = Depends(require_au
     return templates.TemplateResponse(
         "_stats_panel.html",
         {"request": request, "stats": stats},
+    )
+
+
+@router.get("/_partials/clients", response_class=HTMLResponse)
+async def partial_clients(request: Request, current_user: str = Depends(require_auth)):
+    clients = _list_clients_safe()
+    return templates.TemplateResponse(
+        "_clients_panel.html",
+        {"request": request, "clients": clients},
     )
 
 

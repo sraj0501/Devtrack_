@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
@@ -246,5 +247,52 @@ func (d *Daemon) handleInternalReloadConfig(w http.ResponseWriter, r *http.Reque
 		"reloaded": reloaded,
 		"errors":   errs,
 	})
+}
+
+// startHeartbeatLoop sends a client heartbeat to the server on startup and
+// every 60 seconds so the admin dashboard can show connected clients and their
+// monitored workspaces.  Failures are logged but never crash the daemon.
+func (d *Daemon) startHeartbeatLoop() {
+	go func() {
+		send := func() {
+			wsCfg, err := config.LoadWorkspacesConfig()
+			if err != nil {
+				log.Printf("heartbeat: could not load workspaces: %v", err)
+				return
+			}
+			hostname, _ := os.Hostname()
+			workspaces := make([]trigger.HeartbeatWorkspace, 0, len(wsCfg.Workspaces))
+			for _, ws := range wsCfg.GetEnabledWorkspaces() {
+				workspaces = append(workspaces, trigger.HeartbeatWorkspace{
+					Name:     ws.Name,
+					Platform: ws.PMPlatform,
+				})
+			}
+			payload := trigger.HeartbeatPayload{
+				ClientID:   hostname,
+				Version:    config.GetDevTrackVersion(),
+				TLSEnabled: config.IsTLSEnabled(),
+				Workspaces: workspaces,
+			}
+			if err := trigger.NewHTTPTriggerClient().SendHeartbeat(payload); err != nil {
+				log.Printf("heartbeat: send failed: %v", err)
+			}
+		}
+
+		// Send immediately (after a brief delay for the server to start).
+		time.Sleep(8 * time.Second)
+		send()
+
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				send()
+			case <-d.ctx.Done():
+				return
+			}
+		}
+	}()
 }
 

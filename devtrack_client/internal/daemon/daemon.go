@@ -200,6 +200,9 @@ func (d *Daemon) Start() error {
 	// run a full sync + push on a periodic interval.
 	d.startTicketSyncLoop()
 
+	// Heartbeat: register this client with the server on startup and every 60s.
+	d.startHeartbeatLoop()
+
 	// Setup signal handlers for graceful shutdown
 	d.setupSignalHandlers()
 

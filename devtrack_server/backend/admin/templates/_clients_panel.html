@@ -1,0 +1,34 @@
+{% if clients %}
+<div class="clients-grid">
+  {% for c in clients %}
+  <div class="client-card {{ 'client-active' if c.is_active else 'client-stale' }}">
+    <div class="client-header">
+      <span class="badge {{ 'badge-green' if c.is_active else 'badge-yellow' }}">
+        <span class="dot"></span>{{ 'online' if c.is_active else 'idle' }}
+      </span>
+      <span class="client-tls">
+        {% if c.tls_enabled %}
+        <span title="TLS enabled" style="color:var(--green)">🔒 TLS</span>
+        {% else %}
+        <span title="Plain HTTP" style="color:var(--muted)">🔓 HTTP</span>
+        {% endif %}
+      </span>
+    </div>
+    <div class="client-hostname mono">{{ c.client_id }}</div>
+    <div class="client-meta text-muted">v{{ c.version }} · {{ c.ip }}</div>
+    <div class="client-repos">
+      {% for ws in c.workspaces %}
+      <span class="repo-tag">{{ ws.name }}{% if ws.platform and ws.platform != 'none' %} <span class="repo-platform">{{ ws.platform }}</span>{% endif %}</span>
+      {% else %}
+      <span class="text-muted" style="font-size:12px">no workspaces</span>
+      {% endfor %}
+    </div>
+    <div class="client-seen text-muted">last seen {{ c.last_seen[:19] | replace('T', ' ') }} UTC</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-muted" style="padding:24px;text-align:center;font-size:13px">
+  No clients connected yet. Start a <code>devtrack</code> daemon to see it here.
+</div>
+{% endif %}

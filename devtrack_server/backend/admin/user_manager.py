@@ -69,6 +69,17 @@ audit_log_table = Table(
     Column("ts",       Text, nullable=False),
 )
 
+connected_clients_table = Table(
+    "connected_clients", _admin_metadata,
+    Column("id",          Integer, primary_key=True, autoincrement=True),
+    Column("client_id",   Text, nullable=False, unique=True),   # hostname
+    Column("version",     Text, nullable=False),
+    Column("tls_enabled", Integer, nullable=False),             # 0 | 1
+    Column("workspaces",  Text, nullable=False),                # JSON array [{name, platform}]
+    Column("last_seen",   Text, nullable=False),                # ISO 8601
+    Column("ip",          Text, nullable=False),
+)
+
 # ---------------------------------------------------------------------------
 # Engine: shared PostgreSQL or separate admin.db
 # ---------------------------------------------------------------------------
@@ -390,3 +401,69 @@ def get_audit_log(limit: int | None = None) -> list[dict]:
             .limit(limit)
         ).mappings().all()
     return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Connected clients (heartbeat registry)
+# ---------------------------------------------------------------------------
+
+import json as _json
+from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+
+
+def upsert_client(client_id: str, version: str, tls_enabled: bool,
+                  workspaces: list[dict], ip: str) -> None:
+    eng = _init()
+    now = _dt.now(_tz.utc).isoformat()
+    ws_json = _json.dumps(workspaces)
+    tls_int = 1 if tls_enabled else 0
+    with eng.begin() as conn:
+        existing = conn.execute(
+            select(connected_clients_table.c.id)
+            .where(connected_clients_table.c.client_id == client_id)
+        ).first()
+        if existing:
+            conn.execute(
+                connected_clients_table.update()
+                .where(connected_clients_table.c.client_id == client_id)
+                .values(version=version, tls_enabled=tls_int,
+                        workspaces=ws_json, last_seen=now, ip=ip)
+            )
+        else:
+            conn.execute(
+                connected_clients_table.insert().values(
+                    client_id=client_id, version=version, tls_enabled=tls_int,
+                    workspaces=ws_json, last_seen=now, ip=ip,
+                )
+            )
+
+
+def list_clients(stale_minutes: int = 5) -> list[dict]:
+    """Return clients seen within stale_minutes; mark each with is_active."""
+    eng = _init()
+    cutoff = (_dt.now(_tz.utc) - _td(minutes=stale_minutes)).isoformat()
+    with eng.connect() as conn:
+        rows = conn.execute(
+            select(connected_clients_table)
+            .order_by(connected_clients_table.c.last_seen.desc())
+        ).mappings().all()
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["workspaces"] = _json.loads(d.get("workspaces") or "[]")
+        d["tls_enabled"] = bool(d.get("tls_enabled", 0))
+        d["is_active"] = d["last_seen"] >= cutoff
+        result.append(d)
+    return result
+
+
+def prune_stale_clients(stale_minutes: int = 10) -> int:
+    """Delete clients not seen within stale_minutes. Returns count removed."""
+    eng = _init()
+    cutoff = (_dt.now(_tz.utc) - _td(minutes=stale_minutes)).isoformat()
+    with eng.begin() as conn:
+        result = conn.execute(
+            connected_clients_table.delete()
+            .where(connected_clients_table.c.last_seen < cutoff)
+        )
+    return result.rowcount
