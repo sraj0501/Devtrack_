@@ -71,10 +71,6 @@ const RouteInternalStats = "/internal/stats"
 // RouteInternalActiveSession serves the active work session for the Python server.
 const RouteInternalActiveSession = "/internal/sessions/active"
 
-// RouteInternalComponents reports the run state of Go-native components (alert_poller,
-// telegram_bot) so the Python admin panel can display accurate status.
-const RouteInternalComponents = "/internal/components"
-
 // startInternalHTTPServer starts a lightweight HTTP server on
 // config.GetIPCHost():config.GetDevTrackServerHTTPPort() that exposes internal control
 // endpoints not intended for external consumers.
@@ -85,14 +81,12 @@ const RouteInternalComponents = "/internal/components"
 //	POST /internal/reload-config      — reload .env + YAML config without restart
 //	GET  /internal/stats              — trigger throughput stats for Python admin panel
 //	GET  /internal/sessions/active    — active work session for Python server
-//	GET  /internal/components         — run state of Go-native components (alert_poller, telegram_bot)
 func (d *Daemon) startInternalHTTPServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc(RouteInternalForceTrigger, d.handleInternalForceTrigger)
 	mux.HandleFunc(RouteInternalReloadConfig, d.handleInternalReloadConfig)
 	mux.HandleFunc(RouteInternalStats, d.handleInternalStats)
 	mux.HandleFunc(RouteInternalActiveSession, d.handleInternalActiveSession)
-	mux.HandleFunc(RouteInternalComponents, d.handleInternalComponents)
 
 	addr := fmt.Sprintf("%s:%d", config.GetIPCHost(), config.GetDevTrackServerHTTPPort())
 	server := &http.Server{
@@ -254,29 +248,3 @@ func (d *Daemon) handleInternalReloadConfig(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-// handleInternalComponents handles GET /internal/components.
-// Reports the run state of Go-native components so the Python admin panel can
-// display accurate status (these are not Python subprocesses — psutil won't find them).
-func (d *Daemon) handleInternalComponents(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	alertRunning := d.alertPoller != nil
-	telegramRunning := d.telegramBot != nil
-	telegramConfigured := config.IsTelegramEnabled()
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"alert_poller": map[string]any{
-			"running": alertRunning,
-			"native":  true,
-		},
-		"telegram_bot": map[string]any{
-			"running":    telegramRunning,
-			"configured": telegramConfigured,
-			"native":     true,
-		},
-	})
-}
