@@ -72,9 +72,8 @@
   </div>
   <div id="narrative-panel"
        hx-get="/admin/_partials/narrative"
-       hx-trigger="every 30s"
+       hx-trigger="load, every 30s"
        hx-swap="innerHTML">
-    {% include "_narrative_panel.html" %}
   </div>
 </div>
 {% endblock %}
