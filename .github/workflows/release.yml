@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
+
+      - name: go test
+        working-directory: devtrack_client
+        run: go test ./... -timeout 60s
+
+  build-release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
+
+      - name: Build all platforms
+        working-directory: devtrack_client
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          COMMIT=${GITHUB_SHA:0:7}
+          LDFLAGS="-X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${COMMIT}"
+          mkdir -p dist
+
+          # Windows — uploaded as .exe directly
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
+            go build -ldflags "$LDFLAGS" -o dist/devtrack_windows_amd64.exe .
+
+          # macOS + Linux — binary inside archive must be named 'devtrack'
+          for GOOS in darwin linux; do
+            for GOARCH in amd64 arm64; do
+              GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 \
+                go build -ldflags "$LDFLAGS" -o dist/devtrack .
+              tar czf "dist/devtrack_${GOOS}_${GOARCH}.tar.gz" -C dist devtrack
+              rm dist/devtrack
+            done
+          done
+
+          echo "--- dist contents ---"
+          ls -lh dist/
+          echo "--- archive contents ---"
+          for f in dist/*.tar.gz; do echo "$f: $(tar tzf $f)"; done
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            devtrack_client/dist/devtrack_windows_amd64.exe \
+            devtrack_client/dist/devtrack_darwin_amd64.tar.gz \
+            devtrack_client/dist/devtrack_darwin_arm64.tar.gz \
+            devtrack_client/dist/devtrack_linux_amd64.tar.gz \
+            devtrack_client/dist/devtrack_linux_arm64.tar.gz \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            --repo "${{ github.repository }}"
