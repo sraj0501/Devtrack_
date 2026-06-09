@@ -59,14 +59,16 @@ func GenerateSelfSignedCert(certPath, keyPath string) error {
 	ips, dnsNames := localSANs()
 
 	template := &x509.Certificate{
-		SerialNumber: serial,
-		Subject:      pkix.Name{Organization: []string{"DevTrack"}},
-		NotBefore:    time.Now().Add(-time.Minute), // slight back-date avoids clock-skew
-		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		IPAddresses:  ips,
-		DNSNames:     dnsNames,
+		SerialNumber:          serial,
+		Subject:               pkix.Name{Organization: []string{"DevTrack"}},
+		NotBefore:             time.Now().Add(-time.Minute), // slight back-date avoids clock-skew
+		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		IPAddresses:           ips,
+		DNSNames:              dnsNames,
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
