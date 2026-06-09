@@ -556,7 +556,7 @@
         </div>
       </a>
       <div class="sidebar-version">
-        <span class="sidebar-version-tag">v3.0.6</span>
+        <span class="sidebar-version-tag">v3.0.7</span>
         <span class="sidebar-version-status">
           <span class="sidebar-version-dot"></span>
           live
@@ -587,7 +587,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v3.0.6</span>
+        <span class="version-chip">v3.0.7</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -1707,7 +1707,17 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.6 — latest</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.7 — latest</div>
+
+<h2>v3.0.7 — Automated Release Pipeline</h2>
+<p>Releases are now fully automated via GitHub Actions. Pushing a version tag builds all 5 platform binaries, packages them correctly, and publishes the GitHub Release — no manual steps required.</p>
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>GitHub Actions release workflow</h4><p>A new <code>.github/workflows/release.yml</code> workflow triggers on <code>v*.*.*</code> tags. Tests must pass before the release is created. Builds Windows amd64, macOS Intel/Apple Silicon, and Linux amd64/arm64 on a single Ubuntu runner using Go cross-compilation.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>Correct archive packaging enforced in CI</h4><p>Unix archives are built with the binary named <code>devtrack</code> inside (not the platform-suffixed name), ensuring <code>devtrack upgrade</code> can always extract it correctly.</p></div></div>
+</div>
+
+<hr>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.6 — previous</div>
 
 <h2>v3.0.6 — Windows CLI Parity &amp; Autostart</h2>
 <p>Windows now has full feature parity with Unix/macOS. The autostart system correctly uses Windows Task Scheduler (previously fell through to a macOS default). Windows binary metadata updated to 3.0.6.</p>
@@ -3799,7 +3809,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-First · v3.0.6</div>
+      <div class="home-badge">Local-First · v3.0.7</div>
       <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
       <p class="home-sub">DevTrack monitors your Git activity, prompts for work updates, routes them through AI, and keeps your project management systems in sync — all running locally on your machine.</p>
     </div>
@@ -3807,7 +3817,7 @@ function renderHome() {
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.6: Windows CLI fully on par with Unix/macOS — autostart via Task Scheduler, correct version metadata. v3.0.5: Telegram bot built into Go daemon. v3.0.4: <code>devtrack issues</code> PM ticket browser, LLM-first NLP. v3.0.2: upgrade cmd fixed.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.7: Automated release pipeline via GitHub Actions — push a tag, get a release. v3.0.6: Windows CLI fully on par with Unix/macOS. v3.0.5: Telegram bot built into Go daemon. v3.0.4: <code>devtrack issues</code> PM ticket browser.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitHub Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
