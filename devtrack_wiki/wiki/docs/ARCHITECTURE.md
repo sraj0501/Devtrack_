@@ -127,13 +127,13 @@ The smart processing engine that handles AI, NLP, and integrations.
 |--------|---------|
 | **backend/commit_message_enhancer.py** | AI-powered iterative commit message refinement |
 | **backend/git_diff_analyzer.py** | Analyzes staged changes for context |
-| **devtrack_client/git_sage/agent.py** | Agentic loop for autonomous git operations |
-| **devtrack_client/git_sage/llm.py** | Ollama and OpenAI-compatible LLM backends |
-| **devtrack_client/git_sage/context.py** | Git repository state collection |
-| **devtrack_client/git_sage/config.py** | ~/.config/git-sage/config.json management |
-| **devtrack_client/git_sage/git_operations.py** | Advanced git operations (branches, commits, merges, blame, stash) |
-| **devtrack_client/git_sage/conflict_resolver.py** | Intelligent conflict analysis and resolution |
-| **devtrack_client/git_sage/pr_finder.py** | PR/MR utilities and analysis |
+| **devtrack_client/gitsage/agent.go** | Agentic loop for autonomous git operations |
+| **devtrack_client/gitsage/llm.go** | Ollama and OpenAI-compatible LLM backends |
+| **devtrack_client/gitsage/context.go** | Git repository state collection |
+| **devtrack_client/gitsage/config.go** | git-sage env/config management |
+| **devtrack_client/gitsage/git_ops.go** | Advanced git operations (branches, commits, merges, blame, stash) |
+| **devtrack_client/gitsage/conflict.go** | Intelligent conflict analysis and resolution |
+| **devtrack_client/gitsage/pr_finder.go** | PR/MR utilities and analysis |
 
 #### External Integrations
 

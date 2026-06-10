@@ -181,6 +181,5 @@ Zero external dependencies. All context stays local unless you configure OpenAI.
 
 ## Documentation
 
-- **[INTEGRATION.md](INTEGRATION.md)** - Detailed API reference and DevTrack integration examples
 - [Configuration Guide](#configuration) - Setup and model recommendations
 - [Examples](#usage) - Common use cases and workflows

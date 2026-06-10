@@ -563,7 +563,7 @@ devtrack analyze-commit HEAD
 curl http://localhost:11434/api/tags
 
 # Check logs
-tail Data/logs/python_bridge.log | grep "enhancement"
+tail Data/logs/daemon.log | grep "enhancement"
 
 # Verify LLM provider
 grep LLM_PROVIDER .env
@@ -602,7 +602,7 @@ uv run python -c "from backend.work_update_enhancer import enhance_update; print
 
 ## Next Steps
 
-- **Full Git Workflow**: See [Git Commit Workflow](../GIT_COMMIT_WORKFLOW.md)
-- **Detailed Implementation**: See [Phase 1-2 Integration](../GIT_SAGE_INTEGRATION_PHASE_1_2.md)
-- **Phase 3 Details**: See [Phase 3 Implementation](../PHASE_3_IMPLEMENTATION.md)
+- **Full Git Workflow**: See [Git Commit Workflow](GIT_COMMIT_WORKFLOW.md)
+- **Detailed Implementation**: See [Phase 1-2 Integration](GIT_SAGE_INTEGRATION.md)
+- **Phase 3 Details**: See [Phase 3 Implementation](GIT_SAGE_INTEGRATION.md)
 - **Troubleshooting**: See [Troubleshooting Guide](TROUBLESHOOTING.md)

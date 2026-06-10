@@ -4,15 +4,15 @@ description: Managed/Lightweight/External modes; Windows compile errors and work
 type: project
 ---
 
-## Operating Modes (`devtrack_client/config.go`)
+## Operating Modes (`devtrack_client/internal/config/config.go`)
 
 | Mode | `DEVTRACK_SERVER_MODE` | Behaviour |
 |------|----------------------|-----------|
-| Managed (default) | `managed` | Spawns Python backend as subprocess |
-| Lightweight | `lightweight` | Git monitoring + scheduling only; 28 backend commands blocked |
+| Managed (default) | `managed` | Spawns Python `webhook_server.py` as subprocess (AI features) |
+| Lightweight | `lightweight` | Git monitoring + scheduling + Go-native commands only; AI/server commands blocked |
 | External | `external` | Daemon only; Python on separate server via `DEVTRACK_SERVER_URL` |
 
-`IsLightweightMode()` guards `requiresManagedMode()` in `cli.go`. Never read `DEVTRACK_SERVER_MODE` directly — use `GetServerMode()`. New commands needing Python must be added to the guard list.
+`IsLightweightMode()` guards `requiresManagedMode()` in `cli.go`. Never read `DEVTRACK_SERVER_MODE` directly — use `GetServerMode()`. New commands needing Python must be added to the guard list. (Post-decoupling, PM connectors, gitsage, and alerts are Go-native and work in all modes.)
 
 ## Windows
 

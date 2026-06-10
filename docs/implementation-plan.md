@@ -1,5 +1,12 @@
 # DevTrack — Proposed Architecture Implementation Plan
 
+> ⚠️ **SUPERSEDED (2026-06-10) — NOT the current direction.**
+> This plan (NATS message bus, PostgreSQL migration, Kubernetes, multi-tenancy,
+> horizontal scaling) predates the product pivot and contradicts its non-negotiables:
+> DevTrack is **local-first, offline-first, single-machine, and not a SaaS**. The
+> canonical direction is [`PRODUCT_BIBLE.md`](../PRODUCT_BIBLE.md). Kept only as a
+> "road not taken" reference — do not implement from this document.
+
 **Version:** 3.x → 4.0  
 **Based on:** `docs/devtrack-architecture.html` § 11–13  
 **Goal:** Evolve the current single-process FastAPI monolith into an event-driven, horizontally scalable architecture without changing the Go client or any external API contract.

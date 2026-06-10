@@ -412,10 +412,10 @@ print(p.generate('Hello, how are you?'))
 
 ```bash
 # Watch AI interactions
-tail -f Data/logs/python_bridge.log | grep -i "llm\|enhancement"
+tail -f Data/logs/daemon.log | grep -i "llm\|enhancement"
 
 # Debug provider selection
-tail -f Data/logs/python_bridge.log | grep -i "provider"
+tail -f Data/logs/daemon.log | grep -i "provider"
 ```
 
 ### Reset Provider Cache

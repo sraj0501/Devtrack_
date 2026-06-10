@@ -25,7 +25,7 @@ devtrack_server/backend/webhook_server.py   ← FastAPI on :8089
         └── /health, /version
 ```
 
-The server and client share no compiled artefact. The only interface is HTTP/JSON. See `docs/HTTP_API.md` for the full contract.
+The server and client share no compiled artefact. The only interface is HTTP/JSON. See `docs/ARCHITECTURE.md` for the full contract.
 
 ---
 
