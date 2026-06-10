@@ -25,3 +25,7 @@ type: project
 **NEXT:** PG-5 (`stats_client.py` → `GET /internal/stats`, stop reading Go SQLite directly) → Redis R-1→R-6.
 
 **Open decision:** gitsage AI commit enhancement is client-native (→Ollama), collides with "AI=server" rule — `docs/CAPABILITIES_OWNERSHIP.md`.
+
+**Platform quirks (non-obvious):**
+- Azure WIQL only accepts date-only precision (`2006-01-02`, not RFC3339) — `connectors/azure/list.go:ListWorkItemsChangedAfter`. Affects at minimum `process_intelligence` and `ei-rd-eff-deliverymetrics` projects.
+- Go notify constructors (`NewTelegramFromConfig`, `NewSlackFromConfig` in `internal/notify/`) must return `Notifier` interface, not concrete `*Telegram`/`*Slack` — returning concrete type causes nil pointer panic in alert poller when feature is disabled.

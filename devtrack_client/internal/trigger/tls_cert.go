@@ -100,6 +100,26 @@ func writePEMFile(path, pemType string, der []byte) error {
 	return pem.Encode(f, &pem.Block{Type: pemType, Bytes: der})
 }
 
+// CertExistsAndValid returns true if certPath exists, parses as a valid PEM
+// certificate, and has at least minTTLDays days left before expiry.
+// Returns false (not an error) when the cert is missing, corrupt, or stale —
+// callers should regenerate in that case.
+func CertExistsAndValid(certPath string, minTTLDays int) bool {
+	data, err := os.ReadFile(certPath)
+	if err != nil {
+		return false
+	}
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return false
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false
+	}
+	return time.Until(cert.NotAfter) >= time.Duration(minTTLDays)*24*time.Hour
+}
+
 // LoadTLSCertPool reads a PEM certificate file and returns a *x509.CertPool
 // that trusts exactly that certificate (cert-pinning for self-signed certs).
 func LoadTLSCertPool(certPath string) (*x509.CertPool, error) {

@@ -3,43 +3,22 @@
 {% block page_title %}Server Configuration{% endblock %}
 
 {% block content %}
-<div class="grid-2">
-  <!-- LLM Config -->
-  <div class="card">
-    <div class="card-title">LLM Provider</div>
-    <table>
-      <tbody>
-        {% for key, val in config.items() %}
-        <tr>
-          <td class="mono" style="color:var(--muted);width:50%">{{ key }}</td>
-          <td style="word-break:break-all">{{ val }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p class="text-muted mt-4" style="font-size:12px">
-      Edit these values in your <code>.env</code> file, then restart the server.
-    </p>
-  </div>
-
-  <!-- Integration Status -->
-  <div class="card">
-    <div class="card-title">Integrations</div>
-    <table>
-      <tbody>
-        {% for name, status in integrations.items() %}
-        <tr>
-          <td>{{ name }}</td>
-          <td>
-            <span class="badge {{ 'badge-green' if status == 'configured' else 'badge-yellow' }}">
-              <span class="dot"></span>{{ status }}
-            </span>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<!-- LLM Config -->
+<div class="card">
+  <div class="card-title">LLM Provider</div>
+  <table>
+    <tbody>
+      {% for key, val in config.items() %}
+      <tr>
+        <td class="mono" style="color:var(--muted);width:40%">{{ key }}</td>
+        <td style="word-break:break-all">{{ val }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="text-muted mt-4" style="font-size:12px">
+    Edit these values in your <code>.env</code> file, then restart the server.
+  </p>
 </div>
 
 <!-- Process control -->

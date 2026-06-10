@@ -535,7 +535,6 @@ async def server_page(request: Request, current_user: str = Depends(require_auth
     snapshot = await _snapshot_ctx()
     from backend.config import (
         llm_provider, ollama_host, ollama_model, openai_model, anthropic_model, groq_model,
-        azure_pat, get_github_token, get_gitlab_pat, jira_api_token, get_telegram_bot_token,
     )
     config = {
         "LLM_PROVIDER":  llm_provider() or "—",
@@ -545,18 +544,10 @@ async def server_page(request: Request, current_user: str = Depends(require_auth
         "ANTHROPIC_MODEL": anthropic_model() or "—",
         "GROQ_MODEL":    groq_model() or "—",
     }
-    integrations = {
-        "Azure DevOps": "configured" if azure_pat() else "not set",
-        "GitHub":       "configured" if get_github_token() else "not set",
-        "GitLab":       "configured" if get_gitlab_pat() else "not set",
-        "Jira":         "configured" if jira_api_token() else "not set",
-        "Telegram":     "configured" if get_telegram_bot_token() else "not set",
-        "MS Graph":     "configured" if azure_pat() else "not set",
-    }
     return templates.TemplateResponse(
         "server.html",
         _ctx(request, current_user, "server",
-             snapshot=snapshot, config=config, integrations=integrations),
+             snapshot=snapshot, config=config),
     )
 
 
