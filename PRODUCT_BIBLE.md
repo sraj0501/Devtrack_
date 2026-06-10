@@ -223,6 +223,13 @@ corrections. Corrections become training data immediately.
 - Block the developer from coding
 - Host any feature that the daemon does not also run headlessly
 
+**Channel parity for corrections (immutable rule):**
+Every correction capability — approve, reject, edit — must be available on at least
+one non-TUI channel (Telegram, email, or CLI). A user who never opens the TUI must be
+able to fully supervise and correct DevTrack. The TUI is a window, never a gate; if a
+correction is only possible in the TUI, the TUI has become de facto mandatory and
+non-negotiable #4 is violated.
+
 ### Layer 4 — Learning System
 The engine that makes DevTrack improve. The learning system follows the **dialectic
 user modeling pattern** — every interaction, not just explicit corrections, triggers
@@ -539,4 +546,5 @@ to be reworked, not patched.
 |---|---|---|
 | 2026-06-10 | Initial version | Shashank Raj + Claude |
 | 2026-06-10 | Learning system: dialectic user modeling pattern (inspired by Honcho/Hermes Agent); voice layer: persona model pattern (inspired by Nous Hermes); profile as mirror not mask | Shashank Raj + Claude |
+| 2026-06-10 | Layer 3: channel parity rule for corrections — approve/reject/edit must exist on at least one non-TUI channel. Justification: the TUI-optional principle (non-negotiables #4, #12) is only enforceable if corrections are never TUI-exclusive. | Shashank Raj + Claude |
 
