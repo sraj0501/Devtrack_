@@ -1,10 +1,10 @@
 ---
 name: Project current state
-description: Post-pivot (2026-06-10) — direction now PRODUCT_BIBLE.md Phase 0→8; v3.0.9 shipped; platform quirks
+description: Post-pivot (2026-06-10) — direction now PRODUCT_BIBLE.md Phase 0→8; v3.0.10 shipped; platform quirks
 type: project
 ---
 
-**Version:** v3.0.9 (latest tag). Active branch: `dev`. GitHub (`sraj0501/Devtrack_`) sole source. Releases: `.\scripts\release.ps1 [-Bump patch|minor|major]`.
+**Version:** v3.0.10 (latest tag). Active branch: `dev`. GitHub (`sraj0501/Devtrack_`) sole source. Releases: `.\scripts\release.ps1 [-Bump patch|minor|major]`.
 
 **Migration COMPLETE (2026-06-10):** GitLab→GitHub migration achieved. The `migration` branch and the `gitlab-client` / `gitlab-server` / `gitlab-wiki` remotes are now vestigial — safe to remove. (Former "do NOT delete `migration`" protection lifted.)
 
@@ -12,7 +12,7 @@ type: project
 
 **Go internal packages** (`devtrack_client/internal/`): `config`, `db`, `health`, `learning`, `trigger`, `infra`, `daemon`, `tui`, `match`, `alerts`, `notify`, `telegram`. Layer: config/db/health/learning ← trigger ← infra ← daemon; trigger ← tui.
 
-**Recently shipped (v3.0 line):** `motor` optional dep; `upgrade.go` → GitHub API + semver guard; Telegram bot migrated to Go (`internal/telegram/`); boardroom + `devtrack plan` live; Windows CLI parity + autostart (Task Scheduler); automated GitHub Actions release pipeline; stale-health fix (migration 005 prunes legacy Redis/MongoDB rows); v3.0.9 `skip_issues` workspace field for dual-platform (GitHub+ADO) duplicate-ticket fix (`ResolveWorkspaceForPath` prefers non-skip at equal depth).
+**Recently shipped (v3.0 line):** `motor` optional dep; `upgrade.go` → GitHub API + semver guard; Telegram bot migrated to Go (`internal/telegram/`); boardroom + `devtrack plan` live; Windows CLI parity + autostart (Task Scheduler); automated GitHub Actions release pipeline; stale-health fix (migration 005 prunes legacy Redis/MongoDB rows); v3.0.9 `skip_issues` workspace field for dual-platform (GitHub+ADO) duplicate-ticket fix; v3.0.10 significant Windows fixes (isatty via mattn/go-isatty, editor-commit BeforeCommit/AfterCommit hooks, background auto-enhance via `DEVTRACK_AUTO_ENHANCE=true`).
 
 **NEXT — driven by PRODUCT_BIBLE.md (pivot 2026-06-10):** Phase 0 remove TUI prompts from trigger flow (silent daemon) → Phase 1 pending actions queue (the trust primitive) → Phase 2 opinionated ticket extractor (branch→ticket) → Phase 3 silent commit handler → Phase 4 EOD pipeline → Phases 5-8 voice training, dialectic self-improvement, TUI-as-visibility, PR-review puppet master. See `Data/agent_logs/project_board.md`.
 

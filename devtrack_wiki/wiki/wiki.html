@@ -556,7 +556,7 @@
         </div>
       </a>
       <div class="sidebar-version">
-        <span class="sidebar-version-tag">v3.0.9</span>
+        <span class="sidebar-version-tag">v3.0.10</span>
         <span class="sidebar-version-status">
           <span class="sidebar-version-dot"></span>
           live
@@ -587,7 +587,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v3.0.9</span>
+        <span class="version-chip">v3.0.10</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -1707,7 +1707,18 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.9 — latest</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.10 — latest</div>
+
+<h2>v3.0.10 — Windows Fixes &amp; gitsage Improvements</h2>
+<p>Significant quality-of-life improvements for Windows users and gitsage power users. Terminal detection is now reliable on Windows, the editor-commit workflow gained lifecycle hooks, and commit enhancement can now run in the background automatically.</p>
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>Windows terminal detection fixed (isatty)</h4><p>The daemon and CLI previously misdetected Windows terminals, causing incorrect colour/prompt decisions. Switched to <code>mattn/go-isatty</code> for reliable cross-platform TTY detection — no more garbled output or missing colour on Windows Terminal and PowerShell.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>Editor-commit lifecycle hooks</h4><p><code>devtrack git commit</code> now fires <code>BeforeCommit</code> and <code>AfterCommit</code> hooks around the editor session, enabling pre-commit validation and post-commit automation without blocking the interactive editor flow.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">3</div><div><h4>Background auto-enhance (opt-in)</h4><p>Set <code>DEVTRACK_AUTO_ENHANCE=true</code> in <code>.env</code> to have commit messages automatically enhanced in the background after every commit — no manual <code>devtrack git commit</code> required. Enhancement failures degrade silently; your original message is never lost.</p></div></div>
+</div>
+
+<hr>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.9 — previous</div>
 
 <h2>v3.0.9 — Dual-Platform Workspace Deduplication</h2>
 <p>When a project uses both GitHub (for code review) and Azure DevOps (for project management), two workspace entries share the same repository path. <code>devtrack issues</code> previously iterated all enabled workspaces and concatenated results, producing a duplicate-looking ticket list. The new <code>skip_issues: true</code> field marks a workspace as code-only so it is excluded from <code>devtrack issues</code>, ticket sync, and the commit-time ticket picker.</p>
@@ -3856,7 +3867,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-First · v3.0.9</div>
+      <div class="home-badge">Local-First · v3.0.10</div>
       <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
       <p class="home-sub">DevTrack monitors your Git activity, prompts for work updates, routes them through AI, and keeps your project management systems in sync — all running locally on your machine.</p>
     </div>
@@ -3864,7 +3875,7 @@ function renderHome() {
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.9: <code>skip_issues: true</code> workspace flag prevents duplicate tickets when a project uses both GitHub and Azure DevOps. v3.0.8: Stale Redis/MongoDB health rows fixed. v3.0.7: Automated release pipeline via GitHub Actions.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.0.10: Significant Windows fixes — terminal detection via mattn/go-isatty, editor-commit hooks, and background auto-enhance. v3.0.9: <code>skip_issues: true</code> workspace flag prevents duplicate tickets when a project uses both GitHub and Azure DevOps. v3.0.8: Stale Redis/MongoDB health rows fixed.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitHub Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },

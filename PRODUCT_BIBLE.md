@@ -47,6 +47,15 @@ PR review queues clear autonomously.
 > You write code. DevTrack handles the rest — silently, accurately, in your voice,
 > getting better every day.
 
+As DevTrack accumulates context — commits, ticket interactions, approvals, edits,
+corrections — it becomes the developer's **second brain**: the local knowledge layer
+that knows what was worked on, what was decided, what is pending, and how the developer
+communicates. This context is exposed to other AI tools via MCP (Model Context Protocol),
+making DevTrack the context layer for every AI assistant in the developer's environment.
+Claude Code knows the active ticket without being told. Copilot understands what is
+in-flight. Any MCP-capable tool inherits the developer's history and voice automatically.
+DevTrack does not replace AI coding assistants — it is the memory they lack.
+
 ---
 
 ## Non-Negotiables
@@ -123,6 +132,16 @@ earned by track record, not assumed from day one.
 The CLI, TUI, Telegram bot, and email are delivery channels for daemon output.
 Features live in the daemon. Removing an interface removes visibility — it never
 removes capability.
+
+### 13. The client is the sole user-facing interface to all capabilities
+Every capability the Python server exposes — report generation, NLP pipeline,
+personalization sync, boardroom, plan review, voice management — must be reachable
+via a `devtrack` CLI command. The server is a backend; the client is the gateway.
+No feature is server-exclusive. The capability surface of the CLI and the server must
+stay in sync: when a server capability is added, the client command is added in the
+same phase. Exceptions are permitted only for security-administrative functions
+(admin UI, license management) that require server-direct access by nature. The
+capability audit is a rolling checklist, updated with each phase.
 
 ---
 
@@ -425,12 +444,34 @@ fully silent. The daemon no longer asks anything during normal operation.
 Existing PM sync, LLM pipeline, and git monitor remain untouched.
 **Exit criterion:** Daemon runs for a full day with no prompts shown.
 
-### Phase 1 — Pending actions queue
-New SQLite table: `pending_actions`. Every outbound PM action staged here. Configurable
-timeout with auto-approve. Confidence score on every action. TUI and Telegram show queue.
-Nothing posts to external systems without clearing this table.
-**Exit criterion:** Developer can run for a week, review the queue each evening, and
-trust that nothing unexpected posted.
+### Phase 1 — Pending Queue + TUI Confidence Layer
+New SQLite table: `pending_actions`. Every outbound PM action staged here before it
+touches any external system. Confidence score on every action. Configurable timeout
+with auto-approve. Nothing posts without clearing this table.
+
+The TUI confidence layer is built alongside the queue — not deferred to a later phase.
+A developer who can see exactly what DevTrack is about to post, with a countdown timer
+and one-keystroke approve/reject, builds trust far faster than one who discovers what
+posted after the fact. This is the adoption gate: without visible, controllable pending
+actions the product cannot earn the permission to act autonomously.
+
+**TUI panels shipped in this phase:**
+- Pending queue: confidence scores, countdown timers, approve / reject / edit controls
+- Activity feed: last 24 hours of daemon actions
+- Low-confidence flags requiring a glance
+- Today's summary: commits, tickets touched, actions taken
+- System health: daemon status, LLM availability, PM connectivity
+
+Telegram also surfaces the queue and accepts approve/reject commands. Channel parity
+rule (non-negotiable #4) applies from day one: every correction action in the TUI must
+also be available via Telegram or CLI. The TUI is a read + correct interface only — it
+never asks for input, never gates features, never blocks the developer.
+
+**Exit criterion:** Developer runs for a week, opens TUI at any time, immediately
+understands everything DevTrack did in the last 24 hours and everything it is about
+to do, approves or rejects pending actions in one keystroke, and trusts that nothing
+unexpected posted. At least one auto-approve timeout has been extended based on
+observed accuracy.
 
 ### Phase 2 — Opinionated ticket extractor
 Branch regex → ticket ID. Commit message keyword parsing. Active ticket fallback.
@@ -475,20 +516,44 @@ evidence. Developer can correct wrong inferences directly.
 text is measurably lower than day 1. At least three autonomous skills have emerged
 without developer input. Developer has extended at least one auto-approve threshold.
 
-### Phase 7 — TUI as visibility and correction layer
-Reframe TUI entirely: activity feed, pending queue with confidence indicators,
-correction interface for low-confidence actions, today's stats, system health.
-Remove all input prompts. The TUI is a read + correct interface, never an input interface.
-**Exit criterion:** Developer can open TUI at any time and immediately understand
-everything DevTrack did in the last 24 hours and everything it is about to do.
-
-### Phase 8 — PR review loop (puppet master)
+### Phase 7 — PR review loop (puppet master)
 PR review event detection via existing alert poller. LLM classification of each
 comment. Headless invocation of Claude Code CLI or Copilot CLI. Fix-commit-push loop.
 Escalation to developer with full context when stuck. Developer notified only on
 completion or genuine blocker.
 **Exit criterion:** Developer pushes a PR with formatting and naming review comments,
 moves to next ticket, receives "PR approved" notification without touching the PR again.
+
+### Phase 8 — MCP Server + Headless Integration
+DevTrack exposes itself as an MCP (Model Context Protocol) server so AI coding
+assistants — Claude Code, GitHub Copilot, Cursor, or any MCP-capable client — can
+call DevTrack's context and capabilities programmatically. Phase 7 runs DevTrack →
+Claude Code (DevTrack orchestrates Claude Code for PR fixes). This phase adds the
+other direction: Claude Code → DevTrack (Claude Code queries DevTrack for developer
+context during any task).
+
+**MCP tools exposed:**
+
+| Tool | What it returns |
+|---|---|
+| `get_active_context` | Current active ticket, branch, today's commits, confidence |
+| `get_today_commits` | All commits today, grouped by ticket, with metadata |
+| `get_pending_actions` | Queue contents: action type, generated text, confidence, expiry |
+| `stage_action` | Stage a new pending action from an external agent |
+| `get_voice_profile` | Developer's inferred writing style for a given context type |
+| `get_ticket_context` | Full context for a named ticket: recent commits, comments, state |
+| `get_eod_summary` | Today's EOD narrative draft |
+
+**Transport:** MCP server runs over stdio (for Claude Code CLI integration) and
+optionally over HTTP with SSE (for IDE extensions). The Go client hosts the MCP
+server — no Python dependency required for context access, since all context data
+lives in SQLite. Generation calls proxy to the Python server only when LLM output
+is needed.
+
+**Exit criterion:** Developer runs Claude Code on a task; Claude Code automatically
+knows the active ticket, the developer's commit voice, and what is in the pending
+queue without any manual context-setting. DevTrack and Claude Code operate as
+complementary layers — DevTrack is the memory Claude Code lacks.
 
 ---
 
@@ -547,4 +612,5 @@ to be reworked, not patched.
 | 2026-06-10 | Initial version | Shashank Raj + Claude |
 | 2026-06-10 | Learning system: dialectic user modeling pattern (inspired by Honcho/Hermes Agent); voice layer: persona model pattern (inspired by Nous Hermes); profile as mirror not mask | Shashank Raj + Claude |
 | 2026-06-10 | Layer 3: channel parity rule for corrections — approve/reject/edit must exist on at least one non-TUI channel. Justification: the TUI-optional principle (non-negotiables #4, #12) is only enforceable if corrections are never TUI-exclusive. | Shashank Raj + Claude |
+| 2026-06-14 | Second brain positioning added to Vision. Non-negotiable #13: client is sole interface to all server capabilities (rolling capability audit). Phase 1 expanded to include TUI confidence layer (merged former Phase 7) — adoption gate: pending queue and TUI ship together. Phases renumbered: old Phase 7 removed, old Phase 8 → Phase 7, new Phase 8 = MCP server + headless integration. | Shashank Raj + Claude |
 

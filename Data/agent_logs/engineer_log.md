@@ -2,6 +2,18 @@
 
 ---
 
+### [2026-06-14 15:13] Ad-hoc — docs(bible): merge Phase 1+7; add second brain vision, #13 non-negotiable, Phase 8 MCP server
+
+**Original message**: "docs(bible): merge Phase 1+7; add second brain vision, #13 non-negotiable, Phase 8 MCP server"
+**DevTrack enhanced it to**: "feat(docs): Merge Phase 1, 7 & add Second Brain/MCP vision"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — engineer_log.md updated; pushed to origin/dev
+**Time**: ~3 minutes
+**Friction**: LOW — stash/checkout dev/stash-pop required (change was on main); daemon needed a start; otherwise clean
+**Notes**: PRODUCT_BIBLE.md-only commit. Changes: (1) "second brain" + MCP positioning paragraph added to The Vision section; (2) non-negotiable #13 added (client is sole interface to all server capabilities, rolling capability audit); (3) Phase 1 expanded to "Pending Queue + TUI Confidence Layer" — former Phase 7 merged in as the adoption gate; (4) old Phase 7 removed; (5) old Phase 8 → Phase 7; (6) new Phase 8 = MCP Server + Headless Integration with 7 MCP tools specified; (7) version history row added for 2026-06-14. File: 80 insertions, 14 deletions. Commit hash: feaea28.
+
+---
+
 ### [2026-06-14 14:19] SESSION — feat(gitsage): Windows isatty fix, editor-commit hooks, background auto-enhance
 
 **Original message**: "feat(gitsage): fix Windows isatty, fire hooks on editor commits, add background auto-enhance ..."
