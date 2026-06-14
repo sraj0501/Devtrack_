@@ -39,6 +39,10 @@ type IntegratedMonitor struct {
 	database             *db.Database
 	lastActiveWorkspace  *WorkspaceMonitor
 	lastActiveWorkspaceMu sync.Mutex
+	// enhancedHashes tracks commit hashes that were amended by the auto-enhancer
+	// so we don't re-process our own amendments (infinite-loop guard).
+	enhancedHashes   map[string]bool
+	enhancedHashesMu sync.Mutex
 }
 
 // NewIntegratedMonitor creates a new integrated monitoring system.
@@ -102,6 +106,7 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 		workspaceMonitors: workspaceMonitors,
 		config:            cfg,
 		database:          database,
+		enhancedHashes:    make(map[string]bool),
 	}
 
 	// Create scheduler with shared trigger handler
@@ -288,6 +293,15 @@ func getBoolFromMap(m map[string]interface{}, key string) bool {
 
 // handleCommitForWorkspace is called when a Git commit is detected on a specific workspace
 func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *WorkspaceMonitor) {
+	// Skip commits that we amended ourselves to prevent infinite re-enhancement loops.
+	im.enhancedHashesMu.Lock()
+	wasEnhanced := im.enhancedHashes[commit.Hash]
+	im.enhancedHashesMu.Unlock()
+	if wasEnhanced {
+		log.Printf("Skipping auto-enhanced commit %s", commit.Hash[:8])
+		return
+	}
+
 	// Honour ignore_branches: silently skip commits on branches the user opted out of
 	if commit.Branch != "" {
 		for _, ignored := range ws.ignoreBranches {
@@ -296,6 +310,16 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 				return
 			}
 		}
+	}
+
+	// If DEVTRACK_AUTO_ENHANCE=true and Ollama is running, generate a better
+	// commit message and amend the commit before firing the trigger.
+	if newHash, newMsg, ok := tryAutoEnhance(ws.gitMonitor.repoPath, commit); ok {
+		im.enhancedHashesMu.Lock()
+		im.enhancedHashes[newHash] = true
+		im.enhancedHashesMu.Unlock()
+		commit.Hash = newHash
+		commit.Message = newMsg
 	}
 
 	im.lastActiveWorkspaceMu.Lock()

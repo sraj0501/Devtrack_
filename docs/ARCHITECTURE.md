@@ -140,6 +140,7 @@ The lightweight background service that monitors and coordinates.
 | **Process check (Windows)** | process_windows.go | `OpenProcess` + `GetExitCodeProcess` liveness probe |
 | **Integration Hub** | integrated.go | Wires together git monitor, scheduler, HTTP trigger client |
 | **Git Monitor** | git_monitor.go | fsnotify-based repository watcher, fires commit_trigger; lazy-wired on first commit for empty repos |
+| **Auto-Enhance** | auto_enhance.go | Background AI enhancement of plain `git commit` messages (opt-in via `DEVTRACK_AUTO_ENHANCE=true`) |
 | **Scheduler** | scheduler.go | Cron-based periodic trigger, fires timer_trigger |
 | **HTTP Trigger Client** | server_config.go + daemon.go | POSTs JSON to Python `/trigger/*` via HTTPS (self-signed ECDSA cert) |
 | **Database** | database.go | SQLite access, trigger history, task updates |
@@ -306,6 +307,10 @@ Git hook detected by fsnotify
 Go daemon receives file event
          │
          ▼
+[DEVTRACK_AUTO_ENHANCE=true] Auto-enhance: read diff, call LLM,
+amend commit message in-place (skipped if commit is already pushed)
+         │
+         ▼
 Go daemon logs to database
          │
          ▼
@@ -328,6 +333,44 @@ Send acknowledge back to Go daemon
          │
          ▼
 Log completion in database
+```
+
+#### Background Commit-Message Auto-Enhancement
+
+When `DEVTRACK_AUTO_ENHANCE=true`, the daemon enhances every detected commit's message before forwarding it to the Python server. This is designed for workflows where developers use plain `git commit` without going through `devtrack git commit`.
+
+**How it works:**
+
+1. The git monitor detects a new commit (via fsnotify or 2-second polling).
+2. The daemon checks:
+   - Is `DEVTRACK_AUTO_ENHANCE=true`?
+   - Is the configured LLM reachable (Ollama / OpenAI / Groq)?
+   - Has the commit been pushed to any remote? (If yes, skip — amending would require a force-push.)
+   - Are there any staged changes in the working tree? (If yes, skip — amending would accidentally include them.)
+3. If all checks pass, the daemon reads the full commit diff (`git show HEAD`), sends it to the LLM, and generates a Conventional Commits-formatted message.
+4. The commit is amended in-place (`git commit --amend -m "enhanced message"`).
+5. The new commit hash is recorded internally to prevent re-processing the amended commit.
+6. The trigger payload sent to the Python server carries the enhanced message.
+
+**Safeguards:**
+
+| Guard | Behaviour |
+|---|---|
+| Commit already pushed | Skipped — amending would diverge the branch |
+| Staged changes present | Skipped — amending would alter the commit's tree |
+| LLM unreachable | Skipped — original message is preserved |
+| LLM returns same or empty message | Skipped — no amend performed |
+| Amended commit re-detected | Skipped via in-memory hash set (loop guard) |
+
+**Configuration:**
+
+```env
+DEVTRACK_AUTO_ENHANCE=true   # opt-in (default: false)
+
+# The LLM used is whichever SAGE_PROVIDER points to (default: ollama)
+GIT_SAGE_PROVIDER=ollama
+OLLAMA_HOST=http://localhost:11434
+GIT_SAGE_DEFAULT_MODEL=llama3.2
 ```
 
 ### 2. Timer Trigger Flow
