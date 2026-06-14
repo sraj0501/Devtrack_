@@ -38,6 +38,8 @@ workspaces.yaml
 
 # Test temp dirs
 .test_commit_enhancer_tmp
+devtrack_client/devtrack_test_bin
+devtrack_client/*.zip
 
 # Claude Code — exclude machine-specific settings, keep shared agents
 .claude/settings.local.json
