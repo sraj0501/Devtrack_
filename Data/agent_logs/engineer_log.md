@@ -2,6 +2,30 @@
 
 ---
 
+### [2026-06-14 15:55] TASK-058 — fix(server): gate user_prompt.py from trigger path
+
+**Original message**: "fix(server): gate user_prompt.py from trigger path — TASK-058"
+**DevTrack enhanced it to**: "feat(user_prompt): Remove legacy user prompt logic"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-058 marked COMPLETE; commit 6d269ef pushed to fix/TASK-058-remove-user-prompt-trigger
+**Time**: ~25 minutes
+**Friction**: MEDIUM — branch-switching stash conflicts with project_board.md on parallel branches; devtrack daemon kept switching active branch context between TASK-057 and TASK-058; required raw git fallback for log-only commit
+**Notes**: Grep audit confirmed zero hits outside user_prompt.py itself and test_user_prompt.py — trigger path was already clean (as expected per spec). Added two-line status comment after module docstring per spec. Test suite: 591 passed, 1 pre-existing failure (test_ollama_host_returns_string — OLLAMA_HOST=0.0.0.0 in shell env; documented in TASK-043 log and memory/feedback_ollama_host.md, not a regression). Commit hash: 6d269ef.
+
+[DEVTRACK PAUSED — using raw git for engineer_log commit: devtrack daemon kept switching to TASK-057 branch during staging]
+
+## Task Summary — TASK-058: Remove or gate user_prompt.py from trigger path — 2026-06-14
+
+- Total commits: 1 (6d269ef on fix/TASK-058-remove-user-prompt-trigger)
+- Acceptance criteria met: 3/3
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~0 min direct (guard comment prevents future accidental re-introduction into trigger path)
+- Blockers encountered: none (trigger path was already clean — audit confirmed the assumption)
+- One thing that still feels rough: "devtrack daemon branch context doesn't follow the local git checkout — commits land on whichever branch the daemon most recently observed, not the currently checked-out branch"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-14 15:45] TASK-057 — fix(infra): silence handleTrigger stdout in integrated.go
 
 **Original message**: "fix(infra): silence handleTrigger stdout — TASK-057"
