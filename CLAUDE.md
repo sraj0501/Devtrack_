@@ -165,7 +165,7 @@ PM connectors, gitsage, and alerts are Go-native and work in all modes.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.
 - **Shipped (v3.x):** three-codebase split (EPIC-SPLIT); client-server decoupling (Go-native
   connectors, gitsage, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;
-  automated release pipeline; v3.0.9 `skip_issues`.
+  automated release pipeline; v3.0.9 `skip_issues`; v3.0.10 Windows fixes (isatty, editor hooks, auto-enhance).
 - **Docs:** `docs/ARCHITECTURE.md`, `docs/CAPABILITIES_OWNERSHIP.md`,
   `docs/CLIENT_SERVER_DECOUPLING_PLAN.md`, `docs/TELEGRAM_BOT.md`, `docs/split-manifest.md`.
 

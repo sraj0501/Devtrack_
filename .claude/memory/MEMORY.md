@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-06-10_ | v3.0.9 | GitHub sole source of truth; devtrack.cloud live on Netlify
+_Last updated: 2026-06-14_ | v3.0.10 | GitHub sole source of truth; devtrack.cloud live on Netlify
 
 DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enriches with AI, routes to PM systems.
 
@@ -14,7 +14,7 @@ DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enri
 - [feedback_rules.md](feedback_rules.md) — Git/PR/commit rules, offline-first, CLI-only, no hardcoded values, GIT_NO_DEVTRACK, ARCHITECTURE.md boundary, uv not pip
 
 ## Project State
-- [project_current_state.md](project_current_state.md) — post-pivot direction (Bible Phase 0→8); v3.0.9 shipped; PG-5/Redis deprioritised; Azure WIQL date quirk; notify interface pitfall
+- [project_current_state.md](project_current_state.md) — post-pivot direction (Bible Phase 0→8); v3.0.10 shipped (significant Windows fixes); PG-5/Redis deprioritised; Azure WIQL date quirk; notify interface pitfall
 
 ## Project Context
 - [project_platform_modes.md](project_platform_modes.md) — Managed/Lightweight/External modes; Windows WSL2 dev; ARM64 .syso fix shipped

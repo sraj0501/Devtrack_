@@ -1,9 +1,9 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-14 by engineer_
-_Next DevTrack task ID: TASK-057_
+_Last updated: 2026-06-14 by PM (Phase 0 decomposition)_
+_Next DevTrack task ID: TASK-060_
 _Active branch: `dev`_
-_Shipped: v3.0.9 (2026-06-09) — skip_issues dual-platform fix._
+_Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
 **[2026-06-14] Ad-hoc session commit** — commit `0a9d9a7` on dev, pushed; PR #161 (dev → main) opened.
@@ -34,7 +34,145 @@ Existing PM sync, LLM pipeline, and git monitor remain untouched.
 
 **Exit criterion**: Daemon runs for a full day with no prompts shown.
 
-**Status**: NOT STARTED — next up. Tasks to be decomposed by project-vision.
+**Status**: DECOMPOSED — 3 tasks ready to dispatch.
+
+---
+
+### TASK-057 — Silence handleTrigger stdout in integrated.go
+**Priority**: HIGH
+**Phase**: Phase 0
+**Depends on**: none
+**Branch**: `fix/TASK-057-silence-handle-trigger`
+
+**Spec**:
+The function `handleTrigger` in `devtrack_client/internal/infra/integrated.go`
+(lines 347–479) prints a full decorative banner to stdout on every commit and
+timer trigger. This banner (15–20 `fmt.Print*` calls) violates PRODUCT_BIBLE.md
+Non-Negotiable #1 ("no prompts in the main flow") and is the only active source
+of terminal output in the trigger flow.
+
+Changes required, **all inside `handleTrigger()`**:
+
+1. Replace every `fmt.Print*` call with `log.Printf` / `log.Println` (which go
+   to the log file, not the terminal). The information (commit hash, message,
+   author, files, workspace, trigger count, interval) is still useful in the log;
+   keep it as a structured log line.
+2. The decorative separator lines (`strings.Repeat("═", 60)`) and "What happens
+   next:" paragraph are redundant in the log — remove them entirely. One log line
+   per trigger is enough.
+3. The "Waiting for next event..." line must be removed entirely.
+4. `strings` import may become unused after the change — remove it if so (run
+   `go vet ./...` to verify). Other uses of `strings` in the same file
+   (`strings.EqualFold`, `strings.TrimSpace`, `strings.Join`) must be checked
+   before dropping the import.
+5. The `TestIntegrated()` function lower in the file also contains `fmt.Print*`
+   calls — those are in a dev-test helper, not the live trigger path. Leave them
+   as-is; the function is never called in production.
+
+After the change, `handleTrigger` must contain zero `fmt.Print*` calls.
+The function must still: log the trigger type + key fields at `log.Printf` level,
+persist the trigger record to SQLite, and send the HTTP trigger to the Python
+server — all unchanged.
+
+**Acceptance criteria**:
+- [ ] `grep -n "fmt\.Print" devtrack_client/internal/infra/integrated.go` returns
+      only matches inside `TestIntegrated()` (line ~510 onward), zero matches in
+      `handleTrigger`.
+- [ ] `go build ./...` passes with no errors from `devtrack_client/`.
+- [ ] `go vet ./...` passes clean.
+- [ ] The daemon log (`Data/logs/daemon.log`) still shows commit/timer events as
+      log lines when the daemon runs.
+- [ ] No terminal output appears when a commit fires while the daemon is running
+      in the background.
+
+**Engineer status**: not started
+**Blockers**: none
+
+---
+
+### TASK-058 — Remove or gate user_prompt.py from trigger path (Python server)
+**Priority**: MEDIUM
+**Phase**: Phase 0
+**Depends on**: TASK-057 (can be worked in parallel — different file, different codebase)
+**Branch**: `fix/TASK-058-remove-user-prompt-trigger`
+
+**Spec**:
+`devtrack_server/backend/user_prompt.py` defines `DevTrackTUI` and
+`prompt_work_update()`, which can block the process waiting for stdin input.
+Current state: `TriggerProcessor.process_commit()` and `process_timer()` in
+`webhook_server.py` do NOT call `user_prompt` — the trigger path is already clean.
+However, the module still exists and could be accidentally re-introduced.
+
+Changes required:
+
+1. Search the entire `devtrack_server/backend/` tree for any remaining import of
+   `user_prompt` or call to `DevTrackTUI` / `prompt_work_update` / `prompt_user`
+   outside of test files and the `__main__` block in `user_prompt.py` itself.
+   Command: `grep -rn "user_prompt\|DevTrackTUI\|prompt_work_update\|prompt_for_work_update" devtrack_server/backend/ --include="*.py"`
+2. If any non-test file imports `user_prompt` for use in a trigger path, remove
+   or replace that call with a `logger.info()`.
+3. Add a module-level docstring to `user_prompt.py` (top of file, after the
+   existing docstring) noting:
+   `# STATUS: Legacy module. Not called from any trigger path as of Phase 0.`
+   `# Safe to delete once the TUI correction interface (Phase 7) is implemented.`
+   Do NOT delete the file — it will be repurposed for the Phase 7 TUI visibility
+   interface.
+4. Run `uv run pytest backend/tests/ -q` to confirm no tests regress.
+
+**Acceptance criteria**:
+- [ ] `grep -rn "user_prompt\|DevTrackTUI\|prompt_work_update" devtrack_server/backend/ --include="*.py"` returns zero hits outside `user_prompt.py` itself and `test_user_prompt.py`.
+- [ ] `uv run pytest backend/tests/ -q` passes (or has the same pre-existing
+      failures as before this task — document any pre-existing failures in the
+      engineer log).
+- [ ] The module-level status comment is present at the top of `user_prompt.py`.
+
+**Engineer status**: not started
+**Blockers**: none
+
+---
+
+### TASK-059 — Verify Phase 0 exit criterion: daemon silent for a full session
+**Priority**: HIGH
+**Phase**: Phase 0
+**Depends on**: TASK-057, TASK-058
+**Branch**: `fix/TASK-059-phase0-verification`
+
+**Spec**:
+This is the verification and cleanup task that closes Phase 0. It produces no new
+feature code — only a verification run, any small fixes found during verification,
+and the board/log updates that mark Phase 0 done.
+
+Steps:
+
+1. Build the client binary from `devtrack_client/`: `go build -o devtrack .`
+2. Start the daemon: `devtrack start`
+3. Make at least 2 commits in a watched repo (can be empty commits:
+   `git commit --allow-empty -m "phase0 test 1"`).
+4. Wait for at least one timer trigger to fire (set `PROMPT_INTERVAL=1` in `.env`
+   for the test, restore after).
+5. Check `Data/logs/daemon.log`: confirm trigger events appear as log lines.
+6. Check the terminal where the daemon was launched (or attached to): confirm
+   zero trigger banners / prompts appear.
+7. Run `grep -n "fmt\.Print" devtrack_client/internal/infra/integrated.go` and
+   confirm no matches in `handleTrigger`.
+8. Run the full hardcoded-values scan (PM responsibility, run before closing):
+   ```
+   grep -rn "localhost:[0-9]\|127\.0\.0\.1:[0-9]" devtrack_client/ --include="*.go" | grep -v "_test\|#\|config\|Get"
+   grep -rn "os\.getenv\b" devtrack_server/backend/ --include="*.py" | grep -v "config\.py\|conftest\|test_"
+   ```
+9. Update `Data/agent_logs/feature_tracker.md` with Phase 0 completion entry.
+10. Open a PR targeting `dev` with title "Phase 0: silent daemon trigger flows".
+
+**Acceptance criteria**:
+- [ ] Zero terminal output from daemon during normal commit/timer operation.
+- [ ] `Data/logs/daemon.log` contains structured log lines for each trigger.
+- [ ] Hardcoded-values scan is clean (no new violations).
+- [ ] `go build ./...` and `go vet ./...` pass clean.
+- [ ] PR opened targeting `dev` (never `main`).
+- [ ] Feature tracker updated.
+
+**Engineer status**: not started
+**Blockers**: TASK-057 and TASK-058 must be complete
 
 ---
 
@@ -74,6 +212,7 @@ Product Bible phases — not cancelled, just not now.
 ### v3.x line (2026-05 → 2026-06)
 | Version | What |
 |---|---|
+| v3.0.10 | Significant Windows fixes: isatty via mattn/go-isatty; editor-commit hooks; auto-enhance (`DEVTRACK_AUTO_ENHANCE=true`) |
 | v3.0.9 | TASK-056 — `skip_issues` flag; dual-platform duplicate-ticket fix |
 | v3.0.8 | Stale health snapshot fix; migration 005 prunes legacy Redis/MongoDB rows |
 | v3.0.7 | Automated GitHub Actions release pipeline (`release.yml`) |
