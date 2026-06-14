@@ -124,10 +124,11 @@ Changes required:
 - [x] `uv run pytest backend/tests/ -q` — 591 pass, 1 pre-existing failure (`test_ollama_host_returns_string`, `OLLAMA_HOST=0.0.0.0` in shell, documented in engineer log).
 - [x] The module-level status comment is present at the top of `user_prompt.py`.
 
-**Engineer status**: 3/3 criteria done — 2026-06-14 15:55
+**Engineer status**: 3/3 criteria done — last commit: 6d269ef "feat(user_prompt): Remove legacy user prompt logic" — 2026-06-14 15:55
 
 **COMPLETE** — ready for PM review — 2026-06-14 15:55
 
+**PR**: https://github.com/sraj0501/Devtrack_/pull/164
 **Blockers**: none
 
 ---
