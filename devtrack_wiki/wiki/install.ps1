@@ -15,36 +15,24 @@ try {
     exit 1
 }
 
-$ARCHIVE = "devtrack_windows_amd64.zip"
-$URL     = "https://github.com/$REPO/releases/download/$VERSION/$ARCHIVE"
+$EXE = "devtrack_windows_amd64.exe"
+$URL = "https://github.com/$REPO/releases/download/$VERSION/$EXE"
 
 Write-Host "Detected: windows/amd64"
 Write-Host "Downloading DevTrack $VERSION..."
 
 New-Item -ItemType Directory -Force -Path $INSTALL_DIR | Out-Null
 
-$tmpDir = Join-Path $env:TEMP "devtrack_install_$([System.IO.Path]::GetRandomFileName())"
-New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
+$destPath = Join-Path $INSTALL_DIR "devtrack.exe"
 
 try {
-    $archivePath = Join-Path $tmpDir $ARCHIVE
-    Invoke-WebRequest -Uri $URL -OutFile $archivePath -UseBasicParsing
-    Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force
-
-    # The archived binary may be named devtrack.exe or devtrack_windows_amd64.exe
-    # depending on how the release was packaged. Locate it regardless of name.
-    $exe = Get-ChildItem -Path $tmpDir -Filter "*.exe" -Recurse | Select-Object -First 1
-    if (-not $exe) {
-        Write-Error "Downloaded archive did not contain a devtrack executable."
-        exit 1
-    }
-    Copy-Item -Path $exe.FullName `
-              -Destination (Join-Path $INSTALL_DIR "devtrack.exe") -Force
-} finally {
-    Remove-Item -Recurse -Force $tmpDir -ErrorAction SilentlyContinue
+    Invoke-WebRequest -Uri $URL -OutFile $destPath -UseBasicParsing
+} catch {
+    Write-Error "Download failed: $_"
+    exit 1
 }
 
-Write-Host "Installed to $INSTALL_DIR\devtrack.exe"
+Write-Host "Installed to $destPath"
 
 # Add install dir to user PATH if not already present
 $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
