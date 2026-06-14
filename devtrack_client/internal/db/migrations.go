@@ -87,7 +87,10 @@ var allMigrations = []Migration{
 				return fmt.Errorf("open db: %w", err)
 			}
 			defer db.Close()
-			_, err = db.db.Exec(`DELETE FROM health_snapshots WHERE service IN ('redis', 'mongodb', 'mongo', 'python_bridge', 'ipc')`)
+			_, err = db.db.Exec(`
+				DELETE FROM health_snapshots
+				WHERE service IN ('redis', 'mongodb', 'mongo', 'python_bridge', 'ipc')
+			`)
 			return err
 		},
 	},
