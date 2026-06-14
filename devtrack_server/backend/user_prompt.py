@@ -10,6 +10,9 @@ This module provides a simple but effective terminal interface for:
 Works in both interactive terminals and non-interactive environments.
 """
 
+# STATUS: Legacy module. Not called from any trigger path as of Phase 0.
+# Safe to delete once the TUI correction interface (Phase 7) is implemented.
+
 import os
 import sys
 import logging
