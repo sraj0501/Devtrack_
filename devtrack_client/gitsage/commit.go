@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/mattn/go-isatty"
 )
 
 // commitTokenBudget is the baseline max-token budget for generating a commit
@@ -362,9 +364,14 @@ func queueForLater(repoPath, message string, hooks *CommitHooks) (done bool, err
 // message as-is, queue the change for later enhancement, or abort.
 func offlineCommitChoice(repoPath string, f commitFlags, hooks *CommitHooks) error {
 	cfg := LoadConfig().LLM
-	// No message to enhance later or no queue hook / non-interactive: just commit.
+	// No message to enhance later or no queue hook / non-interactive: open git
+	// editor so the user can still write a message; DevTrack hooks fire after.
 	if strings.TrimSpace(f.message) == "" || hooks == nil || hooks.QueueForLater == nil || !isInteractive() {
-		fmt.Printf("⚠️  AI provider unreachable (%s) — committing with your message as-is.\n", cfg.PingURL())
+		if strings.TrimSpace(f.message) == "" {
+			fmt.Printf("⚠️  AI provider unreachable (%s) — opening editor for commit message.\n", cfg.PingURL())
+		} else {
+			fmt.Printf("⚠️  AI provider unreachable (%s) — committing with your message as-is.\n", cfg.PingURL())
+		}
 		return commitWith(repoPath, f, f.message, hooks)
 	}
 
@@ -430,9 +437,20 @@ func commitWith(repoPath string, f commitFlags, message string, hooks *CommitHoo
 	}
 
 	if strings.TrimSpace(message) == "" {
-		// No message and no AI — defer to git (opens editor or uses passthru flags).
+		// No message — defer to git (opens editor or uses passthru flags).
 		if err := passthroughGit(repoPath, append([]string{"commit"}, f.passthru...)); err != nil {
 			return err
+		}
+		// After a successful editor-based commit, read the real message and fire
+		// BeforeCommit retroactively so the ticket picker can still appear and
+		// AfterCommit receives a ticket state for PM sync.
+		if hooks != nil && hooks.BeforeCommit != nil {
+			g2 := NewGitOps(repoPath)
+			if realMsg, _ := g2.run("log", "-1", "--format=%B"); strings.TrimSpace(realMsg) != "" {
+				if _, st := hooks.BeforeCommit(repoPath, strings.TrimSpace(realMsg)); st != nil {
+					state = st
+				}
+			}
 		}
 	} else {
 		tmp, err := os.CreateTemp("", "devtrack-commit-*.txt")
@@ -548,10 +566,9 @@ func indent(s, prefix string) string {
 }
 
 // isInteractive reports whether stdin is a terminal.
+// Uses mattn/go-isatty which calls GetConsoleMode on Windows, making it
+// reliable across cmd.exe, PowerShell, Windows Terminal, and Git Bash.
 func isInteractive() bool {
-	fi, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	return (fi.Mode() & os.ModeCharDevice) != 0
+	fd := os.Stdin.Fd()
+	return isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
 }
