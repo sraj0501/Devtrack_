@@ -1,10 +1,13 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-10 by PM_
+_Last updated: 2026-06-14 by engineer_
 _Next DevTrack task ID: TASK-057_
 _Active branch: `dev`_
 _Shipped: v3.0.9 (2026-06-09) — skip_issues dual-platform fix._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
+
+**[2026-06-14] Ad-hoc session commit** — commit `0a9d9a7` on dev, pushed; PR #161 (dev → main) opened.
+Three gitsage improvements: (1) Windows isatty fix via mattn/go-isatty; (2) editor-commit BeforeCommit/AfterCommit hooks; (3) background auto-enhance (opt-in DEVTRACK_AUTO_ENHANCE=true). Build/vet clean. PR: https://github.com/sraj0501/Devtrack_/pull/161
 
 ---
 

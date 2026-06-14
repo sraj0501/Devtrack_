@@ -2,6 +2,18 @@
 
 ---
 
+### [2026-06-14 14:19] SESSION — feat(gitsage): Windows isatty fix, editor-commit hooks, background auto-enhance
+
+**Original message**: "feat(gitsage): fix Windows isatty, fire hooks on editor commits, add background auto-enhance ..."
+**DevTrack enhanced it to**: "feat(gitsage): Improve terminal detection and add auto-enhance feature"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — engineer_log.md + project_board.md updated; PR #161 created
+**Time**: ~15 minutes (stash/pull/pop cycle + build verify + commit + push + PR)
+**Friction**: MEDIUM — local dev branch was 16 commits behind origin/dev; stash-pull-pop required; auto-merge on integrated.go and ARCHITECTURE.md succeeded cleanly
+**Notes**: Three independent improvements committed as one logical unit. (1) mattn/go-isatty replaces the unreliable os.Stdin.Stat()+ModeCharDevice pattern — this was a real Windows bug where `devtrack git commit` would silently skip the interactive enhancement flow in PowerShell/Windows Terminal. (2) Editor-path hook gap: when user ran `devtrack git commit` with no -m, the ticket picker and PM sync never fired because BeforeCommit was only called on the -m path. Fixed by reading the real commit hash back from git and calling BeforeCommit retroactively. (3) DEVTRACK_AUTO_ENHANCE=true wires the IntegratedMonitor to call tryAutoEnhance() on every new commit it sees — reads the diff, calls EnhanceForDiff, amends in place; enhancedHashes map prevents double-amend. Build: go build ./... PASS | go vet ./... PASS. PR #161 opened dev → main.
+
+---
+
 ### [2026-06-09 PM] TASK-056 — fix(pm): add skip_issues flag to suppress duplicate tickets from dual-platform workspaces
 
 **Commits**:
