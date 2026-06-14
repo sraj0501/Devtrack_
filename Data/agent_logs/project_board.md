@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-14 by engineer (TASK-059 Phase 0 verification complete)_
-_Next DevTrack task ID: TASK-060_
+_Last updated: 2026-06-14 by PM (Phase 1 decomposed into TASK-060 – TASK-065)_
+_Next DevTrack task ID: TASK-066_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -183,18 +183,484 @@ Steps:
 
 ---
 
-## QUEUED — Phases 1–8
+## ACTIVE — Phase 1: Pending actions queue
+
+**Goal**: Every outbound PM action is staged in `pending_actions` before it touches any external
+system. Confidence score on every action. Configurable timeout with auto-approve. TUI, CLI, and
+Telegram all surface the queue and accept approve/reject/edit. Nothing posts without clearing
+this table.
+
+**Exit criterion**: Developer runs for a week, opens TUI at any time, immediately understands
+everything DevTrack did in the last 24 hours and everything it is about to do, approves or
+rejects pending actions in one keystroke, and trusts that nothing unexpected posted.
+
+---
+
+### TASK-060 — pending_actions SQLite table and Go data model
+**Priority**: HIGH
+**Phase**: Phase 1
+**Depends on**: none (TASK-059 COMPLETE)
+**Branch**: `feat/TASK-060-pending-actions-table`
+
+**Spec**:
+
+Add the `pending_actions` SQLite table and its Go model to `devtrack_client/internal/db/`.
+This is the pure data layer — no business logic, no UI, no auto-approve. Every other
+Phase 1 task depends on this one existing first.
+
+1. Add migration `006-create-pending-actions` to `devtrack_client/internal/db/migrations.go`
+   (append to `allMigrations`, never reorder). The migration creates:
+
+   ```sql
+   CREATE TABLE IF NOT EXISTS pending_actions (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       action_type TEXT    NOT NULL,   -- e.g. "post_comment", "state_transition", "eod_report"
+       target      TEXT    NOT NULL,   -- e.g. "PROJ-123", "PR #456", "ADO-789"
+       platform    TEXT    NOT NULL,   -- "github", "azure", "gitlab", "jira"
+       workspace   TEXT    NOT NULL,   -- workspace name from workspaces.yaml
+       payload     TEXT    NOT NULL,   -- JSON: full content to post (comment text, new state, etc.)
+       confidence  REAL    NOT NULL,   -- 0.0–1.0
+       status      TEXT    NOT NULL DEFAULT 'pending',  -- pending | approved | rejected | posted | failed
+       expires_at  DATETIME NOT NULL,  -- computed from confidence at insert time
+       created_at  DATETIME NOT NULL DEFAULT (datetime('now')),
+       acted_at    DATETIME,           -- when status changed to approved/rejected/posted/failed
+       acted_by    TEXT,               -- "auto" | "tui" | "cli" | "telegram"
+       error       TEXT                -- last error if status=failed
+   );
+   CREATE INDEX IF NOT EXISTS idx_pending_actions_status ON pending_actions(status);
+   CREATE INDEX IF NOT EXISTS idx_pending_actions_expires ON pending_actions(expires_at);
+   ```
+
+2. Add a Go struct and CRUD helpers in a new file
+   `devtrack_client/internal/db/pending_actions.go`:
+
+   - `PendingAction` struct (fields match columns above; `ExpiresAt`, `CreatedAt`,
+     `ActedAt` as `time.Time`; `Payload` as raw `string` — callers marshal/unmarshal JSON).
+   - `InsertPendingAction(a PendingAction) (int64, error)` — inserts a row, returns new ID.
+   - `ListPendingActions(statusFilter string) ([]PendingAction, error)` — pass `""` for all,
+     `"pending"` for queue view. Orders by `expires_at ASC`.
+   - `UpdatePendingActionStatus(id int64, status, actedBy string) error` — sets `status`,
+     `acted_at = NOW()`, `acted_by`. Validates status is one of the five allowed values.
+   - `UpdatePendingActionError(id int64, errMsg string) error` — sets `status = "failed"`,
+     `error = errMsg`, `acted_at = NOW()`.
+   - `GetPendingAction(id int64) (*PendingAction, error)`.
+
+3. Confidence-to-timeout helper (pure function, no DB access):
+   `ConfidenceTimeout(confidence float64, isNewActionType bool) time.Duration`
+   Logic (from PRODUCT_BIBLE.md):
+   - `isNewActionType == true`  → 30 minutes
+   - `confidence > 0.90`        → 2 minutes
+   - `confidence >= 0.70`       → 5 minutes
+   - `confidence < 0.70`        → 15 minutes
+
+4. Run `go build ./...` and `go vet ./...` from `devtrack_client/`.
+   Run `go test ./internal/db/...` (add at least one table-driven unit test for
+   `ConfidenceTimeout` covering the four branches).
+
+**Acceptance criteria**:
+- [ ] `go build ./...` passes clean from `devtrack_client/`.
+- [ ] `go vet ./...` passes clean.
+- [ ] Migration `006-create-pending-actions` is present in `allMigrations` and is idempotent
+      (`IF NOT EXISTS` on both `CREATE TABLE` and `CREATE INDEX`).
+- [ ] `PendingAction` struct + five CRUD helpers exist in `pending_actions.go`.
+- [ ] `ConfidenceTimeout` returns correct durations for all four branches (unit test passes).
+- [ ] `go test ./internal/db/...` passes with at least the `ConfidenceTimeout` test.
+- [ ] No `os.Getenv` calls in the new file; no hardcoded hosts/ports.
+
+**Engineer status**: not started
+**Blockers**: none
+
+---
+
+### TASK-061 — Python server queue gateway: stage PM actions instead of posting directly
+**Priority**: HIGH
+**Phase**: Phase 1
+**Depends on**: TASK-060 (table must exist before Python can stage rows)
+**Branch**: `feat/TASK-061-queue-gateway`
+
+**Spec**:
+
+Today the Python server posts directly to PM APIs inside `webhook_server.py`'s trigger
+handlers. Phase 1's non-negotiable is: *nothing posts without clearing the pending_actions
+table first*. This task inserts the staging layer in the Python server and exposes two
+new HTTP endpoints so the Go daemon can read and update the queue.
+
+**Part A — New Python module `backend/queue_gateway.py`**
+
+1. Create `devtrack_server/backend/queue_gateway.py`. This module is the only place
+   in the Python server that writes rows to `pending_actions`. All other PM-posting
+   code must call this module instead of the PM API directly.
+
+2. `QueueGateway` class:
+   - `__init__(self, db_path: str)` — opens a SQLite connection to the same
+     `Data/db/devtrack.db` that the Go daemon uses. Use `sqlite3` (stdlib).
+     Path resolved via `backend.config.get_path("DATABASE_PATH")`.
+   - `stage(self, action_type: str, target: str, platform: str, workspace: str,
+             payload: dict, confidence: float, is_new_action_type: bool = False) -> int`
+     Inserts a row into `pending_actions` (calculating `expires_at` using the same
+     confidence-to-timeout rules as `ConfidenceTimeout` in Go — document them in a
+     comment). Returns the new row `id`.
+   - `mark_posted(self, action_id: int) -> None` — sets `status = "posted"`,
+     `acted_at = NOW()`, `acted_by = "auto"`.
+   - `mark_failed(self, action_id: int, error: str) -> None` — sets `status = "failed"`,
+     `error = error`, `acted_at = NOW()`.
+
+3. In `webhook_server.py` (the `TriggerProcessor` methods `process_commit` and
+   `process_timer`): wrap every call that posts to a PM API with `queue_gateway.stage()`.
+   The call to the actual PM API is removed from the trigger handler — posting will be
+   done by the Go daemon's queue executor (TASK-062). For now, after staging, the handler
+   returns `{"status": "queued", "action_id": <id>}` to the Go client instead of the
+   previous `{"status": "ok"}`.
+
+   Important: do not delete the PM-posting code. Move it to a new internal method
+   `_execute_pm_action(self, action: dict) -> dict` on `TriggerProcessor` — the queue
+   executor will call this via the `/queue/execute` endpoint below.
+
+**Part B — New HTTP endpoints in `webhook_server.py`**
+
+Add two endpoints (protected by `X-DevTrack-API-Key` if `DEVTRACK_API_KEY` is set,
+same as existing `/trigger/*` auth):
+
+```
+GET  /queue/pending
+     Response: {"actions": [<PendingAction rows as JSON objects>]}
+     Returns all rows with status='pending', ordered by expires_at ASC.
+
+POST /queue/execute
+     Body:    {"action_id": <int>}
+     Action:  reads the row, calls _execute_pm_action(), marks posted or failed.
+     Response: {"status": "posted"|"failed", "error": "<msg if failed>"}
+```
+
+The Go daemon's queue executor (TASK-062) will poll `GET /queue/pending` and call
+`POST /queue/execute` for each action whose `expires_at` has passed without rejection.
+
+**Part C — Tests**
+
+Add `devtrack_server/backend/tests/test_queue_gateway.py`:
+- Unit test `stage()`: inserts a row, confirms `status='pending'`, correct `expires_at`
+  band for given confidence.
+- Unit test `mark_posted()` / `mark_failed()`: state transitions.
+- Integration smoke test for `GET /queue/pending` using the existing FastAPI `TestClient`.
+
+Run `uv run pytest backend/tests/ -q` — all 591 passing tests must continue to pass.
+
+**Acceptance criteria**:
+- [ ] `queue_gateway.py` exists with `QueueGateway` class and `stage`, `mark_posted`,
+      `mark_failed` methods. No `os.getenv` calls (all config via `backend.config`).
+- [ ] `TriggerProcessor.process_commit` and `process_timer` call `queue_gateway.stage()`
+      instead of posting to PM APIs directly.
+- [ ] `_execute_pm_action()` exists on `TriggerProcessor` and encapsulates the PM post.
+- [ ] `GET /queue/pending` and `POST /queue/execute` endpoints exist and are auth-gated.
+- [ ] `test_queue_gateway.py` passes: stage, mark_posted, mark_failed unit tests + GET endpoint smoke test.
+- [ ] `uv run pytest backend/tests/ -q` — no regressions (591+ pass, known failure documented).
+- [ ] `go vet` and `go build` on the Go side unaffected (Python-only change).
+
+**Engineer status**: not started
+**Blockers**: TASK-060 must be complete (table must exist before Python can insert rows)
+
+---
+
+### TASK-062 — Queue executor goroutine: confidence timeouts and auto-approve dispatch
+**Priority**: HIGH
+**Phase**: Phase 1
+**Depends on**: TASK-060, TASK-061
+**Branch**: `feat/TASK-062-queue-executor`
+
+**Spec**:
+
+The queue executor is a background goroutine in the Go daemon that:
+1. Polls `GET /queue/pending` every 15 seconds.
+2. For each pending action whose `expires_at` is in the past (and status is still `pending`):
+   a. Calls `POST /queue/execute` on the Python server.
+   b. If execution succeeds: marks the SQLite row `status = "posted"` via
+      `UpdatePendingActionStatus(id, "posted", "auto")`.
+   c. If execution fails: marks `status = "failed"` via `UpdatePendingActionError`.
+3. Skips actions that were manually approved or rejected via TUI/CLI/Telegram (status
+   is no longer `pending`).
+4. Never calls `POST /queue/execute` for an action whose `expires_at` is in the future
+   — those are still in their approval window.
+
+**Files to create/modify**:
+
+1. New file: `devtrack_client/internal/infra/queue_executor.go`
+
+   ```go
+   package infra
+
+   // QueueExecutor polls the Python server for pending actions and auto-approves
+   // those whose timeout has expired. It is a self-contained goroutine started
+   // by IntegratedMonitor.
+   type QueueExecutor struct { ... }
+
+   func NewQueueExecutor(...) *QueueExecutor
+   func (q *QueueExecutor) Start(ctx context.Context)  // runs until ctx cancelled
+   func (q *QueueExecutor) Stop()
+   ```
+
+   Internal loop logic:
+   - Use `time.NewTicker(pollInterval)` where `pollInterval` is read from config
+     via a new `GetQueuePollIntervalSecs()` accessor (add to `config_env.go`, required
+     var name: `QUEUE_POLL_INTERVAL_SECS`, default behaviour documented in `.env_sample`).
+   - On each tick: `GET /queue/pending` using the existing HTTP trigger client
+     (`internal/trigger` package). Parse the JSON response into a slice of action
+     structs (define `PendingActionSummary` in this file — only the fields the
+     executor needs: `ID`, `ExpiresAt`, `Status`).
+   - For each action with `ExpiresAt.Before(time.Now())`: call `POST /queue/execute`.
+   - Log each auto-approve at `log.Printf` level: `"queue: auto-approved action %d
+     (type=%s target=%s)"`.
+   - On HTTP error: log at `log.Printf` level and continue — never panic or exit.
+
+2. Wire `QueueExecutor` into `IntegratedMonitor.Start()` in
+   `devtrack_client/internal/infra/integrated.go`:
+   - Instantiate `NewQueueExecutor(...)` after the existing monitor setup.
+   - Call `go q.Start(ctx)` (the daemon's existing context already handles shutdown).
+
+3. Add to `devtrack_client/internal/config/config_env.go`:
+   - `GetQueuePollIntervalSecs() int` — reads `QUEUE_POLL_INTERVAL_SECS` (required,
+     no hardcoded default — document in `.env_sample` with value `15`).
+
+4. Add `QUEUE_POLL_INTERVAL_SECS=15` to `.env_sample`.
+
+5. `go build ./...` and `go vet ./...` must pass.
+
+**Acceptance criteria**:
+- [ ] `queue_executor.go` exists in `devtrack_client/internal/infra/` with `QueueExecutor`
+      struct, `Start`, `Stop`, and the auto-approve loop.
+- [ ] `GetQueuePollIntervalSecs()` exists in `config_env.go`; `QUEUE_POLL_INTERVAL_SECS`
+      in `.env_sample`.
+- [ ] `QueueExecutor` is started inside `IntegratedMonitor.Start()`.
+- [ ] No hardcoded timeout values (all from config). No hardcoded host/port strings.
+- [ ] `go build ./...` passes clean. `go vet ./...` passes clean.
+- [ ] Daemon log shows `"queue: auto-approved action ..."` entries during a test run
+      where a low-confidence action's timeout is set to 1 minute and allowed to expire.
+
+**Engineer status**: not started
+**Blockers**: TASK-060 and TASK-061 must be complete
+
+---
+
+### TASK-063 — TUI Pending Queue panel (new tab with confidence bars and countdown timers)
+**Priority**: HIGH
+**Phase**: Phase 1
+**Depends on**: TASK-060, TASK-061, TASK-062
+**Branch**: `feat/TASK-063-tui-pending-queue`
+
+**Spec**:
+
+Add a fifth tab to the existing Bubbletea TUI: "Queue". This panel shows every action
+in `pending_actions` with status `pending` or `posted` (last 24h of posted included
+for audit). It is a read + approve/reject/edit interface — it never asks for input,
+never blocks the developer (PRODUCT_BIBLE.md Non-Negotiable #4).
+
+The TUI already uses Bubbletea (`github.com/charmbracelet/bubbletea`) and lipgloss
+for styling. Follow the exact same patterns as the existing tabs in `tui_overview.go`,
+`tui_activity.go`, `tui_alerts.go`.
+
+**Files to create/modify**:
+
+1. New file `devtrack_client/internal/tui/tui_queue.go`:
+
+   - `queueModel` struct (follows pattern of `overviewModel`, `activityModel`, etc.):
+     ```go
+     type queueModel struct {
+         db       *db.Database
+         actions  []db.PendingAction
+         cursor   int
+         width    int
+         height   int
+         loading  bool
+         err      error
+     }
+     ```
+   - `newQueueModel(db *db.Database) queueModel`
+   - `load() tea.Cmd` — calls `db.ListPendingActions("")` (all statuses, last 24h filter
+     applied in the DB query: add a `ListPendingActionsRecent(hours int)` helper to
+     `pending_actions.go` if needed).
+   - `View() string` — renders the queue as a table. Each row shows:
+     ```
+     [CONF] [TYPE]          [TARGET]         [PLATFORM]   [EXPIRES]    [STATUS]
+     ████░  post_comment    PROJ-123         github       2m 14s       PENDING
+     █████  state_transtn   ADO-789          azure        auto-appvd   POSTED
+     ```
+     Confidence is rendered as a 5-character block bar (0–5 filled blocks based on
+     0.0–1.0 score). Countdown shows remaining seconds until `expires_at` if pending;
+     "auto-appvd" if posted by auto; "approved" if approved manually.
+   - Keybindings (shown in a footer bar):
+     - `↑`/`↓` — move cursor
+     - `a` — approve selected pending action (calls `UpdatePendingActionStatus(id, "approved", "tui")` then immediately calls `POST /queue/execute` via trigger client)
+     - `r` — reject selected pending action (`UpdatePendingActionStatus(id, "rejected", "tui")`)
+     - `e` — edit payload of selected pending action (opens a single-line text input
+       overlay using the existing lipgloss style pattern; on Enter, updates the `payload`
+       JSON field via a new `UpdatePendingActionPayload(id int64, payload string) error`
+       helper in `pending_actions.go`, then approves)
+     - `q` or `Esc` — return to Overview tab
+
+2. Modify `devtrack_client/internal/tui/tui.go`:
+   - Add `tabQueue tuiTab = 4` constant.
+   - Add `"Queue"` to `tuiTabNames`.
+   - Add `queue queueModel` field to `tuiModel`.
+   - Wire `queueModel` into `Init()`, `Update()`, `View()` following the exact same
+     pattern used for `alertsModel`.
+
+3. Refresh the queue data every 10 seconds (add a `tuiQueueTickMsg` alongside the
+   existing `tuiTickMsg`, or reuse the 30-second tick with a separate queue tick).
+
+**Acceptance criteria**:
+- [ ] `devtrack tui` shows a fifth tab "Queue" navigable with number key `5` or tab order.
+- [ ] Pending actions appear as rows with confidence bar, type, target, platform, countdown, status.
+- [ ] `a` key approves the selected action: status updates in DB and `POST /queue/execute` fires.
+- [ ] `r` key rejects the selected action: status updates in DB, action is never dispatched.
+- [ ] `e` key opens an edit overlay, accepts new payload text, then approves on Enter.
+- [ ] Queue refreshes automatically (no stale data after 30 seconds without keypresses).
+- [ ] `go build ./...` and `go vet ./...` pass clean.
+- [ ] No `fmt.Print*` calls added to the trigger path (verify with grep after changes).
+
+**Engineer status**: not started
+**Blockers**: TASK-060, TASK-061, TASK-062 must be complete
+
+---
+
+### TASK-064 — CLI channel parity: `devtrack queue` commands
+**Priority**: MEDIUM
+**Phase**: Phase 1
+**Depends on**: TASK-060, TASK-061, TASK-062
+**Branch**: `feat/TASK-064-cli-queue-commands`
+
+**Spec**:
+
+PRODUCT_BIBLE.md Non-Negotiable #4 (channel parity rule): every correction capability —
+approve, reject, edit — must be available on at least one non-TUI channel. This task
+implements the CLI channel. A developer who never opens the TUI can fully supervise
+DevTrack via the terminal.
+
+Add a `queue` subcommand group to the existing CLI in `devtrack_client/cli.go`
+(or a new `cli_queue.go` following the naming pattern of `cli_alerts.go`).
+
+**Commands to implement**:
+
+```
+devtrack queue              # alias for "devtrack queue list"
+devtrack queue list         # list pending actions (table, same columns as TUI)
+devtrack queue approve <id> # approve a pending action by ID; fires /queue/execute immediately
+devtrack queue reject <id>  # reject a pending action by ID; no execution
+devtrack queue edit <id>    # open $EDITOR with the payload JSON; on save, approve
+devtrack queue status       # show summary: N pending, N posted today, N rejected today
+```
+
+Implementation notes:
+- All commands read from `db.ListPendingActions(...)` directly (same DB as the daemon).
+- `approve` and `reject` call `db.UpdatePendingActionStatus(id, "approved"/"rejected", "cli")`.
+- `approve` also calls `POST /queue/execute` via the existing trigger HTTP client
+  (`internal/trigger` package) — import pattern already used in `cli_alerts.go`.
+- `edit` writes the current `payload` JSON to a temp file, opens `$EDITOR` (or `notepad`
+  on Windows if `$EDITOR` not set), waits for the editor to close, reads the file back,
+  calls `db.UpdatePendingActionPayload(id, newPayload)`, then calls `approve`.
+- `queue list` output must be pipe-friendly (plain text, tab-separated columns, no ANSI
+  when stdout is not a TTY — check `isatty` using `github.com/mattn/go-isatty` already
+  in the Go module as of v3.0.10).
+- `queue status` prints one line: `Pending: N | Posted today: N | Rejected today: N`.
+
+**Acceptance criteria**:
+- [ ] `devtrack queue list` prints pending actions in a readable table.
+- [ ] `devtrack queue approve <id>` approves and immediately executes the action;
+      prints `"approved: action <id> dispatched"`.
+- [ ] `devtrack queue reject <id>` rejects the action;
+      prints `"rejected: action <id> will not be dispatched"`.
+- [ ] `devtrack queue edit <id>` opens `$EDITOR`, saves, and approves on editor exit.
+- [ ] `devtrack queue status` prints the one-line summary.
+- [ ] `go build ./...` and `go vet ./...` pass clean.
+- [ ] `queue list` output is plain text (no ANSI) when piped (`| cat`).
+
+**Engineer status**: not started
+**Blockers**: TASK-060, TASK-061, TASK-062 must be complete (TASK-063 is parallel — TUI and CLI can be built simultaneously)
+
+---
+
+### TASK-065 — Telegram channel parity: approve/reject/edit via inline keyboard
+**Priority**: MEDIUM
+**Phase**: Phase 1
+**Depends on**: TASK-060, TASK-061, TASK-062
+**Branch**: `feat/TASK-065-telegram-queue-parity`
+
+**Spec**:
+
+The Telegram bot (`devtrack_client/internal/telegram/`) is already Go-native and
+running since v3.0.1. This task extends it to surface the pending queue and accept
+approve/reject/edit commands, completing the channel parity rule.
+
+PRODUCT_BIBLE.md channel parity rule (Non-Negotiable #4): every correction capability
+must be available on at least one non-TUI channel. Telegram fulfils this requirement
+alongside the CLI (TASK-064). Both must exist.
+
+**Changes inside `devtrack_client/internal/telegram/`**:
+
+1. **Proactive notification when a new action is queued** (push, not poll):
+   - The queue gateway (Python) calls `POST /queue/execute` only when auto-approved.
+     For actions that need review, the daemon should notify Telegram.
+   - In the Go daemon, after `QueueExecutor` polls and finds a new `pending` row with
+     confidence `< 0.90` (i.e. not auto-approved imminently), send a Telegram message.
+   - Message format:
+     ```
+     [DevTrack] New pending action
+     Type:     post_comment
+     Target:   PROJ-123
+     Platform: github
+     Content:  "Fixed null check in auth flow — this closes the issue..."
+     Confidence: 72% (5m window)
+     Expires:  in 4m 38s
+
+     [Approve]  [Reject]  [Edit]
+     ```
+   - The three buttons are Telegram inline keyboard buttons. Use `callback_data`:
+     `approve:<id>`, `reject:<id>`, `edit:<id>`.
+
+2. **Callback handler** for the three button types:
+   - `approve:<id>` → `UpdatePendingActionStatus(id, "approved", "telegram")` + call
+     `POST /queue/execute` → edit the original message to show "Approved and dispatched."
+   - `reject:<id>` → `UpdatePendingActionStatus(id, "rejected", "telegram")` + edit
+     message to show "Rejected."
+   - `edit:<id>` → reply with "Reply to this message with your edited content." When the
+     user replies, capture the text, call `UpdatePendingActionPayload(id, text)`, then
+     approve. Edit the original message to show "Edited and dispatched."
+
+3. **`/queue` command** in the bot:
+   Responds with a summary identical to `devtrack queue status`: counts of pending,
+   posted today, rejected today. If pending > 0, lists each pending action (ID, type,
+   target, confidence, time remaining) with Approve/Reject inline buttons.
+
+4. Follow the existing bot command/callback handler pattern in `internal/telegram/`.
+   Do not introduce any new external dependencies — use the existing `go-telegram-bot-api`
+   or equivalent package already in `go.mod`.
+
+**Acceptance criteria**:
+- [ ] When a new action enters the queue with confidence < 90%, the Telegram bot sends a
+      notification with Approve / Reject / Edit inline keyboard buttons within 30 seconds.
+- [ ] Tapping Approve in Telegram approves and executes the action; bot edits the message to confirm.
+- [ ] Tapping Reject in Telegram rejects the action; bot edits the message to confirm.
+- [ ] Tapping Edit prompts for a reply, captures it, updates payload, and approves.
+- [ ] `/queue` command lists current pending actions with inline buttons.
+- [ ] `go build ./...` and `go vet ./...` pass clean.
+- [ ] No new Telegram API secrets introduced — uses existing `TELEGRAM_BOT_TOKEN` and
+      `TELEGRAM_CHAT_ID` env vars already in config.
+
+**Engineer status**: not started
+**Blockers**: TASK-060, TASK-061, TASK-062 must be complete (TASK-063 and TASK-064 are parallel)
+
+---
+
+## QUEUED — Phases 2–8
 
 | Phase | Name | Exit criterion (short) |
 |---|---|---|
-| 1 | Pending actions queue | A week of outbound actions all staged in `pending_actions`; nothing unexpected posts |
+| 1 | Pending actions queue + TUI confidence layer | A week of outbound actions all staged in `pending_actions`; nothing unexpected posts → see TASK-060 ff. |
 | 2 | Opinionated ticket extractor | >80% of commits mapped to tickets with no config beyond branch naming |
 | 3 | Silent commit handler | Commit → ticket commented + state-transitioned within auto-approve window; dev did nothing |
 | 4 | EOD pipeline | Accurate EOD email every evening, reads like the dev wrote it |
 | 5 | Voice training (low friction) | After 1 week, generated text passes the "did I write this?" test |
 | 6 | Dialectic self-improvement | After 30 days, correction rate measurably down; ≥3 autonomous skills emerged |
-| 7 | TUI as visibility + correction | Open TUI → understand last 24h + everything about to happen |
-| 8 | PR review loop (puppet master) | Push PR with nit comments, get "approved" without touching it again |
+| 7 | PR review loop (puppet master) | Push PR with nit comments, get "approved" without touching it again |
+| 8 | MCP server + headless integration | Claude Code queries DevTrack for developer context automatically |
 
 Full phase specs and acceptance criteria: `PRODUCT_BIBLE.md` § Build Phases.
 
