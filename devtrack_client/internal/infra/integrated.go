@@ -345,11 +345,7 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 
 // handleTrigger is the unified trigger handler for both Git and timer events
 func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
-	fmt.Println("\n" + string('═') + strings.Repeat("═", 60))
-	fmt.Printf("🎯 TRIGGER EVENT: %s\n", event.Type)
-	fmt.Println(string('═') + strings.Repeat("═", 60))
-	fmt.Printf("Timestamp: %s\n", event.Timestamp.Format(time.RFC1123))
-	fmt.Printf("Source:    %s\n", event.Source)
+	log.Printf("trigger: type=%s source=%s ts=%s", event.Type, event.Source, event.Timestamp.Format(time.RFC3339))
 
 	var triggerRecord db.TriggerRecord
 
@@ -360,15 +356,12 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 	switch event.Type {
 	case TriggerTypeCommit:
 		if commit, ok := event.Data.(CommitInfo); ok {
-			fmt.Printf("Commit:    %s\n", commit.Hash[:12])
-			fmt.Printf("Message:   %s\n", commit.Message)
-			fmt.Printf("Author:    %s\n", commit.Author)
-			if len(commit.Files) > 0 {
-				fmt.Printf("Files:     %d changed\n", len(commit.Files))
-			}
+			workspace := ""
 			if event.WorkspaceName != "" {
-				fmt.Printf("Workspace: %s (%s)\n", event.WorkspaceName, event.PMPlatform)
+				workspace = event.WorkspaceName
 			}
+			log.Printf("trigger commit: hash=%s author=%q files=%d workspace=%q message=%q",
+				commit.Hash[:12], commit.Author, len(commit.Files), workspace, commit.Message)
 
 			cd := trigger.CommitTriggerData{
 				RepoPath:        event.RepoPath,
@@ -402,13 +395,6 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 
 	case TriggerTypeTimer:
 		if data, ok := event.Data.(map[string]interface{}); ok {
-			if count, ok := data["trigger_count"].(int); ok {
-				fmt.Printf("Trigger #:  %d\n", count)
-			}
-			if interval, ok := data["interval_minutes"].(int); ok {
-				fmt.Printf("Interval:   %d minutes\n", interval)
-			}
-
 			triggerCount := 0
 			intervalMins := im.config.Settings.PromptInterval
 			if count, ok := data["trigger_count"].(int); ok {
@@ -435,6 +421,8 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 			}
 
 			timerData = &td
+			log.Printf("trigger timer: count=%d interval_mins=%d workspace=%q",
+				triggerCount, intervalMins, td.WorkspaceName)
 
 			triggerRecord = db.TriggerRecord{
 				TriggerType: "timer",
@@ -467,16 +455,6 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 	if sendErr != nil {
 		log.Printf("Warning: HTTP trigger failed (%v) — trigger not delivered", sendErr)
 	}
-
-	fmt.Println()
-	fmt.Println("📝 What happens next:")
-	fmt.Println("   1. Python server receives trigger via HTTPS")
-	fmt.Println("   2. NLP parse → PM sync (Azure / GitHub / GitLab / Jira)")
-	fmt.Println("   3. Timer triggers → Telegram prompt sent to developer")
-	fmt.Println("   4. Logged to SQLite database ✓")
-	fmt.Println()
-	fmt.Println("⏳ Waiting for next event...")
-	fmt.Println()
 }
 
 // GetStatus returns the current monitoring status

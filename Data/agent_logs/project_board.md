@@ -85,7 +85,7 @@ server — all unchanged.
 - [ ] No terminal output appears when a commit fires while the daemon is running
       in the background.
 
-**Engineer status**: not started
+**Engineer status**: started — replacing fmt.Print* in handleTrigger with log.Printf, removing decorative separators and "What happens next" block
 **Blockers**: none
 
 ---
@@ -126,7 +126,7 @@ Changes required:
       engineer log).
 - [ ] The module-level status comment is present at the top of `user_prompt.py`.
 
-**Engineer status**: not started
+**Engineer status**: started — grep audit clean (zero hits outside user_prompt.py + test file); status comment added; running tests
 **Blockers**: none
 
 ---
