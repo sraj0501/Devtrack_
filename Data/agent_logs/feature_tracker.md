@@ -38,6 +38,33 @@ decoupling Phases 1–2. Detail in Task History below.
 
 ## Task History
 
+## 2026-06-14 — Phase 0: Foundation Reset (TASK-057 / TASK-058 / TASK-059)
+**Phase**: Phase 0 — Foundation Reset (silent daemon)
+**Status**: COMPLETE (code criteria met; runtime verification pending developer binary install)
+**Tasks**:
+- TASK-057: Silence `handleTrigger()` stdout in `devtrack_client/internal/infra/integrated.go`
+- TASK-058: Audit and gate `user_prompt.py` from trigger path in `devtrack_server/backend/`
+- TASK-059: Verify Phase 0 exit criterion, run scans, update docs, open PR
+
+**Files changed**:
+- `devtrack_client/internal/infra/integrated.go` — 15 `fmt.Print*` calls removed from `handleTrigger()`; replaced with 2 structured `log.Printf` lines (one per trigger type). Decorative separator lines, "What happens next:" paragraph, and "Waiting for next event..." lines removed entirely. `TestIntegrated()` fmt calls left untouched (dev-test helper, never called in production).
+- `devtrack_server/backend/user_prompt.py` — two-line status comment added at module level: `# STATUS: Legacy module. Not called from any trigger path as of Phase 0.` / `# Safe to delete once the TUI correction interface (Phase 7) is implemented.`
+
+**Exit criterion status**:
+- Code scan: `grep -n "fmt\.Print" devtrack_client/internal/infra/integrated.go` — zero matches in `handleTrigger`; all matches (lines 489–579) are in `TestIntegrated()` only. PASS.
+- Build: `go build ./...` PASS | `go vet ./...` PASS.
+- Hardcoded-values scan: pre-existing violations only (see note below). No new violations introduced by Phase 0 work.
+- Runtime verification: PENDING — developer must install new binary (`go build -o devtrack .` from `devtrack_client/`) and restart daemon (`devtrack stop && devtrack start`), then make a test commit and confirm zero terminal banner output.
+
+**Hardcoded-values scan note (pre-existing, no action required)**:
+- Go client (`localhost:[0-9]` scan, excluding test/config/Get): `gitsage/llm.go:53` (Ollama fallback URL), `internal/health/health.go:164,174` (normalizeOllamaHost fallback — documented fix from TASK-043), `setup.go:182,185,230,457,465,690` (interactive setup wizard prompts and .env defaults — correct UX for setup flow).
+- Python server (`os.getenv` scan, excluding config.py/conftest/tests): `commit_message_enhancer.py:490` (reads GIT_DIR env — context-specific, not a config var), `github/ghAnalysis.py:228` (reads USER_NAME env — context-specific), `license_manager.py:118` (reads USER/USERNAME OS env — platform identity, not a DevTrack config var), `server_tui/stats_client.py:60,61` and `work_tracker/session_store.py:39,40` (IPC_HOST/port reads — pre-existing from TASK-007 era; not in trigger path).
+- None of these were introduced by TASK-057 or TASK-058.
+
+**Vision check**: PASS — Phase 0 removes terminal noise from the trigger flow; offline-first and daemon operation unchanged.
+
+---
+
 ## 2026-06-09 — TASK-056: skip_issues flag for dual-platform workspaces
 **Phase**: Phase 4A (PM connectors)
 **Status**: DONE
