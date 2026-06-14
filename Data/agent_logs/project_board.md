@@ -120,13 +120,14 @@ Changes required:
 4. Run `uv run pytest backend/tests/ -q` to confirm no tests regress.
 
 **Acceptance criteria**:
-- [ ] `grep -rn "user_prompt\|DevTrackTUI\|prompt_work_update" devtrack_server/backend/ --include="*.py"` returns zero hits outside `user_prompt.py` itself and `test_user_prompt.py`.
-- [ ] `uv run pytest backend/tests/ -q` passes (or has the same pre-existing
-      failures as before this task — document any pre-existing failures in the
-      engineer log).
-- [ ] The module-level status comment is present at the top of `user_prompt.py`.
+- [x] `grep -rn "user_prompt\|DevTrackTUI\|prompt_work_update" devtrack_server/backend/ --include="*.py"` returns zero hits outside `user_prompt.py` itself and `test_user_prompt.py`.
+- [x] `uv run pytest backend/tests/ -q` — 591 pass, 1 pre-existing failure (`test_ollama_host_returns_string`, `OLLAMA_HOST=0.0.0.0` in shell, documented in engineer log).
+- [x] The module-level status comment is present at the top of `user_prompt.py`.
 
-**Engineer status**: not started
+**Engineer status**: 3/3 criteria done — 2026-06-14 15:55
+
+**COMPLETE** — ready for PM review — 2026-06-14 15:55
+
 **Blockers**: none
 
 ---
