@@ -4,7 +4,7 @@
 > the editable source of truth for what each side owns. This file is the
 > execution plan for closing the gaps that doc marks with ⚠.
 >
-> _Status: **Phase 1 complete** (branch: `feat/client-server-decoupling`). Phase 2 pending._
+> _Status: **Phase 1 + Phase 2 complete** (merged to dev/main). Native Go connectors, gitsage, alerts, notifiers, and Telegram bot all shipped._
 > _Phase 1a+1b: d5f8f36. Phase 1c+1d: 3dd17f8. Connector config refactor: 8d3113a._
 > _Workspace git-init helper: ed11bba. Help/status rewrite: e3726e0._
 

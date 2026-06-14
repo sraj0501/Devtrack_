@@ -59,14 +59,16 @@ func GenerateSelfSignedCert(certPath, keyPath string) error {
 	ips, dnsNames := localSANs()
 
 	template := &x509.Certificate{
-		SerialNumber: serial,
-		Subject:      pkix.Name{Organization: []string{"DevTrack"}},
-		NotBefore:    time.Now().Add(-time.Minute), // slight back-date avoids clock-skew
-		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		IPAddresses:  ips,
-		DNSNames:     dnsNames,
+		SerialNumber:          serial,
+		Subject:               pkix.Name{Organization: []string{"DevTrack"}},
+		NotBefore:             time.Now().Add(-time.Minute), // slight back-date avoids clock-skew
+		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		IPAddresses:           ips,
+		DNSNames:              dnsNames,
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
@@ -96,6 +98,26 @@ func writePEMFile(path, pemType string, der []byte) error {
 	}
 	defer f.Close()
 	return pem.Encode(f, &pem.Block{Type: pemType, Bytes: der})
+}
+
+// CertExistsAndValid returns true if certPath exists, parses as a valid PEM
+// certificate, and has at least minTTLDays days left before expiry.
+// Returns false (not an error) when the cert is missing, corrupt, or stale —
+// callers should regenerate in that case.
+func CertExistsAndValid(certPath string, minTTLDays int) bool {
+	data, err := os.ReadFile(certPath)
+	if err != nil {
+		return false
+	}
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return false
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false
+	}
+	return time.Until(cert.NotAfter) >= time.Duration(minTTLDays)*24*time.Hour
 }
 
 // LoadTLSCertPool reads a PEM certificate file and returns a *x509.CertPool

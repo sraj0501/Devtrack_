@@ -19,7 +19,9 @@ type Telegram struct {
 
 // NewTelegramFromConfig returns a Telegram notifier configured from env vars,
 // or nil when TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set.
-func NewTelegramFromConfig() *Telegram {
+// Returns the Notifier interface so that a nil return is an untyped nil —
+// typed *Telegram nils passed to NewMulti would bypass the nil guard.
+func NewTelegramFromConfig() Notifier {
 	token := cfg.GetTelegramBotToken()
 	ids := cfg.GetTelegramChatIDs()
 	if token == "" || len(ids) == 0 {

@@ -200,6 +200,9 @@ func (d *Daemon) Start() error {
 	// run a full sync + push on a periodic interval.
 	d.startTicketSyncLoop()
 
+	// Heartbeat: register this client with the server on startup and every 60s.
+	d.startHeartbeatLoop()
+
 	// Setup signal handlers for graceful shutdown
 	d.setupSignalHandlers()
 
@@ -442,18 +445,25 @@ func (d *Daemon) GetLogs(lines int) ([]string, error) {
 	return allLines[len(allLines)-lines:], nil
 }
 
-// generateTLSCert generates a self-signed TLS certificate for the Go↔Python channel.
+// generateTLSCert ensures a self-signed TLS certificate exists for the Go↔Python
+// channel.  Regeneration is skipped when the cert already exists and has at
+// least 30 days of validity remaining — this keeps the cert stable across
+// daemon restarts so remote clients that have copied the cert don't break.
 func (d *Daemon) generateTLSCert() error {
 	certPath := config.GetTLSCertPath()
 	keyPath := config.GetTLSKeyPath()
-	log.Printf("Generating TLS cert: %s", certPath)
-	if err := trigger.GenerateSelfSignedCert(certPath, keyPath); err != nil {
-		return fmt.Errorf("TLS cert generation: %w", err)
+	if trigger.CertExistsAndValid(certPath, 30) {
+		log.Printf("TLS cert still valid, reusing: %s", certPath)
+	} else {
+		log.Printf("Generating TLS cert: %s", certPath)
+		if err := trigger.GenerateSelfSignedCert(certPath, keyPath); err != nil {
+			return fmt.Errorf("TLS cert generation: %w", err)
+		}
+		log.Println("✓ TLS cert generated")
 	}
 	// Expose paths so subprocesses pick them up
 	os.Setenv("DEVTRACK_TLS_CERT", certPath)
 	os.Setenv("DEVTRACK_TLS_KEY", keyPath)
-	log.Println("✓ TLS cert generated")
 	return nil
 }
 

@@ -74,7 +74,7 @@ func (c *Client) ListWorkItemsChangedAfter(since time.Time) ([]WorkItem, error) 
 	if since.IsZero() {
 		return c.ListWorkItems()
 	}
-	sinceStr := since.UTC().Format("2006-01-02T15:04:05Z")
+	sinceStr := since.UTC().Format("2006-01-02")
 	query := wiqlRequest{
 		Query: `SELECT [System.Id],[System.Title],[System.State],[System.AssignedTo],[System.WorkItemType],[System.ChangedDate]
 FROM WorkItems

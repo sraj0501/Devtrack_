@@ -18,7 +18,9 @@ type Slack struct {
 
 // NewSlackFromConfig returns a Slack notifier configured from SLACK_WEBHOOK_URL,
 // or nil when the var is not set.
-func NewSlackFromConfig() *Slack {
+// Returns the Notifier interface so that a nil return is an untyped nil —
+// typed *Slack nils passed to NewMulti would bypass the nil guard.
+func NewSlackFromConfig() Notifier {
 	url := cfg.GetSlackWebhookURL()
 	if url == "" {
 		return nil

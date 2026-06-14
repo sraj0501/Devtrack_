@@ -159,6 +159,14 @@ def _trigger_stats_ctx():
             return None
 
 
+def _list_clients_safe() -> list[dict]:
+    try:
+        from backend.admin.user_manager import list_clients
+        return list_clients(stale_minutes=5)
+    except Exception:
+        return []
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, current_user: str = Depends(require_auth)):
     snapshot = await _snapshot_ctx()
@@ -171,6 +179,7 @@ async def dashboard(request: Request, current_user: str = Depends(require_auth))
         tier = "personal"
         tier_label = "Personal (Free)"
     stats = _trigger_stats_ctx()
+    clients = _list_clients_safe()
     try:
         stats_refresh_secs = _get_stats_refresh_secs()
     except ValueError:
@@ -188,6 +197,7 @@ async def dashboard(request: Request, current_user: str = Depends(require_auth))
             tier=tier,
             tier_label=tier_label,
             stats=stats,
+            clients=clients,
             stats_refresh_secs=stats_refresh_secs,
             process_refresh_secs=process_refresh_secs,
         ),
@@ -204,6 +214,15 @@ async def partial_stats(request: Request, current_user: str = Depends(require_au
     return templates.TemplateResponse(
         "_stats_panel.html",
         {"request": request, "stats": stats},
+    )
+
+
+@router.get("/_partials/clients", response_class=HTMLResponse)
+async def partial_clients(request: Request, current_user: str = Depends(require_auth)):
+    clients = _list_clients_safe()
+    return templates.TemplateResponse(
+        "_clients_panel.html",
+        {"request": request, "clients": clients},
     )
 
 
@@ -516,7 +535,6 @@ async def server_page(request: Request, current_user: str = Depends(require_auth
     snapshot = await _snapshot_ctx()
     from backend.config import (
         llm_provider, ollama_host, ollama_model, openai_model, anthropic_model, groq_model,
-        azure_pat, get_github_token, get_gitlab_pat, jira_api_token, get_telegram_bot_token,
     )
     config = {
         "LLM_PROVIDER":  llm_provider() or "—",
@@ -526,18 +544,10 @@ async def server_page(request: Request, current_user: str = Depends(require_auth
         "ANTHROPIC_MODEL": anthropic_model() or "—",
         "GROQ_MODEL":    groq_model() or "—",
     }
-    integrations = {
-        "Azure DevOps": "configured" if azure_pat() else "not set",
-        "GitHub":       "configured" if get_github_token() else "not set",
-        "GitLab":       "configured" if get_gitlab_pat() else "not set",
-        "Jira":         "configured" if jira_api_token() else "not set",
-        "Telegram":     "configured" if get_telegram_bot_token() else "not set",
-        "MS Graph":     "configured" if azure_pat() else "not set",
-    }
     return templates.TemplateResponse(
         "server.html",
         _ctx(request, current_user, "server",
-             snapshot=snapshot, config=config, integrations=integrations),
+             snapshot=snapshot, config=config),
     )
 
 

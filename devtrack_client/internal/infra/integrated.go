@@ -150,10 +150,13 @@ func (im *IntegratedMonitor) Database() *db.Database { return im.database }
 func (im *IntegratedMonitor) Stop() {
 	log.Println("Stopping integrated monitoring system...")
 
-	// Notify Python of graceful shutdown (best-effort)
-	httpClient := trigger.NewHTTPTriggerClient()
-	if err := httpClient.SendShutdown(); err != nil {
-		log.Printf("Could not send HTTP shutdown to Python: %v", err)
+	// Notify Python of graceful shutdown (best-effort).
+	// Skip when using an external server — we don't own it and must not shut it down.
+	if !config.IsExternalServer() {
+		httpClient := trigger.NewHTTPTriggerClient()
+		if err := httpClient.SendShutdown(); err != nil {
+			log.Printf("Could not send HTTP shutdown to Python: %v", err)
+		}
 	}
 
 	for _, ws := range im.workspaceMonitors {

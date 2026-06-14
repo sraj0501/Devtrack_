@@ -144,3 +144,19 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
   .main { margin-left: 0; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
 }
+
+/* ── Connected clients ───────────────────────────────── */
+.clients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.client-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+               padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.client-active { border-left: 3px solid var(--green); }
+.client-stale  { border-left: 3px solid var(--yellow, #f59e0b); opacity: .75; }
+.client-header { display: flex; align-items: center; justify-content: space-between; }
+.client-tls    { font-size: 12px; }
+.client-hostname { font-size: 15px; font-weight: 600; font-family: monospace; }
+.client-meta   { font-size: 12px; }
+.client-repos  { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.client-seen   { font-size: 11px; margin-top: 4px; }
+.repo-tag { background: rgba(99,102,241,.12); color: var(--accent); border-radius: 4px;
+            padding: 2px 8px; font-size: 12px; font-family: monospace; }
+.repo-platform { font-size: 10px; opacity: .7; }

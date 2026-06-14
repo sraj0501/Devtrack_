@@ -1,8 +1,11 @@
 """
 Process monitor — discovers and tracks DevTrack server processes via psutil.
 
-Each "managed process" is identified by a cmdline pattern rather than a stored PID
-so the monitor works even after restarts and doesn't need to own the processes.
+Only server-side processes are tracked here. Client-side components
+(telegram_bot, alert_poller) are Go-native goroutines that belong to whichever
+client(s) are connected — they are visible via `devtrack status` on each client,
+not here. Listing them server-side is misleading in multi-client deployments
+because we can only see the co-located client (if any), not remote clients.
 """
 from __future__ import annotations
 
@@ -29,24 +32,14 @@ class ProcessInfo:
         return self.status not in ("stopped", "zombie", "dead")
 
 
-# Processes the TUI knows about, in display order.
-# `pattern` is matched against the full space-joined cmdline string.
+# Server-side processes only — client goroutines (telegram_bot, alert_poller)
+# are intentionally excluded: they belong to connected clients, not this server.
 MANAGED_PROCESSES: list[dict] = [
     {
         "name": "webhook_server",
         "pattern": "webhook_server",
         "restart_cmd": [sys.executable, "-m", "uvicorn", "backend.webhook_server:app",
                         "--host", "0.0.0.0", "--port", "8089"],
-    },
-    {
-        "name": "telegram_bot",
-        "pattern": "backend.telegram",
-        "restart_cmd": [sys.executable, "-m", "backend.telegram"],
-    },
-    {
-        "name": "alert_poller",
-        "pattern": "alert_poller",
-        "restart_cmd": [sys.executable, "-m", "backend.alert_poller"],
     },
 ]
 
@@ -58,8 +51,8 @@ class ProcessMonitor:
         self._procs: dict[str, ProcessInfo] = {
             d["name"]: ProcessInfo(
                 name=d["name"],
-                pattern=d["pattern"],
-                restart_cmd=d["restart_cmd"],
+                pattern=d.get("pattern", ""),
+                restart_cmd=d.get("restart_cmd", []),
             )
             for d in MANAGED_PROCESSES
         }
@@ -70,7 +63,6 @@ class ProcessMonitor:
 
     def refresh(self) -> None:
         """Walk running processes and update stored state."""
-        # Reset all
         for info in self._procs.values():
             info.pid = None
             info.status = "stopped"
@@ -84,6 +76,8 @@ class ProcessMonitor:
                 if not cmdline:
                     continue
                 for info in self._procs.values():
+                    if not info.pattern:
+                        continue
                     if info.pattern in cmdline:
                         info.pid = proc.info["pid"]
                         info.status = proc.info["status"] or "running"
@@ -100,10 +94,9 @@ class ProcessMonitor:
     def restart(self, name: str) -> bool:
         """Kill existing process (if any) and spawn a fresh one. Returns True on success."""
         info = self._procs.get(name)
-        if not info:
+        if not info or not info.restart_cmd:
             return False
 
-        # Kill existing
         if info.pid:
             try:
                 p = psutil.Process(info.pid)
@@ -114,9 +107,6 @@ class ProcessMonitor:
                     p.kill()
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
-
-        if not info.restart_cmd:
-            return False
 
         try:
             subprocess.Popen(

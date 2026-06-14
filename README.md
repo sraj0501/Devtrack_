@@ -52,7 +52,7 @@ devtrack status
 
 > `devtrack setup` generates `.env` and writes `~/.devtrack/devtrack.conf` so the daemon can find it automatically. If you prefer manual setup, copy `.env_sample` to `.env` and fill in the values instead.
 
-> Full walkthrough: [Installation Guide](docs/INSTALLATION.md) · [Quick Start](docs/QUICK_START.md)
+> Full walkthrough and guides: **[devtrack.cloud](https://devtrack.cloud)**
 
 #### Moving to a new machine?
 
@@ -277,7 +277,7 @@ The daemon enforces a single running instance using an OS-level file lock (`Data
 
 ### Interactive setup wizard (`devtrack setup`)
 
-New in v2.0.0. Walks through every required setting interactively and writes the result for you:
+Walks through every required setting interactively and writes the result for you:
 
 ```bash
 devtrack setup
@@ -296,7 +296,7 @@ After `devtrack setup` completes, run `devtrack start` — no manual `source .en
 
 ### Automatic `.env` loading
 
-The daemon automatically finds and loads `.env` at startup (v2.0.0+). Resolution order:
+The daemon automatically finds and loads `.env` at startup. Resolution order:
 
 1. `DEVTRACK_ENV_FILE` environment variable (explicit path)
 2. Path recorded in `~/.devtrack/devtrack.conf` (written by `devtrack setup`)
@@ -503,36 +503,21 @@ devtrack-server logs      # tail recent log output
 
 ## Documentation
 
+Full user guides live on the project website: **[devtrack.cloud](https://devtrack.cloud)**.
+
+Key references in this repo:
+
 | I want to… | Go to |
 |-----------|-------|
-| Install DevTrack | [Installation Guide](docs/INSTALLATION.md) |
-| Set up interactively (new users) | [`devtrack setup`](#interactive-setup-wizard-devtrack-setup) |
-| Run it for the first time | [Quick Start](docs/QUICK_START.md) |
-| See all CLI commands | [CLI Reference](docs/CLI_REFERENCE.md) |
-| Configure `.env` | [Configuration Reference](docs/CONFIGURATION.md) |
-| Set up AI commits / git-sage | [Git Features](docs/GIT_FEATURES.md) · [git-sage](docs/GIT_SAGE.md) |
-| Connect Azure DevOps | [Azure DevOps Guide](docs/AZURE_DEVOPS.md) |
-| Connect GitLab / GitHub | [GitLab](docs/GITLAB.md) · [GitHub](docs/GITHUB.md) |
-| Monitor multiple repos | [Multi-Repo Guide](docs/MULTI_REPO.md) |
-| Set up Telegram / Slack | [Telegram](docs/TELEGRAM_BOT.md) · [Slack](docs/SLACK_BOT.md) |
-| Set up AI providers | [LLM Guide](docs/LLM_GUIDE.md) |
-| Enable "Talk Like You" | [Personalization](docs/PERSONALIZATION.md) |
-| Auto-start at login (macOS/Linux/WSL) | [Auto-Start Guide](docs/AUTOSTART.md) |
-| Track time / EOD report | [Work Tracker](docs/WORK_TRACKER.md) |
-| Get ticket alerts (GitHub / Azure / Jira) | [Ticket Alerter](docs/TICKET_ALERTER.md) |
-| Plan a project with AI | [AI Project Planning](docs/PROJECT_PLANNING.md) |
-| Manage opt-out telemetry | [Telemetry](docs/TELEMETRY_PLAN.md) |
-| Use external/Docker mode (HTTP triggers + webhooks) | [Webhook Server](docs/WEBHOOK_SERVER.md) |
-| Deploy only the Python backend on a server | [`devtrack-server`](#devtrack-server--server-side-management-cli) |
-| Run without Python (Lightweight mode) | [Deployment modes](#deployment-modes) |
-| Update to the latest release | [`devtrack upgrade`](#self-update-devtrack-upgrade) |
-| Completely remove DevTrack | [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
-| Monitor server health and trigger stats | [Server TUI](docs/SERVER_TUI.md) |
-| Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
-| Use AI agents for development workflow | [`.claude/agents/`](.claude/agents/) |
-| Fix a problem | [Troubleshooting](docs/TROUBLESHOOTING.md) |
 | Understand the architecture | [Architecture](docs/ARCHITECTURE.md) |
-| Full documentation index | [docs/INDEX.md](docs/INDEX.md) |
+| See the client↔server split | [Decoupling plan](docs/CLIENT_SERVER_DECOUPLING_PLAN.md) · [Capability ownership](docs/CAPABILITIES_OWNERSHIP.md) |
+| Set up the Telegram bot | [Telegram](docs/TELEGRAM_BOT.md) |
+| Set up interactively (new users) | [`devtrack setup`](#interactive-setup-wizard-devtrack-setup) |
+| Run without Python (Lightweight mode) | [Deployment modes](#deployment-modes) |
+| Deploy only the Python backend on a server | [`devtrack-server`](#devtrack-server--server-side-management-cli) |
+| Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
+| Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
+| Use AI agents for development workflow | [`.claude/agents/`](.claude/agents/) |
 
 ---
 
@@ -541,7 +526,7 @@ devtrack-server logs      # tail recent log output
 Releases are built and published locally from the developer's machine using a single script. No CI required.
 
 ```powershell
-.\scripts\release.ps1              # patch bump (default) → v2.x.y+1
+.\scripts\release.ps1              # patch bump (default)
 .\scripts\release.ps1 -Bump minor  # minor bump
 .\scripts\release.ps1 -Bump major  # major bump
 ```

@@ -6,9 +6,9 @@
 <!-- Stat row -->
 <div class="grid-4" style="margin-bottom:20px">
   <div class="stat-card">
-    <div class="stat-label">Processes</div>
-    <div class="stat-value">{{ snapshot.processes | selectattr('running') | list | length }}/{{ snapshot.processes | length }}</div>
-    <div class="stat-sub">running</div>
+    <div class="stat-label">Connected Clients</div>
+    <div class="stat-value">{{ clients | selectattr('is_active') | list | length }}</div>
+    <div class="stat-sub">{{ clients | length }} known</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">LLM Provider</div>
@@ -27,42 +27,20 @@
   </div>
 </div>
 
-<!-- Process table -->
+<!-- Connected clients -->
 <div class="card">
   <div class="section-header">
-    <div class="card-title" style="margin-bottom:0">Processes</div>
+    <div class="card-title" style="margin-bottom:0">Connected Clients</div>
     <button class="btn btn-ghost btn-sm"
-            hx-get="/admin/_partials/processes"
-            hx-target="#proc-table-body"
+            hx-get="/admin/_partials/clients"
+            hx-target="#clients-panel"
             hx-swap="innerHTML">↻ Refresh</button>
   </div>
-  <table>
-    <thead>
-      <tr><th>Process</th><th>Status</th><th>PID</th><th>CPU%</th><th>MEM (MB)</th><th></th></tr>
-    </thead>
-    <tbody id="proc-table-body">
-      {% include "_proc_rows.html" %}
-    </tbody>
-  </table>
-</div>
-
-<!-- Services / health -->
-<div class="card">
-  <div class="card-title">Service Health</div>
-  <div class="grid-2">
-    {% for svc in snapshot.services %}
-    <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
-      <span class="badge {{ 'badge-green' if svc.ok else 'badge-red' }}">
-        <span class="dot"></span>{{ 'up' if svc.ok else 'down' }}
-      </span>
-      <div>
-        <div style="font-weight:500">{{ svc.name }}</div>
-        <div class="mono">{{ svc.url }}</div>
-      </div>
-    </div>
-    {% else %}
-    <div class="text-muted">No services configured.</div>
-    {% endfor %}
+  <div id="clients-panel"
+       hx-get="/admin/_partials/clients"
+       hx-trigger="every 30s"
+       hx-swap="innerHTML">
+    {% include "_clients_panel.html" %}
   </div>
 </div>
 
@@ -80,7 +58,7 @@
   </div>
 </div>
 
-<!-- Request narrative (runtime-narrative stories) -->
+<!-- Request narrative -->
 <div class="card">
   <div class="section-header">
     <div class="card-title" style="margin-bottom:0">Request Narrative</div>
@@ -94,12 +72,8 @@
   </div>
   <div id="narrative-panel"
        hx-get="/admin/_partials/narrative"
-       hx-trigger="every 30s"
+       hx-trigger="load, every 30s"
        hx-swap="innerHTML">
-    {% include "_narrative_panel.html" %}
   </div>
 </div>
-
-<!-- Auto-refresh every {{ process_refresh_secs }}s -->
-<div hx-get="/admin/_partials/processes" hx-trigger="every {{ process_refresh_secs }}s" hx-target="#proc-table-body" hx-swap="innerHTML" style="display:none"></div>
 {% endblock %}

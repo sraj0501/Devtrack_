@@ -748,7 +748,7 @@ LLM_TIMEOUT=30  # seconds
 # Very large diffs take longer
 
 # Check what's being sent:
-tail Data/logs/python_bridge.log | grep "enhancement\|prompt"
+tail Data/logs/daemon.log | grep "enhancement\|prompt"
 ```
 
 5. Try local Ollama with smaller model:
@@ -790,7 +790,7 @@ EOF
 # Try: "PR #42 - 2h"
 
 # Check logs to see what was extracted
-tail Data/logs/python_bridge.log | grep -i "parse\|npl"
+tail Data/logs/daemon.log | grep -i "parse\|npl"
 ```
 
 4. Check git context is helping:
@@ -890,7 +890,7 @@ curl https://jira.example.com
 
 6. Review logs for specific errors:
 ```bash
-tail Data/logs/python_bridge.log | grep -i "azure\|github\|jira\|api\|error"
+tail Data/logs/daemon.log | grep -i "azure\|github\|jira\|api\|error"
 ```
 
 ---
@@ -925,7 +925,7 @@ tail Data/logs/daemon.log | grep -i "monitor"
 3. If Python using memory:
 ```bash
 # Check what's loaded
-tail Data/logs/python_bridge.log | head -20
+tail Data/logs/daemon.log | head -20
 
 # If NLP model is issue, unload when not needed
 # Or use smaller model: orca-mini instead of full model
@@ -1019,7 +1019,7 @@ cp Data/db/devtrack.db Data/db/devtrack.db.backup
 4. Check logs for errors:
 ```bash
 tail Data/logs/daemon.log | grep -i "error\|database"
-tail Data/logs/python_bridge.log | grep -i "error\|database"
+tail Data/logs/daemon.log | grep -i "error\|database"
 ```
 
 ---
@@ -1049,7 +1049,7 @@ devtrack logs -f
 
 # Or manually
 tail -f Data/logs/daemon.log
-tail -f Data/logs/python_bridge.log
+tail -f Data/logs/daemon.log
 ```
 
 3. Grep for specific issues:
@@ -1088,9 +1088,9 @@ EOF
 If you can't solve it:
 
 1. **Check existing issues on GitLab**: https://gitlab.com/devtrack3_cloud/devtrack_server/-/issues
-2. **See Known Issues**: [KNOWN_ISSUES.md](../KNOWN_ISSUES.md)
+2. **See Known Issues**: [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
 3. **Review Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md) - Debugging patterns section
-4. **Check Phase 3 Verification**: [PHASE_3_VERIFICATION.md](../PHASE_3_VERIFICATION.md)
+4. **Check Phase 3 Verification**: [PHASE_3_VERIFICATION.md](VERIFICATION.md)
 5. **Create a new issue** with:
    - Error message
    - Steps to reproduce

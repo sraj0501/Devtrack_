@@ -3,48 +3,33 @@
 {% block page_title %}Server Configuration{% endblock %}
 
 {% block content %}
-<div class="grid-2">
-  <!-- LLM Config -->
-  <div class="card">
-    <div class="card-title">LLM Provider</div>
-    <table>
-      <tbody>
-        {% for key, val in config.items() %}
-        <tr>
-          <td class="mono" style="color:var(--muted);width:50%">{{ key }}</td>
-          <td style="word-break:break-all">{{ val }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p class="text-muted mt-4" style="font-size:12px">
-      Edit these values in your <code>.env</code> file, then restart the server.
-    </p>
-  </div>
-
-  <!-- Integration Status -->
-  <div class="card">
-    <div class="card-title">Integrations</div>
-    <table>
-      <tbody>
-        {% for name, status in integrations.items() %}
-        <tr>
-          <td>{{ name }}</td>
-          <td>
-            <span class="badge {{ 'badge-green' if status == 'configured' else 'badge-yellow' }}">
-              <span class="dot"></span>{{ status }}
-            </span>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<!-- LLM Config -->
+<div class="card">
+  <div class="card-title">LLM Provider</div>
+  <table>
+    <tbody>
+      {% for key, val in config.items() %}
+      <tr>
+        <td class="mono" style="color:var(--muted);width:40%">{{ key }}</td>
+        <td style="word-break:break-all">{{ val }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="text-muted mt-4" style="font-size:12px">
+    Edit these values in your <code>.env</code> file, then restart the server.
+  </p>
 </div>
 
 <!-- Process control -->
 <div class="card">
-  <div class="card-title">Process Control</div>
+  <div class="section-header">
+    <div class="card-title" style="margin-bottom:0">Process Control</div>
+    <button class="btn btn-ghost btn-sm"
+            hx-get="/admin/_partials/processes"
+            hx-target="#proc-table-body"
+            hx-swap="innerHTML">↻ Refresh</button>
+  </div>
   <table>
     <thead>
       <tr><th>Process</th><th>Status</th><th>PID</th><th>CPU%</th><th>MEM (MB)</th><th></th></tr>
@@ -54,4 +39,27 @@
     </tbody>
   </table>
 </div>
+
+<!-- Service health -->
+<div class="card">
+  <div class="card-title">Service Health</div>
+  <div class="grid-2">
+    {% for svc in snapshot.services %}
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+      <span class="badge {{ 'badge-green' if svc.ok else 'badge-red' }}">
+        <span class="dot"></span>{{ 'up' if svc.ok else 'down' }}
+      </span>
+      <div>
+        <div style="font-weight:500">{{ svc.name }}</div>
+        <div class="mono">{{ svc.url }}</div>
+      </div>
+    </div>
+    {% else %}
+    <div class="text-muted">No services configured.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Auto-refresh process table every 15s -->
+<div hx-get="/admin/_partials/processes" hx-trigger="every 15s" hx-target="#proc-table-body" hx-swap="innerHTML" style="display:none"></div>
 {% endblock %}

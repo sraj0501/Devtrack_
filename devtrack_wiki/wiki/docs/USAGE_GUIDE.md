@@ -488,7 +488,7 @@ devtrack stop             # Stop completely
 
 ## Getting Help
 
-- **Issue not listed here?** Check [LOCAL_SETUP.md](LOCAL_SETUP.md) troubleshooting section
+- **Issue not listed here?** Check [LOCAL_SETUP.md](INSTALLATION.md) troubleshooting section
 - **Feature requests?** Open a GitHub issue
 - **Questions?** Check the [Wiki](wiki/index.html)
 

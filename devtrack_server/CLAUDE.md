@@ -5,9 +5,9 @@ Python package: `devtrack-server` (see `pyproject.toml`)
 This is the **canonical** Python source for the DevTrack server. The monorepo's root `backend/` directory is a legacy mirror being retired in TASK-048. All new Python development goes here.
 
 See the monorepo `CLAUDE.md` for full project context, configuration patterns, and vision rules.
-See `docs/HTTP_API.md` for the HTTP/JSON boundary between `devtrack_client` (Go) and this server.
+See `docs/ARCHITECTURE.md` for the HTTP/JSON boundary between `devtrack_client` (Go) and this server.
 
-**Note**: `git_sage/` is NOT in this directory. It is client-owned and lives at `devtrack_client/git_sage/`.
+**Note**: git-sage is NOT here. It is Go-native and client-owned at `devtrack_client/gitsage/`.
 
 ## Run & Test
 
@@ -76,8 +76,8 @@ devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
 
 ### What is NOT here
 
-- `git_sage/` — lives at `devtrack_client/git_sage/` (client-owned)
-- `python_bridge.py` — legacy reference at monorepo root; not used in devtrack_server
+- git-sage — Go-native at `devtrack_client/gitsage/` (client-owned)
+- `python_bridge.py` — legacy root entry point; removed in TASK-048
 
 ## Configuration
 
@@ -89,7 +89,7 @@ Key server vars: `DEVTRACK_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_
 
 ## Client-Server Boundary
 
-The Go client communicates with this server exclusively over HTTPS. There is no shared code, module, or compiled artefact between them. Full contract: `docs/HTTP_API.md`.
+The Go client communicates with this server exclusively over HTTPS. There is no shared code, module, or compiled artefact between them. Full contract: `docs/ARCHITECTURE.md`.
 
 Auth for client→server calls: `X-DevTrack-API-Key` header (value from `DEVTRACK_API_KEY` env var).
 Admin routes use JWT cookie auth, not the API key.

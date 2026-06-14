@@ -1,32 +1,38 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-09 by PM (TASK-056 done: skip_issues dual-platform fix, v3.0.9 released)_
+_Last updated: 2026-06-10 by PM (product pivot — roadmap re-aligned to PRODUCT_BIBLE.md)_
 
 ---
 
 ## Roadmap Status
 
-### Client-Server Arc
+> **Pivot 2026-06-10**: the roadmap is now driven by `PRODUCT_BIBLE.md` § Build Phases.
+> The build arc is sequenced safe → accurate → automated → autonomous. The old
+> "Client-Server Arc" (CS-1–5) and "Product Phases 1–10" schemes are retired —
+> their shipped work is captured in Task History below and on the project board.
 
-| Phase | Name | Status | Notes |
+### Product Bible Build Phases
+
+| Phase | Name | Status | Exit criterion (short) |
 |---|---|---|---|
-| CS-1 | IPC to HTTP | DONE | `http_trigger.go` + `webhook_server.py` |
-| CS-2 | Server TUI + Config Audit | DONE | StatsRow panel (TASK-008); 37 headless tests (TASK-009); os.getenv audit (TASK-001–007) |
-| CS-3 | Admin GUI MVP | DONE | Route tests (TASK-011); role/disable (TASK-012); license page (TASK-013); trigger stats (TASK-014); polish+embed (TASK-015) |
-| CS-4 | Managed SaaS | PLANNED | Cloud infra + billing |
-| CS-5 | Full admin console | FUTURE | Post-SaaS expansion |
+| 0 | Foundation reset (silent daemon) | ACTIVE — next | Daemon runs a full day with no prompts shown |
+| 1 | Pending actions queue | QUEUED | A week of outbound actions all staged; nothing unexpected posts |
+| 2 | Opinionated ticket extractor | QUEUED | >80% commits mapped to tickets, no config beyond branch naming |
+| 3 | Silent commit handler | QUEUED | Commit → ticket commented + state-transitioned; dev did nothing |
+| 4 | EOD pipeline | QUEUED | Accurate EOD email every evening, in the dev's voice |
+| 5 | Voice training (low friction) | QUEUED | Generated text passes "did I write this?" after 1 week |
+| 6 | Dialectic self-improvement | QUEUED | 30-day correction rate down; ≥3 autonomous skills emerged |
+| 7 | TUI as visibility + correction | QUEUED | TUI shows last 24h + everything about to happen |
+| 8 | PR review loop (puppet master) | QUEUED | PR nit comments resolved without dev touching the PR |
 
-### Product Phases
+### Deprioritised (pivot 2026-06-10)
+CLI aesthetics/theming, savings counter, how-to videos, PG-5 (`/internal/stats`),
+Redis R-1–R-6, boardroom/plan as primary features. Not cancelled — below the phases.
 
-| Phase | Name | Status | Priority |
-|---|---|---|---|
-| 1-3 | Git workflow | DONE | — |
-| 4A/B | Project + SQLite PM | DONE | — |
-| 5 | Task planning + sprints | PARTIAL | BacklogManager done; SprintPlanner pending |
-| 6 | Context + intelligence | PLANNED | Q4 2026 |
-| 7 | Analytics + insights | PLANNED | Q1 2027 |
-| 8 | Automation + integrations | PLANNED | Q2 2027 |
-| 9-10 | Advanced + interfaces | FUTURE | 2027+ |
+### Shipped foundation (pre-pivot, retained)
+Git workflow (Phases 1–3), Project + SQLite PM (4A/B), CS-1 IPC→HTTP, CS-2 server-TUI
++ config audit, CS-3 Admin GUI MVP, EPIC-SPLIT (three-codebase), client-server
+decoupling Phases 1–2. Detail in Task History below.
 
 ---
 

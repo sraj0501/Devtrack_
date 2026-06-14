@@ -6,7 +6,7 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-05-30 (Phase 1a–1d complete; Phase 2 pending)._
+_Last updated: 2026-06-10 (client-server decoupling Phase 1 + Phase 2 complete)._
 
 ## Ownership model (intended)
 

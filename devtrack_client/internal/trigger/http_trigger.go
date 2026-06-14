@@ -98,6 +98,27 @@ func (c *HTTPTriggerClient) SendPing() error {
 	return c.post("/trigger/ping", map[string]string{})
 }
 
+// HeartbeatWorkspace is one monitored workspace entry sent in a heartbeat.
+type HeartbeatWorkspace struct {
+	Name     string `json:"name"`
+	Platform string `json:"platform"`
+}
+
+// HeartbeatPayload is the body sent to POST /trigger/client/heartbeat.
+type HeartbeatPayload struct {
+	ClientID   string               `json:"client_id"`
+	Version    string               `json:"version"`
+	TLSEnabled bool                 `json:"tls_enabled"`
+	Workspaces []HeartbeatWorkspace `json:"workspaces"`
+}
+
+// SendHeartbeat registers this client with the server and reports which
+// workspaces it is monitoring.  The server uses this to populate the
+// "Connected Clients" panel in the admin dashboard.
+func (c *HTTPTriggerClient) SendHeartbeat(payload HeartbeatPayload) error {
+	return c.post("/trigger/client/heartbeat", payload)
+}
+
 // SendWorkSessionStart notifies Python that a work session has started.
 func (c *HTTPTriggerClient) SendWorkSessionStart(sessionID int64, ticketRef string) error {
 	return c.post("/trigger/work_session_start", map[string]interface{}{

@@ -965,6 +965,27 @@ async def http_ping(
     return {"status": "ok", "pong": True}
 
 
+@app.post("/trigger/client/heartbeat")
+async def http_client_heartbeat(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Client registration heartbeat — upserts connected client info in admin DB."""
+    data = await request.json()
+    client_id = data.get("client_id", "unknown")
+    version = data.get("version", "")
+    tls_enabled = bool(data.get("tls_enabled", False))
+    workspaces = data.get("workspaces", [])
+    ip = request.client.host if request.client else ""
+    try:
+        from backend.admin.user_manager import upsert_client, prune_stale_clients
+        upsert_client(client_id, version, tls_enabled, workspaces, ip)
+        prune_stale_clients(stale_minutes=10)
+    except Exception as exc:
+        logger.warning(f"client heartbeat failed: {exc}")
+    return {"status": "ok"}
+
+
 @app.post("/trigger/work_session_start")
 async def http_work_session_start(
     request: Request,

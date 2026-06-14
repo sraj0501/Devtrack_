@@ -27,7 +27,7 @@ devtrack start
 devtrack status
 ```
 
-**Expected**: Status shows "Running" with PID. The Python bridge process should also be running (check with `ps aux | grep python_bridge`).
+**Expected**: Status shows "Running" with PID. In managed mode the Python server also runs (check with `ps aux | grep webhook_server`).
 
 ---
 

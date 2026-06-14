@@ -2,9 +2,9 @@
 
 Complete overview of DevTrack's system design, components, and data flow.
 
-> **Monorepo split in progress (EPIC-SPLIT)**: The canonical sources have moved to `devtrack_client/` (Go) and `devtrack_server/` (Python). The legacy `devtrack-bin/` and root `backend/` directories are being retired. See `docs/split-manifest.md` for the full ownership catalogue and `docs/HTTP_API.md` for the client-server API contract.
+> **Monorepo split (EPIC-SPLIT) — complete.** Canonical sources are `devtrack_client/` (Go) and `devtrack_server/` (Python); the legacy `devtrack-bin/` and root `backend/` directories were retired in TASK-048. See `docs/split-manifest.md` for the ownership catalogue. This document is the canonical client↔server boundary reference.
 >
-> **Client-server decoupling Phase 1 complete** (`feat/client-server-decoupling`): server-management commands removed from the client; reports, learning, auth, and license commands now call the server over HTTP; `workspaces.yaml` is the sole non-secret PM connector config source. Phase 2 (Go-native alerts + Telegram/Slack) is pending. See `docs/CLIENT_SERVER_DECOUPLING_PLAN.md`.
+> **Client-server decoupling Phase 1 + Phase 2 — complete.** Server-management commands removed from the client; reports/learning/auth/license call the server over HTTP; `workspaces.yaml` is the sole non-secret PM config source; alerts, notifiers, and the Telegram bot are Go-native. See `docs/CLIENT_SERVER_DECOUPLING_PLAN.md`.
 
 ---
 
@@ -14,9 +14,9 @@ Complete overview of DevTrack's system design, components, and data flow.
 |---|---|---|
 | `devtrack_client/` | Go + Python (git-sage) | Binary, git monitor, scheduler, CLI — canonical Go source |
 | `devtrack_server/` | Python | AI pipeline, webhook server, admin UI — canonical Python source |
-| `devtrack_wiki/` | HTML/Markdown | Website and wiki (pushed to GitLab wiki remote) |
+| `devtrack_wiki/` | HTML/Markdown | Website (Netlify → devtrack.cloud) |
 
-Client and server share no compiled artefact. The only interface between them is HTTPS POST over a documented JSON API (`docs/HTTP_API.md`).
+Client and server share no compiled artefact. The only interface between them is HTTPS POST over a documented JSON API (the `/trigger/*` endpoints, described below).
 
 ---
 
@@ -69,7 +69,7 @@ Running `devtrack install` prints setup instructions for the client-server archi
 
 ### Binary Releases
 
-The Go binary (~5 MB, no Python) is published to the **GitLab Package Registry** (`gitlab.com/devtrack3_cloud/devtrack_client`) on every tagged release. `devtrack upgrade` fetches from GitLab automatically. Users set up the Python backend separately following the [Installation Guide](INSTALLATION.md).
+The Go binary (~5 MB, no Python) is published to **GitHub Releases** (`github.com/sraj0501/Devtrack_`) on every tagged release via the automated pipeline (`release.yml`). `devtrack upgrade` fetches from GitHub automatically. Users set up the Python backend separately — see [devtrack.cloud](https://devtrack.cloud).
 
 ---
 
@@ -144,7 +144,7 @@ The lightweight background service that monitors and coordinates.
 | **HTTP Trigger Client** | server_config.go + daemon.go | POSTs JSON to Python `/trigger/*` via HTTPS (self-signed ECDSA cert) |
 | **Database** | database.go | SQLite access, trigger history, task updates |
 | **Configuration** | config.go, config_env.go | YAML struct + .env accessors |
-| **Upgrade** | upgrade.go, upgrade_unix.go, upgrade_windows.go | `devtrack upgrade` — fetches from GitLab Package Registry; Unix uses `sudo cp`, Windows prints Administrator guidance |
+| **Upgrade** | upgrade.go, upgrade_unix.go, upgrade_windows.go | `devtrack upgrade` — fetches from GitHub Releases; Unix uses `sudo cp`, Windows prints Administrator guidance |
 | **Learning** | learning.go | AI learning consent and profile management |
 | **Message Queue** | queue.go | Store-and-forward IPC messages for offline resilience |
 | **Health Monitor** | health.go | Periodic service health checks with auto-restart |
@@ -486,7 +486,7 @@ All configuration flows from a single `.env` file with **no hardcoded defaults**
 
 ### How It Works
 
-1. **Go layer** (`devtrack-bin/`):
+1. **Go layer** (`devtrack_client/`):
    - Loads `.env` via `joho/godotenv`
    - Exposes variables through `config_env.go` functions
    - All access goes through these functions (not `os.Getenv` directly)
@@ -691,7 +691,7 @@ When AI is unavailable during `devtrack git commit`:
 - Stored in SQLite with diff, branch, files metadata
 - `devtrack commits review` for interactive approval when AI returns
 
-See [Offline Resilience](OFFLINE_RESILIENCE.md) for full details.
+Offline-first is a core non-negotiable — see [`PRODUCT_BIBLE.md`](../PRODUCT_BIBLE.md).
 
 ---
 
@@ -730,7 +730,7 @@ Added git context (branch, PR, recent commits) to AI prompts for better commit m
 Automatic merge conflict resolution and git-aware work update parsing with PR/issue auto-detection.
 
 ### Phase 3: Event-Driven Integration
-Seamless integration of Phases 1 & 2 into python_bridge.py's real-time event pipeline.
+Seamless integration of Phases 1 & 2 into webhook_server.py's real-time event pipeline.
 
 ### Offline-First Resilience
 Store-and-forward message queue, deferred commit enhancement, health monitoring with auto-restart, and enhanced status dashboard.
@@ -746,6 +746,5 @@ Store-and-forward message queue, deferred commit enhancement, health monitoring 
 ## Next Steps
 
 - **For development**: See [CLAUDE.md](../CLAUDE.md)
-- **For deployment**: See [Installation Guide](INSTALLATION.md)
-- **For configuration**: See [Configuration Reference](CONFIGURATION.md)
-- **For troubleshooting**: See [Troubleshooting Guide](TROUBLESHOOTING.md)
+- **Setup, configuration, and troubleshooting**: see [devtrack.cloud](https://devtrack.cloud)
+- **Client↔server boundary & env config**: this document and the project `CLAUDE.md`
