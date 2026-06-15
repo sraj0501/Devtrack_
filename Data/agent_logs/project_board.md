@@ -359,8 +359,7 @@ Run `uv run pytest backend/tests/ -q` — all 591 passing tests must continue to
 - [ ] `uv run pytest backend/tests/ -q` — no regressions (591+ pass, known failure documented).
 - [ ] `go vet` and `go build` on the Go side unaffected (Python-only change).
 
-**Engineer status**: not started
-**Blockers**: TASK-060 must be complete (table must exist before Python can insert rows)
+**Engineer status**: started — create queue_gateway.py (stage/mark_posted/mark_failed), wrap process_commit PM sync with stage(), add /queue/pending + /queue/execute endpoints, write test_queue_gateway.py
 
 ---
 
