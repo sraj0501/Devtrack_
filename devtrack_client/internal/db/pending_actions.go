@@ -81,7 +81,7 @@ func (d *Database) InsertPendingAction(a PendingAction) (int64, error) {
 func (d *Database) ListPendingActions(statusFilter string) ([]PendingAction, error) {
 	var (
 		query string
-		args  []interface{}
+		args  []any
 	)
 	if statusFilter == "" {
 		query = `
@@ -98,7 +98,7 @@ func (d *Database) ListPendingActions(statusFilter string) ([]PendingAction, err
 			WHERE status = ?
 			ORDER BY expires_at ASC
 		`
-		args = []interface{}{statusFilter}
+		args = []any{statusFilter}
 	}
 
 	rows, err := d.db.Query(query, args...)
@@ -218,12 +218,6 @@ func (d *Database) UpdatePendingActionPayload(id int64, payload string) error {
 // ---------------------------------------------------------------------------
 // Internal scan helpers
 // ---------------------------------------------------------------------------
-
-// pendingActionScanner is satisfied by both *sql.Row and *sql.Rows so we can
-// share a single scan implementation.
-type pendingActionScanner interface {
-	Scan(dest ...interface{}) error
-}
 
 // scanPendingActionRow scans a *sql.Row into a PendingAction.
 func scanPendingActionRow(row *sql.Row) (*PendingAction, error) {
