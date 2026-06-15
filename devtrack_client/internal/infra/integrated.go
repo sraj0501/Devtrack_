@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -116,8 +117,10 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 	return monitor, nil
 }
 
-// Start begins monitoring both Git commits and time-based triggers
-func (im *IntegratedMonitor) Start() error {
+// Start begins monitoring both Git commits and time-based triggers.
+// ctx is used to signal the queue executor to stop on daemon shutdown.
+// Pass context.Background() for the standalone TestIntegrated helper.
+func (im *IntegratedMonitor) Start(ctx context.Context) error {
 	log.Println("Starting integrated monitoring system...")
 
 	// Start Git monitor(s) — one per workspace
@@ -140,6 +143,12 @@ func (im *IntegratedMonitor) Start() error {
 		return fmt.Errorf("failed to start scheduler: %w", err)
 	}
 	log.Println("✓ Scheduler started")
+
+	// Start queue executor — polls /queue/pending and auto-approves expired actions.
+	// Skips gracefully if QUEUE_POLL_INTERVAL_SECS is not set (non-daemon callers).
+	executor := NewQueueExecutor(im.database, trigger.NewHTTPTriggerClient())
+	go executor.Start(ctx)
+	log.Println("✓ Queue executor started")
 
 	return nil
 }
@@ -513,7 +522,7 @@ func TestIntegrated() {
 	fmt.Println()
 
 	// Start monitoring
-	if err := monitor.Start(); err != nil {
+	if err := monitor.Start(context.Background()); err != nil {
 		log.Fatalf("Failed to start monitoring: %v", err)
 	}
 

@@ -949,3 +949,19 @@ func GetTelegramAllowedChatIDs() []string {
 func GetSlackWebhookURL() string {
 	return os.Getenv("SLACK_WEBHOOK_URL")
 }
+
+// GetQueuePollIntervalSecs returns QUEUE_POLL_INTERVAL_SECS — how often the
+// queue executor polls /queue/pending for expired actions to auto-approve.
+// Reads QUEUE_POLL_INTERVAL_SECS from the environment; defaults to 15 if unset.
+func GetQueuePollIntervalSecs() int {
+	val := os.Getenv("QUEUE_POLL_INTERVAL_SECS")
+	if val == "" {
+		return 15
+	}
+	secs, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || secs <= 0 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid QUEUE_POLL_INTERVAL_SECS %q — using default 15\n", val)
+		return 15
+	}
+	return secs
+}

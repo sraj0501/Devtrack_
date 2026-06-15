@@ -143,8 +143,8 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("failed to write PID file: %w", err)
 	}
 
-	// Start integrated monitoring
-	if err := d.monitor.Start(); err != nil {
+	// Start integrated monitoring (passes d.ctx so the queue executor exits cleanly on stop)
+	if err := d.monitor.Start(d.ctx); err != nil {
 		d.cleanup()
 		return fmt.Errorf("failed to start monitoring: %w", err)
 	}

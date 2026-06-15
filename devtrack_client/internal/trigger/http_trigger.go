@@ -546,6 +546,55 @@ func (c *HTTPTriggerClient) getText(path string) (string, error) {
 	return r.Output, nil
 }
 
+// ── Pending actions queue methods ─────────────────────────────────────────────
+
+// QueuePendingAction is the minimal representation of a pending action returned
+// by GET /queue/pending. Only the fields the queue executor needs are included.
+type QueuePendingAction struct {
+	ID         int64  `json:"id"`
+	ActionType string `json:"action_type"`
+	Target     string `json:"target"`
+	ExpiresAt  string `json:"expires_at"` // ISO 8601 string from Python
+	Status     string `json:"status"`
+}
+
+// QueuePendingResponse is the shape of the GET /queue/pending response.
+type QueuePendingResponse struct {
+	Actions []QueuePendingAction `json:"actions"`
+}
+
+// QueueExecuteRequest is the body sent to POST /queue/execute.
+type QueueExecuteRequest struct {
+	ActionID int64 `json:"action_id"`
+}
+
+// QueueExecuteResponse is the shape of the POST /queue/execute response.
+type QueueExecuteResponse struct {
+	Status string `json:"status"` // "posted" | "failed"
+	Error  string `json:"error"`  // non-empty when status == "failed"
+}
+
+// GetQueuePending fetches all pending actions from GET /queue/pending.
+// The Python server returns actions with status='pending', ordered by expires_at ASC.
+func (c *HTTPTriggerClient) GetQueuePending() (*QueuePendingResponse, error) {
+	var resp QueuePendingResponse
+	if err := c.getWithResult("/queue/pending", &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ExecuteQueueAction calls POST /queue/execute for a single action.
+// Python looks up the action by ID, calls _execute_pm_action(), and marks it
+// posted or failed. The executor mirrors that status in the Go-side SQLite row.
+func (c *HTTPTriggerClient) ExecuteQueueAction(actionID int64) (*QueueExecuteResponse, error) {
+	var resp QueueExecuteResponse
+	if err := c.postWithResult("/queue/execute", QueueExecuteRequest{ActionID: actionID}, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // ── Report methods ────────────────────────────────────────────────────────────
 
 // ReportPreview calls POST /reports/preview and returns the formatted preview text.

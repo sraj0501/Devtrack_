@@ -440,7 +440,7 @@ The queue executor is a background goroutine in the Go daemon that:
 - [ ] Daemon log shows `"queue: auto-approved action ..."` entries during a test run
       where a low-confidence action's timeout is set to 1 minute and allowed to expire.
 
-**Engineer status**: not started
+**Engineer status**: started — branch feat/TASK-062-queue-executor off dev; bringing in pending_actions.go from TASK-060, adding GetQueuePollIntervalSecs(), queue_executor.go goroutine, wiring into IntegratedMonitor.Start()
 **Blockers**: TASK-060 and TASK-061 must be complete
 
 ---
