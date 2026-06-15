@@ -1177,6 +1177,8 @@ in each tab's `Init()`. Forward `spinner.TickMsg` in each `Update()` so the dot 
 
 ---
 
+---
+
 ## DEPRIORITISED (pivot 2026-06-10)
 
 These sat on the old v3.x "Polish & Growth" board. The pivot moved them below the
