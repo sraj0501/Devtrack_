@@ -281,25 +281,6 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 	log.Printf("Workspace reload complete: %d active (%d kept, %d added)", len(newMonitors), kept, added)
 }
 
-// Helper functions to extract values from map[string]interface{}
-func getStringFromMap(m map[string]interface{}, key string) string {
-	if val, ok := m[key]; ok {
-		if str, ok := val.(string); ok {
-			return str
-		}
-	}
-	return ""
-}
-
-func getBoolFromMap(m map[string]interface{}, key string) bool {
-	if val, ok := m[key]; ok {
-		if b, ok := val.(bool); ok {
-			return b
-		}
-	}
-	return false
-}
-
 // handleCommitForWorkspace is called when a Git commit is detected on a specific workspace
 func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *WorkspaceMonitor) {
 	// Skip commits that we amended ourselves to prevent infinite re-enhancement loops.
@@ -403,7 +384,7 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 		}
 
 	case TriggerTypeTimer:
-		if data, ok := event.Data.(map[string]interface{}); ok {
+		if data, ok := event.Data.(map[string]any); ok {
 			triggerCount := 0
 			intervalMins := im.config.Settings.PromptInterval
 			if count, ok := data["trigger_count"].(int); ok {
@@ -467,8 +448,8 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 }
 
 // GetStatus returns the current monitoring status
-func (im *IntegratedMonitor) GetStatus() map[string]interface{} {
-	status := make(map[string]interface{})
+func (im *IntegratedMonitor) GetStatus() map[string]any {
+	status := make(map[string]any)
 
 	// Scheduler status
 	if im.scheduler != nil {
@@ -561,7 +542,7 @@ func TestIntegrated() {
 				fmt.Println("\n📊 System Status:")
 				fmt.Println("─────────────────")
 
-				if schedStats, ok := status["scheduler"].(map[string]interface{}); ok {
+				if schedStats, ok := status["scheduler"].(map[string]any); ok {
 					fmt.Printf("Scheduler:\n")
 					fmt.Printf("  Paused: %v\n", schedStats["is_paused"])
 					fmt.Printf("  Triggers: %v\n", schedStats["trigger_count"])
