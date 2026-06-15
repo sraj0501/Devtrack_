@@ -662,6 +662,7 @@ alongside the CLI (TASK-064). Both must exist.
       `TELEGRAM_CHAT_ID` env vars already in config.
 
 **Engineer status**: 7/7 criteria done — last commit: c54c83c "feat(telegram): Add queue parity support for inline actions" — 2026-06-15 22:45
+**PR**: https://github.com/sraj0501/Devtrack_/pull/172
 
 **COMPLETE** — ready for PM review — 2026-06-15 22:45
 
