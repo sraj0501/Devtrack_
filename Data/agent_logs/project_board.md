@@ -651,18 +651,19 @@ alongside the CLI (TASK-064). Both must exist.
    or equivalent package already in `go.mod`.
 
 **Acceptance criteria**:
-- [ ] When a new action enters the queue with confidence < 90%, the Telegram bot sends a
+- [x] When a new action enters the queue with confidence < 90%, the Telegram bot sends a
       notification with Approve / Reject / Edit inline keyboard buttons within 30 seconds.
-- [ ] Tapping Approve in Telegram approves and executes the action; bot edits the message to confirm.
-- [ ] Tapping Reject in Telegram rejects the action; bot edits the message to confirm.
-- [ ] Tapping Edit prompts for a reply, captures it, updates payload, and approves.
-- [ ] `/queue` command lists current pending actions with inline buttons.
-- [ ] `go build ./...` and `go vet ./...` pass clean.
-- [ ] No new Telegram API secrets introduced — uses existing `TELEGRAM_BOT_TOKEN` and
+- [x] Tapping Approve in Telegram approves and executes the action; bot edits the message to confirm.
+- [x] Tapping Reject in Telegram rejects the action; bot edits the message to confirm.
+- [x] Tapping Edit prompts for a reply, captures it, updates payload, and approves.
+- [x] `/queue` command lists current pending actions with inline buttons.
+- [x] `go build ./...` and `go vet ./...` pass clean.
+- [x] No new Telegram API secrets introduced — uses existing `TELEGRAM_BOT_TOKEN` and
       `TELEGRAM_CHAT_ID` env vars already in config.
 
-**Engineer status**: not started
-**Blockers**: TASK-060, TASK-061, TASK-062 must be complete (TASK-063 and TASK-064 are parallel)
+**Engineer status**: 7/7 criteria done — last commit: c54c83c "feat(telegram): Add queue parity support for inline actions" — 2026-06-15 22:45
+
+**COMPLETE** — ready for PM review — 2026-06-15 22:45
 
 ---
 

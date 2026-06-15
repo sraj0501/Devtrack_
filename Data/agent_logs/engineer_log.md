@@ -2,6 +2,35 @@
 
 ---
 
+### [2026-06-15 22:45] TASK-065 — feat(telegram): Add queue parity support for inline actions
+
+**Original message**: "feat(telegram): add queue channel parity — approve/reject/edit via inline keyboard (TASK-065)"
+**DevTrack enhanced it to**: "feat(telegram): Add queue parity support for inline actions"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-065 marked COMPLETE 7/7 criteria; engineer log updated
+**Time**: ~45 minutes
+**Friction**: LOW — read all existing patterns thoroughly before writing; build passed first time; no import cycles
+**Notes**:
+- `go-telegram-bot-api/v5` already supports inline keyboards via `tgbotapi.NewInlineKeyboardMarkup` and `tgbotapi.NewCallback` — no new deps needed.
+- The QueueExecutor's `NotifyFn` is a public field, making late-wiring (bot starts after executor) clean with `im.SetQueueNotifyFn(bot.NotifyPendingAction)`.
+- `seenIDs` map ensures each action ID triggers exactly one Telegram notification even if the poll tick fires multiple times during the approval window.
+- Edit flow: bot stores `pendingEdit{ActionID, PromptMsgID}` per chat ID; next non-command text message is consumed as the edit reply, payload updated, then approved and dispatched.
+- `maybeNotify` removes the ID from seenIDs if DB lookup fails (action not yet propagated) so it retries next poll tick.
+- `editMessage` uses `tgbotapi.NewEditMessageText` to replace the original notification text after approve/reject/edit, keeping the conversation clean.
+- All Telegram logic isolated in `telegram/queue_notify.go` (new file) — handlers.go and bot.go received minimal targeted edits.
+
+## Task Summary — TASK-065: Telegram queue channel parity — 2026-06-15
+
+- Total commits: 1 (c54c83c on feat/TASK-065-telegram-queue-parity)
+- Acceptance criteria met: 7/7
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min per pending action review cycle for Telegram users
+- Blockers encountered: none
+- One thing that still feels rough: "The edit reply capture is per-chat-ID only; if a user sends the /edit callback and then immediately sends an unrelated message, it gets consumed as the edit reply. A timeout or per-message-ID approach would be more robust in a multi-user scenario."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-15 14:45] TASK-064 — feat(cli): Add queue subcommand group for managing pending actions
 
 **Original message**: "feat(cli): add devtrack queue subcommand group (TASK-064)"
