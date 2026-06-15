@@ -2,6 +2,44 @@
 
 ---
 
+### [2026-06-15 12:41] TASK-060 — feat(db): add pending_actions table, CRUD helpers, and ConfidenceTimeout
+
+**Original message**: "feat(db): add pending_actions table, CRUD helpers, and ConfidenceTimeout (TASK-060)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running) — committed as-is
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-060 marked COMPLETE; PR #167 opened targeting dev
+**Time**: ~20 minutes
+**Friction**: LOW — straightforward data layer task; existing package patterns in database.go were clear and comprehensive; no surprises
+**Notes**:
+  Files created:
+    - `devtrack_client/internal/db/pending_actions.go` — PendingAction struct + 7 CRUD helpers + ConfidenceTimeout pure function
+    - `devtrack_client/internal/db/pending_actions_test.go` — table-driven ConfidenceTimeout tests (4 branches) + full CRUD integration test using temp SQLite DB
+  Files modified:
+    - `devtrack_client/internal/db/migrations.go` — appended migration 006-create-pending-actions
+    - `Data/agent_logs/project_board.md` — TASK-060 status updated
+  Build/test results:
+    - `go build ./...` PASS
+    - `go vet ./...` PASS
+    - `go test ./internal/db/...` PASS — TestConfidenceTimeout (4 sub-tests) + TestPendingActionCRUD
+  Decisions made:
+    - Used `sql.NullString` for nullable columns (actedAt, actedBy, error) to match the pattern used for `sent_at` in GetPendingPMUpdates
+    - `ListPendingActionsRecent` uses SQLite modifier string format (`-N hours`) — this is the correct SQLite datetime modifier syntax
+    - Added `pendingActionScanner` interface in comments but used concrete `*sql.Row` / `*sql.Rows` scan functions (simpler, matches database.go style which uses two separate scan functions for single-row vs multi-row)
+    - Validation of status values happens in Go (not a DB CHECK constraint) so the error message is friendly and caught before a DB round-trip
+    - Tests create the pending_actions table inline (not via RunPendingMigrations) to avoid needing env vars — consistent with how trigger tests use httptest rather than a running server
+
+## Task Summary — TASK-060: pending_actions SQLite table and Go data model — 2026-06-15
+
+- Total commits: 1 (3d75d27 on feat/TASK-060-pending-actions-table)
+- Acceptance criteria met: 7/7
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min/day (foundation for all Phase 1 approval queue tasks; unblocks TASK-061–065)
+- Blockers encountered: none
+- One thing that still feels rough: "initSchema() is unexported so test DB setup must duplicate the CREATE TABLE SQL from the migration; ideally tests would call a RunMigration(db, migration) helper to stay DRY"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-14 16:05] TASK-059 — fix(phase0): Phase 0 verification — silent daemon trigger flows
 
 **Original message**: "fix(phase0): Phase 0 verification — silent daemon trigger flows — TASK-059"
