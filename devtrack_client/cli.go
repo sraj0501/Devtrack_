@@ -153,7 +153,7 @@ func (cli *CLI) Execute() error {
 	case "commits":
 		return cli.handleCommits()
 	case "queue":
-		return cli.handleQueueStats()
+		return cli.handleQueue()
 	case "telegram-status":
 		return cli.handleTelegramStatus()
 	case "azure-check":

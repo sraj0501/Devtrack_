@@ -215,6 +215,23 @@ func (d *Database) UpdatePendingActionPayload(id int64, payload string) error {
 	return nil
 }
 
+// CountPendingActionsRecent returns a summary count of pending_actions by status.
+// postedToday and rejectedToday are scoped to the current calendar day (acted_at).
+// Used by the CLI status subcommand and Telegram /queue command.
+func (d *Database) CountPendingActionsRecent() (pending, postedToday, rejectedToday int, err error) {
+	err = d.db.QueryRow(`
+		SELECT
+			COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN status IN ('posted','approved') AND date(acted_at) = date('now') THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN status = 'rejected' AND date(acted_at) = date('now') THEN 1 ELSE 0 END), 0)
+		FROM pending_actions
+	`).Scan(&pending, &postedToday, &rejectedToday)
+	if err != nil {
+		err = fmt.Errorf("failed to count pending actions: %w", err)
+	}
+	return
+}
+
 // ---------------------------------------------------------------------------
 // Internal scan helpers
 // ---------------------------------------------------------------------------
@@ -300,21 +317,4 @@ func parseSQLiteTime(s string) time.Time {
 		}
 	}
 	return time.Time{}
-}
-
-// CountPendingActionsRecent returns a summary count of pending_actions by status.
-// postedToday and rejectedToday are scoped to the current calendar day (acted_at).
-// Used by the CLI status subcommand and Telegram /queue command.
-func (d *Database) CountPendingActionsRecent() (pending, postedToday, rejectedToday int, err error) {
-	err = d.db.QueryRow(`
-		SELECT
-			COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN status IN ('posted','approved') AND date(acted_at) = date('now') THEN 1 ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN status = 'rejected' AND date(acted_at) = date('now') THEN 1 ELSE 0 END), 0)
-		FROM pending_actions
-	`).Scan(&pending, &postedToday, &rejectedToday)
-	if err != nil {
-		err = fmt.Errorf("failed to count pending actions: %w", err)
-	}
-	return
 }
