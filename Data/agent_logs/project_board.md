@@ -362,7 +362,7 @@ Run `uv run pytest backend/tests/ -q` — all 591 passing tests must continue to
 **Engineer status**: 7/7 criteria done — last commit: 047d8b2 "feat(server): implement queue gateway for pending actions staging" — 2026-06-15 13:10
 
 **COMPLETE** — ready for PM review — 2026-06-15 13:10
-**PR**: (opening next)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/168
 
 ---
 
