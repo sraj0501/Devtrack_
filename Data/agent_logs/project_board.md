@@ -528,7 +528,7 @@ for styling. Follow the exact same patterns as the existing tabs in `tui_overvie
 **Engineer status**: 7/8 criteria done — last commit: 36784a8 "feat(tui): Add Pending Actions Queue tab (TASK-063)" — 2026-06-15 14:20
 
 **COMPLETE** — ready for PM review — 2026-06-15 14:20
-**PR**: (opening)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/170
 
 ---
 
