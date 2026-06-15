@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
@@ -25,11 +26,25 @@ import (
 // Actions whose expires_at is still in the future are skipped (still in review window).
 // Actions that were manually approved/rejected (status no longer 'pending') are
 // skipped because GET /queue/pending only returns rows with status='pending'.
+//
+// When NotifyFn is set, the executor calls it for each new pending action whose
+// confidence < 0.90 (i.e. not imminently auto-approved). This enables Telegram
+// or other notification channels to push proactive messages to the user.
 type QueueExecutor struct {
 	db            *db.Database
 	triggerClient *trigger.HTTPTriggerClient
 	pollInterval  time.Duration
 	stopCh        chan struct{}
+
+	// NotifyFn is an optional callback invoked once for each new pending action
+	// with confidence < 0.90. The executor tracks which action IDs it has already
+	// notified so the callback fires only once per action, not on every poll tick.
+	// Safe to set before calling Start(). Nil means no notification.
+	NotifyFn func(action db.PendingAction)
+
+	// seenIDs is the set of action IDs we have already sent a notification for.
+	seenMu  sync.Mutex
+	seenIDs map[int64]struct{}
 }
 
 // NewQueueExecutor creates a QueueExecutor that polls at the interval configured
@@ -41,6 +56,7 @@ func NewQueueExecutor(database *db.Database, client *trigger.HTTPTriggerClient) 
 		triggerClient: client,
 		pollInterval:  interval,
 		stopCh:        make(chan struct{}),
+		seenIDs:       make(map[int64]struct{}),
 	}
 }
 
@@ -98,12 +114,14 @@ func (q *QueueExecutor) tick() {
 			continue
 		}
 
-		// 3. Skip actions still inside their approval window.
+		// 3a. If inside approval window, check if we need to send a Telegram notification
+		//     for this newly-seen low-confidence action.
 		if !expiresAt.Before(now) {
+			q.maybeNotify(action.ID)
 			continue
 		}
 
-		// 4. Dispatch the action.
+		// 3b. Expired window — dispatch the action.
 		log.Printf("queue: auto-approving action %d (type=%s target=%s)", action.ID, action.ActionType, action.Target)
 		execResp, execErr := q.triggerClient.ExecuteQueueAction(action.ID)
 		if execErr != nil {
@@ -117,7 +135,7 @@ func (q *QueueExecutor) tick() {
 			continue
 		}
 
-		// 5. Mirror the result in the local SQLite row.
+		// 4. Mirror the result in the local SQLite row.
 		if execResp.Status == "posted" {
 			log.Printf("queue: auto-approved action %d (type=%s target=%s)", action.ID, action.ActionType, action.Target)
 			if q.db != nil {
@@ -139,6 +157,47 @@ func (q *QueueExecutor) tick() {
 			}
 		}
 	}
+}
+
+// maybeNotify fires NotifyFn once per new low-confidence pending action.
+// It looks up the full PendingAction from the local DB so the notification has
+// all fields (payload, confidence, etc.). If the DB lookup fails or NotifyFn is
+// nil, the method is a no-op.
+func (q *QueueExecutor) maybeNotify(id int64) {
+	if q.NotifyFn == nil {
+		return
+	}
+
+	q.seenMu.Lock()
+	_, alreadySeen := q.seenIDs[id]
+	if alreadySeen {
+		q.seenMu.Unlock()
+		return
+	}
+	q.seenIDs[id] = struct{}{}
+	q.seenMu.Unlock()
+
+	// Look up full action from local SQLite for the notification payload.
+	if q.db == nil {
+		return
+	}
+	action, err := q.db.GetPendingAction(id)
+	if err != nil || action == nil {
+		// If not in local DB yet (Python gateway writes first), skip this tick;
+		// it will be retried next poll when the row propagates.
+		q.seenMu.Lock()
+		delete(q.seenIDs, id)
+		q.seenMu.Unlock()
+		return
+	}
+
+	// Only notify for low-confidence actions (< 0.90). High-confidence ones
+	// auto-approve within 2 minutes and are not worth interrupting the user for.
+	if action.Confidence >= 0.90 {
+		return
+	}
+
+	go q.NotifyFn(*action)
 }
 
 // parseISO8601 parses the common ISO 8601 datetime formats that Python uses

@@ -17,6 +17,10 @@ import (
 // startTelegramBot starts the interactive Telegram bot if TELEGRAM_ENABLED=true.
 // The bot handles inbound commands and outbound push notifications, replacing
 // the separate Python telegram bot process.
+//
+// After the bot starts, it registers its NotifyPendingAction method as the
+// queue executor's notification callback so that new low-confidence pending
+// actions trigger a Telegram push within the next poll interval.
 func (d *Daemon) startTelegramBot() {
 	bot := telegram.New(d.buildTelegramHooks())
 	if bot == nil {
@@ -28,11 +32,27 @@ func (d *Daemon) startTelegramBot() {
 		return
 	}
 	d.telegramBot = bot
+
+	// Wire the bot's notification callback into the queue executor so that
+	// every new low-confidence pending action triggers a Telegram message.
+	if d.monitor != nil {
+		d.monitor.SetQueueNotifyFn(bot.NotifyPendingAction)
+		log.Println("✓ Telegram queue notifications wired to queue executor")
+	}
 }
 
 // buildTelegramHooks wires daemon state into the bot without import cycles.
 func (d *Daemon) buildTelegramHooks() telegram.Hooks {
+	// QueueHooks gives the bot direct access to the pending-actions DB and the
+	// HTTP trigger client needed to call POST /queue/execute on approval.
+	var queueHooks telegram.QueueHooks
+	if d.monitor != nil {
+		queueHooks.Database = d.monitor.Database()
+		queueHooks.TriggerClient = trigger.NewHTTPTriggerClient()
+	}
+
 	return telegram.Hooks{
+		Queue: queueHooks,
 		StatusText: func() string {
 			status, err := d.Status()
 			if err != nil || status == nil {
