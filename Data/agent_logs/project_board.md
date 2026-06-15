@@ -267,7 +267,7 @@ Phase 1 task depends on this one existing first.
 - [ ] `go test ./internal/db/...` passes with at least the `ConfidenceTimeout` test.
 - [ ] No `os.Getenv` calls in the new file; no hardcoded hosts/ports.
 
-**Engineer status**: not started
+**Engineer status**: started — adding migration 006, PendingAction struct, 7 CRUD helpers, ConfidenceTimeout, and unit tests in internal/db/
 **Blockers**: none
 
 ---
