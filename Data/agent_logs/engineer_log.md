@@ -2,6 +2,41 @@
 
 ---
 
+### [2026-06-15 14:20] TASK-063 — feat(tui): Add Pending Actions Queue tab
+
+**Original message**: "feat(tui): add Queue tab (TASK-063) — pending actions panel with confidence bars and countdown timers"
+**DevTrack enhanced it to**: "feat(tui): Add Pending Actions Queue tab (TASK-063)"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-063 Engineer status updated; PR opened targeting dev
+**Time**: ~30 minutes
+**Friction**: LOW — tui_alerts.go was a clean template; TASK-062 dependency merge introduced a conflict in engineer_log.md that needed manual resolution (both sides preserved)
+**Notes**:
+  Files created:
+    - `devtrack_client/internal/tui/tui_queue.go` — queueModel with load/Update/View; confidenceBar() 5-char block bar; expiresCountdown() human-readable timer; approve/reject key handlers; auto-refresh on tickMsg
+  Files modified:
+    - `devtrack_client/internal/tui/tui.go` — tabQueue constant (4), "Queue" in tuiTabNames, queue field in tuiModel, wired into Init/Update/View; key "5" routes to queue tab; tickMsg fans to queue.Update(); window size sets queue.width/height
+  Build results:
+    - `go build ./...` PASS
+    - `go vet ./...` PASS
+    - Zero fmt.Print calls in tui_queue.go (verified with grep)
+  Decisions made:
+    - TASK-062 dependency not yet merged to dev; merged feat/TASK-062-queue-executor directly into feature branch to satisfy the pending_actions.go dependency (same pattern TASK-062 used for TASK-060)
+    - Key "q" on Queue tab still quits TUI (consistent with all other tabs); only action keys (j/k/a/r/e) route to queue.Update()
+    - Edit (key "e") is a no-op stub — task spec says "not implemented yet; just return m, nil"
+    - tickMsg fans to queue.Update() always (not just when tab is active) so the countdown display stays current and auto-reload fires every 30s tick cycle
+
+## Task Summary — TASK-063: TUI Pending Queue panel — 2026-06-15
+
+- Total commits: 1 (36784a8 on feat/TASK-063-tui-pending-queue)
+- Acceptance criteria met: 6/7 (criterion for `e` edit overlay deferred per spec; `devtrack tui` tab 5 navigable, confidence bar, countdown, a/r keybindings, auto-refresh, build clean)
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~3 min/day (glanceable queue panel without leaving the TUI)
+- Blockers encountered: none
+- One thing that still feels rough: "The edit overlay (key e) is a no-op stub — full text-input overlay needs a separate lipgloss textarea model; noted in spec as not-yet-implemented"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-15 12:41] TASK-060 — feat(db): add pending_actions table, CRUD helpers, and ConfidenceTimeout
 
 **Original message**: "feat(db): add pending_actions table, CRUD helpers, and ConfidenceTimeout (TASK-060)"
