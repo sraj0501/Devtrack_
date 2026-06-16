@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-10 by PM (product pivot — roadmap re-aligned to PRODUCT_BIBLE.md)_
+_Last updated: 2026-06-16 by PM (TASK-069 complete, PR #176 open against dev)_
 
 ---
 
@@ -15,9 +15,9 @@ _Last updated: 2026-06-10 by PM (product pivot — roadmap re-aligned to PRODUCT
 
 | Phase | Name | Status | Exit criterion (short) |
 |---|---|---|---|
-| 0 | Foundation reset (silent daemon) | ACTIVE — next | Daemon runs a full day with no prompts shown |
-| 1 | Pending actions queue | QUEUED | A week of outbound actions all staged; nothing unexpected posts |
-| 2 | Opinionated ticket extractor | QUEUED | >80% commits mapped to tickets, no config beyond branch naming |
+| 0 | Foundation reset (silent daemon) | DONE | Daemon runs a full day with no prompts shown |
+| 1 | Pending actions queue | DONE | A week of outbound actions all staged; nothing unexpected posts |
+| 2 | Opinionated ticket extractor | ACTIVE — TASK-070 next | >80% commits mapped to tickets, no config beyond branch naming |
 | 3 | Silent commit handler | QUEUED | Commit → ticket commented + state-transitioned; dev did nothing |
 | 4 | EOD pipeline | QUEUED | Accurate EOD email every evening, in the dev's voice |
 | 5 | Voice training (low friction) | QUEUED | Generated text passes "did I write this?" after 1 week |
@@ -37,6 +37,16 @@ decoupling Phases 1–2. Detail in Task History below.
 ---
 
 ## Task History
+
+## 2026-06-16 — TASK-069: Commit-message fallback + active-ticket fallback
+**Phase**: Phase 2 — Opinionated ticket extractor
+**Status**: DONE (PR open against dev, not yet merged)
+**Files**: `devtrack_client/internal/infra/integrated.go` (3-strategy fallback chain in `handleCommitForWorkspace`: branch → commit message → `Database.GetLastTicketID`), `devtrack_client/internal/infra/ticket_extraction_test.go` (3 new fallback-chain tests).
+**Vision check**: PASS — pure local SQLite + regex logic, no cloud dependency, no CLI/UI surface change.
+**Hardcoded scan**: CLEAN — no secrets, hosts, ports, sleeps, or stray `os.Getenv` in changed files.
+**Engineer notes**: `GetLastTicketID` and its DB-level test were already built in TASK-068 ahead of schedule and reused as-is — no reimplementation. `go build`, `go vet`, `go test ./...` all clean on branch `feat/TASK-069-commit-message-fallback`. Commits: `6fc4e64` (implementation), `08deca1` (logs/board). PR #176 → `dev`.
+
+---
 
 ## 2026-06-14 — Phase 0: Foundation Reset (TASK-057 / TASK-058 / TASK-059)
 **Phase**: Phase 0 — Foundation Reset (silent daemon)
