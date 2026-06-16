@@ -318,19 +318,29 @@ class TestTriggerProcessorCommit:
 
         mock_router.route.assert_called_once()
 
-    def test_skips_pm_sync_when_nlp_returns_none(self):
+    def test_stages_pm_sync_when_nlp_returns_none_but_ticket_id_resolved(self):
+        """Regression guard (PR #178 PM review fix): task_data being None
+        (NLP parser returned None, e.g. degraded/unavailable spaCy) must NOT
+        skip PM sync when a Phase-2-resolved ticket_id and workspace_router
+        are both present — task_data is optional enrichment, not a gate on
+        whether the ticket gets a queued comment at all."""
         proc = _bare_processor()
         mock_parser = MagicMock()
         mock_parser.parse.return_value = None
         proc.nlp_parser = mock_parser
-        mock_router = MagicMock()
-        proc.workspace_router = mock_router
+        proc.workspace_router = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.stage.return_value = 13
+        proc._queue_gateway = mock_gateway
 
         payload = {**COMMIT_PAYLOAD, "ticket_id": "GH-1"}
         result = proc.process_commit(payload)
 
-        mock_router.route.assert_not_called()
-        assert not any("pm_sync" in a for a in result["actions"])
+        mock_gateway.stage.assert_called_once()
+        _, kwargs = mock_gateway.stage.call_args
+        assert kwargs["target"] == "GH-1"
+        assert kwargs["payload"]["description"] == COMMIT_PAYLOAD["commit_message"]
+        assert "queued:post_comment:13" in result["actions"]
 
     def test_skips_pm_sync_when_no_workspace_router(self):
         proc = _bare_processor()
@@ -458,6 +468,58 @@ class TestProcessCommitQueueStaging:
 
         mock_gateway.stage.assert_not_called()
         assert not any("queued:post_comment" in a for a in result["actions"])
+
+    def test_stages_when_task_data_is_none_but_ticket_id_resolved(self):
+        """Regression (PM review on PR #178): when the NLP parser is
+        unavailable (e.g. spaCy not installed) or parse() raises, task_data
+        is None — but a Phase-2-resolved ticket_id plus a workspace_router
+        is everything process_commit needs to stage a PM sync action.
+        Previously the `elif task_data and self.workspace_router:` gate
+        skipped staging entirely in this case, silently breaking Phase 3
+        ticket commenting on any setup with degraded NLP. task_data must be
+        treated as optional enrichment, falling back to the raw commit
+        message for the description/comment text."""
+        proc = _bare_processor()
+        proc.nlp_parser = None  # simulates spaCy unavailable
+        proc.workspace_router = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.stage.return_value = 11
+        proc._queue_gateway = mock_gateway
+
+        payload = {**COMMIT_PAYLOAD, "ticket_id": "PROJ-555"}
+        result = proc.process_commit(payload)
+
+        mock_gateway.stage.assert_called_once()
+        _, kwargs = mock_gateway.stage.call_args
+        assert kwargs["target"] == "PROJ-555"
+        assert kwargs["confidence"] == 0.85
+        assert kwargs["action_type"] == "post_comment"
+        # description falls back to the raw commit message when task_data is None
+        assert kwargs["payload"]["description"] == COMMIT_PAYLOAD["commit_message"]
+        assert kwargs["payload"]["status"] == ""
+        assert "queued:post_comment:11" in result["actions"]
+
+    def test_stages_when_nlp_parse_raises_but_ticket_id_resolved(self):
+        """Same regression, but task_data is None because nlp_parser.parse()
+        raised (caught by the 'NLP parse' stage) rather than the parser being
+        absent entirely."""
+        proc = _bare_processor()
+        mock_parser = MagicMock()
+        mock_parser.parse.side_effect = RuntimeError("spaCy model load failed")
+        proc.nlp_parser = mock_parser
+        proc.workspace_router = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.stage.return_value = 12
+        proc._queue_gateway = mock_gateway
+
+        payload = {**COMMIT_PAYLOAD, "ticket_id": "PROJ-556"}
+        result = proc.process_commit(payload)
+
+        mock_gateway.stage.assert_called_once()
+        _, kwargs = mock_gateway.stage.call_args
+        assert kwargs["target"] == "PROJ-556"
+        assert kwargs["payload"]["description"] == COMMIT_PAYLOAD["commit_message"]
+        assert "queued:post_comment:12" in result["actions"]
 
 
 # ---------------------------------------------------------------------------

@@ -467,18 +467,27 @@ class TriggerProcessor:
                     "(Phase 2 unlinked) — no queue action staged",
                     commit_hash[:12] if commit_hash else "?",
                 )
-            elif task_data and self.workspace_router:
+            elif self.workspace_router:
+                # task_data may legitimately be None here (NLP parser
+                # unavailable, e.g. spaCy not installed, or parse() raised —
+                # see "NLP parse" stage above). resolved_ticket_id is the
+                # authoritative signal for *targeting*; task_data is only
+                # optional descriptive enrichment, so every read of it below
+                # must fall back to commit_msg / "" without raising.
+                description = task_data.get("description", commit_msg) if task_data else commit_msg
+                status      = task_data.get("status", "") if task_data else ""
+
                 # Build the payload that _execute_pm_action expects
                 pm_payload = {
-                    "description": task_data.get("description", commit_msg),
+                    "description": description,
                     "ticket_id":   resolved_ticket_id,
-                    "status":      task_data.get("status", ""),
+                    "status":      status,
                     "pm_project":  pm_project,
                     "pm_assignee": pm_assignee,
                     "pm_iteration_path": pm_iteration_path,
                     "pm_area_path":      pm_area_path,
                     "pm_milestone":      pm_milestone,
-                    "comment":     task_data.get("description", commit_msg),
+                    "comment":     description,
                     "commit_info": {
                         "hash":    commit_hash,
                         "message": commit_msg,
