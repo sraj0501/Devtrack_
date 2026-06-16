@@ -858,6 +858,7 @@ In `devtrack_client/internal/infra/` (wherever `TriggerEvent` is defined), add `
 **Blockers**: none — TASK-067 merged to dev (PR #174)
 
 **COMPLETE** — ready for PM review — 2026-06-16 20:35
+**PR**: https://github.com/sraj0501/Devtrack_/pull/175
 
 ---
 
