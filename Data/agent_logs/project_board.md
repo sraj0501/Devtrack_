@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-16 by PM (Phase 3 broken down — TASK-071 dispatched)_
+_Last updated: 2026-06-16 by PM (TASK-071 complete and PM-verified, PR #178 open against dev — TASK-072/073 unblocked)_
 _Next DevTrack task ID: TASK-075_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -1364,6 +1364,17 @@ NLP enrichment fails" — 2026-06-16 22:18. Pushed to the same branch; PR #178 u
 automatically (no new PR).
 
 **COMPLETE** — ready for PM review — 2026-06-16 22:18
+
+**PM verification (independent)**: re-diffed `dev..feat/TASK-071-wire-ticket-id-into-process-commit`
+on `devtrack_server/backend/webhook_server.py` — confirmed no remaining unguarded
+`task_data.get(...)` calls inside the PM-sync branch, confirmed `commit_hash[:12]` fallback
+target fully removed, confirmed `confidence = 0.85` is unconditional on ticket_id alone.
+Re-ran `uv run pytest backend/tests/test_http_triggers.py -q` independently: 36/36 passed.
+Hardcoded scan (`os.getenv` in changed files): clean. Vision check: PASS — Non-Negotiable #2
+(staged via queue, never bypassed) and #8 (never block on failure — unlinked commits skip
+silently, NLP-degraded commits still stage) both upheld.
+
+**PM SIGN-OFF**: APPROVED — 2026-06-16. Unblocks TASK-072 and TASK-073.
 
 ---
 

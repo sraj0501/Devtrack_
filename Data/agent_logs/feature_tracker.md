@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-16 by PM (TASK-070 complete, PR #177 open against dev — Phase 2 CLOSED)_
+_Last updated: 2026-06-16 by PM (TASK-071 complete + PM-verified, PR #178 open against dev)_
 
 ---
 
@@ -18,7 +18,7 @@ _Last updated: 2026-06-16 by PM (TASK-070 complete, PR #177 open against dev —
 | 0 | Foundation reset (silent daemon) | DONE | Daemon runs a full day with no prompts shown |
 | 1 | Pending actions queue | DONE | A week of outbound actions all staged; nothing unexpected posts |
 | 2 | Opinionated ticket extractor | DONE | >80% commits mapped to tickets, no config beyond branch naming — verified 100% (10/10) live |
-| 3 | Silent commit handler | ACTIVE — next up | Commit → ticket commented + state-transitioned; dev did nothing |
+| 3 | Silent commit handler | ACTIVE — TASK-071 in progress | Commit → ticket commented + state-transitioned; dev did nothing |
 | 4 | EOD pipeline | QUEUED | Accurate EOD email every evening, in the dev's voice |
 | 5 | Voice training (low friction) | QUEUED | Generated text passes "did I write this?" after 1 week |
 | 6 | Dialectic self-improvement | QUEUED | 30-day correction rate down; ≥3 autonomous skills emerged |
@@ -37,6 +37,79 @@ decoupling Phases 1–2. Detail in Task History below.
 ---
 
 ## Task History
+
+## 2026-06-16 — TASK-071: Wire Phase 2 ticket_id into process_commit; graceful skip when unlinked
+**Phase**: Phase 3 — Silent commit handler
+**Status**: DONE (PR #178 open against dev, not yet merged)
+**Files**:
+- `devtrack_server/backend/webhook_server.py` — `TriggerProcessor.process_commit()`: reads
+  `data.get("ticket_id", "")` as `resolved_ticket_id` (the Go-resolved, Phase-2-verified
+  signal); PM-sync stage now gated on `resolved_ticket_id` truthiness first (skip + log,
+  no exception, no queue row, when absent/unlinked), then on `self.workspace_router` alone
+  (not `task_data and self.workspace_router`); every `task_data.get(...)` read inside the
+  branch falls back to `commit_msg`/`""` when `task_data` is `None`; deleted the
+  `task_data.get("ticket_id", "") or commit_hash[:12]` fallback target entirely; confidence
+  for the staged `post_comment` action changed from conditional `0.80/0.70` to flat `0.85`.
+- `devtrack_server/backend/tests/test_http_triggers.py` — 9 tests added/rewritten: ticket_id
+  present/absent/empty-string, NLP-guess independence, no-fallback-hash-target, and (from the
+  PM-review fix-up) `task_data is None` and `nlp_parser.parse()` raises — both must still
+  stage successfully when `resolved_ticket_id` is present.
+
+**Vision check**: PASS — Non-Negotiable #2 (everything outbound staged via the pending
+queue, never bypassed) and #8 (never block on failure: unlinked commits skip silently with
+no error; NLP-degraded commits — a documented graceful-degradation state per CLAUDE.md —
+still stage successfully now) both upheld.
+
+**Hardcoded scan**: CLEAN — no `os.getenv` outside `config.py` in changed files, no hardcoded
+hosts/ports/secrets.
+
+**PM review caught a real bug before merge**: the original implementation gated PM-sync
+staging on `task_data and self.workspace_router` — meaning a perfectly good, Phase-2-resolved
+`ticket_id` would be silently dropped (no queue action staged at all) whenever the NLP parser
+was unavailable or raised. This would have broken the Phase 3 exit criterion on any NLP-
+degraded setup. Engineer fixed in a follow-up commit on the same PR: condition changed to
+`elif self.workspace_router:`, with `task_data` treated as optional enrichment only. Two new
+regression tests cover the exact failure mode (NLP parser absent, NLP parse raises).
+
+**PM independently verified**: re-diffed the branch, re-ran the test file standalone
+(36/36 passed), re-ran the hardcoded scan — all clean. Full suite (`uv run pytest backend/tests/ -q`)
+625 passed, 1 pre-existing documented failure (`test_ollama_host_returns_string`), no
+regressions.
+
+**Engineer notes**: Commits `dffd32c` (initial implementation + tests), `dddaf55` (PM-review
+fix-up + regression tests), `e9c52d1`/`770170b` (board/log updates). PR #178 → `dev`. Unblocks
+TASK-072 (voice-aware ticket comment generation) and TASK-073 (state-transition queue action),
+both dependent on this task's ticket-targeting fix.
+
+---
+
+## 2026-06-16 — Phase 3 breakdown: TASK-071 through TASK-074
+**Phase**: Phase 3 — Silent commit handler (opened)
+**Status**: PLANNED — TASK-071 dispatched to engineer, TASK-072/073/074 queued
+**Breakdown rationale**: Investigation during planning found `TriggerProcessor.process_commit()`
+(`devtrack_server/backend/webhook_server.py`) still derives its `post_comment` queue target
+from the NLP task-matcher's own ticket guess, not from the `ticket_id` field Go's Phase 2
+extractor already sends in the commit-trigger JSON payload (`ticket_id,omitempty` on
+`CommitTriggerData`, ~100% hit-rate verified in TASK-070). TASK-071 closes that gap first —
+every other Phase 3 task depends on the queue action being keyed off the trustworthy
+Go-resolved ID. TASK-072 (voice-aware ticket comment via existing `commit_message_enhancer.py`
+pipeline, not a new LLM path) and TASK-073 (state transition as an independent queue action
+type, with per-platform state-vocabulary mapping) both build on TASK-071 but are independent
+of each other. TASK-074 closes the phase with a live runtime verification, mirroring the
+TASK-070/Phase-2 closure pattern — checking actual PM-platform side effects, not just queue
+status flips.
+**Files (planned, not yet touched)**: `devtrack_server/backend/webhook_server.py`
+(`process_commit`, `_execute_pm_action`), `devtrack_server/backend/commit_message_enhancer.py`
+(new `generate_ticket_comment`), new `devtrack_server/backend/ticket_state_mapper.py`,
+`devtrack_client/internal/db/database.go` (`CountTicketCommits`), `devtrack_client/internal/trigger/types.go`
+(`IsFirstCommitForTicket`), `devtrack_client/internal/infra/integrated.go`.
+**Vision check**: PASS — both new queue actions route through Phase 1's pending_actions
+table (Non-Negotiable #2, never bypassed); unresolved tickets skip gracefully, never block
+(Non-Negotiable #8); no new cloud dependency; no TUI/CLI gating (CLI parity already covers
+queue approve/reject via TASK-064).
+**Board**: `Data/agent_logs/project_board.md` — Phase 3 section with TASK-071..074 specs.
+
+---
 
 ## 2026-06-16 — TASK-070: Unlinked commit logging + hit-rate metrics in `devtrack status` — PHASE 2 COMPLETE
 **Phase**: Phase 2 — Opinionated ticket extractor (closes the phase)
