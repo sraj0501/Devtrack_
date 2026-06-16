@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-16 by PM (Phase 2 decomposed — TASK-067 dispatched)_
+_Last updated: 2026-06-16 by PM (TASK-068 dispatched — branch on dev, tip 8fc3ef4)_
 _Next DevTrack task ID: TASK-071_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -783,9 +783,11 @@ clear the field (set to `""`). Never return an error — workspace still loads.
 ---
 
 ### TASK-068 — Branch-name ticket extraction on every commit trigger
+**Assigned to**: engineer
 **Priority**: HIGH
 **Phase**: Phase 2
-**Depends on**: TASK-067
+**Started**: 2026-06-16
+**Depends on**: TASK-067 (merged — PR #174, commit df78a8f)
 **Branch**: `feat/TASK-068-branch-ticket-extraction`
 
 **Spec**:
@@ -844,16 +846,19 @@ Log the result:
 In `devtrack_client/internal/infra/` (wherever `TriggerEvent` is defined), add `TicketID string`.
 
 **Acceptance criteria**:
-- [ ] Migration 007 present; `go build ./...` passes; new column added on first run
-- [ ] `TriggerRecord.TicketID` populated for every commit trigger
-- [ ] `WorkspaceMonitor.ticketPattern` set from `ws.TicketPattern`
-- [ ] Branch `feat/PROJ-123-add-login` on a workspace with default pattern → `ticket_id=PROJ-123` in log
-- [ ] Branch `main` or `chore/update-readme` → `ticket_id=unlinked` in log (no blocking, no error)
-- [ ] `CommitTriggerData.TicketID` included in the JSON payload POSTed to Python server
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] Migration 007 present; `go build ./...` passes; new column added on first run
+- [x] `TriggerRecord.TicketID` populated for every commit trigger
+- [x] `WorkspaceMonitor.ticketPattern` set from `ws.TicketPattern`
+- [x] Branch `feat/PROJ-123-add-login` on a workspace with default pattern → `ticket_id=PROJ-123` in log
+- [x] Branch `main` or `chore/update-readme` → `ticket_id=unlinked` in log (no blocking, no error)
+- [x] `CommitTriggerData.TicketID` included in the JSON payload POSTed to Python server
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
 
-**Engineer status**: not started
-**Blockers**: TASK-067 must be merged to dev first
+**Engineer status**: 7/7 criteria done — last commit: 319ec53 "feat(db): Add ticket ID extraction column and methods" — 2026-06-16 20:30
+**Blockers**: none — TASK-067 merged to dev (PR #174)
+
+**COMPLETE** — ready for PM review — 2026-06-16 20:35
+**PR**: https://github.com/sraj0501/Devtrack_/pull/175
 
 ---
 

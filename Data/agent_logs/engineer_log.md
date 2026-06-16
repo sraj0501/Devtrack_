@@ -1310,3 +1310,36 @@ Pre-existing test failure (test_find_related_projects) confirmed unchanged.
 - One thing that still feels rough: Two remaining violations (webhook_server.py L359/365/374/856-858, git_sage/agent.py L31) are out of scope for this sprint. Worth a TASK-007 to clean them up.
 
 **Pre-existing test failure noted**: `test_find_related_projects` in test_project_manager.py fails before and after all changes — confirmed pre-existing, not introduced by this work.
+
+---
+
+### [2026-06-16 20:30] TASK-068 — feat(db): Add ticket ID extraction column and methods
+
+**Original message**: "feat(ticket): wire branch-name ticket extraction into commit trigger flow (TASK-068)"
+**DevTrack enhanced it to**: "feat(db): Add ticket ID extraction column and methods — Adds `ticket_id` support across the database layer for tracking extracted Jira/project tickets. This includes: 1. Schema updates to add `ticket_id` to the `triggers` table. 2. Updates to `InsertTrigger`, `GetTriggerByID`, and `GetRecentTriggers` to handle this new column. 3. Introduction of `GetLastTicketID` to retrieve the most recently seen ticket ID, supporting advanced trigger logic fallback strategies (e.g., active-ticket)."
+**Ticket auto-linked**: NO — no PM platform configured on the active workspace (`mogrov.com`, platform: none)
+**PM system updated**: YES — project_board.md TASK-068 marked COMPLETE in a follow-up commit; all 7 criteria ticked
+**Time**: ~25 minutes
+**Friction**: LOW — spec referenced exact files/line numbers from a prior verification pass, all of which matched the live code. Only deviation: enhancement title emphasized the `db` package changes and didn't mention `infra`/`trigger` package wiring, but the body and diff are accurate — accepted as-is per "reject only if nonsense" rule.
+**Notes**:
+- Migration `007-add-ticket-id-to-triggers` appended to `allMigrations` in `migrations.go` (next available slot after `006-create-pending-actions`, confirmed by reading the file first) — uses `pragma_table_info('triggers')` check before `ALTER TABLE` for idempotency.
+- Also added `ticket_id` directly to the `CREATE TABLE IF NOT EXISTS triggers` schema in `database.go`'s `initSchema()` plus the existing additive-ALTER loop, so a brand-new database has the column without waiting on `RunPendingMigrations()` — migration 007 is then a no-op safety net for upgrades of existing DBs.
+- `TriggerRecord.TicketID` added; `InsertTrigger`, `GetTriggerByID`, `GetRecentTriggers` updated to write/read it (`COALESCE(ticket_id,'')` on the SELECTs for safety against any stale pre-migration rows).
+- Added `Database.GetLastTicketID(repoPath)` ahead of TASK-069 — it's the exact query TASK-069's active-ticket fallback needs; fully implemented and tested now even though nothing calls it yet (no dead/stub code, just unused-by-this-task).
+- `WorkspaceMonitor.ticketPattern` field added; set from `ws.TicketPattern` in both `NewIntegratedMonitor()` (multi-workspace branch) and `ReloadWorkspaces()`.
+- `handleCommitForWorkspace()`: calls `ticket.NewExtractor(ws.ticketPattern)` then `.Extract(commit.Branch)`, threads result into `TriggerEvent.TicketID` (new field on the existing struct in `scheduler.go`).
+- `handleTrigger()`: commit case sets `triggerRecord.TicketID = event.TicketID` and `cd.TicketID = event.TicketID` (`trigger.CommitTriggerData`); logs `trigger commit: hash=%s ticket_id=%q branch=%q` on match or `trigger commit: hash=%s ticket_id=unlinked branch=%q` on no match — exact format from the spec since TASK-069/070 will grep these lines.
+- `CommitTriggerData.TicketID string \`json:"ticket_id,omitempty"\`` — omitempty means unlinked commits drop the field from the JSON payload entirely rather than sending `"ticket_id":""`; verified both states with `httptest` mock-server tests.
+- Tests added: `internal/db/migration_007_test.go` (idempotent column-add + uniqueness of migration IDs in `allMigrations`), `internal/db/trigger_ticket_test.go` (insert/round-trip, unlinked commit, `GetRecentTriggers` includes ticket_id, `GetLastTicketID` happy/empty/cross-repo-isolation cases), `internal/infra/ticket_extraction_test.go` (default pattern extraction, unlinked no-match, custom pattern override, `TriggerEvent.TicketID` field), and two additions to `internal/trigger/http_trigger_test.go` (ticket_id present in JSON payload when populated, omitted when empty).
+- `go build ./...`, `go vet ./...`, and `go test ./...` all pass clean from `devtrack_client/` (full suite, not just new tests).
+- Daemon was stopped at session start (`devtrack status` showed `● Stopped`); started with `devtrack start`, confirmed `● Running` before committing.
+
+## Task Summary — TASK-068: Branch-name ticket extraction on every commit trigger — 2026-06-16
+
+- Total commits: 2 (319ec53 implementation, 45a18c8 board update)
+- Acceptance criteria met: 7/7
+- Tickets auto-updated: 0 (no PM platform on active workspace — extraction wiring itself has no PM-sync side effect, that's TASK-070's job)
+- Estimated daily time saved: N/A (foundational wiring — the payoff is TASK-069/070 building on a TicketID that's now always populated or explicitly unlinked)
+- Blockers encountered: none
+- One thing that still feels rough: the AI commit-message enhancement summarized only the `db` package half of the diff; for a 3-package change spanning db/infra/trigger, a one-line title understandably can't cover everything, but it's worth knowing the enhancer weights "what changed most" by file count/lines rather than "what's most architecturally significant."
+- Ready for PM review: YES
