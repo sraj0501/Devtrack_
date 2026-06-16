@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -116,8 +117,10 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 	return monitor, nil
 }
 
-// Start begins monitoring both Git commits and time-based triggers
-func (im *IntegratedMonitor) Start() error {
+// Start begins monitoring both Git commits and time-based triggers.
+// ctx is used to signal the queue executor to stop on daemon shutdown.
+// Pass context.Background() for the standalone TestIntegrated helper.
+func (im *IntegratedMonitor) Start(ctx context.Context) error {
 	log.Println("Starting integrated monitoring system...")
 
 	// Start Git monitor(s) — one per workspace
@@ -140,6 +143,12 @@ func (im *IntegratedMonitor) Start() error {
 		return fmt.Errorf("failed to start scheduler: %w", err)
 	}
 	log.Println("✓ Scheduler started")
+
+	// Start queue executor — polls /queue/pending and auto-approves expired actions.
+	// Skips gracefully if QUEUE_POLL_INTERVAL_SECS is not set (non-daemon callers).
+	executor := NewQueueExecutor(im.database, trigger.NewHTTPTriggerClient())
+	go executor.Start(ctx)
+	log.Println("✓ Queue executor started")
 
 	return nil
 }
@@ -272,25 +281,6 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 	log.Printf("Workspace reload complete: %d active (%d kept, %d added)", len(newMonitors), kept, added)
 }
 
-// Helper functions to extract values from map[string]interface{}
-func getStringFromMap(m map[string]interface{}, key string) string {
-	if val, ok := m[key]; ok {
-		if str, ok := val.(string); ok {
-			return str
-		}
-	}
-	return ""
-}
-
-func getBoolFromMap(m map[string]interface{}, key string) bool {
-	if val, ok := m[key]; ok {
-		if b, ok := val.(bool); ok {
-			return b
-		}
-	}
-	return false
-}
-
 // handleCommitForWorkspace is called when a Git commit is detected on a specific workspace
 func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *WorkspaceMonitor) {
 	// Skip commits that we amended ourselves to prevent infinite re-enhancement loops.
@@ -394,7 +384,7 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 		}
 
 	case TriggerTypeTimer:
-		if data, ok := event.Data.(map[string]interface{}); ok {
+		if data, ok := event.Data.(map[string]any); ok {
 			triggerCount := 0
 			intervalMins := im.config.Settings.PromptInterval
 			if count, ok := data["trigger_count"].(int); ok {
@@ -458,8 +448,8 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 }
 
 // GetStatus returns the current monitoring status
-func (im *IntegratedMonitor) GetStatus() map[string]interface{} {
-	status := make(map[string]interface{})
+func (im *IntegratedMonitor) GetStatus() map[string]any {
+	status := make(map[string]any)
 
 	// Scheduler status
 	if im.scheduler != nil {
@@ -513,7 +503,7 @@ func TestIntegrated() {
 	fmt.Println()
 
 	// Start monitoring
-	if err := monitor.Start(); err != nil {
+	if err := monitor.Start(context.Background()); err != nil {
 		log.Fatalf("Failed to start monitoring: %v", err)
 	}
 
@@ -552,7 +542,7 @@ func TestIntegrated() {
 				fmt.Println("\n📊 System Status:")
 				fmt.Println("─────────────────")
 
-				if schedStats, ok := status["scheduler"].(map[string]interface{}); ok {
+				if schedStats, ok := status["scheduler"].(map[string]any); ok {
 					fmt.Printf("Scheduler:\n")
 					fmt.Printf("  Paused: %v\n", schedStats["is_paused"])
 					fmt.Printf("  Triggers: %v\n", schedStats["trigger_count"])

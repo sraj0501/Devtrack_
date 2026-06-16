@@ -121,7 +121,7 @@ func (c *HTTPTriggerClient) SendHeartbeat(payload HeartbeatPayload) error {
 
 // SendWorkSessionStart notifies Python that a work session has started.
 func (c *HTTPTriggerClient) SendWorkSessionStart(sessionID int64, ticketRef string) error {
-	return c.post("/trigger/work_session_start", map[string]interface{}{
+	return c.post("/trigger/work_session_start", map[string]any{
 		"session_id": sessionID,
 		"ticket_ref": ticketRef,
 	})
@@ -129,7 +129,7 @@ func (c *HTTPTriggerClient) SendWorkSessionStart(sessionID int64, ticketRef stri
 
 // SendWorkSessionStop notifies Python that a work session has ended.
 func (c *HTTPTriggerClient) SendWorkSessionStop(sessionID int64) error {
-	return c.post("/trigger/work_session_stop", map[string]interface{}{
+	return c.post("/trigger/work_session_stop", map[string]any{
 		"session_id": sessionID,
 	})
 }
@@ -308,7 +308,7 @@ func (c *HTTPTriggerClient) SendBoardroomChat(req BoardroomChatRequest) (*Boardr
 }
 
 // postWithResult POSTs payload as JSON and decodes the response body into dest.
-func (c *HTTPTriggerClient) postWithResult(path string, payload interface{}, dest interface{}) error {
+func (c *HTTPTriggerClient) postWithResult(path string, payload any, dest any) error {
 	if c.serverURL == "" {
 		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
 	}
@@ -359,7 +359,7 @@ func (c *HTTPTriggerClient) postWithResult(path string, payload interface{}, des
 	return nil
 }
 
-func (c *HTTPTriggerClient) post(path string, payload interface{}) error {
+func (c *HTTPTriggerClient) post(path string, payload any) error {
 	if c.serverURL == "" {
 		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
 	}
@@ -393,7 +393,7 @@ func (c *HTTPTriggerClient) post(path string, payload interface{}) error {
 }
 
 // getWithResult performs a GET and decodes the JSON response body into dest.
-func (c *HTTPTriggerClient) getWithResult(path string, dest interface{}) error {
+func (c *HTTPTriggerClient) getWithResult(path string, dest any) error {
 	if c.serverURL == "" {
 		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
 	}
@@ -429,7 +429,7 @@ func (c *HTTPTriggerClient) getWithResult(path string, dest interface{}) error {
 }
 
 // deleteWithResult performs a DELETE and decodes the JSON response body into dest.
-func (c *HTTPTriggerClient) deleteWithResult(path string, dest interface{}) error {
+func (c *HTTPTriggerClient) deleteWithResult(path string, dest any) error {
 	if c.serverURL == "" {
 		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
 	}
@@ -523,7 +523,7 @@ type textOutput struct {
 }
 
 // postText POSTs payload and returns the "output" string from the response.
-func (c *HTTPTriggerClient) postText(path string, payload interface{}) (string, error) {
+func (c *HTTPTriggerClient) postText(path string, payload any) (string, error) {
 	var r textOutput
 	if err := c.postWithResult(path, payload, &r); err != nil {
 		return "", err
@@ -544,6 +544,55 @@ func (c *HTTPTriggerClient) getText(path string) (string, error) {
 		return r.Output, fmt.Errorf("server reported failure: %s", r.Output)
 	}
 	return r.Output, nil
+}
+
+// ── Pending actions queue methods ─────────────────────────────────────────────
+
+// QueuePendingAction is the minimal representation of a pending action returned
+// by GET /queue/pending. Only the fields the queue executor needs are included.
+type QueuePendingAction struct {
+	ID         int64  `json:"id"`
+	ActionType string `json:"action_type"`
+	Target     string `json:"target"`
+	ExpiresAt  string `json:"expires_at"` // ISO 8601 string from Python
+	Status     string `json:"status"`
+}
+
+// QueuePendingResponse is the shape of the GET /queue/pending response.
+type QueuePendingResponse struct {
+	Actions []QueuePendingAction `json:"actions"`
+}
+
+// QueueExecuteRequest is the body sent to POST /queue/execute.
+type QueueExecuteRequest struct {
+	ActionID int64 `json:"action_id"`
+}
+
+// QueueExecuteResponse is the shape of the POST /queue/execute response.
+type QueueExecuteResponse struct {
+	Status string `json:"status"` // "posted" | "failed"
+	Error  string `json:"error"`  // non-empty when status == "failed"
+}
+
+// GetQueuePending fetches all pending actions from GET /queue/pending.
+// The Python server returns actions with status='pending', ordered by expires_at ASC.
+func (c *HTTPTriggerClient) GetQueuePending() (*QueuePendingResponse, error) {
+	var resp QueuePendingResponse
+	if err := c.getWithResult("/queue/pending", &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ExecuteQueueAction calls POST /queue/execute for a single action.
+// Python looks up the action by ID, calls _execute_pm_action(), and marks it
+// posted or failed. The executor mirrors that status in the Go-side SQLite row.
+func (c *HTTPTriggerClient) ExecuteQueueAction(actionID int64) (*QueueExecuteResponse, error) {
+	var resp QueueExecuteResponse
+	if err := c.postWithResult("/queue/execute", QueueExecuteRequest{ActionID: actionID}, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 // ── Report methods ────────────────────────────────────────────────────────────
@@ -590,22 +639,22 @@ func (c *HTTPTriggerClient) LearningStatus() (*LearningStatusResponse, error) {
 
 // LearningEnable calls POST /learning/enable.
 func (c *HTTPTriggerClient) LearningEnable(days int) (string, error) {
-	return c.postText("/learning/enable", map[string]interface{}{"days": days})
+	return c.postText("/learning/enable", map[string]any{"days": days})
 }
 
 // LearningSync calls POST /learning/sync.
 func (c *HTTPTriggerClient) LearningSync(full bool) (string, error) {
-	return c.postText("/learning/sync", map[string]interface{}{"full": full})
+	return c.postText("/learning/sync", map[string]any{"full": full})
 }
 
 // LearningReset calls POST /learning/reset.
 func (c *HTTPTriggerClient) LearningReset() (string, error) {
-	return c.postText("/learning/reset", map[string]interface{}{})
+	return c.postText("/learning/reset", map[string]any{})
 }
 
 // LearningSetupCron calls POST /learning/cron/setup.
 func (c *HTTPTriggerClient) LearningSetupCron() (string, error) {
-	return c.postText("/learning/cron/setup", map[string]interface{}{})
+	return c.postText("/learning/cron/setup", map[string]any{})
 }
 
 // LearningRemoveCron calls DELETE /learning/cron.
@@ -637,7 +686,7 @@ func (c *HTTPTriggerClient) LearningTestResponse(text string) (string, error) {
 
 // LearningRevoke calls POST /learning/revoke.
 func (c *HTTPTriggerClient) LearningRevoke() (string, error) {
-	return c.postText("/learning/revoke", map[string]interface{}{})
+	return c.postText("/learning/revoke", map[string]any{})
 }
 
 // ── Auth methods ──────────────────────────────────────────────────────────────
@@ -686,7 +735,7 @@ func (c *HTTPTriggerClient) AuthLogout() (string, error) {
 		Success bool   `json:"success"`
 		Message string `json:"message"`
 	}
-	if err := c.postWithResult("/auth/logout", map[string]interface{}{}, &r); err != nil {
+	if err := c.postWithResult("/auth/logout", map[string]any{}, &r); err != nil {
 		return "", err
 	}
 	return r.Message, nil
@@ -752,7 +801,7 @@ func (c *HTTPTriggerClient) LicenseAccept() (string, error) {
 		Success  bool   `json:"success"`
 		Message  string `json:"message"`
 	}
-	if err := c.postWithResult("/license/accept", map[string]interface{}{}, &r); err != nil {
+	if err := c.postWithResult("/license/accept", map[string]any{}, &r); err != nil {
 		return "", err
 	}
 	return r.Message, nil
