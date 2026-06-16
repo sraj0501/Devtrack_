@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-16 by PM (TASK-070 complete — Phase 2 closed; PR #177 open against dev)_
-_Next DevTrack task ID: TASK-071_
+_Last updated: 2026-06-16 by PM (Phase 3 broken down — TASK-071 dispatched)_
+_Next DevTrack task ID: TASK-075_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -1194,6 +1194,445 @@ in each tab's `Init()`. Forward `spinner.TickMsg` in each `Update()` so the dot 
 **PR**: https://github.com/sraj0501/Devtrack_/pull/173
 
 **COMPLETE** — ready for PM review — 2026-06-15 23:30
+
+---
+
+## ACTIVE — Phase 3: Silent commit handler
+
+**Goal**: On every commit with a resolved ticket ID: draft a ticket comment in the
+developer's voice, stage it in the pending queue; decide whether the ticket should be
+state-transitioned (e.g. To Do → In Progress on first linked commit) and stage that as
+its own queue action. Both ride on Phase 1's confidence/auto-approve mechanism — neither
+ever posts directly. Commits with no resolved ticket ID (logged `[UNLINKED]` by Phase 2)
+are skipped gracefully — no error, no queue entry, no block.
+
+**Exit criterion** (PRODUCT_BIBLE.md): Developer commits normally. Ticket is commented
+and state-transitioned within the auto-approve window. Developer did nothing except commit.
+
+**Why this order**: TASK-071 fixes a real integration gap discovered during breakdown —
+`process_commit` currently builds its `post_comment` action from the NLP task-matcher's
+own (weaker) ticket guess, not from the `ticket_id` the Go client now reliably resolves
+and sends in the commit trigger payload (Phase 2, ~100% hit rate verified). Every later
+task in this phase depends on the queue action being keyed off the trustworthy ticket ID,
+so this must land first. TASK-072 and TASK-073 are independent of each other once
+TASK-071 lands (different queue action types) and can in principle run in parallel, but
+are sequenced for one engineer. TASK-074 closes the phase with a live verification run,
+matching the pattern used for TASK-070 / Phase 2.
+
+---
+
+### TASK-071 — Wire Phase 2 ticket_id into process_commit; graceful skip when unlinked
+**Assigned to**: engineer
+**Status**: ✅ COMPLETE — ready for PM review
+**Priority**: HIGH
+**Phase**: Phase 3
+**Started**: 2026-06-16
+**Depends on**: none (Phase 2 merged — dev tip a9b6bf0)
+**Branch**: `feat/TASK-071-wire-ticket-id-into-process-commit`
+
+**Spec**:
+
+`devtrack_client` already sends a reliable `ticket_id` field in the commit-trigger JSON
+payload (`devtrack_client/internal/trigger/types.go:47` — `TicketID string \`json:"ticket_id"\``
+on `CommitTriggerData`; omitted entirely from the top-level trigger envelope when unlinked,
+per `types.go:16`). Today, `TriggerProcessor.process_commit()` in
+`devtrack_server/backend/webhook_server.py` (around line 396-522) ignores this field — it
+derives its own ticket guess from `self.nlp_parser.parse()` / `task_data.get("ticket_id")`,
+which is weaker than Phase 2's branch/message/active-ticket fallback chain. This task makes
+`process_commit` trust the Go-resolved ticket ID as the primary signal, with NLP's guess only
+as an additional descriptive enhancement (not an alternate ticket source).
+
+**Step 1 — Read `ticket_id` from the inbound payload**
+
+In `process_commit(self, data: dict)`, near the existing field reads (commit_hash, commit_msg,
+repo_path, etc. around line 410-420), add:
+
+```python
+resolved_ticket_id = data.get("ticket_id", "")  # Phase 2 — Go-resolved, empty/absent = unlinked
+```
+
+**Step 2 — Skip ticket-targeted staging gracefully when unresolved**
+
+Where the method currently builds `pm_payload` and calls `self._queue_gateway.stage(...)`
+(around line 449-496), gate the whole "PM sync" stage block on `resolved_ticket_id` being
+non-empty:
+
+```python
+with _stage("PM sync"):
+    if not resolved_ticket_id:
+        logger.info(
+            "PM sync skipped: commit %s has no resolved ticket_id (Phase 2 unlinked) — "
+            "no queue action staged", commit_hash[:12] if commit_hash else "?"
+        )
+    elif self.workspace_router:
+        ...
+```
+
+No exception, no error log, no queue row. This is the Non-Negotiable #8 "never block on
+failure" behavior applied to the new signal — unresolved tickets must not regress to the
+old NLP-guess fallback either; if Go says unlinked, Python treats it as unlinked.
+
+**Step 3 — Use `resolved_ticket_id` as the queue target, not `task_data.get("ticket_id")`**
+
+Replace the existing line:
+```python
+ticket_id  = task_data.get("ticket_id", "") or commit_hash[:12]
+```
+with:
+```python
+ticket_id = resolved_ticket_id
+```
+Remove the `commit_hash[:12]` fallback entirely — Step 2 already guarantees we only reach
+this code when `resolved_ticket_id` is non-empty, so the old "no ticket, use truncated hash
+as the target" behavior (which created bogus PM targets) is dead code and must be deleted.
+
+**Step 4 — Confidence reflects ticket-resolution source, not just NLP match**
+
+The current confidence heuristic (`0.80 if task_data.get("ticket_id") else 0.70`) was built
+around NLP's own guess. Since the ticket ID is now Go-resolved (already ~100% hit-rate
+verified in Phase 2), raise the baseline and stop conditioning confidence on whether NLP
+*also* found a ticket id — NLP's role from here on is describing the commit, not locating
+the ticket:
+
+```python
+# Phase 3: ticket_id resolution confidence now comes from Go's extraction strategy,
+# not NLP's own (weaker) guess. NLP match only affects descriptive quality, not target
+# confidence. Baseline reflects Phase 2's verified ~100% hit rate for resolved IDs.
+confidence = 0.85
+```//
+
+(Use the literal value as a constant if there is a clear existing place for tunables in this
+file; otherwise an inline literal with the comment above is acceptable — do not invent a new
+config var for this in this task, that's a follow-up if a future task needs to tune it.)
+
+**Step 5 — pm_payload still carries `ticket_id` from the resolved field**
+
+In `pm_payload` construction, set `"ticket_id": resolved_ticket_id` (was
+`task_data.get("ticket_id", "")`). Leave `"description"` / `"comment"` driven by
+`task_data.get("description", commit_msg)` unchanged — NLP/description enhancement quality
+is untouched by this task; only ticket *targeting* changes.
+
+**Step 6 — Tests**
+
+Add to `devtrack_server/backend/tests/` (new file `test_process_commit_ticket_id.py` or
+extend an existing trigger-processor test file if one already covers `process_commit`):
+
+- `data["ticket_id"] = "PROJ-123"` present → `queue_gateway.stage()` called with
+  `target="PROJ-123"`, confidence `0.85`.
+- `data` has no `"ticket_id"` key (simulates Go's `omitempty` drop) → `queue_gateway.stage()`
+  is NOT called; `process_commit` returns without raising; `actions` list does not contain
+  any `queued:post_comment:*` entry.
+- `data["ticket_id"] = ""` (explicit empty string) → same as above, treated identically to
+  absent.
+- Existing tests in whatever file currently exercises `process_commit`'s queue staging must
+  still pass — update any fixture that relied on the old `commit_hash[:12]` fallback target.
+
+Run `uv run pytest backend/tests/ -q` — no regressions beyond the one pre-existing documented
+failure (`test_ollama_host_returns_string`).
+
+**Acceptance criteria**:
+- [x] `process_commit` reads `data.get("ticket_id", "")` and treats it as the authoritative
+      ticket-resolution signal.
+- [x] When `ticket_id` is absent or empty: no `_queue_gateway.stage()` call, no exception,
+      `logger.info` line confirms the skip, method returns normally.
+- [x] When `ticket_id` is present: `_queue_gateway.stage()` is called with
+      `target=<ticket_id>` (not the old `commit_hash[:12]` fallback).
+- [x] The `commit_hash[:12]` fallback target is removed from the code path entirely.
+- [x] Confidence for the staged `post_comment` action is `0.85` (or the documented constant)
+      when ticket_id is resolved — independent of whether NLP separately found a ticket guess.
+- [x] New/updated tests pass: ticket_id present, ticket_id absent, ticket_id empty string.
+- [x] `uv run pytest backend/tests/ -q` — no regressions beyond the documented pre-existing failure.
+- [x] No `os.getenv` introduced; no hardcoded host/port/timeout literals.
+
+**Engineer status**: 8/8 criteria done — last commit: dffd32c "feat(server): Wire ticket_id into process_commit and drop fallback commit_hash" — 2026-06-16 21:52
+**PR**: https://github.com/sraj0501/Devtrack_/pull/178
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-16 21:52
+
+---
+
+### TASK-072 — Voice-aware ticket comment generation (reuse commit_message_enhancer style)
+**Priority**: HIGH
+**Phase**: Phase 3
+**Depends on**: TASK-071
+
+**Spec**:
+
+Today the `post_comment` payload's `"description"` / `"comment"` field is whatever the NLP
+parser extracted (`task_data.get("description", commit_msg)`) — effectively a cleaned-up
+restatement of the commit message, not a ticket comment written in the developer's voice.
+This task generates an actual ticket comment using the same AI-enhancement approach already
+proven for commit messages in `devtrack_server/backend/commit_message_enhancer.py`
+(`enhance_message_with_ai(original_message, diff, files, repo_path)`), redirected at ticket-
+comment phrasing instead of commit-message phrasing. Do not build a new LLM pipeline from
+scratch — adapt the existing one.
+
+**Step 1 — New function in `commit_message_enhancer.py` (or a thin new module if cleaner):
+`generate_ticket_comment`**
+
+Add a function (same file, alongside `enhance_message_with_ai`, reusing its Ollama
+client setup / prompt-building helpers — do not duplicate the LLM call plumbing):
+
+```python
+def generate_ticket_comment(commit_message: str, diff: str, files: list[str],
+                             ticket_id: str, repo_path: str = None) -> str:
+    """Generate a ticket comment in the developer's voice describing this commit's
+    contribution to the named ticket. Reuses the same Ollama enhancement pipeline as
+    commit message refinement, with a ticket-comment-shaped prompt instead of a
+    commit-message-shaped one. Falls back to a templated comment
+    (e.g. f"Commit {short_hash}: {commit_message}") if the LLM is unavailable —
+    Non-Negotiable #8, never block on failure."
+    """
+```
+
+Prompt should ask for a short, professional update suitable for posting as a ticket
+comment (1-3 sentences, references what changed and why if discernible from the diff),
+not a restatement of the raw commit message. Apply `backend.personalization.inject_style()`
+the same way other generated text in this codebase does (see CLAUDE.md "Personalization" —
+`context_type="comment"` is one of the five existing injection points; use it).
+
+**Step 2 — Wire into `process_commit`**
+
+Where `pm_payload["description"]` / `pm_payload["comment"]` are currently set from
+`task_data.get("description", commit_msg)`, call `generate_ticket_comment(...)` instead,
+passing the resolved `ticket_id` from TASK-071. Keep `task_data`'s description as a fallback
+input/context but the final posted text comes from this new function.
+
+**Step 3 — Diff and file list**
+
+`process_commit`'s inbound `data` dict may not currently carry diff/file-list — check
+what's available (likely from `git_diff_analyzer.py`, already used elsewhere per CLAUDE.md).
+If the trigger payload doesn't include a diff, call the existing diff-fetch path used by
+`commit_message_enhancer.py`'s CLI entrypoint (reads from local git via `repo_path` +
+`commit_hash`) rather than inventing a new one.
+
+**Step 4 — Tests**
+
+`devtrack_server/backend/tests/test_ticket_comment_generation.py`:
+- LLM available (mocked Ollama client) → returns a non-empty string, distinct from the raw
+  commit message, includes ticket_id context implicitly via the prompt (assert the function
+  was called with ticket_id in the prompt construction, not that the output literally
+  contains the string).
+- LLM unavailable / raises → falls back to templated comment, no exception propagates.
+- `inject_style()` is called with `context_type="comment"` (mock/spy assertion).
+
+Run `uv run pytest backend/tests/ -q` — no regressions.
+
+**Acceptance criteria**:
+- [ ] `generate_ticket_comment()` exists, reuses `commit_message_enhancer.py`'s existing
+      Ollama client/prompt plumbing (no duplicate LLM client setup).
+- [ ] Falls back to a templated comment string when the LLM call fails — never raises out
+      of `process_commit`.
+- [ ] `inject_style()` applied with `context_type="comment"`.
+- [ ] `process_commit`'s staged `post_comment` payload description/comment field is sourced
+      from `generate_ticket_comment()`, not the raw NLP description.
+- [ ] New tests pass (LLM available / unavailable / style injection called).
+- [ ] `uv run pytest backend/tests/ -q` — no regressions.
+- [ ] No `os.getenv` introduced; no hardcoded model name, host, or timeout literals
+      (reuse existing config accessors).
+
+**Engineer status**: not started
+**Blockers**: TASK-071 must merge first (payload/target wiring this depends on)
+
+---
+
+### TASK-073 — State-transition decision + per-connector status mapping, staged as its own queue action
+**Priority**: HIGH
+**Phase**: Phase 3
+**Depends on**: TASK-071
+
+**Spec**:
+
+Add a second, independent queue action type — `state_transition` — staged alongside (not
+merged into) the `post_comment` action from TASK-071/072. Each gets its own confidence score
+and its own auto-approve timeout, per PRODUCT_BIBLE.md Layer 2 ("each queued action" is a
+distinct row). The decision this task encodes: **on the first commit linked to a given
+ticket in a workspace, transition that ticket from its "not started" state to "in progress"**
+— per PRODUCT_BIBLE.md Phase 3 spec ("To Do → In Progress").
+
+**Step 1 — "First commit for this ticket" detection**
+
+Add a DB helper (Go side, since `triggers` table with `ticket_id` already lives there per
+Phase 2 — TASK-068/069):
+`devtrack_client/internal/db/database.go`:
+```go
+// CountTicketCommits returns how many prior commit triggers reference this ticket_id
+// for this repo_path, excluding the current trigger row (caller passes count BEFORE insert,
+// or pass excludeTriggerID to exclude the just-inserted row).
+func (d *Database) CountTicketCommits(repoPath, ticketID string) (int, error)
+```
+This is queried from Go and sent to Python as a new field on `CommitTriggerData`:
+`IsFirstCommitForTicket bool \`json:"is_first_commit_for_ticket"\`` — computed in
+`handleCommitForWorkspace`/`handleTrigger` (`devtrack_client/internal/infra/integrated.go`)
+right after `ticketID` is resolved (TASK-068/069 code), as `CountTicketCommits(...) == 0`
+BEFORE this trigger's own row is inserted (check ordering against existing `InsertTrigger`
+call — must count prior rows only).
+
+**Step 2 — Per-connector status mapping**
+
+PM platforms use different state vocabularies. Add a mapping table/function — Python side,
+since `_execute_pm_action` / `workspace_router.route()` already accepts a `status` string
+per platform (`devtrack_server/backend/workspace_router.py:39` parameter, consumed at
+lines 119, 149, 172 for azure/gitlab/github respectively):
+
+New small module `devtrack_server/backend/ticket_state_mapper.py`:
+```python
+# Maps DevTrack's logical "in_progress" intent to each platform's actual state vocabulary.
+# Existing auto-transition code (workspace_router.py:298,372,445) only recognizes
+# "done"/"completed"/"closed" as transition targets — that logic is unrelated/unchanged.
+# This module adds the "starting work" transition the existing code doesn't cover.
+PLATFORM_IN_PROGRESS_STATE = {
+    "azure":  "Active",       # Azure DevOps default process states: New -> Active -> Resolved -> Closed
+    "github": "in_progress",  # GitHub Issues has no native state beyond open/closed — this maps to
+                               # a label-based convention; check existing github/client.py for any
+                               # existing label-state handling before inventing a new one
+    "gitlab": "doing",        # GitLab issue board label convention; check gitlab/client.py similarly
+    "jira":   "In Progress",  # Jira default workflow
+}
+
+def in_progress_state_for(platform: str) -> str:
+    """Returns the platform-specific state string DevTrack should request when
+    transitioning a ticket to 'in progress' on first linked commit. Returns ''
+    for an unrecognized platform — caller must skip the transition, never guess."""
+```
+
+Before hardcoding the GitHub/GitLab label conventions, check `backend/github/client.py` and
+`backend/gitlab/client.py` for any existing label-as-state handling (search for `label` near
+`state`/`status`) — if a convention already exists in this codebase, reuse it instead of
+inventing a parallel one. Document whichever you land on in the module docstring.
+
+**Step 3 — Stage the `state_transition` action**
+
+In `process_commit` (after TASK-071/072 land), when `resolved_ticket_id` is non-empty AND
+`data.get("is_first_commit_for_ticket")` is true AND `in_progress_state_for(platform)`
+returns non-empty:
+
+```python
+state_action_id = self._queue_gateway.stage(
+    action_type="state_transition",
+    target=resolved_ticket_id,
+    platform=pm_platform or "auto",
+    workspace=data.get("workspace_name", ""),
+    payload={
+        "ticket_id": resolved_ticket_id,
+        "new_state": in_progress_state_for(pm_platform),
+        "commit_info": {...},  # same shape as post_comment's commit_info
+    },
+    confidence=0.90,  # first-commit-for-ticket signal is unambiguous — high confidence
+)
+```//
+Use a `confidence` constant with an inline comment, same convention as TASK-071. This is a
+*separate* `stage()` call from the `post_comment` one — two rows, two independent timeouts,
+exactly as PRODUCT_BIBLE.md Layer 2 specifies ("each queued action").
+
+**Step 4 — `_execute_pm_action` handles `action_type == "state_transition"`**
+
+`_execute_pm_action()` (`webhook_server.py:334`) currently builds its `workspace_router.route()`
+call uniformly regardless of `action_type` — it always passes `description`/`comment` from
+the payload. Branch on `action_type`:
+- `"post_comment"` → existing behavior unchanged.
+- `"state_transition"` → call `workspace_router.route()` with `status=payload["new_state"]`
+  and an empty/minimal `description` (no comment text being posted by this action — the
+  comment, if any, was already staged and executed separately by the `post_comment` action).
+  Confirm `workspace_router.route()` tolerates an empty `description` when only a status
+  change is intended; if it does not, this is the place to add that tolerance (do not change
+  `route()`'s signature, only its internal handling of an empty description with non-empty
+  status).
+
+**Step 5 — Tests**
+
+- Go: `CountTicketCommits` unit test (table-driven: 0 prior commits, N prior commits, wrong
+  repo_path excluded).
+- Go: `IsFirstCommitForTicket` populated correctly on `CommitTriggerData` JSON payload
+  (mirror the pattern of TASK-068's `TestHTTPTriggerClient_SendCommitTrigger_TicketIDInPayload`).
+- Python: `ticket_state_mapper.py` unit tests — known platform returns expected state,
+  unknown platform returns `""`.
+- Python: `process_commit` stages a `state_transition` action when first-commit + known
+  platform; does NOT stage one when not first-commit, or platform unmapped, or ticket
+  unresolved.
+- Python: `_execute_pm_action` routes `state_transition` actions to `workspace_router.route()`
+  with the mapped status and does not require/duplicate comment text.
+
+Run `go build ./...`, `go vet ./...`, `go test ./...` from `devtrack_client/`; run
+`uv run pytest backend/tests/ -q` from `devtrack_server/`.
+
+**Acceptance criteria**:
+- [ ] `Database.CountTicketCommits(repoPath, ticketID)` exists with passing table-driven tests.
+- [ ] `CommitTriggerData.IsFirstCommitForTicket` populated and present in the JSON payload
+      sent to Python (mirrors TASK-068's payload test pattern).
+- [ ] `ticket_state_mapper.py` exists; reuses any pre-existing label-as-state convention found
+      in `github/client.py` / `gitlab/client.py` rather than inventing a parallel one (or
+      documents why none existed).
+- [ ] `state_transition` is staged as an independent queue row from `post_comment` — distinct
+      `action_id`, distinct confidence, distinct expiry.
+- [ ] `state_transition` is only staged when: ticket resolved AND first commit for that ticket
+      AND platform has a known in-progress state mapping.
+- [ ] `_execute_pm_action` branches on `action_type` and routes `state_transition` actions
+      correctly without requiring comment text.
+- [ ] All new Go and Python tests pass; `go build`, `go vet`, `go test ./...`,
+      `uv run pytest backend/tests/ -q` all clean (no regressions beyond the one documented
+      pre-existing failure).
+- [ ] No hardcoded host/port/timeout values; platform state strings live in the mapping
+      module, not scattered inline.
+
+**Engineer status**: not started
+**Blockers**: TASK-071 must merge first (this task's Python staging code sits right next to it)
+
+---
+
+### TASK-074 — Phase 3 exit criterion verification + phase closure
+**Priority**: MEDIUM
+**Phase**: Phase 3
+**Depends on**: TASK-071, TASK-072, TASK-073
+
+**Spec**:
+
+Closes Phase 3 the same way TASK-070 closed Phase 2 — a live runtime verification run
+against the real pipeline, not just unit tests, plus the board/feature-tracker updates.
+
+**Steps**:
+
+1. Build the Go client (`go build -o devtrack .` from `devtrack_client/`) and confirm the
+   Python server starts cleanly in managed mode.
+2. Register a disposable scratch repo as a temporary workspace (same pattern TASK-070 used —
+   remove it afterward and restart the daemon back to original config).
+3. Make a commit on a branch whose name resolves a ticket ID via Phase 2's extractor
+   (e.g. `feat/PROJ-1-test`), against a platform that has PM credentials configured in this
+   dev environment (whichever of GitHub/Azure/GitLab/Jira is already set up — check
+   `workspaces.yaml` / `.env` for what's live; do not fabricate credentials for platforms
+   not already configured).
+4. Confirm via `devtrack queue list` (TASK-064 CLI) that two pending actions appear:
+   one `post_comment`, one `state_transition`, both targeting the same ticket ID, with
+   independent confidence scores and countdowns.
+5. Either wait for the auto-approve window to expire, or approve both manually via
+   `devtrack queue approve <id>` — confirm both actually post to the PM platform (check the
+   ticket on the live platform: comment present, state changed to the mapped in-progress
+   value).
+6. Make a second commit on the same branch — confirm only a `post_comment` action is staged
+   this time (not a second `state_transition` — first-commit detection must not re-fire).
+7. Make a commit on `main` or an unlinked branch — confirm `[UNLINKED]` log line, zero queue
+   actions staged, no error, no block (Non-Negotiable #8 spot-check).
+8. Run the full hardcoded-values scan across all files touched in TASK-071/072/073.
+9. Update `Data/agent_logs/feature_tracker.md` with the Phase 3 completion entry (mirror the
+   TASK-070 entry's structure and level of detail).
+10. Open a PR targeting `dev` with title "Phase 3: silent commit handler — exit criterion
+    verified".
+
+**Acceptance criteria**:
+- [ ] Live test: first linked commit on a fresh ticket produces both a `post_comment` and a
+      `state_transition` pending action, independently confidence-scored.
+- [ ] Both actions, once approved (auto or manual), actually post to the live PM platform —
+      verified by checking the ticket directly, not just queue status flipping to "posted".
+- [ ] Second commit on the same ticket does not re-trigger `state_transition`.
+- [ ] Unlinked commit produces zero queue actions and no error.
+- [ ] Hardcoded-values scan clean across all Phase 3 diffs.
+- [ ] `devtrack status` / `devtrack queue status` reflect the test run plausibly.
+- [ ] Feature tracker updated with Phase 3 completion entry; PR opened against `dev`.
+- [ ] Scratch workspace removed and daemon restored to original config after verification.
+
+**Engineer status**: not started
+**Blockers**: TASK-071, TASK-072, TASK-073 must all merge first
 
 ---
 
