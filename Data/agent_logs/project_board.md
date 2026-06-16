@@ -685,8 +685,6 @@ Full phase specs and acceptance criteria: `PRODUCT_BIBLE.md` § Build Phases.
 
 ---
 
-<<<<<<< Updated upstream
-=======
 ## ACTIVE — Phase 2: Opinionated ticket extractor
 
 **Goal**: On every commit, extract a ticket ID from the branch name or commit message.
@@ -765,19 +763,22 @@ In `LoadWorkspacesConfig()`, after unmarshalling: for each workspace where
 clear the field (set to `""`). Never return an error — workspace still loads.
 
 **Acceptance criteria**:
-- [ ] `WorkspaceConfig.TicketPattern string yaml:"ticket_pattern,omitempty"` field present in `config.go`
-- [ ] `devtrack_client/internal/ticket/extractor.go` exists; package compiles
-- [ ] `DefaultExtractor().Extract("feat/PROJ-123-add-login")` returns `"PROJ-123"`
-- [ ] `DefaultExtractor().Extract("fix/#42-crash")` returns `"42"` (no leading `#`)
-- [ ] `NewExtractor("(?P<ticket>DT-\\d+)").Extract("feat/DT-999")` returns `"DT-999"`
-- [ ] `NewExtractor("")` compiles to the default patterns (same as `DefaultExtractor()`)
-- [ ] Bad regex in `NewExtractor` returns a non-nil error (not a panic)
-- [ ] `LoadWorkspacesConfig()` logs a warning and clears an invalid `ticket_pattern` rather than returning an error
-- [ ] All extractor unit tests pass: `go test ./internal/ticket/...`
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] `WorkspaceConfig.TicketPattern string yaml:"ticket_pattern,omitempty"` field present in `config.go`
+- [x] `devtrack_client/internal/ticket/extractor.go` exists; package compiles
+- [x] `DefaultExtractor().Extract("feat/PROJ-123-add-login")` returns `"PROJ-123"`
+- [x] `DefaultExtractor().Extract("fix/#42-crash")` returns `"42"` (no leading `#`)
+- [x] `NewExtractor("(?P<ticket>DT-\\d+)").Extract("feat/DT-999")` returns `"DT-999"`
+- [x] `NewExtractor("")` compiles to the default patterns (same as `DefaultExtractor()`)
+- [x] Bad regex in `NewExtractor` returns a non-nil error (not a panic)
+- [x] `LoadWorkspacesConfig()` logs a warning and clears an invalid `ticket_pattern` rather than returning an error
+- [x] All extractor unit tests pass: `go test ./internal/ticket/...`
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
 
-**Engineer status**: started — Step 1: add TicketPattern to WorkspaceConfig; Step 2: create internal/ticket package; Step 3: unit tests; Step 4: validate on load
+**Engineer status**: 10/10 criteria done — last commit: 156d0b9 "feat(config): add TicketPattern to WorkspaceConfig; new internal/ticket extractor package (TASK-067)" — 2026-06-16 09:05
+**PR**: https://github.com/sraj0501/Devtrack_/pull/174
 **Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-16 09:05
 
 ---
 
@@ -1176,9 +1177,6 @@ in each tab's `Init()`. Forward `spinner.TickMsg` in each `Update()` so the dot 
 
 ---
 
----
-
->>>>>>> Stashed changes
 ## DEPRIORITISED (pivot 2026-06-10)
 
 These sat on the old v3.x "Polish & Growth" board. The pivot moved them below the

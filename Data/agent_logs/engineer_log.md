@@ -12,6 +12,34 @@
 
 ---
 
+### [2026-06-16 09:05] TASK-067 — feat(config): add TicketPattern to WorkspaceConfig; new internal/ticket extractor package
+
+**Original message**: "feat(config): add TicketPattern to WorkspaceConfig; new internal/ticket extractor package (TASK-067)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running at http://127.0.0.1:11434 — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-067 marked COMPLETE; all 10 criteria ticked; PR URL posted
+**Time**: ~20 minutes
+**Friction**: LOW — spec was precise down to exact code; only friction was a stale `dev` branch causing merge conflicts in the two log files when creating the feature branch (resolved by keeping the newer/stashed content)
+**Notes**:
+- `config.go`: added `TicketPattern string \`yaml:"ticket_pattern,omitempty"\`` to `WorkspaceConfig`; added `regexp` and `log` imports; added a validation loop in `LoadWorkspacesConfig()` after the `~` path-expansion loop that compiles each workspace's `TicketPattern` and clears it with a warning log if invalid (never fails config load).
+- New package `internal/ticket/extractor.go`: `DefaultPatterns` (Jira/ADO `[A-Z][A-Z0-9]+-\d+`, GitHub/GitLab `#(\d+)`, short fallback `[A-Z]+-\d+`), `Extractor` struct, `NewExtractor(customPattern string) (*Extractor, error)`, `Extract(s string) string` (prefers named group `ticket`, falls back to capture group 1, strips leading `#`), `DefaultExtractor()`.
+- `extractor_test.go`: 11 sub-tests covering Jira/ADO/GitHub branch extraction, lowercase no-match, custom pattern override, commit-message scan, no-ticket case, bad-regex error, and default-vs-empty-string equivalence. All pass.
+- `go build ./...` and `go vet ./...` both pass clean from `devtrack_client/`.
+- Devtrack AI commit enhancement was offline (Ollama not reachable) — fell back to original message per CLAUDE.md "AI enhancement produces nonsense → reject" path (in this case it didn't run at all, not nonsense, but same fallback behavior applied automatically by the tool).
+
+## Task Summary — TASK-067: Add ticket_pattern to WorkspaceConfig and config reader — 2026-06-16
+
+- Total commits: 1 (156d0b9)
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: 0
+- Estimated daily time saved: N/A (foundational config/library work — sets up Phase 2 ticket extraction used by TASK-068/069/070)
+- Blockers encountered: stale `dev` branch caused merge conflicts in Data/agent_logs/*.md when branching — resolved manually before any code was written
+- One thing that still feels rough: "Ollama wasn't running so AI commit-message enhancement never got exercised this session — would be good to verify the enhancement path separately"
+- Ready for PM review: YES
+- PR: https://github.com/sraj0501/Devtrack_/pull/174
+
+---
+
 ### [2026-06-15 22:45] TASK-065 — feat(telegram): Add queue parity support for inline actions
 
 **Original message**: "feat(telegram): add queue channel parity — approve/reject/edit via inline keyboard (TASK-065)"
