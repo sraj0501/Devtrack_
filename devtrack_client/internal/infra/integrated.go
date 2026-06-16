@@ -44,6 +44,9 @@ type IntegratedMonitor struct {
 	// so we don't re-process our own amendments (infinite-loop guard).
 	enhancedHashes   map[string]bool
 	enhancedHashesMu sync.Mutex
+	// queueExecutor is stored so callers can wire in a late-bound NotifyFn
+	// (e.g. the Telegram bot) after Start() has been called.
+	queueExecutor *QueueExecutor
 }
 
 // NewIntegratedMonitor creates a new integrated monitoring system.
@@ -145,12 +148,25 @@ func (im *IntegratedMonitor) Start(ctx context.Context) error {
 	log.Println("✓ Scheduler started")
 
 	// Start queue executor — polls /queue/pending and auto-approves expired actions.
-	// Skips gracefully if QUEUE_POLL_INTERVAL_SECS is not set (non-daemon callers).
+	// The executor is stored on the monitor so callers can wire in a NotifyFn after
+	// the fact (e.g. Telegram bot is started after the monitor).
 	executor := NewQueueExecutor(im.database, trigger.NewHTTPTriggerClient())
+	im.queueExecutor = executor
 	go executor.Start(ctx)
 	log.Println("✓ Queue executor started")
 
 	return nil
+}
+
+// SetQueueNotifyFn registers a callback on the queue executor that is invoked
+// once per new low-confidence pending action. Safe to call after Start().
+// The fn runs in a goroutine; it must not block the executor's poll loop.
+// Passing nil clears any previously registered callback.
+func (im *IntegratedMonitor) SetQueueNotifyFn(fn func(action db.PendingAction)) {
+	if im.queueExecutor == nil {
+		return
+	}
+	im.queueExecutor.NotifyFn = fn
 }
 
 // Scheduler returns the integrated monitor's scheduler (may be nil before Start).

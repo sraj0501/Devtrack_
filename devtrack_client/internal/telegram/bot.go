@@ -8,6 +8,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
@@ -26,6 +27,17 @@ type Hooks struct {
 	Restart       func()
 	ReloadConfig  func() error
 	RecentCommits func(n int) string
+
+	// Queue wires the pending-actions queue to the bot (TASK-065).
+	// If Queue.Database is nil, all /queue and callback operations are no-ops.
+	Queue QueueHooks
+}
+
+// pendingEdit tracks an in-flight "edit" workflow: the user tapped the Edit
+// button and we are waiting for them to reply with new content.
+type pendingEdit struct {
+	ActionID    int64 // ID of the pending_actions row to update
+	PromptMsgID int   // MessageID of the original action notification (to update after edit)
 }
 
 // Bot is the interactive Telegram bot for DevTrack.
@@ -37,6 +49,11 @@ type Bot struct {
 	hooks      Hooks
 	ctx        context.Context
 	cancel     context.CancelFunc
+
+	// pendingEdits tracks per-chat edit workflows (waiting for user reply).
+	// Key: chat ID. Guarded by pendingEditsMu.
+	pendingEdits   map[int64]pendingEdit
+	pendingEditsMu sync.Mutex
 }
 
 // New creates a Bot from environment config.
@@ -66,11 +83,12 @@ func New(hooks Hooks) *Bot {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Bot{
-		allowedIDs: allowedIDs,
-		notifyIDs:  notifyIDs,
-		hooks:      hooks,
-		ctx:        ctx,
-		cancel:     cancel,
+		allowedIDs:   allowedIDs,
+		notifyIDs:    notifyIDs,
+		hooks:        hooks,
+		ctx:          ctx,
+		cancel:       cancel,
+		pendingEdits: make(map[int64]pendingEdit),
 	}
 }
 
@@ -140,10 +158,23 @@ func (b *Bot) poll() {
 			if !ok {
 				return
 			}
-			if update.Message == nil || !update.Message.IsCommand() {
+			// Handle inline keyboard button taps.
+			if update.CallbackQuery != nil {
+				go b.handleCallbackQuery(update.CallbackQuery)
 				continue
 			}
-			go b.handleCommand(update.Message)
+			// Handle regular messages.
+			if update.Message == nil {
+				continue
+			}
+			if update.Message.IsCommand() {
+				go b.handleCommand(update.Message)
+				continue
+			}
+			// Non-command text messages may be edit replies.
+			if b.isAuthorized(update.Message.Chat.ID) {
+				go b.handlePotentialEditReply(update.Message)
+			}
 		}
 	}
 }

@@ -20,7 +20,10 @@ const helpText = `*DevTrack Bot Commands*
 /reload — Reload configuration
 
 *Activity*
-/commits — Last 5 commits`
+/commits — Last 5 commits
+
+*Queue*
+/queue — Pending actions summary + list with Approve/Reject buttons`
 
 func (b *Bot) handleCommand(msg *tgbotapi.Message) {
 	cmd := msg.Command()
@@ -127,6 +130,9 @@ func (b *Bot) handleCommand(msg *tgbotapi.Message) {
 		} else {
 			b.reply(msg, "Commits unavailable.")
 		}
+
+	case "queue":
+		b.handleQueueCommand(msg)
 
 	default:
 		b.reply(msg, "Unknown command. Use /help.")
