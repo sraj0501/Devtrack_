@@ -17,9 +17,10 @@ const (
 	tabActivity   tuiTab = 1
 	tabWorkspaces tuiTab = 2
 	tabAlerts     tuiTab = 3
+	tabQueue      tuiTab = 4
 )
 
-var tuiTabNames = []string{"Overview", "Activity", "Workspaces", "Alerts"}
+var tuiTabNames = []string{"Overview", "Activity", "Workspaces", "Alerts", "Queue"}
 
 type tuiTickMsg time.Time
 
@@ -30,6 +31,7 @@ type tuiModel struct {
 	activity   activityModel
 	workspaces workspacesModel
 	alerts     alertsModel
+	queue      queueModel
 	width      int
 	height     int
 }
@@ -41,6 +43,7 @@ func newTUIModel(db *db.Database) tuiModel {
 		activity:   newActivityModel(db),
 		workspaces: newWorkspacesModel(),
 		alerts:     newAlertsModel(db),
+		queue:      newQueueModel(db),
 	}
 }
 
@@ -50,6 +53,7 @@ func (m tuiModel) Init() tea.Cmd {
 		m.activity.load(),
 		m.workspaces.load(),
 		m.alerts.load(),
+		m.queue.load(),
 		tea.Tick(30*time.Second, func(t time.Time) tea.Msg { return tuiTickMsg(t) }),
 	)
 }
@@ -66,28 +70,58 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.activity.width, m.activity.height = msg.Width, contentH
 		m.workspaces.width, m.workspaces.height = msg.Width, contentH
 		m.alerts.width, m.alerts.height = msg.Width, contentH
+		m.queue.width, m.queue.height = msg.Width, contentH
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			return m, tea.Quit
-		case "tab":
-			m.activeTab = (m.activeTab + 1) % tuiTab(len(tuiTabNames))
-		case "1":
-			m.activeTab = tabOverview
-		case "2":
-			m.activeTab = tabActivity
-		case "3":
-			m.activeTab = tabWorkspaces
-		case "4":
-			m.activeTab = tabAlerts
-		case "r":
-			cmds = append(cmds,
-				m.overview.load(),
-				m.activity.load(),
-				m.workspaces.load(),
-				m.alerts.load(),
-			)
+		// Route navigation keys to queue tab when active.
+		if m.activeTab == tabQueue {
+			switch msg.String() {
+			case "q", "ctrl+c":
+				return m, tea.Quit
+			case "tab":
+				m.activeTab = (m.activeTab + 1) % tuiTab(len(tuiTabNames))
+			case "1":
+				m.activeTab = tabOverview
+			case "2":
+				m.activeTab = tabActivity
+			case "3":
+				m.activeTab = tabWorkspaces
+			case "4":
+				m.activeTab = tabAlerts
+			case "5":
+				m.activeTab = tabQueue
+			default:
+				var qCmd tea.Cmd
+				m.queue, qCmd = m.queue.Update(msg)
+				if qCmd != nil {
+					cmds = append(cmds, qCmd)
+				}
+			}
+		} else {
+			switch msg.String() {
+			case "q", "ctrl+c":
+				return m, tea.Quit
+			case "tab":
+				m.activeTab = (m.activeTab + 1) % tuiTab(len(tuiTabNames))
+			case "1":
+				m.activeTab = tabOverview
+			case "2":
+				m.activeTab = tabActivity
+			case "3":
+				m.activeTab = tabWorkspaces
+			case "4":
+				m.activeTab = tabAlerts
+			case "5":
+				m.activeTab = tabQueue
+			case "r":
+				cmds = append(cmds,
+					m.overview.load(),
+					m.activity.load(),
+					m.workspaces.load(),
+					m.alerts.load(),
+					m.queue.load(),
+				)
+			}
 		}
 
 	case tuiTickMsg:
@@ -95,6 +129,12 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overview.load(),
 			tea.Tick(30*time.Second, func(t time.Time) tea.Msg { return tuiTickMsg(t) }),
 		)
+		// Fan tickMsg to queue for its auto-refresh countdown.
+		var qCmd tea.Cmd
+		m.queue, qCmd = m.queue.Update(msg)
+		if qCmd != nil {
+			cmds = append(cmds, qCmd)
+		}
 
 	case overviewDataMsg:
 		m.overview, _ = m.overview.Update(msg)
@@ -104,6 +144,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.workspaces, _ = m.workspaces.Update(msg)
 	case alertsDataMsg:
 		m.alerts, _ = m.alerts.Update(msg)
+	case queueDataMsg:
+		m.queue, _ = m.queue.Update(msg)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -126,11 +168,13 @@ func (m tuiModel) View() string {
 		body = m.workspaces.View()
 	case tabAlerts:
 		body = m.alerts.View()
+	case tabQueue:
+		body = m.queue.View()
 	}
 
 	footer := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("240")).
-		Render("  Tab / 1-4: switch tab   r: refresh   q: quit")
+		Render("  Tab / 1-5: switch tab   r: refresh   q: quit")
 
 	return header + "\n" + body + "\n" + footer
 }
