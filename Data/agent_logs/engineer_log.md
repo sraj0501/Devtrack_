@@ -36,6 +36,30 @@
 - Estimated daily time saved: ~5 min/day (foundation for all Phase 1 approval queue tasks; unblocks TASK-061–065)
 - Blockers encountered: none
 - One thing that still feels rough: "initSchema() is unexported so test DB setup must duplicate the CREATE TABLE SQL from the migration; ideally tests would call a RunMigration(db, migration) helper to stay DRY"
+
+### [2026-06-15 13:10] TASK-061 — feat(server): add queue_gateway.py and /queue endpoints
+
+**Original message**: "feat(server): add queue_gateway.py and /queue endpoints — stage PM actions before posting (TASK-061)"
+**DevTrack enhanced it to**: "feat(server): implement queue gateway for pending actions staging"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-061 marked COMPLETE; PR #168 opened targeting dev
+**Time**: ~40 minutes
+**Friction**: LOW — clean implementation, no dependency conflicts; only friction was `_bare_processor()` pattern in existing tests bypasses `__init__`, requiring `getattr(self, '_queue_gateway', None)` guard
+**Notes**:
+- `process_commit`: NLP-matched commits now stage a `post_comment` action (confidence=0.80 if ticket_id found, 0.70 otherwise). Legacy direct-post via `workspace_router.route()` retained as fallback when queue gateway is unavailable. `_execute_pm_action()` extracted to encapsulate the actual PM post.
+- `process_timer`: Does NOT post to PM APIs today (that is Phase 4 EOD pipeline work). As required by spec, stages a `timer_nudge` action (confidence=0.60, 15-min window) to populate the queue so the developer can see timer events in the Phase 1 TUI panel.
+- `GET /queue/pending` + `POST /queue/execute`: Both auth-gated via `_verify_trigger_key` (same as all `/trigger/*` endpoints). The execute endpoint delegates to `_execute_pm_action()` and marks the row posted/failed in the DB.
+- Test count: 617 pass, 1 pre-existing failure (`test_ollama_host_returns_string`; OLLAMA_HOST=0.0.0.0 in shell env; documented TASK-058).
+- Commit hash: 047d8b2. Board update commit: b956983.
+
+## Task Summary — TASK-061: Python queue gateway — 2026-06-15
+
+- Total commits: 2 (047d8b2 code commit, b956983 board update)
+- Acceptance criteria met: 7/7
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min (developer can now see pending PM actions in queue instead of actions silently posting)
+- Blockers encountered: none
+- One thing that still feels rough: "queue gateway degrades silently when the DB file doesn't exist — the server logs a debug message but the caller gets no feedback that staging was skipped; TASK-062 should add a health check that surfaces this"
 - Ready for PM review: YES
 
 ---

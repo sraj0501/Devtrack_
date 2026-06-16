@@ -349,18 +349,20 @@ Add `devtrack_server/backend/tests/test_queue_gateway.py`:
 Run `uv run pytest backend/tests/ -q` — all 591 passing tests must continue to pass.
 
 **Acceptance criteria**:
-- [ ] `queue_gateway.py` exists with `QueueGateway` class and `stage`, `mark_posted`,
+- [x] `queue_gateway.py` exists with `QueueGateway` class and `stage`, `mark_posted`,
       `mark_failed` methods. No `os.getenv` calls (all config via `backend.config`).
-- [ ] `TriggerProcessor.process_commit` and `process_timer` call `queue_gateway.stage()`
+- [x] `TriggerProcessor.process_commit` and `process_timer` call `queue_gateway.stage()`
       instead of posting to PM APIs directly.
-- [ ] `_execute_pm_action()` exists on `TriggerProcessor` and encapsulates the PM post.
-- [ ] `GET /queue/pending` and `POST /queue/execute` endpoints exist and are auth-gated.
-- [ ] `test_queue_gateway.py` passes: stage, mark_posted, mark_failed unit tests + GET endpoint smoke test.
-- [ ] `uv run pytest backend/tests/ -q` — no regressions (591+ pass, known failure documented).
-- [ ] `go vet` and `go build` on the Go side unaffected (Python-only change).
+- [x] `_execute_pm_action()` exists on `TriggerProcessor` and encapsulates the PM post.
+- [x] `GET /queue/pending` and `POST /queue/execute` endpoints exist and are auth-gated.
+- [x] `test_queue_gateway.py` passes: stage, mark_posted, mark_failed unit tests + GET endpoint smoke test.
+- [x] `uv run pytest backend/tests/ -q` — no regressions (617 pass, 1 pre-existing failure: test_ollama_host_returns_string documented in TASK-058).
+- [x] `go vet` and `go build` on the Go side unaffected (Python-only change).
 
-**Engineer status**: not started
-**Blockers**: TASK-060 must be complete (table must exist before Python can insert rows)
+**Engineer status**: 7/7 criteria done — last commit: 047d8b2 "feat(server): implement queue gateway for pending actions staging" — 2026-06-15 13:10
+
+**COMPLETE** — ready for PM review — 2026-06-15 13:10
+**PR**: https://github.com/sraj0501/Devtrack_/pull/168
 
 ---
 

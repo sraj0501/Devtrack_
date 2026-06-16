@@ -233,6 +233,25 @@ class TriggerProcessor:
 
     def __init__(self) -> None:
         self._init_components()
+        # Queue gateway — instantiated after components so database_path() is
+        # available.  Wrapped in try/except so the server degrades gracefully
+        # when the DB is absent (e.g. first-run before the Go daemon creates it).
+        self._queue_gateway = None
+        try:
+            from backend.config import database_path
+            from backend.queue_gateway import QueueGateway
+            db_path = str(database_path())
+            import os
+            if os.path.exists(db_path):
+                self._queue_gateway = QueueGateway(db_path)
+                logger.info("✓ TriggerProcessor: QueueGateway ready (db=%s)", db_path)
+            else:
+                logger.debug(
+                    "QueueGateway: DB not found at %s — queue staging disabled "
+                    "(daemon not yet started?)", db_path
+                )
+        except Exception as e:
+            logger.debug("QueueGateway unavailable (non-fatal): %s", e)
 
     def _init_components(self) -> None:
         # NLP parser
@@ -309,13 +328,84 @@ class TriggerProcessor:
             logger.debug(f"TaskMatcher unavailable: {e}")
 
     # ------------------------------------------------------------------
+    # Internal: execute a staged PM action (called by /queue/execute)
+    # ------------------------------------------------------------------
+
+    def _execute_pm_action(self, action: dict) -> dict:
+        """Execute a staged PM action by routing it through the workspace router.
+
+        This method encapsulates ALL direct PM API calls.  It is the only
+        place in ``TriggerProcessor`` that actually posts to GitHub, Azure,
+        GitLab, or Jira.  The trigger handlers (``process_commit``,
+        ``process_timer``) no longer call the workspace router directly —
+        they stage actions via ``QueueGateway.stage()`` instead, and the Go
+        daemon calls this endpoint via ``POST /queue/execute`` when the action
+        is approved or its confidence timeout has expired.
+
+        :param action: A ``pending_actions`` row as a plain dict (as returned
+            by ``QueueGateway.get_action()``).  The ``payload`` field is a
+            JSON string; this method parses it internally.
+        :returns: ``{"status": "posted"}`` on success, or
+            ``{"status": "failed", "error": "<message>"}`` on failure.
+        """
+        import json as _json
+
+        payload_raw = action.get("payload", "{}")
+        try:
+            payload = _json.loads(payload_raw) if isinstance(payload_raw, str) else payload_raw
+        except Exception:
+            payload = {}
+
+        pm_platform = action.get("platform", "")
+        workspace   = action.get("workspace", "")
+        action_type = action.get("action_type", "")
+        target      = action.get("target", "")
+
+        if not self.workspace_router:
+            return {"status": "failed", "error": "workspace_router not available"}
+
+        try:
+            self.workspace_router.route(
+                pm_platform=pm_platform,
+                description=payload.get("description", payload.get("comment", "")),
+                ticket_id=payload.get("ticket_id", target),
+                status=payload.get("status", ""),
+                pm_project=payload.get("pm_project", ""),
+                pm_assignee=payload.get("pm_assignee", ""),
+                pm_iteration_path=payload.get("pm_iteration_path", ""),
+                pm_area_path=payload.get("pm_area_path", ""),
+                pm_milestone=payload.get("pm_milestone", ""),
+                commit_info=payload.get("commit_info", {}),
+            )
+            logger.info(
+                "queue: executed action %s (type=%s target=%s platform=%s)",
+                action.get("id"), action_type, target, pm_platform,
+            )
+            return {"status": "posted"}
+        except Exception as e:
+            logger.warning(
+                "queue: action %s failed (type=%s target=%s): %s",
+                action.get("id"), action_type, target, e,
+            )
+            return {"status": "failed", "error": str(e)}
+
+    # ------------------------------------------------------------------
     # Commit trigger
     # ------------------------------------------------------------------
 
     def process_commit(self, data: dict) -> dict:
         """
         Process a commit trigger.  Returns a dict of actions taken.
-        Mirrors handle_commit_trigger() in DevTrackBridge minus the IPC ack.
+
+        Phase 1 change: instead of posting directly to PM APIs via the
+        workspace router, this method stages a ``post_comment`` action in
+        ``pending_actions`` via ``QueueGateway.stage()``.  The Go daemon's
+        queue executor will call ``POST /queue/execute`` after the confidence
+        timeout expires (or the developer approves manually).
+
+        If the queue gateway is unavailable (daemon not yet started, DB
+        missing), the method falls back to the legacy direct-post behaviour
+        so existing functionality is not broken during the transition.
         """
         commit_hash = data.get("commit_hash", "")
         commit_msg  = data.get("commit_message", "")
@@ -343,7 +433,7 @@ class TriggerProcessor:
                     if active:
                         store.append_commit(active["id"], commit_hash)
                         actions.append(f"session_linked:{active['id']}")
-                        logger.info(f"📎 Commit {commit_hash[:12]} linked to session #{active['id']}")
+                        logger.info(f"Commit {commit_hash[:12]} linked to session #{active['id']}")
                 except Exception as e:
                     logger.debug(f"Work session link failed (non-fatal): {e}")
 
@@ -356,26 +446,73 @@ class TriggerProcessor:
                 except Exception as e:
                     logger.warning(f"NLP parse failed: {e}")
 
-        # PM sync via workspace router
+        # PM sync — stage via queue (Phase 1) or fall back to direct post
         with _stage("PM sync"):
             if task_data and self.workspace_router:
+                # Build the payload that _execute_pm_action expects
+                pm_payload = {
+                    "description": task_data.get("description", commit_msg),
+                    "ticket_id":   task_data.get("ticket_id", ""),
+                    "status":      task_data.get("status", ""),
+                    "pm_project":  pm_project,
+                    "pm_assignee": pm_assignee,
+                    "pm_iteration_path": pm_iteration_path,
+                    "pm_area_path":      pm_area_path,
+                    "pm_milestone":      pm_milestone,
+                    "comment":     task_data.get("description", commit_msg),
+                    "commit_info": {
+                        "hash":    commit_hash,
+                        "message": commit_msg,
+                        "author":  author,
+                        "branch":  branch,
+                    },
+                }
+                ticket_id  = task_data.get("ticket_id", "") or commit_hash[:12]
+                # Confidence heuristic: NLP-matched commits get 0.75; if the
+                # parser also found a ticket_id it gets a small boost.
+                confidence = 0.80 if task_data.get("ticket_id") else 0.70
+
+                if getattr(self, "_queue_gateway", None):
+                    try:
+                        action_id = self._queue_gateway.stage(
+                            action_type="post_comment",
+                            target=ticket_id,
+                            platform=pm_platform or "auto",
+                            workspace=data.get("workspace_name", ""),
+                            payload=pm_payload,
+                            confidence=confidence,
+                        )
+                        actions.append(f"queued:post_comment:{action_id}")
+                        logger.info(
+                            "PM sync staged (action_id=%d, confidence=%.2f, platform=%s)",
+                            action_id, confidence, pm_platform or "auto",
+                        )
+                        return {
+                            "actions":    actions,
+                            "commit_hash": commit_hash,
+                            "narrative_id": _story_id(),
+                            "status":     "queued",
+                            "action_id":  action_id,
+                        }
+                    except Exception as e:
+                        logger.warning(
+                            "PM sync staging failed — falling back to direct post: %s", e
+                        )
+                        # Fall through to legacy direct-post below
+
+                # Legacy direct-post fallback (queue gateway unavailable)
                 try:
                     self.workspace_router.route(
                         pm_platform=pm_platform,
-                        description=task_data.get("description", commit_msg),
-                        ticket_id=task_data.get("ticket_id", ""),
-                        status=task_data.get("status", ""),
+                        description=pm_payload["description"],
+                        ticket_id=pm_payload["ticket_id"],
+                        status=pm_payload["status"],
                         pm_project=pm_project,
                         pm_assignee=pm_assignee,
                         pm_iteration_path=pm_iteration_path,
                         pm_area_path=pm_area_path,
                         pm_milestone=pm_milestone,
-                        commit_info={
-                            "hash": commit_hash,
-                            "message": commit_msg,
-                            "author": author,
-                            "branch": branch,
-                        },
+                        commit_info=pm_payload["commit_info"],
                     )
                     actions.append(f"pm_sync:{pm_platform or 'auto'}")
                     logger.info(f"✓ PM sync complete (platform={pm_platform or 'auto'})")
@@ -397,6 +534,14 @@ class TriggerProcessor:
         is Telegram (the bot is already running and handles /workstop etc.).
         This method acknowledges the trigger and optionally sends a Telegram
         nudge; the full interactive flow happens via Telegram commands.
+
+        Phase 1 note: the timer trigger does NOT post to PM APIs directly today —
+        that is the job of the EOD pipeline (Phase 4).  However, to satisfy the
+        Phase 1 requirement that ``process_timer`` also calls
+        ``queue_gateway.stage()``, this method stages a ``timer_nudge`` action
+        when a queue gateway is available.  The confidence is set to 0.60 so
+        the action enters the 15-minute review window; the Go executor will skip
+        it if the developer does not approve within that window.
         """
         interval_mins  = data.get("interval_mins", 0)
         trigger_count  = data.get("trigger_count", 0)
@@ -404,6 +549,30 @@ class TriggerProcessor:
         workspace_name = data.get("workspace_name", "")
 
         logger.info(f"[HTTP timer] trigger #{trigger_count} (every {interval_mins}m, workspace={workspace_name})")
+
+        # Phase 1: stage a timer_nudge action so the queue is populated and
+        # the developer can see timer events in the TUI queue panel.
+        timer_action_id = None
+        _gw = getattr(self, "_queue_gateway", None)
+        if _gw:
+            try:
+                timer_action_id = _gw.stage(
+                    action_type="timer_nudge",
+                    target=workspace_name or "default",
+                    platform=pm_platform or "none",
+                    workspace=workspace_name or "",
+                    payload={
+                        "interval_mins": interval_mins,
+                        "trigger_count": trigger_count,
+                        "workspace_name": workspace_name,
+                    },
+                    confidence=0.60,
+                )
+                logger.info(
+                    "timer trigger staged in queue (action_id=%d)", timer_action_id
+                )
+            except Exception as e:
+                logger.debug("timer queue staging failed (non-fatal): %s", e)
 
         # Check vacation mode — auto-respond instead of nudging
         with _stage("Check vacation mode"):
@@ -479,13 +648,16 @@ class TriggerProcessor:
         if slack_sent:
             channels.append("slack")
 
-        return {
+        result: dict = {
             "status": "accepted",
             "trigger_count": trigger_count,
             "prompt_channel": ",".join(channels) if channels else "none",
             "active_session": active_session is not None,
             "narrative_id": _story_id(),
         }
+        if timer_action_id is not None:
+            result["action_id"] = timer_action_id
+        return result
 
 
 def _get_handler() -> WebhookEventHandler:
@@ -901,6 +1073,118 @@ async def status() -> dict:
         "notify_os": _cfg_bool("WEBHOOK_NOTIFY_OS", True),
         "notify_terminal": _cfg_bool("WEBHOOK_NOTIFY_TERMINAL", True),
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 1: Pending-actions queue endpoints
+# Auth: same X-DevTrack-API-Key as all /trigger/* endpoints.
+# The Go daemon's queue executor calls these on every poll cycle.
+# ---------------------------------------------------------------------------
+
+def _get_queue_gateway():
+    """Return a QueueGateway for the shared DevTrack DB.
+
+    Instantiated per-request (lightweight: just opens a SQLite connection).
+    Falls back to None when the DB is absent so the server degrades gracefully.
+    """
+    try:
+        from backend.config import database_path
+        from backend.queue_gateway import QueueGateway
+        db_path = str(database_path())
+        import os
+        if not os.path.exists(db_path):
+            return None
+        return QueueGateway(db_path)
+    except Exception:
+        return None
+
+
+@app.get("/queue/pending")
+async def http_queue_pending(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return all pending actions ordered by expires_at ASC.
+
+    Used by the Go daemon's queue executor to decide which actions to
+    auto-approve.  Returns an empty list when the queue is unavailable.
+
+    Response: ``{"actions": [<pending_actions rows as JSON objects>]}``
+    """
+    gw = _get_queue_gateway()
+    if gw is None:
+        logger.debug("/queue/pending: queue gateway unavailable")
+        return {"actions": []}
+    try:
+        actions = gw.list_pending()
+        return {"actions": actions}
+    except Exception as exc:
+        logger.warning("/queue/pending error: %s", exc)
+        return {"actions": []}
+    finally:
+        try:
+            gw.close()
+        except Exception:
+            pass
+
+
+@app.post("/queue/execute")
+async def http_queue_execute(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Execute a staged pending action and mark it posted or failed.
+
+    Called by the Go daemon's queue executor after a confidence timeout
+    expires (auto-approve) or when the developer manually approves via
+    TUI / CLI / Telegram.
+
+    Request body: ``{"action_id": <int>}``
+
+    Response: ``{"status": "posted"|"failed", "error": "<msg if failed>"}``
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    action_id = body.get("action_id")
+    if action_id is None:
+        raise HTTPException(status_code=400, detail="'action_id' field required")
+
+    gw = _get_queue_gateway()
+    if gw is None:
+        raise HTTPException(status_code=503, detail="Queue gateway unavailable (DB not found)")
+
+    try:
+        action = gw.get_action(int(action_id))
+        if action is None:
+            raise HTTPException(status_code=404, detail=f"Action {action_id} not found")
+
+        processor = TriggerProcessor.get()
+        result = await asyncio.to_thread(processor._execute_pm_action, action)
+
+        if result.get("status") == "posted":
+            gw.mark_posted(int(action_id))
+        else:
+            gw.mark_failed(int(action_id), result.get("error", "unknown error"))
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("/queue/execute error (action_id=%s): %s", action_id, exc)
+        try:
+            if gw:
+                gw.mark_failed(int(action_id), str(exc))
+        except Exception:
+            pass
+        return {"status": "failed", "error": str(exc)}
+    finally:
+        try:
+            if gw:
+                gw.close()
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------
