@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-14 by PM (Phase 1 decomposed into TASK-060 – TASK-065)_
-_Next DevTrack task ID: TASK-066_
+_Last updated: 2026-06-16 by PM (Phase 2 decomposed — TASK-067 dispatched)_
+_Next DevTrack task ID: TASK-071_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -682,6 +682,498 @@ alongside the CLI (TASK-064). Both must exist.
 | 8 | MCP server + headless integration | Claude Code queries DevTrack for developer context automatically |
 
 Full phase specs and acceptance criteria: `PRODUCT_BIBLE.md` § Build Phases.
+
+---
+
+## ACTIVE — Phase 2: Opinionated ticket extractor
+
+**Goal**: On every commit, extract a ticket ID from the branch name or commit message.
+Unmatched commits are logged as unlinked — never blocked. Developer obligation: standard
+branch naming (e.g. `feat/PROJ-123-description` or `fix/#42-bug`). Nothing else required.
+
+**Exit criterion**: >80% of commits correctly mapped to tickets without any developer
+configuration beyond standard branch naming.
+
+---
+
+### TASK-067 — Add `ticket_pattern` to WorkspaceConfig and config reader
+**Priority**: HIGH
+**Phase**: Phase 2
+**Depends on**: none
+**Branch**: `feat/TASK-067-ticket-pattern-config`
+
+**Spec**:
+
+Add first-class ticket-pattern support to `WorkspaceConfig` in
+`devtrack_client/internal/config/config.go` and wire up a Go extractor package.
+
+**Step 1 — Add `TicketPattern` field to `WorkspaceConfig`**
+
+In `devtrack_client/internal/config/config.go`, add to `WorkspaceConfig`:
+
+```go
+// TicketPattern is a Go regex used to extract ticket IDs from branch names
+// and commit messages. Supports named group "ticket" or first capture group.
+// When empty, the default multi-pattern extractor is used (covers Jira, ADO, GitHub).
+// Example: "(?P<ticket>[A-Z]+-\d+)" or "#(\d+)"
+TicketPattern string `yaml:"ticket_pattern,omitempty"`
+```
+
+**Step 2 — Create `devtrack_client/internal/ticket/extractor.go` (NEW PACKAGE)**
+
+New package `ticket` at `devtrack_client/internal/ticket/`. One file: `extractor.go`.
+
+Exports:
+- `DefaultPatterns []string` — the built-in multi-pattern list:
+  - `(?P<ticket>[A-Z][A-Z0-9]+-\d+)` — Jira-style and Azure DevOps (e.g. `PROJ-123`, `AB-7`)
+  - `(?P<ticket>#\d+)` — GitHub/GitLab issue refs (e.g. `#42`)
+  - `(?P<ticket>[A-Z]+-\d+)` — short uppercase+digits (fallback for non-standard prefixes)
+
+- `type Extractor struct` — holds compiled patterns; created once per workspace.
+
+- `func NewExtractor(customPattern string) (*Extractor, error)` — if `customPattern` is
+  non-empty, compile it as the sole pattern (return error on bad regex); otherwise compile
+  all `DefaultPatterns`. Store compiled `[]*regexp.Regexp`.
+
+- `func (e *Extractor) Extract(s string) string` — run each pattern in order against `s`;
+  return the first match. Prefer named group `"ticket"` if present; fall back to group [1].
+  Return `""` on no match. Strip leading `#` from GitHub-style refs so the stored ID is
+  always `42` not `#42`.
+
+- `func DefaultExtractor() *Extractor` — convenience constructor using `DefaultPatterns`;
+  panics only if the built-in patterns are malformed (compile-time invariant).
+
+**Step 3 — Unit tests in `devtrack_client/internal/ticket/extractor_test.go`**
+
+Test table covering:
+- Jira branch: `feat/PROJ-123-add-login` → `PROJ-123`
+- ADO branch: `fix/AB-7-button-color` → `AB-7`
+- GitHub branch: `fix/#42-crash` → `42`
+- Mixed-case branch: `feat/proj-44` → no match (default patterns require uppercase prefix)
+- Custom pattern override: `(?P<ticket>DT-\d+)` on `feat/DT-999` → `DT-999`
+- Commit message: `fix: resolve AB-12 crash` → `AB-12`
+- No ticket: `chore: update readme` → `""`
+- Multi-match: first pattern wins (returns leftmost/first result)
+
+**Step 4 — Validate workspaces.yaml on load**
+
+In `LoadWorkspacesConfig()`, after unmarshalling: for each workspace where
+`TicketPattern != ""`, call `regexp.Compile(ws.TicketPattern)`; if it fails, log a warning
+`log.Printf("workspace %q: invalid ticket_pattern %q: %v — using defaults", ...)` and
+clear the field (set to `""`). Never return an error — workspace still loads.
+
+**Acceptance criteria**:
+- [x] `WorkspaceConfig.TicketPattern string yaml:"ticket_pattern,omitempty"` field present in `config.go`
+- [x] `devtrack_client/internal/ticket/extractor.go` exists; package compiles
+- [x] `DefaultExtractor().Extract("feat/PROJ-123-add-login")` returns `"PROJ-123"`
+- [x] `DefaultExtractor().Extract("fix/#42-crash")` returns `"42"` (no leading `#`)
+- [x] `NewExtractor("(?P<ticket>DT-\\d+)").Extract("feat/DT-999")` returns `"DT-999"`
+- [x] `NewExtractor("")` compiles to the default patterns (same as `DefaultExtractor()`)
+- [x] Bad regex in `NewExtractor` returns a non-nil error (not a panic)
+- [x] `LoadWorkspacesConfig()` logs a warning and clears an invalid `ticket_pattern` rather than returning an error
+- [x] All extractor unit tests pass: `go test ./internal/ticket/...`
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+
+**Engineer status**: 10/10 criteria done — last commit: 156d0b9 "feat(config): add TicketPattern to WorkspaceConfig; new internal/ticket extractor package (TASK-067)" — 2026-06-16 09:05
+**PR**: https://github.com/sraj0501/Devtrack_/pull/174
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-16 09:05
+
+---
+
+### TASK-068 — Branch-name ticket extraction on every commit trigger
+**Priority**: HIGH
+**Phase**: Phase 2
+**Depends on**: TASK-067
+**Branch**: `feat/TASK-068-branch-ticket-extraction`
+
+**Spec**:
+
+Wire the `ticket` extractor into the commit trigger flow so that every commit attempt
+produces a ticket ID (or logs as unlinked). Store the result in SQLite.
+
+**Step 1 — Add `ticket_id` column to `triggers` table (migration)**
+
+In `devtrack_client/internal/db/migrations.go`, append a new migration entry:
+
+```
+ID:          "007-add-ticket-id-to-triggers"
+Description: "Add ticket_id column to triggers table for Phase 2 ticket extraction"
+Apply:       ALTER TABLE triggers ADD COLUMN ticket_id TEXT DEFAULT ''
+```
+
+(Use `IF NOT EXISTS` safety: `SELECT COUNT(*) FROM pragma_table_info('triggers') WHERE name='ticket_id'`; skip if already present.)
+
+**Step 2 — Add `TicketID` to `TriggerRecord` in `database.go`**
+
+Add field `TicketID string` to the `TriggerRecord` struct. Update `InsertTrigger()` to
+write `ticket_id` into the INSERT. Update any SELECT that reads trigger rows to include it.
+
+**Step 3 — Thread `ticketPattern` through `WorkspaceMonitor`**
+
+In `devtrack_client/internal/infra/integrated.go`:
+- Add `ticketPattern string` field to `WorkspaceMonitor` struct.
+- In `NewIntegratedMonitor()` (multi-workspace branch): set `ticketPattern: ws.TicketPattern`.
+- In `ReloadWorkspaces()`: set `ticketPattern: ws.TicketPattern` for new monitors.
+
+**Step 4 — Extract ticket ID in `handleCommitForWorkspace`**
+
+In `handleCommitForWorkspace()`, after the ignore-branch check and before constructing
+`TriggerEvent`:
+
+```go
+ext, _ := ticket.NewExtractor(ws.ticketPattern) // falls back to defaults on ""
+ticketID := ext.Extract(commit.Branch)
+```
+
+Pass `ticketID` into the `TriggerEvent` as a new field `TicketID string`.
+
+**Step 5 — Populate `TriggerRecord.TicketID` in `handleTrigger`**
+
+In `handleTrigger()`, in the `TriggerTypeCommit` case, set `triggerRecord.TicketID = event.TicketID`.
+Also add `TicketID` to `CommitTriggerData` (in `trigger/types.go`) and populate it:
+`cd.TicketID = event.TicketID`.
+
+Log the result:
+- Match: `log.Printf("trigger commit: hash=%s ticket_id=%q branch=%q", ...)`
+- No match: `log.Printf("trigger commit: hash=%s ticket_id=unlinked branch=%q", ...)`
+
+**Step 6 — Update `TriggerEvent` type**
+
+In `devtrack_client/internal/infra/` (wherever `TriggerEvent` is defined), add `TicketID string`.
+
+**Acceptance criteria**:
+- [ ] Migration 007 present; `go build ./...` passes; new column added on first run
+- [ ] `TriggerRecord.TicketID` populated for every commit trigger
+- [ ] `WorkspaceMonitor.ticketPattern` set from `ws.TicketPattern`
+- [ ] Branch `feat/PROJ-123-add-login` on a workspace with default pattern → `ticket_id=PROJ-123` in log
+- [ ] Branch `main` or `chore/update-readme` → `ticket_id=unlinked` in log (no blocking, no error)
+- [ ] `CommitTriggerData.TicketID` included in the JSON payload POSTed to Python server
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+
+**Engineer status**: not started
+**Blockers**: TASK-067 must be merged to dev first
+
+---
+
+### TASK-069 — Commit-message fallback + active-ticket fallback
+**Priority**: HIGH
+**Phase**: Phase 2
+**Depends on**: TASK-068
+**Branch**: `feat/TASK-069-commit-message-fallback`
+
+**Spec**:
+
+Two additional extraction strategies, applied in order when branch extraction returns `""`.
+
+**Strategy 2 — Commit message scan**
+
+In `handleCommitForWorkspace()`, after branch extraction:
+
+```go
+if ticketID == "" {
+    ticketID = ext.Extract(commit.Message)
+    if ticketID != "" {
+        log.Printf("trigger commit: hash=%s ticket_id=%q (from commit message)", commit.Hash[:8], ticketID)
+    }
+}
+```
+
+**Strategy 3 — Active-ticket fallback**
+
+If both branch and message extraction return `""`, look up the last successfully extracted
+ticket ID for this workspace from SQLite. This requires a new DB query:
+
+```sql
+SELECT ticket_id FROM triggers
+WHERE trigger_type='commit'
+  AND repo_path=?
+  AND ticket_id != ''
+  AND ticket_id != 'unlinked'
+ORDER BY timestamp DESC LIMIT 1
+```
+
+Add method `GetLastTicketID(repoPath string) (string, error)` to `Database`.
+
+In `handleCommitForWorkspace()`:
+
+```go
+if ticketID == "" && im.database != nil {
+    if last, err := im.database.GetLastTicketID(ws.gitMonitor.repoPath); err == nil && last != "" {
+        ticketID = last
+        log.Printf("trigger commit: hash=%s ticket_id=%q (active-ticket fallback)", commit.Hash[:8], ticketID)
+    }
+}
+```
+
+**Unlinked status**
+
+If all three strategies fail, `ticketID` remains `""`. In `handleTrigger`, when writing
+`TriggerRecord`, store `TicketID: ""` and log `ticket_id=unlinked`. The trigger is still
+processed normally — unlinked commits are never blocked.
+
+**Unit test additions** (in `extractor_test.go` or a new `fallback_test.go`):
+
+- `Extract("feat/no-ticket-here")` returns `""` (confirms fallback chain is needed)
+- `Extract("fix bug in login AB-99")` (commit message with ticket) returns `"AB-99"`
+- Verify `GetLastTicketID` returns the ticket from the most recent matched commit
+
+**Acceptance criteria**:
+- [ ] Commit message scan runs when branch extraction returns `""`
+- [ ] Active-ticket fallback runs when both branch and message return `""`
+- [ ] `GetLastTicketID(repoPath)` method exists on `Database`; returns `""` when no prior matched commits
+- [ ] Log line distinguishes source: `(from commit message)` or `(active-ticket fallback)` or `unlinked`
+- [ ] `CommitTriggerData.TicketID` is populated from whichever strategy succeeded
+- [ ] A commit on branch `main` with message `"chore: update docs"` and no prior commits → `ticket_id=""` in DB, `unlinked` in log
+- [ ] `go build ./...` and `go vet ./...` pass clean
+
+**Engineer status**: not started
+**Blockers**: TASK-068 must be merged to dev first
+
+---
+
+### TASK-070 — Unlinked commit logging + hit-rate metrics in `devtrack status`
+**Priority**: MEDIUM
+**Phase**: Phase 2
+**Depends on**: TASK-069
+**Branch**: `feat/TASK-070-ticket-metrics`
+
+**Spec**:
+
+Instrument the ticket extraction results so `devtrack status` shows extraction accuracy
+and Phase 2 exit criterion can be verified objectively.
+
+**Step 1 — DB query helpers on `Database`**
+
+Add to `devtrack_client/internal/db/database.go`:
+
+```go
+// TicketStats returns ticket extraction statistics for the given repo path
+// over the last N commits.  Pass repoPath="" for all workspaces.
+func (d *Database) TicketStats(repoPath string, lastN int) (total, linked, unlinked int, err error)
+```
+
+Implementation:
+```sql
+SELECT COUNT(*) AS total,
+       SUM(CASE WHEN ticket_id != '' AND ticket_id != 'unlinked' THEN 1 ELSE 0 END) AS linked
+FROM (
+  SELECT ticket_id FROM triggers
+  WHERE trigger_type='commit'
+    AND (? = '' OR repo_path = ?)
+  ORDER BY timestamp DESC LIMIT ?
+)
+```
+Derive `unlinked = total - linked`.
+
+**Step 2 — Surface in `devtrack status`**
+
+Locate the `handleStatus()` function in `devtrack_client/cli.go` (or whichever `cli_*.go`
+contains it). After the existing daemon/server status block, add a "Ticket Extraction"
+section:
+
+```
+Ticket Extraction (last 50 commits):
+  Linked:   42 / 50  (84%)
+  Unlinked:  8 / 50
+  Status:   PASS — above 80% target
+```
+
+When fewer than 5 commits exist in history, print `"Not enough data (N commits)"` instead
+of the percentage.
+
+Display `PASS` when hit rate >= 80%, `BELOW TARGET` when < 80%.
+
+**Step 3 — Log unlinked commits with `[UNLINKED]` tag**
+
+In `handleTrigger()` (integrated.go), after resolving `ticketID`:
+
+When `ticketID == ""`, log:
+`log.Printf("[UNLINKED] commit %s on branch %q workspace=%q — no ticket ID extracted", commit.Hash[:8], commit.Branch, event.WorkspaceName)`
+
+This makes unlinked commits grep-able from `devtrack logs`.
+
+**Step 4 — `devtrack logs` unlinked filter (optional stretch)**
+
+If time allows: `devtrack logs --unlinked` filters daemon.log output to lines containing
+`[UNLINKED]`. This is a stretch goal — not required for acceptance.
+
+**Acceptance criteria**:
+- [ ] `Database.TicketStats(repoPath, 50)` returns correct totals from the triggers table
+- [ ] `devtrack status` output includes the Ticket Extraction section
+- [ ] Status shows `PASS` when linked/total >= 0.80, `BELOW TARGET` otherwise
+- [ ] When fewer than 5 commits in history: shows `"Not enough data"` rather than a percentage
+- [ ] `[UNLINKED]` tag appears in daemon.log for every commit with no extracted ticket ID
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] Phase 2 exit criterion verifiable: run 10+ test commits, check `devtrack status` shows >= 80% linked
+
+**Engineer status**: not started
+**Blockers**: TASK-069 must be merged to dev first
+
+---
+
+### TASK-066 — Modern TUI redesign with Charm libraries
+**Priority**: MEDIUM
+**Phase**: Phase 2
+**Depends on**: TASK-063 (Queue tab must exist; this task rewrites all tabs including tui_queue.go)
+**Branch**: `feat/TASK-066-modern-tui`
+
+**Spec**:
+
+Replace the flat, `fmt.Sprintf`-row TUI with a structured, visually modern layout using
+lipgloss borders and adaptive colors and a bubbles viewport — positioning DevTrack as a
+developer tool with polish.
+
+The project already has `github.com/charmbracelet/bubbletea v1.3.10` and
+`github.com/charmbracelet/lipgloss v1.1.0` in `go.mod`. It does NOT have
+`github.com/charmbracelet/bubbles` — that dependency must be added via
+`go get github.com/charmbracelet/bubbles` as part of this task.
+
+**All TUI files live in `devtrack_client/internal/tui/`. The files `ticket_picker.go`
+and `pm_browser.go` are modal overlays — do NOT touch them.**
+
+**Deliverable 1 — `internal/tui/styles.go` (NEW FILE)**
+
+Shared color palette and style factory used by all tabs.
+
+- AdaptiveColor palette (each color takes a dark-terminal hex and a light-terminal hex):
+  - Accent:  `#7C3AED` / `#A78BFA`
+  - Success: `#059669` / `#34D399`
+  - Warning: `#D97706` / `#FCD34D`
+  - Danger:  `#DC2626` / `#F87171`
+  - Info:    `#0284C7` / `#38BDF8`
+  - Muted:   `#6B7280` / `#9CA3AF`
+  - Subtle:  `#E5E7EB` / `#374151`
+
+- `StyleCard` — `lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(Subtle).Padding(0, 1)`
+- `StyleBadge(color lipgloss.AdaptiveColor) lipgloss.Style` — background-colored badge with
+  white text (`#FFFFFF`), `Padding(0, 1)`, `Bold(true)`
+- `StyleHeader` — `Bold(true)`, foreground = Accent
+- `StyleMuted` — foreground = Muted
+- `StyleSection` — `Bold(true)`, `Transform(strings.ToUpper)`
+
+**Deliverable 2 — `tui.go` rewrite**
+
+- Header bar: full-width row — `  ◆ DevTrack` in Accent + mode + version right-aligned
+- Tab bar: pill-style — active tab uses Accent background + white bold text; inactive tabs
+  use Muted foreground; numbered `1-5` prefixes retained
+- Separator: `strings.Repeat("─", width)` in Subtle color
+- Content area height = terminal height − headerH − tabH − separatorH − footerH (unchanged routing)
+- Footer: `  Tab/1-5: switch   r: refresh   q: quit` in Muted style
+
+**Deliverable 3 — `tui_overview.go` rewrite**
+
+- Two side-by-side rounded-border cards using `lipgloss.JoinHorizontal(lipgloss.Top, daemonCard, serverCard)`
+- Daemon card title: "DAEMON"; body: status dot (● green if running, ● red if stopped) + uptime
+- Server card title: "AI SERVER"; body: status mark (✓ green / ✗ red), latency ms, URL, mode
+- Below both cards: a full-width metrics strip card showing `N commits  |  N timers  |  N workspaces`
+- Card widths: `(m.width - 6) / 2` each to leave room for padding and borders
+
+**Deliverable 4 — `tui_activity.go` rewrite**
+
+- Add `bubbles/viewport` for a scrollable list; wire `viewport.Init()` Cmd into `Init()`/`Update()`
+- Each row: timestamp (Muted) | type badge (colored background — commit=Info, timer=Warning) | message | short hash (Muted)
+- Scroll hint appended to footer: `↑/↓ scroll` when list exceeds content height
+
+**Deliverable 5 — `tui_alerts.go` rewrite**
+
+- Unread dot: ● in Success color; read: ○ in Muted
+- Source badge with background color: github=Accent, azure=Info, jira=Warning, other=Muted
+- Event type in small Muted style
+- Title: bold if unread, Muted if read
+- Add `bubbles/viewport` for scrollable list (same wiring as Activity)
+
+**Deliverable 6 — `tui_workspaces.go` rewrite**
+
+- Each workspace rendered as a compact rounded-border card (stacked vertically — no horizontal grid)
+- Card header: workspace name (bold) + platform badge (right-aligned)
+- Card body: path (Muted, truncated to available width) + status badge (● enabled Success / ○ disabled Danger)
+
+**Deliverable 7 — `tui_queue.go` rewrite**
+
+- Status badges use `StyleBadge()` with background colors: pending=Warning, approved=Success,
+  rejected=Danger, posted=Muted, failed=Danger+Bold
+- Confidence bar: 5-block bar colored by threshold — above 0.90: Success, 0.70–0.90: Warning,
+  below 0.70: Danger
+- Selected row: Accent background (replace plain Reverse)
+- Expiry countdown: Warning color normally; Danger when < 60 s remaining
+- Footer key hints: `[a]pprove [r]eject [e]dit` with brackets rendered in Accent
+
+**Deliverable 8 — Animations (subtle, always present)**
+
+Use `github.com/charmbracelet/bubbles/spinner` throughout. The spinner animates during loading
+states so the TUI never shows a blank/frozen screen.
+
+**Per-tab loading spinners** (affects overview, activity, alerts, workspaces, queue):
+- Each tab model gains a `spinner spinner.Model` and `loading bool` field
+- `spinner.New()` with `spinner.Dot` style; `spinner.Style` = `lipgloss.NewStyle().Foreground(AccentColor)`
+- When `loading == true`, render `spinner.View() + " Loading…"` instead of the content body
+- `loading` is set to `true` when `load()` is dispatched; set to `false` on the data message
+- Each tab's `Init()` returns `spinner.Tick` so animation starts immediately
+- Each tab's `Update()` forwards `spinner.TickMsg` to `m.spinner.Update(msg)` and appends the returned Cmd
+
+**Global refresh indicator** (in `tui.go`):
+- The root model gains a `refreshing bool` and a `spinner spinner.Model` (same Dot style)
+- When `r` is pressed (refresh), set `refreshing = true` and start the spinner Cmd
+- Footer changes from static text to: `spinner.View() + " Refreshing…   Tab/1-5: switch   q: quit"` while refreshing
+- `refreshing` clears back to `false` when the first `overviewDataMsg` arrives
+
+**Queue expiry pulse animation** (in `tui_queue.go`):
+- Items with expiry < 30 s get an animated countdown: on every `tuiTickMsg` the color alternates
+  between Danger and Warning using a boolean `pulseState bool` on queueModel
+- This creates a visible "ticking" urgency effect without any external library
+
+**Tab-switch flash** (in `tui.go`):
+- On any tab switch keypress (1-5 or Tab), fire `tea.Tick(150*time.Millisecond, flashMsg)` where
+  `flashMsg` is a new local type `tuiFlashMsg`
+- Root model gains `flash bool`; while `flash == true`, the newly active tab label renders with a
+  slightly brighter foreground (one step above Accent, e.g. `#C4B5FD`)
+- `tuiFlashMsg` sets `flash = false`, ending the effect — a 150 ms subtle brightening on switch
+
+**Wiring note**: `bubbles/spinner` `Init()` returns `spinner.Tick` — always include it in `tea.Batch`
+in each tab's `Init()`. Forward `spinner.TickMsg` in each `Update()` so the dot spins.
+
+**Acceptance criteria**:
+- [ ] `go get github.com/charmbracelet/bubbles` added; `go build ./...` passes clean
+- [ ] `go vet ./...` passes clean with no warnings
+- [ ] Header shows `◆ DevTrack` branding + mode + version on every tab
+- [ ] Active tab is visually distinct with Accent color background
+- [ ] Tab switch triggers a 150 ms flash brightening on the newly active tab
+- [ ] Overview shows two bordered side-by-side cards (Daemon, Server) + metrics strip
+- [ ] Every tab shows a spinning `bubbles/spinner` Dot while its data loads
+- [ ] Pressing `r` shows a spinner in the footer until data arrives
+- [ ] Activity and Alerts tabs use `bubbles/viewport` and scroll when content exceeds terminal height
+- [ ] Source badges in Alerts have colored backgrounds (not just colored text)
+- [ ] Queue status badges use `StyleBadge()` colored backgrounds
+- [ ] Confidence bar color reflects the threshold (Success/Warning/Danger)
+- [ ] Queue items expiring in < 30 s pulse between Danger and Warning on every tick
+- [ ] All palette colors use `lipgloss.AdaptiveColor` (light + dark terminal safe)
+- [ ] `ticket_picker.go` and `pm_browser.go` are NOT modified
+- [ ] No exported API changed — `RunTUI()` signature and `tuiTab` constants unchanged
+
+**Engineer status**: 15/15 criteria done — last commit: 21156b3 "feat(tui): modern redesign with Charm libraries, adaptive colors, animations" — 2026-06-15 23:30
+
+- [x] `go get github.com/charmbracelet/bubbles` added; `go build ./...` passes clean
+- [x] `go vet ./...` passes clean with no warnings
+- [x] Header shows `◆ DevTrack` branding + mode + version on every tab
+- [x] Active tab is visually distinct with Accent color background
+- [x] Tab switch triggers a 150 ms flash brightening on the newly active tab
+- [x] Overview shows two bordered side-by-side cards (Daemon, Server) + metrics strip
+- [x] Every tab shows a spinning `bubbles/spinner` Dot while its data loads
+- [x] Pressing `r` shows a spinner in the footer until data arrives
+- [x] Activity and Alerts tabs use `bubbles/viewport` and scroll when content exceeds terminal height
+- [x] Source badges in Alerts have colored backgrounds (not just colored text)
+- [x] Queue status badges use `StyleBadge()` colored backgrounds
+- [x] Confidence bar color reflects the threshold (Success/Warning/Danger)
+- [x] Queue items expiring in < 30 s pulse between Danger and Warning on every tick
+- [x] All palette colors use `lipgloss.AdaptiveColor` (light + dark terminal safe)
+- [x] `ticket_picker.go` and `pm_browser.go` are NOT modified
+- [x] No exported API changed — `RunTUI()` signature and `tuiTab` constants unchanged
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/173
+
+**COMPLETE** — ready for PM review — 2026-06-15 23:30
 
 ---
 
