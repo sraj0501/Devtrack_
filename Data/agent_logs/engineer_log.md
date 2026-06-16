@@ -2,6 +2,35 @@
 
 ---
 
+### [2026-06-15 14:45] TASK-064 — feat(cli): Add queue subcommand group for managing pending actions
+
+**Original message**: "feat(cli): add devtrack queue subcommand group (TASK-064)"
+**DevTrack enhanced it to**: "feat(cli): Add queue subcommand group for managing pending actions"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-064 marked COMPLETE; PR #171 opened targeting dev
+**Time**: ~35 minutes
+**Friction**: LOW — read existing patterns thoroughly before writing; build passed first time; no import cycles
+**Notes**:
+- `pending_actions.go` already existed on this branch (TASK-063 included it). Only needed to add `CountPendingActionsRecent()` method.
+- `GetQueuePending()` and `ExecuteQueueAction()` already existed on the trigger client from TASK-062.
+- Branch created from `feat/TASK-063-tui-pending-queue` HEAD (not dev) since it contains the dependency code not yet merged to dev.
+- `edit` subcommand implemented as `devtrack queue edit <id> <json>` (inline JSON arg) rather than opening `$EDITOR`. The task instructions explicitly said to accept `<json>` as an argument. The project board spec said $EDITOR — noted in board as a follow-up option.
+- `handleQueueStats()` in cli_commits.go left as dead code (Go does not error on unused methods). Could be removed in a cleanup pass.
+- isatty check: used `isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())` matching the pattern from gitsage/commit.go. Plain tab-separated output when not a TTY.
+- `CountPendingActionsRecent()` scopes posted/rejected counts to "today" via `date(acted_at) = date('now')` — consistent with what the spec intended.
+
+## Task Summary — TASK-064: CLI queue subcommand group — 2026-06-15
+
+- Total commits: 1 (559ceb2 on feat/TASK-064-cli-queue)
+- Acceptance criteria met: 7/7
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~3 min per queue interaction that would otherwise require the TUI
+- Blockers encountered: none
+- One thing that still feels rough: "edit subcommand opens inline JSON arg instead of $EDITOR — the board spec said $EDITOR but task instructions said <json> arg; documented discrepancy in board notes"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-15 14:20] TASK-063 — feat(tui): Add Pending Actions Queue tab
 
 **Original message**: "feat(tui): add Queue tab (TASK-063) — pending actions panel with confidence bars and countdown timers"
@@ -122,7 +151,6 @@
 - Estimated daily time saved: ~5 min per auto-approved action that would otherwise require manual intervention
 - Blockers encountered: none (TASK-060 dependency was satisfied by bringing the file in directly)
 - One thing that still feels rough: "TASK-060 and TASK-061 were marked COMPLETE on the board but neither was merged to dev — downstream tasks need to bring dependencies in explicitly until a merge discipline is enforced"
-- Ready for PM review: YES
 
 ---
 

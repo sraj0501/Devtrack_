@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -189,15 +190,15 @@ func renderTUITabBar(active tuiTab, width int) string {
 		Foreground(lipgloss.Color("240")).
 		Padding(0, 2)
 
-	bar := ""
+	var sb strings.Builder
 	for i, name := range tuiTabNames {
 		if tuiTab(i) == active {
-			bar += activeStyle.Render(fmt.Sprintf("%d %s", i+1, name))
+			sb.WriteString(activeStyle.Render(fmt.Sprintf("%d %s", i+1, name)))
 		} else {
-			bar += inactiveStyle.Render(fmt.Sprintf("%d %s", i+1, name))
+			sb.WriteString(inactiveStyle.Render(fmt.Sprintf("%d %s", i+1, name)))
 		}
 	}
-	return lipgloss.NewStyle().Width(width).Render(bar)
+	return lipgloss.NewStyle().Width(width).Render(sb.String())
 }
 
 // RunTUI opens the Bubble Tea TUI dashboard.
