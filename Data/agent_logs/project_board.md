@@ -258,17 +258,20 @@ Phase 1 task depends on this one existing first.
    `ConfidenceTimeout` covering the four branches).
 
 **Acceptance criteria**:
-- [ ] `go build ./...` passes clean from `devtrack_client/`.
-- [ ] `go vet ./...` passes clean.
-- [ ] Migration `006-create-pending-actions` is present in `allMigrations` and is idempotent
+- [x] `go build ./...` passes clean from `devtrack_client/`.
+- [x] `go vet ./...` passes clean.
+- [x] Migration `006-create-pending-actions` is present in `allMigrations` and is idempotent
       (`IF NOT EXISTS` on both `CREATE TABLE` and `CREATE INDEX`).
-- [ ] `PendingAction` struct + five CRUD helpers exist in `pending_actions.go`.
-- [ ] `ConfidenceTimeout` returns correct durations for all four branches (unit test passes).
-- [ ] `go test ./internal/db/...` passes with at least the `ConfidenceTimeout` test.
-- [ ] No `os.Getenv` calls in the new file; no hardcoded hosts/ports.
+- [x] `PendingAction` struct + five CRUD helpers exist in `pending_actions.go`.
+- [x] `ConfidenceTimeout` returns correct durations for all four branches (unit test passes).
+- [x] `go test ./internal/db/...` passes with at least the `ConfidenceTimeout` test.
+- [x] No `os.Getenv` calls in the new file; no hardcoded hosts/ports.
 
-**Engineer status**: not started
+**Engineer status**: 7/7 criteria done — last commit: 3d75d27 "feat(db): add pending_actions table, CRUD helpers, and ConfidenceTimeout (TASK-060)" — 2026-06-15 12:41
+**PR**: https://github.com/sraj0501/Devtrack_/pull/167
 **Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-15 12:41
 
 ---
 

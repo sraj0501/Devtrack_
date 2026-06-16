@@ -94,6 +94,37 @@ var allMigrations = []Migration{
 			return err
 		},
 	},
+	{
+		ID:          "006-create-pending-actions",
+		Description: "Create pending_actions table and indexes for the Phase 1 approval queue",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS pending_actions (
+					id          INTEGER PRIMARY KEY AUTOINCREMENT,
+					action_type TEXT    NOT NULL,
+					target      TEXT    NOT NULL,
+					platform    TEXT    NOT NULL,
+					workspace   TEXT    NOT NULL,
+					payload     TEXT    NOT NULL,
+					confidence  REAL    NOT NULL,
+					status      TEXT    NOT NULL DEFAULT 'pending',
+					expires_at  DATETIME NOT NULL,
+					created_at  DATETIME NOT NULL DEFAULT (datetime('now')),
+					acted_at    DATETIME,
+					acted_by    TEXT,
+					error       TEXT
+				);
+				CREATE INDEX IF NOT EXISTS idx_pending_actions_status ON pending_actions(status);
+				CREATE INDEX IF NOT EXISTS idx_pending_actions_expires ON pending_actions(expires_at);
+			`)
+			return err
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded
