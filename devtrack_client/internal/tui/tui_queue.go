@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -16,16 +17,22 @@ type queueDataMsg []db.PendingAction
 
 // queueModel holds the state for the Queue tab.
 type queueModel struct {
-	db       *db.Database
-	items    []db.PendingAction
-	cursor   int
-	width    int
-	height   int
-	lastLoad time.Time
+	db         *db.Database
+	items      []db.PendingAction
+	cursor     int
+	width      int
+	height     int
+	lastLoad   time.Time
+	spinner    spinner.Model
+	loading    bool
+	pulseState bool
 }
 
 func newQueueModel(database *db.Database) queueModel {
-	return queueModel{db: database}
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(ColorAccent)
+	return queueModel{db: database, spinner: sp, loading: true}
 }
 
 // load fetches the last 24 hours of pending actions from the DB in a goroutine.
@@ -45,10 +52,21 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 	case queueDataMsg:
 		m.items = []db.PendingAction(msg)
 		m.lastLoad = time.Now()
+		m.loading = false
 		// Clamp cursor to valid range after reload.
 		if m.cursor >= len(m.items) && len(m.items) > 0 {
 			m.cursor = len(m.items) - 1
 		}
+
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
+	case tuiTickMsg:
+		// Toggle pulse state on every tick for urgency animation.
+		m.pulseState = !m.pulseState
+		return m, m.load()
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -80,16 +98,30 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 			// Edit not implemented yet — placeholder for Phase 1 completion.
 			return m, nil
 		}
-
-	case tuiTickMsg:
-		return m, m.load()
 	}
 
 	return m, nil
 }
 
-// confidence_bar renders a 5-character block bar for a confidence score in [0.0, 1.0].
-// Example: 0.80 → "████░"
+// queueStatusBadge returns a background-colored status badge.
+func queueStatusBadge(status string) string {
+	switch status {
+	case "pending":
+		return StyleBadge(ColorWarning).Render(" pending ")
+	case "approved":
+		return StyleBadge(ColorSuccess).Render(" approved")
+	case "rejected":
+		return StyleBadge(ColorDanger).Render(" rejected")
+	case "posted":
+		return StyleBadge(ColorMuted).Render(" posted  ")
+	case "failed":
+		return StyleBadge(ColorDanger).Bold(true).Render(" FAILED  ")
+	default:
+		return StyleBadge(ColorMuted).Render(" " + status + " ")
+	}
+}
+
+// confidenceBar renders a 5-character block bar colored by threshold.
 func confidenceBar(c float64) string {
 	if c < 0 {
 		c = 0
@@ -97,71 +129,82 @@ func confidenceBar(c float64) string {
 	if c > 1 {
 		c = 1
 	}
+	var barColor lipgloss.TerminalColor
+	switch {
+	case c > 0.90:
+		barColor = ColorSuccess
+	case c >= 0.70:
+		barColor = ColorWarning
+	default:
+		barColor = ColorDanger
+	}
 	filled := int(c*5 + 0.5)
-	return strings.Repeat("█", filled) + strings.Repeat("░", 5-filled)
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", 5-filled)
+	return lipgloss.NewStyle().Foreground(barColor).Render(bar)
 }
 
-// expiresCountdown returns a human-readable countdown for the ExpiresAt field.
-func expiresCountdown(t time.Time) string {
+// expiresCountdown returns a human-readable countdown, with pulsing color when < 30s.
+func expiresCountdown(t time.Time, pulse bool) string {
 	remaining := time.Until(t)
 	if remaining <= 0 {
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render("expired")
+		return lipgloss.NewStyle().Foreground(ColorDanger).Render("expired")
 	}
 	remaining = remaining.Round(time.Second)
+	var text string
 	if remaining >= time.Minute {
-		return fmt.Sprintf("in %dm", int(remaining.Minutes()))
+		text = fmt.Sprintf("in %dm", int(remaining.Minutes()))
+	} else {
+		text = fmt.Sprintf("in %ds", int(remaining.Seconds()))
 	}
-	return fmt.Sprintf("in %ds", int(remaining.Seconds()))
+	if remaining < 30*time.Second {
+		color := lipgloss.TerminalColor(ColorDanger)
+		if pulse {
+			color = ColorWarning
+		}
+		return lipgloss.NewStyle().Foreground(color).Render(text)
+	}
+	return lipgloss.NewStyle().Foreground(ColorWarning).Render(text)
+}
+
+// queueFooter renders the key-hint bar with Accent-colored brackets.
+func queueFooter(lastLoad time.Time) string {
+	bracket := lipgloss.NewStyle().Foreground(ColorAccent)
+	key := func(k, label string) string {
+		return bracket.Render("[") + k + bracket.Render("]") + label
+	}
+	ts := "--:--:--"
+	if !lastLoad.IsZero() {
+		ts = lastLoad.Format("15:04:05")
+	}
+	return StyleMuted.Render(fmt.Sprintf("  %s  %s  %s   last: %s",
+		key("a", "pprove"), key("r", "eject"), key("e", "dit"), ts))
 }
 
 // View renders the Queue tab.
 func (m queueModel) View() string {
+	if m.loading {
+		return "\n  " + m.spinner.View() + " Loading queue…"
+	}
+
 	if len(m.items) == 0 {
 		footer := queueFooter(m.lastLoad)
 		return "\n  No pending actions in the last 24 hours.\n\n" + footer
 	}
 
-	// Status badge styles.
-	pendingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("226")).Bold(true)  // yellow
-	approvedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)  // green
-	rejectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))            // red
-	postedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))              // dim
-	failedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)   // bright red
-	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	cursorStyle := lipgloss.NewStyle().Reverse(true)
+	muted := StyleMuted
 
 	var sb strings.Builder
 	sb.WriteString("\n")
 
-	header := fmt.Sprintf("  %-7s  %-5s  %-10s  %-18s  %-20s\n",
+	header := fmt.Sprintf("  %-9s  %-5s  %-10s  %-18s  %-20s\n",
 		"STATUS", "CONF", "EXPIRES", "TYPE", "TARGET")
 	sb.WriteString(muted.Render(header))
 
 	for i, item := range m.items {
-		// Status badge.
-		var badge string
-		switch item.Status {
-		case "pending":
-			badge = pendingStyle.Render(fmt.Sprintf("%-8s", "pending"))
-		case "approved":
-			badge = approvedStyle.Render(fmt.Sprintf("%-8s", "approved"))
-		case "rejected":
-			badge = rejectedStyle.Render(fmt.Sprintf("%-8s", "rejected"))
-		case "posted":
-			badge = postedStyle.Render(fmt.Sprintf("%-8s", "posted"))
-		case "failed":
-			badge = failedStyle.Render(fmt.Sprintf("%-8s", "failed"))
-		default:
-			badge = fmt.Sprintf("%-8s", item.Status)
-		}
-
-		// Confidence bar.
+		badge := queueStatusBadge(item.Status)
 		bar := confidenceBar(item.Confidence)
+		expiry := expiresCountdown(item.ExpiresAt, m.pulseState)
 
-		// Expiry countdown.
-		expiry := expiresCountdown(item.ExpiresAt)
-
-		// Truncate long strings.
 		actionType := item.ActionType
 		if len(actionType) > 18 {
 			actionType = actionType[:15] + "..."
@@ -175,23 +218,15 @@ func (m queueModel) View() string {
 			badge, bar, expiry, actionType, target)
 
 		if i == m.cursor {
-			sb.WriteString(cursorStyle.Render(row) + "\n")
-		} else {
-			sb.WriteString(row + "\n")
+			row = lipgloss.NewStyle().
+				Background(ColorAccent).
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Render(row)
 		}
+		sb.WriteString(row + "\n")
 	}
 
 	sb.WriteString("\n")
 	sb.WriteString(queueFooter(m.lastLoad))
 	return sb.String()
-}
-
-func queueFooter(lastLoad time.Time) string {
-	ts := "--:--:--"
-	if !lastLoad.IsZero() {
-		ts = lastLoad.Format("15:04:05")
-	}
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
-		Render(fmt.Sprintf("  [a]pprove  [r]eject  [e]dit  (auto-refresh 10s)  last: %s", ts))
 }

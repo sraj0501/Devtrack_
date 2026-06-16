@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -26,13 +27,20 @@ type overviewDataMsg struct {
 }
 
 type overviewModel struct {
-	db     *db.Database
-	data   overviewDataMsg
-	width  int
-	height int
+	db      *db.Database
+	data    overviewDataMsg
+	spinner spinner.Model
+	loading bool
+	width   int
+	height  int
 }
 
-func newOverviewModel(db *db.Database) overviewModel { return overviewModel{db: db} }
+func newOverviewModel(database *db.Database) overviewModel {
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(ColorAccent)
+	return overviewModel{db: database, spinner: sp, loading: true}
+}
 
 func (m overviewModel) load() tea.Cmd {
 	return func() tea.Msg {
@@ -41,7 +49,7 @@ func (m overviewModel) load() tea.Cmd {
 			mode:      string(config.GetServerMode()),
 		}
 
-		// Daemon status — stat the PID file
+		// Daemon status — stat the PID file.
 		if fi, err := os.Stat(config.GetPIDFilePath()); err == nil {
 			msg.daemonRunning = true
 			uptime := time.Since(fi.ModTime())
@@ -55,18 +63,18 @@ func (m overviewModel) load() tea.Cmd {
 			}
 		}
 
-		// Server health ping
+		// Server health ping.
 		client := trigger.NewHTTPTriggerClient()
 		start := time.Now()
 		msg.serverUp = client.Ping()
 		msg.serverLatency = time.Since(start).Milliseconds()
 
-		// Trigger counts today
+		// Trigger counts today.
 		if m.db != nil {
 			msg.commits, msg.timers = m.db.CountTriggersToday()
 		}
 
-		// Workspace count
+		// Workspace count.
 		if cfg, err := config.LoadWorkspacesConfig(); err == nil && cfg != nil {
 			msg.workspaces = len(cfg.GetEnabledWorkspaces())
 		}
@@ -76,41 +84,64 @@ func (m overviewModel) load() tea.Cmd {
 }
 
 func (m overviewModel) Update(msg tea.Msg) (overviewModel, tea.Cmd) {
-	if d, ok := msg.(overviewDataMsg); ok {
-		m.data = d
+	switch msg := msg.(type) {
+	case overviewDataMsg:
+		m.data = msg
+		m.loading = false
+		return m, nil
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
 
 func (m overviewModel) View() string {
+	if m.loading {
+		return "\n  " + m.spinner.View() + " Loading…"
+	}
+
 	d := m.data
-	bold := lipgloss.NewStyle().Bold(true)
-	green := lipgloss.NewStyle().Foreground(lipgloss.Color("82"))
-	red := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
-	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	cardW := (m.width - 6) / 2
 
-	daemonStatus := red.Render("● stopped")
+	// Daemon card.
+	var daemonStatus string
 	if d.daemonRunning {
-		extra := ""
+		dot := lipgloss.NewStyle().Foreground(ColorSuccess).Render("●")
+		uptime := ""
 		if d.daemonUptime != "" {
-			extra = muted.Render(" (" + d.daemonUptime + ")")
+			uptime = StyleMuted.Render("  uptime: " + d.daemonUptime)
 		}
-		daemonStatus = green.Render("● running") + extra
+		daemonStatus = dot + lipgloss.NewStyle().Foreground(ColorSuccess).Render(" running") + uptime
+	} else {
+		daemonStatus = lipgloss.NewStyle().Foreground(ColorDanger).Render("● stopped")
 	}
+	daemonCard := StyleCard.Width(cardW).Render(
+		StyleSection.Render("DAEMON") + "\n" + daemonStatus,
+	)
 
-	serverStatus := red.Render("✗ unreachable")
+	// Server card.
+	var serverStatus string
 	if d.serverUp {
-		serverStatus = green.Render(fmt.Sprintf("✓ up (%dms)", d.serverLatency))
+		check := lipgloss.NewStyle().Foreground(ColorSuccess).Render("✓")
+		serverStatus = check + lipgloss.NewStyle().Foreground(ColorSuccess).Render(" up") +
+			StyleMuted.Render(fmt.Sprintf("  %dms  %s", d.serverLatency, d.mode)) +
+			"\n" + StyleMuted.Render(d.serverURL)
+	} else {
+		serverStatus = lipgloss.NewStyle().Foreground(ColorDanger).Render("✗ unreachable")
 	}
+	serverCard := StyleCard.Width(cardW).Render(
+		StyleSection.Render("AI SERVER") + "\n" + serverStatus,
+	)
 
-	out := "\n"
-	out += "  " + bold.Render("DevTrack Dashboard") + "\n\n"
-	out += fmt.Sprintf("  %-22s %s\n", "Go daemon:", daemonStatus)
-	out += fmt.Sprintf("  %-22s %s\n", "Python server:", serverStatus)
-	out += fmt.Sprintf("  %-22s %s\n", "Server URL:", muted.Render(d.serverURL))
-	out += fmt.Sprintf("  %-22s %s\n", "Mode:", d.mode)
-	out += "\n"
-	out += fmt.Sprintf("  %-22s %d commits, %d timers\n", "Triggers today:", d.commits, d.timers)
-	out += fmt.Sprintf("  %-22s %d active\n", "Workspaces:", d.workspaces)
-	return out
+	// Side-by-side layout.
+	cards := lipgloss.JoinHorizontal(lipgloss.Top, daemonCard, " ", serverCard)
+
+	// Metrics strip — full-width card.
+	metricsContent := fmt.Sprintf("  %d commits   │   %d timers   │   %d workspaces",
+		d.commits, d.timers, d.workspaces)
+	metricsCard := StyleCard.Width(m.width - 4).Render(metricsContent)
+
+	return "\n" + cards + "\n\n" + metricsCard
 }
