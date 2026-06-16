@@ -1403,3 +1403,63 @@ Pre-existing test failure (test_find_related_projects) confirmed unchanged.
 - Ready for PM review: YES
 - Phase 2 exit criterion status: **MET** — verified live against the real trigger pipeline, not just unit tests. `devtrack status` now shows PASS/BELOW TARGET objectively.
 - Ready for PM review: YES
+
+---
+
+### [2026-06-16 21:52] TASK-071 — feat(server): Wire ticket_id into process_commit and drop fallback commit_hash
+
+**Original message**: "fix(server): wire Phase 2 ticket_id into process_commit, drop commit_hash fallback"
+**DevTrack enhanced it to**: "feat(server): Wire ticket_id into process_commit and drop fallback commit_hash — Refactors the trigger processing logic to use `ticket_id` from the payload as the single authoritative target for queuing. This change eliminates reliance on the old, less reliable `commit_hash[:12]` fallback mechanism for determining the queue target, aligning with Phase 2 resolution strategies. This updates core testing and webhook handling logic accordingly."
+**Ticket auto-linked**: NO (no PM platform on active workspace)
+**PM system updated**: YES — project_board.md TASK-071 marked COMPLETE; all 8 criteria ticked; PR URL posted
+**Time**: ~25 minutes
+**Friction**: LOW — spec gave exact before/after code snippets and line ranges; the only judgment call was how to update the three pre-existing tests in `test_http_triggers.py` that implicitly relied on the old behavior (no `ticket_id` key in `COMMIT_PAYLOAD` meant the legacy NLP-guess path always ran) — fixed by adding an explicit `ticket_id` to the payload where the test's intent was "router gets called," and adding new tests for the now-meaningful absent/empty cases.
+**Notes**:
+- `process_commit` now reads `resolved_ticket_id = data.get("ticket_id", "")` immediately after the other field reads (Phase 2 Go-resolved signal).
+- The "PM sync" `_stage` block is now gated `if not resolved_ticket_id: <skip, log, no exception>  elif task_data and self.workspace_router: <build payload>`. This guarantees the staging/legacy-fallback code path is only ever reached with a non-empty, Go-resolved ticket ID.
+- Deleted `ticket_id = task_data.get("ticket_id", "") or commit_hash[:12]` entirely — replaced with `ticket_id = resolved_ticket_id`. The bogus truncated-hash PM target can no longer be produced.
+- Confidence is now a flat `0.85` constant (was `0.80/0.70` conditioned on NLP's own guess) — confidence reflects Phase 2's verified ~100% hit rate for the Go-resolved ID, not whether NLP separately guessed a ticket.
+- `pm_payload["ticket_id"]` now also sources from `resolved_ticket_id`.
+- Updated 3 existing tests in `test_http_triggers.py` (`test_calls_workspace_router_when_nlp_parses`, `test_skips_pm_sync_when_nlp_returns_none`, `test_skips_pm_sync_when_no_workspace_router`) to pass an explicit `ticket_id` on the payload where the test needs the router to actually run.
+- Added 5 new tests: `test_skips_pm_sync_when_ticket_id_absent`, `test_skips_pm_sync_when_ticket_id_empty_string`, `test_no_commit_hash_truncation_fallback_target` (in `TestTriggerProcessorCommit`), plus a new `TestProcessCommitQueueStaging` class with `test_stages_with_resolved_ticket_id_as_target`, `test_confidence_independent_of_nlp_ticket_guess`, `test_does_not_stage_when_ticket_id_absent` — these exercise the actual `_queue_gateway.stage()` call with a mock gateway (the pre-existing tests in this file never set `_queue_gateway`, so they only ever touched the legacy direct-post fallback).
+- `uv run pytest backend/tests/test_http_triggers.py -q` → 34/34 passed.
+- `uv run pytest backend/tests/ -q` → 623 passed, 1 pre-existing documented failure (`test_ollama_host_returns_string`), no regressions.
+- Hardcoded-values scan on diff: clean — the one `localhost:11434` hit in `webhook_server.py` is pre-existing code outside this diff (confirmed via `git diff dev -- webhook_server.py`).
+
+## Task Summary — TASK-071: Wire Phase 2 ticket_id into process_commit; graceful skip when unlinked — 2026-06-16
+
+- Total commits: 1 (dffd32c)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0 (no PM platform on active workspace)
+- Estimated daily time saved: N/A — this is a correctness fix removing a bogus PM-target bug (`commit_hash[:12]`), not a new time-saving feature; its value is unblocking every later Phase 3 task by making the queue action's target trustworthy.
+- Blockers encountered: none
+- One thing that still feels rough: three pre-existing unit tests in `test_http_triggers.py` were silently relying on the absence of a `ticket_id` field rather than asserting it explicitly — easy to miss when changing the meaning of an implicit default. Worth a convention going forward: test payload constants should make implicit-default fields explicit when a future change could shift their meaning.
+- Ready for PM review: YES
+
+---
+
+### [2026-06-16 22:18] TASK-071 (fix-up) — fix(server): PM sync must not skip when NLP task_data is None but ticket_id resolved
+
+**Original message**: "fix(server): PM sync must not skip when NLP task_data is None but ticket_id resolved"
+**DevTrack enhanced it to**: "feat(server): Ensure PM sync on ticket ID when NLP enrichment fails — The process commit action for PM synchronization should not skip simply because the Natural Language Processing (NLP) stage failed or returned no data. When a Phase-2 resolved ticket ID is available, `task_data` should be treated as optional enrichment; therefore, we now ensure that the system stages the comment even if NLP is unavailable, falling back to the raw commit message for descriptions and comments."
+**Ticket auto-linked**: NO (no PM platform on active workspace)
+**PM system updated**: YES — project_board.md TASK-071 fix-up note added under the existing COMPLETE block; commit hash + summary posted
+**Time**: ~12 minutes
+**Friction**: LOW — bug and required fix were both fully specified by the PM with exact line numbers and before/after code; the only judgment call was how to handle the one pre-existing test (`test_skips_pm_sync_when_nlp_returns_none`) that had encoded the buggy behavior as its expected assertion.
+**Notes**:
+- Root cause: the "PM sync" stage was gated `elif task_data and self.workspace_router:` — so a resolved `resolved_ticket_id` plus a live `workspace_router` were not enough to stage an action if `task_data` was `None` (NLP parser absent, e.g. spaCy not installed, or `nlp_parser.parse()` raised inside the try/except in the "NLP parse" stage immediately above). This silently broke Phase 3's "commit -> ticket commented... dev did nothing" exit criterion on any setup with degraded NLP — a state CLAUDE.md explicitly documents as supported graceful degradation, not an error case.
+- Fix: condition changed to `elif self.workspace_router:`. Inside the branch, `description = task_data.get("description", commit_msg) if task_data else commit_msg` and `status = task_data.get("status", "") if task_data else ""` — both feed `pm_payload["description"]` and `pm_payload["comment"]` (previously both called `task_data.get(...)` directly, which would have raised `AttributeError` on `None` the moment this gate was loosened, so the guard was necessary, not optional).
+- Updated `test_skips_pm_sync_when_nlp_returns_none` -> renamed `test_stages_pm_sync_when_nlp_returns_none_but_ticket_id_resolved`, now asserts `_queue_gateway.stage()` IS called with `target="GH-1"` and description falling back to the raw commit message.
+- Added two new regression tests in `TestProcessCommitQueueStaging`: `test_stages_when_task_data_is_none_but_ticket_id_resolved` (parser absent entirely) and `test_stages_when_nlp_parse_raises_but_ticket_id_resolved` (parser present but `.parse()` raises) — both assert staging happens with the commit message as the description fallback.
+- `uv run pytest backend/tests/ -q` -> 625 passed, 1 pre-existing documented failure (`test_ollama_host_returns_string`, `OLLAMA_HOST` env leak — unrelated to this change). No other regressions.
+- Pushed to the existing branch `feat/TASK-071-wire-ticket-id-into-process-commit`; PR #178 updated automatically via the push, no new PR opened.
+
+## Task Summary — TASK-071 (fix-up): PM sync NLP-degraded regression fix — 2026-06-16
+
+- Total commits: 1 (dddaf55), 2 total across the full TASK-071 lifecycle (dffd32c, dddaf55)
+- Acceptance criteria met: 8/8 (original) + bug fix verified with 2 new regression tests + 1 updated test
+- Tickets auto-updated: 0 (no PM platform on active workspace)
+- Estimated daily time saved: N/A — correctness fix; its value is making Phase 3 ticket commenting actually work on NLP-degraded setups instead of silently no-opping
+- Blockers encountered: none
+- One thing that still feels rough: `test_skips_pm_sync_when_nlp_returns_none` had quietly encoded the bug as the expected behavior — a reminder that test names asserting a negative ("skips X") deserve extra scrutiny when the surrounding logic changes, since a passing test gave false confidence the old gate was intentional.
+- Ready for PM review: YES
