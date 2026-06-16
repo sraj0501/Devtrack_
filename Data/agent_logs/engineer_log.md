@@ -2,6 +2,16 @@
 
 ---
 
+### [2026-06-16] SESSION START — Phase 2: Opinionated ticket extractor
+
+**PM dispatch**: Phase 2 decomposed into TASK-067 through TASK-070. TASK-067 dispatched.
+**Branch**: `feat/TASK-067-ticket-pattern-config`
+**Goal**: Add `TicketPattern` field to `WorkspaceConfig` + create `internal/ticket` extractor package
+**Target**: PR → `dev` (never `main`)
+**Build gate**: `go build ./...` and `go vet ./...` from `devtrack_client/`
+
+---
+
 ### [2026-06-15 22:45] TASK-065 — feat(telegram): Add queue parity support for inline actions
 
 **Original message**: "feat(telegram): add queue channel parity — approve/reject/edit via inline keyboard (TASK-065)"
@@ -56,6 +66,37 @@
 - Estimated daily time saved: ~3 min per queue interaction that would otherwise require the TUI
 - Blockers encountered: none
 - One thing that still feels rough: "edit subcommand opens inline JSON arg instead of $EDITOR — the board spec said $EDITOR but task instructions said <json> arg; documented discrepancy in board notes"
+
+---
+
+### [2026-06-15 23:30] TASK-066 — feat(tui): modern redesign with Charm libraries, adaptive colors, animations
+
+**Original message**: "feat(tui): modern redesign with Charm libraries, adaptive colors, animations"
+**DevTrack enhanced it to**: (AI provider offline — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-066 marked COMPLETE; all 15 criteria ticked
+**Time**: ~35 minutes
+**Friction**: LOW — clear spec; only blocker was bringing in db/pending_actions.go from TASK-060 branch since TASK-060 was never merged to main
+**Notes**:
+- Added `github.com/charmbracelet/bubbles v1.0.0` via `go get`; also ported `db/pending_actions.go` and migration 006 from feat/TASK-060-pending-actions-table since this branch started from main and those tasks hadn't been merged.
+- `styles.go`: adaptive palette (8 colors), `StyleCard`, `StyleBadge()` factory, `StyleHeader`, `StyleMuted`, `StyleSection`.
+- `tui.go`: added `tuiFlashMsg`, 150ms tab-switch flash, `refreshSpinner` in footer, `tabQueue` constant, spinner forwarding to all tabs.
+- `tui_overview.go`: side-by-side lipgloss cards, spinner during load, `lipgloss.JoinHorizontal`, metrics strip card.
+- `tui_activity.go`: `bubbles/viewport` for scrolling, commit/timer background badges, spinner.
+- `tui_alerts.go`: `bubbles/viewport`, source badges with Accent/Info/Warning/Muted backgrounds, unread dot in Success color.
+- `tui_workspaces.go`: per-workspace rounded-border cards with platform badge right-aligned, status badge.
+- `tui_queue.go`: `queueStatusBadge` with background colors, threshold-colored confidence bar (5 blocks), 30s pulse animation on `pulseState`, Accent background on selected row, `expiresCountdown` with pulse parameter, `queueFooter` with Accent bracket styling.
+- `go build ./...` and `go vet ./...` both pass clean.
+- `ticket_picker.go` and `pm_browser.go` untouched.
+
+## Task Summary — TASK-066: Modern TUI redesign with Charm libraries — 2026-06-15
+
+- Total commits: 1
+- Acceptance criteria met: 15/15
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~3 min per session (visual polish reduces cognitive load; spinner prevents "frozen?" confusion)
+- Blockers encountered: dependency on TASK-060 db work not in main; resolved by cherry-picking pending_actions.go + migration 006 from the feature branch
+- One thing that still feels rough: "The header hardcodes 'managed v3.0.10' — should read from config.GetServerMode() and config.GetDevTrackVersion() but those would need an import into tui.go that we kept simple for now"
 - Ready for PM review: YES
 
 ---

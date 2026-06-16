@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -51,6 +53,11 @@ type WorkspaceConfig struct {
 	// Use when one repo is tracked in two platforms (e.g. GitHub for code,
 	// Azure DevOps for PM) to avoid showing duplicate tickets.
 	SkipIssues bool `yaml:"skip_issues"`
+	// TicketPattern is a Go regex used to extract ticket IDs from branch names
+	// and commit messages. Supports named group "ticket" or first capture group.
+	// When empty, the default multi-pattern extractor is used (covers Jira, ADO, GitHub).
+	// Example: "(?P<ticket>[A-Z]+-\\d+)" or "#(\\d+)"
+	TicketPattern string `yaml:"ticket_pattern,omitempty"`
 }
 
 // WorkspacesConfig is the top-level structure of workspaces.yaml
@@ -82,6 +89,18 @@ func LoadWorkspacesConfig() (*WorkspacesConfig, error) {
 	// Expand ~ in paths
 	for i := range cfg.Workspaces {
 		cfg.Workspaces[i].Path = expandWorkspacePath(cfg.Workspaces[i].Path)
+	}
+
+	// Validate ticket_pattern regexes — clear invalid ones with a warning
+	for i := range cfg.Workspaces {
+		if cfg.Workspaces[i].TicketPattern == "" {
+			continue
+		}
+		if _, err := regexp.Compile(cfg.Workspaces[i].TicketPattern); err != nil {
+			log.Printf("workspace %q: invalid ticket_pattern %q: %v — using defaults",
+				cfg.Workspaces[i].Name, cfg.Workspaces[i].TicketPattern, err)
+			cfg.Workspaces[i].TicketPattern = ""
+		}
 	}
 
 	return cfg, nil
