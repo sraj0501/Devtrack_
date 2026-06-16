@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-16 by PM (TASK-069 dispatched — dev tip 219768c)_
+_Last updated: 2026-06-16 by PM (TASK-070 dispatched — dev tip 662d9f4)_
 _Next DevTrack task ID: TASK-071_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -944,9 +944,11 @@ processed normally — unlinked commits are never blocked.
 ---
 
 ### TASK-070 — Unlinked commit logging + hit-rate metrics in `devtrack status`
+**Assigned to**: engineer
 **Priority**: MEDIUM
 **Phase**: Phase 2
-**Depends on**: TASK-069
+**Started**: 2026-06-16
+**Depends on**: TASK-069 (MERGED — PR #176, dev tip 662d9f4)
 **Branch**: `feat/TASK-070-ticket-metrics`
 
 **Spec**:
@@ -1010,16 +1012,21 @@ If time allows: `devtrack logs --unlinked` filters daemon.log output to lines co
 `[UNLINKED]`. This is a stretch goal — not required for acceptance.
 
 **Acceptance criteria**:
-- [ ] `Database.TicketStats(repoPath, 50)` returns correct totals from the triggers table
-- [ ] `devtrack status` output includes the Ticket Extraction section
-- [ ] Status shows `PASS` when linked/total >= 0.80, `BELOW TARGET` otherwise
-- [ ] When fewer than 5 commits in history: shows `"Not enough data"` rather than a percentage
-- [ ] `[UNLINKED]` tag appears in daemon.log for every commit with no extracted ticket ID
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] Phase 2 exit criterion verifiable: run 10+ test commits, check `devtrack status` shows >= 80% linked
+- [x] `Database.TicketStats(repoPath, 50)` returns correct totals from the triggers table
+- [x] `devtrack status` output includes the Ticket Extraction section
+- [x] Status shows `PASS` when linked/total >= 0.80, `BELOW TARGET` otherwise
+- [x] When fewer than 5 commits in history: shows `"Not enough data"` rather than a percentage
+- [x] `[UNLINKED]` tag appears in daemon.log for every commit with no extracted ticket ID
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] Phase 2 exit criterion verifiable: run 10+ test commits, check `devtrack status` shows >= 80% linked
 
-**Engineer status**: not started
-**Blockers**: TASK-069 must be merged to dev first
+**Engineer status**: 7/7 criteria done — last commit: 0b8608d "feat(infra): Add ticket extraction hit-rate metric to status view" — 2026-06-16 21:17
+**PR**: https://github.com/sraj0501/Devtrack_/pull/177
+**Blockers**: none
+
+**Runtime verification (Phase 2 exit criterion)**: Ran 10 real commits through the live daemon (fsnotify -> handleCommitForWorkspace -> handleTrigger -> SQLite -> devtrack status) in a scratch repo registered as a temporary workspace. Result: `TicketStats(repoPath, 50)` = 10/10 linked = 100% for that repo (5 via branch-name strategy, 1 via commit-message strategy, 4 via active-ticket fallback from TASK-069). Confirms Phase 2 exit criterion (>=80%) is met and is objectively verifiable via `devtrack status`. Scratch workspace removed and daemon restarted back to original config after verification.
+
+**COMPLETE** — ready for PM review — 2026-06-16 21:25
 
 ---
 
