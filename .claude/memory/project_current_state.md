@@ -1,6 +1,6 @@
 ---
 name: Project current state
-description: Post-pivot (2026-06-10) — direction now PRODUCT_BIBLE.md Phase 0→8; v3.0.10 shipped; platform quirks
+description: Post-pivot (2026-06-10) — direction now PRODUCT_BIBLE.md Phase 0→8; Phase 0-2 complete, Phase 3 active; v3.0.10 shipped; platform quirks
 type: project
 ---
 
@@ -16,7 +16,7 @@ type: project
 
 **Recently shipped (v3.0 line):** `motor` optional dep; `upgrade.go` → GitHub API + semver guard; Telegram bot migrated to Go (`internal/telegram/`); boardroom + `devtrack plan` live; Windows CLI parity + autostart (Task Scheduler); automated GitHub Actions release pipeline; stale-health fix (migration 005 prunes legacy Redis/MongoDB rows); v3.0.9 `skip_issues` workspace field for dual-platform (GitHub+ADO) duplicate-ticket fix; v3.0.10 significant Windows fixes (isatty via mattn/go-isatty, editor-commit BeforeCommit/AfterCommit hooks, background auto-enhance via `DEVTRACK_AUTO_ENHANCE=true`).
 
-**Build arc — driven by PRODUCT_BIBLE.md (pivot 2026-06-10):** Phase 0 (silent daemon) and Phase 1 (pending actions queue) COMPLETE. Phase 2 (opinionated ticket extractor, branch→ticket) ACTIVE. Then Phase 3 silent commit handler → Phase 4 EOD pipeline → Phases 5-8 voice training, dialectic self-improvement, TUI-as-visibility, PR-review puppet master. See `Data/agent_logs/project_board.md`.
+**Build arc — driven by PRODUCT_BIBLE.md (pivot 2026-06-10):** Phase 0 (silent daemon), Phase 1 (pending actions queue), Phase 2 (ticket extractor) COMPLETE. Phase 3 (silent commit handler) ACTIVE. Then Phase 4 EOD pipeline → Phases 5-8 voice training, dialectic self-improvement, TUI-as-visibility, PR-review puppet master. See `Data/agent_logs/project_board.md`.
 
 **DEPRIORITISED (post-pivot):** PG-5 (`stats_client.py` → `/internal/stats`), Redis R-1→R-6, CLI aesthetics/theming, savings counter, how-to videos, boardroom/plan as primary features. Not cancelled — below the phases.
 
