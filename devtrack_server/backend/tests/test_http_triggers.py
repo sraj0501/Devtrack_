@@ -311,7 +311,10 @@ class TestTriggerProcessorCommit:
         mock_router = MagicMock()
         proc.workspace_router = mock_router
 
-        proc.process_commit(COMMIT_PAYLOAD)
+        # Phase 3: the queue target now comes from the Go-resolved ticket_id
+        # field on the payload, not from the NLP parser's own guess.
+        payload = {**COMMIT_PAYLOAD, "ticket_id": "GH-1"}
+        proc.process_commit(payload)
 
         mock_router.route.assert_called_once()
 
@@ -323,7 +326,8 @@ class TestTriggerProcessorCommit:
         mock_router = MagicMock()
         proc.workspace_router = mock_router
 
-        result = proc.process_commit(COMMIT_PAYLOAD)
+        payload = {**COMMIT_PAYLOAD, "ticket_id": "GH-1"}
+        result = proc.process_commit(payload)
 
         mock_router.route.assert_not_called()
         assert not any("pm_sync" in a for a in result["actions"])
@@ -335,8 +339,125 @@ class TestTriggerProcessorCommit:
         proc.nlp_parser = mock_parser
         # workspace_router stays None
 
-        result = proc.process_commit(COMMIT_PAYLOAD)
+        payload = {**COMMIT_PAYLOAD, "ticket_id": "X-1"}
+        result = proc.process_commit(payload)
         assert not any("pm_sync" in a for a in result["actions"])
+
+    def test_skips_pm_sync_when_ticket_id_absent(self):
+        """Phase 3: no 'ticket_id' key at all (Go's omitempty dropped it) means
+        unlinked — no queue action staged, no exception, method returns normally."""
+        proc = _bare_processor()
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = {
+            "description": "fix login",
+            "ticket_id": "GH-1",  # NLP's own guess must NOT be used as a fallback target
+            "status": "done",
+        }
+        proc.nlp_parser = mock_parser
+        mock_router = MagicMock()
+        proc.workspace_router = mock_router
+
+        result = proc.process_commit(COMMIT_PAYLOAD)  # no "ticket_id" key
+
+        mock_router.route.assert_not_called()
+        assert not any("pm_sync" in a for a in result["actions"])
+        assert not any("queued:post_comment" in a for a in result["actions"])
+
+    def test_skips_pm_sync_when_ticket_id_empty_string(self):
+        """Phase 3: explicit empty string ticket_id is treated identically to absent."""
+        proc = _bare_processor()
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = {
+            "description": "fix login",
+            "ticket_id": "GH-1",
+            "status": "done",
+        }
+        proc.nlp_parser = mock_parser
+        mock_router = MagicMock()
+        proc.workspace_router = mock_router
+
+        payload = {**COMMIT_PAYLOAD, "ticket_id": ""}
+        result = proc.process_commit(payload)
+
+        mock_router.route.assert_not_called()
+        assert not any("pm_sync" in a for a in result["actions"])
+        assert not any("queued:post_comment" in a for a in result["actions"])
+
+    def test_no_commit_hash_truncation_fallback_target(self):
+        """Phase 3: the old commit_hash[:12] fallback target is dead — confirm a
+        commit with no ticket_id never reaches workspace_router with a hash-based
+        target, even when commit_hash is present and NLP found nothing useful."""
+        proc = _bare_processor()
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = {"description": "misc work", "status": ""}
+        proc.nlp_parser = mock_parser
+        mock_router = MagicMock()
+        proc.workspace_router = mock_router
+
+        result = proc.process_commit(COMMIT_PAYLOAD)  # commit_hash="abc123def456", no ticket_id
+
+        mock_router.route.assert_not_called()
+        assert not any("pm_sync" in a for a in result["actions"])
+
+
+# ---------------------------------------------------------------------------
+# TriggerProcessor.process_commit — queue staging with resolved ticket_id
+# (TASK-071: Phase 2 ticket_id is the authoritative target/confidence signal)
+# ---------------------------------------------------------------------------
+
+class TestProcessCommitQueueStaging:
+    def test_stages_with_resolved_ticket_id_as_target(self):
+        proc = _bare_processor()
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = {"description": "fix login", "status": "done"}
+        proc.nlp_parser = mock_parser
+        proc.workspace_router = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.stage.return_value = 7
+        proc._queue_gateway = mock_gateway
+
+        payload = {**COMMIT_PAYLOAD, "ticket_id": "PROJ-123"}
+        result = proc.process_commit(payload)
+
+        mock_gateway.stage.assert_called_once()
+        _, kwargs = mock_gateway.stage.call_args
+        assert kwargs["target"] == "PROJ-123"
+        assert kwargs["confidence"] == 0.85
+        assert kwargs["action_type"] == "post_comment"
+        assert "queued:post_comment:7" in result["actions"]
+
+    def test_confidence_independent_of_nlp_ticket_guess(self):
+        """Confidence is 0.85 whether or not NLP separately found a ticket id —
+        NLP's role is descriptive only, never the ticket-targeting signal."""
+        proc = _bare_processor()
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = {"description": "fix login", "status": "done"}  # no ticket_id from NLP
+        proc.nlp_parser = mock_parser
+        proc.workspace_router = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.stage.return_value = 9
+        proc._queue_gateway = mock_gateway
+
+        payload = {**COMMIT_PAYLOAD, "ticket_id": "PROJ-999"}
+        proc.process_commit(payload)
+
+        _, kwargs = mock_gateway.stage.call_args
+        assert kwargs["confidence"] == 0.85
+        assert kwargs["target"] == "PROJ-999"
+
+    def test_does_not_stage_when_ticket_id_absent(self):
+        proc = _bare_processor()
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = {"description": "fix login", "ticket_id": "GH-1", "status": "done"}
+        proc.nlp_parser = mock_parser
+        proc.workspace_router = MagicMock()
+        mock_gateway = MagicMock()
+        proc._queue_gateway = mock_gateway
+
+        result = proc.process_commit(COMMIT_PAYLOAD)  # no ticket_id key
+
+        mock_gateway.stage.assert_not_called()
+        assert not any("queued:post_comment" in a for a in result["actions"])
 
 
 # ---------------------------------------------------------------------------

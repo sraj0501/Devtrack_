@@ -418,6 +418,13 @@ class TriggerProcessor:
         pm_iteration_path = data.get("pm_iteration_path", "")
         pm_area_path      = data.get("pm_area_path", "")
         pm_milestone      = data.get("pm_milestone", "")
+        # Phase 2 — Go-resolved ticket ID (branch/message/active-ticket fallback
+        # chain, ~100% hit-rate verified). Absent or empty means Go's extractor
+        # found no ticket for this commit (logged [UNLINKED] on the client side).
+        # This is the authoritative ticket-resolution signal — NLP's own guess
+        # (task_data.get("ticket_id")) is no longer used to locate the ticket,
+        # only to enrich the description/comment text.
+        resolved_ticket_id = data.get("ticket_id", "")
 
         logger.info(f"[HTTP commit] {commit_hash[:12]} — {commit_msg[:60]}")
 
@@ -448,11 +455,23 @@ class TriggerProcessor:
 
         # PM sync — stage via queue (Phase 1) or fall back to direct post
         with _stage("PM sync"):
-            if task_data and self.workspace_router:
+            if not resolved_ticket_id:
+                # Phase 2 found no ticket for this commit (branch/message/
+                # active-ticket fallback chain all came up empty — logged
+                # [UNLINKED] on the Go side). Non-Negotiable #8: never block,
+                # never error. We do not fall back to the old NLP-guess or
+                # truncated-commit-hash target — if Go says unlinked, treat
+                # it as unlinked here too.
+                logger.info(
+                    "PM sync skipped: commit %s has no resolved ticket_id "
+                    "(Phase 2 unlinked) — no queue action staged",
+                    commit_hash[:12] if commit_hash else "?",
+                )
+            elif task_data and self.workspace_router:
                 # Build the payload that _execute_pm_action expects
                 pm_payload = {
                     "description": task_data.get("description", commit_msg),
-                    "ticket_id":   task_data.get("ticket_id", ""),
+                    "ticket_id":   resolved_ticket_id,
                     "status":      task_data.get("status", ""),
                     "pm_project":  pm_project,
                     "pm_assignee": pm_assignee,
@@ -467,10 +486,13 @@ class TriggerProcessor:
                         "branch":  branch,
                     },
                 }
-                ticket_id  = task_data.get("ticket_id", "") or commit_hash[:12]
-                # Confidence heuristic: NLP-matched commits get 0.75; if the
-                # parser also found a ticket_id it gets a small boost.
-                confidence = 0.80 if task_data.get("ticket_id") else 0.70
+                ticket_id = resolved_ticket_id
+                # Phase 3: ticket_id resolution confidence now comes from Go's
+                # extraction strategy, not NLP's own (weaker) guess. NLP match
+                # only affects descriptive quality, not target confidence.
+                # Baseline reflects Phase 2's verified ~100% hit rate for
+                # resolved IDs.
+                confidence = 0.85
 
                 if getattr(self, "_queue_gateway", None):
                     try:
