@@ -34,6 +34,7 @@ type TriggerEvent struct {
 	// Workspace context (populated for commit triggers in multi-repo mode)
 	RepoPath        string
 	WorkspaceName   string
+	TicketID        string // extracted from branch name (or "" if unlinked)
 	PMPlatform      string
 	PMProject       string
 	// Per-workspace PM settings (override global .env defaults)

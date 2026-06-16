@@ -14,6 +14,7 @@ import (
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
@@ -30,6 +31,9 @@ type WorkspaceMonitor struct {
 	pmMilestone     int
 	// Filtering
 	ignoreBranches  []string // commits on these branches are silently skipped
+	// ticketPattern is a custom regex used to extract ticket IDs from branch
+	// names/commit messages for this workspace; empty = use default patterns.
+	ticketPattern string
 }
 
 // IntegratedMonitor combines Git monitoring and time-based scheduling
@@ -89,6 +93,7 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 				pmAreaPath:      ws.PMAreaPath,
 				pmMilestone:     ws.PMMilestone,
 				ignoreBranches:  ws.IgnoreBranches,
+				ticketPattern:   ws.TicketPattern,
 			})
 			log.Printf("  ✓ Workspace %q → %s (platform: %q)", ws.Name, ws.Path, ws.PMPlatform)
 		}
@@ -281,6 +286,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 			pmAreaPath:      ws.PMAreaPath,
 			pmMilestone:     ws.PMMilestone,
 			ignoreBranches:  ws.IgnoreBranches,
+			ticketPattern:   ws.TicketPattern,
 		}
 		wmCopy := wm
 		if err := wmCopy.gitMonitor.Start(func(commit CommitInfo) {
@@ -332,6 +338,12 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 	im.lastActiveWorkspace = ws
 	im.lastActiveWorkspaceMu.Unlock()
 
+	// Phase 2 ticket extraction: attempt to map this commit to a ticket ID via
+	// the branch name. ext.Extract returns "" (unlinked) on no match — never
+	// blocks or errors the trigger.
+	ext, _ := ticket.NewExtractor(ws.ticketPattern) // falls back to defaults on ""
+	ticketID := ext.Extract(commit.Branch)
+
 	event := TriggerEvent{
 		Type:            TriggerTypeCommit,
 		Timestamp:       commit.Timestamp,
@@ -345,6 +357,7 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 		PMIterationPath: ws.pmIterationPath,
 		PMAreaPath:      ws.pmAreaPath,
 		PMMilestone:     ws.pmMilestone,
+		TicketID:        ticketID,
 	}
 	im.handleTrigger(event)
 }
@@ -366,6 +379,11 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 			if event.WorkspaceName != "" {
 				workspace = event.WorkspaceName
 			}
+			if event.TicketID != "" {
+				log.Printf("trigger commit: hash=%s ticket_id=%q branch=%q", commit.Hash[:12], event.TicketID, commit.Branch)
+			} else {
+				log.Printf("trigger commit: hash=%s ticket_id=unlinked branch=%q", commit.Hash[:12], commit.Branch)
+			}
 			log.Printf("trigger commit: hash=%s author=%q files=%d workspace=%q message=%q",
 				commit.Hash[:12], commit.Author, len(commit.Files), workspace, commit.Message)
 
@@ -377,6 +395,7 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 				Timestamp:       commit.Timestamp.Format(time.RFC3339),
 				FilesChanged:    commit.Files,
 				Branch:          commit.Branch,
+				TicketID:        event.TicketID,
 				WorkspaceName:   event.WorkspaceName,
 				PMPlatform:      event.PMPlatform,
 				PMProject:       event.PMProject,
@@ -396,6 +415,7 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 				CommitMessage: commit.Message,
 				Author:        commit.Author,
 				Processed:     false,
+				TicketID:      event.TicketID,
 			}
 		}
 

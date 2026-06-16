@@ -30,6 +30,7 @@ type TriggerRecord struct {
 	Author        string
 	Data          string // JSON data
 	Processed     bool
+	TicketID      string // extracted ticket ID (branch/message/active-ticket); "" = unlinked
 }
 
 // ResponseRecord represents a user response in the database
@@ -222,6 +223,7 @@ func (d *Database) initSchema() error {
 		author TEXT,
 		data TEXT,
 		processed BOOLEAN DEFAULT 0,
+		ticket_id TEXT DEFAULT '',
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
@@ -450,6 +452,7 @@ func (d *Database) initSchema() error {
 	for _, alter := range []string{
 		`ALTER TABLE deferred_commits ADD COLUMN base_sha TEXT`,
 		`ALTER TABLE deferred_commits ADD COLUMN snapshot_sha TEXT`,
+		`ALTER TABLE triggers ADD COLUMN ticket_id TEXT DEFAULT ''`,
 	} {
 		if _, err := d.db.Exec(alter); err != nil && !strings.Contains(err.Error(), "duplicate column") {
 			return fmt.Errorf("migration failed (%s): %w", alter, err)
@@ -461,8 +464,8 @@ func (d *Database) initSchema() error {
 // InsertTrigger inserts a trigger record into the database
 func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
 	query := `
-		INSERT INTO triggers (trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO triggers (trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, ticket_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	result, err := d.db.Exec(query,
@@ -475,6 +478,7 @@ func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
 		record.Author,
 		record.Data,
 		record.Processed,
+		record.TicketID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert trigger: %w", err)
@@ -572,7 +576,7 @@ func (d *Database) InsertLog(record LogRecord) error {
 // GetTriggerByID retrieves a trigger by ID
 func (d *Database) GetTriggerByID(id int64) (*TriggerRecord, error) {
 	query := `
-		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed
+		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, COALESCE(ticket_id,'')
 		FROM triggers
 		WHERE id = ?
 	`
@@ -589,6 +593,7 @@ func (d *Database) GetTriggerByID(id int64) (*TriggerRecord, error) {
 		&record.Author,
 		&record.Data,
 		&record.Processed,
+		&record.TicketID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get trigger: %w", err)
@@ -600,7 +605,7 @@ func (d *Database) GetTriggerByID(id int64) (*TriggerRecord, error) {
 // GetRecentTriggers retrieves recent triggers
 func (d *Database) GetRecentTriggers(limit int) ([]TriggerRecord, error) {
 	query := `
-		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed
+		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, COALESCE(ticket_id,'')
 		FROM triggers
 		ORDER BY timestamp DESC
 		LIMIT ?
@@ -626,6 +631,7 @@ func (d *Database) GetRecentTriggers(limit int) ([]TriggerRecord, error) {
 			&record.Author,
 			&record.Data,
 			&record.Processed,
+			&record.TicketID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan trigger: %w", err)
@@ -634,6 +640,29 @@ func (d *Database) GetRecentTriggers(limit int) ([]TriggerRecord, error) {
 	}
 
 	return triggers, nil
+}
+
+// GetLastTicketID returns the most recently extracted (non-empty) ticket ID
+// for commit triggers in the given repo. Used by the active-ticket fallback
+// strategy (TASK-069) when branch and commit-message extraction both fail.
+// Returns "" with no error when no prior matched commit exists.
+func (d *Database) GetLastTicketID(repoPath string) (string, error) {
+	var ticketID string
+	err := d.db.QueryRow(`
+		SELECT ticket_id FROM triggers
+		WHERE trigger_type='commit'
+		  AND repo_path=?
+		  AND ticket_id != ''
+		  AND ticket_id != 'unlinked'
+		ORDER BY timestamp DESC LIMIT 1
+	`, repoPath).Scan(&ticketID)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to get last ticket id: %w", err)
+	}
+	return ticketID, nil
 }
 
 // GetUnsyncedTaskUpdates retrieves task updates that haven't been synced

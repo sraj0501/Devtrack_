@@ -13,6 +13,7 @@ type CommitTriggerData struct {
 	Timestamp     string   `json:"timestamp"`
 	FilesChanged  []string `json:"files_changed"`
 	Branch        string   `json:"branch"`
+	TicketID      string   `json:"ticket_id,omitempty"`
 	// Workspace routing fields (omitempty — zero value = fall back to priority chain)
 	WorkspaceName string `json:"workspace_name,omitempty"`
 	PMPlatform    string `json:"pm_platform,omitempty"`

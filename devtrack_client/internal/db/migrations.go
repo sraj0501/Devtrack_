@@ -125,6 +125,30 @@ var allMigrations = []Migration{
 			return err
 		},
 	},
+	{
+		ID:          "007-add-ticket-id-to-triggers",
+		Description: "Add ticket_id column to triggers table for Phase 2 ticket extraction",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			var count int
+			if err := database.db.QueryRow(
+				`SELECT COUNT(*) FROM pragma_table_info('triggers') WHERE name='ticket_id'`,
+			).Scan(&count); err != nil {
+				return fmt.Errorf("check ticket_id column: %w", err)
+			}
+			if count > 0 {
+				return nil // already present — idempotent no-op
+			}
+
+			_, err = database.db.Exec(`ALTER TABLE triggers ADD COLUMN ticket_id TEXT DEFAULT ''`)
+			return err
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded

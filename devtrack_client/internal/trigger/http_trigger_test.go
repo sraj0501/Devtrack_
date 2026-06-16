@@ -175,6 +175,54 @@ func TestHTTPTriggerClient_SendCommitTrigger_PayloadJSON(t *testing.T) {
 	}
 }
 
+// TestHTTPTriggerClient_SendCommitTrigger_TicketIDInPayload confirms TASK-068
+// wiring: a populated TicketID on CommitTriggerData reaches the JSON body
+// POSTed to the Python server.
+func TestHTTPTriggerClient_SendCommitTrigger_TicketIDInPayload(t *testing.T) {
+	var body map[string]interface{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		w.WriteHeader(200)
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	c := clientFor(t, srv.URL, "")
+	_ = c.SendCommitTrigger(CommitTriggerData{
+		CommitHash: "abc123",
+		Branch:     "feat/PROJ-123-add-login",
+		TicketID:   "PROJ-123",
+	})
+
+	if body["ticket_id"] != "PROJ-123" {
+		t.Errorf("payload ticket_id mismatch: %v", body["ticket_id"])
+	}
+}
+
+// TestHTTPTriggerClient_SendCommitTrigger_UnlinkedTicketIDOmitted confirms the
+// omitempty tag drops ticket_id from the JSON payload entirely when the
+// extractor found no match (unlinked commit) — never blocks the trigger.
+func TestHTTPTriggerClient_SendCommitTrigger_UnlinkedTicketIDOmitted(t *testing.T) {
+	var body map[string]interface{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		w.WriteHeader(200)
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	c := clientFor(t, srv.URL, "")
+	_ = c.SendCommitTrigger(CommitTriggerData{
+		CommitHash: "abc123",
+		Branch:     "main",
+		TicketID:   "",
+	})
+
+	if _, present := body["ticket_id"]; present {
+		t.Errorf("expected ticket_id to be omitted from payload when unlinked, got %v", body["ticket_id"])
+	}
+}
+
 // ---------------------------------------------------------------------------
 // SendTimerTrigger
 // ---------------------------------------------------------------------------
