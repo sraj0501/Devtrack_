@@ -401,6 +401,8 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 				log.Printf("trigger commit: hash=%s ticket_id=%q branch=%q", commit.Hash[:12], event.TicketID, commit.Branch)
 			} else {
 				log.Printf("trigger commit: hash=%s ticket_id=unlinked branch=%q", commit.Hash[:12], commit.Branch)
+				log.Printf("[UNLINKED] commit %s on branch %q workspace=%q — no ticket ID extracted",
+					commit.Hash[:12], commit.Branch, event.WorkspaceName)
 			}
 			log.Printf("trigger commit: hash=%s author=%q files=%d workspace=%q message=%q",
 				commit.Hash[:12], commit.Author, len(commit.Files), workspace, commit.Message)
