@@ -665,6 +665,31 @@ func (d *Database) GetLastTicketID(repoPath string) (string, error) {
 	return ticketID, nil
 }
 
+// TicketStats returns ticket extraction statistics (total/linked/unlinked) for
+// the last N commit triggers, optionally filtered by repo path. Pass repoPath=""
+// to aggregate across all workspaces. Used by `devtrack status` (TASK-070) to
+// verify the Phase 2 exit criterion: >=80% of commits mapped to a ticket.
+func (d *Database) TicketStats(repoPath string, lastN int) (total, linked, unlinked int, err error) {
+	row := d.db.QueryRow(`
+		SELECT COUNT(*) AS total,
+		       SUM(CASE WHEN ticket_id != '' AND ticket_id != 'unlinked' THEN 1 ELSE 0 END) AS linked
+		FROM (
+			SELECT ticket_id FROM triggers
+			WHERE trigger_type='commit'
+			  AND (? = '' OR repo_path = ?)
+			ORDER BY timestamp DESC LIMIT ?
+		)
+	`, repoPath, repoPath, lastN)
+
+	var linkedNullable sql.NullInt64
+	if scanErr := row.Scan(&total, &linkedNullable); scanErr != nil {
+		return 0, 0, 0, fmt.Errorf("failed to get ticket stats: %w", scanErr)
+	}
+	linked = int(linkedNullable.Int64)
+	unlinked = total - linked
+	return total, linked, unlinked, nil
+}
+
 // GetUnsyncedTaskUpdates retrieves task updates that haven't been synced
 func (d *Database) GetUnsyncedTaskUpdates() ([]TaskUpdateRecord, error) {
 	query := `
