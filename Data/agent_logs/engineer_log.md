@@ -1435,3 +1435,31 @@ Pre-existing test failure (test_find_related_projects) confirmed unchanged.
 - Blockers encountered: none
 - One thing that still feels rough: three pre-existing unit tests in `test_http_triggers.py` were silently relying on the absence of a `ticket_id` field rather than asserting it explicitly — easy to miss when changing the meaning of an implicit default. Worth a convention going forward: test payload constants should make implicit-default fields explicit when a future change could shift their meaning.
 - Ready for PM review: YES
+
+---
+
+### [2026-06-16 22:18] TASK-071 (fix-up) — fix(server): PM sync must not skip when NLP task_data is None but ticket_id resolved
+
+**Original message**: "fix(server): PM sync must not skip when NLP task_data is None but ticket_id resolved"
+**DevTrack enhanced it to**: "feat(server): Ensure PM sync on ticket ID when NLP enrichment fails — The process commit action for PM synchronization should not skip simply because the Natural Language Processing (NLP) stage failed or returned no data. When a Phase-2 resolved ticket ID is available, `task_data` should be treated as optional enrichment; therefore, we now ensure that the system stages the comment even if NLP is unavailable, falling back to the raw commit message for descriptions and comments."
+**Ticket auto-linked**: NO (no PM platform on active workspace)
+**PM system updated**: YES — project_board.md TASK-071 fix-up note added under the existing COMPLETE block; commit hash + summary posted
+**Time**: ~12 minutes
+**Friction**: LOW — bug and required fix were both fully specified by the PM with exact line numbers and before/after code; the only judgment call was how to handle the one pre-existing test (`test_skips_pm_sync_when_nlp_returns_none`) that had encoded the buggy behavior as its expected assertion.
+**Notes**:
+- Root cause: the "PM sync" stage was gated `elif task_data and self.workspace_router:` — so a resolved `resolved_ticket_id` plus a live `workspace_router` were not enough to stage an action if `task_data` was `None` (NLP parser absent, e.g. spaCy not installed, or `nlp_parser.parse()` raised inside the try/except in the "NLP parse" stage immediately above). This silently broke Phase 3's "commit -> ticket commented... dev did nothing" exit criterion on any setup with degraded NLP — a state CLAUDE.md explicitly documents as supported graceful degradation, not an error case.
+- Fix: condition changed to `elif self.workspace_router:`. Inside the branch, `description = task_data.get("description", commit_msg) if task_data else commit_msg` and `status = task_data.get("status", "") if task_data else ""` — both feed `pm_payload["description"]` and `pm_payload["comment"]` (previously both called `task_data.get(...)` directly, which would have raised `AttributeError` on `None` the moment this gate was loosened, so the guard was necessary, not optional).
+- Updated `test_skips_pm_sync_when_nlp_returns_none` -> renamed `test_stages_pm_sync_when_nlp_returns_none_but_ticket_id_resolved`, now asserts `_queue_gateway.stage()` IS called with `target="GH-1"` and description falling back to the raw commit message.
+- Added two new regression tests in `TestProcessCommitQueueStaging`: `test_stages_when_task_data_is_none_but_ticket_id_resolved` (parser absent entirely) and `test_stages_when_nlp_parse_raises_but_ticket_id_resolved` (parser present but `.parse()` raises) — both assert staging happens with the commit message as the description fallback.
+- `uv run pytest backend/tests/ -q` -> 625 passed, 1 pre-existing documented failure (`test_ollama_host_returns_string`, `OLLAMA_HOST` env leak — unrelated to this change). No other regressions.
+- Pushed to the existing branch `feat/TASK-071-wire-ticket-id-into-process-commit`; PR #178 updated automatically via the push, no new PR opened.
+
+## Task Summary — TASK-071 (fix-up): PM sync NLP-degraded regression fix — 2026-06-16
+
+- Total commits: 1 (dddaf55), 2 total across the full TASK-071 lifecycle (dffd32c, dddaf55)
+- Acceptance criteria met: 8/8 (original) + bug fix verified with 2 new regression tests + 1 updated test
+- Tickets auto-updated: 0 (no PM platform on active workspace)
+- Estimated daily time saved: N/A — correctness fix; its value is making Phase 3 ticket commenting actually work on NLP-degraded setups instead of silently no-opping
+- Blockers encountered: none
+- One thing that still feels rough: `test_skips_pm_sync_when_nlp_returns_none` had quietly encoded the bug as the expected behavior — a reminder that test names asserting a negative ("skips X") deserve extra scrutiny when the surrounding logic changes, since a passing test gave false confidence the old gate was intentional.
+- Ready for PM review: YES

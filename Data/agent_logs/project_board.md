@@ -1348,7 +1348,22 @@ failure (`test_ollama_host_returns_string`).
 **PR**: https://github.com/sraj0501/Devtrack_/pull/178
 **Blockers**: none
 
-**COMPLETE** — ready for PM review — 2026-06-16 21:52
+**Fix-up (PM review)**: PM review found the `elif task_data and self.workspace_router:` gate
+silently skipped PM sync whenever `task_data` was `None` (NLP parser unavailable, e.g. spaCy
+missing, or `nlp_parser.parse()` raised) — even with a perfectly good Phase-2-resolved
+`resolved_ticket_id` and a live `workspace_router`. This directly broke the Phase 3 exit
+criterion on any setup with degraded NLP, a state CLAUDE.md documents as supported graceful
+degradation. Fixed: condition changed to `elif self.workspace_router:`, and every
+`task_data.get(...)` read inside the branch (`description`, `status`) now falls back to
+`commit_msg` / `""` when `task_data` is `None`. Also updated
+`test_skips_pm_sync_when_nlp_returns_none` (renamed
+`test_stages_pm_sync_when_nlp_returns_none_but_ticket_id_resolved`) which had encoded the old
+buggy behavior as expected, and added two new regression tests covering NLP-parser-absent and
+NLP-parse-raises cases. Last commit: dddaf55 "feat(server): Ensure PM sync on ticket ID when
+NLP enrichment fails" — 2026-06-16 22:18. Pushed to the same branch; PR #178 updated
+automatically (no new PR).
+
+**COMPLETE** — ready for PM review — 2026-06-16 22:18
 
 ---
 
