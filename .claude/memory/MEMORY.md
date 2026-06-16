@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-06-14_ | v3.0.10 | GitHub sole source of truth; devtrack.cloud live on Netlify
+_Last updated: 2026-06-16_ | v3.0.10 | GitHub sole source of truth; devtrack.cloud live on Netlify
 
 DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enriches with AI, routes to PM systems.
 
@@ -14,12 +14,12 @@ DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enri
 - [feedback_rules.md](feedback_rules.md) — Git/PR/commit rules, offline-first, CLI-only, no hardcoded values, GIT_NO_DEVTRACK, ARCHITECTURE.md boundary, uv not pip
 
 ## Project State
-- [project_current_state.md](project_current_state.md) — post-pivot direction (Bible Phase 0→8); v3.0.10 shipped (significant Windows fixes); PG-5/Redis deprioritised; Azure WIQL date quirk; notify interface pitfall
+- [project_current_state.md](project_current_state.md) — build/platform history; Phase 0/1 complete, Phase 2 active (see user-memory for live task status); Azure WIQL date quirk; notify interface pitfall
 
 ## Project Context
 - [project_platform_modes.md](project_platform_modes.md) — Managed/Lightweight/External modes; Windows WSL2 dev; ARM64 .syso fix shipped
 - [project_autoload_env.md](project_autoload_env.md) — AutoLoadEnv() resolution order; test isolation pattern
-- [project_local_agents.md](project_local_agents.md) — Agents in .claude/agents/_archive/; pm-config.md drives project values; /init bootstraps
+- [project_local_agents.md](project_local_agents.md) — 6 global agents at ~/.claude/agents/; pm-config.md drives project values; /init bootstraps
 - [project_saas_license.md](project_saas_license.md) — License tiers, T&C, auth sessions; cloud server not yet built
 - [project_launch_strategy.md](project_launch_strategy.md) — Wedge, positioning rules, channel sequence, decision framework
 

@@ -1,10 +1,10 @@
 ---
 name: Agent system
-description: Archived project agents; pm-config.md drives project-specific values
+description: 6 global agents at ~/.claude/agents/; project-level copies archived; pm-config.md drives project-specific values
 type: project
 ---
 
-**Agents** archived at `.claude/agents/_archive/`: project-vision, engineer, git-agent, memory-compactor, post-generator. No global agents at `~/.claude/agents/`.
+**Agents live globally** at `~/.claude/agents/` (6): project-vision, engineer, git-agent, memory-compactor, post-generator, production-engineer. Project-level copies are archived/unused at `.claude/agents/_archive/`.
 **pm-config:** `.claude/pm-config.md` (project root)
 
 **Rules:** project-vision always first (creates board task) → engineer (only when dispatched) → git-agent for push/PR (never commits). memory-compactor: Sunday 9:13am cron. post-generator: weekly engineer log → posts.
