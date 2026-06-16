@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-16 by PM (TASK-070 dispatched — dev tip 662d9f4)_
+_Last updated: 2026-06-16 by PM (TASK-070 complete — Phase 2 closed; PR #177 open against dev)_
 _Next DevTrack task ID: TASK-071_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -685,7 +685,7 @@ Full phase specs and acceptance criteria: `PRODUCT_BIBLE.md` § Build Phases.
 
 ---
 
-## ACTIVE — Phase 2: Opinionated ticket extractor
+## COMPLETE — Phase 2: Opinionated ticket extractor
 
 **Goal**: On every commit, extract a ticket ID from the branch name or commit message.
 Unmatched commits are logged as unlinked — never blocked. Developer obligation: standard
@@ -693,6 +693,9 @@ branch naming (e.g. `feat/PROJ-123-description` or `fix/#42-bug`). Nothing else 
 
 **Exit criterion**: >80% of commits correctly mapped to tickets without any developer
 configuration beyond standard branch naming.
+
+**Status**: COMPLETE — exit criterion verified 2026-06-16 (10/10 = 100% linked in live
+runtime test against the real trigger pipeline, via TASK-070's `devtrack status` instrumentation).
 
 ---
 

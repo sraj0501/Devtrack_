@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-16 by PM (TASK-069 complete, PR #176 open against dev)_
+_Last updated: 2026-06-16 by PM (TASK-070 complete, PR #177 open against dev — Phase 2 CLOSED)_
 
 ---
 
@@ -17,8 +17,8 @@ _Last updated: 2026-06-16 by PM (TASK-069 complete, PR #176 open against dev)_
 |---|---|---|---|
 | 0 | Foundation reset (silent daemon) | DONE | Daemon runs a full day with no prompts shown |
 | 1 | Pending actions queue | DONE | A week of outbound actions all staged; nothing unexpected posts |
-| 2 | Opinionated ticket extractor | ACTIVE — TASK-070 next | >80% commits mapped to tickets, no config beyond branch naming |
-| 3 | Silent commit handler | QUEUED | Commit → ticket commented + state-transitioned; dev did nothing |
+| 2 | Opinionated ticket extractor | DONE | >80% commits mapped to tickets, no config beyond branch naming — verified 100% (10/10) live |
+| 3 | Silent commit handler | ACTIVE — next up | Commit → ticket commented + state-transitioned; dev did nothing |
 | 4 | EOD pipeline | QUEUED | Accurate EOD email every evening, in the dev's voice |
 | 5 | Voice training (low friction) | QUEUED | Generated text passes "did I write this?" after 1 week |
 | 6 | Dialectic self-improvement | QUEUED | 30-day correction rate down; ≥3 autonomous skills emerged |
@@ -37,6 +37,26 @@ decoupling Phases 1–2. Detail in Task History below.
 ---
 
 ## Task History
+
+## 2026-06-16 — TASK-070: Unlinked commit logging + hit-rate metrics in `devtrack status` — PHASE 2 COMPLETE
+**Phase**: Phase 2 — Opinionated ticket extractor (closes the phase)
+**Status**: DONE (PR #177 open against dev, not yet merged)
+**Files**:
+- `devtrack_client/internal/db/database.go` — `Database.TicketStats(repoPath string, lastN int) (total, linked, unlinked int, err error)`, using `sql.NullInt64` for the `SUM(...)` aggregate (NULL on empty result set).
+- `devtrack_client/internal/db/ticket_stats_test.go` (new) — 4 table-driven tests: counting, `lastN` window limiting, cross-repo aggregation, empty-table edge case.
+- `devtrack_client/cli_daemon.go` — new `printTicketExtractionStats(repoPath string)` wired into both branches of `handleStatus()`; named constants `ticketExtractionWindow=50`, `ticketExtractionMinSample=5`.
+- `devtrack_client/internal/infra/integrated.go` — `[UNLINKED]` tagged log line added in `handleTrigger()` alongside the pre-existing `ticket_id=unlinked` line from TASK-068.
+
+**Vision check**: PASS — pure local SQLite read + CLI text output; no cloud dependency, no browser, no GUI; offline-first preserved.
+**Hardcoded scan**: CLEAN — no secrets, hosts, ports in the diff. Two pre-existing `time.Sleep` literals in `cli_daemon.go` (lines 117, 571) predate this task's diff and were not touched.
+
+**Phase 2 exit criterion — VERIFIED LIVE, not just unit-tested**: engineer registered a disposable scratch repo as a temporary workspace, restarted the live daemon, and ran 10 real commits through the actual fsnotify → handleCommitForWorkspace → handleTrigger → SQLite pipeline (mix: 5 branch-linked, 1 message-linked, 4 active-ticket-fallback). `TicketStats` returned **10/10 linked = 100%**, well above the 80% target. `devtrack status` now shows this as a PASS/BELOW TARGET line on every run, making the criterion permanently checkable rather than a one-time log audit. Scratch workspace and daemon state were cleaned up afterward.
+
+**Engineer notes**: Discovered the git monitor's 2-second poll loop coalesces commits made faster than that interval (only the latest HEAD state at poll time fires a trigger) — not a defect, but worth a future docs note so the next person doesn't lose time on it during similar verification runs. Stretch goal (`devtrack logs --unlinked` filter) was explicitly skipped per spec (optional). Commits: `0b8608d` (implementation + tests), `981112e` (logs/board). PR #177 → `dev`.
+
+**Phase 3 (Silent commit handler) is next**: exit criterion is "Commit → ticket commented + state-transitioned within auto-approve window; dev did nothing." This phase will consume both Phase 1's pending-actions queue (confidence-scored staging, already shipped) and Phase 2's ticket extraction (this phase) to actually post comments/transitions against the resolved ticket ID — the first phase where DevTrack acts on a PM system without being asked.
+
+---
 
 ## 2026-06-16 — TASK-069: Commit-message fallback + active-ticket fallback
 **Phase**: Phase 2 — Opinionated ticket extractor
