@@ -1343,3 +1343,31 @@ Pre-existing test failure (test_find_related_projects) confirmed unchanged.
 - Blockers encountered: none
 - One thing that still feels rough: the AI commit-message enhancement summarized only the `db` package half of the diff; for a 3-package change spanning db/infra/trigger, a one-line title understandably can't cover everything, but it's worth knowing the enhancer weights "what changed most" by file count/lines rather than "what's most architecturally significant."
 - Ready for PM review: YES
+
+---
+
+### [2026-06-16 20:50] TASK-069 — feat(infra): Implement staged commit-message and active-ticket fallback
+
+**Original message**: "feat(infra): commit-message and active-ticket fallback for ticket extraction (TASK-069)"
+**DevTrack enhanced it to**: "feat(infra): Implement staged commit-message and active-ticket fallback — Updates the ticket extraction logic in `handleCommitForWorkspace` to use a three-stage strategy when determining a linked task ID for a commit: 1. Branch Name (highest priority). 2. Commit Message Scan (if stage 1 fails). 3. Active-Ticket Fallback (if stages 1 and 2 fail, checks a persisted 'last active ticket' ID stored in the database for that repository path). Corresponding unit tests have been added to validate this new fallback chain logic."
+**Ticket auto-linked**: NO — no PM platform configured on the active workspace (`mogrov.com`, platform: none)
+**PM system updated**: YES — project_board.md TASK-069 marked COMPLETE; all 7 criteria ticked; PR URL posted
+**Time**: ~15 minutes
+**Friction**: LOW — discovered during pre-work investigation that `Database.GetLastTicketID(repoPath)` and its full test suite (`TestGetLastTicketID` in `trigger_ticket_test.go`) had already been implemented ahead of schedule during TASK-068, exactly as the PM's dispatch note warned ("verify its exact signature... since the task spec's SQL is illustrative, not necessarily the literal existing implementation"). Likewise the unlinked-logging requirement and two of the three spec'd unit tests (`Extract("feat/no-ticket-here")` and `Extract("fix bug in login AB-99")`) already existed in `internal/ticket/extractor_test.go`. Only the actual wiring into `handleCommitForWorkspace` (the two fallback `if` blocks) was missing.
+**Notes**:
+- `handleCommitForWorkspace()` in `devtrack_client/internal/infra/integrated.go`: after branch extraction (`ext.Extract(commit.Branch)`), added strategy 2 (`ext.Extract(commit.Message)` when branch result is empty, logged with `(from commit message)`) and strategy 3 (`im.database.GetLastTicketID(ws.gitMonitor.repoPath)` when both branch and message are empty, logged with `(active-ticket fallback)`), matching the spec's code blocks verbatim including the `commit.Hash[:8]` slice length (the pre-existing match/unlinked log lines a few steps later use `[:12]` — left as-is since that was out of scope and not flagged as inconsistent in the spec).
+- `CommitTriggerData.TicketID` / `TriggerRecord.TicketID` required no changes — both already read from `event.TicketID`/`ticketID` (TASK-068 wiring), and `ticketID` is fully resolved (all three strategies) before `TriggerEvent` is constructed, so the existing flow-through picks up whichever strategy won automatically.
+- Unlinked logging (`ticket_id=unlinked`) already existed in `handleTrigger()` from TASK-068 — verified present, did not duplicate it.
+- Added 3 new tests to `devtrack_client/internal/infra/ticket_extraction_test.go`: `TestFallbackChain_BranchMatchWinsOverMessage` (branch short-circuits before message is consulted), `TestFallbackChain_MessageScanRunsWhenBranchEmpty` (message scan fires and returns `AB-99` when branch is empty), `TestFallbackChain_AllStrategiesFailYieldsUnlinked` (branch=`main`, message=`chore: update docs` -> `""`, matching the acceptance-criterion fixture exactly). These follow the same lightweight pattern as TASK-068's existing tests in the same file (direct `ticket.NewExtractor` calls mirroring the production call sites) rather than spinning up a full `IntegratedMonitor`/DB/HTTP integration harness, since `handleTrigger` makes a live HTTP POST to the Python server with no mock seam — the DB-level `GetLastTicketID` behavior is already covered exhaustively by TASK-068's `TestGetLastTicketID`.
+- `go build ./...`, `go vet ./...`, and `go test ./...` all pass clean from `devtrack_client/` (full suite).
+- Daemon was already running (PID 34920) at session start — no restart needed.
+
+## Task Summary — TASK-069: Commit-message fallback + active-ticket fallback — 2026-06-16
+
+- Total commits: 1 (6fc4e64 implementation + tests; board/log updates to follow in a second commit)
+- Acceptance criteria met: 7/7
+- Tickets auto-updated: 0 (no PM platform on active workspace)
+- Estimated daily time saved: N/A (continues foundational wiring for Phase 2 — TASK-070 will surface hit-rate metrics built on this fallback chain)
+- Blockers encountered: none
+- One thing that still feels rough: a meaningful fraction of this task's spec'd deliverables (the DB method, its tests, the unlinked logging, two of three unit tests) had already been built one task early during TASK-068. Worth flagging to the PM that task boundaries in a tightly sequential phase like this one blur in practice — the engineer doing TASK-068 reasonably front-loaded TASK-069's DB dependency rather than leaving a stub, which was the right call, but it means TASK-069's actual diff is much smaller than the spec implies.
+- Ready for PM review: YES

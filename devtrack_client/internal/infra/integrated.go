@@ -338,11 +338,29 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 	im.lastActiveWorkspace = ws
 	im.lastActiveWorkspaceMu.Unlock()
 
-	// Phase 2 ticket extraction: attempt to map this commit to a ticket ID via
-	// the branch name. ext.Extract returns "" (unlinked) on no match — never
-	// blocks or errors the trigger.
+	// Phase 2 ticket extraction: attempt to map this commit to a ticket ID.
+	// Three strategies, in order — never blocks or errors the trigger:
+	//   1. Branch name (e.g. feat/PROJ-123-add-login)
+	//   2. Commit message scan (TASK-069 strategy 2)
+	//   3. Active-ticket fallback — last successfully matched ticket for this
+	//      repo (TASK-069 strategy 3)
+	// If all three fail, ticketID stays "" and the trigger is logged unlinked.
 	ext, _ := ticket.NewExtractor(ws.ticketPattern) // falls back to defaults on ""
 	ticketID := ext.Extract(commit.Branch)
+
+	if ticketID == "" {
+		ticketID = ext.Extract(commit.Message)
+		if ticketID != "" {
+			log.Printf("trigger commit: hash=%s ticket_id=%q (from commit message)", commit.Hash[:8], ticketID)
+		}
+	}
+
+	if ticketID == "" && im.database != nil {
+		if last, err := im.database.GetLastTicketID(ws.gitMonitor.repoPath); err == nil && last != "" {
+			ticketID = last
+			log.Printf("trigger commit: hash=%s ticket_id=%q (active-ticket fallback)", commit.Hash[:8], ticketID)
+		}
+	}
 
 	event := TriggerEvent{
 		Type:            TriggerTypeCommit,

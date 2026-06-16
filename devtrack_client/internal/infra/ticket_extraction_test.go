@@ -78,3 +78,81 @@ func TestTriggerEvent_CarriesTicketID(t *testing.T) {
 		t.Errorf("TriggerEvent.TicketID = %q, want %q", event.TicketID, "PROJ-123")
 	}
 }
+
+// --- TASK-069: commit-message fallback + active-ticket fallback ---------
+//
+// These tests mirror the three-strategy fallback chain implemented in
+// handleCommitForWorkspace: branch -> commit message -> active-ticket
+// (DB lookup). The DB-backed third strategy is covered separately by
+// TestGetLastTicketID in internal/db/trigger_ticket_test.go; here we
+// exercise strategies 1 and 2 exactly as handleCommitForWorkspace calls them.
+
+// TestFallbackChain_BranchMatchWinsOverMessage confirms strategy 1 (branch)
+// short-circuits the chain — when the branch already yields a ticket, the
+// commit message is never consulted.
+func TestFallbackChain_BranchMatchWinsOverMessage(t *testing.T) {
+	ext, err := ticket.NewExtractor("")
+	if err != nil {
+		t.Fatalf("NewExtractor: %v", err)
+	}
+
+	branch := "feat/PROJ-123-add-login"
+	message := "fix bug in login AB-99"
+
+	ticketID := ext.Extract(branch)
+	if ticketID == "" {
+		ticketID = ext.Extract(message)
+	}
+
+	if ticketID != "PROJ-123" {
+		t.Errorf("ticketID = %q, want %q (branch match should win over message)", ticketID, "PROJ-123")
+	}
+}
+
+// TestFallbackChain_MessageScanRunsWhenBranchEmpty confirms strategy 2: when
+// branch extraction returns "", the commit message is scanned next and its
+// match is used as the ticket ID.
+func TestFallbackChain_MessageScanRunsWhenBranchEmpty(t *testing.T) {
+	ext, err := ticket.NewExtractor("")
+	if err != nil {
+		t.Fatalf("NewExtractor: %v", err)
+	}
+
+	branch := "feat/no-ticket-here"
+	message := "fix bug in login AB-99"
+
+	ticketID := ext.Extract(branch)
+	if ticketID != "" {
+		t.Fatalf("branch extraction = %q, want empty for this test fixture", ticketID)
+	}
+	ticketID = ext.Extract(message)
+
+	if ticketID != "AB-99" {
+		t.Errorf("ticketID = %q, want %q (message-scan fallback)", ticketID, "AB-99")
+	}
+}
+
+// TestFallbackChain_AllStrategiesFailYieldsUnlinked confirms that when branch
+// and message extraction both fail (and there is no active-ticket fallback
+// available), the final ticketID is "" — the unlinked case. This matches the
+// acceptance criterion: a commit on branch "main" with message "chore:
+// update docs" and no prior commits produces ticket_id="".
+func TestFallbackChain_AllStrategiesFailYieldsUnlinked(t *testing.T) {
+	ext, err := ticket.NewExtractor("")
+	if err != nil {
+		t.Fatalf("NewExtractor: %v", err)
+	}
+
+	branch := "main"
+	message := "chore: update docs"
+
+	ticketID := ext.Extract(branch)
+	if ticketID == "" {
+		ticketID = ext.Extract(message)
+	}
+	// No active-ticket fallback simulated here (no prior matched commits).
+
+	if ticketID != "" {
+		t.Errorf("ticketID = %q, want empty (unlinked)", ticketID)
+	}
+}

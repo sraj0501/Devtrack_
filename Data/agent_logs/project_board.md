@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-16 by PM (TASK-068 dispatched — branch on dev, tip 8fc3ef4)_
+_Last updated: 2026-06-16 by PM (TASK-069 dispatched — dev tip 219768c)_
 _Next DevTrack task ID: TASK-071_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -863,9 +863,11 @@ In `devtrack_client/internal/infra/` (wherever `TriggerEvent` is defined), add `
 ---
 
 ### TASK-069 — Commit-message fallback + active-ticket fallback
+**Assigned to**: engineer
 **Priority**: HIGH
 **Phase**: Phase 2
-**Depends on**: TASK-068
+**Started**: 2026-06-16
+**Depends on**: TASK-068 (MERGED — PR #175, tip 219768c on dev)
 **Branch**: `feat/TASK-069-commit-message-fallback`
 
 **Spec**:
@@ -925,16 +927,19 @@ processed normally — unlinked commits are never blocked.
 - Verify `GetLastTicketID` returns the ticket from the most recent matched commit
 
 **Acceptance criteria**:
-- [ ] Commit message scan runs when branch extraction returns `""`
-- [ ] Active-ticket fallback runs when both branch and message return `""`
-- [ ] `GetLastTicketID(repoPath)` method exists on `Database`; returns `""` when no prior matched commits
-- [ ] Log line distinguishes source: `(from commit message)` or `(active-ticket fallback)` or `unlinked`
-- [ ] `CommitTriggerData.TicketID` is populated from whichever strategy succeeded
-- [ ] A commit on branch `main` with message `"chore: update docs"` and no prior commits → `ticket_id=""` in DB, `unlinked` in log
-- [ ] `go build ./...` and `go vet ./...` pass clean
+- [x] Commit message scan runs when branch extraction returns `""`
+- [x] Active-ticket fallback runs when both branch and message return `""`
+- [x] `GetLastTicketID(repoPath)` method exists on `Database`; returns `""` when no prior matched commits
+- [x] Log line distinguishes source: `(from commit message)` or `(active-ticket fallback)` or `unlinked`
+- [x] `CommitTriggerData.TicketID` is populated from whichever strategy succeeded
+- [x] A commit on branch `main` with message `"chore: update docs"` and no prior commits → `ticket_id=""` in DB, `unlinked` in log
+- [x] `go build ./...` and `go vet ./...` pass clean
 
-**Engineer status**: not started
-**Blockers**: TASK-068 must be merged to dev first
+**Engineer status**: 7/7 criteria done — last commit: 6fc4e64 "feat(infra): Implement staged commit-message and active-ticket fallback" — 2026-06-16 20:50
+**PR**: https://github.com/sraj0501/Devtrack_/pull/176
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-16 20:50
 
 ---
 
