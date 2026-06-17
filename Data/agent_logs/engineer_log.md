@@ -2,6 +2,23 @@
 
 ---
 
+### [2026-06-17] TASK-073 — Merge conflict resolution: PR #180 rebased onto dev after PR #179 landed
+
+**Original message**: "Merge origin/dev into feat/TASK-073-state-transition-queue-action"
+**Enhanced to**: no enhancement — merge commit, used original
+**Ticket auto-linked**: NO
+**PM system updated**: NO (log only)
+**Time**: ~10 minutes
+**Friction**: LOW — one conflict in engineer_log.md (both PRs added to the top of the file); auto-merge of webhook_server.py was clean
+**Notes**:
+- Conflict was in `Data/agent_logs/engineer_log.md` only. TASK-072's log entry (origin/dev) and TASK-073's log entry (HEAD) both needed to be kept — resolved by placing TASK-073 first (newer), then TASK-072, separated by `---`.
+- `webhook_server.py` auto-merged correctly: `generate_ticket_comment()` call (TASK-072) and `state_transition` staging block (TASK-073) coexist cleanly in `process_commit()` as independent concerns.
+- Tests post-resolution: 664 Python passed (1 pre-existing failure), Go build/vet/test all clean.
+- Merge commit: 4ff34e2. Pushed to origin. PR #180 merged via `gh pr merge 180 --merge --delete-branch`.
+- dev tip after merge: 5fddd67 (Merge pull request #180 from sraj0501/feat/TASK-073-state-transition-queue-action).
+
+---
+
 ### [2026-06-17 17:50] TASK-073 — State-transition queue action on first commit for ticket
 
 **Original message**: "feat(phase3): TASK-073 state-transition queue action on first commit for ticket"
