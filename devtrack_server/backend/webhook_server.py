@@ -398,6 +398,27 @@ class TriggerProcessor:
                 )
                 return {"status": "failed", "error": str(e)}
 
+        if action_type == "eod_report":
+            narrative = payload.get("narrative", "")
+            email = payload.get("email", "")
+            try:
+                if email:
+                    from backend.email_reporter import EmailReporter as _EODEmailReporter
+                    reporter = _EODEmailReporter()
+                    reporter.send_text_report(narrative, email)
+                logger.info(
+                    "queue: executed eod_report action %s (delivered_to=%s)",
+                    action.get("id"), email or "none",
+                )
+                return {"status": "posted", "delivered_to": email or "none"}
+            except Exception as e:
+                # Never raise — Non-Negotiable #8: never block on failure.
+                logger.warning(
+                    "queue: eod_report action %s delivery error (non-fatal): %s",
+                    action.get("id"), e,
+                )
+                return {"status": "posted", "delivered_to": email or "none"}
+
         if action_type not in ("post_comment",):
             # Unknown action type — log and mark complete to avoid blocking the queue
             logger.warning(
@@ -1846,11 +1867,11 @@ except Exception as _er_err:
     logger.warning(f"EmailReporter not available: {_er_err}")
 
 try:
-    from backend.work_tracker.eod_report_generator import EODReportGenerator as _EODGenerator
-    _eod_generator_available = True
-except Exception as _eod_err:
-    _eod_generator_available = False
-    logger.warning(f"EODReportGenerator not available: {_eod_err}")
+    from backend.daily_report_generator import DailyReportGenerator as _DailyReportGenerator
+    _daily_report_generator_available = True
+except Exception as _drg_err:
+    _daily_report_generator_available = False
+    logger.warning(f"DailyReportGenerator not available: {_drg_err}")
 
 
 @app.post("/reports/preview")
@@ -1931,28 +1952,58 @@ async def http_report_eod(
     request: Request,
     _auth: None = Depends(_verify_trigger_key),
 ) -> dict:
-    """Run the EOD report generator (used by the daemon scheduler)."""
-    if not _eod_generator_available:
-        raise HTTPException(status_code=503, detail="EODReportGenerator not available")
+    """Run the EOD report generator (Phase 4 — commit-grouped narrative).
+
+    Uses DailyReportGenerator.generate_eod_narrative() which queries the
+    triggers table, groups commits by ticket_id, generates per-ticket LLM
+    narratives in the developer's voice, and applies inject_style.
+    Falls back gracefully if the generator is unavailable.
+    """
+    from datetime import date as _date
     data = await request.json()
-    email = data.get("email") or None
     date_str = data.get("date") or None
+    email = data.get("email", "")
+    workspace = data.get("workspace", "all")
     try:
-        gen = _EODGenerator()
-        report = await gen.generate(target_date=date_str)
-        total_h, total_m = divmod(report.total_minutes, 60)
-        lines = [
-            f"EOD Report — {report.date}",
-            f"Total: {total_h}h {total_m}m across {len(report.sessions)} session(s)",
-        ]
-        if report.narrative:
-            lines.append("")
-            lines.append(report.narrative)
-        output = "\n".join(lines)
-        return {"output": output, "success": True}
+        if not _daily_report_generator_available:
+            narrative = "No commits recorded today."
+        else:
+            gen = _DailyReportGenerator()
+            narrative = await asyncio.to_thread(gen.generate_eod_narrative, date_str)
+
+        # Phase 4 — Non-Negotiable #2: every outbound action stages through
+        # pending_actions before touching any external system.
+        action_id = None
+        gw = _get_queue_gateway()
+        if gw is not None:
+            try:
+                from backend.config import get_eod_report_confidence
+                action_id = gw.stage(
+                    action_type="eod_report",
+                    target="developer",
+                    platform="email",
+                    workspace=workspace,
+                    payload={
+                        "narrative": narrative,
+                        "email": email or "",
+                        "date": date_str or str(_date.today()),
+                    },
+                    confidence=get_eod_report_confidence(),
+                    is_new_action_type=False,
+                )
+                logger.info(
+                    "/reports/eod: staged eod_report action %s (email=%s)",
+                    action_id, email or "none",
+                )
+            except Exception as stage_exc:
+                logger.warning("/reports/eod: queue staging failed (non-fatal): %s", stage_exc)
+        else:
+            logger.debug("/reports/eod: queue gateway unavailable — action not staged")
+
+        return {"output": narrative, "success": True, "action_id": action_id}
     except Exception as exc:
         logger.error(f"/reports/eod failed: {exc}")
-        return {"output": str(exc), "success": False}
+        return {"output": str(exc), "success": False, "narrative": ""}
 
 
 # ── Learning ─────────────────────────────────────────────────────────────────

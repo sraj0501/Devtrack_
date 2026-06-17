@@ -566,6 +566,48 @@ class EmailReporter:
         
         print(f"✓ Report saved to {output_path}")
 
+    def send_text_report(self, text: str, email: str) -> None:
+        """Send a plain-text narrative as an email via Microsoft Graph.
+
+        Called by _execute_pm_action when an ``eod_report`` pending action is
+        executed and an email address is configured.  If the Graph client has
+        not been initialized, logs a warning and returns without raising —
+        Non-Negotiable #8 (never block on failure).
+
+        :param text: The EOD narrative string to send.
+        :param email: Recipient email address.
+        """
+        import logging as _logging
+        _log = _logging.getLogger("devtrack.email_reporter")
+        if not self.graph_client:
+            _log.info("Email delivery skipped: no Graph client configured")
+            return
+        try:
+            from datetime import date as _date
+            subject = f"DevTrack EOD Report — {_date.today().isoformat()}"
+            # send_mail is a coroutine on the Graph client; run synchronously
+            # via asyncio if needed, but prefer calling from an async context.
+            import asyncio as _asyncio
+            coro = self.graph_client.send_mail(subject, text, email)
+            try:
+                loop = _asyncio.get_event_loop()
+                if loop.is_running():
+                    # Already inside an async context — schedule and forget;
+                    # the caller (_execute_pm_action) is run via asyncio.to_thread
+                    # which means we are NOT in the event loop, so this branch
+                    # should rarely fire.  Use run_coroutine_threadsafe as a safety net.
+                    import concurrent.futures as _cf
+                    future = _asyncio.run_coroutine_threadsafe(coro, loop)
+                    future.result(timeout=30)
+                else:
+                    loop.run_until_complete(coro)
+            except RuntimeError:
+                # No event loop running — create a transient one.
+                _asyncio.run(coro)
+            _log.info("EOD report email sent to %s", email)
+        except Exception as exc:
+            _log.warning("EOD report email delivery failed (to=%s): %s", email, exc)
+
 
 # CLI interface
 async def main():

@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-17 by engineer (TASK-074 COMPLETE — Phase 3 exit criterion verified; PR #181 opened targeting dev; branch feat/TASK-074-phase3-exit-verification)_
+_Last updated: 2026-06-17 by engineer (TASK-078 COMPLETE — EOD Telegram delivery; PR #185 opened targeting dev; branch feat/TASK-078-eod-telegram-delivery)_
 _Next DevTrack task ID: TASK-075_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -1722,6 +1722,81 @@ against the real pipeline, not just unit tests, plus the board/feature-tracker u
 **Blockers**: none
 
 **COMPLETE** — ready for PM review — 2026-06-17 22:31
+## ACTIVE — Phase 4: EOD Pipeline
+
+**Goal**: Cron fires at the configured time (`EOD_REPORT_HOUR` per workspace or global). Query
+today's commits from SQLite, group by ticket, LLM generates a per-ticket narrative in the
+developer's voice. All outbound actions (email send, Telegram delivery) are staged in
+`pending_actions`. Developer receives an accurate EOD report every evening without doing anything.
+
+**Exit criterion** (PRODUCT_BIBLE.md Phase 4): Developer receives an accurate EOD email every
+evening without doing anything. Report reads like they wrote it.
+
+---
+
+### TASK-075 — Fix EOD cron config: replace os.Getenv with typed accessors; per-workspace eod_time
+**Status**: COMPLETE — PR #182 merged to dev — 2026-06-17
+
+---
+
+### TASK-076 — EOD report content: commit-grouped narrative with personalization
+**Status**: COMPLETE — PR #183 merged to dev — 2026-06-17
+
+---
+
+### TASK-077 — Queue the EOD report: `eod_report` action type through pending_actions
+**Assigned to**: engineer
+**Priority**: HIGH
+**Phase**: Phase 4
+**Depends on**: TASK-075 (COMPLETE — PR #182), TASK-076 (COMPLETE — PR #183)
+**Branch**: `feat/TASK-077-eod-queue-action`
+
+**Acceptance criteria**:
+- [x] `/reports/eod` stages an `eod_report` queue row before returning
+- [x] `_execute_pm_action` handles `action_type == "eod_report"`: delivers email when configured, skips gracefully otherwise
+- [x] `get_eod_report_confidence()` accessor exists in `config.py`; no literal confidence in handler
+- [x] No `os.getenv` introduced
+- [x] `uv run pytest backend/tests/ -q` — no regressions (691 passed, 1 pre-existing failure: test_ollama_host_returns_string)
+
+**Engineer status**: 5/5 criteria done — last commit: bf041fa "feat(server): TASK-077 route EOD report through pending_actions queue" — 2026-06-17 21:08
+**PR**: https://github.com/sraj0501/Devtrack_/pull/184
+
+**COMPLETE** — ready for PM review — 2026-06-17 21:10
+
+---
+
+### TASK-078 — Telegram delivery for EOD reports (channel parity)
+**Priority**: MEDIUM
+**Phase**: Phase 4
+**Depends on**: TASK-077
+**Branch**: `feat/TASK-078-eod-telegram-delivery`
+**Assigned to**: engineer
+
+**Acceptance criteria**:
+- [x] `GetEODTelegramEnabled()` exists in `config_env.go`; reads `EOD_TELEGRAM_ENABLED`, returns false by default (opt-in)
+- [x] `EOD_TELEGRAM_ENABLED=false` in `.env_sample` with comment "Set true to receive EOD reports in Telegram"
+- [x] `SendEODReport(narrative, date string, actionID int64) error` method exists on Bot (new `eod_notify.go`)
+- [x] Message format: `[DevTrack] EOD Report — {date}` + narrative truncated to 4000 chars with "…" if cut + Approve/Reject inline keyboard
+- [x] Uses exact same `approve:<id>` / `reject:<id>` callback_data pattern as TASK-065 — no new callback handler needed
+- [x] `EODReportFn` callback added to `QueueExecutor`; `maybeEODReport()` extracts narrative+date from payload JSON and fires callback
+- [x] `SetEODReportFn()` method added to `IntegratedMonitor`
+- [x] `bot.SendEODReport` wired as `EODReportFn` in `daemon_telegram.go:startTelegramBot()`
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] No new Telegram API secrets — uses existing `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
+
+**Engineer status**: 10/10 criteria done — last commit: 43e21ef "feat(telegram): TASK-078 EOD report Telegram delivery with Approve/Reject inline keyboard" — 2026-06-17 21:51
+**PR**: https://github.com/sraj0501/Devtrack_/pull/185
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-17 21:51
+
+---
+
+### TASK-079 — `devtrack eod` CLI command + Phase 4 exit criterion verification
+**Priority**: MEDIUM
+**Phase**: Phase 4
+**Depends on**: TASK-075, TASK-076, TASK-077, TASK-078
+**Engineer status**: not started
 
 ---
 

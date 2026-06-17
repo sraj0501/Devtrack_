@@ -58,6 +58,10 @@ type WorkspaceConfig struct {
 	// When empty, the default multi-pattern extractor is used (covers Jira, ADO, GitHub).
 	// Example: "(?P<ticket>[A-Z]+-\\d+)" or "#(\\d+)"
 	TicketPattern string `yaml:"ticket_pattern,omitempty"`
+	// EODTime is the local time (HH:MM, 24h) at which the EOD report fires for this workspace.
+	// If empty, the global EOD_REPORT_HOUR / EOD_REPORT_MINUTE settings are used.
+	// Example: "18:00" fires at 6 PM. "0" or absent disables per-workspace override.
+	EODTime string `yaml:"eod_time,omitempty"`
 }
 
 // WorkspacesConfig is the top-level structure of workspaces.yaml

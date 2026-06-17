@@ -27,6 +27,112 @@
 - Estimated daily time saved: ~5 min (EOD report accessible via CLI without opening TUI or checking queue manually; `devtrack eod generate` is a one-liner for the full report cycle)
 - Blockers encountered: none (TASK-075/076/077/078 all merged to dev)
 - One thing that still feels rough: "The `main.go` routing block and `cli.go` Execute() switch are two separate lists that must both be updated when adding a command — easy to add to one and miss the other."
+### [2026-06-17 21:51] TASK-078 — Telegram delivery for EOD reports (channel parity)
+
+**Original message**: "feat(telegram): TASK-078 EOD report Telegram delivery with Approve/Reject inline keyboard"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-078 marked COMPLETE; 10/10 criteria ticked; PR #185 opened targeting dev
+**Time**: ~30 minutes
+**Friction**: LOW
+**Notes**:
+- Merged TASK-077 dependency branch (PR #184 open but not yet merged to dev) into task branch before coding.
+- `GetEODTelegramEnabled()` in `config_env.go`: reads `EOD_TELEGRAM_ENABLED`, returns false by default (opt-in). Uses `strings.ToLower` + string comparison — same pattern as `IsWebhookEnabled()`.
+- `eod_notify.go` in `internal/telegram/`: new file with `SendEODReport()` method and `formatEODReportMessage()` helper. Narrative truncated to 4000 chars. Inline keyboard uses `approve:<id>` / `reject:<id>` callback_data — existing `handleApproveCallback`/`handleRejectCallback` handlers in `queue_notify.go` route these without any changes.
+- `EODReportFn func(narrative, date string, actionID int64) error` added to `QueueExecutor` struct alongside existing `NotifyFn`.
+- `maybeEODReport()` method added to `QueueExecutor`: checks `EODReportFn != nil && config.GetEODTelegramEnabled()`, uses same `seenIDs` deduplication as `maybeNotify`, looks up full action from SQLite via `db.GetPendingAction()`, parses `narrative` and `date` from payload JSON.
+- `tick()` updated: for `eod_report` action_type inside approval window, calls `maybeEODReport(action.ID)` instead of `maybeNotify(action.ID)`.
+- `SetEODReportFn()` added to `IntegratedMonitor` in `integrated.go` — same pattern as `SetQueueNotifyFn()`.
+- `daemon_telegram.go:startTelegramBot()`: wires `bot.SendEODReport` via `monitor.SetEODReportFn()` right after the existing `SetQueueNotifyFn` call.
+- No import cycle: `infra` does not import `telegram`; the callback is a function value, not a `*Bot` reference.
+- `encoding/json` import added to `queue_executor.go` for payload parsing.
+- `go build ./...` and `go vet ./...` both pass clean.
+
+## Task Summary — TASK-078: Telegram delivery for EOD reports — 2026-06-17
+
+- Total commits: 1 (43e21ef)
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~3 min (EOD report now proactively pushed to Telegram with one-tap approve/reject, no CLI polling needed)
+- Blockers encountered: TASK-075/076/077 PRs not yet merged to dev — resolved by merging their branch into the task branch
+- One thing that still feels rough: "The `maybeEODReport` and `maybeNotify` methods share the same `seenIDs` map — an `eod_report` action won't also get a `maybeNotify` call, which is intentional and correct, but the coupling is implicit."
+- Ready for PM review: YES
+
+---
+
+### [2026-06-17 21:08] TASK-077 — Queue the EOD report: eod_report action type through pending_actions
+
+**Original message**: "feat(server): TASK-077 route EOD report through pending_actions queue"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-077 marked COMPLETE; all 5 criteria ticked; PR to be opened targeting dev
+**Time**: ~30 minutes
+**Friction**: LOW
+**Notes**:
+- Added `get_eod_report_confidence() -> float` to `devtrack_server/backend/config.py`. Reads `EOD_REPORT_CONFIDENCE`, defaults to `"0.88"`. Pattern exactly matches `get_eod_report_email()` above it.
+- Added `send_text_report(text, email)` to `EmailReporter` in `devtrack_server/backend/email_reporter.py`. If `graph_client` is None, logs "Email delivery skipped: no Graph client configured" and returns (never raises). Uses `asyncio.run_coroutine_threadsafe` when an event loop is already running (since `_execute_pm_action` is called from `asyncio.to_thread`), falls back to `asyncio.run()` otherwise.
+- Updated `/reports/eod` in `webhook_server.py`: after generating the narrative, calls `_get_queue_gateway().stage(action_type="eod_report", ...)` with confidence from `get_eod_report_confidence()`. Returns `{"output": narrative, "success": True, "action_id": action_id}`. Gateway unavailable degrades gracefully (action_id=None, no error).
+- Added `eod_report` branch to `_execute_pm_action()` in `webhook_server.py`. Reads `payload["narrative"]` and `payload["email"]`; calls `EmailReporter().send_text_report()` when email is non-empty. Any exception is caught and logged at WARNING level — returns `{"status": "posted", "delivered_to": email or "none"}` regardless (Non-Negotiable #8).
+- Merged TASK-075 and TASK-076 branches into the feature branch since their PRs (#182, #183) were open but not yet merged to dev.
+- 11 tests written in `test_eod_queue_action.py`: 3 for the endpoint staging, 3 for `_execute_pm_action` eod_report + non-empty email, 2 for empty email path, 3 for `get_eod_report_confidence()`. All 11 pass.
+- Full suite: 691 passed, 1 pre-existing failure (`test_ollama_host_returns_string`). No regressions.
+- Zero `os.getenv` introduced. All config via `backend.config` typed accessors.
+
+## Task Summary — TASK-077: Queue the EOD report — eod_report action type through pending_actions — 2026-06-17
+
+- Total commits: 1 (bf041fa) + 2 dependency merges (d135bb1 = TASK-075+076)
+- Acceptance criteria met: 5/5
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min (EOD report now fully integrated into the queue pipeline; no special-case for email delivery)
+- Blockers encountered: TASK-075 and TASK-076 PRs (#182, #183) not yet merged to dev — resolved by merging their branches into the task branch directly
+- One thing that still feels rough: "The `send_text_report` async/sync bridge (asyncio.run_coroutine_threadsafe vs asyncio.run) is a bit fragile. A cleaner solution would be to make `_execute_pm_action` async, but that would require touching the /queue/execute endpoint and the asyncio.to_thread call — out of scope for this task."
+- Ready for PM review: YES
+
+---
+
+### [2026-06-17 19:40] TASK-076 — EOD report content: commit-grouped narrative with personalization
+
+**Original message**: "feat(server): add generate_eod_narrative() to DailyReportGenerator; update /reports/eod endpoint (TASK-076)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-076 marked COMPLETE; all 8 criteria ticked; PR #183 posted
+**Time**: ~45 minutes
+**Friction**: LOW
+**Notes**:
+- Extended `DailyReportGenerator` in `devtrack_server/backend/daily_report_generator.py` with three new private methods + one public method: `generate_eod_narrative()`, `_query_commit_rows()`, `_generate_ticket_narrative()`.
+- `_query_commit_rows()` queries the `triggers` table WHERE `trigger_type='commit'` AND `date(timestamp) = target_date`. Uses `self.db_path` which is already set on the class via `backend.config.database_path()` or the injected `db_path` arg.
+- `_generate_ticket_narrative()` builds a 1-3 sentence prompt, passes it through `_inject_style(context_type="report", query_text=messages_joined)`, calls `self._get_provider().generate()` with typed config accessors. Falls back to bullet list on any exception — Non-Negotiable #8 upheld.
+- `generate_eod_narrative()` groups rows by ticket_id; empty/"unlinked" values go to the "Other commits" section. Returns "No commits recorded today." for an empty day, never raises.
+- `/reports/eod` endpoint rewritten: dropped the old `_EODGenerator` import (which came from `backend.work_tracker.eod_report_generator`, a legacy module). Now imports `DailyReportGenerator` and calls `generate_eod_narrative()` via `asyncio.to_thread`. Returns `{"output": narrative, "success": True, "narrative": narrative}` shape as specified in the task.
+- 16 tests written across 5 classes in `test_eod_narrative.py`. A temp SQLite DB is created per test with the relevant trigger rows so tests are fully isolated and do not require the real devtrack.db.
+- Zero `os.getenv` introduced. All config read through `backend.config` typed accessors.
+
+## Task Summary — TASK-076: EOD report content — commit-grouped narrative with personalization — 2026-06-17
+
+- Total commits: 1 (a25bc94)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~10 min (eliminates manual EOD report writing for every commit-heavy day)
+- Blockers encountered: none
+- One thing that still feels rough: "The triggers table schema was inferred from prior tasks (TASK-068) — it would be cleaner if there were a central schema doc. The query works but required cross-referencing the Go migration SQL to confirm column names."
+### [2026-06-17 19:24] TASK-075 — Fix EOD cron config: typed accessors, EODTime, .env_sample
+
+**Original message**: "fix(config): replace os.Getenv in scheduler.go with typed accessors; add EODTime to WorkspaceConfig (TASK-075)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project board TASK-075 block written and all 6 criteria ticked; PR #182 opened
+**Time**: ~5 minutes
+**Friction**: LOW
+**Notes**: Removed `os` and `strconv` imports from scheduler.go (both became unused after the refactor). The `scheduleEODReport()` local `db` variable was renamed to `database` to avoid shadowing the imported `db` package — was already the pattern in `scheduleIdleSessionStop`. Cron expression updated from `"0 0 H * * *"` to `"0 M H * * *"` to use `GetEODReportMinute()`. All 6 acceptance criteria met in a single commit.
+
+## Task Summary — TASK-075: Fix EOD cron config — 2026-06-17
+
+- Total commits: 1
+- Acceptance criteria met: 6/6
+- Tickets auto-updated: 0 (Ollama down; no Python server)
+- Estimated daily time saved: ~5 min (eliminates manual os.Getenv grep errors on future EOD config debugging)
+- Blockers encountered: none
+- One thing that still feels rough: "EODTime on WorkspaceConfig is defined but not yet wired into scheduleEODReport() — per-workspace override logic is TASK-076 territory; leaving the field as data-only is correct for now"
 - Ready for PM review: YES
 
 ---

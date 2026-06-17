@@ -38,6 +38,13 @@ func (d *Daemon) startTelegramBot() {
 	if d.monitor != nil {
 		d.monitor.SetQueueNotifyFn(bot.NotifyPendingAction)
 		log.Println("✓ Telegram queue notifications wired to queue executor")
+
+		// Wire EOD report delivery (TASK-078 channel parity).
+		// When EOD_TELEGRAM_ENABLED=true and a new eod_report action is queued,
+		// the executor calls SendEODReport so the narrative reaches Telegram
+		// with Approve/Reject inline keyboard buttons.
+		d.monitor.SetEODReportFn(bot.SendEODReport)
+		log.Println("✓ Telegram EOD report delivery wired to queue executor")
 	}
 }
 
