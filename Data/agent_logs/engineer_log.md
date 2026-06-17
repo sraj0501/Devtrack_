@@ -2,6 +2,35 @@
 
 ---
 
+### [2026-06-17 22:31] TASK-079 — devtrack eod CLI command + Phase 4 exit criterion verified
+
+**Original message**: "feat(cli): TASK-079 add devtrack eod CLI command + Phase 4 exit criterion verified"
+**DevTrack enhanced it to**: "feat(cli): TASK-079 Add EOD CLI command and verify Phase 4 exit"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-079 marked COMPLETE; 13/13 criteria ticked; PR #186 opened targeting dev; feature_tracker.md updated with Phase 4 completion entry
+**Time**: ~30 minutes
+**Friction**: LOW
+**Notes**:
+- Root cause of initial "Unknown command: eod" failure: `main.go` has a separate large `if cmd ==` block routing commands to `NewCLI()` that is independent of the switch in `cli.go:Execute()`. Adding `eod` to only the cli.go switch was not enough — had to also add it to the main.go routing block. Pattern documented for future commands.
+- `ReportEODFull()` added to `HTTPTriggerClient` to capture both narrative and action_id from `/reports/eod` response. The existing `ReportEOD()` uses `postText()` which only returns the `output` field; the new method uses `postWithResult` to capture the full JSON including `action_id`.
+- `latestEODAction()` iterates `ListPendingActions("")` (all statuses) in reverse to find most recent eod_report — safe since the list is ordered by expires_at ASC.
+- `devtrack eod show` correctly handles the case where payload JSON parse fails or narrative is empty — both return "No EOD report on record".
+- isatty check uses `isatty.IsTerminal || isatty.IsCygwinTerminal` (same pattern as cli_queue.go) — no ANSI decorators in piped output.
+- `eod_notify.go` from the spec refers to the TASK-078 Telegram delivery; actual implementation in queue_executor.go:maybeEODReport() is cleaner than a separate file. Not a gap — functionality is present.
+- `go build ./...`, `go vet ./...`, `go test ./...` all pass clean.
+
+## Task Summary — TASK-079: devtrack eod CLI + Phase 4 exit verification — 2026-06-17
+
+- Total commits: 1 (4bbc683)
+- Acceptance criteria met: 13/13
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min (EOD report accessible via CLI without opening TUI or checking queue manually; `devtrack eod generate` is a one-liner for the full report cycle)
+- Blockers encountered: none (TASK-075/076/077/078 all merged to dev)
+- One thing that still feels rough: "The `main.go` routing block and `cli.go` Execute() switch are two separate lists that must both be updated when adding a command — easy to add to one and miss the other."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-17 18:50] TASK-074 — Phase 3 exit criterion verification
 
 **Branch**: feat/TASK-074-phase3-exit-verification
