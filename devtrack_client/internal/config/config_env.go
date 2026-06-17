@@ -1017,3 +1017,11 @@ func GetWorkSessionAutoStopMinutes() int {
 	}
 	return m
 }
+
+// GetEODTelegramEnabled returns whether EOD reports should be delivered via Telegram.
+// Reads EOD_TELEGRAM_ENABLED. Default is false (opt-in).
+// No panic — a missing var is treated as false, not a fatal misconfiguration.
+func GetEODTelegramEnabled() bool {
+	val := strings.TrimSpace(strings.ToLower(os.Getenv("EOD_TELEGRAM_ENABLED")))
+	return val == "true" || val == "1"
+}

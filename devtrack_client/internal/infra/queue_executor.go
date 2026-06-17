@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -30,6 +31,11 @@ import (
 // When NotifyFn is set, the executor calls it for each new pending action whose
 // confidence < 0.90 (i.e. not imminently auto-approved). This enables Telegram
 // or other notification channels to push proactive messages to the user.
+//
+// When EODReportFn is set and EOD_TELEGRAM_ENABLED=true, the executor calls it
+// once for each new pending eod_report action (TASK-078 channel parity). The
+// callback receives the narrative text, date string, and action ID so the
+// Telegram bot can send the report with Approve/Reject inline keyboard buttons.
 type QueueExecutor struct {
 	db            *db.Database
 	triggerClient *trigger.HTTPTriggerClient
@@ -41,6 +47,13 @@ type QueueExecutor struct {
 	// notified so the callback fires only once per action, not on every poll tick.
 	// Safe to set before calling Start(). Nil means no notification.
 	NotifyFn func(action db.PendingAction)
+
+	// EODReportFn is an optional callback invoked once for each new pending action
+	// with action_type == "eod_report" when EOD_TELEGRAM_ENABLED=true.
+	// Signature: func(narrative, date string, actionID int64) error
+	// Called before the standard auto-approve check so the user receives the report
+	// via Telegram before the approval window expires. Nil means no Telegram delivery.
+	EODReportFn func(narrative, date string, actionID int64) error
 
 	// seenIDs is the set of action IDs we have already sent a notification for.
 	seenMu  sync.Mutex
@@ -114,10 +127,15 @@ func (q *QueueExecutor) tick() {
 			continue
 		}
 
-		// 3a. If inside approval window, check if we need to send a Telegram notification
-		//     for this newly-seen low-confidence action.
+		// 3a. If inside approval window: send Telegram notifications for new actions.
+		//     For eod_report actions, deliver the report narrative (TASK-078 channel parity).
+		//     For other low-confidence actions, send the standard pending-action notification.
 		if !expiresAt.Before(now) {
-			q.maybeNotify(action.ID)
+			if action.ActionType == "eod_report" {
+				q.maybeEODReport(action.ID)
+			} else {
+				q.maybeNotify(action.ID)
+			}
 			continue
 		}
 
@@ -198,6 +216,60 @@ func (q *QueueExecutor) maybeNotify(id int64) {
 	}
 
 	go q.NotifyFn(*action)
+}
+
+// maybeEODReport fires EODReportFn once for a new pending eod_report action when
+// EOD_TELEGRAM_ENABLED=true. It looks up the full PendingAction from local SQLite,
+// extracts the narrative and date from the JSON payload, and calls EODReportFn.
+// If EODReportFn is nil, EOD_TELEGRAM_ENABLED is false, or the DB lookup fails,
+// the method is a no-op — Non-Negotiable #8 (never block on failure).
+func (q *QueueExecutor) maybeEODReport(id int64) {
+	if q.EODReportFn == nil || !config.GetEODTelegramEnabled() {
+		return
+	}
+
+	q.seenMu.Lock()
+	_, alreadySeen := q.seenIDs[id]
+	if alreadySeen {
+		q.seenMu.Unlock()
+		return
+	}
+	q.seenIDs[id] = struct{}{}
+	q.seenMu.Unlock()
+
+	if q.db == nil {
+		return
+	}
+	action, err := q.db.GetPendingAction(id)
+	if err != nil || action == nil {
+		// Row not yet propagated to local SQLite — retry next poll.
+		q.seenMu.Lock()
+		delete(q.seenIDs, id)
+		q.seenMu.Unlock()
+		return
+	}
+
+	// Extract narrative and date from the JSON payload.
+	var payload struct {
+		Narrative string `json:"narrative"`
+		Date      string `json:"date"`
+	}
+	if jsonErr := json.Unmarshal([]byte(action.Payload), &payload); jsonErr != nil {
+		log.Printf("queue executor: eod_report action %d: cannot parse payload: %v", id, jsonErr)
+		return
+	}
+	if payload.Narrative == "" {
+		log.Printf("queue executor: eod_report action %d: payload has no narrative — skipping Telegram delivery", id)
+		return
+	}
+
+	go func() {
+		if err := q.EODReportFn(payload.Narrative, payload.Date, action.ID); err != nil {
+			log.Printf("queue executor: EOD Telegram delivery failed for action %d: %v", action.ID, err)
+		} else {
+			log.Printf("queue executor: EOD report delivered via Telegram for action %d (date=%s)", action.ID, payload.Date)
+		}
+	}()
 }
 
 // parseISO8601 parses the common ISO 8601 datetime formats that Python uses

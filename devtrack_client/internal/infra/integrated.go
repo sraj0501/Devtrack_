@@ -174,6 +174,17 @@ func (im *IntegratedMonitor) SetQueueNotifyFn(fn func(action db.PendingAction)) 
 	im.queueExecutor.NotifyFn = fn
 }
 
+// SetEODReportFn registers a callback on the queue executor that is invoked
+// once for each new pending eod_report action when EOD_TELEGRAM_ENABLED=true.
+// Safe to call after Start(). The fn runs in a goroutine; it must not block.
+// Passing nil clears any previously registered callback.
+func (im *IntegratedMonitor) SetEODReportFn(fn func(narrative, date string, actionID int64) error) {
+	if im.queueExecutor == nil {
+		return
+	}
+	im.queueExecutor.EODReportFn = fn
+}
+
 // Scheduler returns the integrated monitor's scheduler (may be nil before Start).
 // Exported so callers in other packages (CLI, daemon) can query/control it.
 func (im *IntegratedMonitor) Scheduler() *Scheduler { return im.scheduler }
