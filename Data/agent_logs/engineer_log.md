@@ -2,6 +2,39 @@
 
 ---
 
+### [2026-06-17 21:51] TASK-078 — Telegram delivery for EOD reports (channel parity)
+
+**Original message**: "feat(telegram): TASK-078 EOD report Telegram delivery with Approve/Reject inline keyboard"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-078 marked COMPLETE; 10/10 criteria ticked; PR #185 opened targeting dev
+**Time**: ~30 minutes
+**Friction**: LOW
+**Notes**:
+- Merged TASK-077 dependency branch (PR #184 open but not yet merged to dev) into task branch before coding.
+- `GetEODTelegramEnabled()` in `config_env.go`: reads `EOD_TELEGRAM_ENABLED`, returns false by default (opt-in). Uses `strings.ToLower` + string comparison — same pattern as `IsWebhookEnabled()`.
+- `eod_notify.go` in `internal/telegram/`: new file with `SendEODReport()` method and `formatEODReportMessage()` helper. Narrative truncated to 4000 chars. Inline keyboard uses `approve:<id>` / `reject:<id>` callback_data — existing `handleApproveCallback`/`handleRejectCallback` handlers in `queue_notify.go` route these without any changes.
+- `EODReportFn func(narrative, date string, actionID int64) error` added to `QueueExecutor` struct alongside existing `NotifyFn`.
+- `maybeEODReport()` method added to `QueueExecutor`: checks `EODReportFn != nil && config.GetEODTelegramEnabled()`, uses same `seenIDs` deduplication as `maybeNotify`, looks up full action from SQLite via `db.GetPendingAction()`, parses `narrative` and `date` from payload JSON.
+- `tick()` updated: for `eod_report` action_type inside approval window, calls `maybeEODReport(action.ID)` instead of `maybeNotify(action.ID)`.
+- `SetEODReportFn()` added to `IntegratedMonitor` in `integrated.go` — same pattern as `SetQueueNotifyFn()`.
+- `daemon_telegram.go:startTelegramBot()`: wires `bot.SendEODReport` via `monitor.SetEODReportFn()` right after the existing `SetQueueNotifyFn` call.
+- No import cycle: `infra` does not import `telegram`; the callback is a function value, not a `*Bot` reference.
+- `encoding/json` import added to `queue_executor.go` for payload parsing.
+- `go build ./...` and `go vet ./...` both pass clean.
+
+## Task Summary — TASK-078: Telegram delivery for EOD reports — 2026-06-17
+
+- Total commits: 1 (43e21ef)
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~3 min (EOD report now proactively pushed to Telegram with one-tap approve/reject, no CLI polling needed)
+- Blockers encountered: TASK-075/076/077 PRs not yet merged to dev — resolved by merging their branch into the task branch
+- One thing that still feels rough: "The `maybeEODReport` and `maybeNotify` methods share the same `seenIDs` map — an `eod_report` action won't also get a `maybeNotify` call, which is intentional and correct, but the coupling is implicit."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-17 21:08] TASK-077 — Queue the EOD report: eod_report action type through pending_actions
 
 **Original message**: "feat(server): TASK-077 route EOD report through pending_actions queue"

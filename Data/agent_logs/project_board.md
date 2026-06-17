@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-17 by engineer (TASK-074 COMPLETE — Phase 3 exit criterion verified; PR #181 opened targeting dev; branch feat/TASK-074-phase3-exit-verification)_
+_Last updated: 2026-06-17 by engineer (TASK-078 COMPLETE — EOD Telegram delivery; PR #185 opened targeting dev; branch feat/TASK-078-eod-telegram-delivery)_
 _Next DevTrack task ID: TASK-075_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -1742,7 +1742,26 @@ evening without doing anything. Report reads like they wrote it.
 **Priority**: MEDIUM
 **Phase**: Phase 4
 **Depends on**: TASK-077
-**Engineer status**: not started
+**Branch**: `feat/TASK-078-eod-telegram-delivery`
+**Assigned to**: engineer
+
+**Acceptance criteria**:
+- [x] `GetEODTelegramEnabled()` exists in `config_env.go`; reads `EOD_TELEGRAM_ENABLED`, returns false by default (opt-in)
+- [x] `EOD_TELEGRAM_ENABLED=false` in `.env_sample` with comment "Set true to receive EOD reports in Telegram"
+- [x] `SendEODReport(narrative, date string, actionID int64) error` method exists on Bot (new `eod_notify.go`)
+- [x] Message format: `[DevTrack] EOD Report — {date}` + narrative truncated to 4000 chars with "…" if cut + Approve/Reject inline keyboard
+- [x] Uses exact same `approve:<id>` / `reject:<id>` callback_data pattern as TASK-065 — no new callback handler needed
+- [x] `EODReportFn` callback added to `QueueExecutor`; `maybeEODReport()` extracts narrative+date from payload JSON and fires callback
+- [x] `SetEODReportFn()` method added to `IntegratedMonitor`
+- [x] `bot.SendEODReport` wired as `EODReportFn` in `daemon_telegram.go:startTelegramBot()`
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] No new Telegram API secrets — uses existing `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
+
+**Engineer status**: 10/10 criteria done — last commit: 43e21ef "feat(telegram): TASK-078 EOD report Telegram delivery with Approve/Reject inline keyboard" — 2026-06-17 21:51
+**PR**: https://github.com/sraj0501/Devtrack_/pull/185
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-17 21:51
 
 ---
 
