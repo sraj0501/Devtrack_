@@ -1695,6 +1695,42 @@ against the real pipeline, not just unit tests, plus the board/feature-tracker u
 
 ---
 
+## ACTIVE — Phase 4: EOD Pipeline
+
+**Goal**: Cron fires at the configured time (`EOD_REPORT_HOUR` per workspace or global). Query
+today's commits from SQLite, group by ticket, LLM generates a per-ticket narrative in the
+developer's voice. All outbound actions (email send, Telegram delivery) are staged in
+`pending_actions`. Developer receives an accurate EOD report every evening without doing anything.
+
+**Exit criterion** (PRODUCT_BIBLE.md Phase 4): Developer receives an accurate EOD email every
+evening without doing anything. Report reads like they wrote it.
+
+---
+
+### TASK-075 — Fix EOD cron config: replace os.Getenv with typed accessors; per-workspace eod_time
+**Assigned to**: engineer
+**Priority**: HIGH
+**Phase**: Phase 4
+**Started**: 2026-06-17
+**Depends on**: none
+**Branch**: `feat/TASK-075-eod-cron-config`
+
+**Acceptance criteria**:
+- [x] `GetEODReportHour()`, `GetEODReportEmail()`, `GetEODReportMinute()`, `GetWorkSessionAutoStopMinutes()` exist in `config_env.go`
+- [x] `scheduleEODReport()` and `scheduleIdleSessionStop()` contain zero `os.Getenv` calls
+- [x] `WorkspaceConfig.EODTime string yaml:"eod_time,omitempty"` present in `config.go`
+- [x] `.env_sample` documents all four new keys
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] `grep -n "os\.Getenv" devtrack_client/internal/infra/scheduler.go` returns zero matches
+
+**Engineer status**: 6/6 criteria done — last commit: 26b0d2e "fix(config): replace os.Getenv in scheduler.go with typed accessors; add EODTime to WorkspaceConfig (TASK-075)" — 2026-06-17 19:24
+**PR**: https://github.com/sraj0501/Devtrack_/pull/182
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-17 19:25
+
+---
+
 ## DEPRIORITISED (pivot 2026-06-10)
 
 These sat on the old v3.x "Polish & Growth" board. The pivot moved them below the

@@ -965,3 +965,55 @@ func GetQueuePollIntervalSecs() int {
 	}
 	return secs
 }
+
+// GetEODReportHour returns the hour (0–23) at which to fire the EOD report cron.
+// Reads EOD_REPORT_HOUR. Returns 0 on absent or invalid value (0 = disabled).
+// Not a panic var — missing or zero simply disables the EOD auto-report.
+func GetEODReportHour() int {
+	val := os.Getenv("EOD_REPORT_HOUR")
+	if val == "" || val == "0" {
+		return 0
+	}
+	h, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || h < 0 || h > 23 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid EOD_REPORT_HOUR %q — EOD auto-report disabled\n", val)
+		return 0
+	}
+	return h
+}
+
+// GetEODReportMinute returns the minute (0–59) within the EOD hour at which the
+// cron fires. Reads EOD_REPORT_MINUTE. Returns 0 if absent (fires on the hour).
+func GetEODReportMinute() int {
+	val := os.Getenv("EOD_REPORT_MINUTE")
+	if val == "" {
+		return 0
+	}
+	m, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || m < 0 || m > 59 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid EOD_REPORT_MINUTE %q — using 0\n", val)
+		return 0
+	}
+	return m
+}
+
+// GetEODReportEmail returns the email address for EOD report delivery.
+// Reads EOD_REPORT_EMAIL. Returns "" if not set (disables email delivery).
+func GetEODReportEmail() string {
+	return strings.TrimSpace(os.Getenv("EOD_REPORT_EMAIL"))
+}
+
+// GetWorkSessionAutoStopMinutes returns the idle duration after which an active
+// work session is automatically stopped. Reads WORK_SESSION_AUTO_STOP_MINUTES.
+// Returns 0 if absent or invalid (0 = disabled).
+func GetWorkSessionAutoStopMinutes() int {
+	val := os.Getenv("WORK_SESSION_AUTO_STOP_MINUTES")
+	if val == "" {
+		return 0
+	}
+	m, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || m <= 0 {
+		return 0
+	}
+	return m
+}
