@@ -334,7 +334,14 @@ class TestTriggerProcessorCommit:
         proc._queue_gateway = mock_gateway
 
         payload = {**COMMIT_PAYLOAD, "ticket_id": "GH-1"}
-        result = proc.process_commit(payload)
+        # TASK-072: generate_ticket_comment() is now called for the description.
+        # Patch it to return the raw commit message so this regression guard
+        # continues to verify PM sync staging behaviour, not LLM output.
+        with patch(
+            "backend.commit_message_enhancer.generate_ticket_comment",
+            return_value=COMMIT_PAYLOAD["commit_message"],
+        ):
+            result = proc.process_commit(payload)
 
         mock_gateway.stage.assert_called_once()
         _, kwargs = mock_gateway.stage.call_args
@@ -487,14 +494,20 @@ class TestProcessCommitQueueStaging:
         proc._queue_gateway = mock_gateway
 
         payload = {**COMMIT_PAYLOAD, "ticket_id": "PROJ-555"}
-        result = proc.process_commit(payload)
+        # TASK-072: generate_ticket_comment() is now the source of description.
+        # Patch it so this regression test stays focused on PM sync staging.
+        with patch(
+            "backend.commit_message_enhancer.generate_ticket_comment",
+            return_value=COMMIT_PAYLOAD["commit_message"],
+        ):
+            result = proc.process_commit(payload)
 
         mock_gateway.stage.assert_called_once()
         _, kwargs = mock_gateway.stage.call_args
         assert kwargs["target"] == "PROJ-555"
         assert kwargs["confidence"] == 0.85
         assert kwargs["action_type"] == "post_comment"
-        # description falls back to the raw commit message when task_data is None
+        # description comes from generate_ticket_comment (patched to raw commit msg here)
         assert kwargs["payload"]["description"] == COMMIT_PAYLOAD["commit_message"]
         assert kwargs["payload"]["status"] == ""
         assert "queued:post_comment:11" in result["actions"]
@@ -513,7 +526,13 @@ class TestProcessCommitQueueStaging:
         proc._queue_gateway = mock_gateway
 
         payload = {**COMMIT_PAYLOAD, "ticket_id": "PROJ-556"}
-        result = proc.process_commit(payload)
+        # TASK-072: generate_ticket_comment() is now the source of description.
+        # Patch it so this regression test stays focused on PM sync staging.
+        with patch(
+            "backend.commit_message_enhancer.generate_ticket_comment",
+            return_value=COMMIT_PAYLOAD["commit_message"],
+        ):
+            result = proc.process_commit(payload)
 
         mock_gateway.stage.assert_called_once()
         _, kwargs = mock_gateway.stage.call_args

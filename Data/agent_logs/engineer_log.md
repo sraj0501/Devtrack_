@@ -33,6 +33,39 @@
 
 ---
 
+### [2026-06-17 17:18] TASK-072 — Voice-aware ticket comment generation
+
+**Branch**: feat/TASK-072-ticket-comment-generation
+**Status**: COMPLETE
+**Commit**: 87e4915 — feat(comment): add generate_ticket_comment(); wire into process_commit (TASK-072)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/179 (base: dev)
+**Original message**: "feat(comment): add generate_ticket_comment(); wire into process_commit (TASK-072)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running at http://127.0.0.1:11434 — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-072 marked COMPLETE; all 7 criteria ticked; PR URL posted
+**Tests**: uv run pytest backend/tests/ -q — 633 passed, 0 regressions (1 pre-existing failure: test_ollama_host_returns_string, documented since TASK-058)
+**Friction**: LOW
+**Notes**:
+- `generate_ticket_comment()` added to `commit_message_enhancer.py` alongside `enhance_message_with_ai()`. Reuses `CommitMessageEnhancer._get_provider()` (lazy-init LLM chain), same config accessors (`http_timeout()`, `commit_llm_temperature()`, `commit_llm_max_tokens()`), same module-level `_inject_style` binding. No new LLM client or dependency.
+- Prompt explicitly embeds `ticket_id` twice (in the header and in the instruction) so the test assertion on prompt content is unambiguous.
+- Diff fetched via `git_diff_analyzer.GitDiffAnalyzer.get_commit_diff(repo_path, "HEAD")` when the trigger payload does not carry a `"diff"` key (standard case today).
+- Fallback: on any exception, derives `short_id` from `git rev-parse --short=12 HEAD` in `repo_path`, falling back to the first 12 chars of the commit message. Returns `f"Commit {short_id}: {commit_message}"`.
+- `_inject_style` patching in tests: uses `wraps=lambda ...` to stay transparent while recording calls — needed to avoid breaking the actual inject_style mock while also recording it.
+- 3 existing tests in `test_http_triggers.py` updated to patch `generate_ticket_comment` (the description field is no longer the raw NLP output — these tests guard PM sync behavior, not comment content).
+- `process_commit` wiring: both `pm_payload["description"]` and `pm_payload["comment"]` fields now set from `generate_ticket_comment()`. Belt-and-suspenders try/except in `process_commit` catches any uncaught exception from `generate_ticket_comment()` and falls back to NLP/commit_msg.
+
+## Task Summary — TASK-072: Voice-aware ticket comment generation — 2026-06-17
+
+- Total commits: 1
+- Acceptance criteria met: 7/7
+- Tickets auto-updated: 0 (platform not configured in test env)
+- Estimated daily time saved: ~3 min per commit-linked ticket (no manual ticket comment writing)
+- Blockers encountered: none
+- One thing that still feels rough: "config accessors being imported inside the function body (not at module level) requires patching backend.config.* instead of the module-level name — this is consistent with how other functions work here but means test patches need to know this detail"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-16] SESSION START — Phase 2: Opinionated ticket extractor
 
 **PM dispatch**: Phase 2 decomposed into TASK-067 through TASK-070. TASK-067 dispatched.

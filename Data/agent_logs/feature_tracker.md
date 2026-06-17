@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-17 by PM (TASK-072 complete — commit 87e4915, PR #179 open against dev; TASK-073 next)_
+_Last updated: 2026-06-17 by PM (TASK-073 complete — commit ccdaf09, PR #180 open against dev; TASK-074 next and unblocked)_
 
 ---
 
@@ -18,7 +18,7 @@ _Last updated: 2026-06-17 by PM (TASK-072 complete — commit 87e4915, PR #179 o
 | 0 | Foundation reset (silent daemon) | DONE | Daemon runs a full day with no prompts shown |
 | 1 | Pending actions queue | DONE | A week of outbound actions all staged; nothing unexpected posts |
 | 2 | Opinionated ticket extractor | DONE | >80% commits mapped to tickets, no config beyond branch naming — verified 100% (10/10) live |
-| 3 | Silent commit handler | ACTIVE — TASK-072 done, TASK-073 next | Commit → ticket commented + state-transitioned; dev did nothing |
+| 3 | Silent commit handler | ACTIVE — TASK-073 done, TASK-074 (verification) next | Commit → ticket commented + state-transitioned; dev did nothing |
 | 4 | EOD pipeline | QUEUED | Accurate EOD email every evening, in the dev's voice |
 | 5 | Voice training (low friction) | QUEUED | Generated text passes "did I write this?" after 1 week |
 | 6 | Dialectic self-improvement | QUEUED | 30-day correction rate down; ≥3 autonomous skills emerged |
@@ -96,6 +96,32 @@ both dependent on this task's ticket-targeting fix.
 **Hardcoded scan**: CLEAN — zero `os.getenv` introduced; no hardcoded model names, hosts, or timeout literals.
 **Tests**: 633 passed, 0 regressions (1 pre-existing `test_ollama_host_returns_string` failure, documented since TASK-058).
 **Engineer notes**: Commit 87e4915. PR #179 → `dev`. Unblocks no further dependencies (TASK-073 was already unblocked by TASK-071 independently).
+
+---
+
+## 2026-06-17 — TASK-073: State-transition decision + per-connector status mapping
+**Phase**: Phase 3 — Silent commit handler
+**Status**: DONE (commit ccdaf09, PR #180 open against dev)
+**Files**:
+- `devtrack_client/internal/db/database.go` — `CountTicketCommits(repoPath, ticketID string) (int, error)`: queries `triggers` table for prior commit rows with matching `repo_path` and `ticket_id`; called BEFORE `InsertTrigger` in `handleTrigger` so count reflects only prior commits, not the current one.
+- `devtrack_client/internal/trigger/types.go` — `IsFirstCommitForTicket bool \`json:"is_first_commit_for_ticket,omitempty"\`` added to `CommitTriggerData`; omitempty means false is invisible in JSON (callers use `data.get(..., False)` correctly).
+- `devtrack_client/internal/infra/integrated.go` — `handleTrigger` TriggerTypeCommit case: calls `CountTicketCommits` before building `CommitTriggerData`, sets `IsFirstCommitForTicket=true` when count==0 and ticketID non-empty; non-fatal on DB error (logs and treats as not-first).
+- `devtrack_client/internal/db/count_ticket_commits_test.go` — 5 table-driven cases (empty DB, 0/1/N prior commits, wrong repo_path excluded).
+- `devtrack_client/internal/trigger/is_first_commit_test.go` — 2 cases (true present in JSON, false omitted via omitempty).
+- `devtrack_server/backend/ticket_state_mapper.py` — `PLATFORM_IN_PROGRESS_STATE` dict (azure="Active", github="", gitlab="", jira="In Progress") with module docstring documenting research into `github/client.py`, `gitlab/client.py`, `azure/client.py`. GitHub and GitLab explicitly map to "" — no native in-progress API state exists in this codebase, no existing label-as-state convention to reuse. `in_progress_state_for(platform)` returns "" for unrecognized platform.
+- `devtrack_server/backend/webhook_server.py` — `process_commit`: stages `state_transition` as a SEPARATE `_queue_gateway.stage()` call (after `post_comment` staging), only when `is_first_commit_for_ticket=True` AND `in_progress_state_for(pm_platform)` non-empty AND `resolved_ticket_id` non-empty; confidence=0.90; wrapped in its own try/except. `_execute_pm_action`: branches on `action_type` — `state_transition` routes to `workspace_router.route(status=new_state, description="")`, unknown types log warning and return posted.
+- `devtrack_server/backend/tests/test_ticket_state_mapper.py` — 13 tests (known platforms, unknown platform fallback, None-safe, case-insensitive).
+- `devtrack_server/backend/tests/test_state_transition_action.py` — 18 tests (first-commit+known-platform stages; not-first doesn't stage; unknown-platform doesn't stage; unresolved ticket doesn't stage; execute routing for state_transition; execute routing for unknown type).
+
+**Vision check**: PASS — Rule 0 (offline-first): Azure/Jira transitions use `workspace_router.route()`, the same path used by `post_comment` — no new cloud dependency; GitHub/GitLab mapped to "" so no transition attempted where none exists. Rule 1 (CLI stays CLI): background queue action, no browser, no GUI. Rule 2 (wedge first): completely transparent to developer; no README changes.
+
+**Hardcoded scan**: CLEAN — no `os.getenv` introduced in any new file; platform state strings live in `ticket_state_mapper.py` exclusively; no hardcoded hosts/ports/timeouts.
+
+**Tests**: 656 passed (go test ./... and uv run pytest backend/tests/ -q), 0 regressions; 31 new Python tests + 7 new Go tests.
+
+**Key design decision**: GitHub and GitLab correctly return "" from `in_progress_state_for` — engineer read the actual connector files before coding and documented the reasoning in the module docstring. This is the right call: inventing a label-based parallel mechanism that doesn't exist in the codebase would be scope creep and fragile.
+
+**PM sign-off**: APPROVED — 2026-06-17. TASK-074 (Phase 3 exit verification) now unblocked.
 
 ---
 
