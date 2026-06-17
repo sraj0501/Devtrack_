@@ -617,6 +617,31 @@ func (c *HTTPTriggerClient) ReportEOD(email, date string) (string, error) {
 	return c.postText("/reports/eod", map[string]string{"email": email, "date": date})
 }
 
+// EODReportResult carries the narrative text and the optional action_id returned
+// by /reports/eod when Phase 4 queue staging is available.
+type EODReportResult struct {
+	Narrative string // the generated narrative (always populated on success)
+	ActionID  *int64 // non-nil when an eod_report action was staged in pending_actions
+}
+
+// ReportEODFull calls POST /reports/eod and returns both the narrative and the
+// optional action_id from the queue staging step. Used by `devtrack eod generate`
+// so the CLI can print "Queued as action <id>" when staging succeeded.
+func (c *HTTPTriggerClient) ReportEODFull(email, date string) (*EODReportResult, error) {
+	var r struct {
+		Output   string  `json:"output"`
+		Success  bool    `json:"success"`
+		ActionID *int64  `json:"action_id"`
+	}
+	if err := c.postWithResult("/reports/eod", map[string]string{"email": email, "date": date}, &r); err != nil {
+		return nil, err
+	}
+	if !r.Success {
+		return nil, fmt.Errorf("server reported failure: %s", r.Output)
+	}
+	return &EODReportResult{Narrative: r.Output, ActionID: r.ActionID}, nil
+}
+
 // ── Learning methods ──────────────────────────────────────────────────────────
 
 // LearningStatusResponse mirrors the /learning/status JSON payload.
