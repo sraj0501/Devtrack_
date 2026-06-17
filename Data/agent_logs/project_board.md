@@ -1795,16 +1795,20 @@ return {"output": narrative, "success": True, "narrative": narrative}
 - Unlinked commits (ticket_id = "") → appear under "Other commits" section, not silently dropped.
 
 **Acceptance criteria**:
-- [ ] `DailyReportGenerator.generate_eod_narrative()` exists; queries `triggers` table; groups by `ticket_id`
-- [ ] LLM applied per ticket group via existing provider chain; falls back gracefully when absent
-- [ ] `inject_style(context_type="report")` applied to each ticket narrative
-- [ ] Unlinked commits appear under "Other commits" section (not silently dropped)
-- [ ] Empty-day returns a non-empty "No commits recorded" string, never raises
-- [ ] `/reports/eod` endpoint uses `DailyReportGenerator.generate_eod_narrative()` — not the old `_EODGenerator`
-- [ ] `uv run pytest backend/tests/ -q` — no regressions (1 pre-existing failure allowed)
-- [ ] No `os.getenv` introduced; all config via `backend.config` accessors
+- [x] `DailyReportGenerator.generate_eod_narrative()` exists; queries `triggers` table; groups by `ticket_id`
+- [x] LLM applied per ticket group via existing provider chain; falls back gracefully when absent
+- [x] `inject_style(context_type="report")` applied to each ticket narrative
+- [x] Unlinked commits appear under "Other commits" section (not silently dropped)
+- [x] Empty-day returns a non-empty "No commits recorded" string, never raises
+- [x] `/reports/eod` endpoint uses `DailyReportGenerator.generate_eod_narrative()` — not the old `_EODGenerator`
+- [x] `uv run pytest backend/tests/ -q` — no regressions (1 pre-existing failure allowed)
+- [x] No `os.getenv` introduced; all config via `backend.config` accessors
 
-**Engineer status**: started — add generate_eod_narrative() to DailyReportGenerator; query triggers table; group by ticket_id; LLM per-ticket narrative with inject_style; update /reports/eod endpoint; write test_eod_narrative.py
+**Engineer status**: 8/8 criteria done — last commit: a25bc94 "feat(server): add generate_eod_narrative() to DailyReportGenerator; update /reports/eod endpoint (TASK-076)" — 2026-06-17 19:40
+**PR**: https://github.com/sraj0501/Devtrack_/pull/183
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-17 19:45
 
 ---
 

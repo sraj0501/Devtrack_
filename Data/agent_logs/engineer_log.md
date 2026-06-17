@@ -2,6 +2,35 @@
 
 ---
 
+### [2026-06-17 19:40] TASK-076 — EOD report content: commit-grouped narrative with personalization
+
+**Original message**: "feat(server): add generate_eod_narrative() to DailyReportGenerator; update /reports/eod endpoint (TASK-076)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-076 marked COMPLETE; all 8 criteria ticked; PR #183 posted
+**Time**: ~45 minutes
+**Friction**: LOW
+**Notes**:
+- Extended `DailyReportGenerator` in `devtrack_server/backend/daily_report_generator.py` with three new private methods + one public method: `generate_eod_narrative()`, `_query_commit_rows()`, `_generate_ticket_narrative()`.
+- `_query_commit_rows()` queries the `triggers` table WHERE `trigger_type='commit'` AND `date(timestamp) = target_date`. Uses `self.db_path` which is already set on the class via `backend.config.database_path()` or the injected `db_path` arg.
+- `_generate_ticket_narrative()` builds a 1-3 sentence prompt, passes it through `_inject_style(context_type="report", query_text=messages_joined)`, calls `self._get_provider().generate()` with typed config accessors. Falls back to bullet list on any exception — Non-Negotiable #8 upheld.
+- `generate_eod_narrative()` groups rows by ticket_id; empty/"unlinked" values go to the "Other commits" section. Returns "No commits recorded today." for an empty day, never raises.
+- `/reports/eod` endpoint rewritten: dropped the old `_EODGenerator` import (which came from `backend.work_tracker.eod_report_generator`, a legacy module). Now imports `DailyReportGenerator` and calls `generate_eod_narrative()` via `asyncio.to_thread`. Returns `{"output": narrative, "success": True, "narrative": narrative}` shape as specified in the task.
+- 16 tests written across 5 classes in `test_eod_narrative.py`. A temp SQLite DB is created per test with the relevant trigger rows so tests are fully isolated and do not require the real devtrack.db.
+- Zero `os.getenv` introduced. All config read through `backend.config` typed accessors.
+
+## Task Summary — TASK-076: EOD report content — commit-grouped narrative with personalization — 2026-06-17
+
+- Total commits: 1 (a25bc94)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~10 min (eliminates manual EOD report writing for every commit-heavy day)
+- Blockers encountered: none
+- One thing that still feels rough: "The triggers table schema was inferred from prior tasks (TASK-068) — it would be cleaner if there were a central schema doc. The query works but required cross-referencing the Go migration SQL to confirm column names."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-17 18:50] TASK-074 — Phase 3 exit criterion verification
 
 **Branch**: feat/TASK-074-phase3-exit-verification
