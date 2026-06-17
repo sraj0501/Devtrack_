@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-16 by PM (TASK-071 complete and PM-verified, PR #178 open against dev — TASK-072/073 unblocked)_
+_Last updated: 2026-06-17 by engineer (TASK-073 COMPLETE — PR #180 opened targeting dev; branch feat/TASK-073-state-transition-queue-action)_
 _Next DevTrack task ID: TASK-075_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -1378,6 +1378,17 @@ silently, NLP-degraded commits still stage) both upheld.
 
 ---
 
+### TASK-072 — Voice-aware ticket comment generation — PM DONE ENTRY
+**Completed**: 2026-06-17
+**Commit**: 87e4915 — feat(comment): add generate_ticket_comment(); wire into process_commit (TASK-072)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/179 (base: dev)
+**Vision check**: PASS (offline-first LLM chain reused; no cloud dependency; no GUI; no README changes)
+**Hardcoded scan**: CLEAN (zero os.getenv introduced; no hardcoded hosts/models/timeouts)
+**Tests**: 633 passed, 0 regressions; 8 new tests covering LLM available/unavailable/inject_style
+**Notes**: Reuses CommitMessageEnhancer._get_provider() lazy-init chain. inject_style applied with context_type="comment". Fallback: f"Commit {short_id}: {commit_message}". Both pm_payload["description"] and pm_payload["comment"] now AI-generated. Belt-and-suspenders try/except in process_commit. 3 existing test_http_triggers.py tests updated to patch generate_ticket_comment.
+
+---
+
 ### TASK-072 — Voice-aware ticket comment generation (reuse commit_message_enhancer style)
 **Priority**: HIGH
 **Phase**: Phase 3
@@ -1587,26 +1598,39 @@ Run `go build ./...`, `go vet ./...`, `go test ./...` from `devtrack_client/`; r
 `uv run pytest backend/tests/ -q` from `devtrack_server/`.
 
 **Acceptance criteria**:
-- [ ] `Database.CountTicketCommits(repoPath, ticketID)` exists with passing table-driven tests.
-- [ ] `CommitTriggerData.IsFirstCommitForTicket` populated and present in the JSON payload
+- [x] `Database.CountTicketCommits(repoPath, ticketID)` exists with passing table-driven tests.
+- [x] `CommitTriggerData.IsFirstCommitForTicket` populated and present in the JSON payload
       sent to Python (mirrors TASK-068's payload test pattern).
-- [ ] `ticket_state_mapper.py` exists; reuses any pre-existing label-as-state convention found
+- [x] `ticket_state_mapper.py` exists; reuses any pre-existing label-as-state convention found
       in `github/client.py` / `gitlab/client.py` rather than inventing a parallel one (or
-      documents why none existed).
-- [ ] `state_transition` is staged as an independent queue row from `post_comment` — distinct
+      documents why none existed). GitHub/GitLab return "" — no native in-progress API state
+      exists in this codebase; documented in module docstring.
+- [x] `state_transition` is staged as an independent queue row from `post_comment` — distinct
       `action_id`, distinct confidence, distinct expiry.
-- [ ] `state_transition` is only staged when: ticket resolved AND first commit for that ticket
+- [x] `state_transition` is only staged when: ticket resolved AND first commit for that ticket
       AND platform has a known in-progress state mapping.
-- [ ] `_execute_pm_action` branches on `action_type` and routes `state_transition` actions
+- [x] `_execute_pm_action` branches on `action_type` and routes `state_transition` actions
       correctly without requiring comment text.
-- [ ] All new Go and Python tests pass; `go build`, `go vet`, `go test ./...`,
+- [x] All new Go and Python tests pass; `go build`, `go vet`, `go test ./...`,
       `uv run pytest backend/tests/ -q` all clean (no regressions beyond the one documented
-      pre-existing failure).
-- [ ] No hardcoded host/port/timeout values; platform state strings live in the mapping
+      pre-existing failure). 656 pass, 1 pre-existing failure.
+- [x] No hardcoded host/port/timeout values; platform state strings live in the mapping
       module, not scattered inline.
 
-**Engineer status**: not started
-**Blockers**: TASK-071 must merge first (this task's Python staging code sits right next to it)
+**Assigned to**: engineer
+**Started**: 2026-06-17
+**Branch**: `feat/TASK-073-state-transition-queue-action`
+
+**Engineer status**: 8/8 criteria done — last commit: ccdaf09 "feat(phase3): TASK-073 state-transition queue action on first commit for ticket" — 2026-06-17 17:50
+**Blockers**: none (TASK-071 merged — PR #178; TASK-072 merged — PR #179)
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/180
+
+**COMPLETE** — ready for PM review — 2026-06-17 17:50
+
+**PM verification (independent)**: Checked `ticket_state_mapper.py` — engineer read `github/client.py`, `gitlab/client.py`, and `azure/client.py` before coding; GitHub and GitLab correctly mapped to `""` with rationale documented in module docstring. Checked `count_ticket_commits_test.go` commit diff — 5 table-driven cases, correct ordering (count BEFORE insert). `is_first_commit_test.go` — omitempty behavior verified. Hardcoded-values scan clean (no os.getenv, no hardcoded hosts/ports in any new file). Vision check: PASS — Rule 0 (offline-first: Azure/Jira transitions use the same workspace_router path, no cloud hard-dependency); Rule 1 (CLI stays CLI: no browser, no GUI); Rule 2 (wedge first: transparent background action, nothing changes the commit flow).
+
+**PM SIGN-OFF**: APPROVED — 2026-06-17. TASK-074 (Phase 3 exit verification) is now unblocked — all three implementation tasks (071, 072, 073) are complete and PRed to dev.
 
 ---
 

@@ -407,22 +407,40 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 			log.Printf("trigger commit: hash=%s author=%q files=%d workspace=%q message=%q",
 				commit.Hash[:12], commit.Author, len(commit.Files), workspace, commit.Message)
 
+			// TASK-073: Determine if this is the first linked commit for this ticket
+			// in this repo. Must be checked BEFORE InsertTrigger (below) so we count
+			// only prior rows, not the current one. False when ticketID is empty.
+			isFirstCommitForTicket := false
+			if event.TicketID != "" && im.database != nil {
+				prior, countErr := im.database.CountTicketCommits(event.RepoPath, event.TicketID)
+				if countErr != nil {
+					log.Printf("CountTicketCommits failed (non-fatal): %v", countErr)
+				} else {
+					isFirstCommitForTicket = (prior == 0)
+					if isFirstCommitForTicket {
+						log.Printf("trigger commit: hash=%s ticket_id=%q — first commit for this ticket",
+							commit.Hash[:8], event.TicketID)
+					}
+				}
+			}
+
 			cd := trigger.CommitTriggerData{
-				RepoPath:        event.RepoPath,
-				CommitHash:      commit.Hash,
-				CommitMessage:   commit.Message,
-				Author:          commit.Author,
-				Timestamp:       commit.Timestamp.Format(time.RFC3339),
-				FilesChanged:    commit.Files,
-				Branch:          commit.Branch,
-				TicketID:        event.TicketID,
-				WorkspaceName:   event.WorkspaceName,
-				PMPlatform:      event.PMPlatform,
-				PMProject:       event.PMProject,
-				PMAssignee:      event.PMAssignee,
-				PMIterationPath: event.PMIterationPath,
-				PMAreaPath:      event.PMAreaPath,
-				PMMilestone:     event.PMMilestone,
+				RepoPath:               event.RepoPath,
+				CommitHash:             commit.Hash,
+				CommitMessage:          commit.Message,
+				Author:                 commit.Author,
+				Timestamp:              commit.Timestamp.Format(time.RFC3339),
+				FilesChanged:           commit.Files,
+				Branch:                 commit.Branch,
+				TicketID:               event.TicketID,
+				IsFirstCommitForTicket: isFirstCommitForTicket,
+				WorkspaceName:          event.WorkspaceName,
+				PMPlatform:             event.PMPlatform,
+				PMProject:              event.PMProject,
+				PMAssignee:             event.PMAssignee,
+				PMIterationPath:        event.PMIterationPath,
+				PMAreaPath:             event.PMAreaPath,
+				PMMilestone:            event.PMMilestone,
 			}
 			commitData = &cd
 

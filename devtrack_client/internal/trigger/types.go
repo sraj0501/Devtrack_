@@ -14,6 +14,12 @@ type CommitTriggerData struct {
 	FilesChanged  []string `json:"files_changed"`
 	Branch        string   `json:"branch"`
 	TicketID      string   `json:"ticket_id,omitempty"`
+	// IsFirstCommitForTicket is true when CountTicketCommits returned 0 BEFORE
+	// InsertTrigger was called for this commit — meaning this is the first linked
+	// commit for this ticket in this repo. Used by Python (TASK-073) to decide
+	// whether to stage a state_transition ("To Do → In Progress") queue action.
+	// Omitted from JSON when false (zero value) to keep the payload lean.
+	IsFirstCommitForTicket bool `json:"is_first_commit_for_ticket,omitempty"`
 	// Workspace routing fields (omitempty — zero value = fall back to priority chain)
 	WorkspaceName string `json:"workspace_name,omitempty"`
 	PMPlatform    string `json:"pm_platform,omitempty"`
