@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-17 by PM (TASK-073 IN PROGRESS — dispatched to engineer; branch feat/TASK-073-state-transition-queue-action)_
+_Last updated: 2026-06-17 by engineer (TASK-073 COMPLETE — PR #180 opened targeting dev; branch feat/TASK-073-state-transition-queue-action)_
 _Next DevTrack task ID: TASK-075_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -1620,6 +1620,8 @@ Run `go build ./...`, `go vet ./...`, `go test ./...` from `devtrack_client/`; r
 
 **Engineer status**: 8/8 criteria done — last commit: ccdaf09 "feat(phase3): TASK-073 state-transition queue action on first commit for ticket" — 2026-06-17 17:50
 **Blockers**: none (TASK-071 merged — PR #178; TASK-072 merged — PR #179)
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/180
 
 **COMPLETE** — ready for PM review — 2026-06-17 17:50
 
