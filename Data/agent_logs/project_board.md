@@ -1446,20 +1446,23 @@ If the trigger payload doesn't include a diff, call the existing diff-fetch path
 Run `uv run pytest backend/tests/ -q` — no regressions.
 
 **Acceptance criteria**:
-- [ ] `generate_ticket_comment()` exists, reuses `commit_message_enhancer.py`'s existing
+- [x] `generate_ticket_comment()` exists, reuses `commit_message_enhancer.py`'s existing
       Ollama client/prompt plumbing (no duplicate LLM client setup).
-- [ ] Falls back to a templated comment string when the LLM call fails — never raises out
+- [x] Falls back to a templated comment string when the LLM call fails — never raises out
       of `process_commit`.
-- [ ] `inject_style()` applied with `context_type="comment"`.
-- [ ] `process_commit`'s staged `post_comment` payload description/comment field is sourced
+- [x] `inject_style()` applied with `context_type="comment"`.
+- [x] `process_commit`'s staged `post_comment` payload description/comment field is sourced
       from `generate_ticket_comment()`, not the raw NLP description.
-- [ ] New tests pass (LLM available / unavailable / style injection called).
-- [ ] `uv run pytest backend/tests/ -q` — no regressions.
-- [ ] No `os.getenv` introduced; no hardcoded model name, host, or timeout literals
+- [x] New tests pass (LLM available / unavailable / style injection called).
+- [x] `uv run pytest backend/tests/ -q` — no regressions (633 passed, 1 pre-existing failure).
+- [x] No `os.getenv` introduced; no hardcoded model name, host, or timeout literals
       (reuse existing config accessors).
 
-**Engineer status**: started — add generate_ticket_comment() to commit_message_enhancer.py reusing existing LLM plumbing; wire into process_commit; 3 tests (LLM available, LLM unavailable, inject_style called)
-**Blockers**: none (TASK-071 merged as PR #178)
+**Engineer status**: 7/7 criteria done — last commit: 87e4915 "feat(comment): add generate_ticket_comment(); wire into process_commit (TASK-072)" — 2026-06-17 17:18
+**PR**: https://github.com/sraj0501/Devtrack_/pull/179
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-17 17:25
 
 ---
 
