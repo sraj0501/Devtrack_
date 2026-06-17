@@ -1651,13 +1651,161 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         
         return sorted(reports, key=lambda x: x["date"], reverse=True)
     
+    # =========================================================================
+    # EOD NARRATIVE (Phase 4)
+    # =========================================================================
+
+    def generate_eod_narrative(self, target_date: Optional[str] = None) -> str:
+        """Generate an EOD report narrative by querying today's commits from the
+        triggers table, grouping by ticket_id, and producing a per-ticket
+        paragraph via the existing LLM provider chain.
+
+        The method applies inject_style(context_type="report") to each per-ticket
+        prompt before calling the LLM.  When the LLM is unavailable it falls back
+        to a plain-text bullet list of commit messages.  Unlinked commits (empty
+        or "unlinked" ticket_id) are collected under an "Other commits" section so
+        they are never silently dropped.  Returns "No commits recorded today."
+        when there are no commit rows for the day — never raises.
+
+        Args:
+            target_date: ISO date string YYYY-MM-DD (default: today in local time).
+
+        Returns:
+            A complete EOD report string.
+        """
+        try:
+            from datetime import date as _date
+            if target_date is None:
+                target_date = _date.today().isoformat()
+
+            rows = self._query_commit_rows(target_date)
+
+            if not rows:
+                return "No commits recorded today."
+
+            # Group by ticket_id.  Treat "" or "unlinked" as the unlinked bucket.
+            grouped: Dict[str, List[str]] = {}
+            unlinked: List[str] = []
+            for row in rows:
+                ticket_id = (row.get("ticket_id") or "").strip()
+                msg = row.get("commit_message") or row.get("message") or ""
+                if not ticket_id or ticket_id.lower() == "unlinked":
+                    unlinked.append(msg)
+                else:
+                    grouped.setdefault(ticket_id, []).append(msg)
+
+            sections: List[str] = []
+
+            # Per-ticket narrative sections
+            for ticket_id, messages in grouped.items():
+                narrative = self._generate_ticket_narrative(ticket_id, messages)
+                sections.append(f"## {ticket_id}\n\n{narrative}")
+
+            # Unlinked commits section
+            if unlinked:
+                bullet_list = "\n".join(f"- {m}" for m in unlinked if m)
+                sections.append(f"## Other commits\n\n{bullet_list}")
+
+            body = "\n\n".join(sections)
+            return f"EOD Report — {target_date}\n\n{body}"
+
+        except Exception as exc:  # Non-Negotiable #8: never raise
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "generate_eod_narrative failed, returning empty-day message: %s", exc
+            )
+            return "No commits recorded today."
+
+    def _query_commit_rows(self, target_date: str) -> List[Dict[str, Any]]:
+        """Query commit triggers from SQLite for *target_date*.
+
+        Returns a list of dicts with at least ``ticket_id`` and
+        ``commit_message`` keys.  Returns empty list on any error.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id,
+                       commit_message,
+                       commit_hash,
+                       timestamp
+                FROM triggers
+                WHERE trigger_type = 'commit'
+                  AND date(timestamp) = ?
+                ORDER BY timestamp ASC
+                """,
+                (target_date,),
+            )
+            rows = [dict(r) for r in cursor.fetchall()]
+            conn.close()
+            return rows
+        except Exception as exc:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "_query_commit_rows failed for date=%s: %s", target_date, exc
+            )
+            return []
+
+    def _generate_ticket_narrative(self, ticket_id: str, messages: List[str]) -> str:
+        """Generate a 1–3 sentence narrative for *ticket_id* using the LLM.
+
+        Falls back to a bullet list of raw commit messages when the LLM is
+        unavailable or raises.  Never raises itself.
+        """
+        bullet_fallback = "\n".join(f"- {m}" for m in messages if m)
+
+        try:
+            provider = self._get_provider()
+            if provider is None:
+                return bullet_fallback
+
+            joined = "\n".join(f"- {m}" for m in messages if m)
+            prompt = (
+                f"Summarize what was accomplished on ticket {ticket_id} today "
+                f"based on these commit messages:\n{joined}\n\n"
+                "Write 1-3 sentences, first person, past tense. "
+                "Be concise and professional."
+            )
+
+            prompt = _inject_style(
+                prompt,
+                context_type="report",
+                query_text="\n".join(messages),
+            )
+
+            from backend.llm.base import LLMOptions
+            from backend.config import http_timeout, report_llm_temperature, report_llm_max_tokens
+
+            response = provider.generate(
+                prompt=prompt,
+                options=LLMOptions(
+                    temperature=report_llm_temperature(),
+                    max_tokens=report_llm_max_tokens(),
+                ),
+                timeout=http_timeout(),
+            )
+
+            if response and response.strip():
+                return response.strip()
+            return bullet_fallback
+
+        except Exception as exc:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "_generate_ticket_narrative failed for ticket=%s: %s", ticket_id, exc
+            )
+            return bullet_fallback
+
     def get_productivity_trend(self, days: int = 7) -> Dict[str, Any]:
         """
         Calculate productivity trend over recent days.
-        
+
         Args:
             days: Number of days to analyze
-            
+
         Returns:
             Dictionary with trend data
         """
