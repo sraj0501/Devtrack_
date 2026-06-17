@@ -665,6 +665,29 @@ func (d *Database) GetLastTicketID(repoPath string) (string, error) {
 	return ticketID, nil
 }
 
+// CountTicketCommits returns the number of prior commit trigger rows that
+// reference the given ticketID in the given repoPath. The caller must invoke
+// this BEFORE InsertTrigger for the current commit so that only prior rows are
+// counted — the check answers "have we seen this ticket in this repo before?".
+// Returns (0, nil) when the ticket has never been seen. Used by the Go trigger
+// flow (TASK-073) to populate CommitTriggerData.IsFirstCommitForTicket.
+func (d *Database) CountTicketCommits(repoPath, ticketID string) (int, error) {
+	if ticketID == "" {
+		return 0, nil
+	}
+	var count int
+	err := d.db.QueryRow(`
+		SELECT COUNT(*) FROM triggers
+		WHERE trigger_type='commit'
+		  AND repo_path=?
+		  AND ticket_id=?
+	`, repoPath, ticketID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("CountTicketCommits failed: %w", err)
+	}
+	return count, nil
+}
+
 // TicketStats returns ticket extraction statistics (total/linked/unlinked) for
 // the last N commit triggers, optionally filtered by repo path. Pass repoPath=""
 // to aggregate across all workspaces. Used by `devtrack status` (TASK-070) to

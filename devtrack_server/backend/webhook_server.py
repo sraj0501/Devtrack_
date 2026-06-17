@@ -364,6 +364,50 @@ class TriggerProcessor:
         if not self.workspace_router:
             return {"status": "failed", "error": "workspace_router not available"}
 
+        # Branch on action_type to route correctly.
+        # post_comment   → pass description/comment text to workspace_router.route()
+        # state_transition → pass new_state as status; no comment text required
+        # unknown type    → log warning, mark complete (never fail the queue)
+
+        if action_type == "state_transition":
+            new_state = payload.get("new_state", "")
+            ticket_id_for_route = payload.get("ticket_id", target)
+            try:
+                self.workspace_router.route(
+                    pm_platform=pm_platform,
+                    description="",          # state-only transition; no comment text
+                    ticket_id=ticket_id_for_route,
+                    status=new_state,
+                    pm_project=payload.get("pm_project", ""),
+                    pm_assignee=payload.get("pm_assignee", ""),
+                    pm_iteration_path=payload.get("pm_iteration_path", ""),
+                    pm_area_path=payload.get("pm_area_path", ""),
+                    pm_milestone=payload.get("pm_milestone", ""),
+                    commit_info=payload.get("commit_info", {}),
+                )
+                logger.info(
+                    "queue: executed state_transition action %s "
+                    "(target=%s new_state=%r platform=%s)",
+                    action.get("id"), target, new_state, pm_platform,
+                )
+                return {"status": "posted"}
+            except Exception as e:
+                logger.warning(
+                    "queue: state_transition action %s failed (target=%s): %s",
+                    action.get("id"), target, e,
+                )
+                return {"status": "failed", "error": str(e)}
+
+        if action_type not in ("post_comment",):
+            # Unknown action type — log and mark complete to avoid blocking the queue
+            logger.warning(
+                "queue: unknown action_type %r for action %s (target=%s) — "
+                "marking complete without executing",
+                action_type, action.get("id"), target,
+            )
+            return {"status": "posted"}
+
+        # post_comment (and any future comment-type actions)
         try:
             self.workspace_router.route(
                 pm_platform=pm_platform,
@@ -518,6 +562,46 @@ class TriggerProcessor:
                             "PM sync staged (action_id=%d, confidence=%.2f, platform=%s)",
                             action_id, confidence, pm_platform or "auto",
                         )
+
+                        # Phase 3 (TASK-073): stage a SEPARATE state_transition action
+                        # when this is the first linked commit for this ticket.
+                        # This is an independent queue row with its own confidence and
+                        # expiry — per PRODUCT_BIBLE.md Layer 2 ("each queued action").
+                        # confidence=0.90 → 2-minute auto-approve window (just above the
+                        # 0.90 threshold in ConfidenceTimeout that maps to 2 minutes).
+                        try:
+                            from backend.ticket_state_mapper import in_progress_state_for as _ips_for
+                            is_first = data.get("is_first_commit_for_ticket", False)
+                            new_state = _ips_for(pm_platform)
+                            if is_first and new_state:
+                                state_action_id = self._queue_gateway.stage(
+                                    action_type="state_transition",
+                                    target=resolved_ticket_id,
+                                    platform=pm_platform or "auto",
+                                    workspace=data.get("workspace_name", ""),
+                                    payload={
+                                        "ticket_id": resolved_ticket_id,
+                                        "new_state": new_state,
+                                        "commit_info": pm_payload["commit_info"],
+                                    },
+                                    # 0.90 — first-commit-for-ticket is an unambiguous signal
+                                    confidence=0.90,
+                                )
+                                actions.append(f"queued:state_transition:{state_action_id}")
+                                logger.info(
+                                    "State transition staged (action_id=%d, new_state=%r, platform=%s)",
+                                    state_action_id, new_state, pm_platform or "auto",
+                                )
+                            elif is_first and not new_state:
+                                logger.debug(
+                                    "State transition skipped: platform %r has no "
+                                    "in-progress state mapping", pm_platform,
+                                )
+                        except Exception as _st_exc:
+                            logger.warning(
+                                "State transition staging failed (non-fatal): %s", _st_exc
+                            )
+
                         return {
                             "actions":    actions,
                             "commit_hash": commit_hash,
