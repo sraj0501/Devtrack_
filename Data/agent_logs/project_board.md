@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-17 by engineer (TASK-074 COMPLETE — Phase 3 exit criterion verified; PR #NNN opened targeting dev; branch feat/TASK-074-phase3-exit-verification)_
+_Last updated: 2026-06-17 by engineer (TASK-074 COMPLETE — Phase 3 exit criterion verified; PR #181 opened targeting dev; branch feat/TASK-074-phase3-exit-verification)_
 _Next DevTrack task ID: TASK-075_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -1689,7 +1689,7 @@ against the real pipeline, not just unit tests, plus the board/feature-tracker u
 
 **Engineer status**: 8/8 criteria done — verification complete 2026-06-17 18:50
 **Blockers**: none (TASK-071 PR #178, TASK-072 PR #179, TASK-073 PR #180 all merged to dev)
-**PR**: #NNN (to be filled after push)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/181
 
 **COMPLETE** — ready for PM review — 2026-06-17 18:50
 

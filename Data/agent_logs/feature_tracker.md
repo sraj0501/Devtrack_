@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-17 by engineer (TASK-074 COMPLETE — Phase 3 exit criterion verified live; PR #NNN open against dev)_
+_Last updated: 2026-06-17 by engineer (TASK-074 COMPLETE — Phase 3 exit criterion verified live; PR #181 open against dev)_
 
 ---
 
@@ -42,7 +42,7 @@ decoupling Phases 1–2. Detail in Task History below.
 
 **Phase**: Phase 3
 **Status**: DONE (exit criterion verified 2026-06-17)
-**Tasks**: TASK-071 (PR #178), TASK-072 (PR #179), TASK-073 (PR #180), TASK-074 (PR #NNN)
+**Tasks**: TASK-071 (PR #178), TASK-072 (PR #179), TASK-073 (PR #180), TASK-074 (PR #181)
 
 **Files changed (Phase 3 scope)**:
 - `devtrack_server/backend/webhook_server.py` — ticket_id wired from Go-resolved field; PM sync gated on resolved_ticket_id; generate_ticket_comment() called for post_comment payload; state_transition staged as independent queue row on first commit; _execute_pm_action branches on action_type
