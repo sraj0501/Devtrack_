@@ -1725,14 +1725,15 @@ evening without doing anything. Report reads like they wrote it.
 **Branch**: `feat/TASK-077-eod-queue-action`
 
 **Acceptance criteria**:
-- [ ] `/reports/eod` stages an `eod_report` queue row before returning
-- [ ] `_execute_pm_action` handles `action_type == "eod_report"`: delivers email when configured, skips gracefully otherwise
-- [ ] `get_eod_report_confidence()` accessor exists in `config.py`; no literal confidence in handler
-- [ ] No `os.getenv` introduced
-- [ ] `uv run pytest backend/tests/ -q` — no regressions
+- [x] `/reports/eod` stages an `eod_report` queue row before returning
+- [x] `_execute_pm_action` handles `action_type == "eod_report"`: delivers email when configured, skips gracefully otherwise
+- [x] `get_eod_report_confidence()` accessor exists in `config.py`; no literal confidence in handler
+- [x] No `os.getenv` introduced
+- [x] `uv run pytest backend/tests/ -q` — no regressions (691 passed, 1 pre-existing failure: test_ollama_host_returns_string)
 
-**Engineer status**: started — plan: (1) add get_eod_report_confidence() to config.py; (2) add send_text_report() to EmailReporter; (3) update /reports/eod to stage eod_report via _get_queue_gateway(); (4) add eod_report branch to _execute_pm_action(); (5) write test_eod_queue_action.py
-**Blockers**: none
+**Engineer status**: 5/5 criteria done — last commit: bf041fa "feat(server): TASK-077 route EOD report through pending_actions queue" — 2026-06-17 21:08
+
+**COMPLETE** — ready for PM review — 2026-06-17 21:10
 
 ---
 

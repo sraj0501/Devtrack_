@@ -2,6 +2,36 @@
 
 ---
 
+### [2026-06-17 21:08] TASK-077 — Queue the EOD report: eod_report action type through pending_actions
+
+**Original message**: "feat(server): TASK-077 route EOD report through pending_actions queue"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-077 marked COMPLETE; all 5 criteria ticked; PR to be opened targeting dev
+**Time**: ~30 minutes
+**Friction**: LOW
+**Notes**:
+- Added `get_eod_report_confidence() -> float` to `devtrack_server/backend/config.py`. Reads `EOD_REPORT_CONFIDENCE`, defaults to `"0.88"`. Pattern exactly matches `get_eod_report_email()` above it.
+- Added `send_text_report(text, email)` to `EmailReporter` in `devtrack_server/backend/email_reporter.py`. If `graph_client` is None, logs "Email delivery skipped: no Graph client configured" and returns (never raises). Uses `asyncio.run_coroutine_threadsafe` when an event loop is already running (since `_execute_pm_action` is called from `asyncio.to_thread`), falls back to `asyncio.run()` otherwise.
+- Updated `/reports/eod` in `webhook_server.py`: after generating the narrative, calls `_get_queue_gateway().stage(action_type="eod_report", ...)` with confidence from `get_eod_report_confidence()`. Returns `{"output": narrative, "success": True, "action_id": action_id}`. Gateway unavailable degrades gracefully (action_id=None, no error).
+- Added `eod_report` branch to `_execute_pm_action()` in `webhook_server.py`. Reads `payload["narrative"]` and `payload["email"]`; calls `EmailReporter().send_text_report()` when email is non-empty. Any exception is caught and logged at WARNING level — returns `{"status": "posted", "delivered_to": email or "none"}` regardless (Non-Negotiable #8).
+- Merged TASK-075 and TASK-076 branches into the feature branch since their PRs (#182, #183) were open but not yet merged to dev.
+- 11 tests written in `test_eod_queue_action.py`: 3 for the endpoint staging, 3 for `_execute_pm_action` eod_report + non-empty email, 2 for empty email path, 3 for `get_eod_report_confidence()`. All 11 pass.
+- Full suite: 691 passed, 1 pre-existing failure (`test_ollama_host_returns_string`). No regressions.
+- Zero `os.getenv` introduced. All config via `backend.config` typed accessors.
+
+## Task Summary — TASK-077: Queue the EOD report — eod_report action type through pending_actions — 2026-06-17
+
+- Total commits: 1 (bf041fa) + 2 dependency merges (d135bb1 = TASK-075+076)
+- Acceptance criteria met: 5/5
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min (EOD report now fully integrated into the queue pipeline; no special-case for email delivery)
+- Blockers encountered: TASK-075 and TASK-076 PRs (#182, #183) not yet merged to dev — resolved by merging their branches into the task branch directly
+- One thing that still feels rough: "The `send_text_report` async/sync bridge (asyncio.run_coroutine_threadsafe vs asyncio.run) is a bit fragile. A cleaner solution would be to make `_execute_pm_action` async, but that would require touching the /queue/execute endpoint and the asyncio.to_thread call — out of scope for this task."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-17 19:40] TASK-076 — EOD report content: commit-grouped narrative with personalization
 
 **Original message**: "feat(server): add generate_eod_narrative() to DailyReportGenerator; update /reports/eod endpoint (TASK-076)"
