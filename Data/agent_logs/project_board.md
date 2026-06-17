@@ -1732,6 +1732,7 @@ evening without doing anything. Report reads like they wrote it.
 - [x] `uv run pytest backend/tests/ -q` — no regressions (691 passed, 1 pre-existing failure: test_ollama_host_returns_string)
 
 **Engineer status**: 5/5 criteria done — last commit: bf041fa "feat(server): TASK-077 route EOD report through pending_actions queue" — 2026-06-17 21:08
+**PR**: https://github.com/sraj0501/Devtrack_/pull/184
 
 **COMPLETE** — ready for PM review — 2026-06-17 21:10
 
