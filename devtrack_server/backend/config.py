@@ -1408,6 +1408,11 @@ def get_eod_report_email() -> str:
     return get("EOD_REPORT_EMAIL", "")
 
 
+def get_eod_report_confidence() -> float:
+    """Confidence for staged EOD report actions. EOD_REPORT_CONFIDENCE (default: 0.88)."""
+    return float(get("EOD_REPORT_CONFIDENCE", "0.88"))
+
+
 # --- Notifications ---
 
 def get_notification_enabled() -> bool:

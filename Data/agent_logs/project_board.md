@@ -1708,178 +1708,21 @@ evening without doing anything. Report reads like they wrote it.
 ---
 
 ### TASK-075 — Fix EOD cron config: replace os.Getenv with typed accessors; per-workspace eod_time
-**Assigned to**: engineer
-**Priority**: HIGH
-**Phase**: Phase 4
-**Started**: 2026-06-17
-**Depends on**: none
-**Branch**: `feat/TASK-075-eod-cron-config`
-
-**Acceptance criteria**:
-- [x] `GetEODReportHour()`, `GetEODReportEmail()`, `GetEODReportMinute()`, `GetWorkSessionAutoStopMinutes()` exist in `config_env.go`
-- [x] `scheduleEODReport()` and `scheduleIdleSessionStop()` contain zero `os.Getenv` calls
-- [x] `WorkspaceConfig.EODTime string yaml:"eod_time,omitempty"` present in `config.go`
-- [x] `.env_sample` documents all four new keys
-- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [x] `grep -n "os\.Getenv" devtrack_client/internal/infra/scheduler.go` returns zero matches
-
-**Engineer status**: 6/6 criteria done — last commit: 26b0d2e "fix(config): replace os.Getenv in scheduler.go with typed accessors; add EODTime to WorkspaceConfig (TASK-075)" — 2026-06-17 19:24
-**PR**: https://github.com/sraj0501/Devtrack_/pull/182
-**Blockers**: none
-
-**COMPLETE** — ready for PM review — 2026-06-17 19:25
+**Status**: COMPLETE — PR #182 merged to dev — 2026-06-17
 
 ---
 
 ### TASK-076 — EOD report content: commit-grouped narrative with personalization
-**Assigned to**: engineer
-**Priority**: HIGH
-**Phase**: Phase 4
-**Started**: 2026-06-17
-**Depends on**: TASK-075 (COMPLETE — PR #182)
-**Branch**: `feat/TASK-076-eod-narrative-content`
-
-**Spec**:
-
-Upgrade `devtrack_server/backend/daily_report_generator.py` and the `/reports/eod` endpoint in
-`webhook_server.py` to produce a commit-grouped, personalized narrative instead of the current
-session-duration summary. Do NOT rewrite `daily_report_generator.py` — extend it.
-
-The current `/reports/eod` handler calls `_EODGenerator().generate()` and formats duration/session
-counts. Phase 4 needs: (1) today's commits from `triggers` table grouped by `ticket_id`;
-(2) per-ticket LLM narrative in developer's voice; (3) `inject_style(context_type="report")` applied.
-
-**Step 1 — New method on `DailyReportGenerator`: `generate_eod_narrative(target_date: str) -> str`**
-
-In `devtrack_server/backend/daily_report_generator.py`, add:
-
-```python
-def generate_eod_narrative(self, target_date: Optional[str] = None) -> str:
-    """
-    Query today's commit triggers from SQLite, group by ticket_id, generate a
-    per-ticket narrative paragraph via LLM (reusing existing Ollama provider chain),
-    apply inject_style(context_type="report"), assemble into a complete EOD report string.
-    Falls back to a plain-text enumeration of commits if LLM is unavailable.
-    Never raises — always returns a string.
-    """
-```
-
-Implementation notes:
-- Query `triggers` table WHERE `trigger_type='commit'` AND `date(timestamp) = target_date`
-  (default: today in local time). Use `self.email_reporter.db_path` for the SQLite connection.
-- Group rows by `ticket_id`. Rows with empty or unlinked `ticket_id` go into "Other commits" section.
-- For each ticket group: build a prompt — "Summarize what was accomplished on ticket {ticket_id}
-  today based on these commit messages: {messages}. Write 1–3 sentences, first person, past tense."
-  Pass through `_inject_style(prompt, context_type="report")` before the LLM call.
-- Use the existing `self._provider` LLM chain (already initialized). If None or unavailable:
-  fall back to bullet-listing raw commit messages under each ticket section.
-- Assemble: `"EOD Report — {date}\n\n{per_ticket_sections}\n{unlinked_section}"`.
-
-**Step 2 — Update `/reports/eod` endpoint in `webhook_server.py`**
-
-Replace the current endpoint body with:
-
-```python
-from backend.daily_report_generator import DailyReportGenerator
-gen = DailyReportGenerator()
-narrative = gen.generate_eod_narrative(target_date=date_str)
-return {"output": narrative, "success": True, "narrative": narrative}
-```
-
-**Step 3 — Tests: `devtrack_server/backend/tests/test_eod_narrative.py`**
-
-- LLM available (mocked provider) → returns a multi-section string mentioning ticket IDs.
-- LLM unavailable → falls back to plain-text bullet list; no exception raised.
-- Empty commit history → returns "No commits recorded" string, never raises.
-- `inject_style` called with `context_type="report"` (mock/spy assertion).
-- Unlinked commits (ticket_id = "") → appear under "Other commits" section, not silently dropped.
-
-**Acceptance criteria**:
-- [x] `DailyReportGenerator.generate_eod_narrative()` exists; queries `triggers` table; groups by `ticket_id`
-- [x] LLM applied per ticket group via existing provider chain; falls back gracefully when absent
-- [x] `inject_style(context_type="report")` applied to each ticket narrative
-- [x] Unlinked commits appear under "Other commits" section (not silently dropped)
-- [x] Empty-day returns a non-empty "No commits recorded" string, never raises
-- [x] `/reports/eod` endpoint uses `DailyReportGenerator.generate_eod_narrative()` — not the old `_EODGenerator`
-- [x] `uv run pytest backend/tests/ -q` — no regressions (1 pre-existing failure allowed)
-- [x] No `os.getenv` introduced; all config via `backend.config` accessors
-
-**Engineer status**: 8/8 criteria done — last commit: a25bc94 "feat(server): add generate_eod_narrative() to DailyReportGenerator; update /reports/eod endpoint (TASK-076)" — 2026-06-17 19:40
-**PR**: https://github.com/sraj0501/Devtrack_/pull/183
-**Blockers**: none
-
-**COMPLETE** — ready for PM review — 2026-06-17 19:45
+**Status**: COMPLETE — PR #183 merged to dev — 2026-06-17
 
 ---
 
 ### TASK-077 — Queue the EOD report: `eod_report` action type through pending_actions
+**Assigned to**: engineer
 **Priority**: HIGH
 **Phase**: Phase 4
-**Depends on**: TASK-075, TASK-076
+**Depends on**: TASK-075 (COMPLETE — PR #182), TASK-076 (COMPLETE — PR #183)
 **Branch**: `feat/TASK-077-eod-queue-action`
-
-**Spec**:
-
-Every outbound action stages through `pending_actions` (Non-Negotiable #2). The EOD report
-must be queued like every other action, not sent directly.
-
-**Step 1 — Stage the EOD report as a queue action in `/reports/eod`**
-
-In `webhook_server.py` `/reports/eod` handler, after generating the narrative (TASK-076):
-
-```python
-action_id = _queue_gateway.stage(
-    action_type="eod_report",
-    target="developer",
-    platform="email",
-    workspace=data.get("workspace", "all"),
-    payload={
-        "narrative": narrative,
-        "email": email or "",
-        "date": date_str or str(date.today()),
-    },
-    confidence=get_eod_report_confidence(),
-    is_new_action_type=False,
-)
-return {"output": narrative, "success": True, "action_id": action_id}
-```
-
-Access `_queue_gateway` via the same app-level singleton used by `process_commit`
-(match TASK-061's established pattern exactly).
-
-**Step 2 — `_execute_pm_action` handles `action_type == "eod_report"`**
-
-In `webhook_server.py:_execute_pm_action()`, add a branch:
-
-```python
-elif action["action_type"] == "eod_report":
-    payload = action.get("payload", {})
-    narrative = payload.get("narrative", "")
-    email = payload.get("email", "")
-    if email:
-        reporter = EmailReporter()
-        reporter.send_text_report(narrative, email)
-    return {"status": "posted", "delivered_to": email or "none"}
-```
-
-If `EmailReporter` lacks `send_text_report(text, email)`, add it. It calls
-`reporter.graph_client.send_email(...)` when graph_client is initialized; otherwise
-logs and returns (never raises — Non-Negotiable #8).
-
-**Step 3 — `get_eod_report_confidence()` in `devtrack_server/backend/config.py`**
-
-```python
-def get_eod_report_confidence() -> float:
-    """Confidence for staged EOD report actions. EOD_REPORT_CONFIDENCE (default: 0.88)."""
-    return float(get("EOD_REPORT_CONFIDENCE", "0.88"))
-```
-
-**Step 4 — Tests: `devtrack_server/backend/tests/test_eod_queue_action.py`**
-
-- `/reports/eod` endpoint calls `_queue_gateway.stage()` with `action_type="eod_report"`.
-- `_execute_pm_action` with `eod_report` + non-empty email calls `EmailReporter.send_text_report`.
-- `_execute_pm_action` with empty email returns `{"status": "posted"}` without raising.
-- `get_eod_report_confidence()` returns `0.88` when `EOD_REPORT_CONFIDENCE` is unset.
 
 **Acceptance criteria**:
 - [ ] `/reports/eod` stages an `eod_report` queue row before returning
@@ -1888,8 +1731,8 @@ def get_eod_report_confidence() -> float:
 - [ ] No `os.getenv` introduced
 - [ ] `uv run pytest backend/tests/ -q` — no regressions
 
-**Engineer status**: not started
-**Blockers**: TASK-075, TASK-076
+**Engineer status**: started — plan: (1) add get_eod_report_confidence() to config.py; (2) add send_text_report() to EmailReporter; (3) update /reports/eod to stage eod_report via _get_queue_gateway(); (4) add eod_report branch to _execute_pm_action(); (5) write test_eod_queue_action.py
+**Blockers**: none
 
 ---
 
@@ -1897,61 +1740,7 @@ def get_eod_report_confidence() -> float:
 **Priority**: MEDIUM
 **Phase**: Phase 4
 **Depends on**: TASK-077
-**Branch**: `feat/TASK-078-eod-telegram-delivery`
-
-**Spec**:
-
-Channel parity rule (Non-Negotiable #4): when an `eod_report` action enters the queue,
-the Telegram bot pushes the narrative to the configured chat.
-
-**Step 1 — `GetEODTelegramEnabled() bool` config accessor**
-
-In `devtrack_client/internal/config/config_env.go`:
-```go
-// GetEODTelegramEnabled returns true when EOD reports should be pushed to Telegram.
-// Reads EOD_TELEGRAM_ENABLED (default: false).
-func GetEODTelegramEnabled() bool
-```
-
-Add `EOD_TELEGRAM_ENABLED=false  # Set true to receive EOD reports in Telegram` to `.env_sample`.
-
-**Step 2 — `Bot.SendEODReport(narrative, date string, actionID int64) error`**
-
-In `devtrack_client/internal/telegram/`, add:
-
-```go
-// SendEODReport pushes the EOD narrative to the configured chat.
-// Message format:
-//   [DevTrack] EOD Report — {date}
-//   {narrative truncated to 4000 chars}
-//   [Approve] [Reject]
-func (b *Bot) SendEODReport(narrative, date string, actionID int64) error
-```
-
-Use the existing inline keyboard pattern from TASK-065 (`callback_data: "approve:<id>"` /
-`"reject:<id>"`). No new callback type needed — the existing handler processes it.
-Truncate narrative at 4000 chars (Telegram limit).
-
-**Step 3 — `QueueExecutor` calls `SendEODReport` for `eod_report` pending actions**
-
-In `devtrack_client/internal/infra/queue_executor.go`, when polling finds a new `pending`
-row with `action_type == "eod_report"`, and `GetEODTelegramEnabled()` is true:
-call `bot.SendEODReport(narrative, date, id)`. Add `ActionType` to `PendingActionSummary`
-if not already present (read the struct first to check).
-
-The Telegram push happens BEFORE the standard auto-approve check — the push is notification,
-auto-approve is separate.
-
-**Acceptance criteria**:
-- [ ] `GetEODTelegramEnabled()` accessor exists in `config_env.go`; `.env_sample` documents `EOD_TELEGRAM_ENABLED`
-- [ ] `Bot.SendEODReport(narrative, date, actionID)` exists; sends message + Approve/Reject inline buttons
-- [ ] `QueueExecutor` calls `SendEODReport` for `eod_report` pending rows when `GetEODTelegramEnabled()` is true
-- [ ] Narrative truncated to ≤4000 chars before sending
-- [ ] `go build ./...` and `go vet ./...` pass clean
-- [ ] No new Telegram API secrets introduced (uses existing `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`)
-
 **Engineer status**: not started
-**Blockers**: TASK-077
 
 ---
 
@@ -1959,50 +1748,7 @@ auto-approve is separate.
 **Priority**: MEDIUM
 **Phase**: Phase 4
 **Depends on**: TASK-075, TASK-076, TASK-077, TASK-078
-**Branch**: `feat/TASK-079-eod-cli-phase4-exit`
-
-**Spec**:
-
-Two deliverables: (1) `devtrack eod` CLI command (Non-Negotiable #13: every server capability
-reachable via CLI), and (2) live verification run closing Phase 4.
-
-**Part A — `devtrack eod` CLI command**
-
-Add in `devtrack_client/cli.go` or a new `cli_eod.go`:
-
-```
-devtrack eod              # alias for "devtrack eod generate"
-devtrack eod generate     # POST /reports/eod, print narrative + "Queued as action <id>"
-devtrack eod status       # last EOD report date/time + action_id + queue status
-devtrack eod show         # most recent eod_report from pending_actions, print narrative
-```
-
-`devtrack eod show`: query `db.ListPendingActions("")`, filter `action_type == "eod_report"`,
-take most recent, parse `payload` JSON, extract `"narrative"`, print. If none: print
-"No EOD report on record".
-
-**Part B — Phase 4 exit criterion verification (mirrors TASK-074 pattern)**
-
-1. Build: `go build -o devtrack .` from `devtrack_client/`.
-2. Confirm EOD cron configured in `.env` (`EOD_REPORT_HOUR`, `EOD_REPORT_MINUTE`).
-3. Call `devtrack eod generate` manually.
-4. Confirm via `devtrack queue list` that an `eod_report` action appears.
-5. Confirm narrative is non-empty, contains at least one ticket reference if today had linked commits, reads naturally.
-6. Approve via `devtrack queue approve <id>` or let auto-approve fire.
-7. Run hardcoded-values scan across all Phase 4 files (TASK-075–078).
-8. Update `Data/agent_logs/feature_tracker.md` with Phase 4 completion entry.
-9. Open PR targeting `dev` with title "Phase 4: EOD pipeline — exit criterion verified".
-
-**Acceptance criteria**:
-- [ ] `devtrack eod generate`, `devtrack eod status`, `devtrack eod show` all work
-- [ ] `go build ./...` and `go vet ./...` pass clean
-- [ ] Live verification: `eod_report` action appears in queue; narrative is non-empty and personalized
-- [ ] Hardcoded-values scan clean across all Phase 4 files
-- [ ] Feature tracker updated with Phase 4 completion entry
-- [ ] PR opened targeting `dev` (never `main`)
-
 **Engineer status**: not started
-**Blockers**: TASK-075, TASK-076, TASK-077, TASK-078
 
 ---
 
