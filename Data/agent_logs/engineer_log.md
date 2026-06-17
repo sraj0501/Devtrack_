@@ -2,6 +2,28 @@
 
 ---
 
+### [2026-06-17 19:24] TASK-075 — Fix EOD cron config: typed accessors, EODTime, .env_sample
+
+**Original message**: "fix(config): replace os.Getenv in scheduler.go with typed accessors; add EODTime to WorkspaceConfig (TASK-075)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project board TASK-075 block written and all 6 criteria ticked; PR #182 opened
+**Time**: ~5 minutes
+**Friction**: LOW
+**Notes**: Removed `os` and `strconv` imports from scheduler.go (both became unused after the refactor). The `scheduleEODReport()` local `db` variable was renamed to `database` to avoid shadowing the imported `db` package — was already the pattern in `scheduleIdleSessionStop`. Cron expression updated from `"0 0 H * * *"` to `"0 M H * * *"` to use `GetEODReportMinute()`. All 6 acceptance criteria met in a single commit.
+
+## Task Summary — TASK-075: Fix EOD cron config — 2026-06-17
+
+- Total commits: 1
+- Acceptance criteria met: 6/6
+- Tickets auto-updated: 0 (Ollama down; no Python server)
+- Estimated daily time saved: ~5 min (eliminates manual os.Getenv grep errors on future EOD config debugging)
+- Blockers encountered: none
+- One thing that still feels rough: "EODTime on WorkspaceConfig is defined but not yet wired into scheduleEODReport() — per-workspace override logic is TASK-076 territory; leaving the field as data-only is correct for now"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-17 18:50] TASK-074 — Phase 3 exit criterion verification
 
 **Branch**: feat/TASK-074-phase3-exit-verification

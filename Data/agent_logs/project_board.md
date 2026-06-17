@@ -1716,15 +1716,18 @@ evening without doing anything. Report reads like they wrote it.
 **Branch**: `feat/TASK-075-eod-cron-config`
 
 **Acceptance criteria**:
-- [ ] `GetEODReportHour()`, `GetEODReportEmail()`, `GetEODReportMinute()`, `GetWorkSessionAutoStopMinutes()` exist in `config_env.go`
-- [ ] `scheduleEODReport()` and `scheduleIdleSessionStop()` contain zero `os.Getenv` calls
-- [ ] `WorkspaceConfig.EODTime string yaml:"eod_time,omitempty"` present in `config.go`
-- [ ] `.env_sample` documents all four new keys
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] `grep -n "os\.Getenv" devtrack_client/internal/infra/scheduler.go` returns zero matches
+- [x] `GetEODReportHour()`, `GetEODReportEmail()`, `GetEODReportMinute()`, `GetWorkSessionAutoStopMinutes()` exist in `config_env.go`
+- [x] `scheduleEODReport()` and `scheduleIdleSessionStop()` contain zero `os.Getenv` calls
+- [x] `WorkspaceConfig.EODTime string yaml:"eod_time,omitempty"` present in `config.go`
+- [x] `.env_sample` documents all four new keys
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] `grep -n "os\.Getenv" devtrack_client/internal/infra/scheduler.go` returns zero matches
 
-**Engineer status**: started — add 4 typed accessors to config_env.go, EODTime field to WorkspaceConfig, fix scheduler.go os.Getenv calls, update cron expr, document in .env_sample
+**Engineer status**: 6/6 criteria done — last commit: 26b0d2e "fix(config): replace os.Getenv in scheduler.go with typed accessors; add EODTime to WorkspaceConfig (TASK-075)" — 2026-06-17 19:24
+**PR**: https://github.com/sraj0501/Devtrack_/pull/182
 **Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-17 19:25
 
 ---
 
