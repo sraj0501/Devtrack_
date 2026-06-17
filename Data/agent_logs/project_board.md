@@ -1695,6 +1695,16 @@ against the real pipeline, not just unit tests, plus the board/feature-tracker u
 
 ---
 
+### TASK-079 — `devtrack eod` CLI command + Phase 4 exit criterion verification
+**Priority**: MEDIUM
+**Phase**: Phase 4
+**Depends on**: TASK-075, TASK-076, TASK-077, TASK-078
+**Branch**: `feat/TASK-079-eod-cli-phase4-exit`
+**Assigned to**: engineer
+**Engineer status**: started — create cli_eod.go with generate/status/show; wire "eod" in cli.go switch; add ReportEODFull to trigger client; build + verify; update feature_tracker; open PR
+
+---
+
 ## DEPRIORITISED (pivot 2026-06-10)
 
 These sat on the old v3.x "Polish & Growth" board. The pivot moved them below the
