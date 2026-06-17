@@ -474,12 +474,33 @@ class TriggerProcessor:
                 # authoritative signal for *targeting*; task_data is only
                 # optional descriptive enrichment, so every read of it below
                 # must fall back to commit_msg / "" without raising.
-                description = task_data.get("description", commit_msg) if task_data else commit_msg
-                status      = task_data.get("status", "") if task_data else ""
+                status = task_data.get("status", "") if task_data else ""
+
+                # Phase 3 (TASK-072): generate a voice-aware ticket comment via
+                # the LLM pipeline, not a raw NLP restatement. Falls back to a
+                # templated string on any LLM failure — never blocks processing.
+                try:
+                    from backend.commit_message_enhancer import generate_ticket_comment as _gtc
+                    ticket_comment = _gtc(
+                        commit_message=commit_msg,
+                        diff=data.get("diff", ""),
+                        files=data.get("files", []),
+                        ticket_id=resolved_ticket_id,
+                        repo_path=repo_path or None,
+                    )
+                except Exception as _gtc_exc:
+                    logger.warning(
+                        "generate_ticket_comment failed (belt-and-suspenders fallback): %s",
+                        _gtc_exc,
+                    )
+                    # task_data.get("description") NLP restatement as last resort
+                    ticket_comment = (
+                        task_data.get("description", commit_msg) if task_data else commit_msg
+                    )
 
                 # Build the payload that _execute_pm_action expects
                 pm_payload = {
-                    "description": description,
+                    "description": ticket_comment,
                     "ticket_id":   resolved_ticket_id,
                     "status":      status,
                     "pm_project":  pm_project,
@@ -487,7 +508,7 @@ class TriggerProcessor:
                     "pm_iteration_path": pm_iteration_path,
                     "pm_area_path":      pm_area_path,
                     "pm_milestone":      pm_milestone,
-                    "comment":     description,
+                    "comment":     ticket_comment,
                     "commit_info": {
                         "hash":    commit_hash,
                         "message": commit_msg,

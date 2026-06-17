@@ -1458,8 +1458,8 @@ Run `uv run pytest backend/tests/ -q` — no regressions.
 - [ ] No `os.getenv` introduced; no hardcoded model name, host, or timeout literals
       (reuse existing config accessors).
 
-**Engineer status**: not started
-**Blockers**: TASK-071 must merge first (payload/target wiring this depends on)
+**Engineer status**: started — add generate_ticket_comment() to commit_message_enhancer.py reusing existing LLM plumbing; wire into process_commit; 3 tests (LLM available, LLM unavailable, inject_style called)
+**Blockers**: none (TASK-071 merged as PR #178)
 
 ---
 
