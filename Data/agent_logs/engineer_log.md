@@ -2,6 +2,37 @@
 
 ---
 
+### [2026-06-17 17:50] TASK-073 — State-transition queue action on first commit for ticket
+
+**Original message**: "feat(phase3): TASK-073 state-transition queue action on first commit for ticket"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-073 marked COMPLETE; all 8 criteria ticked
+**Time**: ~60 minutes
+**Friction**: LOW — spec was precise; main friction points were: (1) stash/checkout dance needed to switch from a prior dirty dev branch; (2) webhook_server.py Edit required re-reading to confirm TASK-071 version on dev (not TASK-072 version); (3) Windows PowerShell `go test ./... -q` flag not recognized — dropped `-q`
+**Notes**:
+- Go side: `CountTicketCommits` added to `internal/db/database.go` — queries `triggers` table WHERE trigger_type='commit' AND repo_path AND ticket_id. Called BEFORE `InsertTrigger` in `handleTrigger` so prior-commit count is accurate.
+- `IsFirstCommitForTicket bool \`json:"is_first_commit_for_ticket,omitempty"\`` added to `CommitTriggerData` in `internal/trigger/types.go`. Zero value (false) correctly omitted from JSON payload.
+- `integrated.go`: count check in TriggerTypeCommit case populates the bool; logs a line on first detection; non-fatal if DB returns error (logs and treats as not-first).
+- Go tests: `count_ticket_commits_test.go` (5 table-driven cases) and `is_first_commit_test.go` (true-present, false-omitted). All pass.
+- Python side: `ticket_state_mapper.py` created with research-documented rationale for GitHub/GitLab="" decisions. `in_progress_state_for()` is case-insensitive, coerces None to "".
+- `process_commit` in `webhook_server.py`: state_transition staged in its own try/except after post_comment stage. Confidence=0.90. Only staged when is_first=True AND new_state non-empty.
+- `_execute_pm_action`: branches on action_type — state_transition routes to workspace_router.route(status=new_state, description=""); unknown type logs warning and returns posted; post_comment path unchanged.
+- Python tests: 13 in `test_ticket_state_mapper.py` + 18 in `test_state_transition_action.py`. All 31 pass.
+- Dev branch tip was TASK-071 (f55fc26); TASK-072 PR #179 exists on a separate branch not yet merged to dev. This task correctly branched from dev.
+
+## Task Summary — TASK-073: State-transition decision and per-connector status mapping — 2026-06-17
+
+- Total commits: 1 (ccdaf09)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~3 min per first-commit-to-ticket event (eliminates manual state transitions)
+- Blockers encountered: none — all design decisions were documented in spec or resolvable by reading existing connector code
+- One thing that still feels rough: "The omitempty on IsFirstCommitForTicket means a false value is invisible in the JSON; callers must treat the field's absence as false, which they do via data.get(..., False) — works correctly but requires awareness"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-16] SESSION START — Phase 2: Opinionated ticket extractor
 
 **PM dispatch**: Phase 2 decomposed into TASK-067 through TASK-070. TASK-067 dispatched.

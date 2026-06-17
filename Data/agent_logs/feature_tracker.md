@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-16 by PM (TASK-071 complete + PM-verified, PR #178 open against dev)_
+_Last updated: 2026-06-17 by PM (TASK-072 complete — commit 87e4915, PR #179 open against dev; TASK-073 next)_
 
 ---
 
@@ -18,7 +18,7 @@ _Last updated: 2026-06-16 by PM (TASK-071 complete + PM-verified, PR #178 open a
 | 0 | Foundation reset (silent daemon) | DONE | Daemon runs a full day with no prompts shown |
 | 1 | Pending actions queue | DONE | A week of outbound actions all staged; nothing unexpected posts |
 | 2 | Opinionated ticket extractor | DONE | >80% commits mapped to tickets, no config beyond branch naming — verified 100% (10/10) live |
-| 3 | Silent commit handler | ACTIVE — TASK-071 in progress | Commit → ticket commented + state-transitioned; dev did nothing |
+| 3 | Silent commit handler | ACTIVE — TASK-072 done, TASK-073 next | Commit → ticket commented + state-transitioned; dev did nothing |
 | 4 | EOD pipeline | QUEUED | Accurate EOD email every evening, in the dev's voice |
 | 5 | Voice training (low friction) | QUEUED | Generated text passes "did I write this?" after 1 week |
 | 6 | Dialectic self-improvement | QUEUED | 30-day correction rate down; ≥3 autonomous skills emerged |
@@ -80,6 +80,22 @@ regressions.
 fix-up + regression tests), `e9c52d1`/`770170b` (board/log updates). PR #178 → `dev`. Unblocks
 TASK-072 (voice-aware ticket comment generation) and TASK-073 (state-transition queue action),
 both dependent on this task's ticket-targeting fix.
+
+---
+
+## 2026-06-17 — TASK-072: Voice-aware ticket comment generation
+**Phase**: Phase 3 — Silent commit handler
+**Status**: DONE (commit 87e4915, PR #179 open against dev)
+**Files**:
+- `devtrack_server/backend/commit_message_enhancer.py` — new `generate_ticket_comment(commit_message, diff, files, ticket_id, repo_path)`: reuses `CommitMessageEnhancer._get_provider()` lazy-init LLM chain; same config accessors (`http_timeout()`, `commit_llm_temperature()`, `commit_llm_max_tokens()`); applies `inject_style(context_type="comment")`; fetches diff via `GitDiffAnalyzer.get_commit_diff()` when not in payload; falls back to `f"Commit {short_id}: {commit_message}"` on any exception.
+- `devtrack_server/backend/webhook_server.py` — `process_commit`: `pm_payload["description"]` and `pm_payload["comment"]` now sourced from `generate_ticket_comment()` (with belt-and-suspenders try/except falling back to NLP description).
+- `devtrack_server/backend/tests/test_ticket_comment_generation.py` — 8 new tests (LLM available, LLM unavailable, inject_style assertions).
+- `devtrack_server/backend/tests/test_http_triggers.py` — 3 existing tests updated to patch `generate_ticket_comment`.
+
+**Vision check**: PASS — offline-first (reuses existing Ollama chain, graceful fallback when LLM absent); CLI stays CLI (no GUI/browser); no README/marketing changes.
+**Hardcoded scan**: CLEAN — zero `os.getenv` introduced; no hardcoded model names, hosts, or timeout literals.
+**Tests**: 633 passed, 0 regressions (1 pre-existing `test_ollama_host_returns_string` failure, documented since TASK-058).
+**Engineer notes**: Commit 87e4915. PR #179 → `dev`. Unblocks no further dependencies (TASK-073 was already unblocked by TASK-071 independently).
 
 ---
 
