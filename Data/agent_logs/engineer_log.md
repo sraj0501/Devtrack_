@@ -2,6 +2,35 @@
 
 ---
 
+### [2026-06-18 11:25] TASK-081 — Dialectic profile generation from ChromaDB corpus
+
+**Original message**: "feat(voice): TASK-081 dialectic profile generation from ChromaDB corpus"
+**DevTrack enhanced it to**: "feat(voice): Add dialectic voice profile generation via ChromaDB corpus"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-081 marked COMPLETE; 9/9 criteria ticked
+**Time**: ~25 minutes
+**Friction**: LOW
+**Notes**:
+- `VectorStore.query()` requires an embedding vector, which isn't useful for "get all recent commits" retrieval. Used `collection.get(where={"context_type": "commit"}, limit=50)` instead — direct ChromaDB API call with a where filter. Added graceful fallback to unfiltered get() in case the ChromaDB version doesn't support where on get().
+- The metadata stored by voice_seeder uses "response" field for the commit subject — extracted this correctly via `meta.get("response") or meta.get("trigger")`.
+- `PersonalizedAI.get_style_instruction()` currently reads from in-memory SQLite profile, not profile.md. Fixed by adding `_read_profile_md()` helper that resolves the path via `config.get_path("DATA_DIR")` and skips the fallback template text. The dialectic profile takes priority over the SQLite-derived one.
+- LLM prompt requests structured markdown with specific sections (Formality, Sentence Length, Verb Mood, Characteristic Phrases, What Developer Avoids) — evidence-based, 200-400 words target.
+- No new config vars needed. DATA_DIR already exists and covers the profile.md path.
+- All 14 new tests pass; full suite 713 pass + 1 pre-existing failure unchanged.
+- `go build ./...` and `go vet ./...` clean.
+
+## Task Summary — TASK-081: Dialectic profile generation — 2026-06-18
+
+- Total commits: 1 (0c41051)
+- Acceptance criteria met: 9/9
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min/day (voice profile auto-generated, no manual profile.md editing)
+- Blockers encountered: none
+- One thing that still feels rough: "The get_style_instruction() now returns profile.md content wrapped in [STYLE: ...] — for very long profiles (>1200 chars) the content is truncated. Future improvement: summarize profile.md before injection rather than truncating."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-18 11:05] TASK-080 — Tier 0: Auto-seed ChromaDB from git commit history
 
 **Original message**: "feat(voice): TASK-080 auto-seed ChromaDB from git commit history"
