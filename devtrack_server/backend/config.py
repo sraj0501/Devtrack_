@@ -1432,6 +1432,13 @@ def get_workspaces_file() -> str:
     return get("WORKSPACES_FILE", "")
 
 
+# --- Voice seeding (Phase 5) ---
+
+def get_voice_seed_months() -> int:
+    """How many months of git history to seed into ChromaDB. VOICE_SEED_MONTHS (default: 6)."""
+    return get_int("VOICE_SEED_MONTHS", 6) or 6
+
+
 def get_spec_review_base_url() -> str:
     """Base URL for spec review web form. SPEC_REVIEW_BASE_URL (default: "")."""
     return get("SPEC_REVIEW_BASE_URL", "")

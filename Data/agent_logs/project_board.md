@@ -1,12 +1,7 @@
 # DevTrack Project Board
 
-<<<<<<< Updated upstream
-_Last updated: 2026-06-17 by engineer (TASK-078 COMPLETE — EOD Telegram delivery; PR #185 opened targeting dev; branch feat/TASK-078-eod-telegram-delivery)_
-_Next DevTrack task ID: TASK-075_
-=======
-_Last updated: 2026-06-17 by PM — Phase 4 COMPLETE (TASK-075..079 done; PRs #182–186 open against dev; hardcoded scan CLEAN; vision PASS)_
-_Next DevTrack task ID: TASK-080_
->>>>>>> Stashed changes
+_Last updated: 2026-06-18 by PM — Phase 5 active; TASK-080 starting_
+_Next DevTrack task ID: TASK-085_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -188,7 +183,7 @@ Steps:
 
 ---
 
-## ACTIVE — Phase 1: Pending actions queue
+## COMPLETE — Phase 1: Pending actions queue
 
 **Goal**: Every outbound PM action is staged in `pending_actions` before it touches any external
 system. Confidence score on every action. Configurable timeout with auto-approve. TUI, CLI, and
@@ -198,6 +193,8 @@ this table.
 **Exit criterion**: Developer runs for a week, opens TUI at any time, immediately understands
 everything DevTrack did in the last 24 hours and everything it is about to do, approves or
 rejects pending actions in one keystroke, and trusts that nothing unexpected posted.
+
+**Status**: COMPLETE — exit criterion verified 2026-06-15 (TASK-060–065 done; PRs #167–172 merged to dev)
 
 ---
 
@@ -673,18 +670,14 @@ alongside the CLI (TASK-064). Both must exist.
 
 ---
 
-## QUEUED — Phases 2–8
+## QUEUED — Phases 6–8
 
-| Phase | Name | Exit criterion (short) |
-|---|---|---|
-| 1 | Pending actions queue + TUI confidence layer | A week of outbound actions all staged in `pending_actions`; nothing unexpected posts → see TASK-060 ff. |
-| 2 | Opinionated ticket extractor | >80% of commits mapped to tickets with no config beyond branch naming |
-| 3 | Silent commit handler | Commit → ticket commented + state-transitioned within auto-approve window; dev did nothing |
-| 4 | EOD pipeline | Accurate EOD email every evening, reads like the dev wrote it |
-| 5 | Voice training (low friction) | After 1 week, generated text passes the "did I write this?" test |
-| 6 | Dialectic self-improvement | After 30 days, correction rate measurably down; ≥3 autonomous skills emerged |
-| 7 | PR review loop (puppet master) | Push PR with nit comments, get "approved" without touching it again |
-| 8 | MCP server + headless integration | Claude Code queries DevTrack for developer context automatically |
+| Phase | Name | Status | Exit criterion (short) |
+|---|---|---|---|
+| 5 | Voice training (low friction) | ACTIVE — TASK-080 dispatched | After 1 week, generated text passes the "did I write this?" test |
+| 6 | Dialectic self-improvement | QUEUED | After 30 days, correction rate measurably down; ≥3 autonomous skills emerged |
+| 7 | PR review loop (puppet master) | QUEUED | Push PR with nit comments, get "approved" without touching it again |
+| 8 | MCP server + headless integration | QUEUED | Claude Code queries DevTrack for developer context automatically |
 
 Full phase specs and acceptance criteria: `PRODUCT_BIBLE.md` § Build Phases.
 
@@ -1700,34 +1693,7 @@ against the real pipeline, not just unit tests, plus the board/feature-tracker u
 
 ---
 
-### TASK-079 — `devtrack eod` CLI command + Phase 4 exit criterion verification
-**Priority**: MEDIUM
-**Phase**: Phase 4
-**Depends on**: TASK-075, TASK-076, TASK-077, TASK-078
-**Branch**: `feat/TASK-079-eod-cli-phase4-exit`
-**Assigned to**: engineer
-
-**Acceptance criteria**:
-- [x] `devtrack eod generate` POSTs /reports/eod, prints narrative, prints "Queued as action <id>" if action_id in response
-- [x] `devtrack eod status` queries pending_actions for eod_report action_type, prints most recent date/id/status
-- [x] `devtrack eod show` same filter, parses payload JSON "narrative" field and prints it; "No EOD report on record" if none
-- [x] `eod` wired in cli.go Execute() switch and NewCLI() no-daemon list; wired in main.go command routing block
-- [x] isatty check on stdout — no ANSI when piped (pipe-friendly output)
-- [x] `go build -o devtrack.exe .` from `devtrack_client/` — clean
-- [x] `go vet ./...` — clean
-- [x] `go test ./...` — all packages pass
-- [x] `devtrack queue list` works; would show eod_report after generate with server running
-- [x] `devtrack queue approve <id>` exercises approval path (exercised in TASK-074 Phase 3 verification)
-- [x] Hardcoded-values scan clean on all Phase 4 files
-- [x] feature_tracker.md updated with Phase 4 completion entry
-- [x] PR #186 opened targeting dev
-
-**Engineer status**: 13/13 criteria done — last commit: 4bbc683 "feat(cli): TASK-079 Add EOD CLI command and verify Phase 4 exit" — 2026-06-17 22:31
-**PR**: https://github.com/sraj0501/Devtrack_/pull/186
-**Blockers**: none
-
-**COMPLETE** — ready for PM review — 2026-06-17 22:31
-## ACTIVE — Phase 4: EOD Pipeline
+## COMPLETE — Phase 4: EOD Pipeline
 
 **Goal**: Cron fires at the configured time (`EOD_REPORT_HOUR` per workspace or global). Query
 today's commits from SQLite, group by ticket, LLM generates a per-ticket narrative in the
@@ -1736,6 +1702,8 @@ developer's voice. All outbound actions (email send, Telegram delivery) are stag
 
 **Exit criterion** (PRODUCT_BIBLE.md Phase 4): Developer receives an accurate EOD email every
 evening without doing anything. Report reads like they wrote it.
+
+**Status**: COMPLETE — exit criterion verified 2026-06-17 (TASK-075–079 done; PRs #182–186 merged to dev; hardcoded scan CLEAN; vision PASS)
 
 ---
 
@@ -1801,7 +1769,475 @@ evening without doing anything. Report reads like they wrote it.
 **Priority**: MEDIUM
 **Phase**: Phase 4
 **Depends on**: TASK-075, TASK-076, TASK-077, TASK-078
+**Branch**: `feat/TASK-079-eod-cli-phase4-exit`
+
+**Engineer status**: 13/13 criteria done — last commit: 4bbc683 "feat(cli): TASK-079 Add EOD CLI command and verify Phase 4 exit" — 2026-06-17 22:31
+**PR**: https://github.com/sraj0501/Devtrack_/pull/186
+
+**COMPLETE** — ready for PM review — 2026-06-17 22:31
+
+---
+
+## ACTIVE — Phase 5: Voice Training (Low Friction)
+
+**Goal**: After one week of use, every piece of text DevTrack generates (commit comments,
+ticket updates, EOD reports) passes the developer's "did I write this?" test — without any
+manual profile editing. Voice is inferred from evidence, not declared.
+
+**Exit criterion** (PRODUCT_BIBLE.md Phase 5): After one week, generated text passes the
+"did I write this?" test for the developer without any manual profile editing.
+
+**Tiers shipped in this phase**: Tier 0 (git commit history seeding), Tier 1 (background
+PR / issue comment sync), Tier 2 (manual `voice add` + `voice status` inspection).
+Tier 3 (Teams messages) and Tier 4 (meeting transcripts) are deferred to Phase 6 —
+decision made 2026-06-18, rationale: Tier 3/4 require additional infrastructure (MS
+Graph expanded scope, transcription pipeline) and would delay the core "did I write
+this?" loop. Tiers 0–2 are sufficient to seed a representative corpus within one week.
+
+**Sequencing rationale**: TASK-080 (ChromaDB seed) must land first — all other tasks
+depend on a populated corpus. TASK-081 (profile generation) depends on TASK-080.
+TASK-082 (PR/comment sync) depends on TASK-080 (same pipeline, parallelisable once
+080 is merged). TASK-083 (voice add/status) depends on TASK-080. TASK-084 (exit
+verification) depends on all four.
+
+**Non-negotiable cross-cutting rule (applies to all Phase 5 tasks)**: Every Python
+server capability added in this phase must be reachable via a `devtrack` CLI command
+(PRODUCT_BIBLE.md Non-Negotiable #13). When a server endpoint is added, the Go CLI
+command ships in the same task.
+
+---
+
+### TASK-080 — Tier 0: Auto-seed ChromaDB from git commit history
+**Priority**: HIGH
+**Phase**: Phase 5
+**Depends on**: none
+**Branch**: `feat/TASK-080-voice-seed-commits`
+**Status**: IN PROGRESS — dispatched 2026-06-18
+
+**Spec**:
+
+On first daemon start (or when `devtrack voice seed` is run), mine the last 6 months of
+git commit history from all watched repos, embed each commit message into ChromaDB tagged
+with `context_type="commit"`, and mark the seed as done so it does not re-run on every
+start.
+
+**Python server side**:
+
+New endpoint `POST /voice/seed` in `webhook_server.py` — auth-gated with the same
+`X-DevTrack-API-Key` check used by existing `/trigger/*` endpoints.
+
+New module `devtrack_server/backend/voice_seeder.py`:
+- `VoiceSeeder.seed_from_git(repo_path: str, since_months: int = 6) -> int`
+  Runs `git log --since=<N months ago> --pretty=format:"%H|%s" -- .` on the given
+  `repo_path`. Embeds each commit message into ChromaDB via the existing RAG pipeline
+  (`rag/`), using `context_type="commit"`. Returns count of newly embedded messages.
+- Skips merge commits (messages starting with "Merge branch" or "Merge pull request") —
+  these are noise and do not reflect the developer's writing voice.
+- Idempotent: before embedding each commit, checks whether its hash has already been
+  embedded. Store the hash either in ChromaDB metadata (`id=<hash>`) or in a SQLite
+  table `voice_seeded_commits (hash TEXT PRIMARY KEY, repo_path TEXT, seeded_at DATETIME)`.
+  Skip on collision.
+- Falls back gracefully if git or ChromaDB is unavailable: log a warning at
+  `logger.warning` level, return 0, never raise to caller.
+
+Seed triggered automatically: after the Python server starts successfully, the Go daemon
+calls `POST /voice/seed` for each watched workspace's `repo_path`. Only fires if the
+corpus is below a threshold — use the `GET /voice/status` endpoint (TASK-083) to check
+entry count; fire seed if fewer than 10 entries exist for that repo. Because TASK-083 is
+not yet merged when this task runs, implement the threshold check inside the
+`POST /voice/seed` handler itself: accept an optional `force: bool` field in the request
+body; when `force=false` (default), skip silently if the repo already has >= 10 entries.
+
+Config accessor in `devtrack_server/backend/config.py`:
+`get_voice_seed_months() -> int` reading `VOICE_SEED_MONTHS` (default 6; document in
+`.env_sample`).
+
+**Go client side**:
+
+New `GetVoiceSeedMonths() int` accessor in `devtrack_client/internal/config/config_env.go`.
+Reads `VOICE_SEED_MONTHS`. Required var (no hardcoded default in code). Document in
+`.env_sample` with value `6`.
+
+`devtrack voice seed` CLI command:
+- Reads all workspaces from `workspaces.yaml`.
+- For each workspace with a `repo_path`, calls `POST /voice/seed` via the existing
+  HTTP trigger client (`internal/trigger` package), passing `{"repo_path": "<path>",
+  "since_months": GetVoiceSeedMonths()}`.
+- Prints: `Seeding voice corpus from <repo>... N messages embedded.` per workspace.
+- Runnable manually at any time (no daemon required for the CLI call itself, but the
+  Python server must be reachable).
+- Wired in `cli.go` `Execute()` switch alongside existing commands; also in
+  `main.go` routing if needed.
+
+**Tests**:
+
+`devtrack_server/backend/tests/test_voice_seeder.py`:
+- `seed_from_git` with mocked `subprocess.run` returning a fixed list of commit lines:
+  correct count returned; merge commits skipped; non-merge commits counted.
+- Idempotent: second call with same hashes returns 0 (already embedded).
+- `git` unavailable (subprocess raises): returns 0, no exception propagates.
+- ChromaDB unavailable (RAG raises): returns 0, no exception propagates.
+
+Go: `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`.
+
+**Acceptance criteria**:
+- [ ] `voice_seeder.py` exists with `VoiceSeeder` class and `seed_from_git(repo_path, since_months) -> int` method
+- [ ] Merge commits (messages starting with "Merge branch" / "Merge pull request") are skipped — verified by unit test
+- [ ] Idempotency verified: second call with same repo/hashes returns 0 newly embedded (no duplicates in ChromaDB)
+- [ ] `POST /voice/seed` endpoint exists in `webhook_server.py`, auth-gated, accepts `{"repo_path": "...", "since_months": N, "force": false}`
+- [ ] After seeding, `inject_style(context_type="commit", query_text="some commit message")` returns a non-empty style-injected prompt (smoke test: ChromaDB returns hits)
+- [ ] `devtrack voice seed` CLI command exists, calls the endpoint for each workspace, prints per-repo counts
+- [ ] `GetVoiceSeedMonths()` accessor in `config_env.go`; `VOICE_SEED_MONTHS=6` documented in `.env_sample`
+- [ ] `get_voice_seed_months()` accessor in `config.py`; no `os.getenv` calls in `voice_seeder.py`
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] Python tests pass: correct count, merge skip, idempotency, graceful fallback on git/ChromaDB failure
+
+**Acceptance criteria**:
+- [x] `voice_seeder.py` exists with `VoiceSeeder` class and `seed_from_git(repo_path, since_months) -> int` method
+- [x] Merge commits (messages starting with "Merge branch" / "Merge pull request") are skipped — verified by unit test
+- [x] Idempotency verified: second call with same repo/hashes returns 0 newly embedded (no duplicates in ChromaDB)
+- [x] `POST /voice/seed` endpoint exists in `webhook_server.py`, auth-gated, accepts `{"repo_path": "...", "since_months": N, "force": false}`
+- [x] After seeding, `inject_style(context_type="commit", query_text="some commit message")` returns a non-empty style-injected prompt (smoke test: ChromaDB returns hits)
+- [x] `devtrack voice seed` CLI command exists, calls the endpoint for each workspace, prints per-repo counts
+- [x] `GetVoiceSeedMonths()` accessor in `config_env.go`; `VOICE_SEED_MONTHS=6` documented in `.env_sample`
+- [x] `get_voice_seed_months()` accessor in `config.py`; no `os.getenv` calls in `voice_seeder.py`
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] Python tests pass: correct count, merge skip, idempotency, graceful fallback on git/ChromaDB failure
+
+**Engineer status**: 10/10 criteria done — last commit: 62efee3 "feat(voice): Implement ChromaDB auto-seeding from git history" — 2026-06-18
+**PR**: https://github.com/sraj0501/Devtrack_/pull/187
+
+**COMPLETE** — ready for PM review — 2026-06-18
+
+---
+
+### TASK-081 — Dialectic profile generation: first inferred `profile.md` from corpus
+**Priority**: HIGH
+**Phase**: Phase 5
+**Depends on**: TASK-080 (ChromaDB must have commit data before reasoning over it)
+**Branch**: `feat/TASK-081-voice-profile-generation`
+
+**Spec**:
+
+After Tier 0 seeding, run a local LLM reasoning pass over a sample of the embedded commit
+corpus to produce `Data/learning/profile.md` — a human-readable markdown file describing
+the developer's inferred writing style. This is the "profile as a mirror": evidence-based,
+not declared. The profile is re-generated on each call (overwritten), never hand-edited
+— it is always derived from evidence.
+
+**Python server side**:
+
+New module `devtrack_server/backend/voice_profile.py`:
+- `ProfileGenerator.generate(repo_paths: list[str]) -> str`
+  Retrieves a representative sample of commit messages from ChromaDB — 20 to 50 of the
+  most recent entries across the given `repo_paths`. Constructs a prompt asking the LLM
+  (via the existing multi-provider chain in `llm/`) to infer:
+  - Formality level (formal/informal/mixed)
+  - Sentence length preference (short/medium/long)
+  - Verb mood: imperative vs. past tense
+  - Characteristic phrases or vocabulary the developer uses
+  - What the developer avoids (passive voice, exclamation marks, filler words, etc.)
+  Returns the generated profile as a markdown string beginning with `# Developer Voice Profile`.
+  Falls back to the minimal template if LLM is unavailable:
+  ```
+  # Developer Voice Profile
+
+  Insufficient data for automated profiling. Run `devtrack voice add` to add examples manually.
+  ```
+  Never raises to caller — any exception inside produces the fallback string.
+- `ProfileGenerator.save(profile_text: str, data_dir: str) -> pathlib.Path`
+  Writes `profile_text` to `{data_dir}/learning/profile.md`. Creates
+  `{data_dir}/learning/` if it does not exist. Returns the `Path` object.
+
+New endpoint `POST /voice/profile/generate`:
+Body: `{"repo_paths": ["...", "..."]}` (optional — defaults to all workspace repo_paths
+if omitted; server resolves from workspaces.yaml config).
+Response: `{"path": "<absolute path to profile.md>", "word_count": N}`.
+Triggers `ProfileGenerator.generate()` + `save()`. Auth-gated same as `/voice/seed`.
+
+`PersonalizedAI.get_style_instruction()` (in `personalized_ai.py`) already reads from
+a profile file. Verify it reads from `{DATA_DIR}/learning/profile.md` using
+`config.get_path("DATA_DIR")`, not a hardcoded path. If it uses a hardcoded path,
+fix it in this task (no new config var needed — `DATA_DIR` already exists).
+
+**Go client side**:
+
+`devtrack voice profile` command:
+- Calls `POST /voice/profile/generate` via the trigger HTTP client.
+- Prints: `Profile generated: <absolute path> (N words).`
+- Wired in `cli.go` `Execute()` switch and `main.go` routing.
+
+**Tests**:
+
+`devtrack_server/backend/tests/test_voice_profile.py`:
+- LLM available (mocked): `generate()` returns a non-empty string starting with `#`.
+- LLM unavailable (raises): `generate()` returns the fallback template string, no exception.
+- `save()` writes to the correct path under a `tmp_path` DATA_DIR; directory created if absent.
+- Endpoint returns correct `word_count` for a known profile string.
+
+**Acceptance criteria**:
+- [ ] `voice_profile.py` exists with `ProfileGenerator` class, `generate(repo_paths) -> str` and `save(profile_text, data_dir) -> Path` methods
+- [ ] LLM unavailable: `generate()` returns fallback template string, no exception raised
+- [ ] `POST /voice/profile/generate` endpoint exists and is auth-gated
+- [ ] After calling the endpoint, `{DATA_DIR}/learning/profile.md` exists and is non-empty
+- [ ] `PersonalizedAI.get_style_instruction()` reads from `{DATA_DIR}/learning/profile.md` via `config.get_path("DATA_DIR")` (verify — fix if hardcoded)
+- [ ] `devtrack voice profile` CLI command exists, calls the endpoint, prints path and word count
+- [ ] No `os.getenv` in `voice_profile.py`; no hardcoded `DATA_DIR` path string
+- [ ] Python tests pass (LLM available/unavailable/save path)
+- [ ] `go build ./...` and `go vet ./...` pass clean
+
 **Engineer status**: not started
+**Blockers**: TASK-080 (ChromaDB must have data)
+
+---
+
+### TASK-082 — Tier 1: Background sync of PR descriptions and issue comments
+**Priority**: MEDIUM
+**Phase**: Phase 5
+**Depends on**: TASK-080 (same ChromaDB pipeline; idempotency pattern to follow)
+**Branch**: `feat/TASK-082-voice-sync-pr-comments`
+
+**Spec**:
+
+Background job polls the configured PM platforms (GitHub, GitLab, Azure DevOps) for the
+developer's own PR descriptions and issue comments — authored by the developer, not others
+— and embeds them into ChromaDB. This enriches the voice corpus with more formal written
+communication beyond commit messages.
+
+**Python server side**:
+
+New module `devtrack_server/backend/voice_sync.py`:
+- `VoiceSync.sync_pr_descriptions(workspace: dict) -> int`
+  Fetches PRs authored by the developer from the workspace's PM platform connector
+  (`backend/github/`, `backend/azure/`, `backend/gitlab/`). Extracts PR body text. Embeds
+  into ChromaDB with `context_type="description"`. Returns count newly embedded.
+  Author filtering: use the `pm_username` field from `workspaces.yaml` to filter to the
+  developer's own content only. Never embed other people's PRs.
+- `VoiceSync.sync_issue_comments(workspace: dict) -> int`
+  Same pattern, but for issue/ticket comments authored by the developer.
+  `context_type="comment"`.
+- Idempotent: skip already-embedded items. Use the item's platform-native ID
+  (PR number, comment ID) stored in ChromaDB metadata or a SQLite tracking table
+  `voice_synced_items (platform TEXT, item_id TEXT, context_type TEXT, synced_at DATETIME,
+  PRIMARY KEY (platform, item_id, context_type))`.
+- Falls back gracefully per platform: if GitHub fails, still attempt Azure and GitLab.
+  Log each failure at `logger.warning` level, never raise.
+
+New endpoint `POST /voice/sync`:
+Triggers sync for all configured workspaces. Returns:
+`{"synced": {"github": N, "azure": N, "gitlab": N, "total": N}}`.
+Auth-gated same as `/voice/seed`. Request body: `{}` (no required fields; syncs all
+workspaces).
+
+Scheduled: the Go daemon's existing robfig/cron scheduler fires `POST /voice/sync` daily
+on the configured interval. A new cron entry is added alongside the existing EOD cron in
+`devtrack_client/internal/infra/scheduler.go`.
+
+Config accessors:
+- Go: `GetVoiceSyncIntervalHours() int` in `config_env.go`, reading `VOICE_SYNC_INTERVAL_HOURS`
+- Python: `get_voice_sync_interval_hours() -> int` in `config.py`, reading `VOICE_SYNC_INTERVAL_HOURS`
+- `.env_sample`: `VOICE_SYNC_INTERVAL_HOURS=24`
+
+**Go client side**:
+
+`GetVoiceSyncIntervalHours() int` accessor in `config_env.go`; no hardcoded default
+in code. `VOICE_SYNC_INTERVAL_HOURS=24` in `.env_sample`.
+
+Daemon scheduler: in `devtrack_client/internal/infra/scheduler.go`, add a cron job
+that fires `POST /voice/sync` (via the HTTP trigger client) on the configured interval.
+Follow the exact same pattern used for the existing EOD cron job.
+
+`devtrack voice sync` CLI command:
+- Calls `POST /voice/sync`.
+- Prints: `Sync complete: github=N, azure=N, gitlab=N` (or `N/A` for unconfigured platforms).
+- Wired in `cli.go` `Execute()` switch.
+
+**Tests**:
+
+`devtrack_server/backend/tests/test_voice_sync.py`:
+- Mocked PM client: `sync_pr_descriptions` embeds only PRs authored by `pm_username`;
+  PRs by others are skipped.
+- Idempotent: second sync call with same PR IDs returns 0 newly embedded.
+- Single platform failure (mocked exception): other platforms still sync; exception not raised.
+
+**Acceptance criteria**:
+- [ ] `voice_sync.py` exists with `VoiceSync` class, `sync_pr_descriptions(workspace) -> int` and `sync_issue_comments(workspace) -> int`
+- [ ] Author filter enforced: only items matching `pm_username` are embedded — verified by unit test
+- [ ] Idempotent: second call with same item IDs returns 0 newly embedded
+- [ ] Single platform failure does not prevent other platforms from syncing
+- [ ] `POST /voice/sync` endpoint exists, auth-gated, returns per-platform counts
+- [ ] `GetVoiceSyncIntervalHours()` accessor in `config_env.go`; `VOICE_SYNC_INTERVAL_HOURS=24` in `.env_sample`
+- [ ] `get_voice_sync_interval_hours()` accessor in `config.py`; no `os.getenv` in `voice_sync.py`
+- [ ] Daemon scheduler fires `POST /voice/sync` on the configured interval (cron entry in `scheduler.go`)
+- [ ] `devtrack voice sync` CLI command exists, calls the endpoint, prints per-platform counts
+- [ ] Python tests pass (author filter, idempotency, per-platform failure isolation)
+- [ ] `go build ./...` and `go vet ./...` pass clean
+
+**Engineer status**: not started
+**Blockers**: TASK-080 (ChromaDB pipeline must exist)
+
+---
+
+### TASK-083 — Tier 2: `devtrack voice add` + `devtrack voice status`
+**Priority**: MEDIUM
+**Phase**: Phase 5
+**Depends on**: TASK-080 (ChromaDB pipeline must exist)
+**Branch**: `feat/TASK-083-voice-add-status`
+
+**Spec**:
+
+Give the developer a one-command way to inject high-weight writing examples and a way
+to inspect the current voice corpus state. These are the two developer-facing surfaces
+for Phase 5 — every other task works silently in the background.
+
+**Python server side**:
+
+New endpoint `POST /voice/add`:
+Body: `{"text": "...", "context_type": "commit|description|comment|report|task"}`.
+Embeds the text into ChromaDB tagged as `source=manual` and with a weight indicator
+in the metadata (ChromaDB does not support native weighted similarity, but tag it as
+`weight=high` for future use). Returns `{"id": "<chroma_doc_id>"}`.
+Validates `context_type` is one of the five allowed values; returns HTTP 422 on invalid.
+No `os.getenv`; all paths via `config.get_path()`.
+
+New endpoint `GET /voice/status`:
+Returns corpus statistics. All counts come from ChromaDB metadata queries:
+```json
+{
+  "total_entries": 127,
+  "by_context": {
+    "commit": 95,
+    "description": 18,
+    "comment": 14,
+    "report": 0,
+    "task": 0
+  },
+  "by_source": {
+    "git_history": 95,
+    "pr_sync": 32,
+    "manual": 0
+  },
+  "last_seed": "2026-06-18T10:00:00Z",
+  "last_sync": "2026-06-18T08:00:00Z",
+  "profile_exists": true,
+  "profile_word_count": 312
+}
+```
+`last_seed` and `last_sync` are read from the SQLite tracking tables introduced in
+TASK-080 and TASK-082 respectively (most recent `seeded_at` / `synced_at`). If the
+tables don't exist or have no rows, return `null` for those fields.
+`profile_exists` checks whether `{DATA_DIR}/learning/profile.md` exists.
+`profile_word_count` reads and word-counts the profile file if it exists, 0 if not.
+
+**Go client side**:
+
+`devtrack voice add <text>` command:
+- Accepts `--context` flag: `--context commit|description|comment|report|task`
+  (default: `commit` if not specified).
+- Posts `{"text": "<text>", "context_type": "<context>"}` to `POST /voice/add`.
+- Prints: `Added to voice corpus (id: <chroma_id>, context: <context_type>).`
+- Wired in `cli.go` `Execute()` switch.
+
+`devtrack voice status` command:
+- GETs `/voice/status`.
+- Prints a human-readable table. Example:
+  ```
+  Voice Corpus Status
+  -------------------
+  Total entries:  127
+  By context:     commit=95  description=18  comment=14  report=0  task=0
+  By source:      git_history=95  pr_sync=32  manual=0
+  Last seed:      2026-06-18 10:00
+  Last sync:      2026-06-18 08:00
+  Profile:        exists (312 words)
+  ```
+- isatty check: no ANSI color codes when stdout is piped (use `github.com/mattn/go-isatty`
+  already in go.mod).
+- Wired in `cli.go` `Execute()` switch.
+
+The `GET /voice/status` endpoint is also used by the daemon auto-seed logic (TASK-080)
+to check whether to trigger seeding. This is the shared contract — implement it here
+(TASK-083 may be merged after TASK-080 in which case the daemon TASK-080 auto-seed
+logic can be added as a follow-up commit to TASK-080's branch or a separate small PR;
+document this dependency in the spec note).
+
+**Tests**:
+
+`devtrack_server/backend/tests/test_voice_add_status.py`:
+- `POST /voice/add` with valid context_type: returns 200 and a non-empty `id`.
+- `POST /voice/add` with invalid context_type: returns 422.
+- `GET /voice/status` with an empty corpus: all counts are 0, `last_seed=null`,
+  `profile_exists=false`.
+- `GET /voice/status` after adding one entry: `total_entries=1`, correct `by_context` count.
+
+**Acceptance criteria**:
+- [ ] `POST /voice/add` endpoint exists, auth-gated, validates context_type, returns chroma doc ID
+- [ ] `GET /voice/status` endpoint exists, auth-gated, returns corpus stats with all fields documented above
+- [ ] `devtrack voice add "example text" --context commit` posts to `/voice/add`, prints confirmation with chroma ID
+- [ ] `devtrack voice status` calls `/voice/status`, prints human-readable table; no ANSI when piped
+- [ ] Both commands wired in `cli.go` `Execute()` switch
+- [ ] No `os.getenv` in any new server file
+- [ ] Python tests pass (add valid/invalid, status empty/populated)
+- [ ] `go build ./...` and `go vet ./...` pass clean
+
+**Engineer status**: not started
+**Blockers**: TASK-080 (ChromaDB pipeline must exist)
+
+---
+
+### TASK-084 — Phase 5 exit criterion verification
+**Priority**: MEDIUM
+**Phase**: Phase 5
+**Depends on**: TASK-080, TASK-081, TASK-082, TASK-083 (all must be merged to dev)
+**Branch**: `feat/TASK-084-phase5-exit-verification`
+
+**Spec**:
+
+Verify the exit criterion ("after one week, generated text passes the 'did I write this?'
+test") is structurally achievable. Same verification pattern as TASK-070 (Phase 2) and
+TASK-074 (Phase 3): live run against the real pipeline, not just unit tests.
+
+**Steps**:
+
+1. Build the Go client (`go build -o devtrack .` from `devtrack_client/`) and confirm
+   `go vet ./...` is clean.
+2. Run `devtrack voice seed` against the live repo — confirm ChromaDB is populated.
+   Print the per-repo count. Fail clearly if count is 0 (check Ollama + ChromaDB are
+   running: `ollama list` should show `nomic-embed-text`).
+3. Run `devtrack voice profile` — confirm `DATA_DIR/learning/profile.md` exists and
+   contains substantive inferences (not the fallback template). Word count must be > 50.
+4. Run `devtrack voice status` — confirm total_entries > 0, `profile_exists=true`.
+   Print the full table to the engineer log.
+5. Make a commit on a branch with a ticket ID (e.g. `feat/PHASE5-test-voice-exit`).
+   Confirm the staged `post_comment` payload in `devtrack queue list` contains text
+   that reflects the developer's voice (not generic boilerplate like "Updated code.").
+   This is a qualitative check — the engineer asserts pass/fail with a direct quote from
+   the staged payload.
+6. Run `devtrack voice add "example text with my characteristic phrasing"` — confirm it
+   is accepted and `devtrack voice status` shows `manual=1` in `by_source`.
+7. Run the hardcoded-values scan across all Phase 5 files:
+   ```
+   grep -rn "os\.getenv\b" devtrack_server/backend/voice_seeder.py devtrack_server/backend/voice_profile.py devtrack_server/backend/voice_sync.py
+   grep -rn "localhost:[0-9]\|127\.0\.0\.1:[0-9]" devtrack_client/internal/config/config_env.go | grep -v "_test\|#\|config\|Get"
+   ```
+   Both must return zero hits. Report results in the engineer log.
+8. Update `Data/agent_logs/feature_tracker.md` with the Phase 5 completion entry (mirror
+   Phase 4 entry's structure and level of detail).
+9. Open a PR targeting `dev` with title "Phase 5: voice training — exit criterion verified".
+
+**Acceptance criteria**:
+- [ ] `devtrack voice seed` completes without error; ChromaDB has > 0 entries (printed count)
+- [ ] `devtrack voice profile` produces `DATA_DIR/learning/profile.md` with > 50 words and non-fallback content (engineer quotes a line from the profile in the log)
+- [ ] `devtrack voice status` shows `total_entries > 0` and `profile_exists=true`
+- [ ] Staged `post_comment` payload from a test commit reflects non-generic language (engineer qualitative assertion in log)
+- [ ] `devtrack voice add` accepted; `devtrack voice status` shows `manual=1`
+- [ ] Hardcoded-values scan: zero new violations across all Phase 5 Python files
+- [ ] `go build ./...` and `go vet ./...` pass clean
+- [ ] `feature_tracker.md` updated with Phase 5 completion entry
+- [ ] PR opened targeting `dev` (never `main`)
+
+**Engineer status**: not started
+**Blockers**: TASK-080, TASK-081, TASK-082, TASK-083
 
 ---
 

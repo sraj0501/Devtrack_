@@ -156,6 +156,8 @@ func (cli *CLI) Execute() error {
 		return cli.handleQueue()
 	case "eod":
 		return cli.handleEOD()
+	case "voice":
+		return cli.handleVoice()
 	case "telegram-status":
 		return cli.handleTelegramStatus()
 	case "azure-check":
