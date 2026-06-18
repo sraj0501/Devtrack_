@@ -13,7 +13,7 @@ wheels/
 
 
 # Golang Files
-*.exe
+*.exe*
 go-cli
 devtrack-bin/devtrack
 devtrack_client/devtrack
