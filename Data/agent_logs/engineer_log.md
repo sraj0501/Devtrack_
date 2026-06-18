@@ -31,6 +31,35 @@
 
 ---
 
+### [2026-06-18 20:08] TASK-085 — SQLite FTS5 inference store: migrations, structs, CRUD, tests
+
+**Original message**: "feat(db): add FTS5 inference store, corrections, and confidence_thresholds (TASK-085)"
+**DevTrack enhanced it to**: (Ollama offline) — committed with original message as-is
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-085 marked COMPLETE; 10/10 criteria ticked; PR #192 linked
+**Time**: ~25 minutes
+**Friction**: LOW
+**Notes**:
+- Three migrations appended to `allMigrations` (008, 009, 010) — never reordered existing 001–007.
+- Migration 008 uses sqlite_master check for FTS5 virtual table idempotency (safer than `CREATE VIRTUAL TABLE IF NOT EXISTS` across SQLite versions), then `CREATE TRIGGER IF NOT EXISTS` for the three sync triggers (AI/AU/AD).
+- `RecordApproval` / `RecordRejection` use a single atomic UPDATE statement with the formula `MIN(0.95, 0.70 + 0.20 * approvals / (approvals + rejections))` computed entirely in SQL — no round-trip fetch needed.
+- `GetOrCreateThreshold` uses `INSERT OR IGNORE` then `SELECT` — safe upsert without RETURNING (cross-version safe with modernc.org/sqlite).
+- `parseTimestamp` helper centralizes the three-layout time.Parse pattern already used elsewhere in the package.
+- All 19 db package tests pass: 5 new + 14 pre-existing.
+- `go build ./...` and `go vet ./...` both pass clean from `devtrack_client/`.
+
+## Task Summary — TASK-085: SQLite FTS5 inference store — 2026-06-18
+
+- Total commits: 1 (c2ade83)
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min/day (structured inference persistence enables TASK-086 reasoning loop to run without re-deriving patterns from scratch each time)
+- Blockers encountered: none
+- One thing that still feels rough: "The threshold formula uses approvals+1/rejections+1 in the SQL to include the increment being applied; this is correct but the SQL is slightly non-obvious — a comment in the DDL would help future maintainers."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-18 12:10] TASK-084 — Phase 5 exit criterion verification and phase closure
 
 **Original message**: "chore(board): TASK-084 Phase 5 exit criterion verified — board and feature_tracker updated"
