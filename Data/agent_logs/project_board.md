@@ -2076,8 +2076,8 @@ Follow the exact same pattern used for the existing EOD cron job.
 - [ ] Python tests pass (author filter, idempotency, per-platform failure isolation)
 - [ ] `go build ./...` and `go vet ./...` pass clean
 
-**Engineer status**: not started
-**Blockers**: TASK-080 (ChromaDB pipeline must exist)
+**Engineer status**: started — creating voice_sync.py, POST /voice/sync endpoint, config accessors, scheduler cron, CLI command, and tests
+**Blockers**: none
 
 ---
 
@@ -2183,8 +2183,8 @@ document this dependency in the spec note).
 - [ ] Python tests pass (add valid/invalid, status empty/populated)
 - [ ] `go build ./...` and `go vet ./...` pass clean
 
-**Engineer status**: not started
-**Blockers**: TASK-080 (ChromaDB pipeline must exist)
+**Engineer status**: started — add POST /voice/add + GET /voice/status endpoints in webhook_server.py; VoiceAdd()/VoiceStatus() in http_trigger.go; `voice add` + `voice status` CLI in cli_voice.go; test_voice_add_status.py
+**Blockers**: none (TASK-080 merged — PR #187; TASK-081 merged — PR #188)
 
 ---
 

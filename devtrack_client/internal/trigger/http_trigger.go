@@ -875,6 +875,96 @@ func (c *HTTPTriggerClient) VoiceProfileGenerate(repoPaths []string) (path strin
 	return resp.Path, resp.WordCount, nil
 }
 
+// ── Voice add / status methods (Phase 5 — Tier 2) ────────────────────────────
+
+// VoiceAddRequest is the payload for POST /voice/add.
+type VoiceAddRequest struct {
+	Text        string `json:"text"`
+	ContextType string `json:"context_type"`
+}
+
+// VoiceAddResponse is the response from POST /voice/add.
+type VoiceAddResponse struct {
+	ID    string `json:"id"`
+	Error string `json:"error,omitempty"`
+}
+
+// VoiceAdd calls POST /voice/add and returns the ChromaDB document ID.
+// On ChromaDB unavailability the server returns HTTP 503 with an error field —
+// this is returned as an error to the caller.
+func (c *HTTPTriggerClient) VoiceAdd(text, contextType string) (string, error) {
+	var resp VoiceAddResponse
+	if err := c.postWithResult("/voice/add", VoiceAddRequest{
+		Text:        text,
+		ContextType: contextType,
+	}, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != "" {
+		return "", fmt.Errorf("voice add: %s", resp.Error)
+	}
+	return resp.ID, nil
+}
+
+// VoiceStatusResponse is the response from GET /voice/status.
+type VoiceStatusResponse struct {
+	TotalEntries    int            `json:"total_entries"`
+	ByContext       map[string]int `json:"by_context"`
+	BySource        map[string]int `json:"by_source"`
+	LastSeed        *string        `json:"last_seed"`
+	LastSync        *string        `json:"last_sync"`
+	ProfileExists   bool           `json:"profile_exists"`
+	ProfileWordCount int           `json:"profile_word_count"`
+}
+
+// VoiceStatus calls GET /voice/status and returns the corpus statistics.
+func (c *HTTPTriggerClient) VoiceStatus() (*VoiceStatusResponse, error) {
+	var resp VoiceStatusResponse
+	if err := c.getWithResult("/voice/status", &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ── Voice sync methods (Phase 5 — Tier 1) ────────────────────────────────────
+
+// VoiceSyncRequest is the optional payload for POST /voice/sync.
+// When WorkspaceNames is empty all configured workspaces are synced.
+type VoiceSyncRequest struct {
+	WorkspaceNames []string `json:"workspace_names,omitempty"`
+}
+
+// VoiceSyncCounts holds the per-platform embedded counts returned by /voice/sync.
+type VoiceSyncCounts struct {
+	GitHub int `json:"github"`
+	Azure  int `json:"azure"`
+	GitLab int `json:"gitlab"`
+	Total  int `json:"total"`
+}
+
+// VoiceSyncResponse is the response from POST /voice/sync.
+type VoiceSyncResponse struct {
+	Synced VoiceSyncCounts `json:"synced"`
+	Error  string          `json:"error,omitempty"`
+}
+
+// VoiceSync calls POST /voice/sync to trigger background sync of PR descriptions
+// and issue comments for all configured workspaces (or the given subset).
+// Returns a map of platform -> count of newly embedded entries.
+func (c *HTTPTriggerClient) VoiceSync(workspaceNames []string) (map[string]int, error) {
+	req := VoiceSyncRequest{WorkspaceNames: workspaceNames}
+	var resp VoiceSyncResponse
+	if err := c.postWithResult("/voice/sync", req, &resp); err != nil {
+		return nil, err
+	}
+	return map[string]int{
+		"github": resp.Synced.GitHub,
+		"azure":  resp.Synced.Azure,
+		"gitlab": resp.Synced.GitLab,
+		"total":  resp.Synced.Total,
+	}, nil
+}
+
 // LicenseAccept calls POST /license/accept.
 func (c *HTTPTriggerClient) LicenseAccept() (string, error) {
 	var r struct {

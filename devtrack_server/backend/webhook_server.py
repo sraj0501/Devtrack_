@@ -2108,6 +2108,274 @@ async def http_voice_profile_generate(
         return {"path": "", "word_count": 0, "error": str(exc)}
 
 
+# ── Voice sync (Phase 5 — Tier 1) ────────────────────────────────────────────
+
+
+@app.post("/voice/sync")
+async def http_voice_sync(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """POST /voice/sync — Background sync of PR descriptions and issue comments.
+
+    Polls all configured PM workspaces (or a subset when workspace_names is given)
+    for PR bodies and issue comments authored by the developer and embeds them into
+    ChromaDB. Returns per-platform counts.
+
+    Accepts: {"workspace_names": ["..."]}  — optional; syncs all when omitted.
+    Returns: {"synced": {"github": N, "azure": N, "gitlab": N, "total": N}}
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    workspace_names: list[str] = data.get("workspace_names", [])
+
+    try:
+        from backend.config import get_workspaces_file, get_path
+        from backend.voice_sync import VoiceSync
+    except ImportError as exc:
+        logger.error("/voice/sync: import failed: %s", exc)
+        return {"synced": {"github": 0, "azure": 0, "gitlab": 0, "total": 0}, "error": str(exc)}
+
+    # Load workspace configs from workspaces.yaml (or fall back to empty list).
+    workspaces: list = []
+    try:
+        import yaml
+        ws_file = get_workspaces_file()
+        if ws_file:
+            ws_path = get_path("WORKSPACES_FILE") if ws_file else None
+        else:
+            # Try default location relative to PROJECT_ROOT.
+            project_root = get_path("PROJECT_ROOT") if True else None
+            ws_path = project_root / "workspaces.yaml" if project_root else None
+
+        if ws_path and ws_path.exists():
+            with open(ws_path) as fh:
+                raw = yaml.safe_load(fh) or {}
+            from backend.config import get as cfg_get
+            raw_list = raw.get("workspaces", [])
+            # Build simple namespace objects compatible with VoiceSync expectations.
+            import types
+            for ws_dict in raw_list:
+                if not isinstance(ws_dict, dict):
+                    continue
+                ws_obj = types.SimpleNamespace(**ws_dict)
+                # Normalise attribute names (workspaces.yaml uses snake_case).
+                ws_obj.pm_platform = getattr(ws_obj, "pm_platform", "")
+                ws_obj.pm_username = getattr(ws_obj, "pm_username", "")
+                ws_obj.pm_org = getattr(ws_obj, "pm_org", "")
+                ws_obj.pm_project = getattr(ws_obj, "pm_project", "")
+                ws_obj.name = getattr(ws_obj, "name", "")
+                workspaces.append(ws_obj)
+    except Exception as load_exc:
+        logger.warning("/voice/sync: could not load workspaces.yaml: %s", load_exc)
+
+    # Filter to requested workspace_names when provided.
+    if workspace_names:
+        workspaces = [
+            ws for ws in workspaces
+            if getattr(ws, "name", "") in workspace_names
+        ]
+
+    syncer = VoiceSync()
+    totals = await asyncio.to_thread(syncer.sync_all, workspaces)
+    logger.info("/voice/sync: synced %s", totals)
+    return {"synced": totals}
+
+
+# ── Voice add / status (Phase 5 — Tier 2) ────────────────────────────────────
+
+# Allowed context types for voice corpus entries.
+_VOICE_CONTEXT_TYPES = {"commit", "description", "comment", "report", "task"}
+
+
+@app.post("/voice/add")
+async def http_voice_add(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Inject a manual high-weight writing example into ChromaDB.
+
+    Accepts: {"text": "...", "context_type": "commit|description|comment|report|task"}
+    Returns: {"id": "<chroma_document_id>"}
+             or {"id": "", "error": "chromadb unavailable"} with HTTP 503
+             or HTTP 400/422 on validation failure.
+
+    Entries are tagged with source=manual and weight=high in ChromaDB metadata.
+    """
+    data: dict = {}
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Request body must be valid JSON")
+
+    text: str = data.get("text", "").strip()
+    context_type: str = data.get("context_type", "").strip()
+
+    if not text:
+        raise HTTPException(status_code=400, detail="text is required and must not be empty")
+
+    if not context_type:
+        raise HTTPException(
+            status_code=422,
+            detail=f"context_type is required; allowed values: {sorted(_VOICE_CONTEXT_TYPES)}",
+        )
+
+    if context_type not in _VOICE_CONTEXT_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"invalid context_type {context_type!r}; allowed: {sorted(_VOICE_CONTEXT_TYPES)}",
+        )
+
+    try:
+        from backend.rag.embedder import embed as rag_embed
+        from backend.rag.vector_store import VectorStore
+
+        # Build a unique document ID for this manual entry.
+        import hashlib
+        import time as _time
+        doc_id = "manual-" + hashlib.sha1(
+            f"{context_type}:{text}:{_time.time()}".encode()
+        ).hexdigest()[:16]
+
+        embedded_text = f"Context: {text}\nResponse: {text}"
+        vec = await asyncio.to_thread(rag_embed, embedded_text)
+        if vec is None:
+            logger.warning("/voice/add: embedding model unavailable — ChromaDB not updated")
+            return JSONResponse(
+                status_code=503,
+                content={"id": "", "error": "chromadb unavailable"},
+            )
+
+        store = VectorStore()
+        metadata = {
+            "source": "manual",
+            "weight": "high",
+            "context_type": context_type,
+            "trigger": text[:300],
+            "response": text[:400],
+        }
+        success = store.upsert(doc_id, embedded_text, vec, metadata)
+        if not success:
+            logger.warning("/voice/add: VectorStore.upsert returned False — ChromaDB may be unavailable")
+            return JSONResponse(
+                status_code=503,
+                content={"id": "", "error": "chromadb unavailable"},
+            )
+
+        logger.info("/voice/add: embedded manual entry id=%s context_type=%s", doc_id, context_type)
+        return {"id": doc_id}
+
+    except Exception as exc:
+        logger.warning("/voice/add: unexpected error: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"id": "", "error": "chromadb unavailable"},
+        )
+
+
+@app.get("/voice/status")
+async def http_voice_status(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return voice corpus statistics.
+
+    Response shape:
+    {
+      "total_entries": 127,
+      "by_context": {"commit": 95, "description": 18, "comment": 14, "report": 0, "task": 0},
+      "by_source":  {"git_history": 95, "pr_sync": 32, "manual": 0},
+      "last_seed":  "2026-06-18T10:00:00Z" | null,
+      "last_sync":  "2026-06-18T08:00:00Z" | null,
+      "profile_exists":    true,
+      "profile_word_count": 312
+    }
+    Never raises; returns zeros/nulls for missing data.
+    """
+    # ── ChromaDB counts ───────────────────────────────────────────────────────
+    by_context: dict = {ct: 0 for ct in sorted(_VOICE_CONTEXT_TYPES)}
+    by_source: dict = {"git_history": 0, "pr_sync": 0, "manual": 0}
+    total_entries: int = 0
+
+    try:
+        from backend.rag.vector_store import VectorStore
+        store = VectorStore()
+        if store._init():  # noqa: SLF001 — internal init returns bool, safe here
+            try:
+                # Retrieve all documents with their metadata.
+                # ChromaDB .get() with no filters returns everything.
+                result = store._collection.get(include=["metadatas"])  # noqa: SLF001
+                metadatas = result.get("metadatas") or []
+                total_entries = len(metadatas)
+                for meta in metadatas:
+                    ct = meta.get("context_type", "")
+                    if ct in by_context:
+                        by_context[ct] += 1
+                    src = meta.get("source", "")
+                    if src in by_source:
+                        by_source[src] += 1
+            except Exception as qe:
+                logger.debug("/voice/status: ChromaDB count query failed (non-fatal): %s", qe)
+    except Exception as ce:
+        logger.debug("/voice/status: ChromaDB init failed (non-fatal): %s", ce)
+
+    # ── last_seed from voice_seeded_commits ───────────────────────────────────
+    last_seed: str | None = None
+    try:
+        import sqlite3 as _sqlite3
+        from backend.config import database_path
+        db_p = database_path()
+        if db_p.exists():
+            with _sqlite3.connect(str(db_p)) as _conn:
+                row = _conn.execute(
+                    "SELECT MAX(seeded_at) FROM voice_seeded_commits"
+                ).fetchone()
+                if row and row[0]:
+                    last_seed = str(row[0])
+    except Exception as se:
+        logger.debug("/voice/status: last_seed query failed (non-fatal): %s", se)
+
+    # ── last_sync from voice_synced_items (TASK-082) ─────────────────────────
+    last_sync: str | None = None
+    try:
+        import sqlite3 as _sqlite3
+        from backend.config import database_path
+        db_p = database_path()
+        if db_p.exists():
+            with _sqlite3.connect(str(db_p)) as _conn:
+                row = _conn.execute(
+                    "SELECT MAX(synced_at) FROM voice_synced_items"
+                ).fetchone()
+                if row and row[0]:
+                    last_sync = str(row[0])
+    except Exception as sye:
+        logger.debug("/voice/status: last_sync query failed (non-fatal): %s", sye)
+
+    # ── profile file ─────────────────────────────────────────────────────────
+    profile_exists: bool = False
+    profile_word_count: int = 0
+    try:
+        from backend.config import get_path
+        profile_path = get_path("DATA_DIR") / "learning" / "profile.md"
+        if profile_path.exists():
+            profile_exists = True
+            profile_word_count = len(profile_path.read_text(encoding="utf-8").split())
+    except Exception as pe:
+        logger.debug("/voice/status: profile read failed (non-fatal): %s", pe)
+
+    return {
+        "total_entries": total_entries,
+        "by_context": by_context,
+        "by_source": by_source,
+        "last_seed": last_seed,
+        "last_sync": last_sync,
+        "profile_exists": profile_exists,
+        "profile_word_count": profile_word_count,
+    }
+
+
 # ── Learning ─────────────────────────────────────────────────────────────────
 
 try:

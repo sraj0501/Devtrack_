@@ -1040,3 +1040,19 @@ func GetVoiceSeedMonths() int {
 	}
 	return months
 }
+
+// GetVoiceSyncIntervalHours returns how often (in hours) the background voice
+// sync job polls PM platforms for PR descriptions and issue comments (Phase 5 — Tier 1).
+// Reads VOICE_SYNC_INTERVAL_HOURS.
+// REQUIRED: panics with a clear message if the variable is not set.
+func GetVoiceSyncIntervalHours() int {
+	val := os.Getenv("VOICE_SYNC_INTERVAL_HOURS")
+	if val == "" {
+		panic("devtrack: VOICE_SYNC_INTERVAL_HOURS not set — add it to .env (recommended value: 24)")
+	}
+	hours := mustParseInt("VOICE_SYNC_INTERVAL_HOURS", val)
+	if hours <= 0 {
+		panic(fmt.Sprintf("devtrack: VOICE_SYNC_INTERVAL_HOURS must be > 0, got %d", hours))
+	}
+	return hours
+}
