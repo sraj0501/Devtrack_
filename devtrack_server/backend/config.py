@@ -1439,6 +1439,11 @@ def get_voice_seed_months() -> int:
     return get_int("VOICE_SEED_MONTHS", 6) or 6
 
 
+def get_voice_sync_interval_hours() -> int:
+    """How often (in hours) the background voice sync job runs. VOICE_SYNC_INTERVAL_HOURS (default: 24)."""
+    return get_int("VOICE_SYNC_INTERVAL_HOURS", 24) or 24
+
+
 def get_spec_review_base_url() -> str:
     """Base URL for spec review web form. SPEC_REVIEW_BASE_URL (default: "")."""
     return get("SPEC_REVIEW_BASE_URL", "")

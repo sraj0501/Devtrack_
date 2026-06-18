@@ -2076,8 +2076,8 @@ Follow the exact same pattern used for the existing EOD cron job.
 - [ ] Python tests pass (author filter, idempotency, per-platform failure isolation)
 - [ ] `go build ./...` and `go vet ./...` pass clean
 
-**Engineer status**: not started
-**Blockers**: TASK-080 (ChromaDB pipeline must exist)
+**Engineer status**: started — creating voice_sync.py, POST /voice/sync endpoint, config accessors, scheduler cron, CLI command, and tests
+**Blockers**: none
 
 ---
 
@@ -2174,17 +2174,20 @@ document this dependency in the spec note).
 - `GET /voice/status` after adding one entry: `total_entries=1`, correct `by_context` count.
 
 **Acceptance criteria**:
-- [ ] `POST /voice/add` endpoint exists, auth-gated, validates context_type, returns chroma doc ID
-- [ ] `GET /voice/status` endpoint exists, auth-gated, returns corpus stats with all fields documented above
-- [ ] `devtrack voice add "example text" --context commit` posts to `/voice/add`, prints confirmation with chroma ID
-- [ ] `devtrack voice status` calls `/voice/status`, prints human-readable table; no ANSI when piped
-- [ ] Both commands wired in `cli.go` `Execute()` switch
-- [ ] No `os.getenv` in any new server file
-- [ ] Python tests pass (add valid/invalid, status empty/populated)
-- [ ] `go build ./...` and `go vet ./...` pass clean
+- [x] `POST /voice/add` endpoint exists, auth-gated, validates context_type, returns chroma doc ID
+- [x] `GET /voice/status` endpoint exists, auth-gated, returns corpus stats with all fields documented above
+- [x] `devtrack voice add "example text" --context commit` posts to `/voice/add`, prints confirmation with chroma ID
+- [x] `devtrack voice status` calls `/voice/status`, prints human-readable table; no ANSI when piped
+- [x] Both commands wired in `handleVoice()` switch in `cli_voice.go`; `voice` case already exists in `cli.go`
+- [x] No `os.getenv` in any new server file
+- [x] Python tests pass (add valid/invalid, status empty/populated) — 17 new tests, 740 total, 1 pre-existing failure
+- [x] `go build ./...` and `go vet ./...` pass clean
 
-**Engineer status**: not started
-**Blockers**: TASK-080 (ChromaDB pipeline must exist)
+**Engineer status**: 8/8 criteria done — last commit: 40553d3 "feat(voice): Add voice add and status commands to CLI and API" — 2026-06-18
+**PR**: https://github.com/sraj0501/Devtrack_/pull/189
+**Blockers**: none (TASK-080 merged — PR #187; TASK-081 merged — PR #188)
+
+**COMPLETE** — ready for PM review — 2026-06-18
 
 ---
 
