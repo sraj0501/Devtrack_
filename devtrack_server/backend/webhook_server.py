@@ -1345,6 +1345,66 @@ async def http_queue_execute(
 
 
 # ---------------------------------------------------------------------------
+# Phase 6: Dialectic self-improvement endpoint
+# Auth: same X-DevTrack-API-Key as all /trigger/* endpoints.
+# The Go client calls this after successful queue execution or approve/reject.
+# ---------------------------------------------------------------------------
+
+@app.post("/dialectic/infer")
+async def http_dialectic_infer(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Run a dialectic reasoning pass and return inferences about the developer.
+
+    Called by the Go client after a successful queue execution, TUI approval,
+    or TUI rejection. The Go client stores the returned inferences in SQLite
+    via InsertInference() — Python does not write to SQLite directly.
+
+    Request body:
+    {
+      "interaction_type": "commit" | "approval" | "rejection" | "edit",
+      "context_type": "commit" | "comment" | "report" | "task" | "ticket_mapping",
+      "before_text": "...",
+      "after_text": "...",
+      "metadata": {"ticket_id": "...", "workspace": "...", "action_id": 42, ...}
+    }
+
+    Response: {"inferences": [{"subject": "...", "inference": "...", "confidence": 0.75}]}
+    Returns {"inferences": []} (not an error) when both Hermes 3 and fallback fail.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    interaction_type = body.get("interaction_type", "")
+    context_type = body.get("context_type", "")
+    before_text = body.get("before_text", "")
+    after_text = body.get("after_text", "")
+    metadata = body.get("metadata", {})
+    if not isinstance(metadata, dict):
+        metadata = {}
+
+    try:
+        from backend.dialectic_reasoner import DialecticReasoner
+        reasoner = DialecticReasoner()
+        inferences = await asyncio.to_thread(
+            reasoner.reason,
+            interaction_type,
+            context_type,
+            before_text,
+            after_text,
+            metadata,
+        )
+    except Exception as exc:
+        logger.warning("/dialectic/infer: DialecticReasoner raised unexpectedly: %s", exc)
+        inferences = []
+
+    return {"inferences": inferences}
+
+
+# ---------------------------------------------------------------------------
 # HTTP trigger endpoints (CS-1: Go → HTTPS → Python, all modes)
 # All endpoints require X-DevTrack-API-Key (when DEVTRACK_API_KEY is set).
 # ---------------------------------------------------------------------------

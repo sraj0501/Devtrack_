@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-18 by engineer — Phase 5 COMPLETE_
-_Next DevTrack task ID: TASK-085_
+_Last updated: 2026-06-18 by engineer — TASK-086 started_
+_Next DevTrack task ID: TASK-087_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -2297,6 +2297,30 @@ with an HTTP/JSON boundary. Legacy `devtrack-bin/` + root `backend/` retired
 v1.0.0 release + local agents; config audit (os.getenv eliminated across 22 files,
 50+ accessors); CS-2 headless tests + server-TUI stats panel; CS-3 Admin GUI MVP
 (users/licenses/health); logo + Windows binary icon; boardroom + plan commands.
+
+---
+
+### TASK-086 — Hermes 3 reasoning loop: Python server runs a reasoning pass after each interaction
+**Priority**: HIGH
+**Phase**: Phase 6
+**Depends on**: TASK-085 (migrations must be live; Go DB layer must exist)
+**Branch**: `feat/TASK-086-hermes3-reasoning-loop`
+
+**Acceptance criteria**:
+- [ ] `dialectic_reasoner.py` exists with `DialecticReasoner` class; `reason()` returns `[]` on failure, never raises
+- [ ] Hermes 3 model tried first; falls back to configured LLM chain; logs on fallback
+- [ ] No `os.getenv` in `dialectic_reasoner.py`; all config via `backend.config`
+- [ ] `POST /dialectic/infer` endpoint exists, auth-gated, returns `{"inferences": [...]}`
+- [ ] `PostDialecticInfer()` exists in `devtrack_client/internal/trigger/`; Go client calls it after successful queue execution (fire-and-forget goroutine)
+- [ ] Returned inferences stored in SQLite `inferences` table via `InsertInference()`
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] Python tests pass: graceful degradation, well-formed JSON return, auth guard
+- [ ] `uv run pytest backend/tests/ -q` — no regressions beyond documented pre-existing failure
+
+**Assigned to**: engineer
+**Started**: 2026-06-18
+**Engineer status**: started — building Part A (dialectic_reasoner.py), Part B (endpoint), Part C (Go client), Part D (tests)
+**Blockers**: none — TASK-085 merged
 
 ---
 

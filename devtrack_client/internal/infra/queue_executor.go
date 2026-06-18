@@ -161,6 +161,13 @@ func (q *QueueExecutor) tick() {
 					log.Printf("queue executor: failed to mark action %d as posted: %v", action.ID, dbErr)
 				}
 			}
+
+			// 5. Fire-and-forget: call /dialectic/infer and store the returned
+			//    inferences in SQLite. Non-blocking; errors are logged only.
+			fullAction, dbErr := q.db.GetPendingAction(action.ID)
+			if dbErr == nil && fullAction != nil {
+				go q.fireDialecticInfer(*fullAction)
+			}
 		} else {
 			// status == "failed" or unexpected value
 			errMsg := execResp.Error
@@ -270,6 +277,33 @@ func (q *QueueExecutor) maybeEODReport(id int64) {
 			log.Printf("queue executor: EOD report delivered via Telegram for action %d (date=%s)", action.ID, payload.Date)
 		}
 	}()
+}
+
+// fireDialecticInfer calls POST /dialectic/infer for a completed queue action
+// and stores each returned inference in the local SQLite inferences table.
+// This method is always called as a goroutine — it logs errors and never panics.
+func (q *QueueExecutor) fireDialecticInfer(action db.PendingAction) {
+	inferences, err := q.triggerClient.PostDialecticInfer(action)
+	if err != nil {
+		log.Printf("dialectic: infer call failed for action %d: %v", action.ID, err)
+		return
+	}
+	for _, inf := range inferences {
+		_, storeErr := q.db.InsertInference(db.Inference{
+			ContextType: inf.ContextType,
+			Subject:     inf.Subject,
+			Inference:   inf.InferenceText,
+			Evidence:    fmt.Sprintf(`[%d]`, action.ID),
+			Confidence:  inf.Confidence,
+			Source:      "hermes3",
+		})
+		if storeErr != nil {
+			log.Printf("dialectic: store inference failed for action %d: %v", action.ID, storeErr)
+		}
+	}
+	if len(inferences) > 0 {
+		log.Printf("dialectic: stored %d inference(s) for action %d", len(inferences), action.ID)
+	}
 }
 
 // parseISO8601 parses the common ISO 8601 datetime formats that Python uses
