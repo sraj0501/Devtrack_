@@ -2,6 +2,34 @@
 
 ---
 
+### [2026-06-18 11:05] TASK-080 — Tier 0: Auto-seed ChromaDB from git commit history
+
+**Original message**: "feat(voice): TASK-080 auto-seed ChromaDB from git commit history"
+**DevTrack enhanced it to**: "feat(voice): Implement ChromaDB auto-seeding from git history"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-080 marked COMPLETE; 10/10 criteria ticked; PR #187 opened targeting dev
+**Time**: ~45 minutes
+**Friction**: LOW
+**Notes**:
+- Studied the existing RAG pipeline (`rag/embedder.py`, `rag/vector_store.py`, `rag/sample_indexer.py`) before writing embedding code. The `VectorStore.upsert()` API accepts a sample_id, text, embedding vector, and metadata dict — used commit hash as the sample_id for deduplication.
+- The idempotency mechanism uses a SQLite tracking table `voice_seeded_commits (hash, repo_path, seeded_at)` rather than querying ChromaDB metadata — more reliable and avoids a ChromaDB query-by-ID roundtrip per commit.
+- The `POST /voice/seed` threshold check (skip if corpus >= 10 entries) uses `VectorStore.count()` as a simple proxy since per-repo filtering in ChromaDB metadata requires a full collection scan. This means the threshold triggers on total corpus size, not per-repo. Acceptable for Tier 0 — TASK-083's `GET /voice/status` will provide precise per-repo counts.
+- `VoiceSeeder._seed()` is separated from `seed_from_git()` so that the outer method catches any unexpected exception and returns 0 — belt-and-suspenders on top of the individual try/except blocks inside.
+- The `voice` command needed wiring in BOTH `cli.go` (Execute() switch) and `main.go` (the routing block) — same two-file pattern learned from TASK-079.
+- `go build ./...` and `go vet ./...` pass clean; 8/8 Python tests pass; full suite 699 pass, 1 pre-existing failure.
+
+## Task Summary — TASK-080: Tier 0 voice corpus seeding — 2026-06-18
+
+- Total commits: 1 (62efee3)
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~0 min direct (background seeding) / significant indirect (voice personalization corpus bootstrapped automatically from day 1)
+- Blockers encountered: none
+- One thing that still feels rough: "The threshold check in POST /voice/seed uses total corpus size rather than per-repo count — works for single-workspace setups but will be over-conservative for multi-repo setups until TASK-083's GET /voice/status lands."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-17 22:31] TASK-079 — devtrack eod CLI command + Phase 4 exit criterion verified
 
 **Original message**: "feat(cli): TASK-079 add devtrack eod CLI command + Phase 4 exit criterion verified"
