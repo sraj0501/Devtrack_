@@ -2065,6 +2065,49 @@ async def http_voice_seed(
         return {"embedded": 0, "skipped": 0, "repo_path": repo_path, "error": str(exc)}
 
 
+
+# ── Voice profile generation (Phase 5 — Tier 0 dialectic) ─────────────────────
+
+
+@app.post("/voice/profile/generate")
+async def http_voice_profile_generate(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Generate a Developer Voice Profile from the ChromaDB commit corpus.
+
+    Accepts: {"repo_paths": ["...", "..."]}  (optional)
+    Returns: {"path": "<absolute path to profile.md>", "word_count": N}
+
+    If repo_paths is omitted, the endpoint generates a profile from all
+    available commit messages in the ChromaDB collection (no repo filtering).
+    """
+    data: dict = {}
+    try:
+        data = await request.json()
+    except Exception:
+        pass
+
+    repo_paths: list[str] = data.get("repo_paths") or []
+
+    try:
+        from backend.voice_profile import ProfileGenerator
+        from backend.config import get_path
+
+        gen = ProfileGenerator()
+        profile_text = await asyncio.to_thread(gen.generate, repo_paths)
+
+        data_dir_path = get_path("DATA_DIR")
+        saved_path = await asyncio.to_thread(gen.save, profile_text, str(data_dir_path))
+
+        word_count = len(profile_text.split())
+        logger.info("/voice/profile/generate: saved %d-word profile to %s", word_count, saved_path)
+        return {"path": str(saved_path), "word_count": word_count}
+    except Exception as exc:
+        logger.error("/voice/profile/generate failed: %s", exc)
+        return {"path": "", "word_count": 0, "error": str(exc)}
+
+
 # ── Learning ─────────────────────────────────────────────────────────────────
 
 try:

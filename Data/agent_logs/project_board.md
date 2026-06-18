@@ -1976,8 +1976,21 @@ fix it in this task (no new config var needed — `DATA_DIR` already exists).
 - [ ] Python tests pass (LLM available/unavailable/save path)
 - [ ] `go build ./...` and `go vet ./...` pass clean
 
-**Engineer status**: not started
-**Blockers**: TASK-080 (ChromaDB must have data)
+**Engineer status**: 9/9 criteria done — last commit: 0c41051 "feat(voice): Add dialectic voice profile generation via ChromaDB corpus" — 2026-06-18
+
+- [x] `voice_profile.py` exists with `ProfileGenerator` class, `generate(repo_paths) -> str` and `save(profile_text, data_dir) -> Path` methods
+- [x] LLM unavailable: `generate()` returns fallback template string, no exception raised
+- [x] `POST /voice/profile/generate` endpoint exists and is auth-gated
+- [x] After calling the endpoint, `{DATA_DIR}/learning/profile.md` exists and is non-empty
+- [x] `PersonalizedAI.get_style_instruction()` reads from `{DATA_DIR}/learning/profile.md` via `config.get_path("DATA_DIR")` — fixed (added `_read_profile_md()` helper)
+- [x] `devtrack voice profile` CLI command exists, calls the endpoint, prints path and word count
+- [x] No `os.getenv` in `voice_profile.py`; no hardcoded `DATA_DIR` path string
+- [x] Python tests pass (LLM available/unavailable/save path) — 14/14 new tests + 713 total pass
+- [x] `go build ./...` and `go vet ./...` pass clean
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/188
+
+**COMPLETE** — ready for PM review — 2026-06-18
 
 ---
 
