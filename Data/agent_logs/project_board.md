@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-18 by engineer — Phase 5 COMPLETE_
-_Next DevTrack task ID: TASK-085_
+_Last updated: 2026-06-18 by PM — Phase 6 tasks written (TASK-085 through TASK-092)_
+_Next DevTrack task ID: TASK-085 (IN PROGRESS — dispatched to engineer)_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -2254,6 +2254,1129 @@ TASK-074 (Phase 3): live run against the real pipeline, not just unit tests.
 **PR**: https://github.com/sraj0501/Devtrack_/pull/191
 
 **COMPLETE** — ready for PM review — 2026-06-18
+
+---
+
+## ACTIVE — Phase 6: Dialectic self-improvement
+
+**Goal**: Every interaction feeds a local reasoning loop. Hermes 3 (via Ollama) runs a
+reasoning pass after each commit, approval, rejection, and edit. Inferences are stored in
+SQLite FTS5. Recurring action patterns auto-promote to "skills". The TUI Queue tab lets the
+developer flag wrong inferences. Confidence thresholds per action type adjust continuously.
+`devtrack voice status` shows what was inferred and from which evidence.
+
+**Exit criterion** (PRODUCT_BIBLE.md Phase 6): After 30 days, correction rate on ticket
+mapping and generated text is measurably lower than day 1. At least three autonomous skills
+have emerged without developer input. Developer has extended at least one auto-approve threshold.
+
+**Build order**: TASK-085 (DB layer) → TASK-086 (reasoning loop) → TASK-087 (generation
+injection) → TASK-088 (adaptive thresholds) → TASK-089 (skill emergence) → TASK-090 (TUI
+correction) → TASK-091 (voice status transparency) → TASK-092 (exit verification).
+
+---
+
+### TASK-085 — SQLite FTS5 inference store: inferences, corrections, and confidence_thresholds tables
+**Assigned to**: engineer
+**Priority**: HIGH
+**Phase**: Phase 6
+**Started**: 2026-06-18
+**Depends on**: TASK-084 (Phase 5 COMPLETE — dev tip fb2cb87)
+**Branch**: `feat/TASK-085-fts5-inference-store`
+
+**Spec**:
+
+Create the persistent data layer for Phase 6 dialectic self-improvement. Three new SQLite
+tables plus their Go model structs and CRUD helpers. This task is pure data layer — no
+reasoning logic, no UI.
+
+**Step 1 — Three new migrations in `devtrack_client/internal/db/migrations.go`**
+
+Append these three entries at the end of `allMigrations` (after migration `007`). Never
+reorder. All DDL uses `IF NOT EXISTS` / `IF NOT EXISTS` guards for idempotency.
+
+**Migration 008 — `inferences` table + FTS5 virtual table**
+
+```sql
+CREATE TABLE IF NOT EXISTS inferences (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    context_type TEXT    NOT NULL,          -- commit | comment | report | task | ticket_mapping
+    subject      TEXT    NOT NULL,          -- what the inference is about (e.g. "commit tone")
+    inference    TEXT    NOT NULL,          -- the reasoned statement ("developer prefers imperative mood")
+    evidence     TEXT    NOT NULL,          -- JSON array of trigger IDs / action IDs that support this
+    confidence   REAL    NOT NULL DEFAULT 0.5,  -- 0.0–1.0; updated by corrections
+    source       TEXT    NOT NULL DEFAULT 'hermes3', -- hermes3 | manual
+    created_at   DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS inferences_fts USING fts5(
+    context_type,
+    subject,
+    inference,
+    content='inferences',
+    content_rowid='id'
+);
+
+CREATE TRIGGER IF NOT EXISTS inferences_ai AFTER INSERT ON inferences BEGIN
+    INSERT INTO inferences_fts(rowid, context_type, subject, inference)
+    VALUES (new.id, new.context_type, new.subject, new.inference);
+END;
+
+CREATE TRIGGER IF NOT EXISTS inferences_au AFTER UPDATE ON inferences BEGIN
+    INSERT INTO inferences_fts(inferences_fts, rowid, context_type, subject, inference)
+    VALUES('delete', old.id, old.context_type, old.subject, old.inference);
+    INSERT INTO inferences_fts(rowid, context_type, subject, inference)
+    VALUES (new.id, new.context_type, new.subject, new.inference);
+END;
+
+CREATE TRIGGER IF NOT EXISTS inferences_ad AFTER DELETE ON inferences BEGIN
+    INSERT INTO inferences_fts(inferences_fts, rowid, context_type, subject, inference)
+    VALUES('delete', old.id, old.context_type, old.subject, old.inference);
+END;
+```
+
+**Migration 009 — `corrections` table**
+
+```sql
+CREATE TABLE IF NOT EXISTS corrections (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    inference_id  INTEGER NOT NULL REFERENCES inferences(id),
+    correction    TEXT    NOT NULL,          -- what the developer said was wrong / the right value
+    flagged_from  TEXT    NOT NULL DEFAULT 'tui',  -- tui | cli | telegram
+    weight        REAL    NOT NULL DEFAULT 2.0,     -- multiplier on this signal vs ordinary evidence
+    created_at    DATETIME NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_corrections_inference ON corrections(inference_id);
+```
+
+**Migration 010 — `confidence_thresholds` table**
+
+```sql
+CREATE TABLE IF NOT EXISTS confidence_thresholds (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    action_type   TEXT    NOT NULL UNIQUE,   -- post_comment | state_transition | eod_report | etc.
+    workspace     TEXT    NOT NULL DEFAULT '',  -- '' means global (applies to all workspaces)
+    threshold     REAL    NOT NULL DEFAULT 0.70,
+    approvals     INTEGER NOT NULL DEFAULT 0,
+    rejections    INTEGER NOT NULL DEFAULT 0,
+    last_updated  DATETIME NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_thresholds_type_ws
+    ON confidence_thresholds(action_type, workspace);
+```
+
+**Step 2 — Go structs and CRUD helpers**
+
+New file `devtrack_client/internal/db/inferences.go`. No `os.Getenv` calls. No hardcoded
+hosts or ports.
+
+**`Inference` struct** (fields mirror the table; `Evidence` as `string` — JSON array stored
+as text, callers marshal/unmarshal; `CreatedAt`/`UpdatedAt` as `time.Time`):
+
+```go
+type Inference struct {
+    ID          int64
+    ContextType string
+    Subject     string
+    Inference   string
+    Evidence    string   // raw JSON: []int64 of trigger/action IDs
+    Confidence  float64
+    Source      string
+    CreatedAt   time.Time
+    UpdatedAt   time.Time
+}
+```
+
+**`Correction` struct**:
+
+```go
+type Correction struct {
+    ID          int64
+    InferenceID int64
+    Correction  string
+    FlaggedFrom string
+    Weight      float64
+    CreatedAt   time.Time
+}
+```
+
+**`ConfidenceThreshold` struct**:
+
+```go
+type ConfidenceThreshold struct {
+    ID          int64
+    ActionType  string
+    Workspace   string
+    Threshold   float64
+    Approvals   int
+    Rejections  int
+    LastUpdated time.Time
+}
+```
+
+**Required CRUD methods on `*Database`**:
+
+```go
+// Inferences
+func (d *Database) InsertInference(inf Inference) (int64, error)
+func (d *Database) GetInference(id int64) (*Inference, error)
+func (d *Database) ListInferences(contextType string, limit int) ([]Inference, error)
+func (d *Database) SearchInferences(query string, limit int) ([]Inference, error)   // uses FTS5
+func (d *Database) UpdateInferenceConfidence(id int64, newConf float64) error
+
+// Corrections
+func (d *Database) InsertCorrection(c Correction) (int64, error)
+func (d *Database) ListCorrectionsForInference(inferenceID int64) ([]Correction, error)
+
+// ConfidenceThresholds
+func (d *Database) GetOrCreateThreshold(actionType, workspace string) (ConfidenceThreshold, error)
+func (d *Database) RecordApproval(actionType, workspace string) error
+func (d *Database) RecordRejection(actionType, workspace string) error
+func (d *Database) ListThresholds() ([]ConfidenceThreshold, error)
+func (d *Database) UpdateThreshold(actionType, workspace string, newThreshold float64) error
+```
+
+`GetOrCreateThreshold` uses `INSERT OR IGNORE` then `SELECT` to ensure the row exists with
+defaults before returning it — this is the safe upsert pattern for SQLite without
+`RETURNING`.
+
+`RecordApproval` and `RecordRejection` increment the counter and recompute the threshold
+using the formula: `threshold = 0.70 + 0.20 * (approvals / (approvals + rejections))` capped
+at 0.95 — this means the threshold rises (auto-approves faster) as the approval rate improves.
+Apply the update atomically in a single `UPDATE` statement.
+
+`SearchInferences` issues:
+```sql
+SELECT i.* FROM inferences i
+JOIN inferences_fts fts ON i.id = fts.rowid
+WHERE inferences_fts MATCH ?
+ORDER BY rank
+LIMIT ?
+```
+
+**Step 3 — Unit tests**
+
+New file `devtrack_client/internal/db/inferences_test.go`:
+
+- Table-driven tests for `InsertInference` + `GetInference` round-trip.
+- `SearchInferences("imperative mood", 5)` returns at least the one inserted row with that
+  phrase in `inference` text.
+- `RecordApproval` + `RecordRejection`: confirm threshold recomputation formula.
+  E.g. 8 approvals, 2 rejections → threshold = 0.70 + 0.20 * (8/10) = 0.86.
+- `InsertCorrection` + `ListCorrectionsForInference`: confirm round-trip.
+- `GetOrCreateThreshold` idempotency: called twice with same args, returns same row (no
+  duplicate insert).
+
+All tests use an in-memory or temp-dir SQLite file (no `DATABASE_PATH` env needed — use
+`NewDatabaseWithPath(t.TempDir() + "/test.db")`; if that constructor doesn't exist yet,
+the test can set a `DATABASE_PATH` env var via `t.Setenv`).
+
+**Step 4 — Verify build**
+
+From `devtrack_client/`:
+```
+go build ./...
+go vet ./...
+go test ./internal/db/...
+```
+All must pass clean.
+
+**Acceptance criteria**:
+- [ ] Migrations 008, 009, 010 appended to `allMigrations` — never before 007, all idempotent
+- [ ] `inferences` table + FTS5 virtual table + three sync triggers created by migration 008
+- [ ] `corrections` table created by migration 009
+- [ ] `confidence_thresholds` table created by migration 010
+- [ ] All three Go structs (`Inference`, `Correction`, `ConfidenceThreshold`) exist in `inferences.go`
+- [ ] All twelve CRUD methods exist on `*Database` and compile
+- [ ] `SearchInferences` uses FTS5 MATCH — confirmed by test returning an inserted row
+- [ ] `RecordApproval`/`RecordRejection` threshold formula correct: 8/2 split → 0.86 (unit test asserts)
+- [ ] `GetOrCreateThreshold` is idempotent (unit test calls it twice, confirms same ID returned)
+- [ ] `go build ./...`, `go vet ./...`, `go test ./internal/db/...` all pass clean from `devtrack_client/`
+- [ ] No `os.Getenv` calls in `inferences.go`; no hardcoded hosts/ports
+
+**Engineer status**: 10/10 criteria done — last commit: c2ade83 "feat(db): add FTS5 inference store, corrections, and confidence_thresholds (TASK-085)" — 2026-06-18 20:08
+
+- [x] Migrations 008, 009, 010 appended to `allMigrations` — never before 007, all idempotent
+- [x] `inferences` table + FTS5 virtual table + three sync triggers created by migration 008
+- [x] `corrections` table created by migration 009
+- [x] `confidence_thresholds` table created by migration 010
+- [x] All three Go structs (`Inference`, `Correction`, `ConfidenceThreshold`) exist in `inferences.go`
+- [x] All twelve CRUD methods exist on `*Database` and compile
+- [x] `SearchInferences` uses FTS5 MATCH — confirmed by test returning an inserted row
+- [x] `RecordApproval`/`RecordRejection` threshold formula correct: 8/2 split → 0.86 (unit test asserts)
+- [x] `GetOrCreateThreshold` is idempotent (unit test calls it twice, confirms same ID returned)
+- [x] `go build ./...`, `go vet ./...`, `go test ./internal/db/...` all pass clean from `devtrack_client/`
+- [x] No `os.Getenv` calls in `inferences.go`; no hardcoded hosts/ports
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/192
+
+**COMPLETE** — ready for PM review — 2026-06-18 20:08
+**Blockers**: none
+
+---
+
+### TASK-086 — Hermes 3 reasoning loop: Python server runs a reasoning pass after each interaction
+**Priority**: HIGH
+**Phase**: Phase 6
+**Depends on**: TASK-085 (migrations must be live; Go DB layer must exist)
+**Branch**: `feat/TASK-086-hermes3-reasoning-loop`
+
+**Spec**:
+
+After each commit trigger, approval, rejection, or edit received by the Python server, call
+the Hermes 3 model (Ollama) to produce one or more inferences about the developer's style or
+patterns, then store them via a new HTTP endpoint that the Go side calls.
+
+This is Python-server work plus a new Go client HTTP call. The Go inferences DB layer
+(TASK-085) is the storage backend — accessed by the Go client, not directly by Python.
+
+**Part A — New Python module `devtrack_server/backend/dialectic_reasoner.py`**
+
+```python
+class DialecticReasoner:
+    """
+    Runs a local reasoning pass via Hermes 3 (Ollama) after each developer interaction.
+    Produces structured inferences about the developer's writing style and work patterns.
+    Falls back to the configured LLM chain (provider_factory) if Hermes 3 is unavailable.
+    """
+    HERMES_MODEL = "adrienbrault/nous-hermes2pro-llama3-8b:q8_0"
+    FALLBACK_MODEL_ENV = "GIT_SAGE_DEFAULT_MODEL"  # config key, not direct os.getenv
+
+    def reason(
+        self,
+        interaction_type: str,       # "commit" | "approval" | "rejection" | "edit"
+        context_type: str,           # "commit" | "comment" | "report" | "task" | "ticket_mapping"
+        before_text: str,            # original generated text (empty for approvals)
+        after_text: str,             # final text after edit (same as before for non-edits)
+        metadata: dict,              # ticket_id, workspace, action_id, etc.
+    ) -> list[dict]:
+        """
+        Returns a list of inference dicts:
+        [
+          {
+            "subject": "commit tone",
+            "inference": "Developer uses imperative mood in commit messages.",
+            "confidence": 0.75
+          },
+          ...
+        ]
+        Returns [] on LLM failure (graceful degradation — never raises).
+        """
+```
+
+The reasoning prompt must be structured so the LLM returns JSON (use Ollama `format: "json"`
+or equivalent for the fallback provider). Example prompt skeleton (do not hardcode into
+config — put as a module-level constant `REASONING_PROMPT_TEMPLATE`):
+
+```
+You are analyzing a developer's interaction to infer writing patterns and preferences.
+
+Interaction type: {interaction_type}
+Context: {context_type}
+
+Original text: {before_text}
+Final text (after developer action): {after_text}
+
+Based on this interaction, produce up to 3 structured inferences about the developer's
+style or preferences. Each inference must be:
+- Specific and actionable (not generic)
+- Grounded in the evidence above
+- Expressed in one sentence
+
+Return as JSON: {"inferences": [{"subject": "...", "inference": "...", "confidence": 0.0-1.0}]}
+```
+
+Model selection logic (in order):
+1. Try `adrienbrault/nous-hermes2pro-llama3-8b:q8_0` via Ollama (check availability via
+   `GET {OLLAMA_HOST}/api/tags` first — if the model is not in the list, skip to step 2).
+2. Fall back to the configured LLM chain via `backend.llm.provider_factory` (same chain used
+   by commit_message_enhancer). Use `get_int("LLM_REQUEST_TIMEOUT_SECS")` for timeout.
+3. If both fail: log a warning, return `[]`.
+
+All config access via `backend.config.get()` / `get_int()`. No `os.getenv`.
+
+**Part B — New endpoint `POST /dialectic/infer` in `webhook_server.py`**
+
+Receives interaction data from the Go client, calls `DialecticReasoner.reason()`, then calls
+`POST /dialectic/store` on the Go client's embedded HTTP server — but since the Go client does
+not expose an HTTP server for this, instead: return the inferences as JSON so the Go client
+can store them locally in SQLite.
+
+```
+POST /dialectic/infer
+Auth: X-DevTrack-API-Key (same as /trigger/*)
+Body: {
+  "interaction_type": "commit" | "approval" | "rejection" | "edit",
+  "context_type": "commit" | "comment" | "report" | "task" | "ticket_mapping",
+  "before_text": "...",
+  "after_text": "...",
+  "metadata": {
+    "ticket_id": "...",
+    "workspace": "...",
+    "action_id": 42,
+    "trigger_ids": [1, 2, 3]
+  }
+}
+Response: {
+  "inferences": [
+    {"subject": "...", "inference": "...", "confidence": 0.75}
+  ]
+}
+```
+
+Returns `{"inferences": []}` (not an error) when Hermes 3 and fallback both fail.
+
+**Part C — Go client: call `/dialectic/infer` after relevant events**
+
+In `devtrack_client/internal/infra/queue_executor.go`, after a successful `POST /queue/execute`
+(the action posted to PM), fire a goroutine:
+
+```go
+go func(action db.PendingAction) {
+    inferences, err := triggerClient.PostDialecticInfer(action)
+    if err != nil {
+        log.Printf("dialectic: infer call failed for action %d: %v", action.ID, err)
+        return
+    }
+    for _, inf := range inferences {
+        _, err := database.InsertInference(db.Inference{
+            ContextType: inf.ContextType,
+            Subject:     inf.Subject,
+            Inference:   inf.InferenceText,
+            Evidence:    fmt.Sprintf(`[%d]`, action.ID),
+            Confidence:  inf.Confidence,
+            Source:      "hermes3",
+        })
+        if err != nil {
+            log.Printf("dialectic: store inference failed: %v", err)
+        }
+    }
+}(action)
+```
+
+Add `PostDialecticInfer(action db.PendingAction) ([]InferenceResult, error)` to
+`devtrack_client/internal/trigger/http_trigger.go` (or a new file `dialectic.go` in the
+same package). `InferenceResult` is a local struct mirroring the JSON response.
+
+Also fire `/dialectic/infer` from the TUI Queue tab's approve/reject handlers (TASK-090 will
+add the flag key; for now wire up approve=`a` and reject=`r` interactions):
+- After `UpdatePendingActionStatus(id, "approved", "tui")` — call infer with
+  `interaction_type="approval"`, `before_text=""`, `after_text=action.Payload`.
+- After `UpdatePendingActionStatus(id, "rejected", "tui")` — call infer with
+  `interaction_type="rejection"`.
+
+These calls are fire-and-forget goroutines (non-blocking).
+
+**Part D — Tests**
+
+`devtrack_server/backend/tests/test_dialectic_reasoner.py`:
+- `DialecticReasoner.reason(...)` returns `[]` when the LLM is mocked to raise (graceful
+  degradation).
+- With a mock LLM returning well-formed JSON, `reason()` returns a list of dicts with keys
+  `subject`, `inference`, `confidence`.
+- `POST /dialectic/infer` with valid body returns 200 and a `{"inferences": [...]}` response.
+- `POST /dialectic/infer` without auth header returns 401 (same as other guarded endpoints).
+
+Run `uv run pytest backend/tests/ -q` — 740 passing + 1 pre-existing failure baseline; new
+tests must not regress anything.
+
+**Acceptance criteria**:
+- [ ] `dialectic_reasoner.py` exists with `DialecticReasoner` class; `reason()` returns `[]`
+      on failure, never raises
+- [ ] Hermes 3 model tried first; falls back to configured LLM chain; logs on fallback
+- [ ] No `os.getenv` in `dialectic_reasoner.py`; all config via `backend.config`
+- [ ] `POST /dialectic/infer` endpoint exists, auth-gated, returns `{"inferences": [...]}`
+- [ ] `PostDialecticInfer()` exists in `devtrack_client/internal/trigger/`; Go client calls it
+      after successful queue execution (fire-and-forget goroutine)
+- [ ] Returned inferences stored in SQLite `inferences` table via `InsertInference()`
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] Python tests pass: graceful degradation, well-formed JSON return, auth guard
+- [ ] `uv run pytest backend/tests/ -q` — no regressions beyond documented pre-existing failure
+
+**Engineer status**: not started
+**Blockers**: TASK-085 must be merged first
+
+---
+
+### TASK-087 — Inference-to-generation injection: top-k inferences into `inject_style()`
+**Priority**: HIGH
+**Phase**: Phase 6
+**Depends on**: TASK-086 (inferences being stored; `/dialectic/infer` endpoint live)
+**Branch**: `feat/TASK-087-inference-injection`
+
+**Spec**:
+
+`inject_style()` in `devtrack_server/backend/personalization.py` currently combines:
+- Signal 1: profile-based style instruction (from `PersonalizedAI.get_style_instruction()`)
+- Signal 2: RAG few-shot examples (from `SampleIndexer.query()`)
+
+Phase 6 adds Signal 3: the top-k reasoned inferences from the `inferences` SQLite table,
+retrieved by FTS5 search using the task context as the query. Signal 3 injects *what the
+system has inferred* about the developer, not just *examples of what they wrote*.
+
+**Step 1 — New Python helper `devtrack_server/backend/inference_retriever.py`**
+
+```python
+class InferenceRetriever:
+    """
+    Retrieves top-k inferences from the SQLite inferences table via the Go client's
+    /dialectic/query HTTP endpoint. Falls back to empty list if unavailable.
+    """
+    def get_top_inferences(
+        self,
+        context_type: str,
+        query_text: str,
+        top_k: int = 5,
+    ) -> list[dict]:
+        """
+        Returns up to top_k inference dicts: [{"subject": ..., "inference": ..., "confidence": ...}]
+        Sorted by confidence DESC. Returns [] on any failure.
+        """
+```
+
+The retriever calls a new Go client HTTP endpoint `GET /dialectic/query` (see Step 2 below).
+All HTTP config (`DEVTRACK_SERVER_URL` replacement: the retriever calls the *Go* daemon's
+internal HTTP API — see Step 2). If the Go daemon's internal API is not accessible, return `[]`.
+
+**Step 2 — New Go HTTP endpoint `GET /dialectic/query` in the daemon's internal control API**
+
+The Go daemon already has an internal HTTP control API (in `devtrack_client/internal/daemon/`).
+Add a new route:
+
+```
+GET /dialectic/query?context_type=commit&q=imperative+mood&limit=5
+Auth: X-DevTrack-API-Key
+Response: {
+  "inferences": [
+    {"id": 1, "subject": "commit tone", "inference": "...", "confidence": 0.85},
+    ...
+  ]
+}
+```
+
+The handler calls `database.SearchInferences(q, limit)` if `q` is non-empty, or
+`database.ListInferences(contextType, limit)` if `q` is empty. Returns results ordered
+by confidence DESC (add an `ORDER BY confidence DESC` variant of `ListInferences` if
+needed — add it to `inferences.go` as `ListInferencesByConfidence`).
+
+**Step 3 — Inject inferences into `inject_style()` in `personalization.py`**
+
+In `inject_style(prompt, context_type, query_text)`, after building the RAG section:
+
+```python
+# Signal 3 — reasoned inferences from dialectic model
+inference_section = ""
+try:
+    retriever = _get_inference_retriever()   # singleton, same lazy pattern as _load_personalized_ai
+    top_infs = retriever.get_top_inferences(context_type, query_text or "", top_k=5)
+    if top_infs:
+        lines = [f"- {inf['inference']}" for inf in top_infs if inf.get("confidence", 0) > 0.4]
+        if lines:
+            inference_section = (
+                "\n\nInferred developer patterns (from past interactions):\n"
+                + "\n".join(lines)
+            )
+except Exception:
+    pass   # graceful — never raises
+
+augmented = existing_augmented + inference_section
+```
+
+The threshold `0.4` is a minimum confidence gate — low-confidence inferences are not injected
+(they may be noise from early sessions). This value is a module constant (`INFERENCE_MIN_CONFIDENCE = 0.4`),
+not a config var for this task. Do not add an env var for it in this task.
+
+If `InferenceRetriever` cannot reach the Go daemon, `get_top_inferences` returns `[]` and
+`inject_style` behaves identically to Phase 5 behavior. Fully graceful.
+
+**Step 4 — Tests**
+
+`devtrack_server/backend/tests/test_inference_injection.py`:
+- `inject_style()` with mocked `InferenceRetriever` returning two inferences: confirm the
+  returned prompt contains the inference text.
+- `inject_style()` with `InferenceRetriever` raising: confirm prompt is returned unchanged
+  (graceful degradation).
+- `inject_style()` with an inference at `confidence=0.3` (below threshold): confirm it is
+  NOT included in the injected section.
+- `GET /dialectic/query` route: mock DB returns two inferences, endpoint returns them
+  serialised correctly as JSON.
+
+Run `uv run pytest backend/tests/ -q` — no regressions beyond documented baseline.
+
+**Acceptance criteria**:
+- [ ] `inference_retriever.py` exists with `InferenceRetriever.get_top_inferences()`; returns
+      `[]` on failure, never raises
+- [ ] `GET /dialectic/query` endpoint exists in Go daemon's internal API; auth-gated; calls
+      `SearchInferences` or `ListInferencesByConfidence`
+- [ ] `inject_style()` in `personalization.py` injects Signal 3 (inferences) after Signal 2
+      (RAG); low-confidence inferences (<0.4) excluded
+- [ ] `inject_style()` behavior unchanged when `InferenceRetriever` returns `[]`
+- [ ] No `os.getenv` in `inference_retriever.py`
+- [ ] `go build ./...` and `go vet ./...` pass clean
+- [ ] Python tests pass: injection present, graceful degradation, confidence gate
+- [ ] `uv run pytest backend/tests/ -q` — no regressions
+
+**Engineer status**: not started
+**Blockers**: TASK-086 must be merged first
+
+---
+
+### TASK-088 — Adaptive confidence thresholds: QueueExecutor reads per-type thresholds; `devtrack queue thresholds` CLI
+**Priority**: HIGH
+**Phase**: Phase 6
+**Depends on**: TASK-085 (confidence_thresholds table), TASK-086 (approval/rejection events
+  recorded via dialectic infer path — RecordApproval/RecordRejection must be wired)
+**Branch**: `feat/TASK-088-adaptive-thresholds`
+
+**Spec**:
+
+Today `QueueExecutor` auto-approves based on `expires_at` alone — the timeout was computed
+once at queue-insert time using `ConfidenceTimeout()` and never changes. Phase 6 makes the
+approval threshold dynamic: the executor consults the per-action-type threshold when deciding
+whether to call `/queue/execute`.
+
+**Step 1 — Wire `RecordApproval` / `RecordRejection` into approval/rejection paths**
+
+In `devtrack_client/internal/tui/tui_queue.go`, after the existing `UpdatePendingActionStatus`
+calls for approve (`a` key) and reject (`r` key):
+```go
+// Adaptive threshold signal
+_ = im.database.RecordApproval(action.ActionType, action.Workspace)
+// or
+_ = im.database.RecordRejection(action.ActionType, action.Workspace)
+```
+These calls must not block the TUI — do them before the `tea.Cmd` is returned but do not
+wait on any HTTP call. Errors are silently ignored (log only at debug level via `log.Printf`
+with a `[threshold]` prefix).
+
+Also record in `QueueExecutor` auto-approve path (when `expires_at` has passed and the
+executor calls `/queue/execute` with `"auto"` as `acted_by`):
+```go
+_ = q.db.RecordApproval(action.ActionType, action.Workspace)
+```
+
+And in the CLI approve/reject path (in `cli.go` or whichever `cli_*.go` handles
+`devtrack queue approve/reject`): same pattern — `RecordApproval` or `RecordRejection`
+after each status update.
+
+**Step 2 — Dynamic timeout computation in `QueueExecutor`**
+
+Currently the executor calls `/queue/execute` for any action whose `expires_at < now`.
+Extend this with a secondary confidence check: if the action's `confidence` is below the
+current adaptive threshold for its `action_type`, re-defer it (do not execute yet) and
+log:
+```
+log.Printf("queue: deferring action %d (type=%s conf=%.2f below threshold=%.2f)",
+    action.ID, action.ActionType, action.Confidence, threshold.Threshold)
+```
+
+The check is: on each poll tick, for each expired pending action, call
+`GetOrCreateThreshold(action.ActionType, action.Workspace)` and compare
+`action.Confidence >= threshold.Threshold`. Execute only if true. If below threshold,
+leave the action in `pending` state — it will be surfaced in the TUI for manual review.
+
+Important: this must not change the original `expires_at` — only the executor's decision
+to act changes. The TUI still shows the original countdown. The action remains pending
+until either manually approved or its confidence rises above threshold (which won't happen
+automatically in this task — that's for future tuning). For now, an action that was
+auto-deferred by the threshold will stay in the queue until manually approved/rejected.
+
+**Step 3 — New CLI command `devtrack queue thresholds`**
+
+In `devtrack_client/cli.go` (or a new `cli_queue.go` if it doesn't exist), add the
+`thresholds` subcommand under `queue`:
+
+```
+devtrack queue thresholds
+```
+
+Output example (no ANSI when piped — use existing `isatty` pattern):
+
+```
+Confidence Thresholds by Action Type
+-------------------------------------
+post_comment       (global)   threshold=0.86  approvals=43  rejections=4
+state_transition   (global)   threshold=0.82  approvals=21  rejections=7
+eod_report         (global)   threshold=0.70  approvals=0   rejections=0  (default)
+```
+
+Implementation: call `database.ListThresholds()` and format the results. If no thresholds
+table rows exist yet, print `"No thresholds recorded yet. Thresholds adjust after approvals
+and rejections."`.
+
+**Step 4 — Tests**
+
+Go unit tests in `devtrack_client/internal/db/inferences_test.go` (extend the file from
+TASK-085 or add a new `thresholds_test.go`):
+- `RecordApproval` 3 times on the same `action_type/workspace` pair: confirm `approvals=3`,
+  `rejections=0`, threshold recalculated correctly.
+- `RecordRejection` after 3 approvals: confirm `approvals=3`, `rejections=1`, threshold
+  updated to `0.70 + 0.20*(3/4) = 0.85`.
+- `ListThresholds()` returns all rows.
+
+**Acceptance criteria**:
+- [ ] `RecordApproval` called after: TUI approve, CLI approve, auto-approve (executor)
+- [ ] `RecordRejection` called after: TUI reject, CLI reject
+- [ ] `QueueExecutor` defers actions whose `confidence < threshold.Threshold` even if
+      `expires_at` has passed; logs `[queue: deferring action ...]`
+- [ ] `devtrack queue thresholds` prints current per-type threshold table
+- [ ] When no rows exist, prints the "No thresholds recorded yet" message
+- [ ] Threshold formula correct: approvals/(approvals+rejections) * 0.20 + 0.70, capped at 0.95
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] Unit tests for `RecordApproval`/`RecordRejection` threshold math pass
+
+**Engineer status**: not started
+**Blockers**: TASK-085 and TASK-086 must be merged first
+
+---
+
+### TASK-089 — Skill emergence detection: auto-promote recurring patterns; `devtrack skills` CLI
+**Priority**: MEDIUM
+**Phase**: Phase 6
+**Depends on**: TASK-086 (inferences being stored in SQLite)
+**Branch**: `feat/TASK-089-skill-emergence`
+
+**Spec**:
+
+A "skill" is a recurring inference pattern that the system has observed across at least N
+interactions without the developer flagging it as wrong. Skills are stored in a new `skills`
+SQLite table and are surfaced via CLI and a TUI overlay.
+
+**Step 1 — New migration 011: `skills` table**
+
+Append to `allMigrations` in `devtrack_client/internal/db/migrations.go`:
+
+```sql
+CREATE TABLE IF NOT EXISTS skills (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    name           TEXT    NOT NULL UNIQUE,      -- short label, e.g. "imperative_commit_tone"
+    description    TEXT    NOT NULL,             -- human-readable: "Developer uses imperative mood..."
+    context_type   TEXT    NOT NULL,             -- commit | comment | report | task | ticket_mapping
+    evidence_count INTEGER NOT NULL DEFAULT 0,   -- how many inferences support this
+    promoted_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+    last_seen_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+);
+```
+
+**Step 2 — Skill emergence Python module `devtrack_server/backend/skill_detector.py`**
+
+```python
+EMERGENCE_THRESHOLD = 5   # how many supporting inferences before promoting to a skill
+
+class SkillDetector:
+    """
+    After each batch of new inferences is stored, check whether any emerging pattern
+    has crossed the emergence threshold. If so, call POST /dialectic/promote-skill on
+    the Go client's internal API to persist it.
+    """
+    def detect_and_promote(self, new_inferences: list[dict]) -> list[dict]:
+        """
+        Groups inferences by (context_type, subject-similarity) to find clusters.
+        Uses simple substring/keyword matching (no embedding required — keep it fast).
+        When a cluster reaches EMERGENCE_THRESHOLD without any correction on those
+        inference IDs, calls the Go client to promote to a skill.
+        Returns the list of newly promoted skills (may be empty).
+        """
+```
+
+Cluster logic: normalize `subject` to lowercase, strip punctuation, group by first 4 words.
+If `len(cluster) >= EMERGENCE_THRESHOLD` and none of the inference IDs in the cluster have a
+`corrections` row, promote.
+
+Promotion call: `POST /dialectic/promote-skill` on the Go client's daemon internal API:
+```json
+{
+  "name": "imperative_commit_tone",
+  "description": "Developer uses imperative mood in commit messages.",
+  "context_type": "commit",
+  "evidence_count": 7
+}
+```
+
+`SkillDetector.detect_and_promote` is called from `POST /dialectic/infer` in
+`webhook_server.py` after storing each batch of inferences — it is a background fire-and-
+forget call (use `asyncio.create_task` if in async context, or a thread if sync).
+
+**Step 3 — Go daemon endpoint `POST /dialectic/promote-skill`**
+
+In the Go daemon's internal HTTP control API, add:
+```
+POST /dialectic/promote-skill
+Auth: X-DevTrack-API-Key
+Body: {"name": "...", "description": "...", "context_type": "...", "evidence_count": N}
+```
+
+Handler: call `database.UpsertSkill(...)`. Add CRUD methods to `inferences.go`:
+```go
+func (d *Database) UpsertSkill(name, description, contextType string, evidenceCount int) error
+func (d *Database) ListSkills() ([]Skill, error)
+```
+
+`UpsertSkill` uses `INSERT OR REPLACE` semantics: if `name` already exists, update
+`description`, `evidence_count`, and `last_seen_at`; leave `promoted_at` unchanged.
+
+`Skill` struct:
+```go
+type Skill struct {
+    ID            int64
+    Name          string
+    Description   string
+    ContextType   string
+    EvidenceCount int
+    PromotedAt    time.Time
+    LastSeenAt    time.Time
+}
+```
+
+**Step 4 — `devtrack skills` CLI command**
+
+In `devtrack_client/cli.go`, add:
+
+```
+devtrack skills
+```
+
+Output:
+```
+Autonomous Skills (3)
+---------------------
+imperative_commit_tone   commit    evidence=7   since 2026-06-20
+bracket_ticket_prefix    comment   evidence=5   since 2026-06-21
+concise_eod_bullets      report    evidence=6   since 2026-06-22
+```
+
+Calls `database.ListSkills()` and formats. If no skills exist: `"No skills have emerged yet.
+Skills emerge automatically from recurring patterns after {EMERGENCE_THRESHOLD} observations."`.
+
+**Step 5 — Tests**
+
+Python: `devtrack_server/backend/tests/test_skill_detector.py`:
+- `detect_and_promote` with 6 inferences sharing the same subject cluster and no corrections:
+  confirms it calls the promote endpoint.
+- `detect_and_promote` with 6 inferences but one has a correction: confirms it does NOT promote.
+- `detect_and_promote` with only 4 inferences (below threshold): confirms no promotion.
+
+Go: extend `inferences_test.go` or new `skills_test.go`:
+- `UpsertSkill` twice with same name: confirms `evidence_count` updated, `promoted_at` unchanged.
+- `ListSkills()` returns the inserted rows.
+
+**Acceptance criteria**:
+- [ ] Migration 011 (`skills` table) appended to `allMigrations`; idempotent
+- [ ] `Skill` struct + `UpsertSkill` + `ListSkills` exist in Go `inferences.go`
+- [ ] `POST /dialectic/promote-skill` endpoint exists in Go daemon internal API; calls `UpsertSkill`
+- [ ] `skill_detector.py` exists; `detect_and_promote()` returns `[]` on failure, never raises
+- [ ] Emergence threshold is a named constant (`EMERGENCE_THRESHOLD = 5`), not a magic number
+- [ ] Inferences with a correction are excluded from promotion candidates
+- [ ] `devtrack skills` CLI command prints skills table or "No skills" message
+- [ ] `go build ./...` and `go vet ./...` pass clean
+- [ ] Python tests: threshold, correction exclusion, sub-threshold cases all pass
+- [ ] `uv run pytest backend/tests/ -q` — no regressions
+
+**Engineer status**: not started
+**Blockers**: TASK-086 must be merged first (inferences must exist in DB to detect)
+
+---
+
+### TASK-090 — TUI correction interface: `f` key flags wrong inferences from Queue tab
+**Priority**: MEDIUM
+**Phase**: Phase 6
+**Depends on**: TASK-085 (corrections table), TASK-086 (inferences in DB), TASK-089
+  (skills table must exist so corrections can block skill promotion)
+**Branch**: `feat/TASK-090-tui-correction-interface`
+
+**Spec**:
+
+The TUI Queue tab (tab 5, `tui_queue.go`) gains a new key binding: `f` to "flag this
+inference as wrong". When pressed on a selected queue action, it opens a minimal inline
+prompt (single-line text input) asking: "What was wrong? (brief correction)". The developer
+types a short phrase and presses Enter. This creates a `corrections` row in SQLite with
+`flagged_from="tui"` and `weight=2.0`.
+
+The inference to flag is the most recent inference associated with the selected action's
+`action_type` and `context_type` — retrieved via `SearchInferences` with the action type
+as the query, limited to 1, sorted by `created_at DESC`. If no inference exists for this
+action, show `"No inference recorded for this action."` and do nothing.
+
+**Step 1 — Inline text input in `tui_queue.go`**
+
+Use `github.com/charmbracelet/bubbles/textinput` (already in `go.mod` from TASK-066).
+
+Add to `queueModel`:
+```go
+flaggingActionID int64    // 0 = not in flagging mode
+flagInput        textinput.Model
+flagErrMsg       string
+```
+
+Key handling in `Update()`:
+- `"f"` key when `flaggingActionID == 0` and cursor is on a pending action: set
+  `flaggingActionID = action.ID`; initialize `flagInput`; `flagInput.Focus()`.
+- When `flaggingActionID != 0`: route all keypresses to `flagInput`. On `Enter`:
+  call `submitFlag()`; on `Esc`: cancel (set `flaggingActionID = 0`).
+
+`submitFlag()`:
+1. Look up the most recent inference for this action's type: call
+   `database.ListInferences(action.ActionType, 1)` (newest first — add `ORDER BY created_at DESC`
+   to `ListInferences` if not already present, or add a `LatestInference(contextType string) (*Inference, error)` helper).
+2. If no inference found: set `flagErrMsg = "No inference recorded for this action."`; return.
+3. Call `database.InsertCorrection(db.Correction{InferenceID: inf.ID, Correction: flagInput.Value(), FlaggedFrom: "tui", Weight: 2.0})`.
+4. Also call `UpdateInferenceConfidence(inf.ID, inf.Confidence * 0.5)` to immediately
+   halve the flagged inference's confidence (strong negative signal).
+5. Reset: `flaggingActionID = 0`, `flagInput.Reset()`, `flagErrMsg = ""`.
+6. Fire a `tea.Cmd` to reload the queue (same `load()` pattern).
+
+`View()` when `flaggingActionID != 0`:
+- Show a small overlay box at the bottom of the Queue tab content area (lipgloss styled,
+  consistent with existing styles):
+  ```
+  ┌─ Flag inference as wrong ──────────────────────────────────────────┐
+  │ Correction: [                                                      ]│
+  │ (Enter to submit · Esc to cancel)                                  │
+  └────────────────────────────────────────────────────────────────────┘
+  ```
+- If `flagErrMsg != ""`, show it below the box in Danger color.
+
+**Step 2 — Footer hint update**
+
+When not in flagging mode, extend the Queue tab footer from:
+```
+[a]pprove [r]eject [e]dit
+```
+to:
+```
+[a]pprove [r]eject [e]dit [f]lag-wrong-inference
+```
+
+**Step 3 — CLI parity (Non-Negotiable #4 channel parity)**
+
+Channel parity rule: every correction action in the TUI must also be available via a
+non-TUI channel. Add CLI command:
+
+```
+devtrack queue flag <action_id> "<correction text>"
+```
+
+Behavior: same logic as TUI `submitFlag()` — finds most recent inference for the action's
+type, inserts a correction, halves the confidence. Prints:
+`"Flagged inference [ID] for action [action_id]. Confidence reduced from X.XX to X.XX."`
+
+Add the `flag` subcommand to `devtrack_client/cli.go` (or `cli_queue.go`) under `queue`.
+
+**Step 4 — Tests**
+
+Go: `devtrack_client/internal/db/inferences_test.go`:
+- `InsertCorrection` + `ListCorrectionsForInference`: round-trip confirmed.
+- `UpdateInferenceConfidence`: halved confidence persists in DB.
+
+Python: no new Python tests needed for this task (correction path is entirely Go-side).
+
+**Acceptance criteria**:
+- [ ] `f` key in TUI Queue tab triggers inline text input overlay
+- [ ] Submitting text creates a `corrections` row in SQLite with `flagged_from="tui"`,
+      `weight=2.0`
+- [ ] The flagged inference's confidence is halved immediately in `inferences` table
+- [ ] `Esc` cancels flagging mode with no DB changes
+- [ ] "No inference recorded for this action." shown when no matching inference exists
+- [ ] Footer updated: `[f]lag-wrong-inference` visible when not in flagging mode
+- [ ] `devtrack queue flag <action_id> "<text>"` CLI command works identically (channel parity)
+- [ ] `go build ./...` and `go vet ./...` pass clean
+- [ ] DB round-trip tests pass: correction insert, confidence halving
+
+**Engineer status**: not started
+**Blockers**: TASK-085 (corrections table) and TASK-086 (inferences in DB) must be merged first
+
+---
+
+### TASK-091 — Profile transparency: extend `devtrack voice status` with inference + skill data
+**Priority**: MEDIUM
+**Phase**: Phase 6
+**Depends on**: TASK-086 (inferences), TASK-089 (skills), TASK-090 (corrections)
+**Branch**: `feat/TASK-091-voice-status-transparency`
+
+**Spec**:
+
+Extend `GET /voice/status` (Python server) and `devtrack voice status` (Go CLI) to surface
+Phase 6 dialectic data: top inferences by confidence, correction count, skill count, and
+per-type threshold drift. The developer must be able to read `devtrack voice status` and
+understand exactly what the system has learned and why.
+
+**Step 1 — Extend `GET /voice/status` response in `webhook_server.py`**
+
+Add three new fields to the existing response JSON (all new fields — do not remove or rename
+existing fields; this is backward-compatible):
+
+```json
+{
+  "...existing fields...",
+  "inferences": {
+    "total": 42,
+    "top_by_confidence": [
+      {"id": 7, "subject": "commit tone", "inference": "...", "confidence": 0.91, "context_type": "commit"},
+      {"id": 3, "subject": "ticket prefix", "inference": "...", "confidence": 0.87, "context_type": "comment"}
+    ],
+    "correction_count": 2
+  },
+  "skills": {
+    "total": 3,
+    "names": ["imperative_commit_tone", "bracket_ticket_prefix", "concise_eod_bullets"]
+  },
+  "thresholds": {
+    "post_comment":     {"threshold": 0.86, "approvals": 43, "rejections": 4},
+    "state_transition": {"threshold": 0.82, "approvals": 21, "rejections": 7}
+  }
+}
+```
+
+The `top_by_confidence` list contains at most 5 entries.
+
+Data sources: the `/voice/status` endpoint already queries the Python server's ChromaDB.
+The new fields require SQLite queries — the Python server accesses the shared
+`Data/db/devtrack.db` SQLite file directly (same approach as `queue_gateway.py` which
+already opens the shared DB via `backend.config.get_path("DATABASE_PATH")`).
+
+New helper class `devtrack_server/backend/dialectic_status.py`:
+```python
+class DialecticStatus:
+    def get_inference_summary(self) -> dict  # {total, top_by_confidence, correction_count}
+    def get_skill_summary(self) -> dict      # {total, names}
+    def get_threshold_summary(self) -> dict  # {action_type: {threshold, approvals, rejections}}
+```
+All three methods return empty/zero values on any DB error (graceful). No `os.getenv`.
+
+**Step 2 — Extend `devtrack voice status` CLI output in `cli_voice.go`**
+
+Below the existing ChromaDB corpus block, add three new sections when the fields are present
+in the response (check for key presence — backward-compatible with older server versions that
+don't send these fields):
+
+```
+Dialectic Inferences
+---------------------
+Total inferred:    42
+Corrections:        2
+Top inferences (by confidence):
+  commit tone        0.91  — Developer uses imperative mood in commit messages.
+  ticket prefix      0.87  — Developer brackets ticket ID at start of comments.
+
+Autonomous Skills (3)
+---------------------
+  imperative_commit_tone
+  bracket_ticket_prefix
+  concise_eod_bullets
+
+Confidence Thresholds
+---------------------
+  post_comment        0.86  (43 approvals / 4 rejections)
+  state_transition    0.82  (21 approvals / 7 rejections)
+```
+
+If the server response does not include the new fields (e.g. older server version), skip
+these sections entirely — no error, no placeholder.
+
+**Step 3 — Tests**
+
+Python: extend `devtrack_server/backend/tests/test_voice_add_status.py`:
+- `GET /voice/status` with mocked DB containing 2 inferences and 1 skill: confirms response
+  includes `inferences.total=2`, `skills.total=1`, correct `top_by_confidence` list.
+- `DialecticStatus.get_inference_summary()` with empty DB: returns
+  `{"total": 0, "top_by_confidence": [], "correction_count": 0}` without raising.
+
+**Acceptance criteria**:
+- [ ] `GET /voice/status` response includes `inferences`, `skills`, `thresholds` keys
+- [ ] `top_by_confidence` capped at 5 entries; sorted by confidence DESC
+- [ ] `DialecticStatus` helper exists with all three methods; gracefully returns empty on DB error
+- [ ] No `os.getenv` in `dialectic_status.py`
+- [ ] `devtrack voice status` CLI prints the three new sections when data present
+- [ ] CLI skips new sections silently when server response lacks the new fields
+- [ ] Python tests: populated DB returns correct counts; empty DB returns zeros without raising
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] `uv run pytest backend/tests/ -q` — no regressions
+
+**Engineer status**: not started
+**Blockers**: TASK-086, TASK-089, TASK-090 must be merged first
+
+---
+
+### TASK-092 — Phase 6 exit criterion verification
+**Priority**: MEDIUM
+**Phase**: Phase 6
+**Depends on**: TASK-085 through TASK-091 (all must be merged to dev)
+**Branch**: `feat/TASK-092-phase6-exit-verification`
+
+**Spec**:
+
+Verify that the structural machinery for Phase 6 dialectic self-improvement is in place
+and measurable. Same verification pattern as TASK-059 (Phase 0), TASK-074 (Phase 3),
+TASK-079 (Phase 4), and TASK-084 (Phase 5).
+
+Note: the PRODUCT_BIBLE.md exit criterion specifies "after 30 days, correction rate is
+measurably lower than day 1". Because 30 days of real-time operation cannot be run in a
+verification task, this task verifies the *structural* criterion — the measurement
+instrumentation is in place and a simulated 30-day sequence produces the expected outputs.
+
+**Steps**:
+
+1. Build Go client: `go build -o devtrack .` from `devtrack_client/`. Run `go vet ./...`
+   and `go test ./...` — all must pass clean. Report pass/fail in engineer log.
+
+2. Confirm migrations 008–011 ran successfully: `sqlite3 Data/db/devtrack.db ".tables"` —
+   must include `inferences`, `inferences_fts`, `corrections`, `confidence_thresholds`,
+   `skills`. If not, run `devtrack setup` to trigger migrations. Report output.
+
+3. Simulate an approval+rejection sequence to verify threshold drift:
+   - Call `database.RecordApproval("post_comment", "")` 8 times (via `go test` or a small
+     test binary — the engineer may write a `cmd/verify/main.go` in `devtrack_client/` that
+     is removed at end of this task, OR add a table-driven scenario to the existing
+     `inferences_test.go`).
+   - Call `database.RecordRejection("post_comment", "")` 2 times.
+   - Assert `confidence_thresholds` row has `threshold=0.86`, `approvals=8`, `rejections=2`.
+   - Run `devtrack queue thresholds` — confirm output shows `post_comment` with the correct threshold.
+
+4. Simulate skill emergence:
+   - Insert 5 inferences with identical subject "commit tone" and `context_type="commit"` via
+     `InsertInference`. Confirm none have corrections. Call `SkillDetector.detect_and_promote`
+     (Python unit test in `test_skill_detector.py`) — confirm it calls the promote endpoint
+     (mock the endpoint).
+   - Run `devtrack skills` — if the promotion was persisted in the local test DB, confirm
+     output shows at least one skill.
+
+5. Verify `devtrack voice status` shows inference + skill + threshold sections:
+   - Call `POST /voice/add` to seed at least one entry.
+   - Run `devtrack voice status` — output must include "Dialectic Inferences", "Autonomous
+     Skills", "Confidence Thresholds" sections (even if counts are zero/empty, sections must
+     be present).
+
+6. Verify TUI flagging structure: confirm `tui_queue.go` has the `f` key handler by running:
+   `grep -n '"f"' devtrack_client/internal/tui/tui_queue.go` — must return at least one hit.
+
+7. Run full hardcoded-values scan across all Phase 6 files:
+   ```
+   grep -rn "os\.getenv\b" devtrack_server/backend/dialectic_reasoner.py devtrack_server/backend/skill_detector.py devtrack_server/backend/dialectic_status.py devtrack_server/backend/inference_retriever.py
+   grep -rn "localhost:[0-9]\|127\.0\.0\.1:[0-9]" devtrack_client/internal/db/inferences.go | grep -v "_test\|#\|config\|Get"
+   ```
+   Both must return zero hits.
+
+8. Run full Python test suite: `uv run pytest backend/tests/ -q` — 740 passing + 1
+   pre-existing failure baseline. Any regression blocks this task.
+
+9. Update `Data/agent_logs/feature_tracker.md` with Phase 6 completion entry.
+
+10. Open PR targeting `dev` with title "Phase 6: dialectic self-improvement — exit criterion verified".
+
+**Acceptance criteria**:
+- [ ] `go build ./...`, `go vet ./...`, `go test ./...` all pass clean
+- [ ] All four new tables confirmed in SQLite via `.tables` check
+- [ ] Threshold drift simulation: 8 approvals + 2 rejections → `threshold=0.86` in DB (asserted)
+- [ ] `devtrack queue thresholds` shows the simulated threshold row correctly
+- [ ] `devtrack voice status` output includes all three new Phase 6 sections
+- [ ] `grep -n '"f"' tui_queue.go` returns at least one match (flagging key bound)
+- [ ] Hardcoded-values scan CLEAN across all Phase 6 source files
+- [ ] `uv run pytest backend/tests/ -q` — no regressions beyond documented pre-existing failure
+- [ ] `feature_tracker.md` updated with Phase 6 completion entry
+- [ ] PR opened targeting `dev` (never `main`)
+
+**Engineer status**: not started
+**Blockers**: TASK-085 through TASK-091 all must be merged to dev before this runs
 
 ---
 
