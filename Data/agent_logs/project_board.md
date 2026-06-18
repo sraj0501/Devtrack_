@@ -2494,7 +2494,23 @@ All must pass clean.
 - [ ] `go build ./...`, `go vet ./...`, `go test ./internal/db/...` all pass clean from `devtrack_client/`
 - [ ] No `os.Getenv` calls in `inferences.go`; no hardcoded hosts/ports
 
-**Engineer status**: started — plan: (1) append migrations 008/009/010 to migrations.go, (2) write inferences.go with 3 structs + 12 CRUD methods, (3) write inferences_test.go with 5 test cases, (4) build+vet+test
+**Engineer status**: 10/10 criteria done — last commit: c2ade83 "feat(db): add FTS5 inference store, corrections, and confidence_thresholds (TASK-085)" — 2026-06-18 20:08
+
+- [x] Migrations 008, 009, 010 appended to `allMigrations` — never before 007, all idempotent
+- [x] `inferences` table + FTS5 virtual table + three sync triggers created by migration 008
+- [x] `corrections` table created by migration 009
+- [x] `confidence_thresholds` table created by migration 010
+- [x] All three Go structs (`Inference`, `Correction`, `ConfidenceThreshold`) exist in `inferences.go`
+- [x] All twelve CRUD methods exist on `*Database` and compile
+- [x] `SearchInferences` uses FTS5 MATCH — confirmed by test returning an inserted row
+- [x] `RecordApproval`/`RecordRejection` threshold formula correct: 8/2 split → 0.86 (unit test asserts)
+- [x] `GetOrCreateThreshold` is idempotent (unit test calls it twice, confirms same ID returned)
+- [x] `go build ./...`, `go vet ./...`, `go test ./internal/db/...` all pass clean from `devtrack_client/`
+- [x] No `os.Getenv` calls in `inferences.go`; no hardcoded hosts/ports
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/192
+
+**COMPLETE** — ready for PM review — 2026-06-18 20:08
 **Blockers**: none
 
 ---
