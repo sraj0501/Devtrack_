@@ -1,12 +1,7 @@
 # DevTrack Project Board
 
-<<<<<<< Updated upstream
-_Last updated: 2026-06-17 by engineer (TASK-078 COMPLETE — EOD Telegram delivery; PR #185 opened targeting dev; branch feat/TASK-078-eod-telegram-delivery)_
-_Next DevTrack task ID: TASK-075_
-=======
-_Last updated: 2026-06-17 by PM — Phase 4 COMPLETE (TASK-075..079 done; PRs #182–186 open against dev; hardcoded scan CLEAN; vision PASS)_
+_Last updated: 2026-06-18 — Phase 4 COMPLETE (TASK-075..079 done; PRs #182–186 merged to dev; Phase 5 starting)_
 _Next DevTrack task ID: TASK-080_
->>>>>>> Stashed changes
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -188,7 +183,7 @@ Steps:
 
 ---
 
-## ACTIVE — Phase 1: Pending actions queue
+## COMPLETE — Phase 1: Pending actions queue
 
 **Goal**: Every outbound PM action is staged in `pending_actions` before it touches any external
 system. Confidence score on every action. Configurable timeout with auto-approve. TUI, CLI, and
@@ -198,6 +193,8 @@ this table.
 **Exit criterion**: Developer runs for a week, opens TUI at any time, immediately understands
 everything DevTrack did in the last 24 hours and everything it is about to do, approves or
 rejects pending actions in one keystroke, and trusts that nothing unexpected posted.
+
+**Status**: COMPLETE — exit criterion verified 2026-06-15 (TASK-060–065 done; PRs #167–172 merged to dev)
 
 ---
 
@@ -1700,34 +1697,7 @@ against the real pipeline, not just unit tests, plus the board/feature-tracker u
 
 ---
 
-### TASK-079 — `devtrack eod` CLI command + Phase 4 exit criterion verification
-**Priority**: MEDIUM
-**Phase**: Phase 4
-**Depends on**: TASK-075, TASK-076, TASK-077, TASK-078
-**Branch**: `feat/TASK-079-eod-cli-phase4-exit`
-**Assigned to**: engineer
-
-**Acceptance criteria**:
-- [x] `devtrack eod generate` POSTs /reports/eod, prints narrative, prints "Queued as action <id>" if action_id in response
-- [x] `devtrack eod status` queries pending_actions for eod_report action_type, prints most recent date/id/status
-- [x] `devtrack eod show` same filter, parses payload JSON "narrative" field and prints it; "No EOD report on record" if none
-- [x] `eod` wired in cli.go Execute() switch and NewCLI() no-daemon list; wired in main.go command routing block
-- [x] isatty check on stdout — no ANSI when piped (pipe-friendly output)
-- [x] `go build -o devtrack.exe .` from `devtrack_client/` — clean
-- [x] `go vet ./...` — clean
-- [x] `go test ./...` — all packages pass
-- [x] `devtrack queue list` works; would show eod_report after generate with server running
-- [x] `devtrack queue approve <id>` exercises approval path (exercised in TASK-074 Phase 3 verification)
-- [x] Hardcoded-values scan clean on all Phase 4 files
-- [x] feature_tracker.md updated with Phase 4 completion entry
-- [x] PR #186 opened targeting dev
-
-**Engineer status**: 13/13 criteria done — last commit: 4bbc683 "feat(cli): TASK-079 Add EOD CLI command and verify Phase 4 exit" — 2026-06-17 22:31
-**PR**: https://github.com/sraj0501/Devtrack_/pull/186
-**Blockers**: none
-
-**COMPLETE** — ready for PM review — 2026-06-17 22:31
-## ACTIVE — Phase 4: EOD Pipeline
+## COMPLETE — Phase 4: EOD Pipeline
 
 **Goal**: Cron fires at the configured time (`EOD_REPORT_HOUR` per workspace or global). Query
 today's commits from SQLite, group by ticket, LLM generates a per-ticket narrative in the
@@ -1736,6 +1706,8 @@ developer's voice. All outbound actions (email send, Telegram delivery) are stag
 
 **Exit criterion** (PRODUCT_BIBLE.md Phase 4): Developer receives an accurate EOD email every
 evening without doing anything. Report reads like they wrote it.
+
+**Status**: COMPLETE — exit criterion verified 2026-06-17 (TASK-075–079 done; PRs #182–186 merged to dev; hardcoded scan CLEAN; vision PASS)
 
 ---
 
@@ -1801,7 +1773,12 @@ evening without doing anything. Report reads like they wrote it.
 **Priority**: MEDIUM
 **Phase**: Phase 4
 **Depends on**: TASK-075, TASK-076, TASK-077, TASK-078
-**Engineer status**: not started
+**Branch**: `feat/TASK-079-eod-cli-phase4-exit`
+
+**Engineer status**: 13/13 criteria done — last commit: 4bbc683 "feat(cli): TASK-079 Add EOD CLI command and verify Phase 4 exit" — 2026-06-17 22:31
+**PR**: https://github.com/sraj0501/Devtrack_/pull/186
+
+**COMPLETE** — ready for PM review — 2026-06-17 22:31
 
 ---
 
