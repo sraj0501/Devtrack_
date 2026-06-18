@@ -1976,8 +1976,8 @@ fix it in this task (no new config var needed — `DATA_DIR` already exists).
 - [ ] Python tests pass (LLM available/unavailable/save path)
 - [ ] `go build ./...` and `go vet ./...` pass clean
 
-**Engineer status**: not started
-**Blockers**: TASK-080 (ChromaDB must have data)
+**Engineer status**: started — create voice_profile.py (ProfileGenerator.generate+save), POST /voice/profile/generate endpoint, fix PersonalizedAI.get_style_instruction() path, VoiceProfileGenerate trigger method, devtrack voice profile CLI, tests
+**Blockers**: none (TASK-080 merged — dev tip 76f09c1)
 
 ---
 

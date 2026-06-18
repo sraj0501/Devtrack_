@@ -846,6 +846,35 @@ func (c *HTTPTriggerClient) VoiceSeed(req VoiceSeedRequest) (*VoiceSeedResponse,
 	return &resp, nil
 }
 
+// ── Voice profile generation methods (Phase 5) ───────────────────────────────
+
+// VoiceProfileGenerateRequest is the payload for POST /voice/profile/generate.
+type VoiceProfileGenerateRequest struct {
+	RepoPaths []string `json:"repo_paths"`
+}
+
+// VoiceProfileGenerateResponse is the response from POST /voice/profile/generate.
+type VoiceProfileGenerateResponse struct {
+	Path      string `json:"path"`
+	WordCount int    `json:"word_count"`
+	Error     string `json:"error,omitempty"`
+}
+
+// VoiceProfileGenerate calls POST /voice/profile/generate.
+// Returns the absolute path to the written profile.md and its word count.
+func (c *HTTPTriggerClient) VoiceProfileGenerate(repoPaths []string) (path string, wordCount int, err error) {
+	var resp VoiceProfileGenerateResponse
+	if reqErr := c.postWithResult("/voice/profile/generate", VoiceProfileGenerateRequest{
+		RepoPaths: repoPaths,
+	}, &resp); reqErr != nil {
+		return "", 0, reqErr
+	}
+	if resp.Error != "" {
+		return resp.Path, resp.WordCount, fmt.Errorf("server error: %s", resp.Error)
+	}
+	return resp.Path, resp.WordCount, nil
+}
+
 // LicenseAccept calls POST /license/accept.
 func (c *HTTPTriggerClient) LicenseAccept() (string, error) {
 	var r struct {

@@ -24,6 +24,8 @@ func (cli *CLI) handleVoice() error {
 	switch sub {
 	case "seed":
 		return runVoiceSeed()
+	case "profile":
+		return runVoiceProfile()
 	default:
 		fmt.Printf("devtrack voice: unknown subcommand %q\n\n", sub)
 		printVoiceUsage()
@@ -86,10 +88,48 @@ func seedRepo(tc *trigger.HTTPTriggerClient, repoPath string, sinceMonths int) e
 	return nil
 }
 
+// ── profile ───────────────────────────────────────────────────────────────────
+
+// runVoiceProfile implements `devtrack voice profile`.
+// Reads repo paths from all enabled workspaces and calls POST /voice/profile/generate
+// to build profile.md from the ChromaDB commit corpus, then prints the result.
+func runVoiceProfile() error {
+	wsCfg, err := config.LoadWorkspacesConfig()
+	if err != nil {
+		return fmt.Errorf("voice profile: load workspaces: %w", err)
+	}
+
+	tc := trigger.NewHTTPTriggerClient()
+
+	var repoPaths []string
+	if wsCfg == nil || len(wsCfg.Workspaces) == 0 {
+		repoPath := config.ExpandWorkspacePath(os.Getenv("DEVTRACK_WORKSPACE"))
+		if repoPath != "" {
+			repoPaths = append(repoPaths, repoPath)
+		}
+	} else {
+		for _, ws := range wsCfg.GetEnabledWorkspaces() {
+			repoPath := config.ExpandWorkspacePath(ws.Path)
+			if repoPath != "" {
+				repoPaths = append(repoPaths, repoPath)
+			}
+		}
+	}
+
+	path, wordCount, err := tc.VoiceProfileGenerate(repoPaths)
+	if err != nil {
+		return fmt.Errorf("voice profile: %w", err)
+	}
+
+	fmt.Printf("Profile generated: %s (%d words).\n", path, wordCount)
+	return nil
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 // printVoiceUsage prints a short usage block for the voice command group.
 func printVoiceUsage() {
 	fmt.Println("Usage:")
-	fmt.Println("  devtrack voice seed   Seed voice corpus from git commit history for all workspaces")
+	fmt.Println("  devtrack voice seed     Seed voice corpus from git commit history for all workspaces")
+	fmt.Println("  devtrack voice profile  Generate Developer Voice Profile from corpus (profile.md)")
 }
