@@ -2248,7 +2248,7 @@ TASK-074 (Phase 3): live run against the real pipeline, not just unit tests.
 - [x] `project_board.md` Phase 5 marked COMPLETE; TASK-084 marked COMPLETE
 - [x] PR opened targeting `dev`
 
-**Engineer status**: 10/10 criteria done — verification complete 2026-06-18
+**Engineer status**: 10/10 criteria done — last commit: 3b5281c "chore(board): TASK-084 Phase 5 exit criterion verified" — 2026-06-18
 **Blockers**: none (TASK-080 PR #187, TASK-081 PR #188, TASK-082 PR #190, TASK-083 PR #189 all merged to dev)
 
 **COMPLETE** — ready for PM review — 2026-06-18
