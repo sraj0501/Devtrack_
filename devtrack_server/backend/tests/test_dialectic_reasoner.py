@@ -214,9 +214,24 @@ class TestDialecticReasoner:
         import ast, inspect
         from backend import dialectic_reasoner
         source = inspect.getsource(dialectic_reasoner)
-        # os.getenv must not appear in the module source.
-        assert "os.getenv" not in source, (
-            "dialectic_reasoner.py must not call os.getenv — use backend.config"
+
+        # Parse the AST and look for actual os.getenv() call expressions.
+        # This avoids false positives from docstring mentions.
+        tree = ast.parse(source)
+        calls = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                # os.getenv(...) — check for attribute access on 'os'
+                if (
+                    isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "getenv"
+                    and isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "os"
+                ):
+                    calls.append(node)
+        assert not calls, (
+            f"dialectic_reasoner.py must not call os.getenv() — use backend.config "
+            f"(found {len(calls)} call(s))"
         )
 
 
