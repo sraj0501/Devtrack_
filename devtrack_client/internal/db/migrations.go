@@ -149,6 +149,131 @@ var allMigrations = []Migration{
 			return err
 		},
 	},
+	{
+		ID:          "008-create-inferences-fts5",
+		Description: "Create inferences table, FTS5 virtual table, and sync triggers for Phase 6 dialectic self-improvement",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS inferences (
+					id           INTEGER PRIMARY KEY AUTOINCREMENT,
+					context_type TEXT    NOT NULL,
+					subject      TEXT    NOT NULL,
+					inference    TEXT    NOT NULL,
+					evidence     TEXT    NOT NULL,
+					confidence   REAL    NOT NULL DEFAULT 0.5,
+					source       TEXT    NOT NULL DEFAULT 'hermes3',
+					created_at   DATETIME NOT NULL DEFAULT (datetime('now')),
+					updated_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+				);
+			`)
+			if err != nil {
+				return fmt.Errorf("create inferences table: %w", err)
+			}
+
+			// Check if FTS5 virtual table already exists before creating it.
+			// Use sqlite_master check for safe cross-version idempotency.
+			var ftsCount int
+			if err := database.db.QueryRow(
+				`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='inferences_fts'`,
+			).Scan(&ftsCount); err != nil {
+				return fmt.Errorf("check inferences_fts: %w", err)
+			}
+			if ftsCount == 0 {
+				_, err = database.db.Exec(`
+					CREATE VIRTUAL TABLE inferences_fts USING fts5(
+						context_type,
+						subject,
+						inference,
+						content='inferences',
+						content_rowid='id'
+					);
+				`)
+				if err != nil {
+					return fmt.Errorf("create inferences_fts virtual table: %w", err)
+				}
+			}
+
+			// Create sync triggers for FTS5 (idempotent via IF NOT EXISTS).
+			for _, trigDDL := range []string{
+				`CREATE TRIGGER IF NOT EXISTS inferences_ai AFTER INSERT ON inferences BEGIN
+					INSERT INTO inferences_fts(rowid, context_type, subject, inference)
+					VALUES (new.id, new.context_type, new.subject, new.inference);
+				END;`,
+				`CREATE TRIGGER IF NOT EXISTS inferences_au AFTER UPDATE ON inferences BEGIN
+					INSERT INTO inferences_fts(inferences_fts, rowid, context_type, subject, inference)
+					VALUES('delete', old.id, old.context_type, old.subject, old.inference);
+					INSERT INTO inferences_fts(rowid, context_type, subject, inference)
+					VALUES (new.id, new.context_type, new.subject, new.inference);
+				END;`,
+				`CREATE TRIGGER IF NOT EXISTS inferences_ad AFTER DELETE ON inferences BEGIN
+					INSERT INTO inferences_fts(inferences_fts, rowid, context_type, subject, inference)
+					VALUES('delete', old.id, old.context_type, old.subject, old.inference);
+				END;`,
+			} {
+				if _, err := database.db.Exec(trigDDL); err != nil {
+					return fmt.Errorf("create inferences trigger: %w", err)
+				}
+			}
+
+			return nil
+		},
+	},
+	{
+		ID:          "009-create-corrections",
+		Description: "Create corrections table for Phase 6 developer feedback on inferences",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS corrections (
+					id            INTEGER PRIMARY KEY AUTOINCREMENT,
+					inference_id  INTEGER NOT NULL REFERENCES inferences(id),
+					correction    TEXT    NOT NULL,
+					flagged_from  TEXT    NOT NULL DEFAULT 'tui',
+					weight        REAL    NOT NULL DEFAULT 2.0,
+					created_at    DATETIME NOT NULL DEFAULT (datetime('now'))
+				);
+				CREATE INDEX IF NOT EXISTS idx_corrections_inference ON corrections(inference_id);
+			`)
+			return err
+		},
+	},
+	{
+		ID:          "010-create-confidence-thresholds",
+		Description: "Create confidence_thresholds table for Phase 6 adaptive auto-approve thresholds",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS confidence_thresholds (
+					id            INTEGER PRIMARY KEY AUTOINCREMENT,
+					action_type   TEXT    NOT NULL,
+					workspace     TEXT    NOT NULL DEFAULT '',
+					threshold     REAL    NOT NULL DEFAULT 0.70,
+					approvals     INTEGER NOT NULL DEFAULT 0,
+					rejections    INTEGER NOT NULL DEFAULT 0,
+					last_updated  DATETIME NOT NULL DEFAULT (datetime('now'))
+				);
+				CREATE UNIQUE INDEX IF NOT EXISTS idx_thresholds_type_ws
+					ON confidence_thresholds(action_type, workspace);
+			`)
+			return err
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded
