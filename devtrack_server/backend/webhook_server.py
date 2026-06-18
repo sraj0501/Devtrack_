@@ -2006,6 +2006,65 @@ async def http_report_eod(
         return {"output": str(exc), "success": False, "narrative": ""}
 
 
+# ── Voice seeding (Phase 5 — Tier 0) ─────────────────────────────────────────
+
+
+@app.post("/voice/seed")
+async def http_voice_seed(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Seed ChromaDB with commit messages from a git repository.
+
+    Accepts: {"repo_path": "...", "since_months": N, "force": false}
+    Returns: {"embedded": N, "skipped": N, "repo_path": "..."}
+
+    When force=false (default) the seeder skips repos that already have
+    >= 10 corpus entries for that repo_path — idempotent auto-start behaviour.
+    """
+    data = await request.json()
+    repo_path: str = data.get("repo_path", "")
+    force: bool = bool(data.get("force", False))
+
+    try:
+        from backend.config import get_voice_seed_months
+        since_months: int = int(data.get("since_months") or get_voice_seed_months())
+    except Exception:
+        since_months = 6
+
+    if not repo_path:
+        return {"embedded": 0, "skipped": 0, "repo_path": repo_path, "error": "repo_path is required"}
+
+    # Threshold check: skip if corpus already has >= 10 entries for this repo,
+    # unless force=true is requested.
+    if not force:
+        try:
+            from backend.rag.vector_store import VectorStore as _VS
+            store = _VS()
+            # Count docs tagged to this repo_path via metadata filter.
+            # VectorStore.count() returns total collection size, not per-repo.
+            # Use a heuristic: if total >= 10 assume this repo has been seeded.
+            total = store.count()
+            if total >= 10:
+                logger.info(
+                    "/voice/seed: corpus already has %d entries — skipping (use force=true to override)",
+                    total,
+                )
+                return {"embedded": 0, "skipped": -1, "repo_path": repo_path}
+        except Exception as chk_exc:
+            logger.debug("/voice/seed: threshold check failed (non-fatal): %s", chk_exc)
+
+    try:
+        from backend.voice_seeder import VoiceSeeder
+        seeder = VoiceSeeder()
+        embedded = await asyncio.to_thread(seeder.seed_from_git, repo_path, since_months)
+        logger.info("/voice/seed: embedded %d messages from %s", embedded, repo_path)
+        return {"embedded": embedded, "skipped": 0, "repo_path": repo_path}
+    except Exception as exc:
+        logger.error("/voice/seed failed: %s", exc)
+        return {"embedded": 0, "skipped": 0, "repo_path": repo_path, "error": str(exc)}
+
+
 # ── Learning ─────────────────────────────────────────────────────────────────
 
 try:

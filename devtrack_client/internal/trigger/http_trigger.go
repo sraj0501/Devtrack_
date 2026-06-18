@@ -819,6 +819,33 @@ func (c *HTTPTriggerClient) LicenseTerms() (string, error) {
 	return c.getText("/license/terms")
 }
 
+// ── Voice seeding methods (Phase 5) ──────────────────────────────────────────
+
+// VoiceSeedRequest is the payload for POST /voice/seed.
+type VoiceSeedRequest struct {
+	RepoPath    string `json:"repo_path"`
+	SinceMonths int    `json:"since_months"`
+	Force       bool   `json:"force"`
+}
+
+// VoiceSeedResponse is the response from POST /voice/seed.
+type VoiceSeedResponse struct {
+	Embedded int    `json:"embedded"`
+	Skipped  int    `json:"skipped"`
+	RepoPath string `json:"repo_path"`
+	Error    string `json:"error,omitempty"`
+}
+
+// VoiceSeed calls POST /voice/seed for a single repository.
+// Returns the count of newly embedded messages and any skipped count.
+func (c *HTTPTriggerClient) VoiceSeed(req VoiceSeedRequest) (*VoiceSeedResponse, error) {
+	var resp VoiceSeedResponse
+	if err := c.postWithResult("/voice/seed", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // LicenseAccept calls POST /license/accept.
 func (c *HTTPTriggerClient) LicenseAccept() (string, error) {
 	var r struct {

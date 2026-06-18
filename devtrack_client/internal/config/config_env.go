@@ -1025,3 +1025,18 @@ func GetEODTelegramEnabled() bool {
 	val := strings.TrimSpace(strings.ToLower(os.Getenv("EOD_TELEGRAM_ENABLED")))
 	return val == "true" || val == "1"
 }
+
+// GetVoiceSeedMonths returns the number of months of git history to mine for
+// voice corpus seeding (Phase 5 — Tier 0). Reads VOICE_SEED_MONTHS.
+// REQUIRED: panics with a clear message if the variable is not set.
+func GetVoiceSeedMonths() int {
+	val := os.Getenv("VOICE_SEED_MONTHS")
+	if val == "" {
+		panic("devtrack: VOICE_SEED_MONTHS not set — add it to .env (recommended value: 6)")
+	}
+	months := mustParseInt("VOICE_SEED_MONTHS", val)
+	if months <= 0 {
+		panic(fmt.Sprintf("devtrack: VOICE_SEED_MONTHS must be > 0, got %d", months))
+	}
+	return months
+}
