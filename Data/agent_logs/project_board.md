@@ -2307,20 +2307,23 @@ v1.0.0 release + local agents; config audit (os.getenv eliminated across 22 file
 **Branch**: `feat/TASK-086-hermes3-reasoning-loop`
 
 **Acceptance criteria**:
-- [ ] `dialectic_reasoner.py` exists with `DialecticReasoner` class; `reason()` returns `[]` on failure, never raises
-- [ ] Hermes 3 model tried first; falls back to configured LLM chain; logs on fallback
-- [ ] No `os.getenv` in `dialectic_reasoner.py`; all config via `backend.config`
-- [ ] `POST /dialectic/infer` endpoint exists, auth-gated, returns `{"inferences": [...]}`
-- [ ] `PostDialecticInfer()` exists in `devtrack_client/internal/trigger/`; Go client calls it after successful queue execution (fire-and-forget goroutine)
-- [ ] Returned inferences stored in SQLite `inferences` table via `InsertInference()`
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] Python tests pass: graceful degradation, well-formed JSON return, auth guard
-- [ ] `uv run pytest backend/tests/ -q` — no regressions beyond documented pre-existing failure
+- [x] `dialectic_reasoner.py` exists with `DialecticReasoner` class; `reason()` returns `[]` on failure, never raises
+- [x] Hermes 3 model tried first; falls back to configured LLM chain; logs on fallback
+- [x] No `os.getenv` in `dialectic_reasoner.py`; all config via `backend.config`
+- [x] `POST /dialectic/infer` endpoint exists, auth-gated, returns `{"inferences": [...]}`
+- [x] `PostDialecticInfer()` exists in `devtrack_client/internal/trigger/`; Go client calls it after successful queue execution (fire-and-forget goroutine)
+- [x] Returned inferences stored in SQLite `inferences` table via `InsertInference()`
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] Python tests pass: graceful degradation, well-formed JSON return, auth guard
+- [x] `uv run pytest backend/tests/ -q` — no regressions beyond documented pre-existing failure
 
 **Assigned to**: engineer
 **Started**: 2026-06-18
-**Engineer status**: started — building Part A (dialectic_reasoner.py), Part B (endpoint), Part C (Go client), Part D (tests)
-**Blockers**: none — TASK-085 merged
+**Engineer status**: 9/9 criteria done — last commit: 059a6fb "test(dialectic): fix os.getenv AST check" — 2026-06-18
+**PR**: https://github.com/sraj0501/Devtrack_/pull/193
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-18
 
 ---
 

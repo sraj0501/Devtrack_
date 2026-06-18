@@ -2,6 +2,35 @@
 
 ---
 
+### [2026-06-18 21:10] TASK-086 — Hermes 3 reasoning loop (all parts)
+
+**Original message**: "feat(dialectic): TASK-086 add Hermes 3 reasoning loop — Python module, endpoint, Go client, tests"
+**DevTrack enhanced it to**: (AI provider unreachable — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-086 marked COMPLETE; all 9 criteria ticked; PR #193 URL posted
+**Time**: ~60 minutes
+**Friction**: LOW
+**Notes**:
+- Part A (`dialectic_reasoner.py`): `DialecticReasoner.reason()` tries Hermes 3 via `GET {OLLAMA_HOST}/api/tags` model check + `/api/generate` with `format=json`, then falls back to `provider_factory` chain. Returns `[]` on any failure — never raises. All config via `backend.config.get()` / `get_int()`, zero `os.getenv` calls.
+- Part B (`POST /dialectic/infer`): Added after the queue endpoints in `webhook_server.py`. Uses `Depends(_verify_trigger_key)` — same auth guard as all `/trigger/*` endpoints. Returns `{"inferences": []}` (not an error) when LLM fails.
+- Part C (Go client): New `devtrack_client/internal/trigger/dialectic.go` with `PostDialecticInfer()`, `PostDialecticInferApproval()`, `PostDialecticInferRejection()`. Queue executor fires goroutine after successful `/queue/execute`. TUI approve/reject handlers also fire goroutines. Both `queueModel` and `newQueueModel` updated to carry a `triggerClient` field.
+- Part D (tests): 13 new tests in `test_dialectic_reasoner.py` — all 13 pass. Full suite: 753 pass, 1 pre-existing failure (`test_ollama_host_returns_string`) — no regressions.
+- Cherry-picked TASK-085 DB layer (commit c2ade83) onto this branch since that PR is not yet merged to dev. The `InsertInference()` method and `Inference` struct live in `internal/db/inferences.go`.
+- `go build ./...` and `go vet ./...` both clean.
+- The `os.getenv` test used AST inspection (not source string scan) to avoid false positives from the docstring comment.
+
+## Task Summary — TASK-086: Hermes 3 reasoning loop — 2026-06-18
+
+- Total commits: 3 (4b9cea1, 7ee1d4c cherry-pick, 059a6fb test fix)
+- Acceptance criteria met: 9/9
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min/day (dialectic inferences accumulate automatically; no developer action required)
+- Blockers encountered: TASK-085 not yet merged to dev — resolved by cherry-picking the inferences DB commit onto this branch
+- One thing that still feels rough: "The cherry-pick approach means when TASK-085 eventually merges to dev, the TASK-086 merge will include a duplicate commit. PM should merge TASK-085 first then TASK-086 to keep history clean."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-18 12:10] TASK-084 — Phase 5 exit criterion verification and phase closure
 
 **Original message**: "chore(board): TASK-084 Phase 5 exit criterion verified — board and feature_tracker updated"
