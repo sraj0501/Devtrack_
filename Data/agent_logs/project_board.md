@@ -1988,6 +1988,8 @@ fix it in this task (no new config var needed — `DATA_DIR` already exists).
 - [x] Python tests pass (LLM available/unavailable/save path) — 14/14 new tests + 713 total pass
 - [x] `go build ./...` and `go vet ./...` pass clean
 
+**PR**: https://github.com/sraj0501/Devtrack_/pull/188
+
 **COMPLETE** — ready for PM review — 2026-06-18
 
 ---
