@@ -15,7 +15,7 @@ require (
 	modernc.org/sqlite v1.39.1
 )
 
-require github.com/charmbracelet/bubbles v1.0.0 // indirect
+require github.com/charmbracelet/bubbles v1.0.0
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
