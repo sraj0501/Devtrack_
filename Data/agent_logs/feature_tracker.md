@@ -1,6 +1,6 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-18 by engineer (TASK-084 COMPLETE — Phase 5 Voice Training exit criterion verified; PR opened against dev)_
+_Last updated: 2026-06-18 by PM (TASK-086 COMPLETE — Hermes 3 reasoning loop; PR #193 against dev)_
 
 ---
 
@@ -21,7 +21,7 @@ _Last updated: 2026-06-18 by engineer (TASK-084 COMPLETE — Phase 5 Voice Train
 | 3 | Silent commit handler | DONE — exit criterion verified 2026-06-17 | Commit → ticket commented + state-transitioned; dev did nothing |
 | 4 | EOD pipeline | DONE — exit criterion verified 2026-06-17 | Accurate EOD email every evening, in the dev's voice |
 | 5 | Voice training (low friction) | DONE — exit criterion verified 2026-06-18 | Generated text passes "did I write this?" after 1 week |
-| 6 | Dialectic self-improvement | QUEUED | 30-day correction rate down; ≥3 autonomous skills emerged |
+| 6 | Dialectic self-improvement | ACTIVE — TASK-086 DONE (PR #193); TASK-087 next | 30-day correction rate down; ≥3 autonomous skills emerged |
 | 7 | TUI as visibility + correction | QUEUED | TUI shows last 24h + everything about to happen |
 | 8 | PR review loop (puppet master) | QUEUED | PR nit comments resolved without dev touching the PR |
 
@@ -37,6 +37,30 @@ decoupling Phases 1–2. Detail in Task History below.
 ---
 
 ## Task History
+
+---
+
+## 2026-06-18 — TASK-086: Hermes 3 reasoning loop (Phase 6 — Dialectic self-improvement)
+
+**Phase**: Phase 6
+**Status**: DONE — PR #193 (base: dev)
+**Branch**: `feat/TASK-086-hermes3-reasoning-loop`
+**Vision check**: PASS — Rule 0 (offline-first: Hermes 3 via local Ollama; graceful fallback to local LLM chain; no cloud hard-dependency); Rule 1 (CLI stays CLI: no browser, no GUI); Rule 2 (wedge first: reasoning runs silently after each interaction, no developer obligation)
+**Hardcoded scan**: CLEAN — one apparent `localhost:11434` in `dialectic_reasoner.py` is the documented OLLAMA_HOST=0.0.0.0 normalization pattern (same as commit_message_enhancer.py), not a hardcoded default
+
+**Files changed**:
+- `devtrack_server/backend/dialectic_reasoner.py` (new) — `DialecticReasoner` class with `reason(interaction_type, context_type, before_text, after_text, metadata) -> list[dict]`; tries Hermes 3 (`adrienbrault/nous-hermes2pro-llama3-8b:q8_0`) first via `/api/tags` availability check, then falls back to configured LLM chain via `provider_factory`; returns `[]` on any failure; module-level `REASONING_PROMPT_TEMPLATE` constant; zero `os.getenv` calls
+- `devtrack_server/backend/webhook_server.py` — `POST /dialectic/infer` endpoint added; auth-gated with `Depends(_verify_trigger_key)`; returns `{"inferences": [...]}` or `{"inferences": []}` on failure
+- `devtrack_server/.env_sample` — `REASONING_MODEL=adrienbrault/nous-hermes2pro-llama3-8b:q8_0` documented
+- `devtrack_client/internal/trigger/dialectic.go` (new) — `PostDialecticInfer()`, `PostDialecticInferApproval()`, `PostDialecticInferRejection()`, `InferenceResult` struct
+- `devtrack_client/internal/infra/queue_executor.go` — `fireDialecticInfer()` goroutine added; fires after successful `/queue/execute`; stores inferences via `db.InsertInference()`
+- `devtrack_client/internal/tui/tui_queue.go` — approve/reject key handlers fire goroutines calling `PostDialecticInferApproval()` / `PostDialecticInferRejection()` (non-blocking)
+- `devtrack_client/internal/tui/tui.go` — passes `trigger.NewHTTPTriggerClient()` to `newQueueModel`
+- `devtrack_server/backend/tests/test_dialectic_reasoner.py` (new) — 13 tests: graceful degradation (returns [] on LLM failure), well-formed JSON return, Hermes 3 unavailability fallback, confidence clamping, malformed JSON handling, auth guard (401 on missing key), empty body handling
+
+**Test results**: 753 passed, 1 pre-existing failure (`test_ollama_host_returns_string`) — 13 net new tests, zero regressions; `go build ./...` and `go vet ./...` clean
+
+**Engineer notes**: Engineer also cherry-picked TASK-085 DB layer (commit c2ade83) since that PR had not yet merged to dev when the branch was cut — needed for `db.InsertInference()` and `db.Inference` struct. PM should confirm TASK-085 merge to dev before merging TASK-086 to preserve clean linear history.
 
 ## 2026-06-18 — Phase 5 COMPLETE: TASK-080/081/082/083/084 — Voice Training (Low Friction)
 

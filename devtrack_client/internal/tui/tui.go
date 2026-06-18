@@ -268,9 +268,7 @@ func (m tuiModel) renderHeader() string {
 	brand := StyleHeader.Render("  ◆ DevTrack")
 	right := StyleMuted.Render("managed  v3.0.10  ")
 	spacer := m.width - lipgloss.Width(brand) - lipgloss.Width(right)
-	if spacer < 0 {
-		spacer = 0
-	}
+	spacer = max(spacer, 0)
 	return brand + strings.Repeat(" ", spacer) + right
 }
 

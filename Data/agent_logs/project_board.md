@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-18 by engineer — TASK-086 started_
+_Last updated: 2026-06-18 by PM — TASK-086 COMPLETE (PR #193); TASK-087 next_
 _Next DevTrack task ID: TASK-087_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._

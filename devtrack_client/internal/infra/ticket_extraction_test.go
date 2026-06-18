@@ -11,7 +11,7 @@ import (
 // custom ticketPattern falls back to the default patterns, so a branch named
 // after a Jira/ADO-style ticket produces a populated TicketID on the event.
 func TestWorkspaceMonitor_TicketPattern_DefaultExtraction(t *testing.T) {
-	ws := &WorkspaceMonitor{workspaceName: "default-pattern-ws", ticketPattern: ""}
+	ws := &WorkspaceMonitor{ticketPattern: ""}
 
 	ext, err := ticket.NewExtractor(ws.ticketPattern)
 	if err != nil {
@@ -28,7 +28,7 @@ func TestWorkspaceMonitor_TicketPattern_DefaultExtraction(t *testing.T) {
 // no extractable ticket (e.g. "main", "chore/update-readme") yields an empty
 // TicketID — the "unlinked" case — without error or panic.
 func TestWorkspaceMonitor_TicketPattern_NoMatchIsUnlinked(t *testing.T) {
-	ws := &WorkspaceMonitor{workspaceName: "default-pattern-ws", ticketPattern: ""}
+	ws := &WorkspaceMonitor{ticketPattern: ""}
 
 	ext, err := ticket.NewExtractor(ws.ticketPattern)
 	if err != nil {
@@ -47,7 +47,7 @@ func TestWorkspaceMonitor_TicketPattern_NoMatchIsUnlinked(t *testing.T) {
 // workspace-level custom ticketPattern (from workspaces.yaml's ticket_pattern
 // field) is honoured instead of the default multi-pattern extractor.
 func TestWorkspaceMonitor_TicketPattern_CustomOverridesDefault(t *testing.T) {
-	ws := &WorkspaceMonitor{workspaceName: "custom-pattern-ws", ticketPattern: `(?P<ticket>DT-\d+)`}
+	ws := &WorkspaceMonitor{ticketPattern: `(?P<ticket>DT-\d+)`}
 
 	ext, err := ticket.NewExtractor(ws.ticketPattern)
 	if err != nil {
@@ -71,7 +71,6 @@ func TestWorkspaceMonitor_TicketPattern_CustomOverridesDefault(t *testing.T) {
 // TicketID field threaded through, per TASK-068 step 6.
 func TestTriggerEvent_CarriesTicketID(t *testing.T) {
 	event := TriggerEvent{
-		Type:     TriggerTypeCommit,
 		TicketID: "PROJ-123",
 	}
 	if event.TicketID != "PROJ-123" {
