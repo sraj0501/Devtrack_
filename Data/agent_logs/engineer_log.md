@@ -2,6 +2,36 @@
 
 ---
 
+### [2026-06-18 11:43] TASK-083 — voice add/status endpoints + CLI commands
+
+**Original message**: "feat(voice): TASK-083 add POST /voice/add + GET /voice/status endpoints; voice add/status CLI"
+**DevTrack enhanced it to**: "feat(voice): Add voice add and status commands to CLI and API"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-083 marked COMPLETE; 8/8 criteria ticked
+**Time**: ~35 minutes
+**Friction**: LOW
+**Notes**:
+- `POST /voice/add`: builds a unique doc_id via `hashlib.sha1` of `context_type:text:time()`, embeds via the existing RAG pipeline (same pattern as voice_seeder.py), tags metadata with `source=manual` and `weight=high`. Returns HTTP 503 (not 500) on ChromaDB unavailability — graceful degradation.
+- `GET /voice/status`: queries ChromaDB via `collection.get(include=["metadatas"])` to aggregate by_context and by_source counts. SQLite queries for last_seed and last_sync wrapped in try/except so missing tables return null. Profile path resolved via `config.get_path("DATA_DIR")`.
+- Go CLI: `voice add` parses `--context` flag manually from `os.Args[3:]` (no flag library used — consistent with other cli_*.go patterns). isatty check uses existing `github.com/mattn/go-isatty` dependency.
+- `VoiceStatusResponse.ByContext` and `.BySource` use `map[string]int` for JSON deserialization flexibility.
+- Test patching: the webhook_server endpoint uses local imports (`from backend.config import ...`) inside the function body, so patches must target `backend.config.database_path` not `backend.webhook_server.database_path`. Also `VectorStore._collection` is an instance attribute so must patch via `VectorStore` constructor mock, not class attribute patch.
+- 17 new tests; 740 total pass (was 723), 1 pre-existing failure unchanged.
+- `go build ./...` and `go vet ./...` clean.
+- The linter added TASK-082 stubs (voice_sync.py, scheduler.go, config accessors) during the session; they were included in the commit alongside TASK-083 changes but don't affect correctness.
+
+## Task Summary — TASK-083: voice add + voice status — 2026-06-18
+
+- Total commits: 1 (40553d3)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~3 min/day (easy manual corpus injection + instant status check without opening ChromaDB directly)
+- Blockers encountered: none
+- One thing that still feels rough: "The status endpoint queries all ChromaDB documents via `collection.get(include=['metadatas'])` which could be slow on a large corpus (> 10k entries). For Phase 5 realistic corpus sizes (hundreds) this is fine; would need pagination/aggregation for scale."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-18 11:25] TASK-081 — Dialectic profile generation from ChromaDB corpus
 
 **Original message**: "feat(voice): TASK-081 dialectic profile generation from ChromaDB corpus"
