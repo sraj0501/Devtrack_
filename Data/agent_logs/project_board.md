@@ -1789,9 +1789,9 @@ manual profile editing. Voice is inferred from evidence, not declared.
 
 **Tiers shipped in this phase**: Tier 0 (git commit history seeding), Tier 1 (background
 PR / issue comment sync), Tier 2 (manual `voice add` + `voice status` inspection).
-Tier 3 (Teams messages) and Tier 4 (meeting transcripts) are deferred to Phase 6 —
-decision made 2026-06-18, rationale: Tier 3/4 require additional infrastructure (MS
-Graph expanded scope, transcription pipeline) and would delay the core "did I write
+Tier 3 (Teams messages) and Tier 4 (recording transcripts — any source: Teams, Zoom,
+Google Meet, etc.) are deferred to Phase 6 — decision made 2026-06-18, rationale:
+Tier 3/4 require additional infrastructure and would delay the core "did I write
 this?" loop. Tiers 0–2 are sufficient to seed a representative corpus within one week.
 
 **Sequencing rationale**: TASK-080 (ChromaDB seed) must land first — all other tasks
@@ -1882,16 +1882,6 @@ Go: `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`.
 
 **Acceptance criteria**:
 - [ ] `voice_seeder.py` exists with `VoiceSeeder` class and `seed_from_git(repo_path, since_months) -> int` method
-- [ ] Merge commits (messages starting with "Merge branch" / "Merge pull request") are skipped — verified by unit test
-- [ ] Idempotency verified: second call with same repo/hashes returns 0 newly embedded (no duplicates in ChromaDB)
-- [ ] `POST /voice/seed` endpoint exists in `webhook_server.py`, auth-gated, accepts `{"repo_path": "...", "since_months": N, "force": false}`
-- [ ] After seeding, `inject_style(context_type="commit", query_text="some commit message")` returns a non-empty style-injected prompt (smoke test: ChromaDB returns hits)
-- [ ] `devtrack voice seed` CLI command exists, calls the endpoint for each workspace, prints per-repo counts
-- [ ] `GetVoiceSeedMonths()` accessor in `config_env.go`; `VOICE_SEED_MONTHS=6` documented in `.env_sample`
-- [ ] `get_voice_seed_months()` accessor in `config.py`; no `os.getenv` calls in `voice_seeder.py`
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] Python tests pass: correct count, merge skip, idempotency, graceful fallback on git/ChromaDB failure
-
 **Acceptance criteria**:
 - [x] `voice_seeder.py` exists with `VoiceSeeder` class and `seed_from_git(repo_path, since_months) -> int` method
 - [x] Merge commits (messages starting with "Merge branch" / "Merge pull request") are skipped — verified by unit test
