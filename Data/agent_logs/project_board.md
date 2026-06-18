@@ -2251,6 +2251,8 @@ TASK-074 (Phase 3): live run against the real pipeline, not just unit tests.
 **Engineer status**: 10/10 criteria done — last commit: 3b5281c "chore(board): TASK-084 Phase 5 exit criterion verified" — 2026-06-18
 **Blockers**: none (TASK-080 PR #187, TASK-081 PR #188, TASK-082 PR #190, TASK-083 PR #189 all merged to dev)
 
+**PR**: https://github.com/sraj0501/Devtrack_/pull/191
+
 **COMPLETE** — ready for PM review — 2026-06-18
 
 ---
