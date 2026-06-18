@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
 // queueDataMsg carries the latest snapshot from the DB.
@@ -17,22 +19,23 @@ type queueDataMsg []db.PendingAction
 
 // queueModel holds the state for the Queue tab.
 type queueModel struct {
-	db         *db.Database
-	items      []db.PendingAction
-	cursor     int
-	width      int
-	height     int
-	lastLoad   time.Time
-	spinner    spinner.Model
-	loading    bool
-	pulseState bool
+	db            *db.Database
+	triggerClient *trigger.HTTPTriggerClient
+	items         []db.PendingAction
+	cursor        int
+	width         int
+	height        int
+	lastLoad      time.Time
+	spinner       spinner.Model
+	loading       bool
+	pulseState    bool
 }
 
-func newQueueModel(database *db.Database) queueModel {
+func newQueueModel(database *db.Database, tc *trigger.HTTPTriggerClient) queueModel {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(ColorAccent)
-	return queueModel{db: database, spinner: sp, loading: true}
+	return queueModel{db: database, triggerClient: tc, spinner: sp, loading: true}
 }
 
 // load fetches the last 24 hours of pending actions from the DB in a goroutine.
@@ -83,6 +86,30 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 				item := m.items[m.cursor]
 				if item.Status == "pending" {
 					_ = m.db.UpdatePendingActionStatus(item.ID, "approved", "tui")
+					// Fire-and-forget: call /dialectic/infer for the approval interaction.
+					// Non-blocking; errors logged only — never interrupts the TUI.
+					if m.triggerClient != nil && m.db != nil {
+						go func(action db.PendingAction, tc *trigger.HTTPTriggerClient, database *db.Database) {
+							inferences, err := tc.PostDialecticInferApproval(action)
+							if err != nil {
+								log.Printf("dialectic: TUI approval infer failed for action %d: %v", action.ID, err)
+								return
+							}
+							for _, inf := range inferences {
+								_, storeErr := database.InsertInference(db.Inference{
+									ContextType: inf.ContextType,
+									Subject:     inf.Subject,
+									Inference:   inf.InferenceText,
+									Evidence:    fmt.Sprintf(`[%d]`, action.ID),
+									Confidence:  inf.Confidence,
+									Source:      "hermes3",
+								})
+								if storeErr != nil {
+									log.Printf("dialectic: store approval inference failed: %v", storeErr)
+								}
+							}
+						}(item, m.triggerClient, m.db)
+					}
 					return m, m.load()
 				}
 			}
@@ -91,6 +118,29 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 				item := m.items[m.cursor]
 				if item.Status == "pending" {
 					_ = m.db.UpdatePendingActionStatus(item.ID, "rejected", "tui")
+					// Fire-and-forget: call /dialectic/infer for the rejection interaction.
+					if m.triggerClient != nil && m.db != nil {
+						go func(action db.PendingAction, tc *trigger.HTTPTriggerClient, database *db.Database) {
+							inferences, err := tc.PostDialecticInferRejection(action)
+							if err != nil {
+								log.Printf("dialectic: TUI rejection infer failed for action %d: %v", action.ID, err)
+								return
+							}
+							for _, inf := range inferences {
+								_, storeErr := database.InsertInference(db.Inference{
+									ContextType: inf.ContextType,
+									Subject:     inf.Subject,
+									Inference:   inf.InferenceText,
+									Evidence:    fmt.Sprintf(`[%d]`, action.ID),
+									Confidence:  inf.Confidence,
+									Source:      "hermes3",
+								})
+								if storeErr != nil {
+									log.Printf("dialectic: store rejection inference failed: %v", storeErr)
+								}
+							}
+						}(item, m.triggerClient, m.db)
+					}
 					return m, m.load()
 				}
 			}

@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-18 by PM — Phase 6 tasks written (TASK-085 through TASK-092)_
-_Next DevTrack task ID: TASK-085 (IN PROGRESS — dispatched to engineer)_
+_Last updated: 2026-06-18 by PM — TASK-085 + TASK-086 COMPLETE (PRs #192, #193 merged); TASK-087 next_
+_Next DevTrack task ID: TASK-087_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -3420,6 +3420,33 @@ with an HTTP/JSON boundary. Legacy `devtrack-bin/` + root `backend/` retired
 v1.0.0 release + local agents; config audit (os.getenv eliminated across 22 files,
 50+ accessors); CS-2 headless tests + server-TUI stats panel; CS-3 Admin GUI MVP
 (users/licenses/health); logo + Windows binary icon; boardroom + plan commands.
+
+---
+
+### TASK-086 — Hermes 3 reasoning loop: Python server runs a reasoning pass after each interaction
+**Priority**: HIGH
+**Phase**: Phase 6
+**Depends on**: TASK-085 (migrations must be live; Go DB layer must exist)
+**Branch**: `feat/TASK-086-hermes3-reasoning-loop`
+
+**Acceptance criteria**:
+- [x] `dialectic_reasoner.py` exists with `DialecticReasoner` class; `reason()` returns `[]` on failure, never raises
+- [x] Hermes 3 model tried first; falls back to configured LLM chain; logs on fallback
+- [x] No `os.getenv` in `dialectic_reasoner.py`; all config via `backend.config`
+- [x] `POST /dialectic/infer` endpoint exists, auth-gated, returns `{"inferences": [...]}`
+- [x] `PostDialecticInfer()` exists in `devtrack_client/internal/trigger/`; Go client calls it after successful queue execution (fire-and-forget goroutine)
+- [x] Returned inferences stored in SQLite `inferences` table via `InsertInference()`
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] Python tests pass: graceful degradation, well-formed JSON return, auth guard
+- [x] `uv run pytest backend/tests/ -q` — no regressions beyond documented pre-existing failure
+
+**Assigned to**: engineer
+**Started**: 2026-06-18
+**Engineer status**: 9/9 criteria done — last commit: 059a6fb "test(dialectic): fix os.getenv AST check" — 2026-06-18
+**PR**: https://github.com/sraj0501/Devtrack_/pull/193
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-18
 
 ---
 

@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
 type tuiTab int
@@ -48,13 +49,14 @@ func newTUIModel(database *db.Database) tuiModel {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(ColorAccent)
+	tc := trigger.NewHTTPTriggerClient()
 	return tuiModel{
 		db:             database,
 		overview:       newOverviewModel(database),
 		activity:       newActivityModel(database),
 		workspaces:     newWorkspacesModel(),
 		alerts:         newAlertsModel(database),
-		queue:          newQueueModel(database),
+		queue:          newQueueModel(database, tc),
 		refreshSpinner: sp,
 	}
 }
@@ -266,9 +268,7 @@ func (m tuiModel) renderHeader() string {
 	brand := StyleHeader.Render("  ◆ DevTrack")
 	right := StyleMuted.Render("managed  v3.0.10  ")
 	spacer := m.width - lipgloss.Width(brand) - lipgloss.Width(right)
-	if spacer < 0 {
-		spacer = 0
-	}
+	spacer = max(spacer, 0)
 	return brand + strings.Repeat(" ", spacer) + right
 }
 
