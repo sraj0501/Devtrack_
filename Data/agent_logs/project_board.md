@@ -1,8 +1,8 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-18 by PM — TASK-085 + TASK-086 COMPLETE (PRs #192, #193 merged); TASK-087 next_
-_Next DevTrack task ID: TASK-087_
-_Active branch: `dev`_
+_Last updated: 2026-06-22 by PM — TASK-091 IN PROGRESS; branch feat/TASK-091-voice-status-transparency created from dev_
+_Next DevTrack task ID: TASK-092_
+_Active branch: `feat/TASK-091-voice-status-transparency`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -3292,8 +3292,8 @@ Python: extend `devtrack_server/backend/tests/test_voice_add_status.py`:
 - [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
 - [ ] `uv run pytest backend/tests/ -q` — no regressions
 
-**Engineer status**: not started
-**Blockers**: TASK-086, TASK-089, TASK-090 must be merged first
+**Engineer status**: started — create dialectic_status.py helper, extend /voice/status endpoint, extend CLI, add tests
+**Blockers**: none (TASK-086, TASK-089, TASK-090 all complete with open PRs targeting dev)
 
 ---
 
