@@ -1,8 +1,8 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-21 by PM — TASK-087 IN PROGRESS on feat/TASK-087-inference-injection_
-_Next DevTrack task ID: TASK-088_
-_Active branch: `feat/TASK-087-inference-injection`_
+_Last updated: 2026-06-21 by PM — TASK-087 COMPLETE (PR #195 open, targeting dev); TASK-088 IN PROGRESS_
+_Next DevTrack task ID: TASK-089_
+_Active branch: `feat/TASK-088-adaptive-thresholds`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -2804,24 +2804,20 @@ If `InferenceRetriever` cannot reach the Go daemon, `get_top_inferences` returns
 Run `uv run pytest backend/tests/ -q` — no regressions beyond documented baseline.
 
 **Acceptance criteria**:
-- [x] `inference_retriever.py` exists with `InferenceRetriever.get_top_inferences()`; returns
+- [ ] `inference_retriever.py` exists with `InferenceRetriever.get_top_inferences()`; returns
       `[]` on failure, never raises
-- [x] `GET /dialectic/query` endpoint exists in Go daemon's internal API; auth-gated; calls
+- [ ] `GET /dialectic/query` endpoint exists in Go daemon's internal API; auth-gated; calls
       `SearchInferences` or `ListInferencesByConfidence`
-- [x] `inject_style()` in `personalization.py` injects Signal 3 (inferences) after Signal 2
+- [ ] `inject_style()` in `personalization.py` injects Signal 3 (inferences) after Signal 2
       (RAG); low-confidence inferences (<0.4) excluded
-- [x] `inject_style()` behavior unchanged when `InferenceRetriever` returns `[]`
-- [x] No `os.getenv` in `inference_retriever.py`
-- [x] `go build ./...` and `go vet ./...` pass clean
-- [x] Python tests pass: injection present, graceful degradation, confidence gate
-- [x] `uv run pytest backend/tests/ -q` — no regressions (764 pass, 1 pre-existing failure)
+- [ ] `inject_style()` behavior unchanged when `InferenceRetriever` returns `[]`
+- [ ] No `os.getenv` in `inference_retriever.py`
+- [ ] `go build ./...` and `go vet ./...` pass clean
+- [ ] Python tests pass: injection present, graceful degradation, confidence gate
+- [ ] `uv run pytest backend/tests/ -q` — no regressions
 
-**Engineer status**: 8/8 criteria done — last commit: 0441d34 "chore(board): TASK-087 COMPLETE" — 2026-06-21
-**Started**: 2026-06-21
-**Blockers**: none (TASK-086 merged at PR #193)
-**PR**: https://github.com/sraj0501/Devtrack_/pull/195
-
-**COMPLETE** — ready for PM review — 2026-06-21
+**Engineer status**: not started
+**Blockers**: TASK-086 must be merged first
 
 ---
 
@@ -2919,18 +2915,22 @@ TASK-085 or add a new `thresholds_test.go`):
 - `ListThresholds()` returns all rows.
 
 **Acceptance criteria**:
-- [ ] `RecordApproval` called after: TUI approve, CLI approve, auto-approve (executor)
-- [ ] `RecordRejection` called after: TUI reject, CLI reject
-- [ ] `QueueExecutor` defers actions whose `confidence < threshold.Threshold` even if
+- [x] `RecordApproval` called after: TUI approve, CLI approve, auto-approve (executor)
+- [x] `RecordRejection` called after: TUI reject, CLI reject
+- [x] `QueueExecutor` defers actions whose `confidence < threshold.Threshold` even if
       `expires_at` has passed; logs `[queue: deferring action ...]`
-- [ ] `devtrack queue thresholds` prints current per-type threshold table
-- [ ] When no rows exist, prints the "No thresholds recorded yet" message
-- [ ] Threshold formula correct: approvals/(approvals+rejections) * 0.20 + 0.70, capped at 0.95
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] Unit tests for `RecordApproval`/`RecordRejection` threshold math pass
+- [x] `devtrack queue thresholds` prints current per-type threshold table
+- [x] When no rows exist, prints the "No thresholds recorded yet" message
+- [x] Threshold formula correct: approvals/(approvals+rejections) * 0.20 + 0.70, capped at 0.95
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] Unit tests for `RecordApproval`/`RecordRejection` threshold math pass
 
-**Engineer status**: not started
-**Blockers**: TASK-085 and TASK-086 must be merged first
+**Assigned to**: engineer
+**Started**: 2026-06-21
+**Engineer status**: 8/8 criteria done — last commit: 75331c4 "feat(thresholds): adaptive confidence thresholds — QueueExecutor defers below threshold, devtrack queue thresholds CLI (TASK-088)" — 2026-06-22 00:00
+**Blockers**: none (TASK-085 merged PR #192, TASK-086 merged PR #193)
+
+**COMPLETE** — ready for PM review — 2026-06-22 00:00
 
 ---
 

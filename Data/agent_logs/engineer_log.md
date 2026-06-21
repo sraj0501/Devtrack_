@@ -2,31 +2,30 @@
 
 ---
 
-### [2026-06-21 23:26] TASK-087 — Inference-to-generation injection: Signal 3 into inject_style()
+### [2026-06-22 00:00] TASK-088 — Adaptive confidence thresholds
 
-**Original message**: "feat(personalization): add Signal 3 inference injection into inject_style() (TASK-087)"
-**DevTrack enhanced it to**: (AI provider unreachable — Ollama offline; committed with original message as-is)
+**Original message**: "feat(thresholds): adaptive confidence thresholds — QueueExecutor defers below threshold, devtrack queue thresholds CLI (TASK-088)"
+**DevTrack enhanced it to**: AI provider unreachable — committed with original message as-is
 **Ticket auto-linked**: NO
-**PM system updated**: YES — project_board.md TASK-087 marked COMPLETE; 8/8 criteria ticked; PR #194 URL posted
-**Time**: ~35 minutes
+**PM system updated**: YES — project_board.md TASK-088 marked COMPLETE; all 8 criteria ticked
+**Time**: ~30 minutes
 **Friction**: LOW
 **Notes**:
-- Step 1 (`inference_retriever.py`): `InferenceRetriever.get_top_inferences()` calls `GET /dialectic/query` on Go daemon's internal HTTP API. Uses `urllib.request` (stdlib — no extra deps). All config via `backend.config.ipc_host()` and `backend.config.get_devtrack_control_port()`. Zero `os.getenv` calls. Graceful: catches all exceptions, returns `[]`.
-- Step 2 (Go `/dialectic/query`): Added `handleDialecticQuery` to `http_api.go`. Auth-gated by `DEVTRACK_API_KEY` env var (403 on mismatch when key is set; open when empty). Calls `SearchInferences(q, limit)` when `q` is non-empty, else `ListInferencesByConfidence(contextType, limit)`. Also added `ListInferencesByConfidence` to `inferences.go` — orders by confidence DESC, optionally filters by context_type.
-- Step 3 (`personalization.py` Signal 3): Added lazy singleton `_get_inference_retriever()` matching the same pattern as `_load_personalized_ai`. Signal 3 injected after Signal 2 (RAG) — appended to `augmented` string. Low-confidence inferences (< `INFERENCE_MIN_CONFIDENCE=0.4`) excluded. Fully graceful: wrapped in `try/except Exception: pass`.
-- Step 4 (tests): 11 new tests in `test_inference_injection.py` — all 11 pass. Covers injection present, graceful degradation (exception), None retriever, confidence gate, mixed confidence, HTTP response parsing, network error, malformed JSON, sorted order, and os.getenv scan.
-- `go build ./...` and `go vet ./...` both clean from `devtrack_client/`.
-- Full suite: 764 pass (was 753 + 11 new), 1 pre-existing failure (`test_ollama_host_returns_string`) — no regressions.
-- Added `get_devtrack_control_port()` to `backend/config.py` so `inference_retriever.py` can read `DEVTRACK_SERVER_HTTP_PORT` without `os.getenv`. Pattern: `get_int("DEVTRACK_SERVER_HTTP_PORT", 35894)`.
+- Step 1 (RecordApproval/RecordRejection wiring): Added to TUI approve (`a` key) and reject (`r` key) in `tui_queue.go` — synchronous DB writes before tea.Cmd return. Added to CLI `devtrack queue approve` and `devtrack queue reject` in `cli_queue.go` — fetches action from DB to get ActionType/Workspace then calls RecordApproval/RecordRejection. Added to QueueExecutor auto-approve success path in `queue_executor.go` — uses fullAction when available for workspace field.
+- Step 2 (QueueExecutor threshold check): Added threshold check in `tick()` between expiry check and execute call. Fetches full PendingAction from local SQLite (QueuePendingAction from Python API only has ID/ActionType/Target/ExpiresAt/Status — no Confidence or Workspace). Fail-open: if GetOrCreateThreshold errors, execution proceeds. If fullAction missing from local DB, execution proceeds. Also resolved a variable shadowing issue where the old code re-declared `fullAction` with `:=` inside the success branch — renamed to `latestAction` for the post-execution dialectic infer call.
+- Step 3 (devtrack queue thresholds CLI): Added `thresholds` case to handleQueue() switch. Implemented `runQueueThresholds()` — calls `database.ListThresholds()`, formats as aligned table for TTY or tab-separated for pipes. Shows `(global)` when workspace is empty, `(default)` suffix when approvals=0 and rejections=0.
+- Step 4 (unit tests): Created `devtrack_client/internal/db/thresholds_test.go` with 4 tests: RecordApproval×3 (threshold=0.90), RecordRejection after 3 approvals (threshold=0.85), ListThresholds returns inserted rows, and threshold cap behavior. All 4 pass; full DB suite 24/24 pass.
+- `go build ./...` and `go vet ./...`: CLEAN
+- Test baseline: full suite all pass (no regressions); DB package 24 tests pass
 
-## Task Summary — TASK-087: Inference-to-generation injection — 2026-06-21
+## Task Summary — TASK-088: Adaptive confidence thresholds — 2026-06-22
 
-- Total commits: 1 (7e61734)
+- Total commits: 1 (75331c4)
 - Acceptance criteria met: 8/8
 - Tickets auto-updated: 0
-- Estimated daily time saved: ~2 min/day (inject_style enriched with inferences automatically; all prompts get smarter context without developer action)
-- Blockers encountered: none
-- One thing that still feels rough: "The inference_retriever uses urllib with a 1s timeout but if the Go daemon is in the middle of a restart during a commit trigger, that 1s wait adds up across all inject_style() calls — acceptable for now, could be made async later."
+- Estimated daily time saved: ~3 min/day (system self-calibrates; no manual threshold tuning needed)
+- Blockers encountered: QueuePendingAction struct missing Confidence/Workspace — resolved by fetching full PendingAction from local SQLite in the executor; variable shadowing in existing code resolved cleanly
+- One thing that still feels rough: "The executor now does an extra GetPendingAction() DB lookup per expired action for the threshold check — this is fast (SQLite local) but doubles the DB hits per cycle. Future optimization: add Confidence/Workspace to QueuePendingAction so the Python API returns them."
 - Ready for PM review: YES
 
 ---

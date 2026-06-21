@@ -86,6 +86,10 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 				item := m.items[m.cursor]
 				if item.Status == "pending" {
 					_ = m.db.UpdatePendingActionStatus(item.ID, "approved", "tui")
+					// Adaptive threshold signal — record approval for per-type threshold learning.
+					if logErr := m.db.RecordApproval(item.ActionType, item.Workspace); logErr != nil {
+						log.Printf("[threshold] RecordApproval: %v", logErr)
+					}
 					// Fire-and-forget: call /dialectic/infer for the approval interaction.
 					// Non-blocking; errors logged only — never interrupts the TUI.
 					if m.triggerClient != nil && m.db != nil {
@@ -118,6 +122,10 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 				item := m.items[m.cursor]
 				if item.Status == "pending" {
 					_ = m.db.UpdatePendingActionStatus(item.ID, "rejected", "tui")
+					// Adaptive threshold signal — record rejection for per-type threshold learning.
+					if logErr := m.db.RecordRejection(item.ActionType, item.Workspace); logErr != nil {
+						log.Printf("[threshold] RecordRejection: %v", logErr)
+					}
 					// Fire-and-forget: call /dialectic/infer for the rejection interaction.
 					if m.triggerClient != nil && m.db != nil {
 						go func(action db.PendingAction, tc *trigger.HTTPTriggerClient, database *db.Database) {

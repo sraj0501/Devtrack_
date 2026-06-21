@@ -47,6 +47,8 @@ func (cli *CLI) handleQueue() error {
 		return runQueueEdit()
 	case "status":
 		return runQueueStatus()
+	case "thresholds":
+		return runQueueThresholds()
 	default:
 		// Treat bare `devtrack queue` (no subcommand) as `devtrack queue list`.
 		// But if os.Args[2] looks like a number, warn the user.
@@ -189,6 +191,15 @@ func runQueueApprove() error {
 		return fmt.Errorf("queue approve: update status: %w", err)
 	}
 
+	// Adaptive threshold signal — record approval for per-type threshold learning.
+	action, getErr := d.GetPendingAction(id)
+	if getErr == nil && action != nil {
+		if logErr := d.RecordApproval(action.ActionType, action.Workspace); logErr != nil {
+			// Non-fatal — log and continue.
+			fmt.Fprintf(os.Stderr, "[threshold] RecordApproval: %v\n", logErr)
+		}
+	}
+
 	// Fire the action immediately via the Python queue endpoint.
 	tc := trigger.NewHTTPTriggerClient()
 	resp, err := tc.ExecuteQueueAction(id)
@@ -224,6 +235,14 @@ func runQueueReject() error {
 
 	if err := d.UpdatePendingActionStatus(id, "rejected", "cli"); err != nil {
 		return fmt.Errorf("queue reject: %w", err)
+	}
+
+	// Adaptive threshold signal — record rejection for per-type threshold learning.
+	action, getErr := d.GetPendingAction(id)
+	if getErr == nil && action != nil {
+		if logErr := d.RecordRejection(action.ActionType, action.Workspace); logErr != nil {
+			fmt.Fprintf(os.Stderr, "[threshold] RecordRejection: %v\n", logErr)
+		}
 	}
 
 	fmt.Printf("rejected: action %d will not be dispatched\n", id)
@@ -303,6 +322,56 @@ func parseQueueID(subCmd string) (int64, error) {
 	return id, nil
 }
 
+// runQueueThresholds implements `devtrack queue thresholds`.
+// Prints the per-action-type adaptive confidence threshold table from SQLite.
+// When no rows exist, prints a "no thresholds recorded yet" message.
+func runQueueThresholds() error {
+	d, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("queue thresholds: open database: %w", err)
+	}
+	defer d.Close()
+
+	thresholds, err := d.ListThresholds()
+	if err != nil {
+		return fmt.Errorf("queue thresholds: %w", err)
+	}
+
+	if len(thresholds) == 0 {
+		fmt.Println("No thresholds recorded yet. Thresholds adjust after approvals and rejections.")
+		return nil
+	}
+
+	tty := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+
+	if tty {
+		fmt.Println("Confidence Thresholds by Action Type")
+		fmt.Println("-------------------------------------")
+	} else {
+		fmt.Println("action_type\tworkspace\tthreshold\tapprovals\trejections")
+	}
+
+	for _, ct := range thresholds {
+		wsLabel := "(global)"
+		if ct.Workspace != "" {
+			wsLabel = ct.Workspace
+		}
+		defaultLabel := ""
+		if ct.Approvals == 0 && ct.Rejections == 0 {
+			defaultLabel = "  (default)"
+		}
+
+		if tty {
+			fmt.Printf("%-18s  %-10s  threshold=%.2f  approvals=%-4d  rejections=%d%s\n",
+				ct.ActionType, wsLabel, ct.Threshold, ct.Approvals, ct.Rejections, defaultLabel)
+		} else {
+			fmt.Printf("%s\t%s\t%.2f\t%d\t%d\n",
+				ct.ActionType, wsLabel, ct.Threshold, ct.Approvals, ct.Rejections)
+		}
+	}
+	return nil
+}
+
 // printQueueUsage prints a short usage block for the queue command group.
 func printQueueUsage() {
 	fmt.Println("Usage:")
@@ -311,4 +380,5 @@ func printQueueUsage() {
 	fmt.Println("  devtrack queue reject  <id>      Reject action (will not be dispatched)")
 	fmt.Println("  devtrack queue edit    <id> <json> Replace payload JSON of action")
 	fmt.Println("  devtrack queue status            Show summary: pending / posted / rejected")
+	fmt.Println("  devtrack queue thresholds        Show per-type adaptive confidence thresholds")
 }
