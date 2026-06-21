@@ -2,6 +2,34 @@
 
 ---
 
+### [2026-06-22 00:00] TASK-088 — Adaptive confidence thresholds
+
+**Original message**: "feat(thresholds): adaptive confidence thresholds — QueueExecutor defers below threshold, devtrack queue thresholds CLI (TASK-088)"
+**DevTrack enhanced it to**: AI provider unreachable — committed with original message as-is
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-088 marked COMPLETE; all 8 criteria ticked
+**Time**: ~30 minutes
+**Friction**: LOW
+**Notes**:
+- Step 1 (RecordApproval/RecordRejection wiring): Added to TUI approve (`a` key) and reject (`r` key) in `tui_queue.go` — synchronous DB writes before tea.Cmd return. Added to CLI `devtrack queue approve` and `devtrack queue reject` in `cli_queue.go` — fetches action from DB to get ActionType/Workspace then calls RecordApproval/RecordRejection. Added to QueueExecutor auto-approve success path in `queue_executor.go` — uses fullAction when available for workspace field.
+- Step 2 (QueueExecutor threshold check): Added threshold check in `tick()` between expiry check and execute call. Fetches full PendingAction from local SQLite (QueuePendingAction from Python API only has ID/ActionType/Target/ExpiresAt/Status — no Confidence or Workspace). Fail-open: if GetOrCreateThreshold errors, execution proceeds. If fullAction missing from local DB, execution proceeds. Also resolved a variable shadowing issue where the old code re-declared `fullAction` with `:=` inside the success branch — renamed to `latestAction` for the post-execution dialectic infer call.
+- Step 3 (devtrack queue thresholds CLI): Added `thresholds` case to handleQueue() switch. Implemented `runQueueThresholds()` — calls `database.ListThresholds()`, formats as aligned table for TTY or tab-separated for pipes. Shows `(global)` when workspace is empty, `(default)` suffix when approvals=0 and rejections=0.
+- Step 4 (unit tests): Created `devtrack_client/internal/db/thresholds_test.go` with 4 tests: RecordApproval×3 (threshold=0.90), RecordRejection after 3 approvals (threshold=0.85), ListThresholds returns inserted rows, and threshold cap behavior. All 4 pass; full DB suite 24/24 pass.
+- `go build ./...` and `go vet ./...`: CLEAN
+- Test baseline: full suite all pass (no regressions); DB package 24 tests pass
+
+## Task Summary — TASK-088: Adaptive confidence thresholds — 2026-06-22
+
+- Total commits: 1 (75331c4)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~3 min/day (system self-calibrates; no manual threshold tuning needed)
+- Blockers encountered: QueuePendingAction struct missing Confidence/Workspace — resolved by fetching full PendingAction from local SQLite in the executor; variable shadowing in existing code resolved cleanly
+- One thing that still feels rough: "The executor now does an extra GetPendingAction() DB lookup per expired action for the threshold check — this is fast (SQLite local) but doubles the DB hits per cycle. Future optimization: add Confidence/Workspace to QueuePendingAction so the Python API returns them."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-18 21:10] TASK-086 — Hermes 3 reasoning loop (all parts)
 
 **Original message**: "feat(dialectic): TASK-086 add Hermes 3 reasoning loop — Python module, endpoint, Go client, tests"

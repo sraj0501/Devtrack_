@@ -2915,20 +2915,22 @@ TASK-085 or add a new `thresholds_test.go`):
 - `ListThresholds()` returns all rows.
 
 **Acceptance criteria**:
-- [ ] `RecordApproval` called after: TUI approve, CLI approve, auto-approve (executor)
-- [ ] `RecordRejection` called after: TUI reject, CLI reject
-- [ ] `QueueExecutor` defers actions whose `confidence < threshold.Threshold` even if
+- [x] `RecordApproval` called after: TUI approve, CLI approve, auto-approve (executor)
+- [x] `RecordRejection` called after: TUI reject, CLI reject
+- [x] `QueueExecutor` defers actions whose `confidence < threshold.Threshold` even if
       `expires_at` has passed; logs `[queue: deferring action ...]`
-- [ ] `devtrack queue thresholds` prints current per-type threshold table
-- [ ] When no rows exist, prints the "No thresholds recorded yet" message
-- [ ] Threshold formula correct: approvals/(approvals+rejections) * 0.20 + 0.70, capped at 0.95
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] Unit tests for `RecordApproval`/`RecordRejection` threshold math pass
+- [x] `devtrack queue thresholds` prints current per-type threshold table
+- [x] When no rows exist, prints the "No thresholds recorded yet" message
+- [x] Threshold formula correct: approvals/(approvals+rejections) * 0.20 + 0.70, capped at 0.95
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] Unit tests for `RecordApproval`/`RecordRejection` threshold math pass
 
 **Assigned to**: engineer
 **Started**: 2026-06-21
-**Engineer status**: started — Step 1: wire RecordApproval/RecordRejection in TUI + executor + CLI; Step 2: threshold check in QueueExecutor; Step 3: devtrack queue thresholds CLI; Step 4: unit tests
+**Engineer status**: 8/8 criteria done — last commit: 75331c4 "feat(thresholds): adaptive confidence thresholds — QueueExecutor defers below threshold, devtrack queue thresholds CLI (TASK-088)" — 2026-06-22 00:00
 **Blockers**: none (TASK-085 merged PR #192, TASK-086 merged PR #193)
+
+**COMPLETE** — ready for PM review — 2026-06-22 00:00
 
 ---
 
