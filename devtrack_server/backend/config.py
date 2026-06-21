@@ -206,6 +206,13 @@ def ipc_port() -> str:
     return get("IPC_PORT", "35893")
 
 
+def get_devtrack_control_port() -> int:
+    """Port for the Go daemon's internal HTTP control API.
+    DEVTRACK_SERVER_HTTP_PORT (default: 35894).
+    Used by Python modules that call back to the Go daemon (e.g. /dialectic/query)."""
+    return get_int("DEVTRACK_SERVER_HTTP_PORT", 35894)
+
+
 # --- Azure DevOps (supports both AZURE_DEVOPS_PAT and AZURE_API_KEY for compatibility) ---
 def azure_pat() -> str:
     """Azure DevOps Personal Access Token."""

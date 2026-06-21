@@ -35,10 +35,15 @@ import logging
 import os
 from typing import Optional
 
+from backend.inference_retriever import INFERENCE_MIN_CONFIDENCE, InferenceRetriever
+
 logger = logging.getLogger(__name__)
 
 _instance = None   # PersonalizedAI | None
 _loaded = False    # True once load has been attempted (avoids repeated retries)
+
+_inference_retriever: Optional[InferenceRetriever] = None  # lazy singleton
+_inference_retriever_loaded: bool = False
 
 
 # ── singleton loader ──────────────────────────────────────────────────────────
@@ -120,6 +125,21 @@ def _trigger_rag_index(ai) -> None:
         logger.debug("personalization: RAG indexing error: %s", exc)
 
 
+# ── Inference retriever singleton ─────────────────────────────────────────────
+
+def _get_inference_retriever() -> Optional[InferenceRetriever]:
+    """Return singleton InferenceRetriever (created on first call)."""
+    global _inference_retriever, _inference_retriever_loaded
+    if _inference_retriever_loaded:
+        return _inference_retriever
+    _inference_retriever_loaded = True
+    try:
+        _inference_retriever = InferenceRetriever()
+    except Exception as exc:
+        logger.debug("personalization: could not create InferenceRetriever: %s", exc)
+    return _inference_retriever
+
+
 # ── RAG retrieval ─────────────────────────────────────────────────────────────
 
 def _rag_examples(query_text: str, context_type: str) -> str:
@@ -188,13 +208,37 @@ def inject_style(
         prefix_parts.append(examples)
 
     if not prefix_parts:
-        return prompt
+        augmented = prompt
+    else:
+        augmented = "\n\n".join(prefix_parts) + "\n\n" + prompt
 
-    return "\n\n".join(prefix_parts) + "\n\n" + prompt
+    # 3. Reasoned inferences from the dialectic model (Signal 3 — Phase 6)
+    inference_section = ""
+    try:
+        retriever = _get_inference_retriever()
+        if retriever is not None:
+            top_infs = retriever.get_top_inferences(context_type, query_text or "", top_k=5)
+            if top_infs:
+                lines = [
+                    f"- {inf['inference']}"
+                    for inf in top_infs
+                    if inf.get("confidence", 0) > INFERENCE_MIN_CONFIDENCE
+                ]
+                if lines:
+                    inference_section = (
+                        "\n\nInferred developer patterns (from past interactions):\n"
+                        + "\n".join(lines)
+                    )
+    except Exception:
+        pass  # graceful — never raises
+
+    return augmented + inference_section
 
 
 def reset_cache() -> None:
-    """Reset the singleton — useful in tests when the data dir changes."""
-    global _instance, _loaded
+    """Reset the singletons — useful in tests when the data dir changes."""
+    global _instance, _loaded, _inference_retriever, _inference_retriever_loaded
     _instance = None
     _loaded = False
+    _inference_retriever = None
+    _inference_retriever_loaded = False

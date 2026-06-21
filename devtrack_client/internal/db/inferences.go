@@ -121,6 +121,35 @@ func (d *Database) ListInferences(contextType string, limit int) ([]Inference, e
 	return scanInferences(rows)
 }
 
+// ListInferencesByConfidence returns up to limit inferences ordered by confidence DESC,
+// optionally filtered by contextType. Pass contextType="" to return all context types.
+// This is used by /dialectic/query when no search query is provided.
+func (d *Database) ListInferencesByConfidence(contextType string, limit int) ([]Inference, error) {
+	var rows *sql.Rows
+	var err error
+	if contextType == "" {
+		rows, err = d.db.Query(`
+			SELECT id, context_type, subject, inference, evidence, confidence, source, created_at, updated_at
+			FROM inferences
+			ORDER BY confidence DESC
+			LIMIT ?
+		`, limit)
+	} else {
+		rows, err = d.db.Query(`
+			SELECT id, context_type, subject, inference, evidence, confidence, source, created_at, updated_at
+			FROM inferences
+			WHERE context_type = ?
+			ORDER BY confidence DESC
+			LIMIT ?
+		`, contextType, limit)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ListInferencesByConfidence: %w", err)
+	}
+	defer rows.Close()
+	return scanInferences(rows)
+}
+
 // SearchInferences performs a full-text search over the inferences_fts virtual table.
 // It returns up to limit results ordered by FTS5 rank (best match first).
 func (d *Database) SearchInferences(query string, limit int) ([]Inference, error) {

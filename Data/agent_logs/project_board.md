@@ -1,8 +1,8 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-18 by PM — TASK-085 + TASK-086 COMPLETE (PRs #192, #193 merged); TASK-087 next_
-_Next DevTrack task ID: TASK-087_
-_Active branch: `dev`_
+_Last updated: 2026-06-21 by PM — TASK-087 IN PROGRESS on feat/TASK-087-inference-injection_
+_Next DevTrack task ID: TASK-088_
+_Active branch: `feat/TASK-087-inference-injection`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -2816,8 +2816,9 @@ Run `uv run pytest backend/tests/ -q` — no regressions beyond documented basel
 - [ ] Python tests pass: injection present, graceful degradation, confidence gate
 - [ ] `uv run pytest backend/tests/ -q` — no regressions
 
-**Engineer status**: not started
-**Blockers**: TASK-086 must be merged first
+**Engineer status**: started — Step 1: inference_retriever.py + config entry; Step 2: Go /dialectic/query endpoint + ListInferencesByConfidence; Step 3: inject_style() Signal 3; Step 4: tests
+**Started**: 2026-06-21
+**Blockers**: none (TASK-086 merged at PR #193)
 
 ---
 

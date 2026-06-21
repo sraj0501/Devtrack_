@@ -72,6 +72,10 @@ const RouteInternalStats = "/internal/stats"
 // RouteInternalActiveSession serves the active work session for the Python server.
 const RouteInternalActiveSession = "/internal/sessions/active"
 
+// RouteDialecticQuery serves the inference query endpoint for the Python server's
+// inject_style() Signal 3 path. Auth-gated by X-DevTrack-API-Key.
+const RouteDialecticQuery = "/dialectic/query"
+
 // startInternalHTTPServer starts a lightweight HTTP server on
 // config.GetIPCHost():config.GetDevTrackServerHTTPPort() that exposes internal control
 // endpoints not intended for external consumers.
@@ -82,12 +86,14 @@ const RouteInternalActiveSession = "/internal/sessions/active"
 //	POST /internal/reload-config      — reload .env + YAML config without restart
 //	GET  /internal/stats              — trigger throughput stats for Python admin panel
 //	GET  /internal/sessions/active    — active work session for Python server
+//	GET  /dialectic/query             — FTS5 inference search for Python inject_style()
 func (d *Daemon) startInternalHTTPServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc(RouteInternalForceTrigger, d.handleInternalForceTrigger)
 	mux.HandleFunc(RouteInternalReloadConfig, d.handleInternalReloadConfig)
 	mux.HandleFunc(RouteInternalStats, d.handleInternalStats)
 	mux.HandleFunc(RouteInternalActiveSession, d.handleInternalActiveSession)
+	mux.HandleFunc(RouteDialecticQuery, d.handleDialecticQuery)
 
 	addr := fmt.Sprintf("%s:%d", config.GetIPCHost(), config.GetDevTrackServerHTTPPort())
 	server := &http.Server{
@@ -247,6 +253,89 @@ func (d *Daemon) handleInternalReloadConfig(w http.ResponseWriter, r *http.Reque
 		"reloaded": reloaded,
 		"errors":   errs,
 	})
+}
+
+// handleDialecticQuery handles GET /dialectic/query.
+// Auth: X-DevTrack-API-Key header (checked when DEVTRACK_API_KEY env var is set).
+//
+// Query params:
+//
+//	q            — FTS5 search query; if empty, returns inferences ordered by confidence DESC
+//	context_type — optional filter by context type (commit, comment, report, etc.)
+//	limit        — max results (default 5)
+//
+// Response: {"inferences": [{"id": N, "subject": "...", "inference": "...", "confidence": 0.85}, ...]}
+func (d *Daemon) handleDialecticQuery(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Auth gate — check API key when configured.
+	configuredKey := os.Getenv("DEVTRACK_API_KEY")
+	if configuredKey != "" {
+		sentKey := r.Header.Get("X-DevTrack-API-Key")
+		if sentKey != configuredKey {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]string{"error": "forbidden"})
+			return
+		}
+	}
+
+	q := r.URL.Query().Get("q")
+	contextType := r.URL.Query().Get("context_type")
+
+	limit := 5
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if parsed, err := fmt.Sscanf(lStr, "%d", &limit); err != nil || parsed != 1 || limit < 1 {
+			limit = 5
+		}
+	}
+
+	database, err := db.NewDatabase()
+	if err != nil {
+		log.Printf("dialectic/query: failed to open DB: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"error": "db unavailable"})
+		return
+	}
+	defer database.Close()
+
+	var inferences []db.Inference
+	if q != "" {
+		inferences, err = database.SearchInferences(q, limit)
+	} else {
+		inferences, err = database.ListInferencesByConfidence(contextType, limit)
+	}
+	if err != nil {
+		log.Printf("dialectic/query: query error: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	// Serialize to the response shape expected by InferenceRetriever.
+	type inferenceJSON struct {
+		ID         int64   `json:"id"`
+		Subject    string  `json:"subject"`
+		Inference  string  `json:"inference"`
+		Confidence float64 `json:"confidence"`
+	}
+	out := make([]inferenceJSON, 0, len(inferences))
+	for _, inf := range inferences {
+		out = append(out, inferenceJSON{
+			ID:         inf.ID,
+			Subject:    inf.Subject,
+			Inference:  inf.Inference,
+			Confidence: inf.Confidence,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"inferences": out})
 }
 
 // startHeartbeatLoop sends a client heartbeat to the server on startup and
