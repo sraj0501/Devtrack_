@@ -72,6 +72,10 @@ const RouteInternalStats = "/internal/stats"
 // RouteInternalActiveSession serves the active work session for the Python server.
 const RouteInternalActiveSession = "/internal/sessions/active"
 
+// RouteDialecticPromoteSkill is the path for the daemon's skill promotion endpoint.
+// Called by the Python SkillDetector when a pattern cluster crosses the emergence threshold.
+const RouteDialecticPromoteSkill = "/dialectic/promote-skill"
+
 // startInternalHTTPServer starts a lightweight HTTP server on
 // config.GetIPCHost():config.GetDevTrackServerHTTPPort() that exposes internal control
 // endpoints not intended for external consumers.
@@ -82,12 +86,14 @@ const RouteInternalActiveSession = "/internal/sessions/active"
 //	POST /internal/reload-config      — reload .env + YAML config without restart
 //	GET  /internal/stats              — trigger throughput stats for Python admin panel
 //	GET  /internal/sessions/active    — active work session for Python server
+//	POST /dialectic/promote-skill     — upsert a promoted skill from Python SkillDetector
 func (d *Daemon) startInternalHTTPServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc(RouteInternalForceTrigger, d.handleInternalForceTrigger)
 	mux.HandleFunc(RouteInternalReloadConfig, d.handleInternalReloadConfig)
 	mux.HandleFunc(RouteInternalStats, d.handleInternalStats)
 	mux.HandleFunc(RouteInternalActiveSession, d.handleInternalActiveSession)
+	mux.HandleFunc(RouteDialecticPromoteSkill, d.handleDialecticPromoteSkill)
 
 	addr := fmt.Sprintf("%s:%d", config.GetIPCHost(), config.GetDevTrackServerHTTPPort())
 	server := &http.Server{
@@ -294,5 +300,87 @@ func (d *Daemon) startHeartbeatLoop() {
 			}
 		}
 	}()
+}
+
+// handleDialecticPromoteSkill handles POST /dialectic/promote-skill.
+// Called by the Python SkillDetector when a recurring inference cluster crosses
+// the emergence threshold without developer corrections.
+//
+// Auth: X-DevTrack-API-Key header (same key as all /trigger/* endpoints).
+// Body:  {"name":"...","description":"...","context_type":"...","evidence_count":N}
+// Response 200: {"status":"promoted","skill_id":<int64>} on new insert,
+//               {"status":"already_exists"} on upsert of an existing name.
+func (d *Daemon) handleDialecticPromoteSkill(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Auth: validate X-DevTrack-API-Key when DEVTRACK_API_KEY is configured.
+	expected := os.Getenv("DEVTRACK_API_KEY")
+	if expected != "" {
+		key := r.Header.Get("X-DevTrack-API-Key")
+		if key != expected {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+	}
+
+	var body struct {
+		Name          string `json:"name"`
+		Description   string `json:"description"`
+		ContextType   string `json:"context_type"`
+		EvidenceCount int    `json:"evidence_count"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid JSON body"})
+		return
+	}
+	if body.Name == "" || body.ContextType == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "name and context_type are required"})
+		return
+	}
+
+	database, err := db.NewDatabase()
+	if err != nil {
+		log.Printf("promote-skill: failed to open DB: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"error": "db unavailable"})
+		return
+	}
+	defer database.Close()
+
+	// Check if the skill already exists so we can return the correct status string.
+	existing, err := database.GetSkill(body.Name)
+	if err != nil {
+		log.Printf("promote-skill: GetSkill error: %v", err)
+	}
+
+	if err := database.UpsertSkill(body.Name, body.Description, body.ContextType, body.EvidenceCount); err != nil {
+		log.Printf("promote-skill: UpsertSkill error: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if existing != nil {
+		json.NewEncoder(w).Encode(map[string]string{"status": "already_exists"})
+		return
+	}
+	// Fetch the newly inserted row to return its ID.
+	skill, err := database.GetSkill(body.Name)
+	if err != nil || skill == nil {
+		json.NewEncoder(w).Encode(map[string]string{"status": "promoted"})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]any{"status": "promoted", "skill_id": skill.ID})
 }
 
