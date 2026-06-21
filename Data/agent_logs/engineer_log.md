@@ -2,6 +2,28 @@
 
 ---
 
+### [2026-06-22 01:01] TASK-090 — TUI correction interface (all parts)
+
+**Original message**: "feat(tui): TUI correction interface — f key flags inference overlay + CLI queue flag (TASK-090)"
+**DevTrack enhanced it to**: (AI provider unreachable — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-090 marked COMPLETE; all 9 criteria ticked
+**Time**: ~25 minutes
+**Friction**: LOW
+**Notes**: `textinput` from charmbracelet/bubbles was already in go.mod but its transitive dep `github.com/atotto/clipboard` was missing from go.sum — resolved with `go get github.com/charmbracelet/bubbles/textinput@v1.0.0`. TestCorrectionRoundTrip already existed from TASK-085; added TestInsertCorrectionRoundTrip (tui-specific fields) and TestUpdateInferenceConfidence. ListInferences already had ORDER BY created_at DESC so no LatestInference helper was needed. CLI uses flagged_from="cli" not "tui" for correct channel attribution.
+
+## Task Summary — TASK-090: TUI correction interface — 2026-06-22
+
+- Total commits: 1
+- Acceptance criteria met: 9/9
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~5 min (dev no longer needs to manually correct inferences via raw SQL)
+- Blockers encountered: none
+- One thing that still feels rough: "The overlay is rendered as plain text beneath the list rather than a floating box — lipgloss doesn't support true z-index overlays in terminal, so this is a deliberate trade-off."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-18 21:10] TASK-086 — Hermes 3 reasoning loop (all parts)
 
 **Original message**: "feat(dialectic): TASK-086 add Hermes 3 reasoning loop — Python module, endpoint, Go client, tests"

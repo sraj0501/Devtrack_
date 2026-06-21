@@ -3172,19 +3172,21 @@ Go: `devtrack_client/internal/db/inferences_test.go`:
 Python: no new Python tests needed for this task (correction path is entirely Go-side).
 
 **Acceptance criteria**:
-- [ ] `f` key in TUI Queue tab triggers inline text input overlay
-- [ ] Submitting text creates a `corrections` row in SQLite with `flagged_from="tui"`,
+- [x] `f` key in TUI Queue tab triggers inline text input overlay
+- [x] Submitting text creates a `corrections` row in SQLite with `flagged_from="tui"`,
       `weight=2.0`
-- [ ] The flagged inference's confidence is halved immediately in `inferences` table
-- [ ] `Esc` cancels flagging mode with no DB changes
-- [ ] "No inference recorded for this action." shown when no matching inference exists
-- [ ] Footer updated: `[f]lag-wrong-inference` visible when not in flagging mode
-- [ ] `devtrack queue flag <action_id> "<text>"` CLI command works identically (channel parity)
-- [ ] `go build ./...` and `go vet ./...` pass clean
-- [ ] DB round-trip tests pass: correction insert, confidence halving
+- [x] The flagged inference's confidence is halved immediately in `inferences` table
+- [x] `Esc` cancels flagging mode with no DB changes
+- [x] "No inference recorded for this action." shown when no matching inference exists
+- [x] Footer updated: `[f]lag-wrong-inference` visible when not in flagging mode
+- [x] `devtrack queue flag <action_id> "<text>"` CLI command works identically (channel parity)
+- [x] `go build ./...` and `go vet ./...` pass clean
+- [x] DB round-trip tests pass: correction insert, confidence halving
 
-**Engineer status**: started — implementing TUI flag overlay (Step 1), footer update (Step 2), CLI queue flag (Step 3), DB tests (Step 4)
-**Blockers**: none (TASK-085 and TASK-086 merged to dev; branch feat/TASK-090-tui-correction created from dev)
+**Engineer status**: 9/9 criteria done — last commit: df76b09 "feat(tui): TUI correction interface — f key flags inference overlay + CLI queue flag (TASK-090)" — 2026-06-22 01:01
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-22 01:01
 
 ---
 
