@@ -26,7 +26,7 @@ func NewCLI() (*CLI, error) {
 			cmd == "azure-list" || cmd == "azure-sync" || cmd == "azure-view" ||
 			cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
 			cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
-			cmd == "ticket-sync" || cmd == "narrative" || cmd == "eod" {
+			cmd == "ticket-sync" || cmd == "narrative" || cmd == "eod" || cmd == "skills" {
 			return &CLI{}, nil
 		}
 	}
@@ -245,6 +245,8 @@ func (cli *CLI) Execute() error {
 		return cli.handlePlan()
 	case "boardroom":
 		return cli.handleBoardroom()
+	case "skills":
+		return cli.handleSkills()
 	default:
 		// Check if it's a test command
 		if strings.HasPrefix(command, "test-") {
