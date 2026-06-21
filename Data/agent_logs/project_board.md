@@ -3065,19 +3065,23 @@ Go: extend `inferences_test.go` or new `skills_test.go`:
 - `ListSkills()` returns the inserted rows.
 
 **Acceptance criteria**:
-- [ ] Migration 011 (`skills` table) appended to `allMigrations`; idempotent
-- [ ] `Skill` struct + `UpsertSkill` + `ListSkills` exist in Go `inferences.go`
-- [ ] `POST /dialectic/promote-skill` endpoint exists in Go daemon internal API; calls `UpsertSkill`
-- [ ] `skill_detector.py` exists; `detect_and_promote()` returns `[]` on failure, never raises
-- [ ] Emergence threshold is a named constant (`EMERGENCE_THRESHOLD = 5`), not a magic number
-- [ ] Inferences with a correction are excluded from promotion candidates
-- [ ] `devtrack skills` CLI command prints skills table or "No skills" message
-- [ ] `go build ./...` and `go vet ./...` pass clean
-- [ ] Python tests: threshold, correction exclusion, sub-threshold cases all pass
-- [ ] `uv run pytest backend/tests/ -q` — no regressions
+- [x] Migration 011 (`skills` table) appended to `allMigrations`; idempotent
+- [x] `Skill` struct + `UpsertSkill` + `ListSkills` exist in Go `inferences.go`
+- [x] `POST /dialectic/promote-skill` endpoint exists in Go daemon internal API; calls `UpsertSkill`
+- [x] `skill_detector.py` exists; `detect_and_promote()` returns `[]` on failure, never raises
+- [x] Emergence threshold is a named constant (`EMERGENCE_THRESHOLD = 5`), not a magic number
+- [x] Inferences with a correction are excluded from promotion candidates
+- [x] `devtrack skills` CLI command prints skills table or "No skills" message
+- [x] `go build ./...` and `go vet ./...` pass clean
+- [x] Python tests: threshold, correction exclusion, sub-threshold cases all pass
+- [x] `uv run pytest backend/tests/ -q` — no regressions
 
-**Engineer status**: not started
-**Blockers**: TASK-086 must be merged first (inferences must exist in DB to detect)
+**Engineer status**: 10/10 criteria done — last commit: 1ec9f81 "feat(cli): add devtrack skills command to list promoted skills table" — 2026-06-22 00:45
+**Blockers**: none (TASK-086 merged to dev via PR #193)
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/197 (targets dev)
+
+**COMPLETE** — ready for PM review — 2026-06-22 00:45
 
 ---
 

@@ -274,6 +274,30 @@ var allMigrations = []Migration{
 			return err
 		},
 	},
+	{
+		ID:          "011-create-skills",
+		Description: "Create skills table for Phase 6 skill emergence detection",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS skills (
+					id             INTEGER PRIMARY KEY AUTOINCREMENT,
+					name           TEXT    NOT NULL UNIQUE,
+					description    TEXT    NOT NULL,
+					context_type   TEXT    NOT NULL,
+					evidence_count INTEGER NOT NULL DEFAULT 0,
+					promoted_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+					last_seen_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+				);
+			`)
+			return err
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded

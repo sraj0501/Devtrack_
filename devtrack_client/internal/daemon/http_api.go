@@ -72,9 +72,9 @@ const RouteInternalStats = "/internal/stats"
 // RouteInternalActiveSession serves the active work session for the Python server.
 const RouteInternalActiveSession = "/internal/sessions/active"
 
-// RouteDialecticQuery serves the inference query endpoint for the Python server's
-// inject_style() Signal 3 path. Auth-gated by X-DevTrack-API-Key.
-const RouteDialecticQuery = "/dialectic/query"
+// RouteDialecticPromoteSkill is the path for the daemon's skill promotion endpoint.
+// Called by the Python SkillDetector when a pattern cluster crosses the emergence threshold.
+const RouteDialecticPromoteSkill = "/dialectic/promote-skill"
 
 // startInternalHTTPServer starts a lightweight HTTP server on
 // config.GetIPCHost():config.GetDevTrackServerHTTPPort() that exposes internal control
@@ -86,14 +86,14 @@ const RouteDialecticQuery = "/dialectic/query"
 //	POST /internal/reload-config      — reload .env + YAML config without restart
 //	GET  /internal/stats              — trigger throughput stats for Python admin panel
 //	GET  /internal/sessions/active    — active work session for Python server
-//	GET  /dialectic/query             — FTS5 inference search for Python inject_style()
+//	POST /dialectic/promote-skill     — upsert a promoted skill from Python SkillDetector
 func (d *Daemon) startInternalHTTPServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc(RouteInternalForceTrigger, d.handleInternalForceTrigger)
 	mux.HandleFunc(RouteInternalReloadConfig, d.handleInternalReloadConfig)
 	mux.HandleFunc(RouteInternalStats, d.handleInternalStats)
 	mux.HandleFunc(RouteInternalActiveSession, d.handleInternalActiveSession)
-	mux.HandleFunc(RouteDialecticQuery, d.handleDialecticQuery)
+	mux.HandleFunc(RouteDialecticPromoteSkill, d.handleDialecticPromoteSkill)
 
 	addr := fmt.Sprintf("%s:%d", config.GetIPCHost(), config.GetDevTrackServerHTTPPort())
 	server := &http.Server{
@@ -255,89 +255,6 @@ func (d *Daemon) handleInternalReloadConfig(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-// handleDialecticQuery handles GET /dialectic/query.
-// Auth: X-DevTrack-API-Key header (checked when DEVTRACK_API_KEY env var is set).
-//
-// Query params:
-//
-//	q            — FTS5 search query; if empty, returns inferences ordered by confidence DESC
-//	context_type — optional filter by context type (commit, comment, report, etc.)
-//	limit        — max results (default 5)
-//
-// Response: {"inferences": [{"id": N, "subject": "...", "inference": "...", "confidence": 0.85}, ...]}
-func (d *Daemon) handleDialecticQuery(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Auth gate — check API key when configured.
-	configuredKey := os.Getenv("DEVTRACK_API_KEY")
-	if configuredKey != "" {
-		sentKey := r.Header.Get("X-DevTrack-API-Key")
-		if sentKey != configuredKey {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(map[string]string{"error": "forbidden"})
-			return
-		}
-	}
-
-	q := r.URL.Query().Get("q")
-	contextType := r.URL.Query().Get("context_type")
-
-	limit := 5
-	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if parsed, err := fmt.Sscanf(lStr, "%d", &limit); err != nil || parsed != 1 || limit < 1 {
-			limit = 5
-		}
-	}
-
-	database, err := db.NewDatabase()
-	if err != nil {
-		log.Printf("dialectic/query: failed to open DB: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]string{"error": "db unavailable"})
-		return
-	}
-	defer database.Close()
-
-	var inferences []db.Inference
-	if q != "" {
-		inferences, err = database.SearchInferences(q, limit)
-	} else {
-		inferences, err = database.ListInferencesByConfidence(contextType, limit)
-	}
-	if err != nil {
-		log.Printf("dialectic/query: query error: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-		return
-	}
-
-	// Serialize to the response shape expected by InferenceRetriever.
-	type inferenceJSON struct {
-		ID         int64   `json:"id"`
-		Subject    string  `json:"subject"`
-		Inference  string  `json:"inference"`
-		Confidence float64 `json:"confidence"`
-	}
-	out := make([]inferenceJSON, 0, len(inferences))
-	for _, inf := range inferences {
-		out = append(out, inferenceJSON{
-			ID:         inf.ID,
-			Subject:    inf.Subject,
-			Inference:  inf.Inference,
-			Confidence: inf.Confidence,
-		})
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"inferences": out})
-}
-
 // startHeartbeatLoop sends a client heartbeat to the server on startup and
 // every 60 seconds so the admin dashboard can show connected clients and their
 // monitored workspaces.  Failures are logged but never crash the daemon.
@@ -383,5 +300,87 @@ func (d *Daemon) startHeartbeatLoop() {
 			}
 		}
 	}()
+}
+
+// handleDialecticPromoteSkill handles POST /dialectic/promote-skill.
+// Called by the Python SkillDetector when a recurring inference cluster crosses
+// the emergence threshold without developer corrections.
+//
+// Auth: X-DevTrack-API-Key header (same key as all /trigger/* endpoints).
+// Body:  {"name":"...","description":"...","context_type":"...","evidence_count":N}
+// Response 200: {"status":"promoted","skill_id":<int64>} on new insert,
+//               {"status":"already_exists"} on upsert of an existing name.
+func (d *Daemon) handleDialecticPromoteSkill(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Auth: validate X-DevTrack-API-Key when DEVTRACK_API_KEY is configured.
+	expected := os.Getenv("DEVTRACK_API_KEY")
+	if expected != "" {
+		key := r.Header.Get("X-DevTrack-API-Key")
+		if key != expected {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+	}
+
+	var body struct {
+		Name          string `json:"name"`
+		Description   string `json:"description"`
+		ContextType   string `json:"context_type"`
+		EvidenceCount int    `json:"evidence_count"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid JSON body"})
+		return
+	}
+	if body.Name == "" || body.ContextType == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "name and context_type are required"})
+		return
+	}
+
+	database, err := db.NewDatabase()
+	if err != nil {
+		log.Printf("promote-skill: failed to open DB: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"error": "db unavailable"})
+		return
+	}
+	defer database.Close()
+
+	// Check if the skill already exists so we can return the correct status string.
+	existing, err := database.GetSkill(body.Name)
+	if err != nil {
+		log.Printf("promote-skill: GetSkill error: %v", err)
+	}
+
+	if err := database.UpsertSkill(body.Name, body.Description, body.ContextType, body.EvidenceCount); err != nil {
+		log.Printf("promote-skill: UpsertSkill error: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if existing != nil {
+		json.NewEncoder(w).Encode(map[string]string{"status": "already_exists"})
+		return
+	}
+	// Fetch the newly inserted row to return its ID.
+	skill, err := database.GetSkill(body.Name)
+	if err != nil || skill == nil {
+		json.NewEncoder(w).Encode(map[string]string{"status": "promoted"})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]any{"status": "promoted", "skill_id": skill.ID})
 }
 

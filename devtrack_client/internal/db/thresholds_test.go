@@ -18,9 +18,9 @@ func TestRecordApprovalThreeTimes(t *testing.T) {
 	actionType := "post_comment"
 	workspace := ""
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if err := d.RecordApproval(actionType, workspace); err != nil {
-			t.Fatalf("RecordApproval #%d: %v", i+1, err)
+			t.Fatalf("RecordApproval: %v", err)
 		}
 	}
 
@@ -56,9 +56,9 @@ func TestRecordRejectionAfterApprovals(t *testing.T) {
 	workspace := ""
 
 	// First 3 approvals (mirrors TestRecordApprovalThreeTimes state).
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if err := d.RecordApproval(actionType, workspace); err != nil {
-			t.Fatalf("RecordApproval #%d: %v", i+1, err)
+			t.Fatalf("RecordApproval: %v", err)
 		}
 	}
 
