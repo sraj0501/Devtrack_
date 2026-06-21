@@ -343,6 +343,93 @@ func (d *Database) UpdateThreshold(actionType, workspace string, newThreshold fl
 }
 
 // ---------------------------------------------------------------------------
+// Skill CRUD
+// ---------------------------------------------------------------------------
+
+// Skill represents a promoted developer pattern — a recurring inference cluster
+// that has crossed the emergence threshold without developer corrections.
+type Skill struct {
+	ID            int64
+	Name          string
+	Description   string
+	ContextType   string
+	EvidenceCount int
+	PromotedAt    time.Time
+	LastSeenAt    time.Time
+}
+
+// UpsertSkill inserts a new skill or updates an existing one by name.
+// On conflict: updates description, evidence_count (taking the higher value),
+// and last_seen_at; leaves promoted_at unchanged.
+func (d *Database) UpsertSkill(name, description, contextType string, evidenceCount int) error {
+	_, err := d.db.Exec(`
+		INSERT INTO skills (name, description, context_type, evidence_count)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT(name) DO UPDATE SET
+			description    = excluded.description,
+			evidence_count = MAX(evidence_count, excluded.evidence_count),
+			last_seen_at   = datetime('now')
+	`, name, description, contextType, evidenceCount)
+	if err != nil {
+		return fmt.Errorf("UpsertSkill: %w", err)
+	}
+	return nil
+}
+
+// ListSkills returns all skills ordered by promoted_at descending (newest first).
+func (d *Database) ListSkills() ([]Skill, error) {
+	rows, err := d.db.Query(`
+		SELECT id, name, description, context_type, evidence_count, promoted_at, last_seen_at
+		FROM skills
+		ORDER BY promoted_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("ListSkills: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Skill
+	for rows.Next() {
+		var s Skill
+		var promotedAt, lastSeenAt string
+		if err := rows.Scan(
+			&s.ID, &s.Name, &s.Description, &s.ContextType,
+			&s.EvidenceCount, &promotedAt, &lastSeenAt,
+		); err != nil {
+			return nil, fmt.Errorf("ListSkills scan: %w", err)
+		}
+		s.PromotedAt = parseTimestamp(promotedAt)
+		s.LastSeenAt = parseTimestamp(lastSeenAt)
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// GetSkill retrieves a single skill by name.
+// Returns nil, nil when no skill with that name exists.
+func (d *Database) GetSkill(name string) (*Skill, error) {
+	var s Skill
+	var promotedAt, lastSeenAt string
+	err := d.db.QueryRow(`
+		SELECT id, name, description, context_type, evidence_count, promoted_at, last_seen_at
+		FROM skills
+		WHERE name = ?
+	`, name).Scan(
+		&s.ID, &s.Name, &s.Description, &s.ContextType,
+		&s.EvidenceCount, &promotedAt, &lastSeenAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("GetSkill: %w", err)
+	}
+	s.PromotedAt = parseTimestamp(promotedAt)
+	s.LastSeenAt = parseTimestamp(lastSeenAt)
+	return &s, nil
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
