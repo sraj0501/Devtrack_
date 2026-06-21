@@ -1,8 +1,8 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-18 by PM — TASK-085 + TASK-086 COMPLETE (PRs #192, #193 merged); TASK-087 next_
-_Next DevTrack task ID: TASK-087_
-_Active branch: `dev`_
+_Last updated: 2026-06-21 by PM — TASK-087 COMPLETE (PR #195 open, targeting dev); TASK-088 IN PROGRESS_
+_Next DevTrack task ID: TASK-089_
+_Active branch: `feat/TASK-088-adaptive-thresholds`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -2925,8 +2925,10 @@ TASK-085 or add a new `thresholds_test.go`):
 - [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
 - [ ] Unit tests for `RecordApproval`/`RecordRejection` threshold math pass
 
-**Engineer status**: not started
-**Blockers**: TASK-085 and TASK-086 must be merged first
+**Assigned to**: engineer
+**Started**: 2026-06-21
+**Engineer status**: started — Step 1: wire RecordApproval/RecordRejection in TUI + executor + CLI; Step 2: threshold check in QueueExecutor; Step 3: devtrack queue thresholds CLI; Step 4: unit tests
+**Blockers**: none (TASK-085 merged PR #192, TASK-086 merged PR #193)
 
 ---
 
