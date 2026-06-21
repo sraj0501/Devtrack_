@@ -225,12 +225,12 @@ func TestThresholdFormula(t *testing.T) {
 	workspace := ""
 
 	// Record 8 approvals and 2 rejections.
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		if err := db.RecordApproval(actionType, workspace); err != nil {
 			t.Fatalf("RecordApproval #%d: %v", i+1, err)
 		}
 	}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if err := db.RecordRejection(actionType, workspace); err != nil {
 			t.Fatalf("RecordRejection #%d: %v", i+1, err)
 		}

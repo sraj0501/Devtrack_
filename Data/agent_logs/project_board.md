@@ -1,8 +1,8 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-22 by PM — TASK-090 IN PROGRESS on feat/TASK-090-tui-correction; TASK-089 COMPLETE (PR #197 open)_
+_Last updated: 2026-06-22 by PM — TASK-090 COMPLETE (PR #198 open, targeting dev); TASK-091 next_
 _Next DevTrack task ID: TASK-091_
-_Active branch: `feat/TASK-090-tui-correction`_
+_Active branch: `feat/TASK-090-tui-correction` (PR #198 open)_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -3183,10 +3183,13 @@ Python: no new Python tests needed for this task (correction path is entirely Go
 - [x] `go build ./...` and `go vet ./...` pass clean
 - [x] DB round-trip tests pass: correction insert, confidence halving
 
-**Engineer status**: 9/9 criteria done — last commit: df76b09 "feat(tui): TUI correction interface — f key flags inference overlay + CLI queue flag (TASK-090)" — 2026-06-22 01:01
+**Engineer status**: COMPLETE — 2026-06-22
+**PR**: https://github.com/sraj0501/Devtrack_/pull/198 (targeting dev)
+**Commits**: df76b09 feat(tui): TUI correction interface, 984a526 chore(board): TASK-090 COMPLETE
+**Vision check**: PASS — offline-first (SQLite only), CLI-only (no browser/GUI), no hardcoded values
 **Blockers**: none
 
-**COMPLETE** — ready for PM review — 2026-06-22 01:01
+**COMPLETE** — PR #198 open targeting dev — 2026-06-22
 
 ---
 
