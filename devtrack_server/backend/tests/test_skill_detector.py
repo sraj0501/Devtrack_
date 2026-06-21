@@ -123,3 +123,39 @@ class TestSkillDetector:
         assert detector._normalize("  CAPS   and  spaces  ") == "caps and spaces"
         # Only first 4 words kept.
         assert detector._normalize("one two three four five six") == "one two three four"
+
+    def test_commit_tone_skill_emergence_simulation(self):
+        """Phase 6 exit criterion verification — skill emergence simulation.
+
+        5 inferences with identical subject 'commit_tone' and context_type='commit',
+        no corrections → detect_and_promote returns a promoted skill entry and
+        the _promote_skill endpoint is called exactly once.
+
+        This simulates a 30-day sequence where 'commit_tone' is the canonical
+        subject cluster that crosses EMERGENCE_THRESHOLD (5) without correction.
+        """
+        # Build exactly EMERGENCE_THRESHOLD inferences sharing the same cluster.
+        inferences = [
+            {"id": i + 1, "context_type": "commit", "subject": "commit_tone"}
+            for i in range(EMERGENCE_THRESHOLD)
+        ]
+
+        detector = SkillDetector()
+        # Mock DB: 0 corrections for every inference in this cluster.
+        mock_conn = self._make_db_mock(correction_count=0)
+
+        with patch("backend.skill_detector.sqlite3.connect", return_value=mock_conn), \
+             patch.object(
+                 detector,
+                 "_promote_skill",
+                 return_value={"name": "commit_tone"},
+             ) as mock_promote:
+            result = detector.detect_and_promote(inferences)
+
+        # The promote endpoint must have been called once (one cluster).
+        mock_promote.assert_called_once()
+        # The returned list must contain one entry — the "commit_tone" skill.
+        assert len(result) == 1, f"Expected 1 promoted skill, got {len(result)}: {result}"
+        assert result[0]["name"] == "commit_tone", (
+            f"Expected skill name 'commit_tone', got {result[0]['name']!r}"
+        )
