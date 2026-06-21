@@ -3075,6 +3075,8 @@ Go: extend `inferences_test.go` or new `skills_test.go`:
 **Engineer status**: 10/10 criteria done — last commit: 1ec9f81 "feat(cli): add devtrack skills command to list promoted skills table" — 2026-06-22 00:45
 **Blockers**: none (TASK-086 merged to dev via PR #193)
 
+**PR**: https://github.com/sraj0501/Devtrack_/pull/197 (targets dev)
+
 **COMPLETE** — ready for PM review — 2026-06-22 00:45
 
 ---
