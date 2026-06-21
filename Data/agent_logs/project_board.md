@@ -2816,12 +2816,12 @@ Run `uv run pytest backend/tests/ -q` — no regressions beyond documented basel
 - [x] Python tests pass: injection present, graceful degradation, confidence gate
 - [x] `uv run pytest backend/tests/ -q` — no regressions (764 pass, 1 pre-existing failure)
 
-**Engineer status**: 8/8 criteria done — last commit: 7e61734 "feat(personalization): add Signal 3 inference injection into inject_style() (TASK-087)" — 2026-06-21 23:26
+**Engineer status**: 8/8 criteria done — last commit: 0441d34 "chore(board): TASK-087 COMPLETE" — 2026-06-21
 **Started**: 2026-06-21
 **Blockers**: none (TASK-086 merged at PR #193)
-**PR**: https://github.com/sraj0501/Devtrack_/pull/194
+**PR**: https://github.com/sraj0501/Devtrack_/pull/195
 
-**COMPLETE** — ready for PM review — 2026-06-21 23:26
+**COMPLETE** — ready for PM review — 2026-06-21
 
 ---
 
