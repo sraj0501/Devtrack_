@@ -1,8 +1,8 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-18 by PM — TASK-085 + TASK-086 COMPLETE (PRs #192, #193 merged); TASK-087 next_
-_Next DevTrack task ID: TASK-087_
-_Active branch: `dev`_
+_Last updated: 2026-06-22 by PM — TASK-090 IN PROGRESS on feat/TASK-090-tui-correction; TASK-089 COMPLETE (PR #197 open)_
+_Next DevTrack task ID: TASK-091_
+_Active branch: `feat/TASK-090-tui-correction`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -3078,11 +3078,12 @@ Go: extend `inferences_test.go` or new `skills_test.go`:
 ---
 
 ### TASK-090 — TUI correction interface: `f` key flags wrong inferences from Queue tab
-**Priority**: MEDIUM
+**Assigned to**: engineer
 **Phase**: Phase 6
+**Started**: 2026-06-22
+**Branch**: `feat/TASK-090-tui-correction`
 **Depends on**: TASK-085 (corrections table), TASK-086 (inferences in DB), TASK-089
   (skills table must exist so corrections can block skill promotion)
-**Branch**: `feat/TASK-090-tui-correction-interface`
 
 **Spec**:
 
@@ -3182,8 +3183,8 @@ Python: no new Python tests needed for this task (correction path is entirely Go
 - [ ] `go build ./...` and `go vet ./...` pass clean
 - [ ] DB round-trip tests pass: correction insert, confidence halving
 
-**Engineer status**: not started
-**Blockers**: TASK-085 (corrections table) and TASK-086 (inferences in DB) must be merged first
+**Engineer status**: started — implementing TUI flag overlay (Step 1), footer update (Step 2), CLI queue flag (Step 3), DB tests (Step 4)
+**Blockers**: none (TASK-085 and TASK-086 merged to dev; branch feat/TASK-090-tui-correction created from dev)
 
 ---
 
