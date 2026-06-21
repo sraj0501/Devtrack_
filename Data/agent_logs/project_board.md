@@ -2804,21 +2804,24 @@ If `InferenceRetriever` cannot reach the Go daemon, `get_top_inferences` returns
 Run `uv run pytest backend/tests/ -q` — no regressions beyond documented baseline.
 
 **Acceptance criteria**:
-- [ ] `inference_retriever.py` exists with `InferenceRetriever.get_top_inferences()`; returns
+- [x] `inference_retriever.py` exists with `InferenceRetriever.get_top_inferences()`; returns
       `[]` on failure, never raises
-- [ ] `GET /dialectic/query` endpoint exists in Go daemon's internal API; auth-gated; calls
+- [x] `GET /dialectic/query` endpoint exists in Go daemon's internal API; auth-gated; calls
       `SearchInferences` or `ListInferencesByConfidence`
-- [ ] `inject_style()` in `personalization.py` injects Signal 3 (inferences) after Signal 2
+- [x] `inject_style()` in `personalization.py` injects Signal 3 (inferences) after Signal 2
       (RAG); low-confidence inferences (<0.4) excluded
-- [ ] `inject_style()` behavior unchanged when `InferenceRetriever` returns `[]`
-- [ ] No `os.getenv` in `inference_retriever.py`
-- [ ] `go build ./...` and `go vet ./...` pass clean
-- [ ] Python tests pass: injection present, graceful degradation, confidence gate
-- [ ] `uv run pytest backend/tests/ -q` — no regressions
+- [x] `inject_style()` behavior unchanged when `InferenceRetriever` returns `[]`
+- [x] No `os.getenv` in `inference_retriever.py`
+- [x] `go build ./...` and `go vet ./...` pass clean
+- [x] Python tests pass: injection present, graceful degradation, confidence gate
+- [x] `uv run pytest backend/tests/ -q` — no regressions (764 pass, 1 pre-existing failure)
 
-**Engineer status**: started — Step 1: inference_retriever.py + config entry; Step 2: Go /dialectic/query endpoint + ListInferencesByConfidence; Step 3: inject_style() Signal 3; Step 4: tests
+**Engineer status**: 8/8 criteria done — last commit: 7e61734 "feat(personalization): add Signal 3 inference injection into inject_style() (TASK-087)" — 2026-06-21 23:26
 **Started**: 2026-06-21
 **Blockers**: none (TASK-086 merged at PR #193)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/194
+
+**COMPLETE** — ready for PM review — 2026-06-21 23:26
 
 ---
 

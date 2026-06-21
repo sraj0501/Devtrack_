@@ -2,6 +2,35 @@
 
 ---
 
+### [2026-06-21 23:26] TASK-087 — Inference-to-generation injection: Signal 3 into inject_style()
+
+**Original message**: "feat(personalization): add Signal 3 inference injection into inject_style() (TASK-087)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama offline; committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-087 marked COMPLETE; 8/8 criteria ticked; PR #194 URL posted
+**Time**: ~35 minutes
+**Friction**: LOW
+**Notes**:
+- Step 1 (`inference_retriever.py`): `InferenceRetriever.get_top_inferences()` calls `GET /dialectic/query` on Go daemon's internal HTTP API. Uses `urllib.request` (stdlib — no extra deps). All config via `backend.config.ipc_host()` and `backend.config.get_devtrack_control_port()`. Zero `os.getenv` calls. Graceful: catches all exceptions, returns `[]`.
+- Step 2 (Go `/dialectic/query`): Added `handleDialecticQuery` to `http_api.go`. Auth-gated by `DEVTRACK_API_KEY` env var (403 on mismatch when key is set; open when empty). Calls `SearchInferences(q, limit)` when `q` is non-empty, else `ListInferencesByConfidence(contextType, limit)`. Also added `ListInferencesByConfidence` to `inferences.go` — orders by confidence DESC, optionally filters by context_type.
+- Step 3 (`personalization.py` Signal 3): Added lazy singleton `_get_inference_retriever()` matching the same pattern as `_load_personalized_ai`. Signal 3 injected after Signal 2 (RAG) — appended to `augmented` string. Low-confidence inferences (< `INFERENCE_MIN_CONFIDENCE=0.4`) excluded. Fully graceful: wrapped in `try/except Exception: pass`.
+- Step 4 (tests): 11 new tests in `test_inference_injection.py` — all 11 pass. Covers injection present, graceful degradation (exception), None retriever, confidence gate, mixed confidence, HTTP response parsing, network error, malformed JSON, sorted order, and os.getenv scan.
+- `go build ./...` and `go vet ./...` both clean from `devtrack_client/`.
+- Full suite: 764 pass (was 753 + 11 new), 1 pre-existing failure (`test_ollama_host_returns_string`) — no regressions.
+- Added `get_devtrack_control_port()` to `backend/config.py` so `inference_retriever.py` can read `DEVTRACK_SERVER_HTTP_PORT` without `os.getenv`. Pattern: `get_int("DEVTRACK_SERVER_HTTP_PORT", 35894)`.
+
+## Task Summary — TASK-087: Inference-to-generation injection — 2026-06-21
+
+- Total commits: 1 (7e61734)
+- Acceptance criteria met: 8/8
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~2 min/day (inject_style enriched with inferences automatically; all prompts get smarter context without developer action)
+- Blockers encountered: none
+- One thing that still feels rough: "The inference_retriever uses urllib with a 1s timeout but if the Go daemon is in the middle of a restart during a commit trigger, that 1s wait adds up across all inject_style() calls — acceptable for now, could be made async later."
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-18 21:10] TASK-086 — Hermes 3 reasoning loop (all parts)
 
 **Original message**: "feat(dialectic): TASK-086 add Hermes 3 reasoning loop — Python module, endpoint, Go client, tests"
