@@ -3282,18 +3282,20 @@ Python: extend `devtrack_server/backend/tests/test_voice_add_status.py`:
   `{"total": 0, "top_by_confidence": [], "correction_count": 0}` without raising.
 
 **Acceptance criteria**:
-- [ ] `GET /voice/status` response includes `inferences`, `skills`, `thresholds` keys
-- [ ] `top_by_confidence` capped at 5 entries; sorted by confidence DESC
-- [ ] `DialecticStatus` helper exists with all three methods; gracefully returns empty on DB error
-- [ ] No `os.getenv` in `dialectic_status.py`
-- [ ] `devtrack voice status` CLI prints the three new sections when data present
-- [ ] CLI skips new sections silently when server response lacks the new fields
-- [ ] Python tests: populated DB returns correct counts; empty DB returns zeros without raising
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] `uv run pytest backend/tests/ -q` — no regressions
+- [x] `GET /voice/status` response includes `inferences`, `skills`, `thresholds` keys
+- [x] `top_by_confidence` capped at 5 entries; sorted by confidence DESC
+- [x] `DialecticStatus` helper exists with all three methods; gracefully returns empty on DB error
+- [x] No `os.getenv` in `dialectic_status.py`
+- [x] `devtrack voice status` CLI prints the three new sections when data present
+- [x] CLI skips new sections silently when server response lacks the new fields
+- [x] Python tests: populated DB returns correct counts; empty DB returns zeros without raising
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] `uv run pytest backend/tests/ -q` — no regressions
 
-**Engineer status**: started — create dialectic_status.py helper, extend /voice/status endpoint, extend CLI, add tests
+**Engineer status**: 9/9 criteria done — last commit: 6176010 "feat(voice): TASK-091 extend voice status with dialectic inference, skill, and threshold data" — 2026-06-22 01:33
 **Blockers**: none (TASK-086, TASK-089, TASK-090 all complete with open PRs targeting dev)
+
+**COMPLETE** — ready for PM review — 2026-06-22 01:33
 
 ---
 

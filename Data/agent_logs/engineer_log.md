@@ -2,6 +2,37 @@
 
 ---
 
+### [2026-06-22 01:33] TASK-091 — extend voice status with dialectic inference, skill, and threshold data
+
+**Original message**: "feat(voice): TASK-091 extend voice status with dialectic inference, skill, and threshold data"
+**DevTrack enhanced it to**: (AI provider unreachable — committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-091 marked COMPLETE; all 9 criteria ticked
+**Time**: ~45 minutes
+**Friction**: LOW
+**Notes**:
+- Created `devtrack_server/backend/dialectic_status.py` with `DialecticStatus` class. Three methods: `get_inference_summary()`, `get_skill_summary()`, `get_threshold_summary()`. Each queries the shared SQLite DB (`database_path()` from `backend.config`) and returns safe defaults on any error. No `os.getenv` anywhere.
+- Table names confirmed from migrations.go: `inferences` (not `dialect_inferences`), `corrections` (not `dialect_corrections`), `confidence_thresholds`, no `skills` table yet (TASK-089 not merged). `get_skill_summary()` checks for table existence before querying.
+- Key implementation detail: `__init__` is empty (no `database_path()` call there); each method calls `_resolve_db_path()` inside its own try/except so DB errors are always caught. This was necessary to avoid breaking existing tests that patch `backend.config.database_path` to raise an exception — the existing `/voice/status` tests mock `database_path` and `get_path` to raise, and the new `DialecticStatus` call is wrapped in a try/except in `webhook_server.py` so it degrades gracefully.
+- Extended `GET /voice/status` in `webhook_server.py`: imports `DialecticStatus` locally inside a try/except block and appends `inferences`, `skills`, `thresholds` keys to the return dict.
+- Extended Go `VoiceStatusResponse` struct in `trigger/http_trigger.go` with pointer fields: `*VoiceInferenceSummary`, `*VoiceSkillSummary`, `map[string]VoiceThresholdEntry`. Pointer types (not structs) so nil = absent field = older server.
+- Extended `runVoiceStatus()` in `cli_voice.go`: prints three new sections (Dialectic Inferences, Autonomous Skills, Confidence Thresholds) only when the corresponding pointer is non-nil. Thresholds sorted alphabetically via insertion sort.
+- Added 3 new Python tests: `TestVoiceStatusDialecticFields.test_voice_status_includes_dialectic_fields_with_mocked_db`, `TestDialecticStatusUnit.test_get_inference_summary_nonexistent_db_returns_safe_default`, `TestDialecticStatusUnit.test_get_inference_summary_with_real_db`.
+- Full test suite: 756 pass, 1 pre-existing failure (`test_ollama_host_returns_string`). No regressions.
+- `go build ./...` and `go vet ./...` both clean.
+
+## Task Summary — TASK-091: Profile transparency — extend voice status with dialectic data — 2026-06-22
+
+- Total commits: 1 (6176010)
+- Acceptance criteria met: 9/9
+- Tickets auto-updated: 0
+- Estimated daily time saved: ~2 min/day (developer can now see what the system has learned from `devtrack voice status` without querying the DB directly)
+- Blockers encountered: none; TASK-089 skills table not yet in DB was handled gracefully with table-exists check
+- One thing that still feels rough: "The skills section shows (none) because TASK-089 is not yet merged; once TASK-089 merges and skills exist in the DB the section will populate automatically"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-18 21:10] TASK-086 — Hermes 3 reasoning loop (all parts)
 
 **Original message**: "feat(dialectic): TASK-086 add Hermes 3 reasoning loop — Python module, endpoint, Go client, tests"
