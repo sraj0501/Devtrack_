@@ -906,15 +906,49 @@ func (c *HTTPTriggerClient) VoiceAdd(text, contextType string) (string, error) {
 	return resp.ID, nil
 }
 
+// VoiceInferenceSummaryEntry is a single inference entry returned in VoiceStatusResponse.
+type VoiceInferenceSummaryEntry struct {
+	ID          int64   `json:"id"`
+	Subject     string  `json:"subject"`
+	Inference   string  `json:"inference"`
+	Confidence  float64 `json:"confidence"`
+	ContextType string  `json:"context_type"`
+}
+
+// VoiceInferenceSummary holds the inference block of VoiceStatusResponse.
+type VoiceInferenceSummary struct {
+	Total            int                          `json:"total"`
+	TopByConfidence  []VoiceInferenceSummaryEntry `json:"top_by_confidence"`
+	CorrectionCount  int                          `json:"correction_count"`
+}
+
+// VoiceSkillSummary holds the skills block of VoiceStatusResponse.
+type VoiceSkillSummary struct {
+	Total int      `json:"total"`
+	Names []string `json:"names"`
+}
+
+// VoiceThresholdEntry holds threshold data for a single action type.
+type VoiceThresholdEntry struct {
+	Threshold  float64 `json:"threshold"`
+	Approvals  int     `json:"approvals"`
+	Rejections int     `json:"rejections"`
+}
+
 // VoiceStatusResponse is the response from GET /voice/status.
 type VoiceStatusResponse struct {
-	TotalEntries    int            `json:"total_entries"`
-	ByContext       map[string]int `json:"by_context"`
-	BySource        map[string]int `json:"by_source"`
-	LastSeed        *string        `json:"last_seed"`
-	LastSync        *string        `json:"last_sync"`
-	ProfileExists   bool           `json:"profile_exists"`
-	ProfileWordCount int           `json:"profile_word_count"`
+	TotalEntries     int                            `json:"total_entries"`
+	ByContext        map[string]int                 `json:"by_context"`
+	BySource         map[string]int                 `json:"by_source"`
+	LastSeed         *string                        `json:"last_seed"`
+	LastSync         *string                        `json:"last_sync"`
+	ProfileExists    bool                           `json:"profile_exists"`
+	ProfileWordCount int                            `json:"profile_word_count"`
+	// Phase 6 dialectic fields — present only on servers running TASK-091+.
+	// Use pointer types so we can detect absence (nil = field not in response).
+	Inferences *VoiceInferenceSummary             `json:"inferences,omitempty"`
+	Skills     *VoiceSkillSummary                 `json:"skills,omitempty"`
+	Thresholds map[string]VoiceThresholdEntry     `json:"thresholds,omitempty"`
 }
 
 // VoiceStatus calls GET /voice/status and returns the corpus statistics.

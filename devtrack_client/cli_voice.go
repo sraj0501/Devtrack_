@@ -249,6 +249,72 @@ func runVoiceStatus() error {
 		fmt.Println("Profile:          not generated (run: devtrack voice profile)")
 	}
 
+	// ── Phase 6 dialectic sections ───────────────────────────────────────────
+	// Each section is printed only when the field is present in the server
+	// response (pointer non-nil). This keeps the CLI backward-compatible with
+	// older server versions that do not send these fields.
+
+	// Inferences section.
+	if resp.Inferences != nil {
+		inf := resp.Inferences
+		fmt.Println()
+		fmt.Println("Dialectic Inferences")
+		fmt.Println(strings.Repeat("-", 21))
+		fmt.Printf("Total inferred:    %d\n", inf.Total)
+		fmt.Printf("Corrections:        %d\n", inf.CorrectionCount)
+		if len(inf.TopByConfidence) > 0 {
+			fmt.Println("Top inferences (by confidence):")
+			for _, entry := range inf.TopByConfidence {
+				fmt.Printf("  %-18s %.2f  -- %s\n", entry.Subject, entry.Confidence, entry.Inference)
+			}
+		} else {
+			fmt.Println("Top inferences (by confidence): (none)")
+		}
+	}
+
+	// Skills section.
+	if resp.Skills != nil {
+		sk := resp.Skills
+		fmt.Println()
+		fmt.Printf("Autonomous Skills (%d)\n", sk.Total)
+		fmt.Println(strings.Repeat("-", 21))
+		if len(sk.Names) > 0 {
+			for _, name := range sk.Names {
+				fmt.Printf("  %s\n", name)
+			}
+		} else {
+			fmt.Println("  (none)")
+		}
+	}
+
+	// Thresholds section.
+	if resp.Thresholds != nil {
+		fmt.Println()
+		fmt.Println("Confidence Thresholds")
+		fmt.Println(strings.Repeat("-", 21))
+		if len(resp.Thresholds) > 0 {
+			// Print in sorted order for deterministic output.
+			// Collect keys then sort.
+			keys := make([]string, 0, len(resp.Thresholds))
+			for k := range resp.Thresholds {
+				keys = append(keys, k)
+			}
+			// Simple insertion sort — threshold list is always tiny.
+			for i := 1; i < len(keys); i++ {
+				for j := i; j > 0 && keys[j] < keys[j-1]; j-- {
+					keys[j], keys[j-1] = keys[j-1], keys[j]
+				}
+			}
+			for _, k := range keys {
+				t := resp.Thresholds[k]
+				fmt.Printf("  %-20s %.2f  (%d approvals / %d rejections)\n",
+					k, t.Threshold, t.Approvals, t.Rejections)
+			}
+		} else {
+			fmt.Println("  (none)")
+		}
+	}
+
 	return nil
 }
 

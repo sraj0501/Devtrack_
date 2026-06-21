@@ -2425,6 +2425,19 @@ async def http_voice_status(
     except Exception as pe:
         logger.debug("/voice/status: profile read failed (non-fatal): %s", pe)
 
+    # ── dialectic Phase 6 data ────────────────────────────────────────────────
+    inferences_data: dict = {"total": 0, "top_by_confidence": [], "correction_count": 0}
+    skills_data: dict = {"total": 0, "names": []}
+    thresholds_data: dict = {}
+    try:
+        from backend.dialectic_status import DialecticStatus
+        _ds = DialecticStatus()
+        inferences_data = _ds.get_inference_summary()
+        skills_data = _ds.get_skill_summary()
+        thresholds_data = _ds.get_threshold_summary()
+    except Exception as de:
+        logger.debug("/voice/status: dialectic data failed (non-fatal): %s", de)
+
     return {
         "total_entries": total_entries,
         "by_context": by_context,
@@ -2433,6 +2446,9 @@ async def http_voice_status(
         "last_sync": last_sync,
         "profile_exists": profile_exists,
         "profile_word_count": profile_word_count,
+        "inferences": inferences_data,
+        "skills": skills_data,
+        "thresholds": thresholds_data,
     }
 
 

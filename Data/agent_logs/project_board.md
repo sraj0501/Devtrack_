@@ -1,8 +1,8 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-22 by PM — TASK-090 COMPLETE (PR #198 open, targeting dev); TASK-091 next_
-_Next DevTrack task ID: TASK-091_
-_Active branch: `feat/TASK-090-tui-correction` (PR #198 open)_
+_Last updated: 2026-06-22 by PM — TASK-091 IN PROGRESS; branch feat/TASK-091-voice-status-transparency created from dev_
+_Next DevTrack task ID: TASK-092_
+_Active branch: `feat/TASK-091-voice-status-transparency`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -3078,12 +3078,11 @@ Go: extend `inferences_test.go` or new `skills_test.go`:
 ---
 
 ### TASK-090 — TUI correction interface: `f` key flags wrong inferences from Queue tab
-**Assigned to**: engineer
+**Priority**: MEDIUM
 **Phase**: Phase 6
-**Started**: 2026-06-22
-**Branch**: `feat/TASK-090-tui-correction`
 **Depends on**: TASK-085 (corrections table), TASK-086 (inferences in DB), TASK-089
   (skills table must exist so corrections can block skill promotion)
+**Branch**: `feat/TASK-090-tui-correction-interface`
 
 **Spec**:
 
@@ -3172,24 +3171,19 @@ Go: `devtrack_client/internal/db/inferences_test.go`:
 Python: no new Python tests needed for this task (correction path is entirely Go-side).
 
 **Acceptance criteria**:
-- [x] `f` key in TUI Queue tab triggers inline text input overlay
-- [x] Submitting text creates a `corrections` row in SQLite with `flagged_from="tui"`,
+- [ ] `f` key in TUI Queue tab triggers inline text input overlay
+- [ ] Submitting text creates a `corrections` row in SQLite with `flagged_from="tui"`,
       `weight=2.0`
-- [x] The flagged inference's confidence is halved immediately in `inferences` table
-- [x] `Esc` cancels flagging mode with no DB changes
-- [x] "No inference recorded for this action." shown when no matching inference exists
-- [x] Footer updated: `[f]lag-wrong-inference` visible when not in flagging mode
-- [x] `devtrack queue flag <action_id> "<text>"` CLI command works identically (channel parity)
-- [x] `go build ./...` and `go vet ./...` pass clean
-- [x] DB round-trip tests pass: correction insert, confidence halving
+- [ ] The flagged inference's confidence is halved immediately in `inferences` table
+- [ ] `Esc` cancels flagging mode with no DB changes
+- [ ] "No inference recorded for this action." shown when no matching inference exists
+- [ ] Footer updated: `[f]lag-wrong-inference` visible when not in flagging mode
+- [ ] `devtrack queue flag <action_id> "<text>"` CLI command works identically (channel parity)
+- [ ] `go build ./...` and `go vet ./...` pass clean
+- [ ] DB round-trip tests pass: correction insert, confidence halving
 
-**Engineer status**: COMPLETE — 2026-06-22
-**PR**: https://github.com/sraj0501/Devtrack_/pull/198 (targeting dev)
-**Commits**: df76b09 feat(tui): TUI correction interface, 984a526 chore(board): TASK-090 COMPLETE
-**Vision check**: PASS — offline-first (SQLite only), CLI-only (no browser/GUI), no hardcoded values
-**Blockers**: none
-
-**COMPLETE** — PR #198 open targeting dev — 2026-06-22
+**Engineer status**: not started
+**Blockers**: TASK-085 (corrections table) and TASK-086 (inferences in DB) must be merged first
 
 ---
 
@@ -3288,18 +3282,20 @@ Python: extend `devtrack_server/backend/tests/test_voice_add_status.py`:
   `{"total": 0, "top_by_confidence": [], "correction_count": 0}` without raising.
 
 **Acceptance criteria**:
-- [ ] `GET /voice/status` response includes `inferences`, `skills`, `thresholds` keys
-- [ ] `top_by_confidence` capped at 5 entries; sorted by confidence DESC
-- [ ] `DialecticStatus` helper exists with all three methods; gracefully returns empty on DB error
-- [ ] No `os.getenv` in `dialectic_status.py`
-- [ ] `devtrack voice status` CLI prints the three new sections when data present
-- [ ] CLI skips new sections silently when server response lacks the new fields
-- [ ] Python tests: populated DB returns correct counts; empty DB returns zeros without raising
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] `uv run pytest backend/tests/ -q` — no regressions
+- [x] `GET /voice/status` response includes `inferences`, `skills`, `thresholds` keys
+- [x] `top_by_confidence` capped at 5 entries; sorted by confidence DESC
+- [x] `DialecticStatus` helper exists with all three methods; gracefully returns empty on DB error
+- [x] No `os.getenv` in `dialectic_status.py`
+- [x] `devtrack voice status` CLI prints the three new sections when data present
+- [x] CLI skips new sections silently when server response lacks the new fields
+- [x] Python tests: populated DB returns correct counts; empty DB returns zeros without raising
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] `uv run pytest backend/tests/ -q` — no regressions
 
-**Engineer status**: not started
-**Blockers**: TASK-086, TASK-089, TASK-090 must be merged first
+**Engineer status**: 9/9 criteria done — last commit: 6176010 "feat(voice): TASK-091 extend voice status with dialectic inference, skill, and threshold data" — 2026-06-22 01:33
+**Blockers**: none (TASK-086, TASK-089, TASK-090 all complete with open PRs targeting dev)
+
+**COMPLETE** — ready for PM review — 2026-06-22 01:33
 
 ---
 
