@@ -225,12 +225,12 @@ func TestThresholdFormula(t *testing.T) {
 	workspace := ""
 
 	// Record 8 approvals and 2 rejections.
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		if err := db.RecordApproval(actionType, workspace); err != nil {
 			t.Fatalf("RecordApproval #%d: %v", i+1, err)
 		}
 	}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if err := db.RecordRejection(actionType, workspace); err != nil {
 			t.Fatalf("RecordRejection #%d: %v", i+1, err)
 		}
@@ -336,5 +336,90 @@ func TestCorrectionRoundTrip(t *testing.T) {
 	}
 	if math.Abs(got.Weight-corr.Weight) > 1e-9 {
 		t.Errorf("Weight: got %v, want %v", got.Weight, corr.Weight)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Test: InsertCorrectionRoundTrip — tui path (flagged_from="tui", weight=2.0)
+// Verifies the exact fields the TUI submitFlag() writes.
+// ---------------------------------------------------------------------------
+
+func TestInsertCorrectionRoundTrip(t *testing.T) {
+	db := newInferencesTestDB(t)
+
+	infID, err := db.InsertInference(Inference{
+		ContextType: "commit",
+		Subject:     "commit tone",
+		Inference:   "developer uses imperative mood",
+		Evidence:    `[5]`,
+		Confidence:  0.9,
+		Source:      "hermes3",
+	})
+	if err != nil {
+		t.Fatalf("InsertInference: %v", err)
+	}
+
+	corrID, err := db.InsertCorrection(Correction{
+		InferenceID: infID,
+		Correction:  "actually uses past tense occasionally",
+		FlaggedFrom: "tui",
+		Weight:      2.0,
+	})
+	if err != nil {
+		t.Fatalf("InsertCorrection: %v", err)
+	}
+	if corrID <= 0 {
+		t.Fatalf("expected positive correction ID, got %d", corrID)
+	}
+
+	list, err := db.ListCorrectionsForInference(infID)
+	if err != nil {
+		t.Fatalf("ListCorrectionsForInference: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected 1 correction, got %d", len(list))
+	}
+	c := list[0]
+	if c.FlaggedFrom != "tui" {
+		t.Errorf("FlaggedFrom: got %q, want \"tui\"", c.FlaggedFrom)
+	}
+	if math.Abs(c.Weight-2.0) > 1e-9 {
+		t.Errorf("Weight: got %v, want 2.0", c.Weight)
+	}
+	if c.Correction != "actually uses past tense occasionally" {
+		t.Errorf("Correction text: got %q", c.Correction)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Test: UpdateInferenceConfidence — halved confidence persists in DB
+// ---------------------------------------------------------------------------
+
+func TestUpdateInferenceConfidence(t *testing.T) {
+	db := newInferencesTestDB(t)
+
+	infID, err := db.InsertInference(Inference{
+		ContextType: "commit",
+		Subject:     "commit length",
+		Inference:   "developer writes short commit messages",
+		Evidence:    `[7]`,
+		Confidence:  0.8,
+		Source:      "hermes3",
+	})
+	if err != nil {
+		t.Fatalf("InsertInference: %v", err)
+	}
+
+	newConf := 0.4 // 0.8 * 0.5
+	if err := db.UpdateInferenceConfidence(infID, newConf); err != nil {
+		t.Fatalf("UpdateInferenceConfidence: %v", err)
+	}
+
+	got, err := db.GetInference(infID)
+	if err != nil {
+		t.Fatalf("GetInference after update: %v", err)
+	}
+	if math.Abs(got.Confidence-newConf) > 1e-9 {
+		t.Errorf("Confidence after halving: got %v, want %v", got.Confidence, newConf)
 	}
 }

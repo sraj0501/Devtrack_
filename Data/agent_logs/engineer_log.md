@@ -2,62 +2,24 @@
 
 ---
 
-### [2026-06-22 00:30] TASK-089 — Migration 011 + skills DB helpers committed
+### [2026-06-22 01:01] TASK-090 — TUI correction interface (all parts)
 
-**Original message**: "feat(db): add skills table migration 011 and UpsertSkill/ListSkills/GetSkill helpers"
+**Original message**: "feat(tui): TUI correction interface — f key flags inference overlay + CLI queue flag (TASK-090)"
 **DevTrack enhanced it to**: (AI provider unreachable — committed with original message as-is)
 **Ticket auto-linked**: NO
-**PM system updated**: YES — project_board.md TASK-089 Engineer status updated
-**Time**: ~5 min
+**PM system updated**: YES — project_board.md TASK-090 marked COMPLETE; all 9 criteria ticked
+**Time**: ~25 minutes
 **Friction**: LOW
-**Notes**: Migration 011 appended to allMigrations following the 010 pattern. UpsertSkill uses ON CONFLICT(name) DO UPDATE with MAX(evidence_count) so lower-count upserts never regress. GetSkill returns nil, nil (not error) for missing rows. All three new tests pass.
+**Notes**: `textinput` from charmbracelet/bubbles was already in go.mod but its transitive dep `github.com/atotto/clipboard` was missing from go.sum — resolved with `go get github.com/charmbracelet/bubbles/textinput@v1.0.0`. TestCorrectionRoundTrip already existed from TASK-085; added TestInsertCorrectionRoundTrip (tui-specific fields) and TestUpdateInferenceConfidence. ListInferences already had ORDER BY created_at DESC so no LatestInference helper was needed. CLI uses flagged_from="cli" not "tui" for correct channel attribution.
 
----
+## Task Summary — TASK-090: TUI correction interface — 2026-06-22
 
-### [2026-06-22 00:35] TASK-089 — POST /dialectic/promote-skill daemon endpoint committed
-
-**Original message**: "feat(daemon): add POST /dialectic/promote-skill endpoint with API key auth"
-**DevTrack enhanced it to**: (AI provider unreachable — committed with original message as-is)
-**Ticket auto-linked**: NO
-**PM system updated**: NO (board update in final commit)
-**Time**: ~5 min
-**Friction**: LOW
-**Notes**: Handler follows the existing daemon HTTP pattern (fresh db.NewDatabase() per request). Auth validates X-DevTrack-API-Key when DEVTRACK_API_KEY is set (dev mode skips). Returns {"status":"promoted","skill_id":N} on new insert, {"status":"already_exists"} on upsert.
-
----
-
-### [2026-06-22 00:40] TASK-089 — skill_detector.py + 7 unit tests committed
-
-**Original message**: "feat(skills): add skill_detector.py with EMERGENCE_THRESHOLD=5 and 7 unit tests"
-**DevTrack enhanced it to**: (AI provider unreachable — committed with original message as-is)
-**Ticket auto-linked**: NO
-**PM system updated**: NO (board update in final commit)
-**Time**: ~8 min
-**Friction**: LOW
-**Notes**: SkillDetector calls Go daemon on IPC_HOST:DEVTRACK_SERVER_HTTP_PORT (127.0.0.1:35894 default) — not Python's port 8089. get() accepts a default arg so no try/except wrappers needed. detect_and_promote() wraps _detect() in try/except and returns [] on any exception. All 7 Python tests pass; 760 pass + 1 pre-existing fail in full suite.
-
----
-
-### [2026-06-22 00:45] TASK-089 — devtrack skills CLI command committed
-
-**Original message**: "feat(cli): add devtrack skills command to list promoted skills table"
-**DevTrack enhanced it to**: (AI provider unreachable — committed with original message as-is)
-**Ticket auto-linked**: NO
-**PM system updated**: YES — project_board.md TASK-089 marked COMPLETE; all 10 criteria ticked
-**Time**: ~3 min
-**Friction**: LOW
-**Notes**: Added "skills" to the no-daemon short-circuit list in NewCLI() and the Execute() switch. Added Skill/Inference/Correction/ConfidenceThreshold type aliases to db_shim.go. cli_skills.go uses fmt.Printf with %-*s for aligned name column.
-
----
-
-## Task Summary — TASK-089: Skill emergence detection — 2026-06-22
-
-- Total commits: 5 (64af6de lint, f560fb3 db, 6913023 daemon, 8cfe46c python, 1ec9f81 cli)
-- Acceptance criteria met: 10/10
+- Total commits: 1
+- Acceptance criteria met: 9/9
 - Tickets auto-updated: 0
-- Estimated daily time saved: ~2 min/day (autonomous skill promotion runs in the background without developer action)
+- Estimated daily time saved: ~5 min (dev no longer needs to manually correct inferences via raw SQL)
 - Blockers encountered: none
-- One thing that still feels rough: "SkillDetector is created but not yet wired into the /dialectic/infer endpoint fire-and-forget call — PM should add that integration step to a follow-up task."
+- One thing that still feels rough: "The overlay is rendered as plain text beneath the list rather than a floating box — lipgloss doesn't support true z-index overlays in terminal, so this is a deliberate trade-off."
 - Ready for PM review: YES
 
 ---

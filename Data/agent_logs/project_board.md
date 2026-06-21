@@ -1,8 +1,8 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-21 by PM — TASK-087 COMPLETE (PR #195 open, targeting dev); TASK-088 IN PROGRESS_
-_Next DevTrack task ID: TASK-089_
-_Active branch: `feat/TASK-088-adaptive-thresholds`_
+_Last updated: 2026-06-22 by PM — TASK-090 COMPLETE (PR #198 open, targeting dev); TASK-091 next_
+_Next DevTrack task ID: TASK-091_
+_Active branch: `feat/TASK-090-tui-correction` (PR #198 open)_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -2915,22 +2915,18 @@ TASK-085 or add a new `thresholds_test.go`):
 - `ListThresholds()` returns all rows.
 
 **Acceptance criteria**:
-- [x] `RecordApproval` called after: TUI approve, CLI approve, auto-approve (executor)
-- [x] `RecordRejection` called after: TUI reject, CLI reject
-- [x] `QueueExecutor` defers actions whose `confidence < threshold.Threshold` even if
+- [ ] `RecordApproval` called after: TUI approve, CLI approve, auto-approve (executor)
+- [ ] `RecordRejection` called after: TUI reject, CLI reject
+- [ ] `QueueExecutor` defers actions whose `confidence < threshold.Threshold` even if
       `expires_at` has passed; logs `[queue: deferring action ...]`
-- [x] `devtrack queue thresholds` prints current per-type threshold table
-- [x] When no rows exist, prints the "No thresholds recorded yet" message
-- [x] Threshold formula correct: approvals/(approvals+rejections) * 0.20 + 0.70, capped at 0.95
-- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [x] Unit tests for `RecordApproval`/`RecordRejection` threshold math pass
+- [ ] `devtrack queue thresholds` prints current per-type threshold table
+- [ ] When no rows exist, prints the "No thresholds recorded yet" message
+- [ ] Threshold formula correct: approvals/(approvals+rejections) * 0.20 + 0.70, capped at 0.95
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] Unit tests for `RecordApproval`/`RecordRejection` threshold math pass
 
-**Assigned to**: engineer
-**Started**: 2026-06-21
-**Engineer status**: 8/8 criteria done — last commit: 75331c4 "feat(thresholds): adaptive confidence thresholds — QueueExecutor defers below threshold, devtrack queue thresholds CLI (TASK-088)" — 2026-06-22 00:00
-**Blockers**: none (TASK-085 merged PR #192, TASK-086 merged PR #193)
-
-**COMPLETE** — ready for PM review — 2026-06-22 00:00
+**Engineer status**: not started
+**Blockers**: TASK-085 and TASK-086 must be merged first
 
 ---
 
@@ -3065,32 +3061,29 @@ Go: extend `inferences_test.go` or new `skills_test.go`:
 - `ListSkills()` returns the inserted rows.
 
 **Acceptance criteria**:
-- [x] Migration 011 (`skills` table) appended to `allMigrations`; idempotent
-- [x] `Skill` struct + `UpsertSkill` + `ListSkills` exist in Go `inferences.go`
-- [x] `POST /dialectic/promote-skill` endpoint exists in Go daemon internal API; calls `UpsertSkill`
-- [x] `skill_detector.py` exists; `detect_and_promote()` returns `[]` on failure, never raises
-- [x] Emergence threshold is a named constant (`EMERGENCE_THRESHOLD = 5`), not a magic number
-- [x] Inferences with a correction are excluded from promotion candidates
-- [x] `devtrack skills` CLI command prints skills table or "No skills" message
-- [x] `go build ./...` and `go vet ./...` pass clean
-- [x] Python tests: threshold, correction exclusion, sub-threshold cases all pass
-- [x] `uv run pytest backend/tests/ -q` — no regressions
+- [ ] Migration 011 (`skills` table) appended to `allMigrations`; idempotent
+- [ ] `Skill` struct + `UpsertSkill` + `ListSkills` exist in Go `inferences.go`
+- [ ] `POST /dialectic/promote-skill` endpoint exists in Go daemon internal API; calls `UpsertSkill`
+- [ ] `skill_detector.py` exists; `detect_and_promote()` returns `[]` on failure, never raises
+- [ ] Emergence threshold is a named constant (`EMERGENCE_THRESHOLD = 5`), not a magic number
+- [ ] Inferences with a correction are excluded from promotion candidates
+- [ ] `devtrack skills` CLI command prints skills table or "No skills" message
+- [ ] `go build ./...` and `go vet ./...` pass clean
+- [ ] Python tests: threshold, correction exclusion, sub-threshold cases all pass
+- [ ] `uv run pytest backend/tests/ -q` — no regressions
 
-**Engineer status**: 10/10 criteria done — last commit: 1ec9f81 "feat(cli): add devtrack skills command to list promoted skills table" — 2026-06-22 00:45
-**Blockers**: none (TASK-086 merged to dev via PR #193)
-
-**PR**: https://github.com/sraj0501/Devtrack_/pull/197 (targets dev)
-
-**COMPLETE** — ready for PM review — 2026-06-22 00:45
+**Engineer status**: not started
+**Blockers**: TASK-086 must be merged first (inferences must exist in DB to detect)
 
 ---
 
 ### TASK-090 — TUI correction interface: `f` key flags wrong inferences from Queue tab
-**Priority**: MEDIUM
+**Assigned to**: engineer
 **Phase**: Phase 6
+**Started**: 2026-06-22
+**Branch**: `feat/TASK-090-tui-correction`
 **Depends on**: TASK-085 (corrections table), TASK-086 (inferences in DB), TASK-089
   (skills table must exist so corrections can block skill promotion)
-**Branch**: `feat/TASK-090-tui-correction-interface`
 
 **Spec**:
 
@@ -3179,19 +3172,24 @@ Go: `devtrack_client/internal/db/inferences_test.go`:
 Python: no new Python tests needed for this task (correction path is entirely Go-side).
 
 **Acceptance criteria**:
-- [ ] `f` key in TUI Queue tab triggers inline text input overlay
-- [ ] Submitting text creates a `corrections` row in SQLite with `flagged_from="tui"`,
+- [x] `f` key in TUI Queue tab triggers inline text input overlay
+- [x] Submitting text creates a `corrections` row in SQLite with `flagged_from="tui"`,
       `weight=2.0`
-- [ ] The flagged inference's confidence is halved immediately in `inferences` table
-- [ ] `Esc` cancels flagging mode with no DB changes
-- [ ] "No inference recorded for this action." shown when no matching inference exists
-- [ ] Footer updated: `[f]lag-wrong-inference` visible when not in flagging mode
-- [ ] `devtrack queue flag <action_id> "<text>"` CLI command works identically (channel parity)
-- [ ] `go build ./...` and `go vet ./...` pass clean
-- [ ] DB round-trip tests pass: correction insert, confidence halving
+- [x] The flagged inference's confidence is halved immediately in `inferences` table
+- [x] `Esc` cancels flagging mode with no DB changes
+- [x] "No inference recorded for this action." shown when no matching inference exists
+- [x] Footer updated: `[f]lag-wrong-inference` visible when not in flagging mode
+- [x] `devtrack queue flag <action_id> "<text>"` CLI command works identically (channel parity)
+- [x] `go build ./...` and `go vet ./...` pass clean
+- [x] DB round-trip tests pass: correction insert, confidence halving
 
-**Engineer status**: not started
-**Blockers**: TASK-085 (corrections table) and TASK-086 (inferences in DB) must be merged first
+**Engineer status**: COMPLETE — 2026-06-22
+**PR**: https://github.com/sraj0501/Devtrack_/pull/198 (targeting dev)
+**Commits**: df76b09 feat(tui): TUI correction interface, 984a526 chore(board): TASK-090 COMPLETE
+**Vision check**: PASS — offline-first (SQLite only), CLI-only (no browser/GUI), no hardcoded values
+**Blockers**: none
+
+**COMPLETE** — PR #198 open targeting dev — 2026-06-22
 
 ---
 
