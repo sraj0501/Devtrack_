@@ -216,6 +216,8 @@ func (cli *CLI) Execute() error {
 		return cli.handleAutostartStatus()
 	case "alerts":
 		return cli.handleAlerts()
+	case "review":
+		return cli.handleReview()
 	case "vacation":
 		return cli.handleVacation()
 	case "work":

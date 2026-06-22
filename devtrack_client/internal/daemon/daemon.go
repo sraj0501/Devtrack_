@@ -571,6 +571,39 @@ func (d *Daemon) startAlertPoller() {
 	)
 
 	poller := alerts.NewPoller(d.monitor.Database(), notifier)
+
+	// Wire Phase 7 review comment classification hook.
+	// After the poller detects new review comments, classify each one via
+	// the Python server and update the pr_review_comments row.
+	database := d.monitor.Database()
+	poller.SetReviewCommentHook(func(events []alerts.ReviewCommentEvent) {
+		tc := trigger.NewHTTPTriggerClient()
+		for _, ev := range events {
+			classification, reason, fixHint, err := tc.ClassifyReviewComment(
+				ev.CommentBody, ev.PRTitle, ev.Platform, ev.CommentURL,
+			)
+			if err != nil {
+				log.Printf("review: classify comment %s on PR %s: %v — defaulting to needs_human",
+					ev.CommentID, ev.PRID, err)
+				classification = "needs_human"
+				reason = "classification error"
+				fixHint = ""
+			}
+			if dbErr := database.UpdatePRReviewCommentStatus(
+				ev.Platform, ev.CommentID, "classified", classification, fixHint,
+			); dbErr != nil {
+				log.Printf("review: update comment status %s: %v", ev.CommentID, dbErr)
+			}
+			log.Printf("review: comment %s on PR %s classified as %s (%s)",
+				ev.CommentID, ev.PRID, classification, reason)
+			if classification == "auto_fixable" {
+				log.Printf("review: auto_fixable — fix loop not yet wired (TASK-095)")
+			} else {
+				log.Printf("review: needs_human — escalation not yet wired (TASK-096)")
+			}
+		}
+	})
+
 	poller.Start(d.ctx)
 	d.alertPoller = poller
 }
