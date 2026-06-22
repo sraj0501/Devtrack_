@@ -65,6 +65,7 @@
 - Blockers encountered: none — schema mismatch (no workspace_name/branch in triggers) discovered and fixed by adapting TriggerCommit struct
 - One thing that still feels rough: "The workspace_name field from the spec would need a schema migration to add workspace_name column to triggers table — punted; repo_path serves as a reasonable proxy"
 - Ready for PM review: YES
+- PR: https://github.com/sraj0501/Devtrack_/pull/204
 
 ---
 

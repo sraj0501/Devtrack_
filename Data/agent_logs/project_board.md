@@ -4669,6 +4669,7 @@ and call `mcp.RegisterDevTrackTools(srv, db)` before `srv.Start(ctx)`.
 - [x] No hardcoded host/port/timeout literals; no `os.Getenv` calls
 
 **Engineer status**: 12/12 criteria done — last commit: 155028c "feat(mcp): implement 6 read-only MCP tools backed by SQLite (TASK-099)" — 2026-06-22 18:19
+**PR**: https://github.com/sraj0501/Devtrack_/pull/204 (base: dev)
 
 **COMPLETE** — ready for PM review — 2026-06-22 18:20
 
