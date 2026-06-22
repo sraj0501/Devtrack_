@@ -1087,3 +1087,13 @@ func GetVoiceSyncIntervalHours() int {
 	}
 	return hours
 }
+
+// GetMCPPort returns the MCP server port from MCP_PORT.
+// Returns "0" when unset — 0 means stdio-only mode (used by Claude Code integration).
+func GetMCPPort() string {
+	v := os.Getenv("MCP_PORT")
+	if v == "" {
+		return "0"
+	}
+	return v
+}
