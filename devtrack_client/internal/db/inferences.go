@@ -121,6 +121,35 @@ func (d *Database) ListInferences(contextType string, limit int) ([]Inference, e
 	return scanInferences(rows)
 }
 
+// ListInferencesByConfidence returns up to limit inferences ordered by confidence DESC,
+// optionally filtered by contextType. Pass contextType="" to return all context types.
+// This is used by /dialectic/query when no search query is provided.
+func (d *Database) ListInferencesByConfidence(contextType string, limit int) ([]Inference, error) {
+	var rows *sql.Rows
+	var err error
+	if contextType == "" {
+		rows, err = d.db.Query(`
+			SELECT id, context_type, subject, inference, evidence, confidence, source, created_at, updated_at
+			FROM inferences
+			ORDER BY confidence DESC
+			LIMIT ?
+		`, limit)
+	} else {
+		rows, err = d.db.Query(`
+			SELECT id, context_type, subject, inference, evidence, confidence, source, created_at, updated_at
+			FROM inferences
+			WHERE context_type = ?
+			ORDER BY confidence DESC
+			LIMIT ?
+		`, contextType, limit)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ListInferencesByConfidence: %w", err)
+	}
+	defer rows.Close()
+	return scanInferences(rows)
+}
+
 // SearchInferences performs a full-text search over the inferences_fts virtual table.
 // It returns up to limit results ordered by FTS5 rank (best match first).
 func (d *Database) SearchInferences(query string, limit int) ([]Inference, error) {
@@ -340,6 +369,93 @@ func (d *Database) UpdateThreshold(actionType, workspace string, newThreshold fl
 		return fmt.Errorf("UpdateThreshold: %w", err)
 	}
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Skill CRUD
+// ---------------------------------------------------------------------------
+
+// Skill represents a promoted developer pattern — a recurring inference cluster
+// that has crossed the emergence threshold without developer corrections.
+type Skill struct {
+	ID            int64
+	Name          string
+	Description   string
+	ContextType   string
+	EvidenceCount int
+	PromotedAt    time.Time
+	LastSeenAt    time.Time
+}
+
+// UpsertSkill inserts a new skill or updates an existing one by name.
+// On conflict: updates description, evidence_count (taking the higher value),
+// and last_seen_at; leaves promoted_at unchanged.
+func (d *Database) UpsertSkill(name, description, contextType string, evidenceCount int) error {
+	_, err := d.db.Exec(`
+		INSERT INTO skills (name, description, context_type, evidence_count)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT(name) DO UPDATE SET
+			description    = excluded.description,
+			evidence_count = MAX(evidence_count, excluded.evidence_count),
+			last_seen_at   = datetime('now')
+	`, name, description, contextType, evidenceCount)
+	if err != nil {
+		return fmt.Errorf("UpsertSkill: %w", err)
+	}
+	return nil
+}
+
+// ListSkills returns all skills ordered by promoted_at descending (newest first).
+func (d *Database) ListSkills() ([]Skill, error) {
+	rows, err := d.db.Query(`
+		SELECT id, name, description, context_type, evidence_count, promoted_at, last_seen_at
+		FROM skills
+		ORDER BY promoted_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("ListSkills: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Skill
+	for rows.Next() {
+		var s Skill
+		var promotedAt, lastSeenAt string
+		if err := rows.Scan(
+			&s.ID, &s.Name, &s.Description, &s.ContextType,
+			&s.EvidenceCount, &promotedAt, &lastSeenAt,
+		); err != nil {
+			return nil, fmt.Errorf("ListSkills scan: %w", err)
+		}
+		s.PromotedAt = parseTimestamp(promotedAt)
+		s.LastSeenAt = parseTimestamp(lastSeenAt)
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// GetSkill retrieves a single skill by name.
+// Returns nil, nil when no skill with that name exists.
+func (d *Database) GetSkill(name string) (*Skill, error) {
+	var s Skill
+	var promotedAt, lastSeenAt string
+	err := d.db.QueryRow(`
+		SELECT id, name, description, context_type, evidence_count, promoted_at, last_seen_at
+		FROM skills
+		WHERE name = ?
+	`, name).Scan(
+		&s.ID, &s.Name, &s.Description, &s.ContextType,
+		&s.EvidenceCount, &promotedAt, &lastSeenAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("GetSkill: %w", err)
+	}
+	s.PromotedAt = parseTimestamp(promotedAt)
+	s.LastSeenAt = parseTimestamp(lastSeenAt)
+	return &s, nil
 }
 
 // ---------------------------------------------------------------------------

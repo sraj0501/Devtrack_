@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -29,6 +30,11 @@ type queueModel struct {
 	spinner       spinner.Model
 	loading       bool
 	pulseState    bool
+
+	// Flagging mode — active when flaggingActionID != 0.
+	flaggingActionID int64
+	flagInput        textinput.Model
+	flagErrMsg       string
 }
 
 func newQueueModel(database *db.Database, tc *trigger.HTTPTriggerClient) queueModel {
@@ -49,8 +55,89 @@ func (m queueModel) load() tea.Cmd {
 	}
 }
 
+// submitFlag inserts a correction for the most recent inference associated with
+// the currently flagged action's type, halves the inference confidence, and
+// resets flagging mode.
+// Returns (updated model, cmd-to-reload) — the caller must return these from Update.
+func (m queueModel) submitFlag() (queueModel, tea.Cmd) {
+	// Find the action being flagged.
+	var action *db.PendingAction
+	for i := range m.items {
+		if m.items[i].ID == m.flaggingActionID {
+			action = &m.items[i]
+			break
+		}
+	}
+	if action == nil {
+		m.flagErrMsg = "Action not found — it may have expired."
+		return m, nil
+	}
+
+	// Look up the most recent inference for this action's type.
+	inferences, err := m.db.ListInferences(action.ActionType, 1)
+	if err != nil || len(inferences) == 0 {
+		m.flagErrMsg = "No inference recorded for this action."
+		return m, nil
+	}
+	inf := inferences[0]
+
+	// Insert the correction.
+	corrText := m.flagInput.Value()
+	if strings.TrimSpace(corrText) == "" {
+		m.flagErrMsg = "Correction text cannot be empty."
+		return m, nil
+	}
+
+	_, insertErr := m.db.InsertCorrection(db.Correction{
+		InferenceID: inf.ID,
+		Correction:  corrText,
+		FlaggedFrom: "tui",
+		Weight:      2.0,
+	})
+	if insertErr != nil {
+		log.Printf("tui: InsertCorrection failed for inference %d: %v", inf.ID, insertErr)
+		m.flagErrMsg = fmt.Sprintf("Failed to save correction: %v", insertErr)
+		return m, nil
+	}
+
+	// Halve the flagged inference's confidence immediately.
+	newConf := inf.Confidence * 0.5
+	if confErr := m.db.UpdateInferenceConfidence(inf.ID, newConf); confErr != nil {
+		log.Printf("tui: UpdateInferenceConfidence failed for inference %d: %v", inf.ID, confErr)
+	}
+
+	// Reset flagging mode.
+	m.flaggingActionID = 0
+	m.flagInput.Reset()
+	m.flagErrMsg = ""
+
+	return m, m.load()
+}
+
 // Update handles messages for the Queue tab.
 func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
+	// When in flagging mode, route all key events to the text input first.
+	if m.flaggingActionID != 0 {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				return m.submitFlag()
+			case "esc":
+				// Cancel with no DB changes.
+				m.flaggingActionID = 0
+				m.flagInput.Reset()
+				m.flagErrMsg = ""
+				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.flagInput, cmd = m.flagInput.Update(msg)
+				return m, cmd
+			}
+		}
+		// Non-key messages still fall through to normal handling below.
+	}
+
 	switch msg := msg.(type) {
 	case queueDataMsg:
 		m.items = []db.PendingAction(msg)
@@ -86,6 +173,10 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 				item := m.items[m.cursor]
 				if item.Status == "pending" {
 					_ = m.db.UpdatePendingActionStatus(item.ID, "approved", "tui")
+					// Adaptive threshold signal — record approval for per-type threshold learning.
+					if logErr := m.db.RecordApproval(item.ActionType, item.Workspace); logErr != nil {
+						log.Printf("[threshold] RecordApproval: %v", logErr)
+					}
 					// Fire-and-forget: call /dialectic/infer for the approval interaction.
 					// Non-blocking; errors logged only — never interrupts the TUI.
 					if m.triggerClient != nil && m.db != nil {
@@ -118,6 +209,10 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 				item := m.items[m.cursor]
 				if item.Status == "pending" {
 					_ = m.db.UpdatePendingActionStatus(item.ID, "rejected", "tui")
+					// Adaptive threshold signal — record rejection for per-type threshold learning.
+					if logErr := m.db.RecordRejection(item.ActionType, item.Workspace); logErr != nil {
+						log.Printf("[threshold] RecordRejection: %v", logErr)
+					}
 					// Fire-and-forget: call /dialectic/infer for the rejection interaction.
 					if m.triggerClient != nil && m.db != nil {
 						go func(action db.PendingAction, tc *trigger.HTTPTriggerClient, database *db.Database) {
@@ -147,6 +242,20 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 		case "e":
 			// Edit not implemented yet — placeholder for Phase 1 completion.
 			return m, nil
+		case "f":
+			// Enter flagging mode for the currently selected pending action.
+			if len(m.items) > 0 && m.cursor < len(m.items) {
+				item := m.items[m.cursor]
+				m.flaggingActionID = item.ID
+				ti := textinput.New()
+				ti.Placeholder = "Describe what was wrong…"
+				ti.CharLimit = 200
+				ti.Width = 60
+				_ = ti.Focus()
+				m.flagInput = ti
+				m.flagErrMsg = ""
+				return m, textinput.Blink
+			}
 		}
 	}
 
@@ -226,8 +335,31 @@ func queueFooter(lastLoad time.Time) string {
 	if !lastLoad.IsZero() {
 		ts = lastLoad.Format("15:04:05")
 	}
-	return StyleMuted.Render(fmt.Sprintf("  %s  %s  %s   last: %s",
-		key("a", "pprove"), key("r", "eject"), key("e", "dit"), ts))
+	return StyleMuted.Render(fmt.Sprintf("  %s  %s  %s  %s   last: %s",
+		key("a", "pprove"), key("r", "eject"), key("e", "dit"),
+		key("f", "lag-wrong-inference"), ts))
+}
+
+// flagOverlay renders the inline text-input box used when flagging an inference.
+func (m queueModel) flagOverlay() string {
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(ColorAccent).
+		Padding(0, 1).
+		Width(68)
+
+	title := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true).Render("Flag inference as wrong")
+	inputLine := "Correction: " + m.flagInput.View()
+	hint := StyleMuted.Render("(Enter to submit · Esc to cancel)")
+
+	content := title + "\n" + inputLine + "\n" + hint
+	box := boxStyle.Render(content)
+
+	if m.flagErrMsg != "" {
+		errLine := lipgloss.NewStyle().Foreground(ColorDanger).Render("  " + m.flagErrMsg)
+		return box + "\n" + errLine
+	}
+	return box
 }
 
 // View renders the Queue tab.
@@ -238,7 +370,11 @@ func (m queueModel) View() string {
 
 	if len(m.items) == 0 {
 		footer := queueFooter(m.lastLoad)
-		return "\n  No pending actions in the last 24 hours.\n\n" + footer
+		empty := "\n  No pending actions in the last 24 hours.\n\n"
+		if m.flaggingActionID != 0 {
+			return empty + "\n" + m.flagOverlay() + "\n"
+		}
+		return empty + footer
 	}
 
 	muted := StyleMuted
@@ -277,6 +413,13 @@ func (m queueModel) View() string {
 	}
 
 	sb.WriteString("\n")
-	sb.WriteString(queueFooter(m.lastLoad))
+
+	// When in flagging mode, replace the footer with the overlay.
+	if m.flaggingActionID != 0 {
+		sb.WriteString(m.flagOverlay())
+	} else {
+		sb.WriteString(queueFooter(m.lastLoad))
+	}
+
 	return sb.String()
 }

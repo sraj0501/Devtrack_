@@ -139,7 +139,33 @@ func (q *QueueExecutor) tick() {
 			continue
 		}
 
-		// 3b. Expired window — dispatch the action.
+		// 3b. Expired window — check adaptive threshold before dispatching.
+		//     Fetch the full action from local SQLite to get Confidence and Workspace
+		//     (QueuePendingAction only carries the fields needed for routing, not for learning).
+		//     If the action's confidence is below the per-type adaptive threshold,
+		//     defer it (leave in pending state for manual review) rather than auto-approving.
+		var fullAction *db.PendingAction
+		if q.db != nil {
+			var dbErr error
+			fullAction, dbErr = q.db.GetPendingAction(action.ID)
+			if dbErr != nil || fullAction == nil {
+				log.Printf("queue executor: cannot fetch full action %d from SQLite: %v — proceeding with execution", action.ID, dbErr)
+			}
+		}
+		if q.db != nil && fullAction != nil {
+			threshold, threshErr := q.db.GetOrCreateThreshold(fullAction.ActionType, fullAction.Workspace)
+			if threshErr == nil && fullAction.Confidence < threshold.Threshold {
+				log.Printf("queue: deferring action %d (type=%s conf=%.2f below threshold=%.2f)",
+					action.ID, fullAction.ActionType, fullAction.Confidence, threshold.Threshold)
+				continue
+			}
+			if threshErr != nil {
+				// Fail open — proceed with execution when threshold lookup fails.
+				log.Printf("queue: threshold lookup failed for action %d: %v — proceeding with execution", action.ID, threshErr)
+			}
+		}
+
+		// 3c. Dispatch the action.
 		log.Printf("queue: auto-approving action %d (type=%s target=%s)", action.ID, action.ActionType, action.Target)
 		execResp, execErr := q.triggerClient.ExecuteQueueAction(action.ID)
 		if execErr != nil {
@@ -160,13 +186,24 @@ func (q *QueueExecutor) tick() {
 				if dbErr := q.db.UpdatePendingActionStatus(action.ID, "posted", "auto"); dbErr != nil {
 					log.Printf("queue executor: failed to mark action %d as posted: %v", action.ID, dbErr)
 				}
+				// Adaptive threshold signal — record auto-approval for per-type threshold learning.
+				// Use fullAction if available (it has Workspace); fall back to action.ActionType with "" workspace.
+				apType := action.ActionType
+				apWorkspace := ""
+				if fullAction != nil {
+					apType = fullAction.ActionType
+					apWorkspace = fullAction.Workspace
+				}
+				if logErr := q.db.RecordApproval(apType, apWorkspace); logErr != nil {
+					log.Printf("[threshold] RecordApproval (auto): %v", logErr)
+				}
 			}
 
 			// 5. Fire-and-forget: call /dialectic/infer and store the returned
 			//    inferences in SQLite. Non-blocking; errors are logged only.
-			fullAction, dbErr := q.db.GetPendingAction(action.ID)
-			if dbErr == nil && fullAction != nil {
-				go q.fireDialecticInfer(*fullAction)
+			// Re-fetch to get the updated status row (fullAction was fetched before execution).
+			if latestAction, dbErr := q.db.GetPendingAction(action.ID); dbErr == nil && latestAction != nil {
+				go q.fireDialecticInfer(*latestAction)
 			}
 		} else {
 			// status == "failed" or unexpected value

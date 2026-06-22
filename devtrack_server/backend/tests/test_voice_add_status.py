@@ -403,3 +403,170 @@ class TestVoiceStatusChromaUnavailable:
         assert resp.status_code == 200, f"expected 200, got {resp.status_code}: {resp.text}"
         body = resp.json()
         assert body["total_entries"] == 0
+
+
+# ---------------------------------------------------------------------------
+# GET /voice/status -- Phase 6 dialectic fields (TASK-091)
+# ---------------------------------------------------------------------------
+
+class TestVoiceStatusDialecticFields:
+    """GET /voice/status includes inferences, skills, thresholds from DialecticStatus."""
+
+    def test_voice_status_includes_dialectic_fields_with_mocked_db(
+        self, client: TestClient
+    ) -> None:
+        """Response includes inferences, skills, thresholds when DialecticStatus is mocked."""
+        mock_inf = {
+            "total": 2,
+            "top_by_confidence": [
+                {
+                    "id": 1,
+                    "subject": "tone",
+                    "inference": "imperative",
+                    "confidence": 0.91,
+                    "context_type": "commit",
+                }
+            ],
+            "correction_count": 0,
+        }
+        mock_skills = {"total": 1, "names": ["imperative_commit_tone"]}
+        mock_thresholds: dict = {}
+
+        mock_store = _make_mock_store([])
+        mock_store._init.return_value = False
+
+        with (
+            patch("backend.rag.vector_store.VectorStore", return_value=mock_store),
+            patch("backend.config.database_path", side_effect=Exception("no db")),
+            patch("backend.config.get_path", side_effect=Exception("no data_dir")),
+            patch(
+                "backend.dialectic_status.DialecticStatus.get_inference_summary",
+                return_value=mock_inf,
+            ),
+            patch(
+                "backend.dialectic_status.DialecticStatus.get_skill_summary",
+                return_value=mock_skills,
+            ),
+            patch(
+                "backend.dialectic_status.DialecticStatus.get_threshold_summary",
+                return_value=mock_thresholds,
+            ),
+        ):
+            resp = client.get(
+                "/voice/status",
+                headers={"X-DevTrack-API-Key": ""},
+            )
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+
+        # inferences block
+        assert "inferences" in body, "response should contain 'inferences' key"
+        assert body["inferences"]["total"] == 2
+        assert len(body["inferences"]["top_by_confidence"]) == 1
+        entry = body["inferences"]["top_by_confidence"][0]
+        assert entry["subject"] == "tone"
+        assert entry["confidence"] == 0.91
+        assert entry["context_type"] == "commit"
+
+        # skills block
+        assert "skills" in body, "response should contain 'skills' key"
+        assert body["skills"]["total"] == 1
+        assert "imperative_commit_tone" in body["skills"]["names"]
+
+        # thresholds block present (even if empty)
+        assert "thresholds" in body, "response should contain 'thresholds' key"
+
+
+# ---------------------------------------------------------------------------
+# DialecticStatus unit tests (TASK-091)
+# ---------------------------------------------------------------------------
+
+class TestDialecticStatusUnit:
+    """Unit tests for DialecticStatus helper methods."""
+
+    def test_get_inference_summary_nonexistent_db_returns_safe_default(
+        self, tmp_path: Path
+    ) -> None:
+        """get_inference_summary() with a nonexistent DB path returns zeros without raising."""
+        from backend.dialectic_status import DialecticStatus
+
+        nonexistent = tmp_path / "does_not_exist.db"
+
+        # Patch the database_path name in the dialectic_status module's own namespace.
+        with patch("backend.dialectic_status.database_path", return_value=nonexistent):
+            ds = DialecticStatus()
+            result = ds.get_inference_summary()
+
+        assert result == {
+            "total": 0,
+            "top_by_confidence": [],
+            "correction_count": 0,
+        }, f"expected safe default, got: {result}"
+
+    def test_get_inference_summary_with_real_db(self, tmp_path: Path) -> None:
+        """get_inference_summary() returns correct counts from a real SQLite DB."""
+        import sqlite3 as _sqlite3
+        from backend.dialectic_status import DialecticStatus
+
+        db_path = tmp_path / "devtrack.db"
+        conn = _sqlite3.connect(str(db_path))
+        conn.execute(
+            """
+            CREATE TABLE inferences (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                context_type TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                inference TEXT NOT NULL,
+                evidence TEXT NOT NULL DEFAULT '[]',
+                confidence REAL NOT NULL DEFAULT 0.5,
+                source TEXT NOT NULL DEFAULT 'hermes3',
+                created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+                updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE corrections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                inference_id INTEGER NOT NULL,
+                correction TEXT NOT NULL,
+                flagged_from TEXT NOT NULL DEFAULT 'tui',
+                weight REAL NOT NULL DEFAULT 2.0,
+                created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
+        # Insert 2 inferences.
+        conn.execute(
+            "INSERT INTO inferences (context_type, subject, inference, evidence, confidence)"
+            " VALUES (?, ?, ?, ?, ?)",
+            ("commit", "tone", "Uses imperative mood.", "[]", 0.91),
+        )
+        conn.execute(
+            "INSERT INTO inferences (context_type, subject, inference, evidence, confidence)"
+            " VALUES (?, ?, ?, ?, ?)",
+            ("comment", "prefix", "Brackets ticket ID.", "[]", 0.87),
+        )
+        # Insert 1 correction.
+        conn.execute(
+            "INSERT INTO corrections (inference_id, correction) VALUES (?, ?)",
+            (1, "Actually uses past tense sometimes."),
+        )
+        conn.commit()
+        conn.close()
+
+        # Patch database_path in the dialectic_status module namespace so
+        # _resolve_db_path() returns our real test DB.
+        with patch("backend.dialectic_status.database_path", return_value=db_path):
+            ds = DialecticStatus()
+            result = ds.get_inference_summary()
+
+        assert result["total"] == 2, f"expected total=2, got {result['total']}"
+        assert result["correction_count"] == 1, (
+            f"expected correction_count=1, got {result['correction_count']}"
+        )
+        assert len(result["top_by_confidence"]) == 2
+        # First entry should be highest confidence (0.91).
+        assert result["top_by_confidence"][0]["confidence"] == 0.91

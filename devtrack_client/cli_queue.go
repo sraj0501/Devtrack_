@@ -47,6 +47,8 @@ func (cli *CLI) handleQueue() error {
 		return runQueueEdit()
 	case "status":
 		return runQueueStatus()
+	case "flag":
+		return runQueueFlag()
 	default:
 		// Treat bare `devtrack queue` (no subcommand) as `devtrack queue list`.
 		// But if os.Args[2] looks like a number, warn the user.
@@ -287,6 +289,74 @@ func runQueueStatus() error {
 	return nil
 }
 
+// ── flag ──────────────────────────────────────────────────────────────────────
+
+// runQueueFlag implements `devtrack queue flag <action_id> "<correction text>"`.
+// It finds the most recent inference for the action's type, inserts a correction
+// row with flagged_from="tui" (channel parity — same DB path as the TUI), and
+// halves the inference's confidence score as an immediate negative signal.
+func runQueueFlag() error {
+	args := os.Args[3:] // everything after "flag"
+	if len(args) < 2 {
+		fmt.Println("Usage: devtrack queue flag <action_id> \"<correction text>\"")
+		return fmt.Errorf("queue flag: missing arguments")
+	}
+
+	actionID, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("queue flag: invalid action_id %q: %w", args[0], err)
+	}
+	corrText := strings.Join(args[1:], " ")
+	if strings.TrimSpace(corrText) == "" {
+		return fmt.Errorf("queue flag: correction text cannot be empty")
+	}
+
+	d, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("queue flag: open database: %w", err)
+	}
+	defer d.Close()
+
+	// Look up the action to get its ActionType.
+	action, err := d.GetPendingAction(actionID)
+	if err != nil {
+		return fmt.Errorf("queue flag: action %d not found: %w", actionID, err)
+	}
+
+	// Find the most recent inference for this action's type.
+	inferences, err := d.ListInferences(action.ActionType, 1)
+	if err != nil {
+		return fmt.Errorf("queue flag: list inferences: %w", err)
+	}
+	if len(inferences) == 0 {
+		fmt.Fprintf(os.Stderr, "queue flag: no inference recorded for action type %q\n", action.ActionType)
+		os.Exit(1)
+	}
+	inf := inferences[0]
+
+	// Insert the correction.
+	_, insertErr := d.InsertCorrection(db.Correction{
+		InferenceID: inf.ID,
+		Correction:  corrText,
+		FlaggedFrom: "cli",
+		Weight:      2.0,
+	})
+	if insertErr != nil {
+		return fmt.Errorf("queue flag: insert correction: %w", insertErr)
+	}
+
+	// Halve the inference's confidence.
+	oldConf := inf.Confidence
+	newConf := oldConf * 0.5
+	if confErr := d.UpdateInferenceConfidence(inf.ID, newConf); confErr != nil {
+		return fmt.Errorf("queue flag: update confidence: %w", confErr)
+	}
+
+	fmt.Printf("Flagged inference [%d] for action [%d]. Confidence reduced from %.2f to %.2f.\n",
+		inf.ID, actionID, oldConf, newConf)
+	return nil
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 // parseQueueID extracts and parses the integer ID argument for approve/reject subcommands.
@@ -306,9 +376,10 @@ func parseQueueID(subCmd string) (int64, error) {
 // printQueueUsage prints a short usage block for the queue command group.
 func printQueueUsage() {
 	fmt.Println("Usage:")
-	fmt.Println("  devtrack queue [list] [--all]    List pending (or all recent) actions")
-	fmt.Println("  devtrack queue approve <id>      Approve and immediately dispatch action")
-	fmt.Println("  devtrack queue reject  <id>      Reject action (will not be dispatched)")
-	fmt.Println("  devtrack queue edit    <id> <json> Replace payload JSON of action")
-	fmt.Println("  devtrack queue status            Show summary: pending / posted / rejected")
+	fmt.Println("  devtrack queue [list] [--all]         List pending (or all recent) actions")
+	fmt.Println("  devtrack queue approve <id>           Approve and immediately dispatch action")
+	fmt.Println("  devtrack queue reject  <id>           Reject action (will not be dispatched)")
+	fmt.Println("  devtrack queue edit    <id> <json>    Replace payload JSON of action")
+	fmt.Println("  devtrack queue status                 Show summary: pending / posted / rejected")
+	fmt.Println("  devtrack queue flag <id> \"<text>\"    Flag inference as wrong, halve its confidence")
 }
