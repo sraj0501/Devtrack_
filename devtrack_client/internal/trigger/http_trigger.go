@@ -999,6 +999,43 @@ func (c *HTTPTriggerClient) VoiceSync(workspaceNames []string) (map[string]int, 
 	}, nil
 }
 
+// ── Review classification methods (Phase 7) ──────────────────────────────────
+
+// reviewClassifyRequest is the body sent to POST /review/classify.
+type reviewClassifyRequest struct {
+	CommentBody string `json:"comment_body"`
+	PRTitle     string `json:"pr_title"`
+	Platform    string `json:"platform"`
+	CommentURL  string `json:"comment_url,omitempty"`
+}
+
+// reviewClassifyResponse is the response from POST /review/classify.
+type reviewClassifyResponse struct {
+	Classification string `json:"classification"` // "auto_fixable" | "needs_human"
+	Reason         string `json:"reason"`
+	FixHint        string `json:"fix_hint"`
+}
+
+// ClassifyReviewComment calls POST /review/classify and returns the classification
+// result. On any HTTP or parse error, returns "needs_human" as the safe default.
+// Never panics.
+func (c *HTTPTriggerClient) ClassifyReviewComment(commentBody, prTitle, platform, commentURL string) (classification, reason, fixHint string, err error) {
+	req := reviewClassifyRequest{
+		CommentBody: commentBody,
+		PRTitle:     prTitle,
+		Platform:    platform,
+		CommentURL:  commentURL,
+	}
+	var resp reviewClassifyResponse
+	if httpErr := c.postWithResult("/review/classify", req, &resp); httpErr != nil {
+		return "needs_human", "HTTP error", "", httpErr
+	}
+	if resp.Classification == "" {
+		resp.Classification = "needs_human"
+	}
+	return resp.Classification, resp.Reason, resp.FixHint, nil
+}
+
 // LicenseAccept calls POST /license/accept.
 func (c *HTTPTriggerClient) LicenseAccept() (string, error) {
 	var r struct {

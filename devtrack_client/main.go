@@ -144,6 +144,7 @@ func main() {
 			cmd == "launchd-install" || cmd == "launchd-uninstall" ||
 			cmd == "autostart-install" || cmd == "autostart-uninstall" || cmd == "autostart-status" ||
 			cmd == "alerts" ||
+			cmd == "review" ||
 			cmd == "sage" ||
 			cmd == "work" || cmd == "vacation" ||
 			cmd == "tui" || cmd == "cloud" || cmd == "init" ||
@@ -203,6 +204,7 @@ func printBasicUsage() {
 	fmt.Println("            workspace enable|disable <name> | workspace reload")
 	fmt.Println("COMMITS:    commits pending | commits review")
 	fmt.Println("ALERTS:     alerts | alerts --all | alerts --clear")
+	fmt.Println("REVIEW:     review                                  show PR review comment queue")
 	fmt.Println("REPORTS:    preview-report | send-report | save-report")
 	fmt.Println("CLOUD:      cloud login --url URL --key KEY    connect to external server")
 	fmt.Println("            cloud status | cloud logout")

@@ -1,11 +1,13 @@
 package alerts
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/connectors/github"
+	cfg "github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 )
 
@@ -53,6 +55,136 @@ func (a *githubAlerter) collect(database *db.Database, userID string) []db.Notif
 		})
 	}
 	return records
+}
+
+// collectReviewComments polls GitHub for new review comments on PRs authored by
+// the developer. Each new comment is stored in pr_review_comments (idempotent)
+// and returned as a ReviewCommentEvent for classification.
+//
+// The workspace config determines which repos to scan. Only workspaces with
+// pm_platform="github" and a non-empty pm_project (repo) are polled.
+func (a *githubAlerter) collectReviewComments(database *db.Database) []ReviewCommentEvent {
+	client, err := github.NewClient("")
+	if err != nil {
+		log.Printf("alerts/github/review: build client: %v", err)
+		return nil
+	}
+
+	// Determine the developer's GitHub login.
+	authUser, err := client.GetAuthenticatedUser()
+	if err != nil {
+		log.Printf("alerts/github/review: get authenticated user: %v", err)
+		return nil
+	}
+	devLogin := authUser.Login
+
+	// Load workspace config to find GitHub repos.
+	wsCfg, err := cfg.LoadWorkspacesConfig()
+	if err != nil || wsCfg == nil {
+		log.Printf("alerts/github/review: load workspaces: %v", err)
+		return nil
+	}
+
+	var events []ReviewCommentEvent
+
+	for _, ws := range wsCfg.Workspaces {
+		if ws.PMPlatform != "github" || !ws.Enabled {
+			continue
+		}
+		repo := ws.PMProject
+		if repo == "" {
+			// Try pm_org/name derived repo
+			if ws.PMOrg != "" && ws.Name != "" {
+				repo = ws.PMOrg + "/" + ws.Name
+			}
+		}
+		if repo == "" {
+			continue
+		}
+
+		evs := a.collectReviewCommentsForRepo(database, client, repo, ws.Name, devLogin)
+		events = append(events, evs...)
+	}
+
+	return events
+}
+
+// collectReviewCommentsForRepo fetches and processes review comments for a single
+// GitHub repo. Comments already stored in pr_review_comments are skipped.
+func (a *githubAlerter) collectReviewCommentsForRepo(
+	database *db.Database,
+	client *github.Client,
+	repo, wsName, devLogin string,
+) []ReviewCommentEvent {
+	// List all open PRs in this repo authored by the developer.
+	prs, err := client.ListOpenPRsAuthored(repo, devLogin)
+	if err != nil {
+		log.Printf("alerts/github/review[%s]: list PRs: %v", repo, err)
+		return nil
+	}
+
+	var events []ReviewCommentEvent
+	for _, pr := range prs {
+		prID := fmt.Sprintf("%d", pr.Number)
+
+		// Inline review comments (file-level).
+		inlineComments, err := client.ListPRReviewComments(repo, pr.Number)
+		if err != nil {
+			log.Printf("alerts/github/review[%s#%d]: list inline comments: %v", repo, pr.Number, err)
+		}
+
+		// Top-level (issue) comments on the PR thread.
+		issueComments, err := client.ListPRIssueComments(repo, pr.Number)
+		if err != nil {
+			log.Printf("alerts/github/review[%s#%d]: list issue comments: %v", repo, pr.Number, err)
+		}
+
+		for _, cmt := range append(inlineComments, issueComments...) {
+			// Skip comments left by the developer themselves.
+			if cmt.User.Login == devLogin {
+				continue
+			}
+
+			commentID := fmt.Sprintf("%d", cmt.ID)
+
+			// Idempotency check: skip if already stored.
+			existing, err := database.GetPRReviewComment("github", commentID)
+			if err != nil {
+				log.Printf("alerts/github/review: db check comment %s: %v", commentID, err)
+				continue
+			}
+			if existing != nil {
+				continue // already processed
+			}
+
+			// Store the new comment.
+			dbComment := db.PRReviewComment{
+				Platform:    "github",
+				CommentID:   commentID,
+				PRID:        prID,
+				Workspace:   wsName,
+				Status:      "new",
+				CommentBody: cmt.Body,
+			}
+			if err := database.InsertPRReviewComment(dbComment); err != nil {
+				log.Printf("alerts/github/review: insert comment %s: %v", commentID, err)
+				continue
+			}
+
+			events = append(events, ReviewCommentEvent{
+				Platform:    "github",
+				Workspace:   wsName,
+				PRID:        prID,
+				PRTitle:     pr.Title,
+				CommentID:   commentID,
+				CommentBody: cmt.Body,
+				Reviewer:    cmt.User.Login,
+				CommentURL:  cmt.HTMLURL,
+				DetectedAt:  time.Now(),
+			})
+		}
+	}
+	return events
 }
 
 func mapGitHubReason(reason string) string {

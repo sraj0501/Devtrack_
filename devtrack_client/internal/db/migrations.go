@@ -298,6 +298,36 @@ var allMigrations = []Migration{
 			return err
 		},
 	},
+	{
+		ID:          "012-create-pr-review-comments",
+		Description: "Create pr_review_comments table and indexes for Phase 7 PR puppet master",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS pr_review_comments (
+					platform      TEXT     NOT NULL,
+					comment_id    TEXT     NOT NULL,
+					pr_id         TEXT     NOT NULL,
+					workspace     TEXT     NOT NULL,
+					status        TEXT     NOT NULL DEFAULT 'new',
+					comment_body  TEXT     NOT NULL DEFAULT '',
+					classified_as TEXT,
+					fix_hint      TEXT     NOT NULL DEFAULT '',
+					created_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+					updated_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+					PRIMARY KEY (platform, comment_id)
+				);
+				CREATE INDEX IF NOT EXISTS idx_pr_comments_status ON pr_review_comments(status);
+				CREATE INDEX IF NOT EXISTS idx_pr_comments_pr     ON pr_review_comments(pr_id, platform);
+			`)
+			return err
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded
