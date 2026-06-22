@@ -3619,6 +3619,8 @@ Build: `go build ./...` and `go vet ./...` from `devtrack_client/`. `uv run pyte
 **Phase**: Phase 7
 **Depends on**: TASK-093
 **Branch**: `feat/TASK-094-agent-invocation-interface`
+**Assigned to**: engineer
+**Started**: 2026-06-22
 
 **Spec**:
 
@@ -3745,17 +3747,22 @@ REVIEW_AGENT_TIMEOUT_SECS=120
 Go: `go build ./...` and `go vet ./...` must pass clean.
 
 **Acceptance criteria**:
-- [ ] `devtrack_client/internal/reviewer/` package exists with `agent.go`
-- [ ] `Agent`, `AgentInvocation`, `AgentResult`, `AgentBackend` types defined and exported
-- [ ] `Apply()` never panics; all failures encoded in `AgentResult.Success=false`
-- [ ] HEAD-change detection: `CommitHash` populated when agent commits; empty when it does not
-- [ ] `CANNOT_FIX:` prefix in agent output → `Success=false` (not treated as a successful run)
-- [ ] Context timeout respected: `Apply` returns when `ctx` deadline passes
-- [ ] `GetReviewAgent()` accessor in `config_env.go` (defaults `claude-code` with logged warning)
-- [ ] `GetReviewAgentTimeoutSecs()` accessor in `config_env.go`; `REVIEW_AGENT_TIMEOUT_SECS=120` in `.env_sample`
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] Agent unit tests pass: success path, CANNOT_FIX path, non-zero exit, timeout
-- [ ] No hardcoded host/port/timeout literals outside config accessors; no `os.Getenv` outside `config_env.go`
+- [x] `devtrack_client/internal/reviewer/` package exists with `agent.go`
+- [x] `Agent`, `AgentInvocation`, `AgentResult`, `AgentBackend` types defined and exported
+- [x] `Apply()` never panics; all failures encoded in `AgentResult.Success=false`
+- [x] HEAD-change detection: `CommitHash` populated when agent commits; empty when it does not
+- [x] `CANNOT_FIX:` prefix in agent output → `Success=false` (not treated as a successful run)
+- [x] Context timeout respected: `Apply` returns when `ctx` deadline passes
+- [x] `GetReviewAgent()` accessor in `config_env.go` (defaults `claude-code` with logged warning)
+- [x] `GetReviewAgentTimeoutSecs()` accessor in `config_env.go`; `REVIEW_AGENT_TIMEOUT_SECS=120` in `.env_sample`
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] Agent unit tests pass: success path, CANNOT_FIX path, non-zero exit, timeout
+- [x] No hardcoded host/port/timeout literals outside config accessors; no `os.Getenv` outside `config_env.go`
+
+**Engineer status**: 11/11 criteria done — last commit: ae8ff9b "feat(reviewer): add coding agent invocation package for Phase 7 PR puppet master (TASK-094)" — 2026-06-22 16:55
+**PR**: https://github.com/sraj0501/Devtrack_/pull/202
+
+**COMPLETE** — ready for PM review — 2026-06-22 16:55
 
 ---
 
