@@ -1,4 +1,35 @@
-# DevTrack Engineer Log
+﻿# DevTrack Engineer Log
+
+---
+
+### [2026-06-22 16:55] TASK-094 — Coding agent invocation interface (Phase 7)
+
+**Original message**: "feat(reviewer): add coding agent invocation package for Phase 7 PR puppet master (TASK-094)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running; committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-094 updated with 11/11 criteria met
+**Time**: ~2 seconds
+**Friction**: LOW
+**Notes**: Created `devtrack_client/internal/reviewer/` package from scratch. Key design decisions:
+  1. Used `cmdBuilderFunc` injection pattern (unexported field) for cross-platform testability — avoids shell script wrappers that don't kill reliably on Windows.
+  2. TestMain re-invocation technique for subprocess mocking — test binary acts as mock agent when MOCK_AGENT_ROLE env var is set.
+  3. Manual Start()+Wait()+goroutine+killProc() instead of cmd.CombinedOutput() — ensures timeout kills the process reliably on Windows (CombinedOutput blocks until process exits, ignoring context cancellation).
+  4. `GetReviewAgentTimeoutSecs()` is a required var (panic on missing) — matches the pattern of `GetVoiceSeedMonths()` and similar required Phase vars.
+  5. `GetReviewAgent()` defaults to "claude-code" with logged warning — the one documented exception to "no hardcoded defaults" because there IS a sensible product default.
+
+**Build verification**: go build ./... PASS, go vet ./... PASS, go test ./internal/reviewer/... PASS (4/4 tests), go test ./... PASS (all packages)
+
+---
+
+## Task Summary — TASK-094: Coding agent invocation interface — 2026-06-22
+
+- Total commits: 1 (ae8ff9b)
+- Acceptance criteria met: 11/11
+- Tickets auto-updated: NO (AI provider unreachable)
+- Estimated daily time saved: ~10 min (manual subprocess management for each PR review cycle)
+- Blockers encountered: none (TASK-093 not yet merged to dev but not required — reviewer package is standalone)
+- One thing that still feels rough: "The claude --no-browser --print flags may need version-specific verification; added comment in code noting where to check"
+- Ready for PM review: YES
 
 ---
 
