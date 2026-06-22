@@ -4359,19 +4359,22 @@ func handleMCPCommand(args []string) {
 ```
 
 **Acceptance criteria**:
-- [ ] `devtrack_client/internal/mcp/` package exists; `go build ./...` passes clean from `devtrack_client/`
-- [ ] `go vet ./...` passes clean
-- [ ] `Server.Register()` and `Server.run()` (or `Start`) correctly handle `initialize`, `tools/list`, `tools/call`, `shutdown`, `ping`
-- [ ] `initialize` response contains `serverInfo.name = "devtrack"` and `protocolVersion = "2024-11-05"`
-- [ ] Unknown tool call returns JSON-RPC error code -32602
-- [ ] All unit tests in `server_test.go` pass: `go test ./internal/mcp/...`
-- [ ] `devtrack mcp` command exists and starts the server (verify: `echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"0.1"}}}' | devtrack mcp` exits cleanly with a JSON response on stdout)
-- [ ] `GetMCPPort()` accessor exists in `config_env.go`; `MCP_PORT=0` in `.env_sample`
-- [ ] All log output from the MCP server goes to stderr, never stdout
-- [ ] No hardcoded host/port/timeout literals; no `os.Getenv` calls outside `config_env.go`
+- [x] `devtrack_client/internal/mcp/` package exists; `go build ./...` passes clean from `devtrack_client/`
+- [x] `go vet ./...` passes clean
+- [x] `Server.Register()` and `Server.run()` (or `Start`) correctly handle `initialize`, `tools/list`, `tools/call`, `shutdown`, `ping`
+- [x] `initialize` response contains `serverInfo.name = "devtrack"` and `protocolVersion = "2024-11-05"`
+- [x] Unknown tool call returns JSON-RPC error code -32602
+- [x] All unit tests in `server_test.go` pass: `go test ./internal/mcp/...`
+- [x] `devtrack mcp` command exists and starts the server (verify: `echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"0.1"}}}' | devtrack mcp` exits cleanly with a JSON response on stdout)
+- [x] `GetMCPPort()` accessor exists in `config_env.go`; `MCP_PORT=0` in `.env_sample`
+- [x] All log output from the MCP server goes to stderr, never stdout
+- [x] No hardcoded host/port/timeout literals; no `os.Getenv` calls outside `config_env.go`
 
-**Engineer status**: started — create internal/mcp package (server.go + server_test.go), add GetMCPPort() to config_env.go, add MCP_PORT to .env_sample, create mcp_cmd.go at package root, wire devtrack mcp into main.go
+**Engineer status**: 10/10 criteria done — last commit: 06d442a "feat(mcp): add MCP server core — JSON-RPC 2.0 handler, tool registry, stdio transport (TASK-098)" — 2026-06-22
+**PR**: https://github.com/sraj0501/Devtrack_/pull/203
 **Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-22 17:55
 
 ---
 
