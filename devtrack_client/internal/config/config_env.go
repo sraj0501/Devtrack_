@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -860,6 +861,36 @@ func IsAlertAzureEnabled() bool {
 		return os.Getenv("AZURE_DEVOPS_PAT") != ""
 	}
 	return strings.EqualFold(val, "true") || val == "1"
+}
+
+// GetReviewAgent returns the configured coding agent backend.
+// Valid values: "claude-code", "copilot-cli".
+// Defaults to "claude-code" if REVIEW_AGENT is unset or invalid (logs a warning).
+func GetReviewAgent() string {
+	v := os.Getenv("REVIEW_AGENT")
+	switch v {
+	case "claude-code", "copilot-cli":
+		return v
+	default:
+		if v != "" {
+			log.Printf("config: unknown REVIEW_AGENT %q — defaulting to claude-code", v)
+		}
+		return "claude-code"
+	}
+}
+
+// GetReviewAgentTimeoutSecs returns REVIEW_AGENT_TIMEOUT_SECS (required).
+// Panics with a clear message if the variable is not set.
+func GetReviewAgentTimeoutSecs() int {
+	val := os.Getenv("REVIEW_AGENT_TIMEOUT_SECS")
+	if val == "" {
+		panic("devtrack: REVIEW_AGENT_TIMEOUT_SECS not set — add it to .env (recommended value: 120)")
+	}
+	secs := mustParseInt("REVIEW_AGENT_TIMEOUT_SECS", val)
+	if secs <= 0 {
+		panic(fmt.Sprintf("devtrack: REVIEW_AGENT_TIMEOUT_SECS must be > 0, got %d", secs))
+	}
+	return secs
 }
 
 // GetAlertPollIntervalSecs returns ALERT_POLL_INTERVAL_SECS (default 300).
