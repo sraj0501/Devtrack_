@@ -1,8 +1,8 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-22 by engineer — TASK-092 COMPLETE 10/10; PR #200 open_
-_Next DevTrack task ID: TASK-093_
-_Active branch: `feat/TASK-092-phase6-exit-verification`_
+_Last updated: 2026-06-22 by PM — TASK-093 dispatched to engineer (Phase 7 start)_
+_Next DevTrack task ID: TASK-098_
+_Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -670,13 +670,18 @@ alongside the CLI (TASK-064). Both must exist.
 
 ---
 
-## QUEUED — Phases 6–8
+## Phase Status Overview
 
 | Phase | Name | Status | Exit criterion (short) |
 |---|---|---|---|
-| 5 | Voice training (low friction) | ACTIVE — TASK-080 dispatched | After 1 week, generated text passes the "did I write this?" test |
-| 6 | Dialectic self-improvement | QUEUED | After 30 days, correction rate measurably down; ≥3 autonomous skills emerged |
-| 7 | PR review loop (puppet master) | QUEUED | Push PR with nit comments, get "approved" without touching it again |
+| 0 | Foundation reset | COMPLETE | Daemon runs a full day with no prompts |
+| 1 | Pending queue + TUI confidence | COMPLETE | Developer supervises queue in one keystroke; trusts auto-approve |
+| 2 | Opinionated ticket extractor | COMPLETE | >80% of commits mapped to tickets |
+| 3 | Silent commit handler | COMPLETE | Ticket commented + state-transitioned within auto-approve window |
+| 4 | EOD pipeline | COMPLETE | Accurate EOD email every evening without developer action |
+| 5 | Voice training (low friction) | COMPLETE | Generated text passes "did I write this?" after one week |
+| 6 | Dialectic self-improvement | COMPLETE — PR #200 open | Correction rate down; ≥3 skills emerged; threshold extended |
+| 7 | PR review loop (puppet master) | PLANNED — TASK-093 through TASK-097 | Push PR with nit comments, get "approved" without touching it again |
 | 8 | MCP server + headless integration | QUEUED | Claude Code queries DevTrack for developer context automatically |
 
 Full phase specs and acceptance criteria: `PRODUCT_BIBLE.md` § Build Phases.
@@ -3382,6 +3387,780 @@ instrumentation is in place and a simulated 30-day sequence produces the expecte
 **Blockers**: none
 
 **COMPLETE** — ready for PM review — 2026-06-22 02:30
+
+---
+
+## PLANNED — Phase 7: PR Review Loop (Puppet Master)
+
+**Goal**: When a PR receives review comments, DevTrack classifies each comment, auto-fixes
+what it can (formatting, naming, lint, obvious logic corrections) by invoking Claude Code
+CLI or Copilot CLI as a subprocess, commits fixes in the developer's voice, and pushes. It
+polls the PR review state in a loop. On completion it sends a single notification: "PR
+approved." On a genuine blocker it escalates with full context. The developer never touches
+the PR between push and the final notification.
+
+**Exit criterion** (PRODUCT_BIBLE.md Phase 7): Developer pushes a PR with formatting and
+naming review comments, moves to next ticket, receives "PR approved" notification without
+touching the PR again.
+
+**Build order**: TASK-093 (event detection + classification) → TASK-094 (agent invocation
+interface) → TASK-095 (fix-commit-push loop) → TASK-096 (escalation + notification) →
+TASK-097 (exit verification).
+
+**Sequencing rationale**: Classification (093) must land first — everything downstream
+depends on knowing whether a comment is auto-fixable. The agent invocation interface (094)
+must exist before the fix loop (095) can call it. The fix loop (095) must exist before
+escalation (096) can be triggered by a stuck loop. Exit verification (097) depends on all
+four mechanics being present.
+
+---
+
+### TASK-093 — PR review event detection and comment classification
+**Assigned to**: engineer
+**Priority**: HIGH
+**Phase**: Phase 7
+**Started**: 2026-06-22
+**Depends on**: TASK-092 (Phase 6 COMPLETE — dev tip a44077c)
+**Branch**: `feat/TASK-093-pr-review-detection`
+**Engineer status**: 13/13 criteria done — last commit: 22bc788 "feat(phase7): Implement review comment classification logic" — 2026-06-22 16:25
+
+**Spec**:
+
+The existing alert poller (`devtrack_client/internal/alerts/`) already detects
+`review_requested` events. Phase 7 extends it to detect **review comments** on PRs
+the developer authored, and classifies each comment as either `auto_fixable` or
+`needs_human`. Classification drives the entire puppet master loop.
+
+**Part A — Extend the Go alert poller to capture review comments**
+
+In `devtrack_client/internal/alerts/`, each platform alerter (GitHub, Azure DevOps,
+GitLab) currently polls for assigned/comment/status/review_requested events. Extend each
+to also emit events of a new type `ReviewCommentEvent` when the developer's own PRs
+receive new inline or top-level review comments.
+
+New type in `devtrack_client/internal/alerts/types.go` (or an appropriate shared
+file in that package):
+
+```go
+type ReviewCommentEvent struct {
+    Platform    string    // "github" | "azure" | "gitlab"
+    Workspace   string
+    PRID        string    // PR number or Azure PR ID
+    PRTitle     string
+    CommentID   string    // platform-native comment ID (for idempotency)
+    CommentBody string
+    Reviewer    string
+    CommentURL  string
+    DetectedAt  time.Time
+}
+```
+
+Idempotency: before emitting an event, check a new SQLite table
+`pr_review_comments (platform TEXT, comment_id TEXT, status TEXT NOT NULL DEFAULT 'new',
+detected_at DATETIME, PRIMARY KEY (platform, comment_id))`. Skip if the comment_id
+is already present. Insert on detection. This prevents duplicate processing on re-polls.
+
+Add migration 012:
+```sql
+CREATE TABLE IF NOT EXISTS pr_review_comments (
+    platform     TEXT     NOT NULL,
+    comment_id   TEXT     NOT NULL,
+    pr_id        TEXT     NOT NULL,
+    workspace    TEXT     NOT NULL,
+    status       TEXT     NOT NULL DEFAULT 'new',   -- new | classified | fix_applied | escalated | done
+    comment_body TEXT     NOT NULL DEFAULT '',
+    classified_as TEXT,                              -- auto_fixable | needs_human | NULL
+    created_at   DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at   DATETIME NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (platform, comment_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pr_comments_status ON pr_review_comments(status);
+CREATE INDEX IF NOT EXISTS idx_pr_comments_pr     ON pr_review_comments(pr_id, platform);
+```
+
+Add Go struct `PRReviewComment` and CRUD methods to a new file
+`devtrack_client/internal/db/pr_review.go`:
+- `InsertPRReviewComment(c PRReviewComment) error`
+- `GetPRReviewComment(platform, commentID string) (*PRReviewComment, error)`
+- `UpdatePRReviewCommentStatus(platform, commentID, status, classifiedAs string) error`
+- `ListPRReviewCommentsByPR(platform, prID string) ([]PRReviewComment, error)`
+- `ListPRReviewCommentsByStatus(status string) ([]PRReviewComment, error)`
+
+**Part B — Classification via Python server**
+
+New endpoint `POST /review/classify` in `devtrack_server/backend/webhook_server.py`:
+
+```
+POST /review/classify
+Auth: X-DevTrack-API-Key
+Body: {
+  "comment_body": "...",
+  "pr_title": "...",
+  "platform": "github" | "azure" | "gitlab",
+  "comment_url": "..."
+}
+Response: {
+  "classification": "auto_fixable" | "needs_human",
+  "reason": "Formatting/naming/lint/obvious logic correction.",
+  "fix_hint": "Apply gofmt / rename variable X to Y / ..."  // populated only for auto_fixable
+}
+```
+
+New module `devtrack_server/backend/review_classifier.py`:
+
+```python
+class ReviewClassifier:
+    """
+    Uses the configured LLM to classify a review comment as auto-fixable or needs-human.
+    Falls back to "needs_human" on any LLM failure (safe default — never auto-fixes
+    without classification confidence).
+    """
+    AUTO_FIXABLE_CATEGORIES = [
+        "formatting", "whitespace", "line_length",
+        "naming_convention", "missing_documentation",
+        "linting_violation", "import_ordering",
+        "obvious_simple_logic",
+    ]
+
+    def classify(self, comment_body: str, pr_title: str, platform: str) -> dict:
+        """
+        Returns:
+          {"classification": "auto_fixable"|"needs_human",
+           "reason": "...",
+           "fix_hint": "..."}
+        Falls back to {"classification": "needs_human", "reason": "LLM unavailable.",
+        "fix_hint": ""} on any failure. Never raises.
+        """
+```
+
+Classification prompt: ask the LLM to return JSON with keys `classification`,
+`reason`, `fix_hint`. Use `format:"json"` for Ollama same as `commit_message_enhancer.py`.
+Categories that are auto-fixable per PRODUCT_BIBLE.md: formatting, whitespace, line length,
+naming conventions, missing docs/comments, linting, import ordering, obvious simple logic
+corrections. Everything else is `needs_human`. On ambiguity: `needs_human` is always the
+safe default.
+
+No `os.getenv`. All config via `backend.config`. Timeout via `get_int("LLM_REQUEST_TIMEOUT_SECS")`.
+
+**Part C — Go client calls `/review/classify` after detecting a review comment event**
+
+In `devtrack_client/internal/alerts/` (or in the infra layer that wires alerts), after a
+`ReviewCommentEvent` is detected and stored in `pr_review_comments`:
+
+1. Call `POST /review/classify` via the existing HTTP trigger client.
+2. Store the returned `classification` and `fix_hint` in the `pr_review_comments` row
+   via `UpdatePRReviewCommentStatus(platform, commentID, "classified", classification)`.
+   Add a separate column update for `fix_hint` — add `fix_hint TEXT` column to the
+   `pr_review_comments` table in migration 012 (add it there, not a separate migration).
+3. Log: `log.Printf("review: comment %s on PR %s classified as %s (%s)",
+   commentID, prID, classification, reason)`.
+4. If `classification == "auto_fixable"`: emit an internal signal for the fix loop
+   (TASK-095 will wire this; for now, log `"review: auto_fixable — fix loop not yet wired"`).
+5. If `classification == "needs_human"`: escalate immediately (TASK-096 will wire the
+   escalation; for now, log `"review: needs_human — escalation not yet wired"`).
+
+**Part D — `devtrack review` CLI command for visibility**
+
+Add `devtrack review` command to `devtrack_client/cli.go`:
+
+```
+devtrack review
+```
+
+Output:
+```
+PR Review Queue
+---------------
+PR #42   github   feat/PROJ-123   3 comments (2 auto_fixable, 1 needs_human)
+PR #19   github   fix/ADO-456     1 comment  (1 needs_human)
+```
+
+Calls `db.ListPRReviewCommentsByStatus("new")` and
+`db.ListPRReviewCommentsByStatus("classified")`, groups by PR, and formats. If empty:
+`"No PR review comments detected. Ensure ALERT_GITHUB_ENABLED=true and PRs are open."`.
+
+**Part E — Tests**
+
+Python: `devtrack_server/backend/tests/test_review_classifier.py`:
+- Mocked LLM returns well-formed JSON with `classification="auto_fixable"`: confirm returned
+  dict has all three keys.
+- LLM raises/times out: returns `{"classification": "needs_human", ...}` without raising.
+- `POST /review/classify` endpoint: 200 with valid body; 401 without auth header.
+
+Go: `devtrack_client/internal/db/pr_review_test.go`:
+- `InsertPRReviewComment` + `GetPRReviewComment` round-trip.
+- `UpdatePRReviewCommentStatus` changes status and classification.
+- `ListPRReviewCommentsByPR` returns correct rows for a given PR.
+
+Build: `go build ./...` and `go vet ./...` from `devtrack_client/`. `uv run pytest backend/tests/ -q` — no regressions.
+
+**Acceptance criteria**:
+- [x] Migration 012 (`pr_review_comments` table + indexes + `fix_hint` column) appended to `allMigrations`; idempotent
+- [x] `PRReviewComment` Go struct and five CRUD methods exist in `pr_review.go`
+- [x] Alert poller extended to detect new review comments on developer-authored PRs (GitHub; Azure/GitLab stubs with log.Printf)
+- [x] `ReviewCommentEvent` struct defined; new comment stored in `pr_review_comments` before classification
+- [x] `review_classifier.py` exists with `ReviewClassifier.classify()`; falls back to `needs_human` on LLM failure, never raises
+- [x] `POST /review/classify` endpoint exists, auth-gated, returns `classification`, `reason`, `fix_hint`
+- [x] Go client calls `/review/classify` after storing a detected comment; result stored in `classified_as` column
+- [x] `devtrack review` CLI command prints current PR review queue grouped by PR
+- [x] Python tests pass: auto-fixable path, LLM failure fallback, auth guard
+- [x] Go DB tests pass: insert/get round-trip, status update, list-by-PR
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] `uv run pytest backend/tests/ -q` — no regressions beyond documented pre-existing failure (789 pass, 1 pre-existing fail)
+- [x] No `os.getenv` in `review_classifier.py`; no hardcoded hosts/ports/timeouts
+
+**COMPLETE** — ready for PM review — 2026-06-22 16:30
+
+---
+
+### TASK-094 — Coding agent invocation interface: headless Claude Code CLI subprocess
+**Priority**: HIGH
+**Phase**: Phase 7
+**Depends on**: TASK-093
+**Branch**: `feat/TASK-094-agent-invocation-interface`
+
+**Spec**:
+
+Build the agent invocation layer — the Go module that spawns and manages Claude Code CLI
+(or Copilot CLI) as a subprocess, passing it a review comment and a repo path, and
+capturing the result (success or failure with reason). This is the "substrate" the fix
+loop (TASK-095) calls. This task delivers the subprocess interface only — not the loop
+that retries or polls review state.
+
+**Part A — New Go package `devtrack_client/internal/reviewer/`**
+
+New package `reviewer` at `devtrack_client/internal/reviewer/`. This package is the only
+place in the codebase that spawns a coding agent subprocess. Nothing else directly invokes
+`claude` or `copilot`.
+
+New file `devtrack_client/internal/reviewer/agent.go`:
+
+```go
+package reviewer
+
+// AgentBackend selects which coding agent is invoked.
+type AgentBackend string
+
+const (
+    BackendClaudeCode AgentBackend = "claude-code"
+    BackendCopilotCLI AgentBackend = "copilot-cli"
+)
+
+// AgentInvocation describes a single request to the coding agent.
+type AgentInvocation struct {
+    RepoPath    string       // absolute path to the git repo
+    CommentBody string       // the review comment text
+    FixHint     string       // classification hint from TASK-093 (may be empty)
+    PRTitle     string       // for context in the prompt
+    Backend     AgentBackend // which CLI to use
+    TimeoutSecs int          // max seconds to wait for the agent process
+}
+
+// AgentResult describes the outcome of an agent invocation.
+type AgentResult struct {
+    Success     bool
+    CommitHash  string // git hash of the fix commit, if any (empty if no commit made)
+    OutputSummary string // first 500 chars of agent stdout, for escalation context
+    Error       string // non-empty when Success=false
+}
+
+// Agent invokes the configured coding agent CLI as a subprocess.
+type Agent struct {
+    backend    AgentBackend
+    timeoutSec int
+}
+
+func NewAgent(backend AgentBackend, timeoutSec int) *Agent
+
+// Apply invokes the agent with the given invocation spec.
+// It returns AgentResult — never panics or returns an error;
+// failures are encoded in AgentResult.Success=false + Error field.
+func (a *Agent) Apply(ctx context.Context, inv AgentInvocation) AgentResult
+```
+
+`Apply` implementation:
+1. Build the command: for `claude-code`, run `claude --no-browser --print <prompt_file>` where
+   `prompt_file` is a temporary file written with the review-context prompt (see prompt format
+   below). For `copilot-cli`, run `gh copilot suggest -t shell <prompt>`. The exact flag
+   set may need to be verified against the installed version — add a comment noting where to
+   check.
+2. Set `cmd.Dir = inv.RepoPath` so git operations inside the agent run against the correct
+   repo.
+3. Capture combined stdout+stderr via `cmd.CombinedOutput()`.
+4. Respect `inv.TimeoutSecs` by wrapping the call with `context.WithTimeout`.
+5. After the subprocess exits: call `git log -1 --format=%H` in `inv.RepoPath` to detect
+   whether the agent made a commit. If the HEAD changed from before the invocation, capture
+   the new hash as `CommitHash`.
+6. Truncate output to 500 chars for `OutputSummary`.
+7. Never raise out of `Apply` — all errors encode into `AgentResult`.
+
+**Agent prompt format** (written to a temp file):
+
+```
+You are fixing a code review comment on a pull request.
+
+PR: {pr_title}
+Review comment: {comment_body}
+Fix hint: {fix_hint}
+
+Apply the fix, commit it with a message that matches the developer's style:
+- Imperative mood
+- No "I have" / "This commit" phrasing
+- Reference the review comment briefly
+
+Do not ask for clarification. Apply the most obvious correct fix.
+If you cannot determine the correct fix, output: CANNOT_FIX: <reason>
+```
+
+If the agent output contains `CANNOT_FIX:`, treat as `Success=false, Error=<reason>`.
+
+**Part B — Config accessor**
+
+Add to `devtrack_client/internal/config/config_env.go`:
+- `GetReviewAgent() string` — reads `REVIEW_AGENT` env var. Valid values: `claude-code`,
+  `copilot-cli`. If not set or invalid, defaults to `claude-code` (and logs a warning; this
+  is the one hardcoded default allowed because there is a sensible product default for
+  which agent to use).
+- `GetReviewAgentTimeoutSecs() int` — reads `REVIEW_AGENT_TIMEOUT_SECS`. Required var
+  (no hardcoded default in code). Document in `.env_sample` with value `120`.
+
+Add to `.env_sample`:
+```
+REVIEW_AGENT=claude-code
+REVIEW_AGENT_TIMEOUT_SECS=120
+```
+
+**Part C — Tests**
+
+`devtrack_client/internal/reviewer/agent_test.go`:
+- Mock agent binary: create a temp script that writes `"Fix applied."` to stdout and
+  exits 0. Confirm `Apply` returns `Success=true`, `OutputSummary` contains `"Fix applied."`.
+- Mock agent binary that outputs `CANNOT_FIX: ambiguous logic`: confirm `Success=false`,
+  `Error` contains the reason.
+- Mock agent binary that exits non-zero: confirm `Success=false`, `Error` non-empty.
+- Timeout test: agent script that sleeps longer than `TimeoutSecs`: confirm `Apply` returns
+  before the sleep finishes, `Success=false`, `Error` indicates timeout.
+
+Go: `go build ./...` and `go vet ./...` must pass clean.
+
+**Acceptance criteria**:
+- [ ] `devtrack_client/internal/reviewer/` package exists with `agent.go`
+- [ ] `Agent`, `AgentInvocation`, `AgentResult`, `AgentBackend` types defined and exported
+- [ ] `Apply()` never panics; all failures encoded in `AgentResult.Success=false`
+- [ ] HEAD-change detection: `CommitHash` populated when agent commits; empty when it does not
+- [ ] `CANNOT_FIX:` prefix in agent output → `Success=false` (not treated as a successful run)
+- [ ] Context timeout respected: `Apply` returns when `ctx` deadline passes
+- [ ] `GetReviewAgent()` accessor in `config_env.go` (defaults `claude-code` with logged warning)
+- [ ] `GetReviewAgentTimeoutSecs()` accessor in `config_env.go`; `REVIEW_AGENT_TIMEOUT_SECS=120` in `.env_sample`
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] Agent unit tests pass: success path, CANNOT_FIX path, non-zero exit, timeout
+- [ ] No hardcoded host/port/timeout literals outside config accessors; no `os.Getenv` outside `config_env.go`
+
+---
+
+### TASK-095 — Fix-commit-push loop: orchestrate agent, push fix, poll review state
+**Priority**: HIGH
+**Phase**: Phase 7
+**Depends on**: TASK-093 (classified comments), TASK-094 (agent invocation interface)
+**Branch**: `feat/TASK-095-fix-commit-push-loop`
+
+**Spec**:
+
+The fix loop is the core of the puppet master. It takes a classified `auto_fixable` comment,
+invokes the coding agent (TASK-094), pushes the result, polls the PR for new comments, and
+loops until the PR is approved or the loop is stuck. "Stuck" means: the agent failed twice on
+the same comment, or 5 total fix attempts on this PR have been made without approval.
+
+**Part A — New Go module `devtrack_client/internal/reviewer/loop.go`**
+
+```go
+package reviewer
+
+const MaxAttemptsPerComment = 2
+const MaxAttemptsPerPR = 5
+
+type PRFixLoop struct {
+    db      *db.Database
+    agent   *Agent
+    trigger *trigger.HTTPTriggerClient   // to call /review/classify for new comments
+    // platform connectors — used to push commits and poll review state
+}
+
+func NewPRFixLoop(db *db.Database, agent *Agent, trigger *trigger.HTTPTriggerClient,
+    ghClient *github.Client /* add azure/gitlab similarly */) *PRFixLoop
+
+// Run processes all auto_fixable comments for the given PR in sequence.
+// It blocks until the PR is approved, stuck, or context is cancelled.
+// On stuck: it sets the PR's comments to status="escalated" and returns an
+// EscalationReport describing the blocker.
+func (l *PRFixLoop) Run(ctx context.Context, platform, prID, workspace, repoPath string) EscalationReport
+
+type EscalationReport struct {
+    PRTitle       string
+    BlockerReason string   // human-readable: "Agent failed twice on comment <id>: <error>"
+    CommentURL    string
+    Stuck         bool     // false = PR approved
+}
+```
+
+**Loop algorithm** (inside `Run`):
+
+```
+attempts := 0
+
+loop:
+  comments = db.ListPRReviewCommentsByStatus("classified")
+             filtered to this pr_id and platform
+
+  if no comments with classified_as="auto_fixable" and status="classified":
+    poll platform connector for PR approval state
+    if approved → return EscalationReport{Stuck: false}
+    if still open → wait GetReviewPollIntervalSecs(); goto loop
+
+  for each auto_fixable comment (in detection order):
+    if comment.attempt_count >= MaxAttemptsPerComment:
+      return EscalationReport{Stuck: true, BlockerReason: ...}
+    if attempts >= MaxAttemptsPerPR:
+      return EscalationReport{Stuck: true, BlockerReason: "max PR attempts reached"}
+
+    result = agent.Apply(ctx, AgentInvocation{...})
+    attempts++
+
+    if result.Success:
+      push result.CommitHash to remote branch via platform connector
+      update pr_review_comments.status = "fix_applied" for this comment
+      re-classify remaining comments (call /review/classify for any new ones)
+      goto loop  // start again from top with refreshed comment list
+    else:
+      increment comment.attempt_count (add column attempt_count INT DEFAULT 0 to
+      pr_review_comments table — add to migration 012 retroactively or as a new
+      ALTER TABLE in migration 013 if 012 is already merged)
+      if comment.attempt_count >= MaxAttemptsPerComment:
+        return EscalationReport{Stuck: true, BlockerReason: result.Error}
+      goto loop
+```
+
+**Part B — Push via platform connector**
+
+Each Go platform connector (`connectors/github/`, `connectors/azure/`, `connectors/gitlab/`)
+needs a `PushCommit(repoPath, branchName, commitHash string) error` capability. The simplest
+implementation for this phase: run `git push origin HEAD:<branchName>` as a `exec.Command`
+from `repoPath`. This avoids needing to build a full push API call via the platform REST API
+(which requires a PAT and differs per platform). The Go-native git push via subprocess is
+acceptable because `gitsage/` already demonstrates this pattern.
+
+Add a shared helper `devtrack_client/reviewer/push.go`:
+```go
+// PushToRemote runs "git push origin HEAD:<branchName>" in repoPath.
+// Returns error on non-zero exit.
+func PushToRemote(ctx context.Context, repoPath, branchName string) error
+```
+
+**Part C — PR approval polling per platform**
+
+Add a `IsPRApproved(prID, workspace string) (bool, error)` method to each platform
+alerter struct in `devtrack_client/internal/alerts/`. Each implementation calls the
+platform's existing API to check whether the PR has achieved "approved" state (GitHub:
+`GET /repos/{owner}/{repo}/pulls/{prID}/reviews` checking for `state=APPROVED`;
+Azure DevOps: `GET /_apis/git/repositories/{repoId}/pullRequests/{prID}` checking
+`status=completed` or `vote=10`; GitLab: `GET /projects/{id}/merge_requests/{iid}`
+checking `state=merged`). Return `false, nil` when the PR is still open.
+
+Config: add `GetReviewPollIntervalSecs() int` to `config_env.go`, reading
+`REVIEW_POLL_INTERVAL_SECS`. Required var. Document in `.env_sample` with value `30`.
+
+**Part D — Start the fix loop from the IntegratedMonitor**
+
+In `devtrack_client/internal/infra/integrated.go`, after `ReviewCommentEvent` is detected
+and the comment classified as `auto_fixable`, launch a `PRFixLoop.Run()` goroutine:
+
+```go
+go func() {
+    report := fixLoop.Run(ctx, event.Platform, event.PRID, event.Workspace, repoPath)
+    if report.Stuck {
+        // TASK-096 will wire the escalation path here
+        log.Printf("review: stuck on PR %s — %s", event.PRID, report.BlockerReason)
+    } else {
+        // TASK-096 will wire the completion notification here
+        log.Printf("review: PR %s approved", event.PRID)
+    }
+}()
+```
+
+Only one `PRFixLoop.Run` goroutine per PR should be active at any time. Guard with a
+`sync.Map` keyed by `"platform:prID"`.
+
+**Part E — Tests**
+
+`devtrack_client/internal/reviewer/loop_test.go`:
+- Happy path: agent returns `Success=true`, mock `IsPRApproved` returns `true` on second
+  poll. `Run` returns `EscalationReport{Stuck: false}`.
+- Stuck path: agent fails twice on same comment. `Run` returns `EscalationReport{Stuck: true}`.
+- Max PR attempts: agent fails on 5 different comments. `Run` returns `Stuck=true` with
+  "max PR attempts reached" in `BlockerReason`.
+
+Go: `go build ./...` and `go vet ./...` from `devtrack_client/`. `go test ./internal/reviewer/...`
+must pass.
+
+**Acceptance criteria**:
+- [ ] `PRFixLoop` struct exists in `devtrack_client/internal/reviewer/loop.go`
+- [ ] `EscalationReport` type defined with `Stuck`, `PRTitle`, `BlockerReason`, `CommentURL`
+- [ ] Loop algorithm: agent called for each auto_fixable comment; re-polls after each fix
+- [ ] `MaxAttemptsPerComment=2` and `MaxAttemptsPerPR=5` enforced; exceeded → `Stuck=true`
+- [ ] `PushToRemote()` helper runs `git push origin HEAD:<branch>` as a subprocess from `repoPath`
+- [ ] `IsPRApproved()` implemented for at least GitHub; Azure/GitLab stub with `return false, nil` and a `log.Printf("IsPRApproved not yet implemented for %s", platform)` (unblocks TASK-095 without requiring three platform implementations in parallel)
+- [ ] `GetReviewPollIntervalSecs()` accessor in `config_env.go`; `REVIEW_POLL_INTERVAL_SECS=30` in `.env_sample`
+- [ ] One goroutine per PR enforced (sync.Map guard)
+- [ ] `IntegratedMonitor` launches `PRFixLoop.Run` for `auto_fixable` comments
+- [ ] Loop tests pass: happy path, stuck path, max attempts
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] No hardcoded host/port/timeout literals; no `os.Getenv` outside `config_env.go`
+
+---
+
+### TASK-096 — Escalation and completion notification: Telegram, TUI, and CLI channels
+**Priority**: MEDIUM
+**Phase**: Phase 7
+**Depends on**: TASK-095
+**Branch**: `feat/TASK-096-escalation-and-notification`
+
+**Spec**:
+
+Wire the two terminal states of `PRFixLoop.Run` — approved and stuck — to the developer's
+notification channels. The developer must receive exactly one notification per PR outcome:
+"PR approved" or "PR needs you — [blocker with context]". No intermediate progress messages.
+This follows PRODUCT_BIBLE.md Non-Negotiable #1 (no prompts, no noise) and Non-Negotiable #4
+(channel parity: the same notification must reach every enabled channel).
+
+**Part A — Completion notification (PR approved)**
+
+When `PRFixLoop.Run` returns `EscalationReport{Stuck: false}`:
+
+1. Stage a `pending_actions` row (Non-Negotiable #2 — everything outbound goes through the
+   queue, including notifications):
+   ```
+   action_type: "pr_approved_notify"
+   target:      "<platform>:PR #<prID>"
+   platform:    event.Platform
+   workspace:   event.Workspace
+   payload:     {"pr_title": "...", "pr_id": "...", "fixes_applied": N, "pr_url": "..."}
+   confidence:  1.0   // outcome notification — no ambiguity
+   ```
+   Because confidence is 1.0 (> 0.90), the auto-approve timeout is 2 minutes. The developer
+   can still see it in the queue but it will post with no intervention needed.
+
+2. `_execute_pm_action` in `webhook_server.py` must handle `action_type == "pr_approved_notify"`:
+   this is a notification-only action — no PM API call. It sends the notification via:
+   - Telegram: `bot.SendPRApproved(prTitle, prURL string)` — new method on the Telegram
+     bot (in `devtrack_client/internal/telegram/`). Message: `"[DevTrack] PR Approved\n{prTitle}\n{prURL}\n\nAll review comments resolved automatically."`.
+   - Queue executor fires the notification immediately (confidence 1.0 = 2 min timeout).
+
+**Part B — Escalation notification (stuck)**
+
+When `PRFixLoop.Run` returns `EscalationReport{Stuck: true}`:
+
+1. Stage a `pending_actions` row:
+   ```
+   action_type: "pr_escalation"
+   target:      "<platform>:PR #<prID>"
+   confidence:  1.0   // escalation is certain — no auto-deferral
+   payload:     {
+     "pr_title": "...",
+     "pr_id": "...",
+     "blocker_reason": "...",
+     "comment_url": "...",
+     "fixes_applied": N,
+     "pr_url": "..."
+   }
+   ```
+
+2. `_execute_pm_action` for `action_type == "pr_escalation"`:
+   - Telegram: `bot.SendPREscalation(prTitle, blockerReason, commentURL, prURL string)`.
+     Message format:
+     ```
+     [DevTrack] PR Needs You
+     {prTitle}
+     {prURL}
+
+     Blocker: {blockerReason}
+     Comment: {commentURL}
+
+     DevTrack attempted {N} fixes but could not resolve this comment.
+     ```
+   - No inline keyboard buttons needed — the developer must look at the PR directly.
+
+**Part C — TUI visibility**
+
+The pending queue tab (tab 5, already built in Phase 1 TASK-063/066) will automatically
+surface `pr_approved_notify` and `pr_escalation` rows because they go through `pending_actions`.
+No additional TUI code is needed — the existing Queue tab already handles any action type.
+
+However, add two new badge labels to `tui_queue.go`'s status badge rendering:
+- `pr_approved_notify` → badge text `"PR DONE"`, color `Success`
+- `pr_escalation` → badge text `"PR STUCK"`, color `Danger`
+
+**Part D — CLI channel parity**
+
+Non-Negotiable #4: every correction/notification capability must be available on a non-TUI
+channel. Telegram fulfils this. Additionally, add:
+
+```
+devtrack review status
+```
+
+Output:
+```
+PR Review Activity (last 24h)
+-----------------------------
+PR #42   github   feat/PROJ-123   APPROVED   2 fixes applied
+PR #19   github   fix/ADO-456     STUCK      comment needs human: "architecture question"
+PR #7    azure    feat/AB-12      IN PROGRESS (fix attempt 1/5)
+```
+
+Implementation: queries `pr_review_comments` grouped by `pr_id`, looks up the most recent
+status per PR, and formats. Reads from SQLite directly (no daemon required for the read).
+
+**Part E — Go Telegram bot methods**
+
+Add to `devtrack_client/internal/telegram/bot.go` (or a new `review_notify.go` in the same
+package):
+
+```go
+func (b *Bot) SendPRApproved(prTitle, prURL string) error
+func (b *Bot) SendPREscalation(prTitle, blockerReason, commentURL, prURL string) error
+```
+
+Both methods send a plain text message to `TELEGRAM_CHAT_ID`. No inline keyboard for
+approval notifications — these are status updates, not actions. Use existing
+`b.api.Send(tgbotapi.NewMessage(chatID, text))` pattern already in the bot.
+
+Wire both methods into the daemon's fix-loop outcome handler (the goroutine in
+`IntegratedMonitor` from TASK-095 that currently just `log.Printf`s):
+
+```go
+if report.Stuck {
+    // stage pr_escalation action
+    _, _ = db.InsertPendingAction(db.PendingAction{ActionType: "pr_escalation", ...})
+} else {
+    // stage pr_approved_notify action
+    _, _ = db.InsertPendingAction(db.PendingAction{ActionType: "pr_approved_notify", ...})
+}
+```
+
+`_execute_pm_action` on the Python server handles delivery (Telegram + log) when the
+queue executor auto-approves the action.
+
+**Part F — Tests**
+
+Python: extend `devtrack_server/backend/tests/test_http_triggers.py` or add
+`test_pr_notifications.py`:
+- `_execute_pm_action` with `action_type="pr_approved_notify"`: no PM API call; returns
+  `{"status": "posted"}`.
+- `_execute_pm_action` with `action_type="pr_escalation"`: no PM API call; returns
+  `{"status": "posted"}`.
+- Both action types handled without raising.
+
+Go: `devtrack_client/internal/telegram/` — no new test required if existing bot tests already
+cover `b.api.Send()` mock pattern; add a smoke test if they do not.
+
+Build: `go build ./...` and `go vet ./...` from `devtrack_client/`. `uv run pytest backend/tests/ -q` — no regressions.
+
+**Acceptance criteria**:
+- [ ] `pr_approved_notify` and `pr_escalation` are staged as `pending_actions` rows when loop terminates (not direct sends)
+- [ ] `_execute_pm_action` handles both new action types without raising; no PM API call (notification-only)
+- [ ] `bot.SendPRApproved()` and `bot.SendPREscalation()` methods exist and send correct message format
+- [ ] TUI Queue tab shows `"PR DONE"` (Success) and `"PR STUCK"` (Danger) badges for the new action types
+- [ ] `devtrack review status` command prints per-PR status grouped by PR ID
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] Python tests: both new action types handled cleanly; no regressions
+- [ ] No `os.getenv` in any new Python file; no hardcoded literals
+- [ ] Channel parity: Telegram receives notification for both outcomes (SendPRApproved / SendPREscalation wired in daemon goroutine)
+
+---
+
+### TASK-097 — Phase 7 exit criterion verification
+**Priority**: MEDIUM
+**Phase**: Phase 7
+**Depends on**: TASK-093, TASK-094, TASK-095, TASK-096 (all must be merged to dev)
+**Branch**: `feat/TASK-097-phase7-exit-verification`
+
+**Spec**:
+
+Verify the structural machinery for Phase 7 PR puppet master is in place and measurable.
+Same pattern as TASK-059 (Phase 0), TASK-074 (Phase 3), TASK-079 (Phase 4), TASK-084
+(Phase 5), TASK-092 (Phase 6).
+
+The PRODUCT_BIBLE.md exit criterion ("Developer pushes a PR with formatting and naming
+review comments, moves to next ticket, receives 'PR approved' notification without touching
+the PR again") requires a live PR with real review comments. This task verifies the
+structural criterion: all machinery is in place and a simulated review cycle produces the
+expected outputs end-to-end.
+
+**Steps**:
+
+1. Build Go client: `go build -o devtrack .` from `devtrack_client/`. Run `go vet ./...` and
+   `go test ./...` — all must pass. Report pass/fail in engineer log.
+
+2. Confirm migration 012 (`pr_review_comments`) is in `allMigrations` and the table is
+   present in `Data/db/devtrack.db`. Report `.tables` output.
+
+3. Simulate PR review comment detection:
+   - Insert a test row directly into `pr_review_comments` with `status="new"`,
+     `classified_as=NULL`, `comment_body="Rename variable x to userID for clarity."`.
+   - Call `POST /review/classify` via `devtrack_client/internal/trigger/` HTTP client
+     with that comment body.
+   - Confirm the returned `classification` is `"auto_fixable"` (naming convention fix).
+   - Update the row's `classified_as` and `status` columns. Confirm via
+     `devtrack review` CLI output.
+
+4. Simulate agent invocation:
+   - Create a minimal temp Go repo (`git init` in a temp dir; one file with a variable
+     named `x`). Run `agent.Apply()` with `BackendClaudeCode` and a prompt to rename `x`
+     to `userID`. If Claude Code CLI is not installed, verify the timeout-and-fail path
+     instead: `Apply` must return `Success=false`, `Error` non-empty, without panicking.
+   - Report result in engineer log — PASS if either (a) agent applied the fix and returned
+     a commit hash, or (b) agent timed out and `Apply` returned gracefully with `Success=false`.
+
+5. Simulate loop termination:
+   - Call `PRFixLoop.Run` with a mock `IsPRApproved` that returns `true` immediately.
+   - Confirm the loop returns `EscalationReport{Stuck: false}`.
+   - Confirm a `pr_approved_notify` pending action was staged in `pending_actions`.
+   - Run `devtrack queue list` — confirm the `pr_approved_notify` row appears.
+
+6. Simulate escalation:
+   - Call `PRFixLoop.Run` with a mock agent that always fails and `MaxAttemptsPerComment`
+     set to 1 (via a test-mode flag or direct struct init in the test).
+   - Confirm loop returns `EscalationReport{Stuck: true}`.
+   - Confirm a `pr_escalation` pending action was staged.
+
+7. Verify `devtrack review status` output.
+
+8. Run the full hardcoded-values scan across all Phase 7 files:
+   ```
+   grep -rn "os\.getenv\b" devtrack_server/backend/review_classifier.py | grep -v "config\|test_"
+   grep -rn "localhost:[0-9]\|127\.0\.0\.1:[0-9]" devtrack_client/internal/reviewer/ | grep -v "_test\|#\|config\|Get"
+   ```
+   Both must return zero hits.
+
+9. Run full Python test suite: `uv run pytest backend/tests/ -q` — all tests must pass
+   (beyond the one documented pre-existing failure).
+
+10. Update `Data/agent_logs/feature_tracker.md` with the Phase 7 completion entry.
+
+11. Open a PR targeting `dev` with title "Phase 7: PR puppet master — exit criterion verified".
+
+**Acceptance criteria**:
+- [ ] `go build ./...`, `go vet ./...`, `go test ./...` all pass clean
+- [ ] `pr_review_comments` table confirmed in SQLite
+- [ ] Classification simulation: `POST /review/classify` returns `auto_fixable` for a naming-convention comment
+- [ ] Agent invocation test: `Apply()` returns gracefully (success or graceful failure — no panic)
+- [ ] Loop approved path: `PRFixLoop.Run` returns `Stuck=false`; `pr_approved_notify` row staged in `pending_actions`
+- [ ] Loop stuck path: `PRFixLoop.Run` returns `Stuck=true`; `pr_escalation` row staged in `pending_actions`
+- [ ] `devtrack review` and `devtrack review status` both produce output without errors
+- [ ] Hardcoded-values scan CLEAN across all Phase 7 source files
+- [ ] `uv run pytest backend/tests/ -q` — no regressions beyond documented pre-existing failure
+- [ ] `feature_tracker.md` updated with Phase 7 completion entry
+- [ ] PR opened targeting `dev` (never `main`)
 
 ---
 

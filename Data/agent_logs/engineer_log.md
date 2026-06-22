@@ -2,6 +2,54 @@
 
 ---
 
+## Task Summary — TASK-093: PR review event detection and comment classification — 2026-06-22
+
+- Total commits: 3 (7eaf5c8 Part A; 1b91576 Parts B-Go+D; 22bc788 Part C Python)
+- Acceptance criteria met: 13/13
+- Tickets auto-updated: 0 (no GitHub token in environment)
+- Estimated daily time saved: ~15 min/day (no more manually checking PR review comments and deciding what to fix first — devtrack review shows the queue classified by fixability)
+- Blockers encountered: none
+- One thing that still feels rough: "The review comment poll only fires when ALERT_GITHUB_ENABLED=true and a workspace has pm_platform=github with a valid pm_project — if the workspace config uses pm_project as repo name (not owner/repo), the ListOpenPRsAuthored call will fail silently with an API 404"
+- Ready for PM review: YES
+
+---
+
+### [2026-06-22 16:20] TASK-093 — Part A: migration 012, pr_review.go, ReviewCommentEvent, GitHub alerter
+
+**Original message**: "feat(phase7): TASK-093 Part A — migration 012, pr_review.go CRUD, ReviewCommentEvent, GitHub alerter extension"
+**DevTrack enhanced it to**: "feat(phase7): Implement PR review detection and GitHub alerter extension"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated to started
+**Time**: ~30 minutes
+**Friction**: LOW
+**Notes**: Created migration 012 for pr_review_comments table (with fix_hint column). pr_review.go with 5 CRUD methods (Insert, Get, UpdateStatus, ListByPR, ListByStatus). ReviewCommentEvent type in alerts/types.go. Extended github/client.go with PullRequest, PRReviewComment types, GetAuthenticatedUser, ListOpenPRsAuthored, ListPRReviewComments, ListPRIssueComments. Extended github.go alerter with collectReviewComments and collectReviewCommentsForRepo. Extended poller.go with SetReviewCommentHook and review polling cycle. Azure/GitLab stubs with log.Printf. All 4 PR review DB tests pass. go build/vet clean.
+
+---
+
+### [2026-06-22 16:22] TASK-093 — Parts B-Go+D: ClassifyReviewComment trigger method + daemon hook + devtrack review CLI
+
+**Original message**: "feat(phase7): TASK-093 Parts B-Go+D — ClassifyReviewComment in trigger, review comment hook in daemon, devtrack review CLI"
+**DevTrack enhanced it to**: "feat(devtrack): Add dedicated PR review comment classification and CLI tool"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated
+**Time**: ~15 minutes
+**Friction**: LOW
+**Notes**: Added ClassifyReviewComment to HTTPTriggerClient (calls /review/classify, returns needs_human on error). Wired review comment hook into daemon.go's startAlertPoller(): calls classify, updates DB status, logs classification+wiring-stub messages. Added cli_review.go with handleReview(): queries new+classified comments, groups by (platform, prID), prints PR Review Queue table. Wired "review" command into cli.go switch and main.go dispatch list. go build/vet clean.
+
+---
+
+### [2026-06-22 16:25] TASK-093 — Part C: review_classifier.py + /review/classify endpoint + 14 Python tests
+
+**Original message**: "feat(phase7): TASK-093 Part C — review_classifier.py, POST /review/classify endpoint, Python tests"
+**DevTrack enhanced it to**: "feat(phase7): Implement review comment classification logic"
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md updated
+**Time**: ~20 minutes
+**Friction**: LOW
+**Notes**: review_classifier.py with ReviewClassifier.classify() — uses lazy-init LLM provider (same _get_provider pattern as CommitMessageEnhancer), builds classification prompt, requests JSON format, parses response, falls back to needs_human on any failure. Zero os.getenv calls. Added POST /review/classify endpoint in webhook_server.py (after /queue/execute, before /dialectic/infer). Auth-gated with _verify_trigger_key. Imports ReviewClassifier inside try/except for graceful degradation. 14 Python tests: 5 auto-fixable path tests, 5 LLM failure fallback tests, 4 endpoint tests (200 with key, 403 wrong key, 403 missing key, 200 no-key dev mode). Full suite: 789 pass, 1 pre-existing failure (test_ollama_host_returns_string).
+
+---
+
 ## Task Summary — TASK-092: Phase 6 exit criterion verification — 2026-06-22
 
 - Total commits: 2 (efe74b7 — main verification commit; a44077c — board/log update)
