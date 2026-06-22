@@ -1345,6 +1345,63 @@ async def http_queue_execute(
 
 
 # ---------------------------------------------------------------------------
+# Phase 7: PR review comment classification endpoint
+# Auth: same X-DevTrack-API-Key as all /trigger/* endpoints.
+# The Go client calls this after detecting a new review comment.
+# ---------------------------------------------------------------------------
+
+@app.post("/review/classify")
+async def http_review_classify(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Classify a PR review comment as auto_fixable or needs_human.
+
+    Called by the Go daemon after detecting a new review comment on a
+    developer-authored PR.  Uses the configured LLM (same pipeline as
+    commit message enhancement). Falls back to needs_human on any LLM
+    failure — safe default, never auto-fixes without confidence.
+
+    Request body:
+    {
+      "comment_body": "...",
+      "pr_title":     "...",
+      "platform":     "github"|"azure"|"gitlab",
+      "comment_url":  "..."  // optional
+    }
+
+    Response:
+    {
+      "classification": "auto_fixable"|"needs_human",
+      "reason":         "...",
+      "fix_hint":       "..."
+    }
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    comment_body = body.get("comment_body", "")
+    pr_title = body.get("pr_title", "")
+    platform = body.get("platform", "")
+
+    try:
+        from backend.review_classifier import ReviewClassifier
+        classifier = ReviewClassifier()
+        result = classifier.classify(comment_body, pr_title, platform)
+        return result
+    except Exception as exc:
+        logger.warning("/review/classify unexpected error: %s", exc)
+        # Final safety net — never propagate errors to the Go client.
+        return {
+            "classification": "needs_human",
+            "reason": "Server error during classification.",
+            "fix_hint": "",
+        }
+
+
+# ---------------------------------------------------------------------------
 # Phase 6: Dialectic self-improvement endpoint
 # Auth: same X-DevTrack-API-Key as all /trigger/* endpoints.
 # The Go client calls this after successful queue execution or approve/reject.
