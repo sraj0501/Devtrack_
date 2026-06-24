@@ -72,6 +72,13 @@ func (s *Server) Start(ctx context.Context) {
 	s.run(ctx, os.Stdin, os.Stdout)
 }
 
+// RunOn runs the JSON-RPC 2.0 message loop on the provided reader/writer.
+// Exported for use by devtrack mcp test (in-process smoke test).
+// Blocks until the client sends "shutdown" or ctx is cancelled.
+func (s *Server) RunOn(ctx context.Context, in io.Reader, out io.Writer) {
+	s.run(ctx, in, out)
+}
+
 // run is the testable implementation of Start.
 func (s *Server) run(ctx context.Context, in io.Reader, out io.Writer) {
 	reader := bufio.NewReader(in)

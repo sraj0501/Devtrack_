@@ -192,6 +192,15 @@ func NewDatabase() (*Database, error) {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
+	// Apply migration-managed tables (inferences, corrections, skills, etc.) so the
+	// database is fully functional without requiring the full env-var setup that
+	// RunPendingMigrations needs. Safe to call multiple times — all statements use
+	// CREATE TABLE IF NOT EXISTS.
+	if err := db.applyMigrationTables(); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("failed to apply migration tables: %w", err)
+	}
+
 	log.Printf("Database initialized: %s", dbPath)
 	return db, nil
 }

@@ -4807,9 +4807,9 @@ Confirm `MCP_PORT=0` is in `.env_sample`. No change needed if TASK-098 already a
 ---
 
 ### TASK-101 — Phase 8 exit criterion verification
-**Priority**: MEDIUM
+**Assigned to**: engineer
 **Phase**: Phase 8
-**Depends on**: TASK-098, TASK-099, TASK-100 (all must be merged to dev)
+**Started**: 2026-06-24
 **Branch**: `feat/TASK-101-phase8-exit-verification`
 
 **Spec**:
@@ -4872,8 +4872,8 @@ Same verification pattern as TASK-059 (Phase 0), TASK-074 (Phase 3), TASK-092 (P
 - [ ] `feature_tracker.md` updated with Phase 8 completion entry
 - [ ] PR opened targeting `dev` (never `main`)
 
-**Engineer status**: not started
-**Blockers**: TASK-098, TASK-099, TASK-100
+**Engineer status**: started — build+vet+test, mcp status/setup/test, SQLite seed, hardcoded scan, feature_tracker update, PR to dev
+**Blockers**: none (TASK-098, TASK-099, TASK-100 all complete)
 
 ---
 
