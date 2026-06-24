@@ -192,6 +192,15 @@ func NewDatabase() (*Database, error) {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
+	// Apply migration-managed tables (inferences, corrections, skills, etc.) so the
+	// database is fully functional without requiring the full env-var setup that
+	// RunPendingMigrations needs. Safe to call multiple times — all statements use
+	// CREATE TABLE IF NOT EXISTS.
+	if err := db.applyMigrationTables(); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("failed to apply migration tables: %w", err)
+	}
+
 	log.Printf("Database initialized: %s", dbPath)
 	return db, nil
 }
@@ -840,8 +849,8 @@ func (d *Database) CleanOldRecords(retentionDays int) error {
 }
 
 // GetStats returns database statistics
-func (d *Database) GetStats() (map[string]interface{}, error) {
-	stats := make(map[string]interface{})
+func (d *Database) GetStats() (map[string]any, error) {
+	stats := make(map[string]any)
 
 	// Count triggers
 	var triggerCount int
@@ -897,8 +906,8 @@ func (d *Database) GetStats() (map[string]interface{}, error) {
 }
 
 // GetAnalytics returns analytics: triggers today/week, top projects
-func (d *Database) GetAnalytics() (map[string]interface{}, error) {
-	analytics := make(map[string]interface{})
+func (d *Database) GetAnalytics() (map[string]any, error) {
+	analytics := make(map[string]any)
 
 	// Triggers today
 	var today int
@@ -928,12 +937,12 @@ func (d *Database) GetAnalytics() (map[string]interface{}, error) {
 	`)
 	if err == nil {
 		defer rows.Close()
-		var top []map[string]interface{}
+		var top []map[string]any
 		for rows.Next() {
 			var p string
 			var c int64
 			if rows.Scan(&p, &c) == nil {
-				top = append(top, map[string]interface{}{"project": p, "count": c})
+				top = append(top, map[string]any{"project": p, "count": c})
 			}
 		}
 		analytics["top_projects"] = top
@@ -1010,7 +1019,7 @@ func (d *Database) GetReportByID(id int64) (*ReportRecord, error) {
 // GetReports retrieves reports with optional filters
 func (d *Database) GetReports(reportType string, days int, limit int) ([]ReportRecord, error) {
 	var query string
-	var args []interface{}
+	var args []any
 
 	if reportType != "" {
 		query = `
@@ -1020,7 +1029,7 @@ func (d *Database) GetReports(reportType string, days int, limit int) ([]ReportR
 			ORDER BY report_date DESC
 			LIMIT ?
 		`
-		args = []interface{}{reportType, days, limit}
+		args = []any{reportType, days, limit}
 	} else {
 		query = `
 			SELECT id, report_date, report_type, format, content, summary, total_hours, task_count, completed_count, projects_count, ai_enhanced, email_sent, email_sent_at, created_at
@@ -1029,7 +1038,7 @@ func (d *Database) GetReports(reportType string, days int, limit int) ([]ReportR
 			ORDER BY report_date DESC
 			LIMIT ?
 		`
-		args = []interface{}{days, limit}
+		args = []any{days, limit}
 	}
 
 	rows, err := d.db.Query(query, args...)
@@ -1848,15 +1857,18 @@ func buildJSONStringArray(items []string) string {
 	if len(items) == 0 {
 		return "[]"
 	}
-	out := "["
+	var b strings.Builder
+	b.WriteByte('[')
 	for idx, item := range items {
-		out += `"` + item + `"`
+		b.WriteByte('"')
+		b.WriteString(item)
+		b.WriteByte('"')
 		if idx < len(items)-1 {
-			out += ","
+			b.WriteByte(',')
 		}
 	}
-	out += "]"
-	return out
+	b.WriteByte(']')
+	return b.String()
 }
 
 // VacationState holds the current vacation mode configuration.
@@ -1979,7 +1991,7 @@ func (d *Database) MarkAllNotificationsRead() error {
 
 func scanNotifications(rows interface {
 	Next() bool
-	Scan(...interface{}) error
+	Scan(...any) error
 	Close() error
 }) ([]NotificationRecord, error) {
 	defer rows.Close()
@@ -2238,14 +2250,14 @@ func (d *Database) MarkPMUpdateSent(id int64) error {
 // Prefer dedicated methods; this escape hatch exists only for inline queries
 // in package main that cannot be refactored into a typed method without
 // major churn (e.g. auto-stop work sessions, expire deferred commits).
-func (d *Database) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (d *Database) Exec(query string, args ...any) (sql.Result, error) {
 	return d.db.Exec(query, args...)
 }
 
 // ExecRaw executes a raw SQL statement. Used by tests and migrations only.
 // Identical to Exec; provided under a distinct name so call sites in tests are
 // clearly distinct from production call sites.
-func (d *Database) ExecRaw(query string, args ...interface{}) (sql.Result, error) {
+func (d *Database) ExecRaw(query string, args ...any) (sql.Result, error) {
 	return d.db.Exec(query, args...)
 }
 

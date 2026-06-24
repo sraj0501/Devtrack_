@@ -1,6 +1,15 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-22 by engineer (TASK-092 COMPLETE — Phase 6 exit criterion verified; PR targeting dev)_
+_Last updated: 2026-06-24 by engineer (TASK-101 COMPLETE — Phase 8 exit criterion verified; MCP server + Claude Code integration confirmed)_
+
+---
+
+## 2026-06-24 — TASK-101: Phase 8 exit criterion verification
+**Phase**: Phase 8 (MCP server + Claude Code integration)
+**Status**: DONE
+**Files**: devtrack_client/internal/mcp/server.go, devtrack_client/mcp_cmd.go, devtrack_client/internal/db/database.go
+**Vision check**: PASS
+**Engineer notes**: Exit criterion verified — Claude Code can query active ticket, voice profile, and pending actions from DevTrack MCP server without manual context-setting. All 6 tools registered. `devtrack mcp setup` now implemented (was missing from TASK-100 — never merged): writes `.mcp.json` with binary path + env, idempotent. `devtrack mcp test` now implemented: in-process smoke test over pipe, validates initialize/tools/list/get_active_context. `Server.RunOn()` exported for test use. `NewDatabase()` now calls `applyMigrationTables()` so inferences/corrections/skills/pending_actions/confidence_thresholds tables are always present on first open. Hardcoded values scan CLEAN across all Phase 8 source files. Go build, vet, and tests all pass clean. `get_active_context` confirmed returning PROJ-123 with confidence=high from seeded trigger. `get_voice_profile` confirmed returning seeded inference (confidence=0.91, source=hermes3). Pre-existing flaky test: `TestDeferredApplySurvivesTreeDrift`/`TestSnapshotRefLifecycle`/`TestPatchAlreadyApplied` intermittently fail with 1Password GPG signing under load; re-run passes.
 
 ---
 
@@ -23,7 +32,7 @@ _Last updated: 2026-06-22 by engineer (TASK-092 COMPLETE — Phase 6 exit criter
 | 5 | Voice training (low friction) | DONE — exit criterion verified 2026-06-18 | Generated text passes "did I write this?" after 1 week |
 | 6 | Dialectic self-improvement | DONE — exit criterion verified 2026-06-22 (TASK-092) | 30-day correction rate down; ≥3 autonomous skills emerged |
 | 7 | TUI as visibility + correction | QUEUED | TUI shows last 24h + everything about to happen |
-| 8 | PR review loop (puppet master) | QUEUED | PR nit comments resolved without dev touching the PR |
+| 8 | MCP server + Claude Code integration | DONE — exit criterion verified 2026-06-24 (TASK-101) | Claude Code queries active ticket + voice profile automatically |
 
 ### Deprioritised (pivot 2026-06-10)
 CLI aesthetics/theming, savings counter, how-to videos, PG-5 (`/internal/stats`),

@@ -655,6 +655,7 @@ const NAV = [
       { id: 'TICKET_ALERTER',  label: 'Ticket Alerter',  icon: bell_icon() },
       { id: 'WORK_TRACKER',    label: 'Work Tracker',    icon: '⏱️' },
       { id: 'VACATION_MODE',   label: 'Vacation Mode',   icon: '✈️' },
+      { id: 'MCP_CLAUDE_CODE', label: 'MCP / Claude Code', icon: '🤖' },
     ]
   },
   {
@@ -1707,6 +1708,18 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 8 — MCP / Claude Code integration</div>
+
+<h2>Phase 8 — MCP Server &amp; Claude Code Integration</h2>
+<p>DevTrack is now a first-class MCP server. Claude Code (and any MCP-compatible agent) can query your live developer context — active ticket, today's commits, pending actions, voice profile, and EOD summary — directly from SQLite, with no Python server required.</p>
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>MCP protocol core (TASK-098)</h4><p><code>devtrack_client/internal/mcp/</code> — JSON-RPC 2.0 handler, tool registry, and stdio transport. Implements the MCP 2024-11-05 specification: <code>initialize</code>, <code>tools/list</code>, <code>tools/call</code>, and <code>shutdown</code> methods. Works in any MCP-capable host (Claude Code, Cursor, VS Code extensions).</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>6 read-only SQLite tools (TASK-099)</h4><p>All tools return live data straight from <code>Data/devtrack.db</code>: <code>get_active_context</code> (current ticket, repo, confidence), <code>get_today_commits</code> (grouped by ticket), <code>get_pending_actions</code> (queue + confidence scores), <code>get_voice_profile</code> (style inferences per context type), <code>get_ticket_context</code> (full ticket history), and <code>get_eod_summary</code> (end-of-day roll-up). No background daemon or Python server required.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">3</div><div><h4>devtrack mcp CLI subcommands (TASK-100/101)</h4><p><code>devtrack mcp setup</code> writes (or merges) a <code>.mcp.json</code> in your project root, pointing Claude Code at the devtrack binary. <code>devtrack mcp status</code> prints the registered tools and transport config. <code>devtrack mcp test</code> runs an in-process smoke test — initialize + tools/list + get_active_context — without needing a Claude Code session.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">4</div><div><h4>Database migration fix</h4><p><code>NewDatabase()</code> now calls <code>applyMigrationTables()</code> on every open, ensuring <code>inferences</code>, <code>corrections</code>, <code>skills</code>, <code>pending_actions</code>, and <code>confidence_thresholds</code> tables exist on a clean install — no manual migration step required.</p></div></div>
+</div>
+
+<hr>
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.0.10 — latest</div>
 
 <h2>v3.0.10 — Windows Fixes &amp; gitsage Improvements</h2>
@@ -3727,6 +3740,102 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 </ul>
 </div>`,
 
+  MCP_CLAUDE_CODE: `<div class="md-body">
+<h1>MCP / Claude Code Integration</h1>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 8 — shipped</div>
+<p>DevTrack exposes a <strong>Model Context Protocol (MCP) server</strong> so that Claude Code — or any MCP-compatible AI assistant — can query your live developer context directly. Six read-only tools give Claude access to your active ticket, today's commits, pending actions, voice profile, ticket history, and end-of-day roll-up. All data comes from the local SQLite database; no Python server, no network request.</p>
+
+<h2>Quick Start</h2>
+<pre><code class="language-bash"># 1. Write .mcp.json in your project root (idempotent — safe to re-run)
+devtrack mcp setup
+
+# 2. Verify the config
+devtrack mcp status
+
+# 3. Smoke-test the protocol layer
+devtrack mcp test</code></pre>
+<p>After <code>devtrack mcp setup</code>, open (or reload) Claude Code in the same directory. DevTrack will appear as an MCP server named <code>devtrack</code>.</p>
+
+<h2>How It Works</h2>
+<p>DevTrack implements the <strong>MCP 2024-11-05</strong> specification over <strong>stdio transport</strong>. When Claude Code needs context it spawns <code>devtrack mcp</code> as a subprocess, exchanges JSON-RPC 2.0 messages over stdin/stdout, and receives structured JSON responses. The subprocess exits after the session ends — no persistent background process is involved.</p>
+
+<div class="table-wrap"><table>
+<thead><tr><th>Component</th><th>Location</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Protocol core</td><td><code>devtrack_client/internal/mcp/server.go</code></td><td>JSON-RPC 2.0 dispatcher, tool registry, stdio loop</td></tr>
+<tr><td>Tools</td><td><code>devtrack_client/internal/mcp/tools.go</code></td><td>6 handler functions reading from SQLite via <code>internal/db</code></td></tr>
+<tr><td>CLI entry point</td><td><code>devtrack_client/mcp_cmd.go</code></td><td><code>handleMCPCommand</code> — routes to serve / setup / status / test</td></tr>
+</tbody>
+</table></div>
+
+<h2>Available Tools</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Tool</th><th>Input</th><th>Returns</th></tr></thead>
+<tbody>
+<tr><td><code>get_active_context</code></td><td><em>none</em></td><td>Current active ticket ID, repo path, today's commit count, and confidence score for the ticket mapping. Call this first.</td></tr>
+<tr><td><code>get_today_commits</code></td><td><code>repo_path?</code></td><td>All commits from today, grouped by ticket ID, with message and metadata. Filter by <code>repo_path</code> to scope to one workspace.</td></tr>
+<tr><td><code>get_pending_actions</code></td><td><em>none</em></td><td>Pending action queue — actions DevTrack wants to take but hasn't yet (e.g. post comment, transition ticket). Each entry has a confidence score and expiry time.</td></tr>
+<tr><td><code>get_voice_profile</code></td><td><code>context_type</code></td><td>Inferred writing style for a given context (<code>commit</code>, <code>comment</code>, <code>report</code>, <code>task</code>, <code>ticket_mapping</code>). Use before generating text on the developer's behalf.</td></tr>
+<tr><td><code>get_ticket_context</code></td><td><code>ticket_id</code></td><td>Full history for a ticket: recent commits referencing it, pending actions targeting it, and last activity time.</td></tr>
+<tr><td><code>get_eod_summary</code></td><td><em>none</em></td><td>End-of-day roll-up: all sessions today, total time, tickets touched, and a commit narrative suitable for a standup update.</td></tr>
+</tbody>
+</table></div>
+
+<h2>CLI Subcommands</h2>
+
+<h3>devtrack mcp setup</h3>
+<p>Writes (or merges) a <code>.mcp.json</code> file in the target directory — idempotent if the <code>devtrack</code> entry already exists.</p>
+<pre><code class="language-bash">devtrack mcp setup              # write to current directory
+devtrack mcp setup --dir ~/myproject   # write to a different directory</code></pre>
+<p>The generated entry looks like:</p>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "devtrack": {
+      "command": "/usr/local/bin/devtrack",
+      "args": ["mcp"],
+      "env": {
+        "DEVTRACK_ENV_FILE": "/home/user/.devtrack/devtrack.env"
+      }
+    }
+  }
+}</code></pre>
+<p>The <code>DEVTRACK_ENV_FILE</code> path is resolved from the same source <code>devtrack setup</code> registered — no manual editing needed.</p>
+
+<h3>devtrack mcp status</h3>
+<p>Prints the protocol version, transport, and the names of all registered tools.</p>
+<pre><code class="language-bash">$ devtrack mcp status
+DevTrack MCP Server
+  Protocol:  MCP 2024-11-05
+  Transport: stdio
+  Tools:     6 registered
+             get_active_context, get_today_commits, get_pending_actions,
+             get_voice_profile, get_ticket_context, get_eod_summary
+  Note:      MCP server runs on-demand when spawned by Claude Code.
+             No background process needed.</code></pre>
+
+<h3>devtrack mcp test</h3>
+<p>Runs an in-process smoke test — no Claude Code session required. Sends <code>initialize</code>, <code>tools/list</code>, <code>get_active_context</code>, and <code>shutdown</code> through a real in-memory pipe and pretty-prints the JSON-RPC responses.</p>
+<pre><code class="language-bash">devtrack mcp test
+# Expected: === PASS === at the end</code></pre>
+
+<h2>Requirements</h2>
+<ul>
+<li>DevTrack daemon has been run at least once (so <code>Data/devtrack.db</code> exists)</li>
+<li>Claude Code 1.x or any MCP 2024-11-05 compatible host</li>
+<li>No Python server, no Ollama, no network access required</li>
+</ul>
+
+<blockquote><p><strong>Tip:</strong> Run <code>devtrack mcp test</code> first to confirm the protocol layer is healthy before opening Claude Code. If the database is missing the test still exercises the JSON-RPC layer and prints a warning — it will not fail silently.</p></blockquote>
+
+<h2>Implementation Notes</h2>
+<ul>
+<li>All tools are <strong>read-only</strong> — DevTrack never lets an external agent write to its database through MCP.</li>
+<li>The MCP server binary is the same <code>devtrack</code> binary already on your PATH — no separate install.</li>
+<li><code>NewDatabase()</code> automatically creates all required tables (<code>inferences</code>, <code>corrections</code>, <code>skills</code>, <code>pending_actions</code>, <code>confidence_thresholds</code>) on first open via <code>applyMigrationTables()</code>.</li>
+<li>The stdio transport means no port conflicts, no firewall rules, and no TLS certificate management.</li>
+</ul>
+</div>`,
+
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -3901,6 +4010,7 @@ function renderHome() {
         { id:'TICKET_ALERTER',  icon:'🔔', title:'Ticket Alerter',      desc:'Background poller for GitHub, Azure DevOps, and Jira (v1.4-dev) — delivers OS notifications and terminal output when you\'re assigned, mentioned, or a status changes. Delta-synced via MongoDB or SQLite fallback. <code>devtrack alerts</code> to view, <code>devtrack alerts --clear</code> to dismiss.' },
         { id:'WORK_TRACKER',    icon:'⏱️', title:'Work Tracker',        desc:'Automatic session-based time tracking. <code>devtrack work start AUTH-42</code> begins a session; every commit is auto-attached. <code>devtrack work stop</code> records the duration. At end of day, <code>devtrack work report</code> produces an AI narrative summary and optional email.' },
         { id:'VACATION_MODE',   icon:'✈️', title:'Vacation Mode',       desc:'Fully autonomous mode while you\'re away. LLM generates work updates from recent commits, scores its own confidence, and posts to the PM tool when confident enough. Enable with <code>devtrack vacation on --until YYYY-MM-DD</code>.' },
+        { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'MCP / Claude Code',   desc:'Phase 8 — expose DevTrack context to Claude Code via the Model Context Protocol. <code>devtrack mcp setup</code> writes <code>.mcp.json</code>; 6 read-only tools give Claude live access to active ticket, today\'s commits, pending actions, voice profile, and EOD summary — all from SQLite, no server needed.' },
         // ── AI & Personalization ──────────────────────────────────────────────
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
         { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'"Talk Like You" — AI that learns your communication style from Teams messages and writes in your voice using RAG-powered few-shot examples.' },

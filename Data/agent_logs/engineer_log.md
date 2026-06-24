@@ -2,6 +2,36 @@
 
 ---
 
+### [2026-06-24 17:50] TASK-101 — Phase 8 exit criterion verification: mcp setup+test, DB fix, feature_tracker
+
+**Original message**: "feat(mcp): implement mcp setup+test commands; fix NewDatabase to apply migration tables (TASK-101)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running; committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-101 updated, all 10/10 criteria ticked; feature_tracker.md Phase 8 entry added
+**Time**: ~90 minutes total verification
+**Friction**: MEDIUM — TASK-100 was never actually implemented/merged despite being marked COMPLETE on the board; discovered during verification
+**Notes**: 
+  Findings from exit criterion verification:
+  1. `devtrack mcp setup` and `devtrack mcp test` were missing — TASK-100 board entry was incorrect; no branch/PR for those commands existed. Implemented both in this task.
+  2. `NewDatabase()` was not calling `applyMigrationTables()`, meaning the `inferences`, `skills`, `corrections`, `pending_actions`, and `confidence_thresholds` tables were not created when the MCP server opened the DB independently (outside the full daemon startup path). Fixed by adding `applyMigrationTables()` call to `NewDatabase()`.
+  3. Exported `Server.RunOn(ctx, io.Reader, io.Writer)` so `devtrack mcp test` could run in-process without touching os.Stdin/os.Stdout.
+  4. Hardcoded scan: CLEAN — zero `os.Getenv` and zero hardcoded hosts/ports in all Phase 8 files.
+  5. Pre-existing flaky tests: TestDeferredApplySurvivesTreeDrift/TestSnapshotRefLifecycle/TestPatchAlreadyApplied intermittently fail with 1Password GPG signing under load; passes on immediate re-run.
+  6. MCP test raw output: initialize+tools/list+get_active_context all returned valid JSON-RPC 2.0 responses. get_active_context confirmed returning PROJ-123 with confidence=high after seeding triggers table. get_voice_profile confirmed returning seeded inference (confidence=0.91, source=hermes3, inference="Uses imperative verbs").
+  PR #205 opened targeting dev.
+
+## Task Summary — TASK-101: Phase 8 exit criterion verification — 2026-06-24
+
+- Total commits: 1
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: N/A (MCP server; no PM integration needed)
+- Estimated daily time saved: ~15 min (dev no longer has to manually set active ticket context in Claude Code)
+- Blockers encountered: TASK-100 never actually implemented — discovered `mcp setup`/`mcp test` missing; also `NewDatabase()` missing `applyMigrationTables()` call
+- One thing that still feels rough: "TASK-100 being marked COMPLETE without a merged PR — board accuracy needs a stricter merge-to-dev gate"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-22 17:55] TASK-098 — MCP server core: JSON-RPC 2.0 handler, tool registry, stdio transport
 
 **Original message**: "feat(mcp): add MCP server core — JSON-RPC 2.0 handler, tool registry, stdio transport (TASK-098)"

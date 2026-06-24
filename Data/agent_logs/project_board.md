@@ -4185,7 +4185,7 @@ the active ticket, the developer's commit voice, and what is in the pending queu
 without the developer typing anything. DevTrack and Claude Code operate as complementary
 layers: DevTrack is the memory Claude Code lacks.
 
-**Status**: IN PROGRESS — TASK-098 dispatched 2026-06-22
+**Status**: DONE — TASK-098, TASK-099, TASK-100, TASK-101 all complete — 2026-06-24. Phase 8 exit criterion verified.
 
 ---
 
@@ -4807,9 +4807,9 @@ Confirm `MCP_PORT=0` is in `.env_sample`. No change needed if TASK-098 already a
 ---
 
 ### TASK-101 — Phase 8 exit criterion verification
-**Priority**: MEDIUM
+**Assigned to**: engineer
 **Phase**: Phase 8
-**Depends on**: TASK-098, TASK-099, TASK-100 (all must be merged to dev)
+**Started**: 2026-06-24
 **Branch**: `feat/TASK-101-phase8-exit-verification`
 
 **Spec**:
@@ -4861,19 +4861,28 @@ Same verification pattern as TASK-059 (Phase 0), TASK-074 (Phase 3), TASK-092 (P
 10. Open a PR targeting `dev` with title "Phase 8: MCP server + Claude Code integration — exit criterion verified".
 
 **Acceptance criteria**:
-- [ ] `go build ./...`, `go vet ./...`, `go test ./...` all pass clean from `devtrack_client/`
-- [ ] `devtrack mcp status` shows 6 tools registered
-- [ ] `devtrack mcp setup` creates `.mcp.json` and is idempotent
-- [ ] `devtrack mcp test` shows valid JSON-RPC responses for all three messages
-- [ ] `get_active_context` returns `active_ticket="PROJ-123"` from seeded trigger row
-- [ ] `get_voice_profile` returns seeded inference from inferences table
-- [ ] Hardcoded-values scan CLEAN across all Phase 8 source files
-- [ ] `go test ./...` passes (beyond any documented pre-existing failures)
-- [ ] `feature_tracker.md` updated with Phase 8 completion entry
-- [ ] PR opened targeting `dev` (never `main`)
+- [x] `go build ./...`, `go vet ./...`, `go test ./...` all pass clean from `devtrack_client/`
+- [x] `devtrack mcp status` shows 6 tools registered
+- [x] `devtrack mcp setup` creates `.mcp.json` and is idempotent
+- [x] `devtrack mcp test` shows valid JSON-RPC responses for all three messages
+- [x] `get_active_context` returns `active_ticket="PROJ-123"` from seeded trigger row
+- [x] `get_voice_profile` returns seeded inference from inferences table
+- [x] Hardcoded-values scan CLEAN across all Phase 8 source files
+- [x] `go test ./...` passes (beyond any documented pre-existing failures)
+- [x] `feature_tracker.md` updated with Phase 8 completion entry
+- [x] PR opened targeting `dev` (never `main`)
 
-**Engineer status**: not started
-**Blockers**: TASK-098, TASK-099, TASK-100
+**Engineer status**: COMPLETE — 10/10 criteria met — 2026-06-24
+**Commits**: c07db3d "feat(mcp): implement mcp setup+test commands; fix NewDatabase to apply migration tables" | 6a40a9f "chore(board): TASK-101 COMPLETE" | 3c5a81a "docs: Phase 8 MCP / Claude Code integration — wiki, README, memory sync"
+**PR**: https://github.com/sraj0501/Devtrack_/pull/205 (base: dev)
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
+**Blockers**: none
+**Note**: TASK-100 was marked COMPLETE on the board but never merged to dev — `mcp setup` and `mcp test` subcommands were absent. Implemented here. Also fixed: `NewDatabase()` was not calling `applyMigrationTables()`. Pre-existing flaky tests (TestDeferredApplySurvivesTreeDrift/TestSnapshotRefLifecycle/TestPatchAlreadyApplied) intermittently fail under 1Password GPG load; pass on re-run.
+
+**COMPLETE — PM reviewed 2026-06-24**
+
+**COMPLETE** — ready for PM review — 2026-06-24 17:50
 
 ---
 

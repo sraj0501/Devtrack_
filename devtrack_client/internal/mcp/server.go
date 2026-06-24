@@ -14,16 +14,16 @@ import (
 // jsonRPCRequest is an inbound JSON-RPC 2.0 message from the MCP client.
 type jsonRPCRequest struct {
 	JSONRPC string                 `json:"jsonrpc"`
-	ID      interface{}            `json:"id"`
+	ID      any            `json:"id"`
 	Method  string                 `json:"method"`
-	Params  map[string]interface{} `json:"params,omitempty"`
+	Params  map[string]any `json:"params,omitempty"`
 }
 
 // jsonRPCResponse is an outbound JSON-RPC 2.0 message to the MCP client.
 type jsonRPCResponse struct {
 	JSONRPC string        `json:"jsonrpc"`
-	ID      interface{}   `json:"id"`
-	Result  interface{}   `json:"result,omitempty"`
+	ID      any   `json:"id"`
+	Result  any   `json:"result,omitempty"`
 	Error   *jsonRPCError `json:"error,omitempty"`
 }
 
@@ -36,8 +36,8 @@ type jsonRPCError struct {
 type Tool struct {
 	Name        string
 	Description string
-	InputSchema map[string]interface{} // JSON Schema for the tool's input object
-	Handler     func(ctx context.Context, args map[string]interface{}) (interface{}, error)
+	InputSchema map[string]any // JSON Schema for the tool's input object
+	Handler     func(ctx context.Context, args map[string]any) (any, error)
 }
 
 // Server is the DevTrack MCP server. It handles JSON-RPC 2.0 over stdio.
@@ -70,6 +70,13 @@ func (s *Server) Register(t Tool) {
 // Blocks until the client sends "shutdown" or ctx is cancelled.
 func (s *Server) Start(ctx context.Context) {
 	s.run(ctx, os.Stdin, os.Stdout)
+}
+
+// RunOn runs the JSON-RPC 2.0 message loop on the provided reader/writer.
+// Exported for use by devtrack mcp test (in-process smoke test).
+// Blocks until the client sends "shutdown" or ctx is cancelled.
+func (s *Server) RunOn(ctx context.Context, in io.Reader, out io.Writer) {
+	s.run(ctx, in, out)
 }
 
 // run is the testable implementation of Start.
@@ -122,7 +129,7 @@ func (s *Server) handle(ctx context.Context, req jsonRPCRequest) jsonRPCResponse
 	case "tools/call":
 		return s.handleToolsCall(ctx, req)
 	case "ping":
-		return jsonRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]interface{}{}}
+		return jsonRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}}
 	default:
 		return jsonRPCResponse{
 			JSONRPC: "2.0",
@@ -136,14 +143,14 @@ func (s *Server) handleInitialize(req jsonRPCRequest) jsonRPCResponse {
 	return jsonRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
-		Result: map[string]interface{}{
+		Result: map[string]any{
 			"protocolVersion": "2024-11-05",
-			"serverInfo": map[string]interface{}{
+			"serverInfo": map[string]any{
 				"name":    "devtrack",
 				"version": s.version,
 			},
-			"capabilities": map[string]interface{}{
-				"tools": map[string]interface{}{},
+			"capabilities": map[string]any{
+				"tools": map[string]any{},
 			},
 			"tools": s.toolList(),
 		},
@@ -154,25 +161,25 @@ func (s *Server) handleToolsList(req jsonRPCRequest) jsonRPCResponse {
 	return jsonRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
-		Result: map[string]interface{}{
+		Result: map[string]any{
 			"tools": s.toolList(),
 		},
 	}
 }
 
-func (s *Server) toolList() []map[string]interface{} {
+func (s *Server) toolList() []map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	list := make([]map[string]interface{}, 0, len(s.tools))
+	list := make([]map[string]any, 0, len(s.tools))
 	for _, t := range s.tools {
-		entry := map[string]interface{}{
+		entry := map[string]any{
 			"name":        t.Name,
 			"description": t.Description,
 		}
 		if t.InputSchema != nil {
 			entry["inputSchema"] = t.InputSchema
 		} else {
-			entry["inputSchema"] = map[string]interface{}{"type": "object", "properties": map[string]interface{}{}}
+			entry["inputSchema"] = map[string]any{"type": "object", "properties": map[string]any{}}
 		}
 		list = append(list, entry)
 	}
@@ -182,7 +189,7 @@ func (s *Server) toolList() []map[string]interface{} {
 func (s *Server) handleToolsCall(ctx context.Context, req jsonRPCRequest) jsonRPCResponse {
 	params := req.Params
 	if params == nil {
-		params = map[string]interface{}{}
+		params = map[string]any{}
 	}
 
 	nameRaw, _ := params["name"].(string)
@@ -206,9 +213,9 @@ func (s *Server) handleToolsCall(ctx context.Context, req jsonRPCRequest) jsonRP
 		}
 	}
 
-	args, _ := params["arguments"].(map[string]interface{})
+	args, _ := params["arguments"].(map[string]any)
 	if args == nil {
-		args = map[string]interface{}{}
+		args = map[string]any{}
 	}
 
 	result, err := tool.Handler(ctx, args)
@@ -225,8 +232,8 @@ func (s *Server) handleToolsCall(ctx context.Context, req jsonRPCRequest) jsonRP
 	return jsonRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
-		Result: map[string]interface{}{
-			"content": []map[string]interface{}{
+		Result: map[string]any{
+			"content": []map[string]any{
 				{"type": "text", "text": string(resultJSON)},
 			},
 		},
