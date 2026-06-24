@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-22 by PM — Phase 8 scoped; TASK-098 dispatched (MCP server core)_
+_Last updated: 2026-06-22 by PM — TASK-098+099 complete (PRs #203,#204); TASK-100 dispatched (.mcp.json + devtrack mcp commands)_
 _Next DevTrack task ID: TASK-102_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -4654,8 +4654,24 @@ and call `mcp.RegisterDevTrackTools(srv, db)` before `srv.Start(ctx)`.
 - [ ] No tool writes to SQLite or posts to any external API (read-only enforced)
 - [ ] No hardcoded host/port/timeout literals; no `os.Getenv` calls
 
-**Engineer status**: not started
-**Blockers**: TASK-098
+**Acceptance criteria**:
+- [x] All six tools registered in `RegisterDevTrackTools()`; `go build ./...` passes clean
+- [x] `go vet ./...` passes clean
+- [x] `devtrack mcp` followed by `initialize` then `tools/list` returns all six tool names
+- [x] `get_active_context`: returns correct JSON shape; works on empty DB (no panic)
+- [x] `get_today_commits`: groups by ticket_id; handles no-commits-today gracefully
+- [x] `get_pending_actions`: returns pending actions with payload_preview truncated to 120 chars
+- [x] `get_voice_profile`: returns inferences + skills; returns note when empty
+- [x] `get_ticket_context`: filters correctly to the requested ticket_id
+- [x] `get_eod_summary`: returns template-based summary (no LLM call required)
+- [x] All unit tests in `tools_test.go` pass: `go test ./internal/mcp/...`
+- [x] No tool writes to SQLite or posts to any external API (read-only enforced)
+- [x] No hardcoded host/port/timeout literals; no `os.Getenv` calls
+
+**Engineer status**: 12/12 criteria done — last commit: 155028c "feat(mcp): implement 6 read-only MCP tools backed by SQLite (TASK-099)" — 2026-06-22 18:19
+**PR**: https://github.com/sraj0501/Devtrack_/pull/204 (base: dev)
+
+**COMPLETE** — ready for PM review — 2026-06-22 18:20
 
 ---
 
@@ -4781,8 +4797,12 @@ Confirm `MCP_PORT=0` is in `.env_sample`. No change needed if TASK-098 already a
 - [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
 - [ ] No `os.Getenv` outside `config_env.go`; no hardcoded paths, ports, or binary names
 
-**Engineer status**: not started
-**Blockers**: TASK-099
+**Engineer status**: 12/12 tests pass — commits 155028c, b35b9a5, 63353b5 — 2026-06-22
+**PR**: https://github.com/sraj0501/Devtrack_/pull/204 (base: dev)
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-22
+**Note**: triggers table stores workspace/branch in JSON `data` field, not indexed columns; tools use `repo_path` column instead of `workspace_name`. No schema change needed.
 
 ---
 

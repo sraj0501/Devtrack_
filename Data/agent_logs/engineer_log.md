@@ -36,6 +36,39 @@
 
 ---
 
+### [2026-06-22 18:20] TASK-099 — 6 read-only MCP tools backed by SQLite
+
+**Original message**: "feat(mcp): implement 6 read-only MCP tools backed by SQLite (TASK-099)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running; committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-099 updated, all 12/12 criteria ticked
+**Time**: ~15 minutes
+**Friction**: LOW
+**Notes**:
+  1. The triggers table does NOT have workspace_name or branch columns — the spec assumed they exist. Adapted TriggerCommit struct to use repo_path instead of workspace_name; branch field omitted (not stored in triggers). This is a deliberate deviation from spec to match actual schema.
+  2. `NewDatabase()` panics without full env var setup, so I added `NewDatabaseAtPath(path string)` to db/database.go — opens DB at explicit path without config. Also added `applyMigrationTables()` so the test DB gets pending_actions, inferences, corrections, confidence_thresholds, and skills tables without needing RunPendingMigrations.
+  3. Added `ExecRaw()` method to Database for test-only raw SQL insertion (distinct from production `Exec()`).
+  4. All 12 tests pass: 4 original server tests + 8 new tools tests.
+  5. Smoke test confirmed all 6 tool names appear in tools/list JSON-RPC response.
+
+**Build verification**: go build ./... PASS, go vet ./... PASS
+**Test output**: go test ./internal/mcp/... PASS (12/12), go test ./internal/db/... PASS
+
+---
+
+## Task Summary — TASK-099: 6 read-only MCP tools — 2026-06-22
+
+- Total commits: 1 (155028c)
+- Acceptance criteria met: 12/12
+- Tickets auto-updated: NO (Ollama not running)
+- Estimated daily time saved: ~30 min/day (Claude Code can now query DevTrack context automatically)
+- Blockers encountered: none — schema mismatch (no workspace_name/branch in triggers) discovered and fixed by adapting TriggerCommit struct
+- One thing that still feels rough: "The workspace_name field from the spec would need a schema migration to add workspace_name column to triggers table — punted; repo_path serves as a reasonable proxy"
+- Ready for PM review: YES
+- PR: https://github.com/sraj0501/Devtrack_/pull/204
+
+---
+
 ### [2026-06-22 16:55] TASK-094 — Coding agent invocation interface (Phase 7)
 
 **Original message**: "feat(reviewer): add coding agent invocation package for Phase 7 PR puppet master (TASK-094)"

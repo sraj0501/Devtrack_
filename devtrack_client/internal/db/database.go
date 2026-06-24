@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -2239,6 +2240,222 @@ func (d *Database) MarkPMUpdateSent(id int64) error {
 // major churn (e.g. auto-stop work sessions, expire deferred commits).
 func (d *Database) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return d.db.Exec(query, args...)
+}
+
+// ExecRaw executes a raw SQL statement. Used by tests and migrations only.
+// Identical to Exec; provided under a distinct name so call sites in tests are
+// clearly distinct from production call sites.
+func (d *Database) ExecRaw(query string, args ...interface{}) (sql.Result, error) {
+	return d.db.Exec(query, args...)
+}
+
+// NewDatabaseAtPath opens a SQLite database at an explicit path without reading
+// any environment variables. Intended for use in tests that cannot set up the
+// full environment, and for temporary databases in other contexts.
+// It applies both the base schema (initSchema) and the migration-managed tables
+// so the resulting DB is fully functional without requiring RunPendingMigrations.
+func NewDatabaseAtPath(dbPath string) (*Database, error) {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create database directory: %w", err)
+	}
+	sqlDB, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	if err := sqlDB.Ping(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+	d := &Database{db: sqlDB, path: dbPath}
+	if err := d.initSchema(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+	}
+	// Apply migration-managed tables inline so the DB is fully functional
+	// without requiring the full env-var setup that RunPendingMigrations needs.
+	if err := d.applyMigrationTables(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("failed to apply migration tables: %w", err)
+	}
+	return d, nil
+}
+
+// applyMigrationTables creates the tables that are normally applied by
+// RunPendingMigrations but are not in the base initSchema. Called by
+// NewDatabaseAtPath so test databases are fully functional without env vars.
+func (d *Database) applyMigrationTables() error {
+	stmts := []string{
+		// 006-create-pending-actions
+		`CREATE TABLE IF NOT EXISTS pending_actions (
+			id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			action_type TEXT    NOT NULL,
+			target      TEXT    NOT NULL,
+			platform    TEXT    NOT NULL,
+			workspace   TEXT    NOT NULL,
+			payload     TEXT    NOT NULL,
+			confidence  REAL    NOT NULL,
+			status      TEXT    NOT NULL DEFAULT 'pending',
+			expires_at  DATETIME NOT NULL,
+			created_at  DATETIME NOT NULL DEFAULT (datetime('now')),
+			acted_at    DATETIME,
+			acted_by    TEXT,
+			error       TEXT
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_pending_actions_status ON pending_actions(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_pending_actions_expires ON pending_actions(expires_at)`,
+		// 008-create-inferences-fts5 (plain table only; FTS5 virtual table omitted for test simplicity)
+		`CREATE TABLE IF NOT EXISTS inferences (
+			id           INTEGER PRIMARY KEY AUTOINCREMENT,
+			context_type TEXT    NOT NULL,
+			subject      TEXT    NOT NULL,
+			inference    TEXT    NOT NULL,
+			evidence     TEXT    NOT NULL,
+			confidence   REAL    NOT NULL DEFAULT 0.5,
+			source       TEXT    NOT NULL DEFAULT 'hermes3',
+			created_at   DATETIME NOT NULL DEFAULT (datetime('now')),
+			updated_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		// 009-create-corrections (needed by voice profile tools)
+		`CREATE TABLE IF NOT EXISTS corrections (
+			id           INTEGER PRIMARY KEY AUTOINCREMENT,
+			inference_id INTEGER NOT NULL,
+			correction   TEXT    NOT NULL,
+			flagged_from TEXT    NOT NULL,
+			weight       REAL    NOT NULL DEFAULT 1.0,
+			created_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		// 010-create-confidence-thresholds
+		`CREATE TABLE IF NOT EXISTS confidence_thresholds (
+			id           INTEGER PRIMARY KEY AUTOINCREMENT,
+			action_type  TEXT    NOT NULL,
+			workspace    TEXT    NOT NULL DEFAULT '',
+			threshold    REAL    NOT NULL DEFAULT 0.70,
+			approvals    INTEGER NOT NULL DEFAULT 0,
+			rejections   INTEGER NOT NULL DEFAULT 0,
+			last_updated DATETIME NOT NULL DEFAULT (datetime('now')),
+			UNIQUE(action_type, workspace)
+		)`,
+		// 011-create-skills
+		`CREATE TABLE IF NOT EXISTS skills (
+			id             INTEGER PRIMARY KEY AUTOINCREMENT,
+			name           TEXT    NOT NULL UNIQUE,
+			description    TEXT    NOT NULL,
+			context_type   TEXT    NOT NULL,
+			evidence_count INTEGER NOT NULL DEFAULT 0,
+			promoted_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+			last_seen_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := d.db.Exec(stmt); err != nil && !strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("applyMigrationTables: %w", err)
+		}
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// MCP read-only query helpers (TASK-099)
+// ---------------------------------------------------------------------------
+
+// TriggerCommit is a minimal commit record returned by MCP tools.
+// It is a lighter-weight view than the full TriggerRecord.
+// The triggers table stores repo_path (not workspace_name) and has no branch
+// column; those fields are populated from available data.
+type TriggerCommit struct {
+	Hash      string
+	Message   string
+	TicketID  string
+	RepoPath  string // maps to triggers.repo_path
+	Timestamp string
+}
+
+// ListTodayCommits returns all commit triggers from today (UTC date), optionally
+// filtered to a specific repo path. Pass repoPath="" for all repos.
+// Results are ordered ASC by timestamp.
+func (d *Database) ListTodayCommits(repoPath string) ([]TriggerCommit, error) {
+	q := `
+		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
+		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
+		FROM triggers
+		WHERE trigger_type='commit'
+		  AND date(timestamp) = date('now')
+		  AND (? = '' OR repo_path = ?)
+		ORDER BY timestamp ASC
+	`
+	rows, err := d.db.Query(q, repoPath, repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("ListTodayCommits: %w", err)
+	}
+	defer rows.Close()
+	var out []TriggerCommit
+	for rows.Next() {
+		var c TriggerCommit
+		if err := rows.Scan(&c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp); err != nil {
+			return nil, fmt.Errorf("ListTodayCommits scan: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// ListTicketCommits returns the N most recent commit triggers for a given ticket_id.
+func (d *Database) ListTicketCommits(ticketID string, limit int) ([]TriggerCommit, error) {
+	q := `
+		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
+		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
+		FROM triggers
+		WHERE trigger_type='commit'
+		  AND ticket_id = ?
+		ORDER BY timestamp DESC
+		LIMIT ?
+	`
+	rows, err := d.db.Query(q, ticketID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ListTicketCommits: %w", err)
+	}
+	defer rows.Close()
+	var out []TriggerCommit
+	for rows.Next() {
+		var c TriggerCommit
+		if err := rows.Scan(&c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp); err != nil {
+			return nil, fmt.Errorf("ListTicketCommits scan: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// MostRecentCommit returns the most recent commit trigger across all repos.
+// Returns a zero TriggerCommit (empty fields) when no commits exist.
+func (d *Database) MostRecentCommit() (TriggerCommit, error) {
+	var c TriggerCommit
+	err := d.db.QueryRow(`
+		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
+		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
+		FROM triggers
+		WHERE trigger_type='commit'
+		ORDER BY timestamp DESC
+		LIMIT 1
+	`).Scan(&c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp)
+	if err == sql.ErrNoRows {
+		return TriggerCommit{}, nil
+	}
+	if err != nil {
+		return TriggerCommit{}, fmt.Errorf("MostRecentCommit: %w", err)
+	}
+	return c, nil
+}
+
+// CountTodayCommits returns the number of commit triggers today (UTC date).
+func (d *Database) CountTodayCommits() (int, error) {
+	var n int
+	err := d.db.QueryRow(`
+		SELECT COUNT(*) FROM triggers
+		WHERE trigger_type='commit'
+		  AND date(timestamp) = date('now')
+	`).Scan(&n)
+	return n, err
 }
 
 // MarkPMUpdateFailed increments attempts and records the error on a pm_update_queue row.
