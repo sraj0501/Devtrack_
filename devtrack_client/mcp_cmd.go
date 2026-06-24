@@ -78,8 +78,8 @@ func runMCPSetup(args []string) {
 	for i, a := range args {
 		if a == "--dir" && i+1 < len(args) {
 			dir = args[i+1]
-		} else if strings.HasPrefix(a, "--dir=") {
-			dir = strings.TrimPrefix(a, "--dir=")
+		} else if d, ok := strings.CutPrefix(a, "--dir="); ok {
+			dir = d
 		}
 	}
 
@@ -108,7 +108,7 @@ func runMCPSetup(args []string) {
 	}
 
 	// Build the devtrack MCP entry
-	devtrackEntry := map[string]interface{}{
+	devtrackEntry := map[string]any{
 		"command": execPath,
 		"args":    []string{"mcp"},
 		"env": map[string]string{
@@ -117,18 +117,18 @@ func runMCPSetup(args []string) {
 	}
 
 	// Load existing .mcp.json if present
-	existing := make(map[string]interface{})
+	existing := make(map[string]any)
 	if data, err := os.ReadFile(mcpPath); err == nil {
 		if err2 := json.Unmarshal(data, &existing); err2 != nil {
 			fmt.Fprintf(os.Stderr, "mcp setup: existing .mcp.json is malformed (%v) — overwriting\n", err2)
-			existing = make(map[string]interface{})
+			existing = make(map[string]any)
 		}
 	}
 
 	// Get or create mcpServers map
-	servers, _ := existing["mcpServers"].(map[string]interface{})
+	servers, _ := existing["mcpServers"].(map[string]any)
 	if servers == nil {
-		servers = make(map[string]interface{})
+		servers = make(map[string]any)
 	}
 
 	// Idempotency check

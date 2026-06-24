@@ -4185,7 +4185,7 @@ the active ticket, the developer's commit voice, and what is in the pending queu
 without the developer typing anything. DevTrack and Claude Code operate as complementary
 layers: DevTrack is the memory Claude Code lacks.
 
-**Status**: IN PROGRESS — TASK-098 dispatched 2026-06-22
+**Status**: DONE — TASK-098, TASK-099, TASK-100, TASK-101 all complete — 2026-06-24. Phase 8 exit criterion verified.
 
 ---
 
@@ -4872,10 +4872,15 @@ Same verification pattern as TASK-059 (Phase 0), TASK-074 (Phase 3), TASK-092 (P
 - [x] `feature_tracker.md` updated with Phase 8 completion entry
 - [x] PR opened targeting `dev` (never `main`)
 
-**Engineer status**: 10/10 criteria done — last commit: c07db3d "feat(mcp): implement mcp setup+test commands; fix NewDatabase to apply migration tables (TASK-101)" — 2026-06-24 17:45
+**Engineer status**: COMPLETE — 10/10 criteria met — 2026-06-24
+**Commits**: c07db3d "feat(mcp): implement mcp setup+test commands; fix NewDatabase to apply migration tables" | 6a40a9f "chore(board): TASK-101 COMPLETE" | 3c5a81a "docs: Phase 8 MCP / Claude Code integration — wiki, README, memory sync"
 **PR**: https://github.com/sraj0501/Devtrack_/pull/205 (base: dev)
+**Vision check**: PASS
+**Hardcoded scan**: CLEAN
 **Blockers**: none
-**Note**: TASK-100 was marked COMPLETE on the board but never merged to dev — `mcp setup` and `mcp test` subcommands were absent. Implemented here as part of exit criterion verification. Also fixed: `NewDatabase()` was not calling `applyMigrationTables()`, so `inferences`/`skills`/`corrections`/`pending_actions`/`confidence_thresholds` tables were missing when MCP server opened the DB. Pre-existing flaky tests: TestDeferredApplySurvivesTreeDrift/TestSnapshotRefLifecycle/TestPatchAlreadyApplied intermittently fail with 1Password GPG signing under load; re-run passes.
+**Note**: TASK-100 was marked COMPLETE on the board but never merged to dev — `mcp setup` and `mcp test` subcommands were absent. Implemented here. Also fixed: `NewDatabase()` was not calling `applyMigrationTables()`. Pre-existing flaky tests (TestDeferredApplySurvivesTreeDrift/TestSnapshotRefLifecycle/TestPatchAlreadyApplied) intermittently fail under 1Password GPG load; pass on re-run.
+
+**COMPLETE — PM reviewed 2026-06-24**
 
 **COMPLETE** — ready for PM review — 2026-06-24 17:50
 
