@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-22 by PM — TASK-098 complete (PR #203); TASK-099 dispatched (MCP tools)_
+_Last updated: 2026-06-22 by PM — TASK-098+099 complete (PRs #203,#204); TASK-100 dispatched (.mcp.json + devtrack mcp commands)_
 _Next DevTrack task ID: TASK-102_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -4797,8 +4797,12 @@ Confirm `MCP_PORT=0` is in `.env_sample`. No change needed if TASK-098 already a
 - [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
 - [ ] No `os.Getenv` outside `config_env.go`; no hardcoded paths, ports, or binary names
 
-**Engineer status**: not started
-**Blockers**: TASK-099
+**Engineer status**: 12/12 tests pass — commits 155028c, b35b9a5, 63353b5 — 2026-06-22
+**PR**: https://github.com/sraj0501/Devtrack_/pull/204 (base: dev)
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-22
+**Note**: triggers table stores workspace/branch in JSON `data` field, not indexed columns; tools use `repo_path` column instead of `workspace_name`. No schema change needed.
 
 ---
 
