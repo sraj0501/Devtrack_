@@ -89,6 +89,12 @@ func main() {
 			return
 		}
 
+		// devtrack mcp [serve|status] — MCP server for Claude Code integration (stdio transport)
+		if cmd == "mcp" {
+			handleMCPCommand(os.Args[2:])
+			return
+		}
+
 		// devtrack install — server architecture info
 		if cmd == "install" {
 			if err := RunInstall(); err != nil {
@@ -212,6 +218,8 @@ func printBasicUsage() {
 	fmt.Println()
 	fmt.Println("UPDATE:     upgrade | upgrade --check")
 	fmt.Println("UNINSTALL:  uninstall | uninstall --keep-data")
+	fmt.Println()
+	fmt.Println("MCP:        mcp [serve|status]                 MCP server for Claude Code integration (stdio)")
 	fmt.Println()
 	fmt.Println("New install? Run: devtrack setup")
 	fmt.Println("Run 'devtrack help' for full usage and flags.")

@@ -2,6 +2,40 @@
 
 ---
 
+### [2026-06-22 17:55] TASK-098 — MCP server core: JSON-RPC 2.0 handler, tool registry, stdio transport
+
+**Original message**: "feat(mcp): add MCP server core — JSON-RPC 2.0 handler, tool registry, stdio transport (TASK-098)"
+**DevTrack enhanced it to**: (AI provider unreachable — Ollama not running; committed with original message as-is)
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-098 updated, all 10/10 criteria ticked
+**Time**: ~3 seconds
+**Friction**: LOW
+**Notes**: Created `devtrack_client/internal/mcp/` package from scratch. Key design decisions:
+  1. `run(ctx, io.Reader, io.Writer)` is the testable core; public `Start(ctx)` wraps it with os.Stdin/os.Stdout — clean separation lets tests use io.Pipe without touching os I/O.
+  2. `writeResponse` holds the mutex so concurrent tool handlers (future TASK-099) can reply without interleaving.
+  3. `toolList()` also acquires the mutex and returns a fresh slice — safe under concurrent reads.
+  4. `handleMCPCommand` in `mcp_cmd.go` is wired as an early-exit path in main.go (before NewCLI()) — the MCP server doesn't need config or daemon initialization, just the Version var.
+  5. `GetMCPPort()` is the only accessor in config_env.go with a safe default ("0") — justified in spec because 0 = stdio-only mode which is always the valid fallback.
+  6. All 4 unit tests (Initialize, ToolsCall_Unknown, Shutdown, Ping) pass with 0.4s runtime.
+
+**Build verification**: go build ./... PASS, go vet ./... PASS, go test ./internal/mcp/... PASS (4/4 tests)
+**Smoke test**: `echo '{"jsonrpc":"2.0","id":1,"method":"initialize",...}' | devtrack mcp` — JSON returned on stdout, stderr silent.
+
+---
+
+## Task Summary — TASK-098: MCP server core — 2026-06-22
+
+- Total commits: 1 (06d442a)
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: NO (Ollama not running)
+- Estimated daily time saved: ~20 min/day (foundation for Claude Code to auto-query DevTrack context)
+- Blockers encountered: none
+- One thing that still feels rough: "The MCP_PORT accessor exists but is not yet used anywhere — it will only become meaningful once TASK-100 adds HTTP/SSE transport"
+- Ready for PM review: YES
+- PR: https://github.com/sraj0501/Devtrack_/pull/203
+
+---
+
 ### [2026-06-22 16:55] TASK-094 — Coding agent invocation interface (Phase 7)
 
 **Original message**: "feat(reviewer): add coding agent invocation package for Phase 7 PR puppet master (TASK-094)"

@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-22 by PM — TASK-093 dispatched to engineer (Phase 7 start)_
-_Next DevTrack task ID: TASK-098_
+_Last updated: 2026-06-22 by PM — Phase 8 scoped; TASK-098 dispatched (MCP server core)_
+_Next DevTrack task ID: TASK-102_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -681,8 +681,8 @@ alongside the CLI (TASK-064). Both must exist.
 | 4 | EOD pipeline | COMPLETE | Accurate EOD email every evening without developer action |
 | 5 | Voice training (low friction) | COMPLETE | Generated text passes "did I write this?" after one week |
 | 6 | Dialectic self-improvement | COMPLETE — PR #200 open | Correction rate down; ≥3 skills emerged; threshold extended |
-| 7 | PR review loop (puppet master) | PLANNED — TASK-093 through TASK-097 | Push PR with nit comments, get "approved" without touching it again |
-| 8 | MCP server + headless integration | QUEUED | Claude Code queries DevTrack for developer context automatically |
+| 7 | PR review loop (puppet master) | DEFERRED (returning after Phase 8) — TASK-093 through TASK-097 planned | Push PR with nit comments, get "approved" without touching it again |
+| 8 | MCP server + headless integration | IN PROGRESS — TASK-098 dispatched | Claude Code queries DevTrack for developer context automatically |
 
 Full phase specs and acceptance criteria: `PRODUCT_BIBLE.md` § Build Phases.
 
@@ -4169,6 +4169,691 @@ expected outputs end-to-end.
 - [ ] `uv run pytest backend/tests/ -q` — no regressions beyond documented pre-existing failure
 - [ ] `feature_tracker.md` updated with Phase 7 completion entry
 - [ ] PR opened targeting `dev` (never `main`)
+
+---
+
+## Phase 8: MCP Server + Headless Integration
+
+**Goal**: DevTrack exposes itself as a Model Context Protocol (MCP) server so AI coding
+assistants — Claude Code first, then any MCP-capable tool — can query developer context
+automatically. The Go binary hosts the MCP server (no Python dependency for reads; SQLite
+has all the data). Generation calls that need LLM output proxy to the Python server via
+the existing HTTP boundary.
+
+**Exit criterion**: Developer runs Claude Code on a task. Claude Code automatically knows
+the active ticket, the developer's commit voice, and what is in the pending queue —
+without the developer typing anything. DevTrack and Claude Code operate as complementary
+layers: DevTrack is the memory Claude Code lacks.
+
+**Status**: IN PROGRESS — TASK-098 dispatched 2026-06-22
+
+---
+
+### TASK-098 — MCP protocol core: Go server lifecycle, JSON-RPC 2.0 handler, tool registry
+**Assigned to**: engineer
+**Phase**: Phase 8
+**Started**: 2026-06-22
+**Branch**: `feat/TASK-098-mcp-server-core`
+**Depends on**: none (Phase 6 complete; Phase 7 deferred)
+
+**Spec**:
+
+Implement the MCP (Model Context Protocol) server in pure Go inside the
+`devtrack_client` binary. The MCP server handles the stdio transport required for Claude
+Code CLI integration. No new external packages are needed — everything uses Go stdlib
+(`encoding/json`, `bufio`, `os`, `sync`, `context`). The server will be extended with
+actual tool implementations in TASK-099.
+
+**Background — MCP protocol (what you need to know)**:
+MCP uses JSON-RPC 2.0 over stdio. The client (e.g. Claude Code) spawns the MCP server
+as a subprocess and communicates via stdin/stdout. The protocol has three phases:
+
+1. Initialize: client sends `initialize` request; server replies with its capabilities
+   and the list of tools it exposes.
+2. Tool calls: client sends `tools/call` with a tool name and arguments; server returns
+   the result as a JSON object.
+3. Shutdown: client sends `shutdown`; server exits cleanly.
+
+Full MCP spec: https://spec.modelcontextprotocol.io/specification/basic/messages/
+All messages are newline-delimited JSON objects on stdin/stdout. The server must never
+write anything other than valid JSON to stdout (all logs go to stderr).
+
+**Files to create**:
+
+**1. `devtrack_client/internal/mcp/server.go` (NEW PACKAGE `mcp`)**
+
+```go
+package mcp
+
+// Server is the DevTrack MCP server. It handles JSON-RPC 2.0 over stdio.
+// Start(ctx) reads from os.Stdin and writes to os.Stdout until ctx is cancelled
+// or the client sends "shutdown".
+// All log output goes to os.Stderr — stdout is reserved for JSON-RPC messages.
+type Server struct {
+    tools    map[string]Tool      // registered tools, keyed by name
+    version  string               // server version (from build metadata)
+}
+
+// Tool is a registered MCP tool: its schema declaration and its handler.
+type Tool struct {
+    Name        string
+    Description string
+    InputSchema map[string]interface{} // JSON Schema for the tool's input object
+    Handler     func(ctx context.Context, args map[string]interface{}) (interface{}, error)
+}
+
+// New creates a new Server with no tools registered.
+func New(version string) *Server
+
+// Register adds a tool to the server. Call before Start().
+// Panics if a tool with the same name is already registered (programming error).
+func (s *Server) Register(t Tool)
+
+// Start runs the JSON-RPC 2.0 message loop, reading from os.Stdin and writing
+// to os.Stdout. Blocks until the client sends "shutdown" or ctx is cancelled.
+// Never returns an error — any read/write failure causes a clean shutdown.
+func (s *Server) Start(ctx context.Context)
+```
+
+**Message loop implementation** (`Start`):
+
+```
+reader = bufio.NewReader(os.Stdin)
+for {
+    line, err = reader.ReadString('\n')
+    if err == io.EOF or ctx.Done(): break
+
+    var req jsonRPCRequest
+    json.Unmarshal(line, &req)
+
+    switch req.Method {
+    case "initialize":
+        reply with serverInfo, capabilities, list of tools (name, description, inputSchema)
+    case "tools/call":
+        find tool by name; call handler(ctx, req.Params.Arguments)
+        if error: reply with JSON-RPC error object
+        else: reply with {"content": [{"type": "text", "text": json.Marshal(result)}]}
+    case "tools/list":
+        reply with the registered tool list (same as initialize response tools)
+    case "shutdown":
+        send empty result reply; return
+    case "ping":
+        send empty result reply (keepalive)
+    default:
+        send JSON-RPC "Method not found" error (-32601)
+    }
+}
+```
+
+**JSON-RPC types** (define in `server.go` or a separate `types.go` in the same package):
+
+```go
+type jsonRPCRequest struct {
+    JSONRPC string                 `json:"jsonrpc"`
+    ID      interface{}            `json:"id"`
+    Method  string                 `json:"method"`
+    Params  map[string]interface{} `json:"params,omitempty"`
+}
+
+type jsonRPCResponse struct {
+    JSONRPC string      `json:"jsonrpc"`
+    ID      interface{} `json:"id"`
+    Result  interface{} `json:"result,omitempty"`
+    Error   *jsonRPCError `json:"error,omitempty"`
+}
+
+type jsonRPCError struct {
+    Code    int    `json:"code"`
+    Message string `json:"message"`
+}
+```
+
+All replies are written as `json.Marshal(response) + "\n"` to os.Stdout using a sync.Mutex
+to prevent interleaving if the server ever spawns goroutines for async tools.
+
+**2. `devtrack_client/internal/mcp/server_test.go`**
+
+Unit tests:
+- `TestServerInitialize`: feed an `initialize` JSON-RPC request to the server on a
+  pipe (replace stdin/stdout with io.Pipe for the test). Confirm the response contains
+  `serverInfo.name = "devtrack"`, `capabilities.tools = {}`, and the registered tool
+  list is returned.
+- `TestServerToolsCall_Unknown`: call a tool that was not registered; confirm error
+  code -32602 ("Unknown tool: xyz") is returned.
+- `TestServerShutdown`: send `shutdown`; confirm `Start` returns within 1 second.
+- `TestServerPing`: send `ping`; confirm an empty result reply is returned.
+
+For testability, refactor `Start` to accept `io.Reader` and `io.Writer` rather than
+using `os.Stdin`/`os.Stdout` directly. The public `Start(ctx)` wrapper can call
+`s.run(ctx, os.Stdin, os.Stdout)`.
+
+**3. `devtrack_client/internal/config/config_env.go` additions**
+
+Add one new accessor:
+- `GetMCPPort() string` — reads `MCP_PORT`; required var; document in `.env_sample`
+  with value `0` (0 = stdio-only mode; future HTTP transport uses a real port).
+  For Phase 8 only stdio is used, but the config var must exist so the daemon can
+  log which mode is active.
+
+Add `MCP_PORT=0` to `.env_sample` with comment:
+```
+# MCP server port. 0 = stdio-only (Claude Code integration). Set a port for HTTP/SSE mode (future).
+MCP_PORT=0
+```
+
+**4. `devtrack_client/mcp_cmd.go` (new file at package root)**
+
+Wire a `devtrack mcp` CLI command that starts the MCP server in stdio mode.
+This is what Claude Code's `.mcp.json` will point to (TASK-100).
+
+```go
+// In main.go or cli.go — add case "mcp" to the arg router:
+//   devtrack mcp      → start MCP server in stdio mode (blocks; used by Claude Code)
+
+func handleMCPCommand(args []string) {
+    // Load config and DB (same startup sequence as other CLI commands)
+    srv := mcp.New(version)
+    // No tools registered yet — that's TASK-099
+    srv.Start(context.Background())
+}
+```
+
+**Acceptance criteria**:
+- [x] `devtrack_client/internal/mcp/` package exists; `go build ./...` passes clean from `devtrack_client/`
+- [x] `go vet ./...` passes clean
+- [x] `Server.Register()` and `Server.run()` (or `Start`) correctly handle `initialize`, `tools/list`, `tools/call`, `shutdown`, `ping`
+- [x] `initialize` response contains `serverInfo.name = "devtrack"` and `protocolVersion = "2024-11-05"`
+- [x] Unknown tool call returns JSON-RPC error code -32602
+- [x] All unit tests in `server_test.go` pass: `go test ./internal/mcp/...`
+- [x] `devtrack mcp` command exists and starts the server (verify: `echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"0.1"}}}' | devtrack mcp` exits cleanly with a JSON response on stdout)
+- [x] `GetMCPPort()` accessor exists in `config_env.go`; `MCP_PORT=0` in `.env_sample`
+- [x] All log output from the MCP server goes to stderr, never stdout
+- [x] No hardcoded host/port/timeout literals; no `os.Getenv` calls outside `config_env.go`
+
+**Engineer status**: 10/10 criteria done — last commit: 06d442a "feat(mcp): add MCP server core — JSON-RPC 2.0 handler, tool registry, stdio transport (TASK-098)" — 2026-06-22
+**PR**: https://github.com/sraj0501/Devtrack_/pull/203
+**Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-22 17:55
+
+---
+
+### TASK-099 — MCP tool implementations: 6 read-only tools backed by SQLite
+**Priority**: HIGH
+**Phase**: Phase 8
+**Depends on**: TASK-098 (mcp package must compile)
+**Branch**: `feat/TASK-099-mcp-tools`
+
+**Spec**:
+
+Implement the six MCP tools defined in PRODUCT_BIBLE.md Phase 8, all backed directly by
+the existing `devtrack_client/internal/db/` layer. All tools are read-only — no tool
+writes to SQLite or posts to any external API.
+
+Each tool is a Go function with signature
+`func(ctx context.Context, args map[string]interface{}) (interface{}, error)`.
+
+**File to create: `devtrack_client/internal/mcp/tools.go`**
+
+```go
+package mcp
+
+// RegisterDevTrackTools registers all six DevTrack MCP tools on the server.
+// db must be an open Database connection.
+func RegisterDevTrackTools(s *Server, database *db.Database)
+```
+
+**The six tools:**
+
+**Tool 1 — `get_active_context`**
+
+Description: "Returns the developer's current active ticket, branch, today's commit count,
+and confidence in the ticket mapping. This is the primary context tool — call it first."
+
+Input schema: `{}` (no arguments)
+
+Implementation:
+```go
+// Query the most recent commit trigger from the triggers table.
+// SELECT ticket_id, branch (from triggers WHERE trigger_type='commit' ORDER BY timestamp DESC LIMIT 1)
+// Ticket confidence: "high" if ticket_id != "" and ticket_id != "unlinked", "low" otherwise
+// Today's commit count: SELECT COUNT(*) FROM triggers WHERE trigger_type='commit' AND date(timestamp)=date('now')
+// Pending actions count: SELECT COUNT(*) FROM pending_actions WHERE status='pending'
+```
+
+Returns JSON:
+```json
+{
+  "active_ticket": "PROJ-123",          // "" if none
+  "branch": "feat/PROJ-123-add-login",  // "" if no recent commits
+  "confidence": "high",                  // "high" | "low" | "none"
+  "today_commits": 7,
+  "pending_actions_count": 2,
+  "workspace": "my-api"
+}
+```
+
+**Tool 2 — `get_today_commits`**
+
+Description: "Returns all commits from today, grouped by ticket ID, with message and metadata."
+
+Input schema:
+```json
+{
+  "type": "object",
+  "properties": {
+    "workspace": {
+      "type": "string",
+      "description": "Filter by workspace name. Omit for all workspaces."
+    }
+  }
+}
+```
+
+Implementation:
+```go
+// SELECT commit_hash, commit_message, ticket_id, workspace_name, timestamp
+// FROM triggers
+// WHERE trigger_type='commit' AND date(timestamp)=date('now')
+// ORDER BY timestamp ASC
+// Group in Go by ticket_id
+```
+
+Returns JSON:
+```json
+{
+  "commits_by_ticket": {
+    "PROJ-123": [
+      {"hash": "abc123", "message": "fix auth flow", "timestamp": "2026-06-22T10:31:00Z"}
+    ],
+    "unlinked": [...]
+  },
+  "total_today": 7
+}
+```
+
+**Tool 3 — `get_pending_actions`**
+
+Description: "Returns the current pending actions queue — actions DevTrack wants to take
+but hasn't yet. Each action has a confidence score and an expiry time."
+
+Input schema: `{}` (no arguments)
+
+Implementation:
+```go
+// db.ListPendingActions("pending")
+```
+
+Returns JSON array of pending action objects:
+```json
+{
+  "pending": [
+    {
+      "id": 42,
+      "action_type": "post_comment",
+      "target": "PROJ-123",
+      "platform": "github",
+      "confidence": 0.85,
+      "expires_at": "2026-06-22T10:36:00Z",
+      "payload_preview": "Fixed null check in auth flow..." // first 120 chars of payload
+    }
+  ],
+  "count": 1
+}
+```
+
+**Tool 4 — `get_voice_profile`**
+
+Description: "Returns the developer's inferred writing style profile for a given context
+type. Use this to understand how the developer prefers to communicate before generating
+text on their behalf."
+
+Input schema:
+```json
+{
+  "type": "object",
+  "properties": {
+    "context_type": {
+      "type": "string",
+      "enum": ["commit", "comment", "report", "task", "ticket_mapping"],
+      "description": "The writing context to retrieve style inferences for."
+    }
+  }
+}
+```
+
+Implementation:
+```go
+// db.ListInferencesByConfidence(contextType, 10)
+// Returns the top-10 highest-confidence inferences for the given context type.
+// Also queries db.ListSkills() and filters to skills matching contextType.
+```
+
+Returns JSON:
+```json
+{
+  "context_type": "commit",
+  "inferences": [
+    {
+      "subject": "commit tone",
+      "inference": "Uses present-tense imperative verbs. Always starts with lowercase verb.",
+      "confidence": 0.91,
+      "source": "hermes3"
+    }
+  ],
+  "skills": [
+    {
+      "name": "imperative-commit-verbs",
+      "description": "Developer always opens commits with a lowercase imperative verb",
+      "evidence_count": 47
+    }
+  ]
+}
+```
+
+If no inferences exist for the context type, return:
+```json
+{"context_type": "commit", "inferences": [], "skills": [], "note": "No voice data yet. Run `devtrack voice status` for details."}
+```
+
+**Tool 5 — `get_ticket_context`**
+
+Description: "Returns full context for a named ticket: recent commits, current pending
+actions targeting it, and its current mapping confidence."
+
+Input schema:
+```json
+{
+  "type": "object",
+  "required": ["ticket_id"],
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "description": "The ticket ID, e.g. PROJ-123 or AB-7"
+    }
+  }
+}
+```
+
+Implementation:
+```go
+// Recent commits: SELECT * FROM triggers WHERE ticket_id=? AND trigger_type='commit' ORDER BY timestamp DESC LIMIT 10
+// Pending actions: db.ListPendingActions("") filtered to target=ticket_id
+// Last commit time: most recent commit timestamp for this ticket_id
+```
+
+Returns JSON:
+```json
+{
+  "ticket_id": "PROJ-123",
+  "recent_commits": [
+    {"hash": "abc123", "message": "fix auth flow", "branch": "feat/PROJ-123-add-login", "timestamp": "..."}
+  ],
+  "pending_actions": [...],
+  "last_activity": "2026-06-22T10:31:00Z"
+}
+```
+
+**Tool 6 — `get_eod_summary`**
+
+Description: "Returns today's EOD narrative draft — a summary of the day's commits grouped
+by ticket, suitable for a standup or daily report."
+
+Input schema: `{}` (no arguments)
+
+Implementation:
+```go
+// Query today's commits grouped by ticket (same as get_today_commits).
+// Generate a summary in Go without calling the Python LLM server.
+// The summary is a simple structured narrative:
+// "Today: worked on PROJ-123 (3 commits: fix auth flow, add tests, update docs),
+//  ADO-456 (2 commits: ...)".
+// This is intentionally a template-based summary, not AI-generated — the MCP
+// tool must work offline. The Python /eod endpoint is a separate call the agent
+// can make when it wants AI-generated prose.
+```
+
+Returns JSON:
+```json
+{
+  "date": "2026-06-22",
+  "tickets_worked": 2,
+  "total_commits": 7,
+  "summary": "Today: PROJ-123 (3 commits) — fix auth flow, add tests, update docs. ADO-456 (2 commits) — ...",
+  "by_ticket": {
+    "PROJ-123": {"commits": 3, "messages": ["fix auth flow", "add tests", "update docs"]}
+  }
+}
+```
+
+**File to create: `devtrack_client/internal/mcp/tools_test.go`**
+
+Unit tests (use a test-mode SQLite db in a temp dir):
+- `TestGetActiveContext_NoCommits`: empty DB returns `confidence="none"`, `active_ticket=""`.
+- `TestGetActiveContext_WithTicket`: insert a trigger row with `ticket_id="PROJ-123"`; confirm
+  `get_active_context` returns `active_ticket="PROJ-123"` and `confidence="high"`.
+- `TestGetTodayCommits_Groups`: insert two trigger rows with same ticket_id today; confirm they
+  appear grouped under the same key.
+- `TestGetVoiceProfile_NoData`: empty inferences table; confirm `inferences: []`, note present.
+- `TestGetTicketContext_Filters`: insert triggers for two tickets; confirm only the queried ticket's commits appear.
+
+**Wire into daemon**: In `handleMCPCommand()` (TASK-098's `mcp_cmd.go`), open a DB connection
+and call `mcp.RegisterDevTrackTools(srv, db)` before `srv.Start(ctx)`.
+
+**Acceptance criteria**:
+- [ ] All six tools registered in `RegisterDevTrackTools()`; `go build ./...` passes clean
+- [ ] `go vet ./...` passes clean
+- [ ] `devtrack mcp` followed by `initialize` then `tools/list` returns all six tool names
+- [ ] `get_active_context`: returns correct JSON shape; works on empty DB (no panic)
+- [ ] `get_today_commits`: groups by ticket_id; handles no-commits-today gracefully
+- [ ] `get_pending_actions`: returns pending actions with payload_preview truncated to 120 chars
+- [ ] `get_voice_profile`: returns inferences + skills; returns note when empty
+- [ ] `get_ticket_context`: filters correctly to the requested ticket_id
+- [ ] `get_eod_summary`: returns template-based summary (no LLM call required)
+- [ ] All unit tests in `tools_test.go` pass: `go test ./internal/mcp/...`
+- [ ] No tool writes to SQLite or posts to any external API (read-only enforced)
+- [ ] No hardcoded host/port/timeout literals; no `os.Getenv` calls
+
+**Engineer status**: not started
+**Blockers**: TASK-098
+
+---
+
+### TASK-100 — Claude Code integration: .mcp.json config, daemon auto-start, devtrack mcp commands
+**Priority**: HIGH
+**Phase**: Phase 8
+**Depends on**: TASK-099 (tools must be implemented before Claude Code can use them)
+**Branch**: `feat/TASK-100-claude-code-integration`
+
+**Spec**:
+
+Wire the MCP server into Claude Code's configuration and the DevTrack daemon lifecycle.
+After this task, a developer with DevTrack and Claude Code installed can open Claude Code
+in any watched repo and DevTrack context is available automatically.
+
+**Part A — `.mcp.json` template generation**
+
+Add a new CLI command:
+
+```
+devtrack mcp setup
+```
+
+This command writes a `.mcp.json` file in the current directory (the Claude Code project
+root) with the correct DevTrack MCP server entry. It prints instructions to add this
+to Claude Code's config if it does not exist.
+
+Generated `.mcp.json` content:
+
+```json
+{
+  "mcpServers": {
+    "devtrack": {
+      "command": "<absolute path to devtrack binary>",
+      "args": ["mcp"],
+      "env": {
+        "DEVTRACK_ENV_FILE": "<absolute path to .env>"
+      }
+    }
+  }
+}
+```
+
+The absolute path to the devtrack binary is resolved via `os.Executable()` (Go stdlib).
+The `.env` file path is resolved via `config.ResolveEnvFilePath()`.
+
+If `.mcp.json` already exists and already contains a `devtrack` entry: print
+"DevTrack MCP already configured in .mcp.json" and exit 0. If it exists but lacks a
+devtrack entry: merge the new entry into the existing JSON object.
+
+**Part B — `devtrack mcp status`**
+
+```
+devtrack mcp status
+```
+
+Prints:
+```
+DevTrack MCP Server
+  Protocol:    MCP 2024-11-05
+  Transport:   stdio
+  Port:        0 (stdio-only)
+  Tools:       6 registered
+    - get_active_context
+    - get_today_commits
+    - get_pending_actions
+    - get_voice_profile
+    - get_ticket_context
+    - get_eod_summary
+  Config file: .mcp.json (present / not found)
+  Daemon:      running (PID 12345) / stopped
+```
+
+Implementation: reads the tool registry (instantiate `mcp.New()`, call
+`mcp.RegisterDevTrackTools()`, introspect the registered tools list) and checks
+daemon status via the existing `daemon.IsRunning()` function.
+
+**Part C — Daemon lifecycle: MCP server does NOT auto-start in daemon mode**
+
+The MCP server runs on-demand when Claude Code (or any MCP client) spawns
+`devtrack mcp`. It does NOT run as a background goroutine inside the daemon — the
+stdio transport is inherently a single-session pipe between the MCP client and the
+MCP server process. Each `devtrack mcp` invocation is its own process.
+
+This means:
+- The daemon does NOT need changes for MCP startup.
+- `devtrack mcp` opens its own DB connection (read-only: `?mode=ro` on the SQLite
+  URI is preferred but not required — it must not acquire the write lock).
+- `devtrack mcp` does NOT need the Python server to be running (all tools are SQLite-only).
+
+Document this in `devtrack mcp status` output with a note:
+"MCP server runs on-demand when spawned by Claude Code. No background process needed."
+
+**Part D — `devtrack mcp` subcommand routing**
+
+Consolidate all `devtrack mcp *` commands in `devtrack_client/mcp_cmd.go`:
+
+```
+devtrack mcp           → start MCP server (stdio mode; blocks)
+devtrack mcp setup     → write .mcp.json in current directory
+devtrack mcp status    → print server info and tool list
+devtrack mcp test      → run a self-test: start server on a pipe, send initialize + 
+                          tools/list + get_active_context, print results, exit
+```
+
+`devtrack mcp test` is the local smoke-test for the integration. It creates an in-process
+pipe, starts the MCP server on that pipe, sends three JSON-RPC messages, and prints the
+responses. This lets the developer verify the MCP server is working without needing Claude
+Code to be installed.
+
+**Part E — Add MCP_PORT to `.env_sample`** (if not already done in TASK-098)
+
+Confirm `MCP_PORT=0` is in `.env_sample`. No change needed if TASK-098 already added it.
+
+**Acceptance criteria**:
+- [ ] `devtrack mcp setup` writes `.mcp.json` with the correct server entry in the current directory
+- [ ] `devtrack mcp setup` is idempotent: re-running when config already exists prints the "already configured" message and exits 0
+- [ ] `devtrack mcp setup` merges into existing `.mcp.json` rather than overwriting non-DevTrack entries
+- [ ] `devtrack mcp status` prints server info, all 6 tool names, config file presence, and daemon status
+- [ ] `devtrack mcp test` sends `initialize` + `tools/list` + `get_active_context` over an in-process pipe and prints results without error
+- [ ] `devtrack mcp` (no subcommand) starts the MCP server in stdio mode and responds to JSON-RPC messages
+- [ ] The MCP server process opens SQLite in read-preferred mode and does not block the daemon's write lock
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] No `os.Getenv` outside `config_env.go`; no hardcoded paths, ports, or binary names
+
+**Engineer status**: not started
+**Blockers**: TASK-099
+
+---
+
+### TASK-101 — Phase 8 exit criterion verification
+**Priority**: MEDIUM
+**Phase**: Phase 8
+**Depends on**: TASK-098, TASK-099, TASK-100 (all must be merged to dev)
+**Branch**: `feat/TASK-101-phase8-exit-verification`
+
+**Spec**:
+
+Verify the Phase 8 exit criterion: "Developer runs Claude Code on a task; Claude Code
+automatically knows the active ticket, the developer's commit voice, and what is in the
+pending queue without any manual context-setting."
+
+Same verification pattern as TASK-059 (Phase 0), TASK-074 (Phase 3), TASK-092 (Phase 6).
+
+**Steps**:
+
+1. Build the client binary: `go build -o devtrack .` from `devtrack_client/`.
+   Run `go vet ./...` and `go test ./...`. Report pass/fail.
+
+2. Confirm `devtrack mcp status` shows 6 tools registered and config info.
+
+3. Run `devtrack mcp setup` in a test directory. Confirm `.mcp.json` is created with
+   the correct structure. Confirm re-running prints "already configured".
+
+4. Run `devtrack mcp test`. Confirm all three JSON-RPC calls (`initialize`, `tools/list`,
+   `get_active_context`) return valid responses. Print the raw output in the engineer log.
+
+5. Simulate Claude Code context injection:
+   - Insert a test commit trigger row in SQLite:
+     ```sql
+     INSERT INTO triggers (trigger_type, commit_hash, commit_message, ticket_id, branch, workspace_name, timestamp)
+     VALUES ('commit', 'test123', 'fix auth flow', 'PROJ-123', 'feat/PROJ-123-add-login', 'devtrack', datetime('now'))
+     ```
+   - Run `echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_active_context","arguments":{}}}' | devtrack mcp`
+   - Confirm the response contains `"active_ticket":"PROJ-123"` and `"confidence":"high"`.
+
+6. Simulate voice profile query:
+   - Insert a test inference: `INSERT INTO inferences (context_type, subject, inference, evidence, confidence, source) VALUES ('commit', 'tone', 'Uses imperative verbs', '[]', 0.91, 'hermes3')`
+   - Call `get_voice_profile` with `context_type: "commit"` via the MCP pipe.
+   - Confirm the response contains the inference.
+
+7. Run full hardcoded-values scan across all Phase 8 files:
+   ```
+   grep -rn "localhost:[0-9]\|127\.0\.0\.1:[0-9]\|0\.0\.0\.0:[0-9]" devtrack_client/internal/mcp/ | grep -v "_test\|#\|config\|Get"
+   grep -rn "os\.Getenv\b" devtrack_client/internal/mcp/ devtrack_client/mcp_cmd.go
+   ```
+   Both must return zero hits.
+
+8. Run `go test ./...` from `devtrack_client/`. Report final pass/fail count.
+
+9. Update `Data/agent_logs/feature_tracker.md` with Phase 8 completion entry.
+
+10. Open a PR targeting `dev` with title "Phase 8: MCP server + Claude Code integration — exit criterion verified".
+
+**Acceptance criteria**:
+- [ ] `go build ./...`, `go vet ./...`, `go test ./...` all pass clean from `devtrack_client/`
+- [ ] `devtrack mcp status` shows 6 tools registered
+- [ ] `devtrack mcp setup` creates `.mcp.json` and is idempotent
+- [ ] `devtrack mcp test` shows valid JSON-RPC responses for all three messages
+- [ ] `get_active_context` returns `active_ticket="PROJ-123"` from seeded trigger row
+- [ ] `get_voice_profile` returns seeded inference from inferences table
+- [ ] Hardcoded-values scan CLEAN across all Phase 8 source files
+- [ ] `go test ./...` passes (beyond any documented pre-existing failures)
+- [ ] `feature_tracker.md` updated with Phase 8 completion entry
+- [ ] PR opened targeting `dev` (never `main`)
+
+**Engineer status**: not started
+**Blockers**: TASK-098, TASK-099, TASK-100
 
 ---
 
