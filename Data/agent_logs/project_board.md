@@ -4861,19 +4861,23 @@ Same verification pattern as TASK-059 (Phase 0), TASK-074 (Phase 3), TASK-092 (P
 10. Open a PR targeting `dev` with title "Phase 8: MCP server + Claude Code integration — exit criterion verified".
 
 **Acceptance criteria**:
-- [ ] `go build ./...`, `go vet ./...`, `go test ./...` all pass clean from `devtrack_client/`
-- [ ] `devtrack mcp status` shows 6 tools registered
-- [ ] `devtrack mcp setup` creates `.mcp.json` and is idempotent
-- [ ] `devtrack mcp test` shows valid JSON-RPC responses for all three messages
-- [ ] `get_active_context` returns `active_ticket="PROJ-123"` from seeded trigger row
-- [ ] `get_voice_profile` returns seeded inference from inferences table
-- [ ] Hardcoded-values scan CLEAN across all Phase 8 source files
-- [ ] `go test ./...` passes (beyond any documented pre-existing failures)
-- [ ] `feature_tracker.md` updated with Phase 8 completion entry
-- [ ] PR opened targeting `dev` (never `main`)
+- [x] `go build ./...`, `go vet ./...`, `go test ./...` all pass clean from `devtrack_client/`
+- [x] `devtrack mcp status` shows 6 tools registered
+- [x] `devtrack mcp setup` creates `.mcp.json` and is idempotent
+- [x] `devtrack mcp test` shows valid JSON-RPC responses for all three messages
+- [x] `get_active_context` returns `active_ticket="PROJ-123"` from seeded trigger row
+- [x] `get_voice_profile` returns seeded inference from inferences table
+- [x] Hardcoded-values scan CLEAN across all Phase 8 source files
+- [x] `go test ./...` passes (beyond any documented pre-existing failures)
+- [x] `feature_tracker.md` updated with Phase 8 completion entry
+- [x] PR opened targeting `dev` (never `main`)
 
-**Engineer status**: started — build+vet+test, mcp status/setup/test, SQLite seed, hardcoded scan, feature_tracker update, PR to dev
-**Blockers**: none (TASK-098, TASK-099, TASK-100 all complete)
+**Engineer status**: 10/10 criteria done — last commit: c07db3d "feat(mcp): implement mcp setup+test commands; fix NewDatabase to apply migration tables (TASK-101)" — 2026-06-24 17:45
+**PR**: https://github.com/sraj0501/Devtrack_/pull/205 (base: dev)
+**Blockers**: none
+**Note**: TASK-100 was marked COMPLETE on the board but never merged to dev — `mcp setup` and `mcp test` subcommands were absent. Implemented here as part of exit criterion verification. Also fixed: `NewDatabase()` was not calling `applyMigrationTables()`, so `inferences`/`skills`/`corrections`/`pending_actions`/`confidence_thresholds` tables were missing when MCP server opened the DB. Pre-existing flaky tests: TestDeferredApplySurvivesTreeDrift/TestSnapshotRefLifecycle/TestPatchAlreadyApplied intermittently fail with 1Password GPG signing under load; re-run passes.
+
+**COMPLETE** — ready for PM review — 2026-06-24 17:50
 
 ---
 
