@@ -355,6 +355,26 @@ python -m backend.webhook_server
 
 All trigger endpoints require the `X-DevTrack-API-Key` header (set `DEVTRACK_API_KEY` in `.env`). Webhook signature verification uses source-specific secrets (`AZURE_WEBHOOK_SECRET`, `GITHUB_WEBHOOK_SECRET`, etc.). GitLab webhooks are registered automatically at startup when `GITLAB_WEBHOOK_URL` is configured.
 
+### Claude Code / MCP Integration (Phase 8)
+
+DevTrack exposes a Model Context Protocol (MCP) server so Claude Code automatically knows your active ticket, commit voice, and pending queue — no manual context-setting needed.
+
+- **`devtrack mcp`** — starts the MCP server in stdio mode (the transport Claude Code uses)
+- **`devtrack mcp setup`** — writes `.mcp.json` in the current directory so Claude Code discovers the server automatically on next launch
+- **`devtrack mcp status`** — shows the registered tools and server info
+- **`devtrack mcp test`** — runs an in-process smoke test without starting a full server
+- Six read-only tools backed by SQLite: `get_active_context`, `get_today_commits`, `get_pending_actions`, `get_voice_profile`, `get_ticket_context`, `get_eod_summary`
+
+```bash
+# One-time setup — run from your repo root
+devtrack mcp setup    # writes .mcp.json
+# Restart Claude Code — it will connect automatically via stdio
+devtrack mcp status   # verify tools are registered
+devtrack mcp test     # smoke-test the server in-process
+```
+
+Source: `devtrack_client/internal/mcp/` (server core) and `devtrack_client/mcp_cmd.go` (CLI).
+
 ### AI development agents (Claude Code)
 
 DevTrack ships three Claude Code sub-agents that automate the project's own development workflow. They are invoked inside Claude Code sessions, not from the terminal.
@@ -518,6 +538,7 @@ Key references in this repo:
 | Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Use AI agents for development workflow | [`.claude/agents/`](.claude/agents/) |
+| Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
 
 ---
 
