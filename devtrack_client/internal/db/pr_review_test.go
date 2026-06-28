@@ -29,7 +29,7 @@ func newPRReviewTestDB(t *testing.T) *Database {
 		t.Fatalf("initSchema: %v", err)
 	}
 
-	// Run migration 012 DDL inline (same SQL as allMigrations entry 012).
+	// Run migration 012 + 013 DDL inline (same SQL as allMigrations entries 012 and 013).
 	_, err = sqlDB.Exec(`
 		CREATE TABLE IF NOT EXISTS pr_review_comments (
 			platform      TEXT     NOT NULL,
@@ -42,6 +42,7 @@ func newPRReviewTestDB(t *testing.T) *Database {
 			fix_hint      TEXT     NOT NULL DEFAULT '',
 			created_at    DATETIME NOT NULL DEFAULT (datetime('now')),
 			updated_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+			attempt_count INTEGER  NOT NULL DEFAULT 0,
 			PRIMARY KEY (platform, comment_id)
 		);
 		CREATE INDEX IF NOT EXISTS idx_pr_comments_status ON pr_review_comments(status);

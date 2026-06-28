@@ -33,6 +33,12 @@ func (a *azureAlerter) collect(database *db.Database, userID string) []db.Notifi
 	return all
 }
 
+// IsPRApproved is a stub for Azure DevOps. Azure PR approval is not yet implemented.
+func (a *azureAlerter) IsPRApproved(prID, workspace string) (bool, error) {
+	log.Printf("IsPRApproved not yet implemented for azure")
+	return false, nil
+}
+
 func (a *azureAlerter) collectWorkspace(database *db.Database, userID string, ws config.WorkspaceConfig) []db.NotificationRecord {
 	client, err := azure.NewClient(ws.PMOrg, ws.PMProject, ws.PMAPIURL)
 	if err != nil {

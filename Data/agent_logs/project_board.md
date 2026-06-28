@@ -3767,10 +3767,14 @@ Go: `go build ./...` and `go vet ./...` must pass clean.
 ---
 
 ### TASK-095 — Fix-commit-push loop: orchestrate agent, push fix, poll review state
+**Assigned to**: engineer
+**Status**: IN PROGRESS
 **Priority**: HIGH
 **Phase**: Phase 7
 **Depends on**: TASK-093 (classified comments), TASK-094 (agent invocation interface)
 **Branch**: `feat/TASK-095-fix-commit-push-loop`
+
+**Engineer status**: started — migration 013 + IncrementPRReviewCommentAttempts + push.go + loop.go + IsPRApproved(GitHub) + daemon wiring + loop_test.go
 
 **Spec**:
 

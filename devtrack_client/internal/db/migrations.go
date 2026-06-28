@@ -328,6 +328,22 @@ var allMigrations = []Migration{
 			return err
 		},
 	},
+	{
+		ID:          "013-add-attempt-count-to-pr-review-comments",
+		Description: "Add attempt_count column to pr_review_comments for fix loop retry tracking",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				ALTER TABLE pr_review_comments ADD COLUMN attempt_count INTEGER NOT NULL DEFAULT 0;
+			`)
+			return err
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded

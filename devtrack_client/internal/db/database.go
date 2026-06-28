@@ -2357,6 +2357,23 @@ func (d *Database) applyMigrationTables() error {
 			promoted_at    DATETIME NOT NULL DEFAULT (datetime('now')),
 			last_seen_at   DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
+		// 012-create-pr-review-comments
+		`CREATE TABLE IF NOT EXISTS pr_review_comments (
+			platform      TEXT     NOT NULL,
+			comment_id    TEXT     NOT NULL,
+			pr_id         TEXT     NOT NULL,
+			workspace     TEXT     NOT NULL,
+			status        TEXT     NOT NULL DEFAULT 'new',
+			comment_body  TEXT     NOT NULL DEFAULT '',
+			classified_as TEXT,
+			fix_hint      TEXT     NOT NULL DEFAULT '',
+			created_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+			updated_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+			attempt_count INTEGER  NOT NULL DEFAULT 0,
+			PRIMARY KEY (platform, comment_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_pr_comments_status ON pr_review_comments(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_pr_comments_pr     ON pr_review_comments(pr_id, platform)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := d.db.Exec(stmt); err != nil && !strings.Contains(err.Error(), "already exists") {

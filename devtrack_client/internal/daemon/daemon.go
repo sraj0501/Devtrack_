@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -18,6 +19,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/health"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/infra"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/notify"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/reviewer"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/telegram"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
@@ -53,6 +55,7 @@ type Daemon struct {
 	telegramBot   *telegram.Bot    // interactive Telegram bot (Phase 3)
 	startTime     time.Time
 	healthMonitor *health.HealthMonitor
+	prLoopGuard   sync.Map // guards one PRFixLoop goroutine per "platform:prID"
 
 	// TicketSyncFns are set by package main (which owns the connector code).
 	// PushCachedFn reads from local SQLite and pushes to Python (no API call).
@@ -597,7 +600,23 @@ func (d *Daemon) startAlertPoller() {
 			log.Printf("review: comment %s on PR %s classified as %s (%s)",
 				ev.CommentID, ev.PRID, classification, reason)
 			if classification == "auto_fixable" {
-				log.Printf("review: auto_fixable — fix loop not yet wired (TASK-095)")
+				loopKey := ev.Platform + ":" + ev.PRID
+				if _, alreadyRunning := d.prLoopGuard.LoadOrStore(loopKey, true); !alreadyRunning {
+					go func(event alerts.ReviewCommentEvent) {
+						defer d.prLoopGuard.Delete(loopKey)
+						ag := reviewer.NewAgent(
+							reviewer.AgentBackend(config.GetReviewAgent()),
+							config.GetReviewAgentTimeoutSecs(),
+						)
+						loop := reviewer.NewPRFixLoop(database, ag, nil)
+						report := loop.Run(d.ctx, event.Platform, event.PRID, event.Workspace, "")
+						if report.Stuck {
+							log.Printf("review: stuck on PR %s — %s", event.PRID, report.BlockerReason)
+						} else {
+							log.Printf("review: PR %s approved", event.PRID)
+						}
+					}(ev)
+				}
 			} else {
 				log.Printf("review: needs_human — escalation not yet wired (TASK-096)")
 			}

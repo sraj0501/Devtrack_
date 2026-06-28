@@ -192,6 +192,38 @@ func (c *Client) ListPRReviewComments(repo string, prNumber int) ([]PRReviewComm
 	return all, nil
 }
 
+// PRReview is a single formal review (approve/request-changes/comment) on a PR.
+type PRReview struct {
+	ID    int64  `json:"id"`
+	State string `json:"state"` // APPROVED | CHANGES_REQUESTED | COMMENTED | DISMISSED
+	User  struct {
+		Login string `json:"login"`
+	} `json:"user"`
+}
+
+// ListPRReviews returns all formal reviews for a pull request.
+// repo is "owner/repo", prNumber is the PR number.
+func (c *Client) ListPRReviews(repo string, prNumber int) ([]PRReview, error) {
+	var all []PRReview
+	page := 1
+	for {
+		var batch []PRReview
+		path := fmt.Sprintf("/repos/%s/pulls/%d/reviews?per_page=100&page=%d", repo, prNumber, page)
+		if err := c.do(path, &batch); err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+		all = append(all, batch...)
+		if len(batch) < 100 {
+			break
+		}
+		page++
+	}
+	return all, nil
+}
+
 // ListPRIssueComments returns top-level (non-inline) comments on a PR.
 // These are returned by the issues comments API.
 func (c *Client) ListPRIssueComments(repo string, prNumber int) ([]PRReviewComment, error) {

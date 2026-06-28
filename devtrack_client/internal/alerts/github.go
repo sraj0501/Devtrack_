@@ -3,6 +3,7 @@ package alerts
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -185,6 +186,52 @@ func (a *githubAlerter) collectReviewCommentsForRepo(
 		}
 	}
 	return events
+}
+
+// IsPRApproved returns true if any reviewer has submitted an APPROVED review on
+// the given PR. It looks up the repo via the workspace name in workspaces.yaml.
+func (a *githubAlerter) IsPRApproved(prID, workspace string) (bool, error) {
+	client, err := github.NewClient("")
+	if err != nil {
+		return false, fmt.Errorf("alerts/github/IsPRApproved: build client: %w", err)
+	}
+
+	// Load workspace config to find the repo for this workspace.
+	wsCfg, err := cfg.LoadWorkspacesConfig()
+	if err != nil || wsCfg == nil {
+		return false, fmt.Errorf("alerts/github/IsPRApproved: load workspaces: %w", err)
+	}
+
+	var repo string
+	for _, ws := range wsCfg.Workspaces {
+		if ws.Name == workspace && ws.PMPlatform == "github" {
+			repo = ws.PMProject
+			if repo == "" && ws.PMOrg != "" && ws.Name != "" {
+				repo = ws.PMOrg + "/" + ws.Name
+			}
+			break
+		}
+	}
+	if repo == "" {
+		return false, fmt.Errorf("alerts/github/IsPRApproved: no github repo found for workspace %q", workspace)
+	}
+
+	prNumber, err := strconv.Atoi(prID)
+	if err != nil {
+		return false, fmt.Errorf("alerts/github/IsPRApproved: invalid prID %q: %w", prID, err)
+	}
+
+	reviews, err := client.ListPRReviews(repo, prNumber)
+	if err != nil {
+		return false, fmt.Errorf("alerts/github/IsPRApproved: list reviews for %s#%d: %w", repo, prNumber, err)
+	}
+
+	for _, r := range reviews {
+		if r.State == "APPROVED" {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func mapGitHubReason(reason string) string {
