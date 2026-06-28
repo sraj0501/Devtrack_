@@ -18,6 +18,8 @@ type PRReviewComment struct {
 	CommentBody  string    // full text of the review comment
 	ClassifiedAs string    // "auto_fixable" | "needs_human" | "" (not yet classified)
 	FixHint      string    // short imperative fix instruction (populated for auto_fixable)
+	AttemptCount int       // number of fix-loop attempts made for this comment (migration 013)
+	CommentURL   string    // web URL of the comment (not stored in DB; populated by alerter)
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -55,7 +57,8 @@ func (d *Database) InsertPRReviewComment(c PRReviewComment) error {
 func (d *Database) GetPRReviewComment(platform, commentID string) (*PRReviewComment, error) {
 	query := `
 		SELECT platform, comment_id, pr_id, workspace, status, comment_body,
-		       COALESCE(classified_as, ''), fix_hint, created_at, updated_at
+		       COALESCE(classified_as, ''), fix_hint, created_at, updated_at,
+		       COALESCE(attempt_count, 0)
 		FROM pr_review_comments
 		WHERE platform = ? AND comment_id = ?
 	`
@@ -94,7 +97,8 @@ func (d *Database) UpdatePRReviewCommentStatus(platform, commentID, status, clas
 func (d *Database) ListPRReviewCommentsByPR(platform, prID string) ([]PRReviewComment, error) {
 	query := `
 		SELECT platform, comment_id, pr_id, workspace, status, comment_body,
-		       COALESCE(classified_as, ''), fix_hint, created_at, updated_at
+		       COALESCE(classified_as, ''), fix_hint, created_at, updated_at,
+		       COALESCE(attempt_count, 0)
 		FROM pr_review_comments
 		WHERE platform = ? AND pr_id = ?
 		ORDER BY created_at ASC
@@ -117,14 +121,16 @@ func (d *Database) ListPRReviewCommentsByStatus(status string) ([]PRReviewCommen
 	if status == "" {
 		query = `
 			SELECT platform, comment_id, pr_id, workspace, status, comment_body,
-			       COALESCE(classified_as, ''), fix_hint, created_at, updated_at
+			       COALESCE(classified_as, ''), fix_hint, created_at, updated_at,
+			       COALESCE(attempt_count, 0)
 			FROM pr_review_comments
 			ORDER BY created_at ASC
 		`
 	} else {
 		query = `
 			SELECT platform, comment_id, pr_id, workspace, status, comment_body,
-			       COALESCE(classified_as, ''), fix_hint, created_at, updated_at
+			       COALESCE(classified_as, ''), fix_hint, created_at, updated_at,
+			       COALESCE(attempt_count, 0)
 			FROM pr_review_comments
 			WHERE status = ?
 			ORDER BY created_at ASC
@@ -137,6 +143,29 @@ func (d *Database) ListPRReviewCommentsByStatus(status string) ([]PRReviewCommen
 	}
 	defer rows.Close()
 	return scanPRReviewComments(rows)
+}
+
+// IncrementPRReviewCommentAttempts increments attempt_count for (platform, commentID)
+// and stamps updated_at = datetime('now'). Returns the new attempt_count value.
+func (d *Database) IncrementPRReviewCommentAttempts(platform, commentID string) (int, error) {
+	_, err := d.db.Exec(`
+		UPDATE pr_review_comments
+		SET attempt_count = attempt_count + 1,
+		    updated_at    = datetime('now')
+		WHERE platform = ? AND comment_id = ?
+	`, platform, commentID)
+	if err != nil {
+		return 0, fmt.Errorf("IncrementPRReviewCommentAttempts(%s, %s): %w", platform, commentID, err)
+	}
+
+	var count int
+	if err := d.db.QueryRow(`
+		SELECT COALESCE(attempt_count, 0) FROM pr_review_comments
+		WHERE platform = ? AND comment_id = ?
+	`, platform, commentID).Scan(&count); err != nil {
+		return 0, fmt.Errorf("IncrementPRReviewCommentAttempts select(%s, %s): %w", platform, commentID, err)
+	}
+	return count, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +190,7 @@ func scanPRReviewComment(row prReviewCommentScanner) (*PRReviewComment, error) {
 		&c.FixHint,
 		&createdAt,
 		&updatedAt,
+		&c.AttemptCount,
 	)
 	if err != nil {
 		return nil, err
@@ -186,6 +216,7 @@ func scanPRReviewComments(rows *sql.Rows) ([]PRReviewComment, error) {
 			&c.FixHint,
 			&createdAt,
 			&updatedAt,
+			&c.AttemptCount,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan pr_review_comments row: %w", err)

@@ -951,7 +951,7 @@ func GetTelegramChatIDs() []string {
 		return nil
 	}
 	var ids []string
-	for _, id := range strings.Split(val, ",") {
+	for id := range strings.SplitSeq(val, ",") {
 		if s := strings.TrimSpace(id); s != "" {
 			ids = append(ids, s)
 		}
@@ -968,7 +968,7 @@ func GetTelegramAllowedChatIDs() []string {
 		return nil
 	}
 	var ids []string
-	for _, id := range strings.Split(val, ",") {
+	for id := range strings.SplitSeq(val, ",") {
 		if s := strings.TrimSpace(id); s != "" {
 			ids = append(ids, s)
 		}
@@ -1096,4 +1096,19 @@ func GetMCPPort() string {
 		return "0"
 	}
 	return v
+}
+
+// GetReviewPollIntervalSecs returns REVIEW_POLL_INTERVAL_SECS (required).
+// Controls how often the fix loop polls for PR approval state after each fix attempt.
+// Panics with a clear message if the variable is not set.
+func GetReviewPollIntervalSecs() int {
+	val := os.Getenv("REVIEW_POLL_INTERVAL_SECS")
+	if val == "" {
+		panic("devtrack: REVIEW_POLL_INTERVAL_SECS not set — add it to .env (recommended value: 30)")
+	}
+	secs := mustParseInt("REVIEW_POLL_INTERVAL_SECS", val)
+	if secs <= 0 {
+		panic(fmt.Sprintf("devtrack: REVIEW_POLL_INTERVAL_SECS must be > 0, got %d", secs))
+	}
+	return secs
 }
