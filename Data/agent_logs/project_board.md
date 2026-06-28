@@ -4993,8 +4993,8 @@ v1.0.0 release + local agents; config audit (os.getenv eliminated across 22 file
 - [x] `go build ./...` and `go vet ./...` pass clean
 - [x] Tests cover approved/not-approved/PR-not-found cases
 **Assigned to**: engineer
-**Engineer status**: started — create pr.go connector, update alerts/azure.go stub, add tests
-**COMPLETE** — 2026-06-28
+**Engineer status**: 5/5 criteria done — last commit: 75bc5db "feat(azure): implement real IsPRApproved via ADO Pull Requests API (TASK-102)" — 2026-06-28 22:00
+**COMPLETE** — ready for PM review — 2026-06-28 22:00
 
 ---
 

@@ -2,6 +2,37 @@
 
 ---
 
+### [2026-06-28 22:00] TASK-102 — Real IsPRApproved for Azure DevOps
+
+**Original message**: "feat(azure): implement real IsPRApproved via ADO Pull Requests API (TASK-102)"
+**DevTrack enhanced it to**: no enhancement — AI provider unreachable (Ollama not running); committed with original message as-is
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-102 added and marked COMPLETE; all 5/5 criteria ticked
+**Time**: ~15 minutes
+**Friction**: LOW
+**Notes**:
+  - Created `devtrack_client/connectors/azure/pr.go` with `PRReviewer`, internal decode structs, and `ListPRReviewers(prID int)` method
+  - `ListPRReviewers` uses `c.projectURL()` and the existing `c.get()` method; errors when count=0 (PR not found)
+  - Updated `devtrack_client/internal/alerts/azure.go`: replaced stub with real implementation; added `strconv` import; `log` import retained (used by `collectWorkspace`)
+  - `IsPRApproved` loads workspaces config, finds the Azure workspace by name+platform, creates `azure.NewClient`, parses prID, calls `ListPRReviewers`, returns true if any vote >= 10
+  - Vote >= 10 = Approved; vote 5 = Approved with suggestions (does NOT trigger true per spec)
+  - Created `devtrack_client/connectors/azure/pr_test.go` with 4 table-driven tests using `httptest.NewServer`
+  - Test creates a client directly (bypasses env-var PAT check) by constructing `&Client{...}` with test server baseURL
+  - Tests: URL construction, vote=10 approved path, vote=0 not-approved path, count=0 PR-not-found error path
+  - `go build ./...`, `go vet ./...`, `go test ./connectors/azure/... -v` all pass (4/4 PASS)
+
+## Task Summary — TASK-102: Real IsPRApproved for Azure DevOps — 2026-06-28
+
+- Total commits: 1
+- Acceptance criteria met: 5/5
+- Tickets auto-updated: NO
+- Estimated daily time saved: ~5 min (no more false negatives on Azure PR approval checks)
+- Blockers encountered: none
+- One thing that still feels rough: "Test creates Client struct directly rather than via NewClient — if Client gains new required fields the test helper will silently miss them"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-28 19:00] TASK-097 — Phase 7 exit criterion verification
 
 **Original message**: "chore(board): TASK-097 COMPLETE — Phase 7 exit criterion verified"
