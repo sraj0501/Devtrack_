@@ -2,6 +2,36 @@
 
 ---
 
+### [2026-06-28 18:20] TASK-096 — Escalation and notification channels
+
+**Original message**: "feat(reviewer): TASK-096 escalation and notification channels"
+**DevTrack enhanced it to**: no enhancement — AI provider unreachable (Ollama not running); committed with original message as-is
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-096 updated, all 9/9 criteria ticked
+**Time**: ~60 minutes
+**Friction**: LOW — clean implementation once import path typos were identified (srav0501 vs sraj0501 in daemon.go and cli_review.go)
+**Notes**:
+  - review_notify.go: new file in telegram package with SendPRApproved + SendPREscalation; nil-Bot guard on both
+  - daemon.go: replaced two log.Printf stubs with InsertPendingAction + telegram calls; added prURLFromCommentURL helper; also wired "needs_human" escalation path (was just a log before)
+  - webhook_server.py: pr_approved_notify and pr_escalation handlers added BEFORE workspace_router guard (notification-only, no PM API needed)
+  - tui_queue.go: queueActionTypeBadge function added; "PR DONE" (Success) and "PR STUCK" (Danger) badges
+  - cli_review.go: handleReviewStatus added with dual-table query (pending_actions + pr_review_comments); routing in cli.go updated
+  - db/pr_review.go: ListPRReviewCommentsRecent(hours) added for review status CLI
+  - test_pr_notifications.py: 8 tests, all passing; tests confirm notification-only path does not require workspace_router
+  - Python regression: 1 pre-existing failure (test_ollama_host_returns_string) unchanged; 797 pass
+
+## Task Summary — TASK-096: Escalation and notification channels — 2026-06-28
+
+- Total commits: 1 (implementation) + 1 (board update)
+- Acceptance criteria met: 9/9
+- Tickets auto-updated: NO (branch not in a watched workspace)
+- Estimated daily time saved: ~5 min (no manual Telegram messages for PR outcomes)
+- Blockers encountered: none
+- One thing that still feels rough: "prURLFromCommentURL derives PR URL from comment URL by stripping fragment — fragile for non-GitHub platforms, but acceptable for Phase 7"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-28 16:07] TASK-095 — Phase 7 fix-commit-push loop
 
 **Original message**: "feat(reviewer): Phase 7 fix-commit-push loop (TASK-095)"
