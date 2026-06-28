@@ -26,7 +26,8 @@ func NewCLI() (*CLI, error) {
 			cmd == "azure-list" || cmd == "azure-sync" || cmd == "azure-view" ||
 			cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
 			cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
-			cmd == "ticket-sync" || cmd == "narrative" || cmd == "eod" || cmd == "skills" {
+			cmd == "ticket-sync" || cmd == "narrative" || cmd == "eod" || cmd == "skills" ||
+			cmd == "review" {
 			return &CLI{}, nil
 		}
 	}
@@ -217,6 +218,9 @@ func (cli *CLI) Execute() error {
 	case "alerts":
 		return cli.handleAlerts()
 	case "review":
+		if len(os.Args) > 2 && os.Args[2] == "status" {
+			return cli.handleReviewStatus()
+		}
 		return cli.handleReview()
 	case "vacation":
 		return cli.handleVacation()

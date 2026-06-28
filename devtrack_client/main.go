@@ -211,6 +211,7 @@ func printBasicUsage() {
 	fmt.Println("COMMITS:    commits pending | commits review")
 	fmt.Println("ALERTS:     alerts | alerts --all | alerts --clear")
 	fmt.Println("REVIEW:     review                                  show PR review comment queue")
+	fmt.Println("            review status                           per-PR outcome summary (last 24h)")
 	fmt.Println("REPORTS:    preview-report | send-report | save-report")
 	fmt.Println("CLOUD:      cloud login --url URL --key KEY    connect to external server")
 	fmt.Println("            cloud status | cloud logout")

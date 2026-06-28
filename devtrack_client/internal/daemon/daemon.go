@@ -2,12 +2,14 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -610,21 +612,116 @@ func (d *Daemon) startAlertPoller() {
 						)
 						loop := reviewer.NewPRFixLoop(database, ag, nil)
 						report := loop.Run(d.ctx, event.Platform, event.PRID, event.Workspace, "")
+
+						// Count fixes applied so far for this PR.
+						allComments, _ := database.ListPRReviewCommentsByPR(event.Platform, event.PRID)
+						fixesApplied := 0
+						for _, c := range allComments {
+							if c.Status == "fix_applied" {
+								fixesApplied++
+							}
+						}
+						prTitle := event.PRTitle
+						prURL := prURLFromCommentURL(event.CommentURL)
+
 						if report.Stuck {
-							log.Printf("review: stuck on PR %s — %s", event.PRID, report.BlockerReason)
+							// Stage pr_escalation pending action (Non-Negotiable #2: queue first).
+							payload, _ := json.Marshal(map[string]any{
+								"pr_title":       prTitle,
+								"pr_id":          event.PRID,
+								"blocker_reason": report.BlockerReason,
+								"comment_url":    report.CommentURL,
+								"fixes_applied":  fixesApplied,
+								"pr_url":         prURL,
+							})
+							_, _ = database.InsertPendingAction(db.PendingAction{
+								ActionType: "pr_escalation",
+								Target:     event.Platform + ":PR #" + event.PRID,
+								Platform:   event.Platform,
+								Workspace:  event.Workspace,
+								Confidence: 1.0,
+								Payload:    string(payload),
+								Status:     "pending",
+								ExpiresAt:  time.Now().Add(db.ConfidenceTimeout(1.0, false)),
+							})
+							// Channel parity: send Telegram immediately alongside queue insert.
+							if d.telegramBot != nil {
+								_ = d.telegramBot.SendPREscalation(prTitle, report.BlockerReason, report.CommentURL, prURL)
+							}
+							log.Printf("review: staged pr_escalation for PR %s — %s", event.PRID, report.BlockerReason)
 						} else {
-							log.Printf("review: PR %s approved", event.PRID)
+							// Stage pr_approved_notify pending action.
+							payload, _ := json.Marshal(map[string]any{
+								"pr_title":      prTitle,
+								"pr_id":         event.PRID,
+								"fixes_applied": fixesApplied,
+								"pr_url":        prURL,
+							})
+							_, _ = database.InsertPendingAction(db.PendingAction{
+								ActionType: "pr_approved_notify",
+								Target:     event.Platform + ":PR #" + event.PRID,
+								Platform:   event.Platform,
+								Workspace:  event.Workspace,
+								Confidence: 1.0,
+								Payload:    string(payload),
+								Status:     "pending",
+								ExpiresAt:  time.Now().Add(db.ConfidenceTimeout(1.0, false)),
+							})
+							// Channel parity: send Telegram immediately alongside queue insert.
+							if d.telegramBot != nil {
+								_ = d.telegramBot.SendPRApproved(prTitle, prURL)
+							}
+							log.Printf("review: staged pr_approved_notify for PR %s", event.PRID)
 						}
 					}(ev)
 				}
 			} else {
-				log.Printf("review: needs_human — escalation not yet wired (TASK-096)")
+				// needs_human: escalate immediately — no fix loop will run.
+				prTitle := ev.PRTitle
+				blockerReason := "comment needs human review"
+				commentURL := ev.CommentURL
+				prURL := prURLFromCommentURL(commentURL)
+
+				payload, _ := json.Marshal(map[string]any{
+					"pr_title":       prTitle,
+					"pr_id":          ev.PRID,
+					"blocker_reason": blockerReason,
+					"comment_url":    commentURL,
+					"fixes_applied":  0,
+					"pr_url":         prURL,
+				})
+				_, _ = database.InsertPendingAction(db.PendingAction{
+					ActionType: "pr_escalation",
+					Target:     ev.Platform + ":PR #" + ev.PRID,
+					Platform:   ev.Platform,
+					Workspace:  ev.Workspace,
+					Confidence: 1.0,
+					Payload:    string(payload),
+					Status:     "pending",
+					ExpiresAt:  time.Now().Add(db.ConfidenceTimeout(1.0, false)),
+				})
+				if d.telegramBot != nil {
+					_ = d.telegramBot.SendPREscalation(prTitle, blockerReason, commentURL, prURL)
+				}
+				// Update comment status to "escalated" so the review CLI shows it.
+				_ = database.UpdatePRReviewCommentStatus(ev.Platform, ev.CommentID, "escalated", classification, fixHint)
+				log.Printf("review: staged pr_escalation (needs_human) for PR %s comment %s", ev.PRID, ev.CommentID)
 			}
 		}
 	})
 
 	poller.Start(d.ctx)
 	d.alertPoller = poller
+}
+
+// prURLFromCommentURL derives the PR web URL from a review comment URL by stripping
+// the fragment identifier (the "#discussion_r..." suffix on GitHub comment URLs).
+// Returns the input unchanged when no fragment is present.
+func prURLFromCommentURL(commentURL string) string {
+	if i := strings.Index(commentURL, "#"); i >= 0 {
+		return commentURL[:i]
+	}
+	return commentURL
 }
 
 // startWorkspacesFileWatcher watches workspaces.yaml for changes and triggers

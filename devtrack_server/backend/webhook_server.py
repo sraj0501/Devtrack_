@@ -361,6 +361,38 @@ class TriggerProcessor:
         action_type = action.get("action_type", "")
         target      = action.get("target", "")
 
+        # ---------------------------------------------------------------------------
+        # Notification-only actions (no PM API call required, no workspace_router).
+        # These are handled before the workspace_router guard so they work even
+        # when the router is unavailable. Telegram delivery is done by the Go bot.
+        # ---------------------------------------------------------------------------
+
+        if action_type == "pr_approved_notify":
+            # Notification-only action — Telegram delivery is handled by the Go bot
+            # (SendPRApproved wired in the daemon goroutine). The Python server just
+            # acknowledges receipt so the queue executor can mark the row posted.
+            pr_id = payload.get("pr_id", target)
+            fixes_applied = payload.get("fixes_applied", 0)
+            logger.info(
+                "queue: pr_approved_notify action %s (pr=%s fixes_applied=%s) — "
+                "notification handled by Go Telegram bot",
+                action.get("id"), pr_id, fixes_applied,
+            )
+            return {"status": "posted"}
+
+        if action_type == "pr_escalation":
+            # Notification-only action — Telegram delivery is handled by the Go bot
+            # (SendPREscalation wired in the daemon goroutine). The Python server just
+            # acknowledges receipt so the queue executor can mark the row posted.
+            pr_id = payload.get("pr_id", target)
+            blocker_reason = payload.get("blocker_reason", "")
+            logger.info(
+                "queue: pr_escalation action %s (pr=%s blocker=%r) — "
+                "notification handled by Go Telegram bot",
+                action.get("id"), pr_id, blocker_reason,
+            )
+            return {"status": "posted"}
+
         if not self.workspace_router:
             return {"status": "failed", "error": "workspace_router not available"}
 
