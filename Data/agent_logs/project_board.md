@@ -4982,6 +4982,22 @@ v1.0.0 release + local agents; config audit (os.getenv eliminated across 22 file
 
 ---
 
+### TASK-102 — Real IsPRApproved for Azure DevOps
+**Priority**: MEDIUM
+**Phase**: Post-arc
+**Branch**: `feat/TASK-102-azure-pr-approved`
+**Acceptance criteria**:
+- [x] `connectors/azure/pr.go` exists with `PRReviewer` and `ListPRReviewers`
+- [x] `IsPRApproved` in `internal/alerts/azure.go` calls the real ADO Pull Requests API
+- [x] Vote >= 10 (Approved) returns true; vote 5 (Approved with suggestions) does not
+- [x] `go build ./...` and `go vet ./...` pass clean
+- [x] Tests cover approved/not-approved/PR-not-found cases
+**Assigned to**: engineer
+**Engineer status**: 5/5 criteria done — last commit: 75bc5db "feat(azure): implement real IsPRApproved via ADO Pull Requests API (TASK-102)" — 2026-06-28 22:00
+**COMPLETE** — ready for PM review — 2026-06-28 22:00
+
+---
+
 _Append new active tasks under ACTIVE/QUEUED. Move completed work to SHIPPED as a
 one-line entry — keep this board lean. Detailed per-task records live in
 `feature_tracker.md` and `engineer_log.md`._
