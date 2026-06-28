@@ -3934,10 +3934,14 @@ must pass.
 ---
 
 ### TASK-096 — Escalation and completion notification: Telegram, TUI, and CLI channels
+**Assigned to**: engineer
+**Status**: IN PROGRESS
 **Priority**: MEDIUM
 **Phase**: Phase 7
-**Depends on**: TASK-095
+**Depends on**: TASK-095 (MERGED — de48d214)
 **Branch**: `feat/TASK-096-escalation-and-notification`
+**Started**: 2026-06-28
+**Engineer status**: started — implementing (A) daemon goroutine pending_actions inserts, (B) Python _execute_pm_action handlers, (C) telegram review_notify.go, (D) TUI action-type badges, (E) review status CLI, (F) Python tests
 
 **Spec**:
 
