@@ -4097,6 +4097,7 @@ Build: `go build ./...` and `go vet ./...` from `devtrack_client/`. `uv run pyte
 
 **Engineer status**: 9/9 criteria done — last commit: 4d8d028 "feat(reviewer): TASK-096 escalation and notification channels" — 2026-06-28 18:20
 
+**PR**: https://github.com/sraj0501/Devtrack_/pull/207 (base: dev)
 **COMPLETE** — ready for PM review — 2026-06-28 18:20
 
 ---
