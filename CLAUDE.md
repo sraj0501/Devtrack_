@@ -159,13 +159,16 @@ PM connectors, gitsage, and alerts are Go-native and work in all modes.
 
 ## Project Status & Direction
 
-- **Direction:** see [`PRODUCT_BIBLE.md`](PRODUCT_BIBLE.md). Active work is **Phase 0** (make the
-  daemon fully silent — remove TUI prompts from trigger flows). Queued: pending-actions queue,
-  ticket extractor, silent commit handler, EOD pipeline, voice/dialectic learning, PR puppet master.
+- **Direction:** see [`PRODUCT_BIBLE.md`](PRODUCT_BIBLE.md). Build arc **Phase 0→8 COMPLETE** on `dev`.
+  Post-arc queue: headless orchestration (global agent control via MCP), voice/dialectic Tier 4
+  (local Hermes persona model), GitLab `IsPRApproved` live integration.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.
 - **Shipped (v3.x):** three-codebase split (EPIC-SPLIT); client-server decoupling (Go-native
   connectors, gitsage, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;
-  automated release pipeline; v3.0.9 `skip_issues`; v3.0.10 Windows fixes (isatty, editor hooks, auto-enhance).
+  automated release pipeline; v3.0.9 `skip_issues`; v3.0.10 Windows fixes (isatty, editor hooks,
+  auto-enhance); Phases 0–8 (silent daemon, pending-actions queue, ticket extractor, silent commit,
+  EOD pipeline, voice training, dialectic self-improvement, PR puppet master, MCP server);
+  TASK-102 Azure `IsPRApproved` via ADO Pull Requests API (`connectors/azure/pr.go`).
 - **Docs:** `docs/ARCHITECTURE.md`, `docs/CAPABILITIES_OWNERSHIP.md`,
   `docs/CLIENT_SERVER_DECOUPLING_PLAN.md`, `docs/TELEGRAM_BOT.md`, `docs/split-manifest.md`.
 
@@ -233,10 +236,10 @@ subprocess + MongoDB approach was retired in client-server decoupling Phase 2.
 CLI: `devtrack alerts [--all|--clear]`. Config: `ALERT_ENABLED`, `ALERT_POLL_INTERVAL_SECS`,
 `ALERT_{GITHUB,AZURE}_ENABLED`, `ALERT_NOTIFY_{ASSIGNED,COMMENTS,STATUS_CHANGES,REVIEW_REQUESTED}`.
 
-> **Platform quirk:** Azure WIQL accepts date-only precision (`2006-01-02`, not RFC3339) —
-> `connectors/azure/list.go:ListWorkItemsChangedAfter`. The Go notify constructors
-> (`NewTelegramFromConfig`/`NewSlackFromConfig`) must return the `Notifier` interface, not the
-> concrete type, or the poller nil-panics when the feature is disabled.
+> **Platform quirks:**
+> - Azure WIQL accepts date-only precision (`2006-01-02`, not RFC3339) — `connectors/azure/list.go:ListWorkItemsChangedAfter`.
+> - Azure `IsPRApproved` calls `GET {projectURL}/_apis/git/pullrequests?pullRequestId={id}&api-version=7.0` (searches across all repos in the project); vote `>= 10` = Approved — `connectors/azure/pr.go:ListPRReviewers`.
+> - The Go notify constructors (`NewTelegramFromConfig`/`NewSlackFromConfig`) must return the `Notifier` interface, not the concrete type, or the poller nil-panics when the feature is disabled.
 
 ## Common Debugging Patterns
 
