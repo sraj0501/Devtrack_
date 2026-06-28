@@ -951,7 +951,7 @@ func GetTelegramChatIDs() []string {
 		return nil
 	}
 	var ids []string
-	for _, id := range strings.Split(val, ",") {
+	for id := range strings.SplitSeq(val, ",") {
 		if s := strings.TrimSpace(id); s != "" {
 			ids = append(ids, s)
 		}
@@ -968,7 +968,7 @@ func GetTelegramAllowedChatIDs() []string {
 		return nil
 	}
 	var ids []string
-	for _, id := range strings.Split(val, ",") {
+	for id := range strings.SplitSeq(val, ",") {
 		if s := strings.TrimSpace(id); s != "" {
 			ids = append(ids, s)
 		}

@@ -152,7 +152,7 @@ func TestPRFixLoopMaxAttempts(t *testing.T) {
 	database := newLoopTestDB(t)
 	// Insert MaxAttemptsPerPR fixable comments — each will fail once before the
 	// per-PR guard fires on the second pass through the first comment.
-	for i := 0; i < MaxAttemptsPerPR; i++ {
+	for i := range MaxAttemptsPerPR {
 		insertFixableComment(t, database, "github", fmt.Sprintf("cmt-pr5-%d", i), "pr-30")
 	}
 
