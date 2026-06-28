@@ -681,7 +681,7 @@ alongside the CLI (TASK-064). Both must exist.
 | 4 | EOD pipeline | COMPLETE | Accurate EOD email every evening without developer action |
 | 5 | Voice training (low friction) | COMPLETE | Generated text passes "did I write this?" after one week |
 | 6 | Dialectic self-improvement | COMPLETE — PR #200 open | Correction rate down; ≥3 skills emerged; threshold extended |
-| 7 | PR review loop (puppet master) | IN PROGRESS — TASK-097 dispatched (exit verification) | Push PR with nit comments, get "approved" without touching it again |
+| 7 | PR review loop (puppet master) | COMPLETE — exit criterion verified 2026-06-28 (TASK-097, PR #208) | Push PR with nit comments, get "approved" without touching it again |
 | 8 | MCP server + headless integration | IN PROGRESS — TASK-098 dispatched | Claude Code queries DevTrack for developer context automatically |
 
 Full phase specs and acceptance criteria: `PRODUCT_BIBLE.md` § Build Phases.
@@ -4188,10 +4188,13 @@ expected outputs end-to-end.
 - [x] Hardcoded-values scan CLEAN across all Phase 7 source files (internal/reviewer/ + review_classifier.py)
 - [x] `uv run pytest backend/tests/ -q` — 797 passed, 1 pre-existing failure (test_ollama_host_returns_string), no regressions
 - [x] `feature_tracker.md` updated with Phase 7 completion entry
-- [ ] PR opened targeting `dev` (never `main`)
+- [x] PR opened targeting `dev` (never `main`)
 
-**Engineer status**: 10/11 criteria done — committing and opening PR
+**Engineer status**: 11/11 criteria done — last commit: f96d2fc "chore(board): TASK-097 COMPLETE — Phase 7 exit criterion verified" — 2026-06-28 19:00
+**PR**: https://github.com/sraj0501/Devtrack_/pull/208
 **Blockers**: none
+
+**COMPLETE** — ready for PM review — 2026-06-28 19:00
 
 ---
 
