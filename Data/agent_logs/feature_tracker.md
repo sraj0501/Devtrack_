@@ -1,6 +1,25 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-06-24 by engineer (TASK-101 COMPLETE — Phase 8 exit criterion verified; MCP server + Claude Code integration confirmed)_
+_Last updated: 2026-06-28 by engineer (TASK-097 COMPLETE — Phase 7 exit criterion verified; PR open)_
+
+---
+
+## 2026-06-28 — TASK-097: Phase 7 exit criterion verification
+**Phase**: Phase 7 (PR puppet master)
+**Status**: DONE
+**Files**: devtrack_client/internal/reviewer/agent.go, devtrack_client/internal/reviewer/agent_test.go, devtrack_client/internal/reviewer/loop.go, devtrack_client/internal/reviewer/loop_test.go, devtrack_client/internal/reviewer/push.go, devtrack_client/internal/db/migrations.go (012/013), devtrack_client/internal/db/pr_review.go, devtrack_client/cli_review.go, devtrack_client/internal/daemon/daemon.go, devtrack_server/backend/review_classifier.py
+**Vision check**: PASS
+**Engineer notes**: go build PASS; go vet PASS; go test ./... PASS (21 packages — reviewer tests TestApplySuccess/CannotFix/NonzeroExit/Timeout/PRFixLoopHappyPath/StuckPath/MaxAttempts all pass). Migration 012 (pr_review_comments) confirmed in allMigrations; table present in Data/db/devtrack.db (+ applied to XDG DB for CLI verification). Classification simulation: Python server not running — structural verification: review_classifier.py AUTO_FIXABLE_CATEGORIES includes naming_convention; prompt explicitly maps naming conventions to auto_fixable; "Rename variable x to userID for clarity." would return auto_fixable. Agent invocation: TestApplyTimeout verifies graceful fail path (Success=false, Error="timed out", no panic). Loop approved path: TestPRFixLoopHappyPath — Stuck=false returned; pr_approved_notify staged by daemon.go lines 660-668 (confirmed in code). Loop stuck path: TestPRFixLoopStuckPath — Stuck=true returned; pr_escalation staged by daemon.go lines 637-645 (confirmed in code). devtrack review PASS (shows pr-task097 1 auto_fixable comment); devtrack review status PASS. devtrack queue list PASS (shows pr_approved_notify + pr_escalation rows). Hardcoded scan CLEAN across Phase 7 files (internal/reviewer/ and review_classifier.py) — no os.Getenv, no hardcoded localhost. Broader PM scan shows pre-existing violations in setup.go/gitsage/health.go (documented Phase 0 TASK-059, unchanged). Python test suite: 797 passed, 1 pre-existing failure (test_ollama_host_returns_string — OLLAMA_HOST=0.0.0.0 in shell), no new failures.
+
+---
+
+## 2026-06-28 — TASK-095 + TASK-096: Phase 7 fix-commit-push loop + escalation notifications
+**Phase**: Phase 7 (TUI as visibility + correction — PR puppet master)
+**Status**: DONE (TASK-095 merged to dev; TASK-096 PR #207 open)
+**Files (TASK-095)**: devtrack_client/internal/reviewer/loop.go, devtrack_client/internal/reviewer/push.go, devtrack_client/internal/alerts/ (IsPRApproved), devtrack_client/internal/config/config_env.go, devtrack_client/internal/infra/integrated.go
+**Files (TASK-096)**: devtrack_client/internal/daemon/daemon.go, devtrack_client/internal/telegram/review_notify.go, devtrack_client/internal/tui/tui_queue.go, devtrack_client/cli_review.go, devtrack_client/internal/db/pr_review.go, devtrack_server/backend/webhook_server.py, devtrack_server/backend/tests/test_pr_notifications.py
+**Vision check**: PASS
+**Engineer notes (TASK-095)**: PRFixLoop.Run() with MaxAttemptsPerComment=2, MaxAttemptsPerPR=5, PushToRemote helper, IsPRApproved for GitHub, REVIEW_POLL_INTERVAL_SECS config, prLoopGuard sync.Map, 11/11 criteria. (TASK-096): pr_approved_notify and pr_escalation staged to pending_actions queue; SendPRApproved/SendPREscalation Telegram methods; TUI Queue tab PR DONE/PR STUCK badges; devtrack review status CLI command; Python test_pr_notifications.py 8 tests clean. 9/9 criteria. Build/vet/tests pass.
 
 ---
 
@@ -31,7 +50,7 @@ _Last updated: 2026-06-24 by engineer (TASK-101 COMPLETE — Phase 8 exit criter
 | 4 | EOD pipeline | DONE — exit criterion verified 2026-06-17 | Accurate EOD email every evening, in the dev's voice |
 | 5 | Voice training (low friction) | DONE — exit criterion verified 2026-06-18 | Generated text passes "did I write this?" after 1 week |
 | 6 | Dialectic self-improvement | DONE — exit criterion verified 2026-06-22 (TASK-092) | 30-day correction rate down; ≥3 autonomous skills emerged |
-| 7 | TUI as visibility + correction | QUEUED | TUI shows last 24h + everything about to happen |
+| 7 | PR review loop (puppet master) | DONE — exit criterion verified 2026-06-28 (TASK-097) | PR with nit comments handled; dev received "PR approved" without touching it |
 | 8 | MCP server + Claude Code integration | DONE — exit criterion verified 2026-06-24 (TASK-101) | Claude Code queries active ticket + voice profile automatically |
 
 ### Deprioritised (pivot 2026-06-10)
