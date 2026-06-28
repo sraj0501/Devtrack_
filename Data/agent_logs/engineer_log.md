@@ -2,6 +2,34 @@
 
 ---
 
+### [2026-06-28 16:07] TASK-095 — Phase 7 fix-commit-push loop
+
+**Original message**: "feat(reviewer): Phase 7 fix-commit-push loop (TASK-095)"
+**Enhanced to**: no enhancement — AI provider unreachable (Ollama not running); used original
+**Ticket auto-linked**: NO (branch name not in a watched workspace)
+**PM system updated**: YES — project_board.md TASK-095 updated, all 11/11 criteria ticked
+**Time**: ~60 minutes
+**Friction**: LOW — clean implementation; only hiccup was daemon.go Edit tool rejecting the edit due to tab/encoding mismatch; fixed with binary Python manipulation
+**Notes**:
+  - Migration 013 adds `attempt_count` to `pr_review_comments`; scan functions updated
+  - `IncrementPRReviewCommentAttempts` DB method added
+  - `PRFixLoop.Run` blocks until PR approved or stuck; nil checker logs and re-polls
+  - `PushToRemote` returns error immediately if repoPath empty (acceptable for TASK-095)
+  - `IsPRApproved` calls GitHub Reviews API; Azure stub returns false + logs
+  - `applyMigrationTables` in database.go extended to include migrations 012+013 so `NewDatabaseAtPath` works for loop tests
+  - `pr_review_test.go` updated to include `attempt_count` column in test DDL
+  - All 7 reviewer tests pass; all 18 package tests clean
+
+## Task Summary — TASK-095: Phase 7 fix-commit-push loop — 2026-06-28
+
+- Total commits: 1
+- Acceptance criteria met: 11/11
+- Tests passed: YES (`go test ./internal/reviewer/...` — 7 pass; `go test ./...` — all packages pass)
+- Blockers encountered: none
+- One thing that still feels rough: "repoPath is always empty from daemon (TASK-096 will fix); nil checker loops forever until context cancel — but that's intentional per spec"
+- Ready for PM review: YES
+- PR: https://github.com/sraj0501/Devtrack_/pull/206
+
 ### [2026-06-24 17:50] TASK-101 — Phase 8 exit criterion verification: mcp setup+test, DB fix, feature_tracker
 
 **Original message**: "feat(mcp): implement mcp setup+test commands; fix NewDatabase to apply migration tables (TASK-101)"
