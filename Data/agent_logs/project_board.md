@@ -3934,10 +3934,14 @@ must pass.
 ---
 
 ### TASK-096 — Escalation and completion notification: Telegram, TUI, and CLI channels
+**Assigned to**: engineer
+**Status**: IN PROGRESS
 **Priority**: MEDIUM
 **Phase**: Phase 7
-**Depends on**: TASK-095
+**Depends on**: TASK-095 (MERGED — de48d214)
 **Branch**: `feat/TASK-096-escalation-and-notification`
+**Started**: 2026-06-28
+**Engineer status**: 9/9 criteria done — last commit: 4d8d028 "feat(reviewer): TASK-096 escalation and notification channels" — 2026-06-28 18:20
 
 **Spec**:
 
@@ -4081,15 +4085,20 @@ cover `b.api.Send()` mock pattern; add a smoke test if they do not.
 Build: `go build ./...` and `go vet ./...` from `devtrack_client/`. `uv run pytest backend/tests/ -q` — no regressions.
 
 **Acceptance criteria**:
-- [ ] `pr_approved_notify` and `pr_escalation` are staged as `pending_actions` rows when loop terminates (not direct sends)
-- [ ] `_execute_pm_action` handles both new action types without raising; no PM API call (notification-only)
-- [ ] `bot.SendPRApproved()` and `bot.SendPREscalation()` methods exist and send correct message format
-- [ ] TUI Queue tab shows `"PR DONE"` (Success) and `"PR STUCK"` (Danger) badges for the new action types
-- [ ] `devtrack review status` command prints per-PR status grouped by PR ID
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] Python tests: both new action types handled cleanly; no regressions
-- [ ] No `os.getenv` in any new Python file; no hardcoded literals
-- [ ] Channel parity: Telegram receives notification for both outcomes (SendPRApproved / SendPREscalation wired in daemon goroutine)
+- [x] `pr_approved_notify` and `pr_escalation` are staged as `pending_actions` rows when loop terminates (not direct sends)
+- [x] `_execute_pm_action` handles both new action types without raising; no PM API call (notification-only)
+- [x] `bot.SendPRApproved()` and `bot.SendPREscalation()` methods exist and send correct message format
+- [x] TUI Queue tab shows `"PR DONE"` (Success) and `"PR STUCK"` (Danger) badges for the new action types
+- [x] `devtrack review status` command prints per-PR status grouped by PR ID
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] Python tests: both new action types handled cleanly; no regressions
+- [x] No `os.getenv` in any new Python file; no hardcoded literals
+- [x] Channel parity: Telegram receives notification for both outcomes (SendPRApproved / SendPREscalation wired in daemon goroutine)
+
+**Engineer status**: 9/9 criteria done — last commit: 4d8d028 "feat(reviewer): TASK-096 escalation and notification channels" — 2026-06-28 18:20
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/207 (base: dev)
+**COMPLETE** — ready for PM review — 2026-06-28 18:20
 
 ---
 

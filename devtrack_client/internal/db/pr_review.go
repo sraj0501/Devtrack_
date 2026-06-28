@@ -145,6 +145,28 @@ func (d *Database) ListPRReviewCommentsByStatus(status string) ([]PRReviewCommen
 	return scanPRReviewComments(rows)
 }
 
+// ListPRReviewCommentsRecent returns all pr_review_comments created or updated
+// within the last N hours, ordered by created_at ASC.
+// Used by "devtrack review status" to build the per-PR activity summary.
+func (d *Database) ListPRReviewCommentsRecent(hours int) ([]PRReviewComment, error) {
+	query := `
+		SELECT platform, comment_id, pr_id, workspace, status, comment_body,
+		       COALESCE(classified_as, ''), fix_hint, created_at, updated_at,
+		       COALESCE(attempt_count, 0)
+		FROM pr_review_comments
+		WHERE created_at >= datetime('now', ? || ' hours')
+		ORDER BY created_at ASC
+	`
+	// SQLite modifier requires a negative number for "N hours ago".
+	modifier := fmt.Sprintf("-%d", hours)
+	rows, err := d.db.Query(query, modifier)
+	if err != nil {
+		return nil, fmt.Errorf("ListPRReviewCommentsRecent: %w", err)
+	}
+	defer rows.Close()
+	return scanPRReviewComments(rows)
+}
+
 // IncrementPRReviewCommentAttempts increments attempt_count for (platform, commentID)
 // and stamps updated_at = datetime('now'). Returns the new attempt_count value.
 func (d *Database) IncrementPRReviewCommentAttempts(platform, commentID string) (int, error) {

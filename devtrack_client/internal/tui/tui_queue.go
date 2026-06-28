@@ -280,6 +280,24 @@ func queueStatusBadge(status string) string {
 	}
 }
 
+// queueActionTypeBadge returns a colored badge for action types that benefit
+// from visual distinction (PR lifecycle events). For all other types it returns
+// the action type as truncated plain text matching the 18-char TYPE column.
+func queueActionTypeBadge(actionType string) string {
+	switch actionType {
+	case "pr_approved_notify":
+		return StyleBadge(ColorSuccess).Render("  PR DONE  ")
+	case "pr_escalation":
+		return StyleBadge(ColorDanger).Render(" PR STUCK  ")
+	default:
+		at := actionType
+		if len(at) > 18 {
+			at = at[:15] + "..."
+		}
+		return at
+	}
+}
+
 // confidenceBar renders a 5-character block bar colored by threshold.
 func confidenceBar(c float64) string {
 	if c < 0 {
@@ -391,17 +409,14 @@ func (m queueModel) View() string {
 		bar := confidenceBar(item.Confidence)
 		expiry := expiresCountdown(item.ExpiresAt, m.pulseState)
 
-		actionType := item.ActionType
-		if len(actionType) > 18 {
-			actionType = actionType[:15] + "..."
-		}
+		actionTypeFmt := queueActionTypeBadge(item.ActionType)
 		target := item.Target
 		if len(target) > 20 {
 			target = target[:17] + "..."
 		}
 
 		row := fmt.Sprintf("  %s  %s  %-10s  %-18s  %-20s",
-			badge, bar, expiry, actionType, target)
+			badge, bar, expiry, actionTypeFmt, target)
 
 		if i == m.cursor {
 			row = lipgloss.NewStyle().
