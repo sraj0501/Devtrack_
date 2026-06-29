@@ -1,7 +1,7 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-28 by PM — TASK-097 dispatched (Phase 7 exit criterion verification; all deps merged eda357e on dev)_
-_Next DevTrack task ID: TASK-102_
+_Last updated: 2026-06-30 by PM — TASK-102 COMPLETE (Azure IsPRApproved); EPIC: Managed Install queued (TASK-103–108)_
+_Next DevTrack task ID: TASK-109_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -682,7 +682,7 @@ alongside the CLI (TASK-064). Both must exist.
 | 5 | Voice training (low friction) | COMPLETE | Generated text passes "did I write this?" after one week |
 | 6 | Dialectic self-improvement | COMPLETE — PR #200 open | Correction rate down; ≥3 skills emerged; threshold extended |
 | 7 | PR review loop (puppet master) | COMPLETE — exit criterion verified 2026-06-28 (TASK-097, PR #208) | Push PR with nit comments, get "approved" without touching it again |
-| 8 | MCP server + headless integration | IN PROGRESS — TASK-098 dispatched | Claude Code queries DevTrack for developer context automatically |
+| 8 | MCP server + headless integration | COMPLETE — TASK-101 verified 2026-06-24 (PR #205) | Claude Code queries DevTrack for developer context automatically |
 
 Full phase specs and acceptance criteria: `PRODUCT_BIBLE.md` § Build Phases.
 
@@ -4995,6 +4995,315 @@ v1.0.0 release + local agents; config audit (os.getenv eliminated across 22 file
 **Assigned to**: engineer
 **Engineer status**: 5/5 criteria done — last commit: 75bc5db "feat(azure): implement real IsPRApproved via ADO Pull Requests API (TASK-102)" — 2026-06-28 22:00
 **COMPLETE** — ready for PM review — 2026-06-28 22:00
+
+---
+
+---
+
+## EPIC: Managed Install — Python Server Bootstrap (TASK-103–108)
+
+**Goal**: A developer who downloads the `devtrack` binary and runs `devtrack setup` gets
+a fully working managed-mode installation — Python server cloned, deps installed, daemon
+wired — without touching a terminal manually. `devtrack upgrade` keeps the server in sync.
+
+**Audit**: 11 gaps found (2026-06-30). Root cause: release pipeline was never updated after
+the monorepo split (EPIC-SPLIT / TASK-048). Binary ships; Python server has no distribution
+story. Full audit: `Data/agent_logs/engineer_log.md`.
+
+**Sequencing**:
+```
+TASK-103 (setup clone) ──┬── TASK-104 (daemon fallback)
+                         ├── TASK-105 (upgrade server)
+                         └── TASK-107 (docs)
+TASK-106 (Windows autostart) — independent
+TASK-108 (verification) — depends on all above
+```
+
+---
+
+### TASK-103 — `devtrack setup`: auto-clone Python server + run `uv sync`
+**Priority**: CRITICAL
+**Phase**: Post-arc (Managed Install epic)
+**Depends on**: none
+**Branch**: `feat/TASK-103-setup-server-clone`
+
+**Spec**:
+
+In managed mode, `devtrack setup` must clone `devtrack_server/` from the monorepo into
+`$DEVTRACK_HOME/server/` and run `uv sync` automatically. No manual steps for the user.
+
+**1. `detectProjectRoot()` (setup.go:336-370)** — prepend two new checks before the walk-up:
+- Check `$DEVTRACK_HOME/server/devtrack_server/` (standard managed install location)
+- Check `$DEVTRACK_SERVER_DIR` env var (explicit user override)
+- Walk-up from binary (existing behavior) — only if both above absent
+- If all fail → return structured error with install instructions (not bare "not found")
+
+**2. `RunSetup()` managed branch (setup.go:91-106)** — after `detectProjectRoot()` returns error:
+- Print: `"Python server not found. DevTrack can clone it automatically (sparse checkout, ~5MB)."`
+- Prompt yes/no
+- If yes: call new `cloneAndInstallServer(devtrackHome string) (string, error)`
+- `cloneAndInstallServer` (new function in `setup.go`):
+  - Uses git sparse-checkout to pull only `devtrack_server/`:
+    ```
+    git init <targetDir>
+    git -C <targetDir> remote add origin https://github.com/sraj0501/Devtrack_.git
+    git -C <targetDir> sparse-checkout init --cone
+    git -C <targetDir> sparse-checkout set devtrack_server
+    git -C <targetDir> fetch --depth 1 origin main
+    git -C <targetDir> checkout main
+    ```
+  - Streams each git command's output to stdout
+  - Runs `uv sync` with `Dir = filepath.Join(targetDir, "devtrack_server")`
+  - Returns resolved projectRoot (`<targetDir>/devtrack_server`)
+
+**3. `checkPythonBackend()` (setup.go:727-761)** — actually run `uv sync` after prereq checks:
+- After confirming `backend/` and `uv` present: run `uv sync --directory <projectRoot>`
+- Stream output; fail hard on non-zero exit (not a silent skip)
+
+**4. `generateEnvContent()` (setup.go:394-705)** — ensure `PROJECT_ROOT` is passed the
+resolved cloned path (it already writes `PROJECT_ROOT` at line ~419 — just verify the call site).
+
+**5. `printSetupComplete()` managed (setup.go:952-958)** — remove the manual `uv sync`
+instruction (it will have already run in step 3).
+
+**6. `printAutostartInstructions()` (setup.go:919-928)** — when user says yes, call
+`RunAutostart()` directly instead of just printing the command.
+
+**Constants to add** at top of `setup.go`:
+```go
+const devtrackServerRepoURL = "https://github.com/sraj0501/Devtrack_.git"
+const devtrackServerBranch  = "main"
+```
+
+**`.env_sample` additions** (4 missing vars from audit):
+- `HTTP_TIMEOUT=60` — timeouts section
+- `HTTP_TIMEOUT_LONG=120` — timeouts section
+- `IPC_RETRY_DELAY_MS=500` — IPC section
+- `LMSTUDIO_HOST=http://localhost:1234` — LLM providers section
+
+**Acceptance criteria**:
+- [ ] `devtrack setup` (managed, no PROJECT_ROOT / no server dir) prompts to clone, then clones to `$DEVTRACK_HOME/server/` via sparse-checkout
+- [ ] `uv sync` runs automatically during setup; setup exits with clear error if it fails
+- [ ] Generated `.env` has `PROJECT_ROOT=<devtrack_home>/server/devtrack_server`
+- [ ] `detectProjectRoot()` finds standard location without re-cloning on subsequent runs
+- [ ] `detectProjectRoot()` respects `$DEVTRACK_SERVER_DIR` override
+- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [ ] `.env_sample` contains all 4 new vars with documented defaults
+
+---
+
+### TASK-104 — Fix daemon `python3` fallback; fail loudly when server missing
+**Priority**: CRITICAL
+**Phase**: Post-arc (Managed Install epic)
+**Depends on**: TASK-103 (standard install path established)
+**Branch**: `feat/TASK-104-daemon-server-fallback`
+
+**Spec**:
+
+`startWebhookServer()` in `devtrack_client/internal/daemon/daemon.go` (lines 503-509)
+falls back to bare `python3 -m backend.webhook_server` when `PROJECT_ROOT` is not set.
+This bypasses the uv venv and fails silently with `ModuleNotFoundError`.
+
+**Replace the `else` branch (lines 508-509)**:
+```go
+// Before (broken — bypasses venv):
+} else {
+    cmd = exec.Command("python3", "-m", "backend.webhook_server")
+}
+
+// After — check standard install location, error loudly if missing:
+} else {
+    devtrackHome := config.GetDevtrackHome()
+    standardPath := filepath.Join(devtrackHome, "server", "devtrack_server")
+    if _, statErr := os.Stat(filepath.Join(standardPath, "backend")); statErr == nil {
+        projectRoot = standardPath
+        cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.webhook_server")
+        cmd.Dir = projectRoot
+    } else {
+        return fmt.Errorf(
+            "managed mode: Python server not found at %s or PROJECT_ROOT. "+
+                "Run 'devtrack setup' to install it automatically, or set PROJECT_ROOT env var",
+            standardPath,
+        )
+    }
+}
+```
+
+`config.GetDevtrackHome()` — check if it already exists in `internal/config/config_env.go`;
+add it if not (reads `DEVTRACK_HOME` env var, falls back to `os.UserHomeDir()+"/.devtrack"`).
+
+**Acceptance criteria**:
+- [ ] Daemon with no `PROJECT_ROOT` + standard install location present → spawns via uv correctly
+- [ ] Daemon with no `PROJECT_ROOT` + no server dir → returns clear error message, daemon exits cleanly
+- [ ] Bare `python3` fallback is gone — `grep "python3" daemon.go` returns zero hits in `startWebhookServer`
+- [ ] `go build ./...` and `go vet ./...` pass clean
+
+---
+
+### TASK-105 — `devtrack upgrade`: also pull + sync the Python server
+**Priority**: CRITICAL
+**Phase**: Post-arc (Managed Install epic)
+**Depends on**: TASK-103 (server dir established)
+**Branch**: `feat/TASK-105-upgrade-server`
+
+**Spec**:
+
+`RunUpgrade()` in `devtrack_client/upgrade.go` (lines 37-127) replaces only the binary.
+After upgrade, Go and Python server may be version-mismatched. Add `upgradeServer()`.
+
+**New function** `upgradeServer(devtrackHome string) error` in `upgrade.go`:
+```go
+func upgradeServer(devtrackHome string) error {
+    serverDir := filepath.Join(devtrackHome, "server")
+    if _, err := os.Stat(serverDir); os.IsNotExist(err) {
+        fmt.Println("Python server not installed — skipping (run 'devtrack setup' to install)")
+        return nil
+    }
+    fmt.Println("Updating Python server...")
+    pull := exec.Command("git", "-C", serverDir, "pull", "--ff-only")
+    pull.Stdout, pull.Stderr = os.Stdout, os.Stderr
+    if err := pull.Run(); err != nil {
+        return fmt.Errorf("git pull failed: %w", err)
+    }
+    sync := exec.Command("uv", "sync")
+    sync.Dir = filepath.Join(serverDir, "devtrack_server")
+    sync.Stdout, sync.Stderr = os.Stdout, os.Stderr
+    return sync.Run()
+}
+```
+
+**Wire into `RunUpgrade()`** after `RunPendingMigrations()` (around line 111):
+```go
+if err := upgradeServer(config.GetDevtrackHome()); err != nil {
+    fmt.Printf("Warning: Python server upgrade failed: %v\n", err)
+    fmt.Println("The binary was upgraded successfully. Run 'devtrack setup' to repair the server.")
+    // non-fatal — continue
+}
+```
+
+**Acceptance criteria**:
+- [ ] `devtrack upgrade` runs `git pull --ff-only` + `uv sync` on `$DEVTRACK_HOME/server/` when present
+- [ ] When server dir absent: prints skip message, upgrade continues cleanly
+- [ ] Server upgrade failure is a warning — binary upgrade still succeeds
+- [ ] `go build ./...` and `go vet ./...` pass clean
+
+---
+
+### TASK-106 — Windows autostart: bake env vars via `.bat` wrapper
+**Priority**: MAJOR
+**Phase**: Post-arc (Managed Install epic)
+**Depends on**: none (independent)
+**Branch**: `feat/TASK-106-windows-autostart-env`
+
+**Spec**:
+
+`installWindowsTask()` in `devtrack_client/cli_autostart.go` (lines 752-769) calls
+`schtasks` with only the binary path — no environment variables. macOS (launchd plist) and
+Linux (systemd unit) both bake all `DEVTRACK_*`, `PROJECT_ROOT`, etc. vars in at install
+time. Windows must do the same.
+
+**Approach**: generate a `devtrack-autostart.bat` file alongside the binary and register
+that with `schtasks` instead of the binary directly.
+
+**New helper** `buildWindowsBat(binaryPath string) string` in `cli_autostart.go`:
+- Mirrors `buildLaunchdPlist()` / `buildSystemdService()` structure
+- Uses same `launchdEnvVarPrefixes` slice (defined at lines 54-69) to enumerate env vars
+- Output format:
+  ```bat
+  @echo off
+  SET KEY=VALUE
+  SET KEY2=VALUE2
+  ...
+  "<binaryPath>" start
+  ```
+- All values with `%` escaped as `%%`
+
+**Update `installWindowsTask(binaryPath string)`**:
+1. Call `buildWindowsBat(binaryPath)` to get bat content
+2. Write bat file to `filepath.Dir(binaryPath) + "\devtrack-autostart.bat"`
+3. Pass bat path as `/TR` to `schtasks` (wrap in `cmd /c "..."`)
+4. Print path of bat file so user can inspect it
+
+**Acceptance criteria**:
+- [ ] `devtrack autostart-install` on Windows writes `devtrack-autostart.bat` with all captured env vars
+- [ ] `schtasks` task runs the bat file (not raw binary)
+- [ ] Re-running is idempotent: rewrites bat + `/F` force-recreates task
+- [ ] `go build ./...` and `go vet ./...` pass clean (Windows cross-compile: `GOOS=windows go build`)
+
+---
+
+### TASK-107 — Docs: INSTALLATION.md, README stale refs, .env_sample
+**Priority**: MAJOR
+**Phase**: Post-arc (Managed Install epic)
+**Depends on**: TASK-103 (setup flow must be final before docs describe it)
+**Branch**: `feat/TASK-107-docs-install`
+
+**Spec**: Documentation-only task — no Go or Python source changes.
+
+**1. Create `docs/INSTALLATION.md`**
+Step-by-step fresh-install guide:
+- Prerequisites: Git, uv (`pip install uv`), Ollama (optional for AI)
+- Download binary (curl one-liner for each OS)
+- Run `devtrack setup` — what it does (sparse-clone server, uv sync, .env, workspaces.yaml)
+- `devtrack start` + `devtrack status` to verify
+- Troubleshooting: missing git/uv, PROJECT_ROOT already set, external mode
+
+**2. `README.md` fixes**:
+- Lines 187-188: Replace stale git_sage Python command:
+  - Before: `uv run python -m backend.git_sage do "squash my last 5 commits"`
+  - After: `devtrack git sage do "squash my last 5 commits"`
+- Lines 490-504: Remove the `devtrack-server` tarball section entirely. Replace with:
+  > **Managed mode** (default): `devtrack setup` installs the Python server automatically
+  > via git sparse-checkout to `~/.devtrack/server/`. No manual steps needed.
+  >
+  > **External mode** (server on a separate host): clone the repo on that host,
+  > `cd devtrack_server && uv sync && uv run python -m backend.webhook_server`.
+  > Set `DEVTRACK_SERVER_URL` on the client machine.
+
+**3. `devtrack_client/internal/config/server_config.go:214`**: the `RunInstall()` message
+already references `docs/INSTALLATION.md` — that file will now exist, so no code change needed.
+
+**Acceptance criteria**:
+- [ ] `docs/INSTALLATION.md` exists, describes the TASK-103 setup flow accurately
+- [ ] README git-sage commands show `devtrack git sage`, not Python module invocation
+- [ ] README `devtrack-server` binary/tarball section removed; replaced with accurate note
+- [ ] `server_config.go:214` reference to `docs/INSTALLATION.md` now resolves (file exists)
+
+---
+
+### TASK-108 — End-to-end managed install verification
+**Priority**: HIGH
+**Phase**: Post-arc (Managed Install epic)
+**Depends on**: TASK-103, TASK-104, TASK-105, TASK-107
+**Branch**: `feat/TASK-108-install-verification`
+
+**Spec**: Verification and board-close task. No new feature code.
+
+**Steps**:
+1. Build binary from `devtrack_client/`: `go build -o devtrack .`; run `go vet ./...` and `go test ./...`. Report pass/fail.
+2. Simulate fresh install: unset `PROJECT_ROOT`, remove `~/.devtrack/server/` if present.
+3. Run `devtrack setup` (managed): confirm clone prompt appears, clone succeeds, `uv sync` runs, `.env` written with correct `PROJECT_ROOT`.
+4. Run `devtrack start`: confirm daemon log shows Python server PID.
+5. Make a test commit: confirm `Data/logs/daemon.log` shows trigger reached Python server.
+6. Run `devtrack upgrade`: confirm git pull + uv sync output for server dir.
+7. Hardcoded-values scan across all changed files:
+   ```
+   grep -rn "python3" devtrack_client/internal/daemon/ devtrack_client/setup.go
+   grep -rn "os\.Getenv\b" devtrack_client/setup.go devtrack_client/upgrade.go devtrack_client/cli_autostart.go
+   ```
+   Both must return zero hits outside config accessors.
+8. Update `Data/agent_logs/feature_tracker.md` with Managed Install epic completion entry.
+9. Open PR targeting `dev`.
+
+**Acceptance criteria**:
+- [ ] `go build ./...`, `go vet ./...`, `go test ./...` all pass from `devtrack_client/`
+- [ ] Fresh setup (no PROJECT_ROOT, no server dir): sparse-clone + uv sync complete without manual steps
+- [ ] `devtrack start` spawns Python server successfully (PID in log)
+- [ ] Test commit triggers Python server processing (confirmed in logs)
+- [ ] `devtrack upgrade` updates both binary and server
+- [ ] Hardcoded `python3` fallback gone from daemon.go
+- [ ] `docs/INSTALLATION.md` exists and is accurate
+- [ ] PR opened targeting `dev` (never `main`)
 
 ---
 

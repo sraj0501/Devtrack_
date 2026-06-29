@@ -160,8 +160,10 @@ PM connectors, gitsage, and alerts are Go-native and work in all modes.
 ## Project Status & Direction
 
 - **Direction:** see [`PRODUCT_BIBLE.md`](PRODUCT_BIBLE.md). Build arc **Phase 0→8 COMPLETE** on `dev`.
-  Post-arc queue: headless orchestration (global agent control via MCP), voice/dialectic Tier 4
-  (local Hermes persona model), GitLab `IsPRApproved` live integration.
+  Post-arc queue (active): **EPIC: Managed Install** (TASK-103–108) — `devtrack setup` sparse-clones
+  Python server + runs `uv sync`; daemon fallback fixed; upgrade updates server; Windows autostart
+  bakes env vars; docs/INSTALLATION.md created. After that: headless orchestration (global agent
+  control via MCP), voice/dialectic Tier 4 (local Hermes persona model), GitLab `IsPRApproved`.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.
 - **Shipped (v3.x):** three-codebase split (EPIC-SPLIT); client-server decoupling (Go-native
   connectors, gitsage, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;
