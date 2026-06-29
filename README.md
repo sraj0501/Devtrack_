@@ -113,7 +113,7 @@ After that, `git commit` routes through DevTrack automatically for monitored rep
 
 | Integration | What DevTrack does |
 |-------------|-------------------|
-| **Azure DevOps** | Post commit comments, transition work item states, create missing items |
+| **Azure DevOps** | Post commit comments, transition work item states, create missing items; PR approval detection via ADO Pull Requests API (real `IsPRApproved`, vote ≥ 10) |
 | **GitHub** | Comment on issues/PRs, sync recent activity, alert on review requests |
 | **GitLab** | Comment on issues, list and view issues assigned to you, alert on assignments/notes/MR reviews |
 | **Jira** | Alert on assignments, comments, and status changes |
