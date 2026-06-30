@@ -1,6 +1,6 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-06-30 by PM — TASK-102 COMPLETE (Azure IsPRApproved); EPIC: Managed Install queued (TASK-103–108)_
+_Last updated: 2026-06-30 by PM — TASK-103 COMPLETE (PR #210, base dev); TASK-104/105/107 unblocked_
 _Next DevTrack task ID: TASK-109_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -5022,10 +5022,16 @@ TASK-108 (verification) — depends on all above
 ---
 
 ### TASK-103 — `devtrack setup`: auto-clone Python server + run `uv sync`
+**Assigned to**: PM/engineer
+**Status**: COMPLETE
 **Priority**: CRITICAL
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: none
+**Started**: 2026-06-30
+**Completed**: 2026-06-30
 **Branch**: `feat/TASK-103-setup-server-clone`
+**Commit**: 4110155 — feat(setup): auto-clone Python server + run uv sync (TASK-103)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/210 (base: dev)
 
 **Spec**:
 
@@ -5082,13 +5088,17 @@ const devtrackServerBranch  = "main"
 - `LMSTUDIO_HOST=http://localhost:1234` — LLM providers section
 
 **Acceptance criteria**:
-- [ ] `devtrack setup` (managed, no PROJECT_ROOT / no server dir) prompts to clone, then clones to `$DEVTRACK_HOME/server/` via sparse-checkout
-- [ ] `uv sync` runs automatically during setup; setup exits with clear error if it fails
-- [ ] Generated `.env` has `PROJECT_ROOT=<devtrack_home>/server/devtrack_server`
-- [ ] `detectProjectRoot()` finds standard location without re-cloning on subsequent runs
-- [ ] `detectProjectRoot()` respects `$DEVTRACK_SERVER_DIR` override
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] `.env_sample` contains all 4 new vars with documented defaults
+- [x] `devtrack setup` (managed, no PROJECT_ROOT / no server dir) prompts to clone, then clones to `$DEVTRACK_HOME/server/` via sparse-checkout
+- [x] `uv sync` runs automatically during setup; setup exits with clear error if it fails
+- [x] Generated `.env` has `PROJECT_ROOT=<devtrack_home>/server/devtrack_server` (cfg.ProjectRoot set from clonedRoot)
+- [x] `detectProjectRoot()` finds standard location without re-cloning on subsequent runs
+- [x] `detectProjectRoot()` respects `$DEVTRACK_SERVER_DIR` override
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] `.env_sample` contains all 4 new vars with documented defaults
+
+**Engineer status**: 7/7 criteria done — commit 4110155 — 2026-06-30
+**Vision check**: PASS (offline-first: all clone/uv ops are local; CLI-only: no browser; wedge-first: no user-facing copy changes)
+**Hardcoded scan**: CLEAN (os.Getenv in setup.go is pre-existing/acceptable — setup wizard runs before .env exists)
 
 ---
 
@@ -5098,7 +5108,7 @@ const devtrackServerBranch  = "main"
 **Depends on**: TASK-103 (standard install path established)
 **Branch**: `feat/TASK-104-daemon-server-fallback`
 **Assigned to**: engineer
-**Engineer status**: started — replace bare python3 fallback with uv run + standard install path check
+**Engineer status**: **COMPLETE** — ready for PM review — 2026-06-30
 
 **Spec**:
 
@@ -5135,18 +5145,23 @@ This bypasses the uv venv and fails silently with `ModuleNotFoundError`.
 add it if not (reads `DEVTRACK_HOME` env var, falls back to `os.UserHomeDir()+"/.devtrack"`).
 
 **Acceptance criteria**:
-- [ ] Daemon with no `PROJECT_ROOT` + standard install location present → spawns via uv correctly
-- [ ] Daemon with no `PROJECT_ROOT` + no server dir → returns clear error message, daemon exits cleanly
-- [ ] Bare `python3` fallback is gone — `grep "python3" daemon.go` returns zero hits in `startWebhookServer`
-- [ ] `go build ./...` and `go vet ./...` pass clean
+- [x] Daemon with no `PROJECT_ROOT` + standard install location present → spawns via uv correctly
+- [x] Daemon with no `PROJECT_ROOT` + no server dir → returns clear error message, daemon exits cleanly
+- [x] Bare `python3` fallback is gone — `grep "python3" daemon.go` returns zero hits in `startWebhookServer`
+- [x] `go build ./...` and `go vet ./...` pass clean
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/214
+**COMPLETE** — ready for PM review — 2026-06-30
 
 ---
 
 ### TASK-105 — `devtrack upgrade`: also pull + sync the Python server
 **Priority**: CRITICAL
 **Phase**: Post-arc (Managed Install epic)
+**Assigned to**: engineer
 **Depends on**: TASK-103 (server dir established)
 **Branch**: `feat/TASK-105-upgrade-server`
+**Status**: IN PROGRESS
 
 **Spec**:
 
@@ -5184,10 +5199,15 @@ if err := upgradeServer(config.GetDevtrackHome()); err != nil {
 ```
 
 **Acceptance criteria**:
-- [ ] `devtrack upgrade` runs `git pull --ff-only` + `uv sync` on `$DEVTRACK_HOME/server/` when present
-- [ ] When server dir absent: prints skip message, upgrade continues cleanly
-- [ ] Server upgrade failure is a warning — binary upgrade still succeeds
-- [ ] `go build ./...` and `go vet ./...` pass clean
+- [x] `devtrack upgrade` runs `git pull --ff-only` + `uv sync` on `$DEVTRACK_HOME/server/` when present
+- [x] When server dir absent: prints skip message, upgrade continues cleanly
+- [x] Server upgrade failure is a warning — binary upgrade still succeeds
+- [x] `go build ./...` and `go vet ./...` pass clean
+
+**Engineer status**: 4/4 criteria done — last commit: b8f5bef — 2026-06-30 12:50
+**PR**: https://github.com/sraj0501/Devtrack_/pull/211
+
+**COMPLETE** — ready for PM review — 2026-06-30 12:50
 
 ---
 
@@ -5198,6 +5218,7 @@ if err := upgradeServer(config.GetDevtrackHome()); err != nil {
 **Branch**: `feat/TASK-106-windows-autostart-env`
 **Status**: IN PROGRESS
 **Assigned to**: engineer
+**Engineer status**: 4/4 criteria done — last commit: 06c8591 "feat(autostart): bake env vars into Windows scheduled task via .bat wrapper" — 2026-06-30 13:00
 
 **Spec**:
 
@@ -5234,9 +5255,8 @@ that with `schtasks` instead of the binary directly.
 - [x] Re-running is idempotent: rewrites bat + `/F` force-recreates task
 - [x] `go build ./...` and `go vet ./...` pass clean (Windows cross-compile: `GOOS=windows go build`)
 
-**Engineer status**: 4/4 criteria done — last commit: pending — 2026-06-30 13:00
-
 **COMPLETE** — ready for PM review — 2026-06-30 13:00
+**PR**: https://github.com/sraj0501/Devtrack_/pull/212
 
 ---
 
