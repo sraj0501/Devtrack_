@@ -2,6 +2,39 @@
 
 ---
 
+### [2026-06-30] TASK-103 — `devtrack setup`: auto-clone Python server + run `uv sync`
+
+**Commit**: 4110155 — feat(setup): auto-clone Python server + run uv sync (TASK-103)
+**Branch**: feat/TASK-103-setup-server-clone
+**PR**: https://github.com/sraj0501/Devtrack_/pull/210 (base: dev)
+**Time**: ~25 minutes
+**Friction**: LOW
+
+**Files changed**:
+- `devtrack_client/setup.go` — added constants, rewrote detectProjectRoot(), added cloneAndInstallServer(), updated RunSetup() managed branch, changed checkPythonBackend() signature to return error + run uv sync, updated printSetupComplete()
+- `devtrack_client/.env_sample` — added HTTP_TIMEOUT=60, HTTP_TIMEOUT_LONG=120, IPC_RETRY_DELAY_MS=500, LMSTUDIO_HOST=http://localhost:1234
+
+**What was built**:
+- `detectProjectRoot()`: new check order — PROJECT_ROOT env → DEVTRACK_SERVER_DIR env → standard XDG path (~/.local/share/devtrack/server/devtrack_server/) → binary walk-up → CWD → structured error
+- `cloneAndInstallServer(devtrackHome string) (string, error)`: git sparse-checkout (init --cone, set devtrack_server, fetch --depth 1 origin main, checkout main) + uv sync; streams all output; returns devtrack_server/ path
+- `RunSetup()` managed branch: on detectProjectRoot() failure, offers clone prompt; calls cloneAndInstallServer(); wires returned path as projectRoot
+- `checkPythonBackend()`: now returns error; runs `uv sync` in projectRoot after prereq checks; fails hard on non-zero exit
+- `printSetupComplete()`: removed manual `cd <dir> && uv sync` instruction (deps now auto-installed)
+
+**Build/test**: go build ./... and go vet ./... PASS (no output = clean)
+**Hardcoded scan**: CLEAN — os.Getenv in setup.go is pre-existing/acceptable (setup wizard runs before .env exists)
+**Vision check**: PASS
+
+## Task Summary — TASK-103: devtrack setup auto-clone — 2026-06-30
+
+- Total commits: 1
+- Acceptance criteria met: 7/7
+- Tickets auto-updated: NO (no daemon running during implementation)
+- Estimated daily time saved: ~30 min (first-time install no longer requires manual clone + uv sync)
+- Blockers encountered: none
+
+---
+
 ### [2026-06-28 22:00] TASK-102 — Real IsPRApproved for Azure DevOps
 
 **Original message**: "feat(azure): implement real IsPRApproved via ADO Pull Requests API (TASK-102)"
