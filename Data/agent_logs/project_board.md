@@ -5107,6 +5107,8 @@ const devtrackServerBranch  = "main"
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: TASK-103 (standard install path established)
 **Branch**: `feat/TASK-104-daemon-server-fallback`
+**Assigned to**: engineer
+**Engineer status**: **COMPLETE** — ready for PM review — 2026-06-30
 
 **Spec**:
 
@@ -5143,10 +5145,13 @@ This bypasses the uv venv and fails silently with `ModuleNotFoundError`.
 add it if not (reads `DEVTRACK_HOME` env var, falls back to `os.UserHomeDir()+"/.devtrack"`).
 
 **Acceptance criteria**:
-- [ ] Daemon with no `PROJECT_ROOT` + standard install location present → spawns via uv correctly
-- [ ] Daemon with no `PROJECT_ROOT` + no server dir → returns clear error message, daemon exits cleanly
-- [ ] Bare `python3` fallback is gone — `grep "python3" daemon.go` returns zero hits in `startWebhookServer`
-- [ ] `go build ./...` and `go vet ./...` pass clean
+- [x] Daemon with no `PROJECT_ROOT` + standard install location present → spawns via uv correctly
+- [x] Daemon with no `PROJECT_ROOT` + no server dir → returns clear error message, daemon exits cleanly
+- [x] Bare `python3` fallback is gone — `grep "python3" daemon.go` returns zero hits in `startWebhookServer`
+- [x] `go build ./...` and `go vet ./...` pass clean
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/214
+**COMPLETE** — ready for PM review — 2026-06-30
 
 ---
 
