@@ -1,4 +1,4 @@
-# DevTrack Project Board
+﻿# DevTrack Project Board
 
 _Last updated: 2026-06-30 by PM — TASK-102 COMPLETE (Azure IsPRApproved); EPIC: Managed Install queued (TASK-103–108)_
 _Next DevTrack task ID: TASK-109_
@@ -5245,6 +5245,7 @@ that with `schtasks` instead of the binary directly.
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: TASK-103 (setup flow must be final before docs describe it)
 **Branch**: `feat/TASK-107-docs-install`
+**Engineer status**: started — create docs/INSTALLATION.md from setup.go wizard; fix README git-sage commands and devtrack-server section
 
 **Spec**: Documentation-only task — no Go or Python source changes.
 

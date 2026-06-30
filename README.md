@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # DevTrack
 
@@ -184,8 +184,8 @@ Every `git commit` while a session is active automatically attaches its hash —
 ![git-sage standup demo](devtrack_wiki/wiki/assets/standup-demo.gif)
 
 ```bash
-uv run python -m backend.git_sage do "squash my last 5 commits"
-uv run python -m backend.git_sage ask "how do I rebase onto main?"
+devtrack git sage do "squash my last 5 commits"
+devtrack git sage ask "how do I rebase onto main?"
 ```
 
 Runs an agentic loop: plans operations, executes them, reads output, handles failures with rollback, only asks when genuinely ambiguous. Session approval dialog (auto / review / suggest-only), step history, and interactive undo built in.
@@ -487,21 +487,16 @@ The last-known port list is persisted to disk so that `devtrack health` can repo
 docker compose up -d   # starts Python backend + MongoDB, Redis, PostgreSQL
 ```
 
-### `devtrack-server` — server-side management CLI
+### Python AI server
 
-For **server / Linux deployments** where only the Python backend is hosted (External mode), a separate `devtrack-server` binary is distributed in the release tarball:
+**Managed mode** (default): `devtrack setup` installs the Python server automatically
+via git sparse-checkout to `~/.local/share/devtrack/server/`. No manual steps needed.
 
-```bash
-# Download the server tarball (no Go daemon required on the server)
-curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack-server-<version>.tar.gz" | tar xz
+**External mode** (server on a separate host): clone the repo on that host,
+`cd devtrack_server && uv sync && uv run python -m backend.webhook_server`.
+Set `DEVTRACK_SERVER_URL` on the client machine.
 
-devtrack-server start     # start the Python backend (webhook_server.py)
-devtrack-server stop      # stop it
-devtrack-server status    # show whether the backend process is running
-devtrack-server logs      # tail recent log output
-```
-
-`devtrack-server` wraps the tarball-deployed Python backend in the same UX as the main CLI so server operators don't need to manage the subprocess manually.
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the full setup walkthrough.
 
 ---
 
