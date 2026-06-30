@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-30 by PM — TASK-102 COMPLETE (Azure IsPRApproved); EPIC: Managed Install queued (TASK-103–108)_
+_Last updated: 2026-06-30 by PM — TASK-103 IN PROGRESS (feat/TASK-103-setup-server-clone); EPIC: Managed Install active_
 _Next DevTrack task ID: TASK-109_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -5022,9 +5022,12 @@ TASK-108 (verification) — depends on all above
 ---
 
 ### TASK-103 — `devtrack setup`: auto-clone Python server + run `uv sync`
+**Assigned to**: PM/engineer
+**Status**: IN PROGRESS
 **Priority**: CRITICAL
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: none
+**Started**: 2026-06-30
 **Branch**: `feat/TASK-103-setup-server-clone`
 
 **Spec**:
