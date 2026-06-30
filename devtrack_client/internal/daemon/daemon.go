@@ -505,20 +505,7 @@ func (d *Daemon) startWebhookServer() error {
 		cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.webhook_server")
 		cmd.Dir = projectRoot
 	} else {
-		// Try standard managed install location (set up by 'devtrack setup')
-		devtrackHome := config.GetDevTrackDir()
-		standardPath := filepath.Join(devtrackHome, "server", "devtrack_server")
-		if _, statErr := os.Stat(filepath.Join(standardPath, "backend")); statErr == nil {
-			projectRoot = standardPath
-			cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.webhook_server")
-			cmd.Dir = projectRoot
-		} else {
-			return fmt.Errorf(
-				"managed mode: Python server not found at %s. "+
-					"Run 'devtrack setup' to install it, or set PROJECT_ROOT env var",
-				standardPath,
-			)
-		}
+		cmd = exec.Command("python3", "-m", "backend.webhook_server")
 	}
 
 	// Pass TLS cert paths so uvicorn starts with TLS enabled
