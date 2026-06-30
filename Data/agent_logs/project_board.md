@@ -5201,7 +5201,7 @@ if err := upgradeServer(config.GetDevtrackHome()); err != nil {
 **Branch**: `feat/TASK-106-windows-autostart-env`
 **Status**: IN PROGRESS
 **Assigned to**: engineer
-**Engineer status**: started — add buildWindowsBat + writeWindowsBat, update installWindowsTask to use bat via cmd.exe /c
+**Engineer status**: 4/4 criteria done — last commit: 06c8591 "feat(autostart): bake env vars into Windows scheduled task via .bat wrapper" — 2026-06-30 13:00
 
 **Spec**:
 
@@ -5233,10 +5233,12 @@ that with `schtasks` instead of the binary directly.
 4. Print path of bat file so user can inspect it
 
 **Acceptance criteria**:
-- [ ] `devtrack autostart-install` on Windows writes `devtrack-autostart.bat` with all captured env vars
-- [ ] `schtasks` task runs the bat file (not raw binary)
-- [ ] Re-running is idempotent: rewrites bat + `/F` force-recreates task
-- [ ] `go build ./...` and `go vet ./...` pass clean (Windows cross-compile: `GOOS=windows go build`)
+- [x] `devtrack autostart-install` on Windows writes `devtrack-autostart.bat` with all captured env vars
+- [x] `schtasks` task runs the bat file (not raw binary)
+- [x] Re-running is idempotent: rewrites bat + `/F` force-recreates task
+- [x] `go build ./...` and `go vet ./...` pass clean (Windows cross-compile: `GOOS=windows go build`)
+
+**COMPLETE** — ready for PM review — 2026-06-30 13:00
 
 ---
 
