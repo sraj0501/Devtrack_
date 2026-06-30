@@ -1,6 +1,6 @@
 # DevTrack Project Board
 
-_Last updated: 2026-06-30 by PM — TASK-103 IN PROGRESS (feat/TASK-103-setup-server-clone); EPIC: Managed Install active_
+_Last updated: 2026-06-30 by PM — TASK-103 COMPLETE (PR #210, base dev); TASK-104/105/107 unblocked_
 _Next DevTrack task ID: TASK-109_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -5023,12 +5023,15 @@ TASK-108 (verification) — depends on all above
 
 ### TASK-103 — `devtrack setup`: auto-clone Python server + run `uv sync`
 **Assigned to**: PM/engineer
-**Status**: IN PROGRESS
+**Status**: COMPLETE
 **Priority**: CRITICAL
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: none
 **Started**: 2026-06-30
+**Completed**: 2026-06-30
 **Branch**: `feat/TASK-103-setup-server-clone`
+**Commit**: 4110155 — feat(setup): auto-clone Python server + run uv sync (TASK-103)
+**PR**: https://github.com/sraj0501/Devtrack_/pull/210 (base: dev)
 
 **Spec**:
 
@@ -5085,13 +5088,17 @@ const devtrackServerBranch  = "main"
 - `LMSTUDIO_HOST=http://localhost:1234` — LLM providers section
 
 **Acceptance criteria**:
-- [ ] `devtrack setup` (managed, no PROJECT_ROOT / no server dir) prompts to clone, then clones to `$DEVTRACK_HOME/server/` via sparse-checkout
-- [ ] `uv sync` runs automatically during setup; setup exits with clear error if it fails
-- [ ] Generated `.env` has `PROJECT_ROOT=<devtrack_home>/server/devtrack_server`
-- [ ] `detectProjectRoot()` finds standard location without re-cloning on subsequent runs
-- [ ] `detectProjectRoot()` respects `$DEVTRACK_SERVER_DIR` override
-- [ ] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
-- [ ] `.env_sample` contains all 4 new vars with documented defaults
+- [x] `devtrack setup` (managed, no PROJECT_ROOT / no server dir) prompts to clone, then clones to `$DEVTRACK_HOME/server/` via sparse-checkout
+- [x] `uv sync` runs automatically during setup; setup exits with clear error if it fails
+- [x] Generated `.env` has `PROJECT_ROOT=<devtrack_home>/server/devtrack_server` (cfg.ProjectRoot set from clonedRoot)
+- [x] `detectProjectRoot()` finds standard location without re-cloning on subsequent runs
+- [x] `detectProjectRoot()` respects `$DEVTRACK_SERVER_DIR` override
+- [x] `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+- [x] `.env_sample` contains all 4 new vars with documented defaults
+
+**Engineer status**: 7/7 criteria done — commit 4110155 — 2026-06-30
+**Vision check**: PASS (offline-first: all clone/uv ops are local; CLI-only: no browser; wedge-first: no user-facing copy changes)
+**Hardcoded scan**: CLEAN (os.Getenv in setup.go is pre-existing/acceptable — setup wizard runs before .env exists)
 
 ---
 
