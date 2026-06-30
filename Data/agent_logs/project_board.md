@@ -1,4 +1,4 @@
-# DevTrack Project Board
+﻿# DevTrack Project Board
 
 _Last updated: 2026-06-30 by PM — TASK-103 COMPLETE (PR #210, base dev); TASK-104/105/107 unblocked_
 _Next DevTrack task ID: TASK-109_
@@ -5216,6 +5216,9 @@ if err := upgradeServer(config.GetDevtrackHome()); err != nil {
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: none (independent)
 **Branch**: `feat/TASK-106-windows-autostart-env`
+**Status**: IN PROGRESS
+**Assigned to**: engineer
+**Engineer status**: 4/4 criteria done — last commit: 06c8591 "feat(autostart): bake env vars into Windows scheduled task via .bat wrapper" — 2026-06-30 13:00
 
 **Spec**:
 
@@ -5247,10 +5250,13 @@ that with `schtasks` instead of the binary directly.
 4. Print path of bat file so user can inspect it
 
 **Acceptance criteria**:
-- [ ] `devtrack autostart-install` on Windows writes `devtrack-autostart.bat` with all captured env vars
-- [ ] `schtasks` task runs the bat file (not raw binary)
-- [ ] Re-running is idempotent: rewrites bat + `/F` force-recreates task
-- [ ] `go build ./...` and `go vet ./...` pass clean (Windows cross-compile: `GOOS=windows go build`)
+- [x] `devtrack autostart-install` on Windows writes `devtrack-autostart.bat` with all captured env vars
+- [x] `schtasks` task runs the bat file (not raw binary)
+- [x] Re-running is idempotent: rewrites bat + `/F` force-recreates task
+- [x] `go build ./...` and `go vet ./...` pass clean (Windows cross-compile: `GOOS=windows go build`)
+
+**COMPLETE** — ready for PM review — 2026-06-30 13:00
+**PR**: https://github.com/sraj0501/Devtrack_/pull/212
 
 ---
 
@@ -5259,6 +5265,9 @@ that with `schtasks` instead of the binary directly.
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: TASK-103 (setup flow must be final before docs describe it)
 **Branch**: `feat/TASK-107-docs-install`
+**Engineer status**: started — create docs/INSTALLATION.md from setup.go wizard; fix README git-sage commands and devtrack-server section
+
+**Engineer status**: started — create docs/INSTALLATION.md from setup.go flow; fix README git-sage commands and devtrack-server section
 
 **Spec**: Documentation-only task — no Go or Python source changes.
 

@@ -122,6 +122,33 @@
 
 ---
 
+### [2026-06-30 13:00] TASK-106 — Windows autostart: bake env vars via .bat wrapper
+
+**Original message**: "feat(autostart): bake env vars into Windows scheduled task via .bat wrapper (TASK-106)"
+**Enhanced to**: no enhancement — devtrack daemon stopped, used original message
+**Ticket auto-linked**: NO
+**PM system updated**: YES — project_board.md TASK-106 marked COMPLETE; all 4/4 criteria ticked; PR #212 linked
+**Time**: ~30 minutes (significant friction from concurrent agent branch switching)
+**Friction**: HIGH
+**Notes**:
+  - Added `buildWindowsBat(binaryPath string) string` to `devtrack_client/cli_autostart.go`: iterates `os.Environ()`, filters by `shouldCaptureForLaunchd()` (same as launchd/systemd), escapes `%` as `%%`, builds `@echo off\r\nSET KEY=VALUE\r\n...\n"<binary>" start\r\n` content
+  - Added `writeWindowsBat(binaryPath string) (string, error)`: writes `devtrack-autostart.bat` to `filepath.Dir(binaryPath)`, returns path
+  - Updated `installWindowsTask()`: calls `writeWindowsBat()`, registers bat via `cmd.exe /c "<batPath>"` with schtasks `/F` (idempotent force-overwrite)
+  - `go build ./...` and `go vet ./...` pass clean from `devtrack_client/`
+  - Branch `feat/TASK-106-windows-autostart-env` pushed; PR #212 opened targeting `dev`
+  - Concurrent agents (TASK-104, TASK-105, TASK-107) were actively switching git branches during this session, causing repeated branch confusion. Required many stash/pop cycles to land commits on the correct branch. A revert commit was needed to remove TASK-104's daemon.go changes that got pulled in accidentally.
+
+## Task Summary — TASK-106: Windows autostart env-var bat wrapper — 2026-06-30
+
+- Total commits: 5 (implementation + board updates + revert of accidentally included changes)
+- Acceptance criteria met: 4/4
+- Tests passed: SKIPPED (no test commands configured in pm-config.md for this change; `go build` and `go vet` pass)
+- Blockers encountered: concurrent agents switching git branches caused branch confusion throughout session; required repeated stash/pop cycles
+- One thing that still feels rough: "Branch ended up with TASK-107 and TASK-104 commits in history (they were ahead of dev on branch creation); couldn't cleanly excise them without rebase -i (blocked in agent context)"
+- Ready for PM review: YES
+
+---
+
 ### [2026-06-28 19:00] TASK-097 — Phase 7 exit criterion verification
 
 **Original message**: "chore(board): TASK-097 COMPLETE — Phase 7 exit criterion verified"
