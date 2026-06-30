@@ -5097,6 +5097,8 @@ const devtrackServerBranch  = "main"
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: TASK-103 (standard install path established)
 **Branch**: `feat/TASK-104-daemon-server-fallback`
+**Assigned to**: engineer
+**Engineer status**: started — replace bare python3 fallback with uv run + standard install path check
 
 **Spec**:
 
@@ -5143,8 +5145,11 @@ add it if not (reads `DEVTRACK_HOME` env var, falls back to `os.UserHomeDir()+"/
 ### TASK-105 — `devtrack upgrade`: also pull + sync the Python server
 **Priority**: CRITICAL
 **Phase**: Post-arc (Managed Install epic)
+**Assigned to**: engineer
 **Depends on**: TASK-103 (server dir established)
 **Branch**: `feat/TASK-105-upgrade-server`
+**Status**: IN PROGRESS
+**Engineer status**: started — adding upgradeServer() to upgrade.go, wiring after RunPendingMigrations()
 
 **Spec**:
 
@@ -5194,6 +5199,9 @@ if err := upgradeServer(config.GetDevtrackHome()); err != nil {
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: none (independent)
 **Branch**: `feat/TASK-106-windows-autostart-env`
+**Status**: IN PROGRESS
+**Assigned to**: engineer
+**Engineer status**: started — add buildWindowsBat + writeWindowsBat, update installWindowsTask to use bat via cmd.exe /c
 
 **Spec**:
 
@@ -5237,6 +5245,7 @@ that with `schtasks` instead of the binary directly.
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: TASK-103 (setup flow must be final before docs describe it)
 **Branch**: `feat/TASK-107-docs-install`
+**Engineer status**: started — create docs/INSTALLATION.md from setup.go flow; fix README git-sage commands and devtrack-server section
 
 **Spec**: Documentation-only task — no Go or Python source changes.
 
