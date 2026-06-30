@@ -1,4 +1,32 @@
-﻿# DevTrack Engineer Log
+# DevTrack Engineer Log
+
+---
+
+### [2026-06-30 12:50] TASK-105 -- upgradeServer() -- pull + uv sync Python server on upgrade
+
+**Original message**: "feat(upgrade): add upgradeServer() -- pull + uv sync Python server on upgrade (TASK-105)"
+**Enhanced to**: no enhancement -- used original (GIT_NO_DEVTRACK=1, daemon stopped)
+**Ticket auto-linked**: NO
+**PM system updated**: YES -- project_board.md TASK-105 marked COMPLETE; all 4/4 criteria ticked; PR #211 linked
+**Time**: ~20 minutes
+**Friction**: HIGH -- concurrent agent branch-switching caused the working branch to change between PowerShell tool calls multiple times; required stashing, force-switching, and doing stage+commit+push in a single PowerShell call
+**Notes**:
+  - Added upgradeServer(devtrackHome string) error at the bottom of devtrack_client/upgrade.go
+  - Wired call into RunUpgrade() after RunPendingMigrations() and before daemon restart
+  - Uses GetDevTrackDir() (config_shim.go forwards to cfg.GetDevTrackDir() which reads DEVTRACK_HOME env var)
+  - All required imports (exec, os, filepath, fmt) were already present in upgrade.go
+  - go build ./... and go vet ./... passed clean from devtrack_client/
+  - The multi-agent shared working directory caused branch changes between tool calls
+
+## Task Summary -- TASK-105: devtrack upgrade also updates Python server -- 2026-06-30
+
+- Total commits: 2 (b8f5bef -- implementation; fc02555 -- board PR link update)
+- Acceptance criteria met: 4/4
+- Tests passed: SKIPPED -- no test commands configured in pm-config.md that apply here; build and vet passed clean
+- Blockers encountered: none (functional); friction: concurrent branch-switching between PowerShell calls
+- One thing that still feels rough: shared git working directory between concurrent agents makes branch operations unreliable across tool calls
+- Ready for PM review: YES
+- PR: https://github.com/sraj0501/Devtrack_/pull/211
 
 ---
 
