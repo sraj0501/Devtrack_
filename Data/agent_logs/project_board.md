@@ -5097,6 +5097,8 @@ const devtrackServerBranch  = "main"
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: TASK-103 (standard install path established)
 **Branch**: `feat/TASK-104-daemon-server-fallback`
+**Assigned to**: engineer
+**Engineer status**: started — replace bare python3 fallback with uv run + standard install path check
 
 **Spec**:
 
