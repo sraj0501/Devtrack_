@@ -13,6 +13,12 @@ import (
 	"time"
 )
 
+// devtrackServerRepoURL is the GitHub repository that contains devtrack_server/.
+const devtrackServerRepoURL = "https://github.com/sraj0501/Devtrack_.git"
+
+// devtrackServerBranch is the branch used for sparse-checkout cloning.
+const devtrackServerBranch = "main"
+
 // DevTrackMode represents the operating mode chosen during setup.
 type DevTrackMode string
 
@@ -93,9 +99,30 @@ func RunSetup() error {
 	if selectedMode == ModeManaged {
 		root, err := detectProjectRoot()
 		if err != nil {
-			return fmt.Errorf("could not locate DevTrack installation: %w\n\nMake sure the devtrack binary is inside the release package (next to backend/)", err)
+			// Python server not found — offer automatic sparse-checkout clone.
+			xdgHome, xdgErr := devtrackDataHome()
+			if xdgErr != nil {
+				return fmt.Errorf("could not determine DevTrack home directory: %w", xdgErr)
+			}
+			fmt.Println()
+			fmt.Println("Python server not found. DevTrack can clone it automatically (sparse checkout, ~5MB).")
+			fmt.Printf("Install location: %s\n", filepath.Join(xdgHome, "server"))
+			fmt.Print("Clone and install now? [Y/n]: ")
+			cloneAnswer := readLine(reader)
+			fmt.Println()
+			if cloneAnswer == "" || strings.ToLower(cloneAnswer) == "y" {
+				clonedRoot, cloneErr := cloneAndInstallServer(xdgHome)
+				if cloneErr != nil {
+					return fmt.Errorf("server install failed: %w", cloneErr)
+				}
+				projectRoot = clonedRoot
+			} else {
+				return fmt.Errorf("setup cancelled: managed mode requires the Python server.\n" +
+					"Re-run 'devtrack setup' and choose to clone, or set PROJECT_ROOT to an existing devtrack_server/ path")
+			}
+		} else {
+			projectRoot = root
 		}
-		projectRoot = root
 	} else {
 		execPath, err := os.Executable()
 		if err == nil {
@@ -135,7 +162,9 @@ func RunSetup() error {
 	fmt.Println("─── Checking prerequisites ───────────────────────────────────────")
 	checkCommonPrereqs()
 	if cfg.Mode == ModeManaged {
-		checkPythonBackend(projectRoot)
+		if err := checkPythonBackend(projectRoot); err != nil {
+			return fmt.Errorf("Python backend check failed: %w", err)
+		}
 	} else {
 		fmt.Println("[" + string(cfg.Mode) + " mode] Python backend not required — skipping.")
 		fmt.Println()
@@ -333,15 +362,36 @@ func RunSetup() error {
 	return nil
 }
 
-// detectProjectRoot finds the DevTrack installation root.
-// It walks up from the binary location looking for the backend/ directory.
+// detectProjectRoot finds the DevTrack server installation root (devtrack_server/).
+// Check order:
+//  1. PROJECT_ROOT env var (explicit override, set in .env)
+//  2. DEVTRACK_SERVER_DIR env var (user-specified alternate location)
+//  3. Standard managed-install path: $XDG_DATA_HOME/devtrack/server/devtrack_server/
+//  4. Walk up from binary looking for backend/ (developer mode)
+//  5. Current working directory backend/ (developer mode)
 func detectProjectRoot() (string, error) {
-	// 1. Explicit env var
+	// 1. Explicit PROJECT_ROOT env var (set by previously generated .env)
 	if root := os.Getenv("PROJECT_ROOT"); root != "" {
 		return root, nil
 	}
 
-	// 2. Walk up from binary
+	// 2. Explicit DEVTRACK_SERVER_DIR override
+	if serverDir := os.Getenv("DEVTRACK_SERVER_DIR"); serverDir != "" {
+		if _, err := os.Stat(filepath.Join(serverDir, "backend")); err == nil {
+			return serverDir, nil
+		}
+		return "", fmt.Errorf("DEVTRACK_SERVER_DIR=%q does not contain a backend/ directory", serverDir)
+	}
+
+	// 3. Standard managed-install location: devtrackDataHome/server/devtrack_server/
+	if xdgHome, err := devtrackDataHome(); err == nil {
+		standardPath := filepath.Join(xdgHome, "server", "devtrack_server")
+		if _, err := os.Stat(filepath.Join(standardPath, "backend")); err == nil {
+			return standardPath, nil
+		}
+	}
+
+	// 4. Walk up from binary (developer mode — binary next to devtrack_server/backend/)
 	execPath, err := os.Executable()
 	if err == nil {
 		execPath, _ = filepath.Abs(execPath)
@@ -358,7 +408,7 @@ func detectProjectRoot() (string, error) {
 		}
 	}
 
-	// 3. Current working directory
+	// 5. Current working directory (developer mode)
 	cwd, err := os.Getwd()
 	if err == nil {
 		if _, err := os.Stat(filepath.Join(cwd, "backend")); err == nil {
@@ -366,7 +416,67 @@ func detectProjectRoot() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("backend/ directory not found near binary")
+	return "", fmt.Errorf("Python server not found. Run 'devtrack setup' to install it automatically, " +
+		"or set PROJECT_ROOT / DEVTRACK_SERVER_DIR to point at an existing devtrack_server/ directory")
+}
+
+// cloneAndInstallServer sparse-clones only devtrack_server/ from the monorepo
+// into <devtrackHome>/server/ and then runs `uv sync` to install Python deps.
+// It streams all git and uv output to stdout so the user sees progress.
+// Returns the absolute path to the installed devtrack_server/ directory.
+func cloneAndInstallServer(devtrackHome string) (string, error) {
+	targetDir := filepath.Join(devtrackHome, "server")
+
+	fmt.Printf("\nCloning Python server into %s ...\n\n", targetDir)
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return "", fmt.Errorf("create server dir %s: %w", targetDir, err)
+	}
+
+	// runGit runs a git command, streaming its output to stdout/stderr.
+	runGit := func(args ...string) error {
+		cmd := exec.Command("git", args...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+		}
+		return nil
+	}
+
+	// Sparse-checkout: only devtrack_server/ (~5 MB vs full repo).
+	if err := runGit("init", targetDir); err != nil {
+		return "", err
+	}
+	if err := runGit("-C", targetDir, "remote", "add", "origin", devtrackServerRepoURL); err != nil {
+		return "", err
+	}
+	if err := runGit("-C", targetDir, "sparse-checkout", "init", "--cone"); err != nil {
+		return "", err
+	}
+	if err := runGit("-C", targetDir, "sparse-checkout", "set", "devtrack_server"); err != nil {
+		return "", err
+	}
+	if err := runGit("-C", targetDir, "fetch", "--depth", "1", "origin", devtrackServerBranch); err != nil {
+		return "", err
+	}
+	if err := runGit("-C", targetDir, "checkout", devtrackServerBranch); err != nil {
+		return "", err
+	}
+
+	serverPath := filepath.Join(targetDir, "devtrack_server")
+
+	// Install Python dependencies.
+	fmt.Println("\nRunning uv sync...")
+	syncCmd := exec.Command("uv", "sync")
+	syncCmd.Dir = serverPath
+	syncCmd.Stdout = os.Stdout
+	syncCmd.Stderr = os.Stderr
+	if err := syncCmd.Run(); err != nil {
+		return "", fmt.Errorf("uv sync failed in %s: %w", serverPath, err)
+	}
+
+	fmt.Printf("\nPython server installed at: %s\n\n", serverPath)
+	return serverPath, nil
 }
 
 // createDataDirectories creates all required Data/ subdirectories.
@@ -724,40 +834,52 @@ func generateSecret(n int) string {
 	return hex.EncodeToString(b)
 }
 
-// checkPythonBackend verifies the Python backend and uv are present.
-func checkPythonBackend(projectRoot string) {
-	fmt.Println("─── Checking prerequisites ───────────────────────────────────────")
-
+// checkPythonBackend verifies the Python backend and uv are present, then runs uv sync.
+// Returns an error if backend/ is missing, uv is not in PATH, or uv sync fails.
+func checkPythonBackend(projectRoot string) error {
 	// Check backend directory
 	backendDir := filepath.Join(projectRoot, "backend")
 	if _, err := os.Stat(backendDir); err != nil {
-		fmt.Println("  ✗ backend/ directory not found")
-		fmt.Println("    Download the full DevTrack release package (not just the binary).")
-	} else {
-		fmt.Println("  ✓ backend/ directory found")
+		fmt.Println("  ✗ backend/ directory not found at " + backendDir)
+		fmt.Println("    Run 'devtrack setup' to clone the Python server automatically.")
+		return fmt.Errorf("backend/ directory not found at %s", backendDir)
 	}
+	fmt.Println("  ✓ backend/ directory found")
 
 	// Check uv
 	if _, err := exec.LookPath("uv"); err != nil {
 		fmt.Println("  ✗ uv not found — Python dependency manager required")
 		fmt.Println("    Install uv: https://docs.astral.sh/uv/getting-started/installation/")
 		fmt.Println("    Or: curl -LsSf https://astral.sh/uv/install.sh | sh")
-	} else {
-		fmt.Println("  ✓ uv found")
+		return fmt.Errorf("uv not found in PATH — install from https://docs.astral.sh/uv/getting-started/installation/")
 	}
+	fmt.Println("  ✓ uv found")
 
-	// Check Python
+	// Check Python (non-fatal — uv can manage its own Python interpreter)
 	pythonBin := "python3"
 	if runtime.GOOS == "windows" {
 		pythonBin = "python"
 	}
 	if _, err := exec.LookPath(pythonBin); err != nil {
-		fmt.Printf("  ✗ %s not found — Python 3.9+ required\n", pythonBin)
+		fmt.Printf("  ~ %s not in PATH (uv will use its managed interpreter)\n", pythonBin)
 	} else {
 		fmt.Printf("  ✓ %s found\n", pythonBin)
 	}
 
+	// Run uv sync to install/update Python dependencies
 	fmt.Println()
+	fmt.Println("  Installing Python dependencies (uv sync)...")
+	syncCmd := exec.Command("uv", "sync")
+	syncCmd.Dir = projectRoot
+	syncCmd.Stdout = os.Stdout
+	syncCmd.Stderr = os.Stderr
+	if err := syncCmd.Run(); err != nil {
+		return fmt.Errorf("uv sync failed: %w", err)
+	}
+	fmt.Println("  ✓ Python dependencies installed")
+
+	fmt.Println()
+	return nil
 }
 
 // installShellIntegration appends the devtrack eval line to the active shell RC file.
@@ -951,17 +1073,15 @@ func printSetupComplete(projectRoot string, mode DevTrackMode) {
 	if mode == ModeManaged {
 		fmt.Println("Next steps:")
 		fmt.Println()
-		fmt.Printf("  1. Install Python dependencies:\n")
-		fmt.Printf("       cd %s && uv sync\n", projectRoot)
-		fmt.Println()
-		fmt.Println("  2. Start DevTrack (env auto-loaded — no sourcing needed):")
+		fmt.Println("  1. Start DevTrack (env auto-loaded — no sourcing needed):")
 		fmt.Println("       devtrack start")
 		fmt.Println()
-		fmt.Println("  3. Check status:  devtrack status")
-		fmt.Println("  4. View logs:     devtrack logs")
-		fmt.Println("  5. Add workspace: devtrack workspace add <path>")
+		fmt.Println("  2. Check status:  devtrack status")
+		fmt.Println("  3. View logs:     devtrack logs")
+		fmt.Println("  4. Add workspace: devtrack workspace add <path>")
 		fmt.Println()
 		fmt.Println("Edit .env at any time to add integrations (GitHub, Azure, Jira, etc.)")
+		fmt.Printf("Python server installed at: %s\n", projectRoot)
 	} else {
 		fmt.Println("Next steps:")
 		fmt.Println("  1. Set DEVTRACK_SERVER_URL in .env to point at your Python server.")
