@@ -5265,9 +5265,7 @@ that with `schtasks` instead of the binary directly.
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: TASK-103 (setup flow must be final before docs describe it)
 **Branch**: `feat/TASK-107-docs-install`
-**Engineer status**: started — create docs/INSTALLATION.md from setup.go wizard; fix README git-sage commands and devtrack-server section
-
-**Engineer status**: started — create docs/INSTALLATION.md from setup.go flow; fix README git-sage commands and devtrack-server section
+**Engineer status**: **COMPLETE** — ready for PM review — 2026-06-30
 
 **Spec**: Documentation-only task — no Go or Python source changes.
 
@@ -5295,10 +5293,14 @@ Step-by-step fresh-install guide:
 already references `docs/INSTALLATION.md` — that file will now exist, so no code change needed.
 
 **Acceptance criteria**:
-- [ ] `docs/INSTALLATION.md` exists, describes the TASK-103 setup flow accurately
-- [ ] README git-sage commands show `devtrack git sage`, not Python module invocation
-- [ ] README `devtrack-server` binary/tarball section removed; replaced with accurate note
-- [ ] `server_config.go:214` reference to `docs/INSTALLATION.md` now resolves (file exists)
+- [x] `docs/INSTALLATION.md` exists, describes the TASK-103 setup flow accurately
+- [x] README git-sage commands show `devtrack git sage`, not Python module invocation
+- [x] README `devtrack-server` binary/tarball section removed; replaced with accurate note
+- [x] `server_config.go:214` reference to `docs/INSTALLATION.md` now resolves (file exists)
+
+**PR**: https://github.com/sraj0501/Devtrack_/pull/213
+
+**COMPLETE** — ready for PM review — 2026-06-30
 
 ---
 

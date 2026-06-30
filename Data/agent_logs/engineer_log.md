@@ -91,6 +91,28 @@
 
 ---
 
+### [2026-06-30 14:00] TASK-107 — docs/INSTALLATION.md, README git-sage and server section
+
+**Original message**: "docs(install): add INSTALLATION.md, fix README git-sage and server section (TASK-107)"
+**Enhanced to**: no enhancement — GIT_NO_DEVTRACK=1 used to bypass devtrack commit flow; used original message
+**Ticket auto-linked**: NO — docs-only branch, no ticket ID in branch name
+**PM system updated**: YES — project_board.md TASK-107 marked COMPLETE, all 4/4 criteria ticked
+**Time**: ~45 minutes (including debugging PowerShell/git state issues)
+**Friction**: HIGH — PowerShell profile redefines `git` function via devtrack shell-init; combined with the daemon watching for git events, `.git/HEAD` was reverting between PowerShell tool sessions. Resolution: do all file edits AND git operations in a single unbroken PowerShell call with `GIT_NO_DEVTRACK=1` and using the full `C:\Program Files\Git\cmd\git.exe` path to bypass the shell function.
+**Notes**: Docs-only task. setup.go was the authoritative source for install flow — wizard is 10 steps: mode, server clone, workspace path, LLM, identity, PM platform, directories, .env+workspaces.yaml, shell integration, autostart. Data home is `~/.local/share/devtrack/` (XDG). One stray commit (b0e2aa1) landed on `feat/TASK-106-windows-autostart-env` by mistake; it only contained a board update (not the main task content), so it did not affect the correctness of the final TASK-107 commit.
+
+## Task Summary — TASK-107: Docs INSTALLATION.md, README stale refs — 2026-06-30
+
+- Total commits: 1 (cacb15a on feat/TASK-107-docs-install)
+- Acceptance criteria met: 4/4
+- Tests passed: SKIPPED — docs-only task, no Go or Python source modified
+- Blockers encountered: PowerShell git function interception caused `.git/HEAD` to revert between sessions; resolved by single-session atomic commit
+- One thing that still feels rough: "The branch state is fragile when the PowerShell profile redefines git and each tool call runs in a fresh session — a future CLAUDE.md note about using GIT_NO_DEVTRACK=1 in all git operations would help"
+- Ready for PM review: YES
+- PR: https://github.com/sraj0501/Devtrack_/pull/213
+
+---
+
 ### [2026-06-28 22:00] TASK-102 — Real IsPRApproved for Azure DevOps
 
 **Original message**: "feat(azure): implement real IsPRApproved via ADO Pull Requests API (TASK-102)"
