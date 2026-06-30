@@ -5143,8 +5143,10 @@ add it if not (reads `DEVTRACK_HOME` env var, falls back to `os.UserHomeDir()+"/
 ### TASK-105 — `devtrack upgrade`: also pull + sync the Python server
 **Priority**: CRITICAL
 **Phase**: Post-arc (Managed Install epic)
+**Assigned to**: engineer
 **Depends on**: TASK-103 (server dir established)
 **Branch**: `feat/TASK-105-upgrade-server`
+**Status**: IN PROGRESS
 
 **Spec**:
 
@@ -5182,10 +5184,15 @@ if err := upgradeServer(config.GetDevtrackHome()); err != nil {
 ```
 
 **Acceptance criteria**:
-- [ ] `devtrack upgrade` runs `git pull --ff-only` + `uv sync` on `$DEVTRACK_HOME/server/` when present
-- [ ] When server dir absent: prints skip message, upgrade continues cleanly
-- [ ] Server upgrade failure is a warning — binary upgrade still succeeds
-- [ ] `go build ./...` and `go vet ./...` pass clean
+- [x] `devtrack upgrade` runs `git pull --ff-only` + `uv sync` on `$DEVTRACK_HOME/server/` when present
+- [x] When server dir absent: prints skip message, upgrade continues cleanly
+- [x] Server upgrade failure is a warning — binary upgrade still succeeds
+- [x] `go build ./...` and `go vet ./...` pass clean
+
+**Engineer status**: 4/4 criteria done — last commit: pending — 2026-06-30 12:50
+**PR**: pending
+
+**COMPLETE** — ready for PM review — 2026-06-30 12:50
 
 ---
 
