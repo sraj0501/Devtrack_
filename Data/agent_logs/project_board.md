@@ -5239,10 +5239,7 @@ that with `schtasks` instead of the binary directly.
 - [x] `go build ./...` and `go vet ./...` pass clean (Windows cross-compile: `GOOS=windows go build`)
 
 **COMPLETE** — ready for PM review — 2026-06-30 13:00
-<<<<<<< Updated upstream
-=======
 **PR**: https://github.com/sraj0501/Devtrack_/pull/212
->>>>>>> Stashed changes
 
 ---
 
