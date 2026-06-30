@@ -5097,6 +5097,8 @@ const devtrackServerBranch  = "main"
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: TASK-103 (standard install path established)
 **Branch**: `feat/TASK-104-daemon-server-fallback`
+**Assigned to**: engineer
+**Engineer status**: started — replace bare python3 fallback with uv run + standard install path check
 
 **Spec**:
 
@@ -5194,6 +5196,8 @@ if err := upgradeServer(config.GetDevtrackHome()); err != nil {
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: none (independent)
 **Branch**: `feat/TASK-106-windows-autostart-env`
+**Status**: IN PROGRESS
+**Assigned to**: engineer
 
 **Spec**:
 
@@ -5225,10 +5229,14 @@ that with `schtasks` instead of the binary directly.
 4. Print path of bat file so user can inspect it
 
 **Acceptance criteria**:
-- [ ] `devtrack autostart-install` on Windows writes `devtrack-autostart.bat` with all captured env vars
-- [ ] `schtasks` task runs the bat file (not raw binary)
-- [ ] Re-running is idempotent: rewrites bat + `/F` force-recreates task
-- [ ] `go build ./...` and `go vet ./...` pass clean (Windows cross-compile: `GOOS=windows go build`)
+- [x] `devtrack autostart-install` on Windows writes `devtrack-autostart.bat` with all captured env vars
+- [x] `schtasks` task runs the bat file (not raw binary)
+- [x] Re-running is idempotent: rewrites bat + `/F` force-recreates task
+- [x] `go build ./...` and `go vet ./...` pass clean (Windows cross-compile: `GOOS=windows go build`)
+
+**Engineer status**: 4/4 criteria done — last commit: pending — 2026-06-30 13:00
+
+**COMPLETE** — ready for PM review — 2026-06-30 13:00
 
 ---
 

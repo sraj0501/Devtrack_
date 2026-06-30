@@ -749,11 +749,55 @@ func (cli *CLI) handleAutostartStatus() error {
 	return nil
 }
 
+// buildWindowsBat generates a Windows .bat file that sets all devtrack env vars
+// and then launches the daemon. Mirrors buildLaunchdPlist / buildSystemdService.
+// All values that contain % are escaped as %% so cmd.exe does not expand them.
+func buildWindowsBat(binaryPath string) string {
+	var b strings.Builder
+	b.WriteString("@echo off\r\n")
+	for _, kv := range os.Environ() {
+		parts := strings.SplitN(kv, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key, val := parts[0], parts[1]
+		if !shouldCaptureForLaunchd(key) {
+			continue
+		}
+		// Escape % so cmd.exe does not try to expand variable references.
+		escaped := strings.ReplaceAll(val, "%", "%%")
+		fmt.Fprintf(&b, "SET %s=%s\r\n", key, escaped)
+	}
+	fmt.Fprintf(&b, "%q start\r\n", binaryPath)
+	return b.String()
+}
+
+// writeWindowsBat writes the devtrack-autostart.bat file next to the binary
+// and returns its path. The bat file is used by schtasks as the task action
+// so that env vars are set before the daemon starts.
+func writeWindowsBat(binaryPath string) (string, error) {
+	batPath := filepath.Join(filepath.Dir(binaryPath), "devtrack-autostart.bat")
+	content := buildWindowsBat(binaryPath)
+	if err := os.WriteFile(batPath, []byte(content), 0644); err != nil {
+		return "", fmt.Errorf("failed to write bat file %s: %w", batPath, err)
+	}
+	return batPath, nil
+}
+
 // installWindowsTask creates a Task Scheduler task that runs 'devtrack start' at logon.
+// It writes a .bat file alongside the binary that bakes in all current devtrack env vars,
+// then registers that bat file with schtasks (mirrors the launchd/systemd env-var pattern).
 func installWindowsTask(binaryPath string) error {
+	batPath, err := writeWindowsBat(binaryPath)
+	if err != nil {
+		return err
+	}
+
+	// Run the bat through cmd.exe /c so the SET lines are interpreted correctly.
+	taskAction := fmt.Sprintf(`cmd.exe /c "%s"`, batPath)
 	cmd := exec.Command("schtasks", "/Create", "/F",
 		"/TN", "DevTrack",
-		"/TR", fmt.Sprintf(`"%s" start`, binaryPath),
+		"/TR", taskAction,
 		"/SC", "ONLOGON",
 		"/RL", "HIGHEST",
 	)
@@ -762,6 +806,9 @@ func installWindowsTask(binaryPath string) error {
 		return fmt.Errorf("schtasks create failed: %s", strings.TrimSpace(string(out)))
 	}
 	fmt.Println("DevTrack will now start automatically at logon.")
+	fmt.Printf("  Bat:     %s\n", batPath)
+	fmt.Printf("  Binary:  %s\n", binaryPath)
+	fmt.Println()
 	fmt.Println("Tip: re-run 'devtrack autostart-install' after changing env vars.")
 	fmt.Println("Use 'devtrack status' to verify it is running.")
 	fmt.Println("Use 'devtrack autostart-uninstall' to remove auto-start.")
