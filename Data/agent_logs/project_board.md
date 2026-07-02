@@ -1,10 +1,13 @@
 ﻿# DevTrack Project Board
 
 _Last updated: 2026-07-02 by PM — EPIC: Managed Install (TASK-103–108) COMPLETE. All 5 PRs
-(#210–214) merged to dev; TASK-108 audit (two passes) found + fixed 6 path/doc-consistency bugs
-across setup.go, daemon.go, upgrade.go, cli_autostart.go, INSTALLATION.md, and README.md — all
+(#210–214) merged to dev; TASK-108 audit (three passes: static, static, then a real live end-to-end
+run) found + fixed 10 bugs total. First two passes (6 bugs) were path/doc-consistency issues
 stemming from PROJECT_ROOT's meaning changing from "Go client dir" to "cloned Python server dir"
-without every downstream consumer being updated to match. See TASK-108 audit findings for detail._
+without every downstream consumer being updated. Third pass actually ran `devtrack setup` →
+`start` → `stop` against a sandboxed fake home and found 3 more bugs no static read would have
+caught, including one that silently broke the pending-actions queue on every fresh install. See
+TASK-108 audit findings for detail._
 _Next DevTrack task ID: TASK-109_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -5430,7 +5433,71 @@ still recommended before calling the epic fully proven in production — the aut
 in particular (finding 10) is exactly the kind of defect that only a real launchd/systemd run would
 have surfaced, and was found this time only because it was asked for by name.
 
-**COMPLETE** — 2026-07-02 (audit + bugfix, committed directly to `dev`; second pass same day)
+**Third pass — live end-to-end run (2026-07-02).** User asked to actually check managed mode
+rather than re-read code again. Built the binary fresh, ran it against a fully sandboxed fake
+`HOME`/`USERPROFILE` (so it could never touch the real `~/.local/share/devtrack/` or
+`~/.devtrack/devtrack.conf`), scripted the interactive `devtrack setup` wizard's stdin answers,
+and actually exercised the real sparse-clone + `uv sync` + `devtrack start` + `devtrack stop`
+cycle. This surfaced three bugs that no static read caught, because each only manifests from the
+*interaction* of two components across process/timing boundaries:
+
+13. **BUG FOUND AND FIXED — shared-stdin-reader corruption in `offerGitInit()`.** First live run:
+    scripted answers landed on the wrong prompts starting partway through the wizard. Root cause:
+    `offerGitInit(path)` created its own `bufio.NewReader(os.Stdin)` even though `RunSetup()`
+    already had one actively buffering the same `os.Stdin` across the whole wizard. Two
+    independent `bufio.Reader`s over one file descriptor each do their own internal buffering, so
+    whichever reads first can silently consume input the other expected — here it swallowed the
+    workspace-path answer and shifted every subsequent prompt by one line. This isn't just a test
+    artifact: any real user whose terminal delivers input faster than prompts consume it (piped
+    setup scripts, fast typing, paste) could hit the same misalignment. Fixed by changing
+    `offerGitInit`'s signature to accept the caller's `*bufio.Reader` (`cli_workspace.go`,
+    `setup.go`); `setup.go` passes its existing wizard reader, `cli_workspace.go`'s
+    `Add()` (which has no pre-existing reader) constructs one locally. Re-ran the wizard after the
+    fix with a real git-repo workspace path — clean, no misalignment.
+14. **BUG FOUND AND FIXED — TLS cert generated *after* the queue executor pins its trust store,
+    permanently breaking the pending-actions queue on every fresh install.** `Daemon.Start()`
+    called `d.monitor.Start(d.ctx)` (which starts the queue executor) *before*
+    `d.generateTLSCert()`. `internal/infra/integrated.go:158` constructs the queue executor's
+    `trigger.HTTPTriggerClient` once and holds it for the daemon's lifetime;
+    `NewHTTPTriggerClient()` pins the self-signed cert as the client's trusted root **at
+    construction time** by reading it off disk. On a fresh install with no pre-existing cert, that
+    read fails and the client permanently falls back to system CA roots — which will never trust a
+    locally-generated self-signed cert. Live daemon.log confirmed it: `queue_executor: GET
+    /queue/pending failed: ... x509: certificate signed by unknown authority`, recurring on every
+    15s poll for the rest of the process's life. This is the literal flagship trust/differentiator
+    feature (`PRODUCT_BIBLE.md` / `NEXT_STEPS.md`'s "one reviewable staging queue for every
+    outbound action") silently dead on first run. Fixed by moving TLS cert generation before
+    `d.monitor.Start()` in `daemon.go:Start()`. Re-verified live: with a fresh cert and the fixed
+    binary, the same queue executor now gets a clean HTTPS connection (`Connected (latency: 4ms)`
+    in `devtrack status`) instead of the x509 error. Also bumped `waitForPythonHTTP`'s timeout from
+    10s to 30s in the same function — live cold-start (NLP parser, description enhancer, task
+    matcher init) measured ~14s, so every fresh install was printing a false-alarm "did not respond
+    within 10s" warning even though the server came up fine moments later.
+15. **BUG FOUND AND FIXED — `devtrack stop` orphans the Python webhook server on Windows.** Live
+    reproduction: after `devtrack stop` reported success, `python.exe` was still running and still
+    `LISTENING` on the webhook port (confirmed via `tasklist` + `netstat`). Root cause, two layers:
+    (a) the webhook server is spawned as `uv run --directory <root> python -m
+    backend.webhook_server` — on Windows this is a real parent/child pair (`uv.exe` → `python.exe`),
+    unlike POSIX where `uv run` typically execs into the target process; `Process.Kill()` on the
+    tracked `*exec.Cmd` only kills `uv.exe`, orphaning `python.exe`. (b) worse, the daemon's own
+    `Stop()` (where that kill lives) never even runs on the real `devtrack stop` path on Windows:
+    `KillDaemon()` calls `sendStopSignal()`, which on Windows is `process.Kill()`
+    (`TerminateProcess`) sent cross-process at the *daemon's* PID from the separate CLI invocation —
+    an unconditional external kill with no chance for the daemon to run its own cleanup. Fixed both
+    layers: added `KillProcessTree(pid)` (`process_windows.go` uses `taskkill /T /F /PID`;
+    `process_unix.go` is a plain `Kill()`, matching POSIX's exec-replace behavior) and wired it into
+    `Daemon.Stop()`, `restartWebhookServer()`, and — the one that actually matters for the real CLI
+    path — Windows' `sendStopSignal()`, which now kills the whole tree rooted at the daemon's PID
+    instead of just the daemon. Re-verified live: `devtrack stop` now leaves zero `python.exe`
+    processes and no `LISTENING` socket on the webhook port.
+
+All three fixes verified against the actual compiled binary (caught mid-audit that `go build ./...`
+does not update `devtrack.exe` — needed explicit `go build -o devtrack.exe .` — a stale binary
+briefly made fix #14/#15 look like they hadn't worked). Full cycle re-run clean after all fixes;
+`go build`, `go vet`, `go test ./...` all clean; scratch/sandbox artifacts removed.
+
+**COMPLETE** — 2026-07-02 (audit + bugfix, committed directly to `dev`; three passes same day —
+static, static, live end-to-end)
 
 ---
 

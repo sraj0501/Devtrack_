@@ -148,6 +148,22 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("failed to write PID file: %w", err)
 	}
 
+	// Generate TLS cert before starting monitoring or any Python subprocess.
+	// Must run before d.monitor.Start(): the queue executor constructs a
+	// long-lived trigger.HTTPTriggerClient that pins the cert once, at
+	// construction time (internal/infra/integrated.go). On a fresh install
+	// with no pre-existing cert, starting the monitor first meant that
+	// client permanently fell back to system CA roots — which never trust
+	// a self-signed cert — breaking the pending-actions queue for the
+	// entire lifetime of every first-ever daemon run.
+	if config.IsTLSEnabled() {
+		if err := d.generateTLSCert(); err != nil {
+			log.Printf("Warning: TLS cert generation failed (%v) — disabling TLS", err)
+			// Force TLS off so subsequent HTTP client builds don't fail
+			os.Setenv("DEVTRACK_TLS", "false")
+		}
+	}
+
 	// Start integrated monitoring (passes d.ctx so the queue executor exits cleanly on stop)
 	if err := d.monitor.Start(d.ctx); err != nil {
 		d.cleanup()
@@ -157,22 +173,16 @@ func (d *Daemon) Start() error {
 	// Watch workspaces.yaml for changes — triggers hot-reload automatically
 	d.startWorkspacesFileWatcher()
 
-	// Generate TLS cert before starting any Python subprocess
-	if config.IsTLSEnabled() {
-		if err := d.generateTLSCert(); err != nil {
-			log.Printf("Warning: TLS cert generation failed (%v) — disabling TLS", err)
-			// Force TLS off so subsequent HTTP client builds don't fail
-			os.Setenv("DEVTRACK_TLS", "false")
-		}
-	}
-
 	// Start webhook server (primary Python process in CS-1)
 	if err := d.startWebhookServer(); err != nil {
 		log.Printf("Warning: Failed to start webhook server: %v", err)
 		log.Println("HTTP trigger functionality will be unavailable")
 	} else {
-		// Wait up to 10 s for the Python HTTP server to become healthy
-		d.waitForPythonHTTP(10)
+		// Wait up to 30 s for the Python HTTP server to become healthy. A cold
+		// start (NLP parser, description enhancer, task matcher init) measured
+		// ~14s on a fresh managed install; 10s produced a false-alarm warning
+		// on every first run even though the server came up fine moments later.
+		d.waitForPythonHTTP(30)
 	}
 	if config.IsExternalServer() {
 		log.Printf("External mode: AI triggers will be sent to %s (set DEVTRACK_SERVER_URL to target another host)", config.GetServerURL())
@@ -244,10 +254,11 @@ func (d *Daemon) Stop() error {
 		d.telegramBot.Stop()
 	}
 
-	// Stop webhook server
+	// Stop webhook server (and its Python child on Windows, where "uv run"
+	// does not exec-replace itself — see KillProcessTree).
 	if d.webhookServer != nil {
 		log.Println("Stopping webhook server...")
-		if err := d.webhookServer.Process.Kill(); err != nil {
+		if err := KillProcessTree(d.webhookServer.Process.Pid); err != nil {
 			log.Printf("Warning: error stopping webhook server: %v", err)
 		}
 	}
@@ -555,7 +566,7 @@ func (d *Daemon) startWebhookServer() error {
 // restartWebhookServer restarts the webhook server process
 func (d *Daemon) restartWebhookServer() error {
 	if d.webhookServer != nil && d.webhookServer.Process != nil {
-		d.webhookServer.Process.Kill()
+		KillProcessTree(d.webhookServer.Process.Pid)
 		d.webhookServer.Process.Wait()
 	}
 

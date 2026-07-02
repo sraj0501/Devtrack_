@@ -12,8 +12,18 @@ import (
 
 // sendStopSignal terminates the target process on Windows.
 // SIGTERM is not sendable to other processes on Windows; Kill() (TerminateProcess) is equivalent.
+//
+// This is invoked cross-process by KillDaemon (e.g. `devtrack stop`, called
+// from a separate CLI invocation against the running daemon's PID file), so
+// it can never reach the daemon's own in-process Stop() / signal handlers —
+// TerminateProcess kills the target immediately with no chance to run its
+// own cleanup. That means the daemon's webhook server (uv.exe, and its
+// python.exe child — see KillProcessTree) is never killed by the daemon
+// itself here; it would be orphaned unless we also kill the whole process
+// tree from this side. Verified live: after `devtrack stop`, python.exe
+// stayed running and LISTENING on the webhook port until this fix.
 func sendStopSignal(process *os.Process) error {
-	return process.Kill()
+	return KillProcessTree(process.Pid)
 }
 
 // SendReloadSignal is a no-op on Windows — SIGHUP is not supported.

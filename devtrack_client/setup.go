@@ -181,7 +181,7 @@ func RunSetup() error {
 	}
 	ws = expandHomePath(ws)
 	if !IsGitRepository(ws) {
-		if err := offerGitInit(ws); err != nil {
+		if err := offerGitInit(ws, reader); err != nil {
 			// User declined or init failed — warn and continue; they can fix it later.
 			fmt.Printf("  Note: %s is not a git repository. Update DEVTRACK_WORKSPACE in .env when ready.\n", ws)
 		}
