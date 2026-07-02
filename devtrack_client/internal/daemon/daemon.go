@@ -505,8 +505,13 @@ func (d *Daemon) startWebhookServer() error {
 		cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.webhook_server")
 		cmd.Dir = projectRoot
 	} else {
-		// Try standard managed install location (set up by 'devtrack setup')
-		devtrackHome := config.GetDevTrackDir()
+		// Try standard managed install location (set up by 'devtrack setup'):
+		// $XDG_DATA_HOME/devtrack/server/devtrack_server. Note this is the XDG
+		// data home, not DEVTRACK_HOME (a distinct, unrelated env var).
+		devtrackHome, homeErr := config.DevtrackDataHome()
+		if homeErr != nil {
+			return fmt.Errorf("could not determine DevTrack data home: %w", homeErr)
+		}
 		standardPath := filepath.Join(devtrackHome, "server", "devtrack_server")
 		if _, statErr := os.Stat(filepath.Join(standardPath, "backend")); statErr == nil {
 			projectRoot = standardPath

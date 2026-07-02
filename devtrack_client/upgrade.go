@@ -111,7 +111,12 @@ func RunUpgrade(checkOnly bool) error {
 	RunPendingMigrations()
 
 	fmt.Println()
-	if err := upgradeServer(GetDevTrackDir()); err != nil {
+	// Server lives under the XDG data home ($XDG_DATA_HOME/devtrack), not
+	// DEVTRACK_HOME (a distinct, unrelated env var) — must match setup.go's
+	// cloneAndInstallServer() and daemon.go's startWebhookServer() fallback.
+	if xdgHome, homeErr := devtrackDataHome(); homeErr != nil {
+		fmt.Printf("Warning: could not determine DevTrack data home: %v\n", homeErr)
+	} else if err := upgradeServer(xdgHome); err != nil {
 		fmt.Printf("Warning: Python server upgrade failed: %v\n", err)
 		fmt.Println("The binary was upgraded successfully. Run 'devtrack setup' to repair the server.")
 		// non-fatal — binary upgrade succeeded; continue to restart
