@@ -528,7 +528,10 @@ func generateEnvContent(cfg *SetupConfig) string {
 
 	b.WriteString("## PATHS\n")
 	b.WriteString("PROJECT_ROOT=" + cfg.ProjectRoot + "\n")
-	b.WriteString("DEVTRACK_HOME=" + filepath.Join(cfg.ProjectRoot, "devtrack_client") + "\n")
+	// DEVTRACK_HOME is the XDG data home ($XDG_DATA_HOME/devtrack), not a path
+	// derived from PROJECT_ROOT — in managed mode PROJECT_ROOT points at the
+	// cloned devtrack_server/ directory, which has no devtrack_client/ sibling.
+	b.WriteString("DEVTRACK_HOME=" + filepath.Dir(dataDir) + "\n")
 	b.WriteString("DEVTRACK_WORKSPACE=" + cfg.WorkspacePath + "\n")
 	b.WriteString("WORKSPACES_FILE=" + filepath.Join(filepath.Dir(dataDir), "workspaces.yaml") + "\n")
 	b.WriteString("DATA_DIR=" + dataDir + "\n")

@@ -315,7 +315,7 @@ The uninstall command is interactive by default and asks for confirmation at eac
 - Stops the running daemon (if active)
 - Removes the autostart entry (launchd on macOS, systemd on Linux, Task Scheduler on Windows)
 - Deletes the `Data/` directory (logs, DB, reports, PIDs)
-- Removes the `devtrack` (and `devtrack-server`) binary from `PATH`
+- Removes the `devtrack` binary from `PATH`
 
 Use `--dry-run` to preview every action before committing.
 
@@ -529,7 +529,7 @@ Key references in this repo:
 | Set up the Telegram bot | [Telegram](docs/TELEGRAM_BOT.md) |
 | Set up interactively (new users) | [`devtrack setup`](#interactive-setup-wizard-devtrack-setup) |
 | Run without Python (Lightweight mode) | [Deployment modes](#deployment-modes) |
-| Deploy only the Python backend on a server | [`devtrack-server`](#devtrack-server--server-side-management-cli) |
+| Deploy only the Python backend on a server | [Python AI server](#python-ai-server) |
 | Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Use AI agents for development workflow | [`.claude/agents/`](.claude/agents/) |

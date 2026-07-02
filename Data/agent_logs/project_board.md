@@ -1,8 +1,10 @@
 ﻿# DevTrack Project Board
 
 _Last updated: 2026-07-02 by PM — EPIC: Managed Install (TASK-103–108) COMPLETE. All 5 PRs
-(#210–214) merged to dev; TASK-108 audit found + fixed a path-consistency bug in TASK-104/105
-(daemon fallback + upgrade were resolving the wrong home dir for the cloned server)._
+(#210–214) merged to dev; TASK-108 audit (two passes) found + fixed 6 path/doc-consistency bugs
+across setup.go, daemon.go, upgrade.go, cli_autostart.go, INSTALLATION.md, and README.md — all
+stemming from PROJECT_ROOT's meaning changing from "Go client dir" to "cloned Python server dir"
+without every downstream consumer being updated to match. See TASK-108 audit findings for detail._
 _Next DevTrack task ID: TASK-109_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
@@ -5367,18 +5369,68 @@ check, rather than a live install run. Build/vet/test were run for real.
 4. **`daemon.go`**: bare `python3` fallback confirmed removed; fallback now returns a clear,
    actionable error when the standard path is absent.
 5. **`upgrade.go`**: `upgradeServer()` confirmed non-fatal on failure; binary upgrade still completes.
-6. **`cli_autostart.go`**: no path-resolution logic (only env-var capture by prefix) — not affected
-   by the bug above.
+6. **`cli_autostart.go`**: originally assessed as unaffected (env-var capture only) — **superseded,
+   see second-pass findings below**: `buildLaunchdPlist`/`buildSystemdService` did have a real
+   path-resolution bug.
 7. **`docs/INSTALLATION.md`** and **`README.md`**: describe the correct
    `~/.local/share/devtrack/server/devtrack_server/` path — consistent with the fix.
 8. **Hardcoded scan**: `sraj0501/Devtrack_` repo URL appears only in its constant definition
    (`devtrackServerRepoURL`); zero bare `python3` invocations remain in `daemon.go`.
 
-**Follow-up (not blocking)**: A live end-to-end run (`devtrack setup` → `devtrack start` → test
-commit → `devtrack upgrade`) on a clean machine is still recommended before calling the epic
-fully proven in production, but the code is now internally consistent and all unit/build checks pass.
+**Second-pass audit (recursive recheck, 2026-07-02)** — user asked to recheck for any remaining
+managed-server-deployment issues. Found and fixed four more:
 
-**COMPLETE** — 2026-07-02 (audit + bugfix, committed directly to `dev`)
+9. **BUG FOUND AND FIXED — `setup.go:531` `DEVTRACK_HOME` written to a nonexistent path.**
+   `generateEnvContent()` wrote `DEVTRACK_HOME=<PROJECT_ROOT>/devtrack_client`. Under the pre-epic
+   convention `PROJECT_ROOT` was the Go client's own directory, so appending `devtrack_client` was
+   already odd, but under TASK-103's new convention `PROJECT_ROOT` is the *cloned Python server's*
+   directory (e.g. `~/.local/share/devtrack/server/devtrack_server`) — so the written value pointed
+   at a directory that can never exist. `DEVTRACK_HOME` is a required env var (startup fails without
+   it) and is read by `internal/daemon/ping.go:dataDir()` for the telemetry-opt-out marker check.
+   Fixed to derive the XDG data home the same way the adjacent `WORKSPACES_FILE` line already does
+   (`filepath.Dir(dataDir)`), so it now always resolves to a real, existing directory.
+10. **BUG FOUND AND FIXED — `cli_autostart.go` launchd/systemd log paths pointed at a directory that
+    doesn't exist under the new `PROJECT_ROOT` semantics.** `buildLaunchdPlist()` and
+    `buildSystemdService()` built `StandardOutPath`/`StandardError=append:` as
+    `<PROJECT_ROOT>/Data/logs/...`. That was valid under the pre-EPIC-SPLIT layout (Python backend
+    nested inside `devtrack_client/`, which had its own `Data/` dir) but is not under the current
+    layout — `PROJECT_ROOT` now resolves to the Python server clone, which has no `Data/`
+    subdirectory (the real logs live at `LOG_DIR`, i.e. `~/.local/share/devtrack/data/logs`).
+    launchd/systemd both refuse or silently fail to redirect output to a missing directory, which
+    could prevent the daemon from starting under a fresh managed-install autostart. Fixed via a new
+    `resolveAutostartLogDir()` helper (prefers `LOG_DIR` env var, falls back to the old
+    `<projectRoot>/Data/logs` for dev-tree compatibility) used by both builders, plus `MkdirAll` calls
+    in `handleLaunchdInstall()`/`installSystemdService()` before the plist/unit file is written. This
+    is the same class of bug already anticipated once elsewhere in the codebase —
+    `internal/infra/git_monitor.go:279` has a pre-existing comment noting `DEVTRACK_HOME` "could be
+    empty" and deliberately uses `LOG_DIR` + `DevtrackDataHome()` fallback instead; the autostart
+    code just hadn't received the same treatment.
+11. **DOC BUG FOUND AND FIXED — `docs/INSTALLATION.md:70`.** Step 9 ("Shell integration") had
+    accidentally inlined the *entire* generated shell-wrapper function body as a single ~1500-char
+    run-on markdown line instead of a short description — unreadable and clearly a copy/paste
+    artifact from whatever agent wrote the file. Replaced with a one-line description matching the
+    style of the other 9 steps.
+12. **DOC BUG FOUND AND FIXED — `README.md` stale `devtrack-server` binary references.** Two
+    leftovers from before TASK-048 retired the old server-binary concept: (a) line 318 claimed
+    `devtrack uninstall` removes "the `devtrack` (and `devtrack-server`) binary" — no such binary
+    exists in the current release pipeline (5 cross-compiled `devtrack` targets only; the Python
+    server runs via `uv run`, never compiled); (b) the docs table linked to
+    `#devtrack-server--server-side-management-cli`, a section that no longer exists (removed by
+    TASK-107 without updating this link). Fixed both; the table now points at the real
+    `### Python AI server` section. Also tightened `uninstall.go`'s pre-delete summary line, which
+    undersold what `--keep-data` actually preserves (the whole XDG home, not just "db, logs,
+    reports" — it also holds the cloned Python server, venv, `.env`, and `workspaces.yaml`).
+
+Rebuilt (`go build ./...`), vetted (`go vet ./...`), and retested (`go test ./...`) clean after all
+four fixes.
+
+**Follow-up (not blocking)**: A live end-to-end run (`devtrack setup` → `devtrack start` → test
+commit → `devtrack upgrade` → `devtrack autostart-install` on macOS/Linux) on a clean machine is
+still recommended before calling the epic fully proven in production — the autostart log-path bug
+in particular (finding 10) is exactly the kind of defect that only a real launchd/systemd run would
+have surfaced, and was found this time only because it was asked for by name.
+
+**COMPLETE** — 2026-07-02 (audit + bugfix, committed directly to `dev`; second pass same day)
 
 ---
 

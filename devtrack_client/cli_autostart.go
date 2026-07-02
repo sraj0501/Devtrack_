@@ -95,6 +95,19 @@ func xmlEscape(s string) string {
 	return s
 }
 
+// resolveAutostartLogDir returns the directory to write launchd/systemd
+// wrapper logs into. Prefers LOG_DIR (set by 'devtrack setup', always a real
+// writable directory under the XDG data home) over <projectRoot>/Data/logs:
+// PROJECT_ROOT now points at the cloned Python server directory (managed
+// install), which has no Data/ subdirectory of its own — only the pre-split
+// dev-tree layout did.
+func resolveAutostartLogDir(projectRoot string) string {
+	if logDir := os.Getenv("LOG_DIR"); logDir != "" {
+		return logDir
+	}
+	return filepath.Join(projectRoot, "Data", "logs")
+}
+
 // buildLaunchdPlist generates a launchd plist that embeds all current devtrack
 // env vars so launchd can start the daemon with the correct environment.
 func buildLaunchdPlist(binaryPath, projectRoot string) string {
@@ -126,7 +139,7 @@ func buildLaunchdPlist(binaryPath, projectRoot string) string {
 			xmlEscape(e.key), xmlEscape(e.val))
 	}
 
-	logPath := filepath.Join(projectRoot, "Data", "logs", "launchd.log")
+	logPath := filepath.Join(resolveAutostartLogDir(projectRoot), "launchd.log")
 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -209,6 +222,13 @@ func (cli *CLI) handleLaunchdInstall() error {
 		binaryPath = os.Args[0]
 	}
 	binaryPath, _ = filepath.Abs(binaryPath)
+
+	// Ensure the log directory exists before launchd tries to redirect
+	// stdout/stderr into it — launchd fails silently (or refuses to start
+	// the job) if StandardOutPath's parent directory is missing.
+	if err := os.MkdirAll(resolveAutostartLogDir(projectRoot), 0755); err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
 
 	// Generate plist content with current env vars embedded.
 	plistContent := buildLaunchdPlist(binaryPath, projectRoot)
@@ -408,7 +428,7 @@ func buildSystemdService(binaryPath, projectRoot string) string {
 		}
 	}
 
-	logPath := filepath.Join(projectRoot, "Data", "logs", "systemd.log")
+	logPath := filepath.Join(resolveAutostartLogDir(projectRoot), "systemd.log")
 
 	return fmt.Sprintf(`[Unit]
 Description=DevTrack Developer Automation
@@ -431,6 +451,13 @@ WantedBy=default.target
 // All current devtrack env vars are embedded as Environment= lines so systemd
 // starts the daemon with the correct environment (environment-first config).
 func installSystemdService(projectRoot, binaryPath, _ string) error {
+	// Ensure the log directory exists before systemd tries to append to it —
+	// StandardOutput=append: requires the parent directory to already exist,
+	// otherwise the unit fails to start.
+	if err := os.MkdirAll(resolveAutostartLogDir(projectRoot), 0755); err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
+
 	svcContent := buildSystemdService(binaryPath, projectRoot)
 
 	homeDir, err := os.UserHomeDir()
