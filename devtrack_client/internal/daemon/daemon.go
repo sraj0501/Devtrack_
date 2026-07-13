@@ -2,12 +2,15 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -18,6 +21,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/health"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/infra"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/notify"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/reviewer"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/telegram"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
@@ -53,6 +57,7 @@ type Daemon struct {
 	telegramBot   *telegram.Bot    // interactive Telegram bot (Phase 3)
 	startTime     time.Time
 	healthMonitor *health.HealthMonitor
+	prLoopGuard   sync.Map // guards one PRFixLoop goroutine per "platform:prID"
 
 	// TicketSyncFns are set by package main (which owns the connector code).
 	// PushCachedFn reads from local SQLite and pushes to Python (no API call).
@@ -143,16 +148,14 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("failed to write PID file: %w", err)
 	}
 
-	// Start integrated monitoring
-	if err := d.monitor.Start(); err != nil {
-		d.cleanup()
-		return fmt.Errorf("failed to start monitoring: %w", err)
-	}
-
-	// Watch workspaces.yaml for changes — triggers hot-reload automatically
-	d.startWorkspacesFileWatcher()
-
-	// Generate TLS cert before starting any Python subprocess
+	// Generate TLS cert before starting monitoring or any Python subprocess.
+	// Must run before d.monitor.Start(): the queue executor constructs a
+	// long-lived trigger.HTTPTriggerClient that pins the cert once, at
+	// construction time (internal/infra/integrated.go). On a fresh install
+	// with no pre-existing cert, starting the monitor first meant that
+	// client permanently fell back to system CA roots — which never trust
+	// a self-signed cert — breaking the pending-actions queue for the
+	// entire lifetime of every first-ever daemon run.
 	if config.IsTLSEnabled() {
 		if err := d.generateTLSCert(); err != nil {
 			log.Printf("Warning: TLS cert generation failed (%v) — disabling TLS", err)
@@ -161,13 +164,25 @@ func (d *Daemon) Start() error {
 		}
 	}
 
+	// Start integrated monitoring (passes d.ctx so the queue executor exits cleanly on stop)
+	if err := d.monitor.Start(d.ctx); err != nil {
+		d.cleanup()
+		return fmt.Errorf("failed to start monitoring: %w", err)
+	}
+
+	// Watch workspaces.yaml for changes — triggers hot-reload automatically
+	d.startWorkspacesFileWatcher()
+
 	// Start webhook server (primary Python process in CS-1)
 	if err := d.startWebhookServer(); err != nil {
 		log.Printf("Warning: Failed to start webhook server: %v", err)
 		log.Println("HTTP trigger functionality will be unavailable")
 	} else {
-		// Wait up to 10 s for the Python HTTP server to become healthy
-		d.waitForPythonHTTP(10)
+		// Wait up to 30 s for the Python HTTP server to become healthy. A cold
+		// start (NLP parser, description enhancer, task matcher init) measured
+		// ~14s on a fresh managed install; 10s produced a false-alarm warning
+		// on every first run even though the server came up fine moments later.
+		d.waitForPythonHTTP(30)
 	}
 	if config.IsExternalServer() {
 		log.Printf("External mode: AI triggers will be sent to %s (set DEVTRACK_SERVER_URL to target another host)", config.GetServerURL())
@@ -239,10 +254,11 @@ func (d *Daemon) Stop() error {
 		d.telegramBot.Stop()
 	}
 
-	// Stop webhook server
+	// Stop webhook server (and its Python child on Windows, where "uv run"
+	// does not exec-replace itself — see KillProcessTree).
 	if d.webhookServer != nil {
 		log.Println("Stopping webhook server...")
-		if err := d.webhookServer.Process.Kill(); err != nil {
+		if err := KillProcessTree(d.webhookServer.Process.Pid); err != nil {
 			log.Printf("Warning: error stopping webhook server: %v", err)
 		}
 	}
@@ -500,7 +516,25 @@ func (d *Daemon) startWebhookServer() error {
 		cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.webhook_server")
 		cmd.Dir = projectRoot
 	} else {
-		cmd = exec.Command("python3", "-m", "backend.webhook_server")
+		// Try standard managed install location (set up by 'devtrack setup'):
+		// $XDG_DATA_HOME/devtrack/server/devtrack_server. Note this is the XDG
+		// data home, not DEVTRACK_HOME (a distinct, unrelated env var).
+		devtrackHome, homeErr := config.DevtrackDataHome()
+		if homeErr != nil {
+			return fmt.Errorf("could not determine DevTrack data home: %w", homeErr)
+		}
+		standardPath := filepath.Join(devtrackHome, "server", "devtrack_server")
+		if _, statErr := os.Stat(filepath.Join(standardPath, "backend")); statErr == nil {
+			projectRoot = standardPath
+			cmd = exec.Command("uv", "run", "--directory", projectRoot, "python", "-m", "backend.webhook_server")
+			cmd.Dir = projectRoot
+		} else {
+			return fmt.Errorf(
+				"managed mode: Python server not found at %s. "+
+					"Run 'devtrack setup' to install it, or set PROJECT_ROOT env var",
+				standardPath,
+			)
+		}
 	}
 
 	// Pass TLS cert paths so uvicorn starts with TLS enabled
@@ -532,7 +566,7 @@ func (d *Daemon) startWebhookServer() error {
 // restartWebhookServer restarts the webhook server process
 func (d *Daemon) restartWebhookServer() error {
 	if d.webhookServer != nil && d.webhookServer.Process != nil {
-		d.webhookServer.Process.Kill()
+		KillProcessTree(d.webhookServer.Process.Pid)
 		d.webhookServer.Process.Wait()
 	}
 
@@ -571,8 +605,152 @@ func (d *Daemon) startAlertPoller() {
 	)
 
 	poller := alerts.NewPoller(d.monitor.Database(), notifier)
+
+	// Wire Phase 7 review comment classification hook.
+	// After the poller detects new review comments, classify each one via
+	// the Python server and update the pr_review_comments row.
+	database := d.monitor.Database()
+	poller.SetReviewCommentHook(func(events []alerts.ReviewCommentEvent) {
+		tc := trigger.NewHTTPTriggerClient()
+		for _, ev := range events {
+			classification, reason, fixHint, err := tc.ClassifyReviewComment(
+				ev.CommentBody, ev.PRTitle, ev.Platform, ev.CommentURL,
+			)
+			if err != nil {
+				log.Printf("review: classify comment %s on PR %s: %v — defaulting to needs_human",
+					ev.CommentID, ev.PRID, err)
+				classification = "needs_human"
+				reason = "classification error"
+				fixHint = ""
+			}
+			if dbErr := database.UpdatePRReviewCommentStatus(
+				ev.Platform, ev.CommentID, "classified", classification, fixHint,
+			); dbErr != nil {
+				log.Printf("review: update comment status %s: %v", ev.CommentID, dbErr)
+			}
+			log.Printf("review: comment %s on PR %s classified as %s (%s)",
+				ev.CommentID, ev.PRID, classification, reason)
+			if classification == "auto_fixable" {
+				loopKey := ev.Platform + ":" + ev.PRID
+				if _, alreadyRunning := d.prLoopGuard.LoadOrStore(loopKey, true); !alreadyRunning {
+					go func(event alerts.ReviewCommentEvent) {
+						defer d.prLoopGuard.Delete(loopKey)
+						ag := reviewer.NewAgent(
+							reviewer.AgentBackend(config.GetReviewAgent()),
+							config.GetReviewAgentTimeoutSecs(),
+						)
+						loop := reviewer.NewPRFixLoop(database, ag, nil)
+						report := loop.Run(d.ctx, event.Platform, event.PRID, event.Workspace, "")
+
+						// Count fixes applied so far for this PR.
+						allComments, _ := database.ListPRReviewCommentsByPR(event.Platform, event.PRID)
+						fixesApplied := 0
+						for _, c := range allComments {
+							if c.Status == "fix_applied" {
+								fixesApplied++
+							}
+						}
+						prTitle := event.PRTitle
+						prURL := prURLFromCommentURL(event.CommentURL)
+
+						if report.Stuck {
+							// Stage pr_escalation pending action (Non-Negotiable #2: queue first).
+							payload, _ := json.Marshal(map[string]any{
+								"pr_title":       prTitle,
+								"pr_id":          event.PRID,
+								"blocker_reason": report.BlockerReason,
+								"comment_url":    report.CommentURL,
+								"fixes_applied":  fixesApplied,
+								"pr_url":         prURL,
+							})
+							_, _ = database.InsertPendingAction(db.PendingAction{
+								ActionType: "pr_escalation",
+								Target:     event.Platform + ":PR #" + event.PRID,
+								Platform:   event.Platform,
+								Workspace:  event.Workspace,
+								Confidence: 1.0,
+								Payload:    string(payload),
+								Status:     "pending",
+								ExpiresAt:  time.Now().Add(db.ConfidenceTimeout(1.0, false)),
+							})
+							// Channel parity: send Telegram immediately alongside queue insert.
+							if d.telegramBot != nil {
+								_ = d.telegramBot.SendPREscalation(prTitle, report.BlockerReason, report.CommentURL, prURL)
+							}
+							log.Printf("review: staged pr_escalation for PR %s — %s", event.PRID, report.BlockerReason)
+						} else {
+							// Stage pr_approved_notify pending action.
+							payload, _ := json.Marshal(map[string]any{
+								"pr_title":      prTitle,
+								"pr_id":         event.PRID,
+								"fixes_applied": fixesApplied,
+								"pr_url":        prURL,
+							})
+							_, _ = database.InsertPendingAction(db.PendingAction{
+								ActionType: "pr_approved_notify",
+								Target:     event.Platform + ":PR #" + event.PRID,
+								Platform:   event.Platform,
+								Workspace:  event.Workspace,
+								Confidence: 1.0,
+								Payload:    string(payload),
+								Status:     "pending",
+								ExpiresAt:  time.Now().Add(db.ConfidenceTimeout(1.0, false)),
+							})
+							// Channel parity: send Telegram immediately alongside queue insert.
+							if d.telegramBot != nil {
+								_ = d.telegramBot.SendPRApproved(prTitle, prURL)
+							}
+							log.Printf("review: staged pr_approved_notify for PR %s", event.PRID)
+						}
+					}(ev)
+				}
+			} else {
+				// needs_human: escalate immediately — no fix loop will run.
+				prTitle := ev.PRTitle
+				blockerReason := "comment needs human review"
+				commentURL := ev.CommentURL
+				prURL := prURLFromCommentURL(commentURL)
+
+				payload, _ := json.Marshal(map[string]any{
+					"pr_title":       prTitle,
+					"pr_id":          ev.PRID,
+					"blocker_reason": blockerReason,
+					"comment_url":    commentURL,
+					"fixes_applied":  0,
+					"pr_url":         prURL,
+				})
+				_, _ = database.InsertPendingAction(db.PendingAction{
+					ActionType: "pr_escalation",
+					Target:     ev.Platform + ":PR #" + ev.PRID,
+					Platform:   ev.Platform,
+					Workspace:  ev.Workspace,
+					Confidence: 1.0,
+					Payload:    string(payload),
+					Status:     "pending",
+					ExpiresAt:  time.Now().Add(db.ConfidenceTimeout(1.0, false)),
+				})
+				if d.telegramBot != nil {
+					_ = d.telegramBot.SendPREscalation(prTitle, blockerReason, commentURL, prURL)
+				}
+				// Update comment status to "escalated" so the review CLI shows it.
+				_ = database.UpdatePRReviewCommentStatus(ev.Platform, ev.CommentID, "escalated", classification, fixHint)
+				log.Printf("review: staged pr_escalation (needs_human) for PR %s comment %s", ev.PRID, ev.CommentID)
+			}
+		}
+	})
+
 	poller.Start(d.ctx)
 	d.alertPoller = poller
+}
+
+// prURLFromCommentURL derives the PR web URL from a review comment URL by stripping
+// the fragment identifier (the "#discussion_r..." suffix on GitHub comment URLs).
+// Returns the input unchanged when no fragment is present.
+func prURLFromCommentURL(commentURL string) string {
+	if i := strings.Index(commentURL, "#"); i >= 0 {
+		return commentURL[:i]
+	}
+	return commentURL
 }
 
 // startWorkspacesFileWatcher watches workspaces.yaml for changes and triggers

@@ -90,7 +90,7 @@ No feature is interface-specific.
 ### 5. All learning is local and private
 Training data — git history, PR comments, meeting transcripts, user corrections — is
 stored locally in SQLite and ChromaDB. Nothing leaves the machine for training purposes
-without explicit opt-in (`TEAMS_ENABLED`, `TEAMS_TRANSCRIPTS_ENABLED`). Local LLM
+without explicit opt-in (`TEAMS_ENABLED`, `RECORDINGS_ENABLED`). Local LLM
 (Ollama) is the default for all inference. Cloud LLM providers are optional upgrades.
 
 ### 6. Self-improvement is mandatory, not optional
@@ -357,19 +357,19 @@ channels, DMs, and meeting chats. Significantly richer than git history for info
 register and team-specific vocabulary.
 
 **Tier 4 — Opt-in, highest signal for tone:**
-Meeting transcripts and recordings from Teams. `TEAMS_TRANSCRIPTS_ENABLED=true`.
-Only the user's speaking turns are extracted using speaker-ID filtering from the
-transcript. Captures verbal communication patterns: how the developer frames uncertainty,
-their register in standups vs. all-hands, characteristic opening and closing phrases.
-The dialectic model uses verbal patterns to calibrate formality selection at generation
-time. Stored locally, never shared.
+Recording transcripts from any source (Teams, Zoom, Google Meet, Webex, etc.).
+`RECORDINGS_ENABLED=true`. Only the user's speaking turns are extracted using
+speaker-ID filtering from the transcript. Captures verbal communication patterns:
+how the developer frames uncertainty, their register in standups vs. all-hands,
+characteristic opening and closing phrases. The dialectic model uses verbal patterns
+to calibrate formality selection at generation time. Stored locally, never shared.
 
 ### Voice matching requirements
 - Commit message tone must match the developer's historical commit style exactly
 - Ticket comment formality must match how the developer writes in that specific platform
 - EOD report narrative must read as if the developer summarised their own day
 - PR fix commit messages must be indistinguishable from the developer's manual commits
-- Meeting-derived tone signals inform casual vs. formal register selection per context
+- Recording-derived tone signals inform casual vs. formal register selection per context
 - Generic AI-sounding phrases ("Certainly!", "I've updated...", "This commit...") are
   failure signals — if generated text sounds like an AI, the voice layer is broken
 
@@ -497,7 +497,7 @@ doing anything. Report reads like they wrote it.
 ### Phase 5 — Voice training, low friction
 Auto-seed ChromaDB from git commit history on first start (Tier 0). Background sync
 of PR and issue comments via existing PM tokens (Tier 1). `devtrack voice add` for
-manual examples (Tier 2). Teams messages as opt-in Tier 3. Meeting transcripts as
+manual examples (Tier 2). Teams messages as opt-in Tier 3. Recording transcripts as
 opt-in Tier 4. `devtrack voice status` shows training coverage and confidence.
 The dialectic reasoning model begins from Tier 0 — first start produces the first
 inferred profile with zero developer action.
@@ -613,4 +613,5 @@ to be reworked, not patched.
 | 2026-06-10 | Learning system: dialectic user modeling pattern (inspired by Honcho/Hermes Agent); voice layer: persona model pattern (inspired by Nous Hermes); profile as mirror not mask | Shashank Raj + Claude |
 | 2026-06-10 | Layer 3: channel parity rule for corrections — approve/reject/edit must exist on at least one non-TUI channel. Justification: the TUI-optional principle (non-negotiables #4, #12) is only enforceable if corrections are never TUI-exclusive. | Shashank Raj + Claude |
 | 2026-06-14 | Second brain positioning added to Vision. Non-negotiable #13: client is sole interface to all server capabilities (rolling capability audit). Phase 1 expanded to include TUI confidence layer (merged former Phase 7) — adoption gate: pending queue and TUI ship together. Phases renumbered: old Phase 7 removed, old Phase 8 → Phase 7, new Phase 8 = MCP server + headless integration. | Shashank Raj + Claude |
+| 2026-06-18 | Tier 4 terminology: "Teams meeting transcripts" → "Recording transcripts from any source (Teams, Zoom, Google Meet, Webex, etc.)". Env var `TEAMS_TRANSCRIPTS_ENABLED` → `RECORDINGS_ENABLED`. Voice matching requirement updated accordingly. Rationale: Tier 4 must be source-agnostic; "TEAMS" implies MS Teams exclusivity which is not the intent. | Shashank Raj + Claude |
 

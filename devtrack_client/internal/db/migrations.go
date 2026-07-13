@@ -94,6 +94,256 @@ var allMigrations = []Migration{
 			return err
 		},
 	},
+	{
+		ID:          "006-create-pending-actions",
+		Description: "Create pending_actions table and indexes for the Phase 1 approval queue",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS pending_actions (
+					id          INTEGER PRIMARY KEY AUTOINCREMENT,
+					action_type TEXT    NOT NULL,
+					target      TEXT    NOT NULL,
+					platform    TEXT    NOT NULL,
+					workspace   TEXT    NOT NULL,
+					payload     TEXT    NOT NULL,
+					confidence  REAL    NOT NULL,
+					status      TEXT    NOT NULL DEFAULT 'pending',
+					expires_at  DATETIME NOT NULL,
+					created_at  DATETIME NOT NULL DEFAULT (datetime('now')),
+					acted_at    DATETIME,
+					acted_by    TEXT,
+					error       TEXT
+				);
+				CREATE INDEX IF NOT EXISTS idx_pending_actions_status ON pending_actions(status);
+				CREATE INDEX IF NOT EXISTS idx_pending_actions_expires ON pending_actions(expires_at);
+			`)
+			return err
+		},
+	},
+	{
+		ID:          "007-add-ticket-id-to-triggers",
+		Description: "Add ticket_id column to triggers table for Phase 2 ticket extraction",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			var count int
+			if err := database.db.QueryRow(
+				`SELECT COUNT(*) FROM pragma_table_info('triggers') WHERE name='ticket_id'`,
+			).Scan(&count); err != nil {
+				return fmt.Errorf("check ticket_id column: %w", err)
+			}
+			if count > 0 {
+				return nil // already present — idempotent no-op
+			}
+
+			_, err = database.db.Exec(`ALTER TABLE triggers ADD COLUMN ticket_id TEXT DEFAULT ''`)
+			return err
+		},
+	},
+	{
+		ID:          "008-create-inferences-fts5",
+		Description: "Create inferences table, FTS5 virtual table, and sync triggers for Phase 6 dialectic self-improvement",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS inferences (
+					id           INTEGER PRIMARY KEY AUTOINCREMENT,
+					context_type TEXT    NOT NULL,
+					subject      TEXT    NOT NULL,
+					inference    TEXT    NOT NULL,
+					evidence     TEXT    NOT NULL,
+					confidence   REAL    NOT NULL DEFAULT 0.5,
+					source       TEXT    NOT NULL DEFAULT 'hermes3',
+					created_at   DATETIME NOT NULL DEFAULT (datetime('now')),
+					updated_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+				);
+			`)
+			if err != nil {
+				return fmt.Errorf("create inferences table: %w", err)
+			}
+
+			// Check if FTS5 virtual table already exists before creating it.
+			// Use sqlite_master check for safe cross-version idempotency.
+			var ftsCount int
+			if err := database.db.QueryRow(
+				`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='inferences_fts'`,
+			).Scan(&ftsCount); err != nil {
+				return fmt.Errorf("check inferences_fts: %w", err)
+			}
+			if ftsCount == 0 {
+				_, err = database.db.Exec(`
+					CREATE VIRTUAL TABLE inferences_fts USING fts5(
+						context_type,
+						subject,
+						inference,
+						content='inferences',
+						content_rowid='id'
+					);
+				`)
+				if err != nil {
+					return fmt.Errorf("create inferences_fts virtual table: %w", err)
+				}
+			}
+
+			// Create sync triggers for FTS5 (idempotent via IF NOT EXISTS).
+			for _, trigDDL := range []string{
+				`CREATE TRIGGER IF NOT EXISTS inferences_ai AFTER INSERT ON inferences BEGIN
+					INSERT INTO inferences_fts(rowid, context_type, subject, inference)
+					VALUES (new.id, new.context_type, new.subject, new.inference);
+				END;`,
+				`CREATE TRIGGER IF NOT EXISTS inferences_au AFTER UPDATE ON inferences BEGIN
+					INSERT INTO inferences_fts(inferences_fts, rowid, context_type, subject, inference)
+					VALUES('delete', old.id, old.context_type, old.subject, old.inference);
+					INSERT INTO inferences_fts(rowid, context_type, subject, inference)
+					VALUES (new.id, new.context_type, new.subject, new.inference);
+				END;`,
+				`CREATE TRIGGER IF NOT EXISTS inferences_ad AFTER DELETE ON inferences BEGIN
+					INSERT INTO inferences_fts(inferences_fts, rowid, context_type, subject, inference)
+					VALUES('delete', old.id, old.context_type, old.subject, old.inference);
+				END;`,
+			} {
+				if _, err := database.db.Exec(trigDDL); err != nil {
+					return fmt.Errorf("create inferences trigger: %w", err)
+				}
+			}
+
+			return nil
+		},
+	},
+	{
+		ID:          "009-create-corrections",
+		Description: "Create corrections table for Phase 6 developer feedback on inferences",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS corrections (
+					id            INTEGER PRIMARY KEY AUTOINCREMENT,
+					inference_id  INTEGER NOT NULL REFERENCES inferences(id),
+					correction    TEXT    NOT NULL,
+					flagged_from  TEXT    NOT NULL DEFAULT 'tui',
+					weight        REAL    NOT NULL DEFAULT 2.0,
+					created_at    DATETIME NOT NULL DEFAULT (datetime('now'))
+				);
+				CREATE INDEX IF NOT EXISTS idx_corrections_inference ON corrections(inference_id);
+			`)
+			return err
+		},
+	},
+	{
+		ID:          "010-create-confidence-thresholds",
+		Description: "Create confidence_thresholds table for Phase 6 adaptive auto-approve thresholds",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS confidence_thresholds (
+					id            INTEGER PRIMARY KEY AUTOINCREMENT,
+					action_type   TEXT    NOT NULL,
+					workspace     TEXT    NOT NULL DEFAULT '',
+					threshold     REAL    NOT NULL DEFAULT 0.70,
+					approvals     INTEGER NOT NULL DEFAULT 0,
+					rejections    INTEGER NOT NULL DEFAULT 0,
+					last_updated  DATETIME NOT NULL DEFAULT (datetime('now'))
+				);
+				CREATE UNIQUE INDEX IF NOT EXISTS idx_thresholds_type_ws
+					ON confidence_thresholds(action_type, workspace);
+			`)
+			return err
+		},
+	},
+	{
+		ID:          "011-create-skills",
+		Description: "Create skills table for Phase 6 skill emergence detection",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS skills (
+					id             INTEGER PRIMARY KEY AUTOINCREMENT,
+					name           TEXT    NOT NULL UNIQUE,
+					description    TEXT    NOT NULL,
+					context_type   TEXT    NOT NULL,
+					evidence_count INTEGER NOT NULL DEFAULT 0,
+					promoted_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+					last_seen_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+				);
+			`)
+			return err
+		},
+	},
+	{
+		ID:          "012-create-pr-review-comments",
+		Description: "Create pr_review_comments table and indexes for Phase 7 PR puppet master",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS pr_review_comments (
+					platform      TEXT     NOT NULL,
+					comment_id    TEXT     NOT NULL,
+					pr_id         TEXT     NOT NULL,
+					workspace     TEXT     NOT NULL,
+					status        TEXT     NOT NULL DEFAULT 'new',
+					comment_body  TEXT     NOT NULL DEFAULT '',
+					classified_as TEXT,
+					fix_hint      TEXT     NOT NULL DEFAULT '',
+					created_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+					updated_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+					PRIMARY KEY (platform, comment_id)
+				);
+				CREATE INDEX IF NOT EXISTS idx_pr_comments_status ON pr_review_comments(status);
+				CREATE INDEX IF NOT EXISTS idx_pr_comments_pr     ON pr_review_comments(pr_id, platform);
+			`)
+			return err
+		},
+	},
+	{
+		ID:          "013-add-attempt-count-to-pr-review-comments",
+		Description: "Add attempt_count column to pr_review_comments for fix loop retry tracking",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+
+			_, err = database.db.Exec(`
+				ALTER TABLE pr_review_comments ADD COLUMN attempt_count INTEGER NOT NULL DEFAULT 0;
+			`)
+			return err
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded

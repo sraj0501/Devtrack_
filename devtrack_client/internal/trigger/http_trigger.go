@@ -121,7 +121,7 @@ func (c *HTTPTriggerClient) SendHeartbeat(payload HeartbeatPayload) error {
 
 // SendWorkSessionStart notifies Python that a work session has started.
 func (c *HTTPTriggerClient) SendWorkSessionStart(sessionID int64, ticketRef string) error {
-	return c.post("/trigger/work_session_start", map[string]interface{}{
+	return c.post("/trigger/work_session_start", map[string]any{
 		"session_id": sessionID,
 		"ticket_ref": ticketRef,
 	})
@@ -129,7 +129,7 @@ func (c *HTTPTriggerClient) SendWorkSessionStart(sessionID int64, ticketRef stri
 
 // SendWorkSessionStop notifies Python that a work session has ended.
 func (c *HTTPTriggerClient) SendWorkSessionStop(sessionID int64) error {
-	return c.post("/trigger/work_session_stop", map[string]interface{}{
+	return c.post("/trigger/work_session_stop", map[string]any{
 		"session_id": sessionID,
 	})
 }
@@ -308,7 +308,7 @@ func (c *HTTPTriggerClient) SendBoardroomChat(req BoardroomChatRequest) (*Boardr
 }
 
 // postWithResult POSTs payload as JSON and decodes the response body into dest.
-func (c *HTTPTriggerClient) postWithResult(path string, payload interface{}, dest interface{}) error {
+func (c *HTTPTriggerClient) postWithResult(path string, payload any, dest any) error {
 	if c.serverURL == "" {
 		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
 	}
@@ -359,7 +359,7 @@ func (c *HTTPTriggerClient) postWithResult(path string, payload interface{}, des
 	return nil
 }
 
-func (c *HTTPTriggerClient) post(path string, payload interface{}) error {
+func (c *HTTPTriggerClient) post(path string, payload any) error {
 	if c.serverURL == "" {
 		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
 	}
@@ -393,7 +393,7 @@ func (c *HTTPTriggerClient) post(path string, payload interface{}) error {
 }
 
 // getWithResult performs a GET and decodes the JSON response body into dest.
-func (c *HTTPTriggerClient) getWithResult(path string, dest interface{}) error {
+func (c *HTTPTriggerClient) getWithResult(path string, dest any) error {
 	if c.serverURL == "" {
 		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
 	}
@@ -429,7 +429,7 @@ func (c *HTTPTriggerClient) getWithResult(path string, dest interface{}) error {
 }
 
 // deleteWithResult performs a DELETE and decodes the JSON response body into dest.
-func (c *HTTPTriggerClient) deleteWithResult(path string, dest interface{}) error {
+func (c *HTTPTriggerClient) deleteWithResult(path string, dest any) error {
 	if c.serverURL == "" {
 		return fmt.Errorf("DEVTRACK_SERVER_URL is not set")
 	}
@@ -523,7 +523,7 @@ type textOutput struct {
 }
 
 // postText POSTs payload and returns the "output" string from the response.
-func (c *HTTPTriggerClient) postText(path string, payload interface{}) (string, error) {
+func (c *HTTPTriggerClient) postText(path string, payload any) (string, error) {
 	var r textOutput
 	if err := c.postWithResult(path, payload, &r); err != nil {
 		return "", err
@@ -544,6 +544,55 @@ func (c *HTTPTriggerClient) getText(path string) (string, error) {
 		return r.Output, fmt.Errorf("server reported failure: %s", r.Output)
 	}
 	return r.Output, nil
+}
+
+// ── Pending actions queue methods ─────────────────────────────────────────────
+
+// QueuePendingAction is the minimal representation of a pending action returned
+// by GET /queue/pending. Only the fields the queue executor needs are included.
+type QueuePendingAction struct {
+	ID         int64  `json:"id"`
+	ActionType string `json:"action_type"`
+	Target     string `json:"target"`
+	ExpiresAt  string `json:"expires_at"` // ISO 8601 string from Python
+	Status     string `json:"status"`
+}
+
+// QueuePendingResponse is the shape of the GET /queue/pending response.
+type QueuePendingResponse struct {
+	Actions []QueuePendingAction `json:"actions"`
+}
+
+// QueueExecuteRequest is the body sent to POST /queue/execute.
+type QueueExecuteRequest struct {
+	ActionID int64 `json:"action_id"`
+}
+
+// QueueExecuteResponse is the shape of the POST /queue/execute response.
+type QueueExecuteResponse struct {
+	Status string `json:"status"` // "posted" | "failed"
+	Error  string `json:"error"`  // non-empty when status == "failed"
+}
+
+// GetQueuePending fetches all pending actions from GET /queue/pending.
+// The Python server returns actions with status='pending', ordered by expires_at ASC.
+func (c *HTTPTriggerClient) GetQueuePending() (*QueuePendingResponse, error) {
+	var resp QueuePendingResponse
+	if err := c.getWithResult("/queue/pending", &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ExecuteQueueAction calls POST /queue/execute for a single action.
+// Python looks up the action by ID, calls _execute_pm_action(), and marks it
+// posted or failed. The executor mirrors that status in the Go-side SQLite row.
+func (c *HTTPTriggerClient) ExecuteQueueAction(actionID int64) (*QueueExecuteResponse, error) {
+	var resp QueueExecuteResponse
+	if err := c.postWithResult("/queue/execute", QueueExecuteRequest{ActionID: actionID}, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 // ── Report methods ────────────────────────────────────────────────────────────
@@ -568,6 +617,31 @@ func (c *HTTPTriggerClient) ReportEOD(email, date string) (string, error) {
 	return c.postText("/reports/eod", map[string]string{"email": email, "date": date})
 }
 
+// EODReportResult carries the narrative text and the optional action_id returned
+// by /reports/eod when Phase 4 queue staging is available.
+type EODReportResult struct {
+	Narrative string // the generated narrative (always populated on success)
+	ActionID  *int64 // non-nil when an eod_report action was staged in pending_actions
+}
+
+// ReportEODFull calls POST /reports/eod and returns both the narrative and the
+// optional action_id from the queue staging step. Used by `devtrack eod generate`
+// so the CLI can print "Queued as action <id>" when staging succeeded.
+func (c *HTTPTriggerClient) ReportEODFull(email, date string) (*EODReportResult, error) {
+	var r struct {
+		Output   string  `json:"output"`
+		Success  bool    `json:"success"`
+		ActionID *int64  `json:"action_id"`
+	}
+	if err := c.postWithResult("/reports/eod", map[string]string{"email": email, "date": date}, &r); err != nil {
+		return nil, err
+	}
+	if !r.Success {
+		return nil, fmt.Errorf("server reported failure: %s", r.Output)
+	}
+	return &EODReportResult{Narrative: r.Output, ActionID: r.ActionID}, nil
+}
+
 // ── Learning methods ──────────────────────────────────────────────────────────
 
 // LearningStatusResponse mirrors the /learning/status JSON payload.
@@ -590,22 +664,22 @@ func (c *HTTPTriggerClient) LearningStatus() (*LearningStatusResponse, error) {
 
 // LearningEnable calls POST /learning/enable.
 func (c *HTTPTriggerClient) LearningEnable(days int) (string, error) {
-	return c.postText("/learning/enable", map[string]interface{}{"days": days})
+	return c.postText("/learning/enable", map[string]any{"days": days})
 }
 
 // LearningSync calls POST /learning/sync.
 func (c *HTTPTriggerClient) LearningSync(full bool) (string, error) {
-	return c.postText("/learning/sync", map[string]interface{}{"full": full})
+	return c.postText("/learning/sync", map[string]any{"full": full})
 }
 
 // LearningReset calls POST /learning/reset.
 func (c *HTTPTriggerClient) LearningReset() (string, error) {
-	return c.postText("/learning/reset", map[string]interface{}{})
+	return c.postText("/learning/reset", map[string]any{})
 }
 
 // LearningSetupCron calls POST /learning/cron/setup.
 func (c *HTTPTriggerClient) LearningSetupCron() (string, error) {
-	return c.postText("/learning/cron/setup", map[string]interface{}{})
+	return c.postText("/learning/cron/setup", map[string]any{})
 }
 
 // LearningRemoveCron calls DELETE /learning/cron.
@@ -637,7 +711,7 @@ func (c *HTTPTriggerClient) LearningTestResponse(text string) (string, error) {
 
 // LearningRevoke calls POST /learning/revoke.
 func (c *HTTPTriggerClient) LearningRevoke() (string, error) {
-	return c.postText("/learning/revoke", map[string]interface{}{})
+	return c.postText("/learning/revoke", map[string]any{})
 }
 
 // ── Auth methods ──────────────────────────────────────────────────────────────
@@ -686,7 +760,7 @@ func (c *HTTPTriggerClient) AuthLogout() (string, error) {
 		Success bool   `json:"success"`
 		Message string `json:"message"`
 	}
-	if err := c.postWithResult("/auth/logout", map[string]interface{}{}, &r); err != nil {
+	if err := c.postWithResult("/auth/logout", map[string]any{}, &r); err != nil {
 		return "", err
 	}
 	return r.Message, nil
@@ -745,6 +819,223 @@ func (c *HTTPTriggerClient) LicenseTerms() (string, error) {
 	return c.getText("/license/terms")
 }
 
+// ── Voice seeding methods (Phase 5) ──────────────────────────────────────────
+
+// VoiceSeedRequest is the payload for POST /voice/seed.
+type VoiceSeedRequest struct {
+	RepoPath    string `json:"repo_path"`
+	SinceMonths int    `json:"since_months"`
+	Force       bool   `json:"force"`
+}
+
+// VoiceSeedResponse is the response from POST /voice/seed.
+type VoiceSeedResponse struct {
+	Embedded int    `json:"embedded"`
+	Skipped  int    `json:"skipped"`
+	RepoPath string `json:"repo_path"`
+	Error    string `json:"error,omitempty"`
+}
+
+// VoiceSeed calls POST /voice/seed for a single repository.
+// Returns the count of newly embedded messages and any skipped count.
+func (c *HTTPTriggerClient) VoiceSeed(req VoiceSeedRequest) (*VoiceSeedResponse, error) {
+	var resp VoiceSeedResponse
+	if err := c.postWithResult("/voice/seed", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ── Voice profile generation methods (Phase 5) ───────────────────────────────
+
+// VoiceProfileGenerateRequest is the payload for POST /voice/profile/generate.
+type VoiceProfileGenerateRequest struct {
+	RepoPaths []string `json:"repo_paths"`
+}
+
+// VoiceProfileGenerateResponse is the response from POST /voice/profile/generate.
+type VoiceProfileGenerateResponse struct {
+	Path      string `json:"path"`
+	WordCount int    `json:"word_count"`
+	Error     string `json:"error,omitempty"`
+}
+
+// VoiceProfileGenerate calls POST /voice/profile/generate.
+// Returns the absolute path to the written profile.md and its word count.
+func (c *HTTPTriggerClient) VoiceProfileGenerate(repoPaths []string) (path string, wordCount int, err error) {
+	var resp VoiceProfileGenerateResponse
+	if reqErr := c.postWithResult("/voice/profile/generate", VoiceProfileGenerateRequest{
+		RepoPaths: repoPaths,
+	}, &resp); reqErr != nil {
+		return "", 0, reqErr
+	}
+	if resp.Error != "" {
+		return resp.Path, resp.WordCount, fmt.Errorf("server error: %s", resp.Error)
+	}
+	return resp.Path, resp.WordCount, nil
+}
+
+// ── Voice add / status methods (Phase 5 — Tier 2) ────────────────────────────
+
+// VoiceAddRequest is the payload for POST /voice/add.
+type VoiceAddRequest struct {
+	Text        string `json:"text"`
+	ContextType string `json:"context_type"`
+}
+
+// VoiceAddResponse is the response from POST /voice/add.
+type VoiceAddResponse struct {
+	ID    string `json:"id"`
+	Error string `json:"error,omitempty"`
+}
+
+// VoiceAdd calls POST /voice/add and returns the ChromaDB document ID.
+// On ChromaDB unavailability the server returns HTTP 503 with an error field —
+// this is returned as an error to the caller.
+func (c *HTTPTriggerClient) VoiceAdd(text, contextType string) (string, error) {
+	var resp VoiceAddResponse
+	if err := c.postWithResult("/voice/add", VoiceAddRequest{
+		Text:        text,
+		ContextType: contextType,
+	}, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != "" {
+		return "", fmt.Errorf("voice add: %s", resp.Error)
+	}
+	return resp.ID, nil
+}
+
+// VoiceInferenceSummaryEntry is a single inference entry returned in VoiceStatusResponse.
+type VoiceInferenceSummaryEntry struct {
+	ID          int64   `json:"id"`
+	Subject     string  `json:"subject"`
+	Inference   string  `json:"inference"`
+	Confidence  float64 `json:"confidence"`
+	ContextType string  `json:"context_type"`
+}
+
+// VoiceInferenceSummary holds the inference block of VoiceStatusResponse.
+type VoiceInferenceSummary struct {
+	Total            int                          `json:"total"`
+	TopByConfidence  []VoiceInferenceSummaryEntry `json:"top_by_confidence"`
+	CorrectionCount  int                          `json:"correction_count"`
+}
+
+// VoiceSkillSummary holds the skills block of VoiceStatusResponse.
+type VoiceSkillSummary struct {
+	Total int      `json:"total"`
+	Names []string `json:"names"`
+}
+
+// VoiceThresholdEntry holds threshold data for a single action type.
+type VoiceThresholdEntry struct {
+	Threshold  float64 `json:"threshold"`
+	Approvals  int     `json:"approvals"`
+	Rejections int     `json:"rejections"`
+}
+
+// VoiceStatusResponse is the response from GET /voice/status.
+type VoiceStatusResponse struct {
+	TotalEntries     int                            `json:"total_entries"`
+	ByContext        map[string]int                 `json:"by_context"`
+	BySource         map[string]int                 `json:"by_source"`
+	LastSeed         *string                        `json:"last_seed"`
+	LastSync         *string                        `json:"last_sync"`
+	ProfileExists    bool                           `json:"profile_exists"`
+	ProfileWordCount int                            `json:"profile_word_count"`
+	// Phase 6 dialectic fields — present only on servers running TASK-091+.
+	// Use pointer types so we can detect absence (nil = field not in response).
+	Inferences *VoiceInferenceSummary             `json:"inferences,omitempty"`
+	Skills     *VoiceSkillSummary                 `json:"skills,omitempty"`
+	Thresholds map[string]VoiceThresholdEntry     `json:"thresholds,omitempty"`
+}
+
+// VoiceStatus calls GET /voice/status and returns the corpus statistics.
+func (c *HTTPTriggerClient) VoiceStatus() (*VoiceStatusResponse, error) {
+	var resp VoiceStatusResponse
+	if err := c.getWithResult("/voice/status", &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ── Voice sync methods (Phase 5 — Tier 1) ────────────────────────────────────
+
+// VoiceSyncRequest is the optional payload for POST /voice/sync.
+// When WorkspaceNames is empty all configured workspaces are synced.
+type VoiceSyncRequest struct {
+	WorkspaceNames []string `json:"workspace_names,omitempty"`
+}
+
+// VoiceSyncCounts holds the per-platform embedded counts returned by /voice/sync.
+type VoiceSyncCounts struct {
+	GitHub int `json:"github"`
+	Azure  int `json:"azure"`
+	GitLab int `json:"gitlab"`
+	Total  int `json:"total"`
+}
+
+// VoiceSyncResponse is the response from POST /voice/sync.
+type VoiceSyncResponse struct {
+	Synced VoiceSyncCounts `json:"synced"`
+	Error  string          `json:"error,omitempty"`
+}
+
+// VoiceSync calls POST /voice/sync to trigger background sync of PR descriptions
+// and issue comments for all configured workspaces (or the given subset).
+// Returns a map of platform -> count of newly embedded entries.
+func (c *HTTPTriggerClient) VoiceSync(workspaceNames []string) (map[string]int, error) {
+	req := VoiceSyncRequest{WorkspaceNames: workspaceNames}
+	var resp VoiceSyncResponse
+	if err := c.postWithResult("/voice/sync", req, &resp); err != nil {
+		return nil, err
+	}
+	return map[string]int{
+		"github": resp.Synced.GitHub,
+		"azure":  resp.Synced.Azure,
+		"gitlab": resp.Synced.GitLab,
+		"total":  resp.Synced.Total,
+	}, nil
+}
+
+// ── Review classification methods (Phase 7) ──────────────────────────────────
+
+// reviewClassifyRequest is the body sent to POST /review/classify.
+type reviewClassifyRequest struct {
+	CommentBody string `json:"comment_body"`
+	PRTitle     string `json:"pr_title"`
+	Platform    string `json:"platform"`
+	CommentURL  string `json:"comment_url,omitempty"`
+}
+
+// reviewClassifyResponse is the response from POST /review/classify.
+type reviewClassifyResponse struct {
+	Classification string `json:"classification"` // "auto_fixable" | "needs_human"
+	Reason         string `json:"reason"`
+	FixHint        string `json:"fix_hint"`
+}
+
+// ClassifyReviewComment calls POST /review/classify and returns the classification
+// result. On any HTTP or parse error, returns "needs_human" as the safe default.
+// Never panics.
+func (c *HTTPTriggerClient) ClassifyReviewComment(commentBody, prTitle, platform, commentURL string) (classification, reason, fixHint string, err error) {
+	req := reviewClassifyRequest{
+		CommentBody: commentBody,
+		PRTitle:     prTitle,
+		Platform:    platform,
+		CommentURL:  commentURL,
+	}
+	var resp reviewClassifyResponse
+	if httpErr := c.postWithResult("/review/classify", req, &resp); httpErr != nil {
+		return "needs_human", "HTTP error", "", httpErr
+	}
+	if resp.Classification == "" {
+		resp.Classification = "needs_human"
+	}
+	return resp.Classification, resp.Reason, resp.FixHint, nil
+}
+
 // LicenseAccept calls POST /license/accept.
 func (c *HTTPTriggerClient) LicenseAccept() (string, error) {
 	var r struct {
@@ -752,7 +1043,7 @@ func (c *HTTPTriggerClient) LicenseAccept() (string, error) {
 		Success  bool   `json:"success"`
 		Message  string `json:"message"`
 	}
-	if err := c.postWithResult("/license/accept", map[string]interface{}{}, &r); err != nil {
+	if err := c.postWithResult("/license/accept", map[string]any{}, &r); err != nil {
 		return "", err
 	}
 	return r.Message, nil

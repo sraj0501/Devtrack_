@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
@@ -29,6 +31,9 @@ type WorkspaceMonitor struct {
 	pmMilestone     int
 	// Filtering
 	ignoreBranches  []string // commits on these branches are silently skipped
+	// ticketPattern is a custom regex used to extract ticket IDs from branch
+	// names/commit messages for this workspace; empty = use default patterns.
+	ticketPattern string
 }
 
 // IntegratedMonitor combines Git monitoring and time-based scheduling
@@ -43,6 +48,9 @@ type IntegratedMonitor struct {
 	// so we don't re-process our own amendments (infinite-loop guard).
 	enhancedHashes   map[string]bool
 	enhancedHashesMu sync.Mutex
+	// queueExecutor is stored so callers can wire in a late-bound NotifyFn
+	// (e.g. the Telegram bot) after Start() has been called.
+	queueExecutor *QueueExecutor
 }
 
 // NewIntegratedMonitor creates a new integrated monitoring system.
@@ -85,6 +93,7 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 				pmAreaPath:      ws.PMAreaPath,
 				pmMilestone:     ws.PMMilestone,
 				ignoreBranches:  ws.IgnoreBranches,
+				ticketPattern:   ws.TicketPattern,
 			})
 			log.Printf("  ✓ Workspace %q → %s (platform: %q)", ws.Name, ws.Path, ws.PMPlatform)
 		}
@@ -116,8 +125,10 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 	return monitor, nil
 }
 
-// Start begins monitoring both Git commits and time-based triggers
-func (im *IntegratedMonitor) Start() error {
+// Start begins monitoring both Git commits and time-based triggers.
+// ctx is used to signal the queue executor to stop on daemon shutdown.
+// Pass context.Background() for the standalone TestIntegrated helper.
+func (im *IntegratedMonitor) Start(ctx context.Context) error {
 	log.Println("Starting integrated monitoring system...")
 
 	// Start Git monitor(s) — one per workspace
@@ -141,7 +152,37 @@ func (im *IntegratedMonitor) Start() error {
 	}
 	log.Println("✓ Scheduler started")
 
+	// Start queue executor — polls /queue/pending and auto-approves expired actions.
+	// The executor is stored on the monitor so callers can wire in a NotifyFn after
+	// the fact (e.g. Telegram bot is started after the monitor).
+	executor := NewQueueExecutor(im.database, trigger.NewHTTPTriggerClient())
+	im.queueExecutor = executor
+	go executor.Start(ctx)
+	log.Println("✓ Queue executor started")
+
 	return nil
+}
+
+// SetQueueNotifyFn registers a callback on the queue executor that is invoked
+// once per new low-confidence pending action. Safe to call after Start().
+// The fn runs in a goroutine; it must not block the executor's poll loop.
+// Passing nil clears any previously registered callback.
+func (im *IntegratedMonitor) SetQueueNotifyFn(fn func(action db.PendingAction)) {
+	if im.queueExecutor == nil {
+		return
+	}
+	im.queueExecutor.NotifyFn = fn
+}
+
+// SetEODReportFn registers a callback on the queue executor that is invoked
+// once for each new pending eod_report action when EOD_TELEGRAM_ENABLED=true.
+// Safe to call after Start(). The fn runs in a goroutine; it must not block.
+// Passing nil clears any previously registered callback.
+func (im *IntegratedMonitor) SetEODReportFn(fn func(narrative, date string, actionID int64) error) {
+	if im.queueExecutor == nil {
+		return
+	}
+	im.queueExecutor.EODReportFn = fn
 }
 
 // Scheduler returns the integrated monitor's scheduler (may be nil before Start).
@@ -256,6 +297,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 			pmAreaPath:      ws.PMAreaPath,
 			pmMilestone:     ws.PMMilestone,
 			ignoreBranches:  ws.IgnoreBranches,
+			ticketPattern:   ws.TicketPattern,
 		}
 		wmCopy := wm
 		if err := wmCopy.gitMonitor.Start(func(commit CommitInfo) {
@@ -270,25 +312,6 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 
 	im.workspaceMonitors = newMonitors
 	log.Printf("Workspace reload complete: %d active (%d kept, %d added)", len(newMonitors), kept, added)
-}
-
-// Helper functions to extract values from map[string]interface{}
-func getStringFromMap(m map[string]interface{}, key string) string {
-	if val, ok := m[key]; ok {
-		if str, ok := val.(string); ok {
-			return str
-		}
-	}
-	return ""
-}
-
-func getBoolFromMap(m map[string]interface{}, key string) bool {
-	if val, ok := m[key]; ok {
-		if b, ok := val.(bool); ok {
-			return b
-		}
-	}
-	return false
 }
 
 // handleCommitForWorkspace is called when a Git commit is detected on a specific workspace
@@ -326,6 +349,30 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 	im.lastActiveWorkspace = ws
 	im.lastActiveWorkspaceMu.Unlock()
 
+	// Phase 2 ticket extraction: attempt to map this commit to a ticket ID.
+	// Three strategies, in order — never blocks or errors the trigger:
+	//   1. Branch name (e.g. feat/PROJ-123-add-login)
+	//   2. Commit message scan (TASK-069 strategy 2)
+	//   3. Active-ticket fallback — last successfully matched ticket for this
+	//      repo (TASK-069 strategy 3)
+	// If all three fail, ticketID stays "" and the trigger is logged unlinked.
+	ext, _ := ticket.NewExtractor(ws.ticketPattern) // falls back to defaults on ""
+	ticketID := ext.Extract(commit.Branch)
+
+	if ticketID == "" {
+		ticketID = ext.Extract(commit.Message)
+		if ticketID != "" {
+			log.Printf("trigger commit: hash=%s ticket_id=%q (from commit message)", commit.Hash[:8], ticketID)
+		}
+	}
+
+	if ticketID == "" && im.database != nil {
+		if last, err := im.database.GetLastTicketID(ws.gitMonitor.repoPath); err == nil && last != "" {
+			ticketID = last
+			log.Printf("trigger commit: hash=%s ticket_id=%q (active-ticket fallback)", commit.Hash[:8], ticketID)
+		}
+	}
+
 	event := TriggerEvent{
 		Type:            TriggerTypeCommit,
 		Timestamp:       commit.Timestamp,
@@ -339,6 +386,7 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 		PMIterationPath: ws.pmIterationPath,
 		PMAreaPath:      ws.pmAreaPath,
 		PMMilestone:     ws.pmMilestone,
+		TicketID:        ticketID,
 	}
 	im.handleTrigger(event)
 }
@@ -360,24 +408,50 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 			if event.WorkspaceName != "" {
 				workspace = event.WorkspaceName
 			}
+			if event.TicketID != "" {
+				log.Printf("trigger commit: hash=%s ticket_id=%q branch=%q", commit.Hash[:12], event.TicketID, commit.Branch)
+			} else {
+				log.Printf("trigger commit: hash=%s ticket_id=unlinked branch=%q", commit.Hash[:12], commit.Branch)
+				log.Printf("[UNLINKED] commit %s on branch %q workspace=%q — no ticket ID extracted",
+					commit.Hash[:12], commit.Branch, event.WorkspaceName)
+			}
 			log.Printf("trigger commit: hash=%s author=%q files=%d workspace=%q message=%q",
 				commit.Hash[:12], commit.Author, len(commit.Files), workspace, commit.Message)
 
+			// TASK-073: Determine if this is the first linked commit for this ticket
+			// in this repo. Must be checked BEFORE InsertTrigger (below) so we count
+			// only prior rows, not the current one. False when ticketID is empty.
+			isFirstCommitForTicket := false
+			if event.TicketID != "" && im.database != nil {
+				prior, countErr := im.database.CountTicketCommits(event.RepoPath, event.TicketID)
+				if countErr != nil {
+					log.Printf("CountTicketCommits failed (non-fatal): %v", countErr)
+				} else {
+					isFirstCommitForTicket = (prior == 0)
+					if isFirstCommitForTicket {
+						log.Printf("trigger commit: hash=%s ticket_id=%q — first commit for this ticket",
+							commit.Hash[:8], event.TicketID)
+					}
+				}
+			}
+
 			cd := trigger.CommitTriggerData{
-				RepoPath:        event.RepoPath,
-				CommitHash:      commit.Hash,
-				CommitMessage:   commit.Message,
-				Author:          commit.Author,
-				Timestamp:       commit.Timestamp.Format(time.RFC3339),
-				FilesChanged:    commit.Files,
-				Branch:          commit.Branch,
-				WorkspaceName:   event.WorkspaceName,
-				PMPlatform:      event.PMPlatform,
-				PMProject:       event.PMProject,
-				PMAssignee:      event.PMAssignee,
-				PMIterationPath: event.PMIterationPath,
-				PMAreaPath:      event.PMAreaPath,
-				PMMilestone:     event.PMMilestone,
+				RepoPath:               event.RepoPath,
+				CommitHash:             commit.Hash,
+				CommitMessage:          commit.Message,
+				Author:                 commit.Author,
+				Timestamp:              commit.Timestamp.Format(time.RFC3339),
+				FilesChanged:           commit.Files,
+				Branch:                 commit.Branch,
+				TicketID:               event.TicketID,
+				IsFirstCommitForTicket: isFirstCommitForTicket,
+				WorkspaceName:          event.WorkspaceName,
+				PMPlatform:             event.PMPlatform,
+				PMProject:              event.PMProject,
+				PMAssignee:             event.PMAssignee,
+				PMIterationPath:        event.PMIterationPath,
+				PMAreaPath:             event.PMAreaPath,
+				PMMilestone:            event.PMMilestone,
 			}
 			commitData = &cd
 
@@ -390,11 +464,12 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 				CommitMessage: commit.Message,
 				Author:        commit.Author,
 				Processed:     false,
+				TicketID:      event.TicketID,
 			}
 		}
 
 	case TriggerTypeTimer:
-		if data, ok := event.Data.(map[string]interface{}); ok {
+		if data, ok := event.Data.(map[string]any); ok {
 			triggerCount := 0
 			intervalMins := im.config.Settings.PromptInterval
 			if count, ok := data["trigger_count"].(int); ok {
@@ -458,8 +533,8 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 }
 
 // GetStatus returns the current monitoring status
-func (im *IntegratedMonitor) GetStatus() map[string]interface{} {
-	status := make(map[string]interface{})
+func (im *IntegratedMonitor) GetStatus() map[string]any {
+	status := make(map[string]any)
 
 	// Scheduler status
 	if im.scheduler != nil {
@@ -513,7 +588,7 @@ func TestIntegrated() {
 	fmt.Println()
 
 	// Start monitoring
-	if err := monitor.Start(); err != nil {
+	if err := monitor.Start(context.Background()); err != nil {
 		log.Fatalf("Failed to start monitoring: %v", err)
 	}
 
@@ -552,7 +627,7 @@ func TestIntegrated() {
 				fmt.Println("\n📊 System Status:")
 				fmt.Println("─────────────────")
 
-				if schedStats, ok := status["scheduler"].(map[string]interface{}); ok {
+				if schedStats, ok := status["scheduler"].(map[string]any); ok {
 					fmt.Printf("Scheduler:\n")
 					fmt.Printf("  Paused: %v\n", schedStats["is_paused"])
 					fmt.Printf("  Triggers: %v\n", schedStats["trigger_count"])

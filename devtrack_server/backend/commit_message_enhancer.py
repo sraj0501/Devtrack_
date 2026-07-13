@@ -473,6 +473,133 @@ class CommitMessageEnhancer:
             return False
 
 
+def generate_ticket_comment(
+    commit_message: str,
+    diff: str,
+    files: list,
+    ticket_id: str,
+    repo_path: str = None,
+) -> str:
+    """Generate a ticket comment in the developer's voice describing this commit's
+    contribution to the named ticket.
+
+    Reuses the same Ollama/LLM pipeline as ``enhance_message_with_ai`` — same
+    provider, same config accessors, no duplicate client setup.  Falls back to a
+    templated comment (``"Commit <hash>: <message>"``) if the LLM call raises for
+    any reason (Non-Negotiable #8: never block commit processing on failure).
+
+    Args:
+        commit_message: The raw commit message string.
+        diff:           The diff text for context (may be empty string).
+        files:          List of changed file paths.
+        ticket_id:      The resolved ticket ID (e.g. "PROJ-123", "AB-7").
+        repo_path:      Path to the git repository (used to fetch diff via git
+                        when ``diff`` is empty).
+
+    Returns:
+        A short, professional ticket comment (1–3 sentences) or a templated
+        fallback string — never raises.
+    """
+    # ── fallback template ──────────────────────────────────────────────────────
+    # Derive a short hash from whatever is available.
+    short_id: str = ""
+    if repo_path:
+        try:
+            from backend.config import http_timeout_short
+            import subprocess as _sp
+            r = _sp.run(
+                ["git", "rev-parse", "--short=12", "HEAD"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=http_timeout_short(),
+            )
+            if r.returncode == 0:
+                short_id = r.stdout.strip()
+        except Exception:
+            pass
+    if not short_id:
+        # last resort: first 12 chars of the commit message (unique enough for fallback)
+        short_id = (commit_message or "")[:12].strip() or "unknown"
+
+    fallback = f"Commit {short_id}: {commit_message}"
+
+    try:
+        # ── if no diff provided, try to fetch it from git ──────────────────────
+        resolved_diff = diff or ""
+        if not resolved_diff and repo_path:
+            try:
+                from backend.git_diff_analyzer import GitDiffAnalyzer
+                _analyzer = GitDiffAnalyzer()
+                fetched = _analyzer.get_commit_diff(repo_path, "HEAD")
+                if fetched:
+                    resolved_diff = fetched
+            except Exception as _e:
+                logger.debug("generate_ticket_comment: diff fetch failed (non-fatal): %s", _e)
+
+        # ── build file list summary ────────────────────────────────────────────
+        files_summary = ""
+        if files:
+            listed = files[:8]
+            files_summary = "Files changed: " + ", ".join(listed)
+            if len(files) > 8:
+                files_summary += f" … and {len(files) - 8} more"
+
+        # ── build ticket-comment prompt ────────────────────────────────────────
+        # ticket_id appears explicitly so the prompt is keyed to this ticket;
+        # the test suite asserts the prompt construction path, not the output text.
+        diff_excerpt = ""
+        if resolved_diff:
+            diff_lines = resolved_diff.splitlines()
+            if len(diff_lines) > 80:
+                diff_lines = diff_lines[:80]
+                diff_lines.append("... (diff truncated)")
+            diff_excerpt = "\n".join(diff_lines)
+
+        prompt = f"""You are writing a brief ticket update comment for ticket {ticket_id}.
+
+A developer just committed the following change. Write a short, professional comment
+(1–3 sentences) suitable for posting directly on ticket {ticket_id}. The comment should
+describe what was changed and why — from the commit diff and message — in the developer's
+own voice. Do NOT restate the raw commit message verbatim. Do NOT include meta-commentary,
+options lists, or preamble. Output ONLY the comment text.
+
+Commit message: {commit_message}
+{files_summary}
+{"Diff (excerpt):" + chr(10) + diff_excerpt if diff_excerpt else ""}
+""".strip()
+
+        # ── apply personalization style injection ──────────────────────────────
+        prompt = _inject_style(prompt, context_type="comment", query_text=commit_message)
+
+        # ── call LLM (reuse the module-level enhancer's provider chain) ────────
+        from backend.llm.base import LLMOptions
+        from backend.config import http_timeout, commit_llm_temperature, commit_llm_max_tokens
+
+        _enhancer = CommitMessageEnhancer()
+        generated = _enhancer._get_provider().generate(
+            prompt=prompt,
+            options=LLMOptions(
+                temperature=commit_llm_temperature(),
+                max_tokens=commit_llm_max_tokens(),
+            ),
+            timeout=http_timeout(),
+        )
+
+        if not generated or len(generated.strip()) < 5:
+            return fallback
+
+        # Strip markdown fences if the model wrapped the output
+        result = generated.replace("```", "").strip()
+        if not result:
+            return fallback
+        return result
+
+    except Exception as e:
+        logger.warning("generate_ticket_comment: LLM call failed (using fallback): %s", e)
+        return fallback
+
+
 def main():
     """CLI entry point for git hook"""
     if len(sys.argv) < 2:

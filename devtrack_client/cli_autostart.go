@@ -95,6 +95,19 @@ func xmlEscape(s string) string {
 	return s
 }
 
+// resolveAutostartLogDir returns the directory to write launchd/systemd
+// wrapper logs into. Prefers LOG_DIR (set by 'devtrack setup', always a real
+// writable directory under the XDG data home) over <projectRoot>/Data/logs:
+// PROJECT_ROOT now points at the cloned Python server directory (managed
+// install), which has no Data/ subdirectory of its own — only the pre-split
+// dev-tree layout did.
+func resolveAutostartLogDir(projectRoot string) string {
+	if logDir := os.Getenv("LOG_DIR"); logDir != "" {
+		return logDir
+	}
+	return filepath.Join(projectRoot, "Data", "logs")
+}
+
 // buildLaunchdPlist generates a launchd plist that embeds all current devtrack
 // env vars so launchd can start the daemon with the correct environment.
 func buildLaunchdPlist(binaryPath, projectRoot string) string {
@@ -126,7 +139,7 @@ func buildLaunchdPlist(binaryPath, projectRoot string) string {
 			xmlEscape(e.key), xmlEscape(e.val))
 	}
 
-	logPath := filepath.Join(projectRoot, "Data", "logs", "launchd.log")
+	logPath := filepath.Join(resolveAutostartLogDir(projectRoot), "launchd.log")
 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -209,6 +222,13 @@ func (cli *CLI) handleLaunchdInstall() error {
 		binaryPath = os.Args[0]
 	}
 	binaryPath, _ = filepath.Abs(binaryPath)
+
+	// Ensure the log directory exists before launchd tries to redirect
+	// stdout/stderr into it — launchd fails silently (or refuses to start
+	// the job) if StandardOutPath's parent directory is missing.
+	if err := os.MkdirAll(resolveAutostartLogDir(projectRoot), 0755); err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
 
 	// Generate plist content with current env vars embedded.
 	plistContent := buildLaunchdPlist(binaryPath, projectRoot)
@@ -408,7 +428,7 @@ func buildSystemdService(binaryPath, projectRoot string) string {
 		}
 	}
 
-	logPath := filepath.Join(projectRoot, "Data", "logs", "systemd.log")
+	logPath := filepath.Join(resolveAutostartLogDir(projectRoot), "systemd.log")
 
 	return fmt.Sprintf(`[Unit]
 Description=DevTrack Developer Automation
@@ -431,6 +451,13 @@ WantedBy=default.target
 // All current devtrack env vars are embedded as Environment= lines so systemd
 // starts the daemon with the correct environment (environment-first config).
 func installSystemdService(projectRoot, binaryPath, _ string) error {
+	// Ensure the log directory exists before systemd tries to append to it —
+	// StandardOutput=append: requires the parent directory to already exist,
+	// otherwise the unit fails to start.
+	if err := os.MkdirAll(resolveAutostartLogDir(projectRoot), 0755); err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
+
 	svcContent := buildSystemdService(binaryPath, projectRoot)
 
 	homeDir, err := os.UserHomeDir()
@@ -749,11 +776,55 @@ func (cli *CLI) handleAutostartStatus() error {
 	return nil
 }
 
+// buildWindowsBat generates a Windows .bat file that sets all devtrack env vars
+// and then launches the daemon. Mirrors buildLaunchdPlist / buildSystemdService.
+// All values that contain % are escaped as %% so cmd.exe does not expand them.
+func buildWindowsBat(binaryPath string) string {
+	var b strings.Builder
+	b.WriteString("@echo off\r\n")
+	for _, kv := range os.Environ() {
+		parts := strings.SplitN(kv, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key, val := parts[0], parts[1]
+		if !shouldCaptureForLaunchd(key) {
+			continue
+		}
+		// Escape % so cmd.exe does not try to expand variable references.
+		escaped := strings.ReplaceAll(val, "%", "%%")
+		fmt.Fprintf(&b, "SET %s=%s\r\n", key, escaped)
+	}
+	fmt.Fprintf(&b, "%q start\r\n", binaryPath)
+	return b.String()
+}
+
+// writeWindowsBat writes the devtrack-autostart.bat file next to the binary
+// and returns its path. The bat file is used by schtasks as the task action
+// so that env vars are set before the daemon starts.
+func writeWindowsBat(binaryPath string) (string, error) {
+	batPath := filepath.Join(filepath.Dir(binaryPath), "devtrack-autostart.bat")
+	content := buildWindowsBat(binaryPath)
+	if err := os.WriteFile(batPath, []byte(content), 0644); err != nil {
+		return "", fmt.Errorf("failed to write bat file %s: %w", batPath, err)
+	}
+	return batPath, nil
+}
+
 // installWindowsTask creates a Task Scheduler task that runs 'devtrack start' at logon.
+// It writes a .bat file alongside the binary that bakes in all current devtrack env vars,
+// then registers that bat file with schtasks (mirrors the launchd/systemd env-var pattern).
 func installWindowsTask(binaryPath string) error {
+	batPath, err := writeWindowsBat(binaryPath)
+	if err != nil {
+		return err
+	}
+
+	// Run the bat through cmd.exe /c so the SET lines are interpreted correctly.
+	taskAction := fmt.Sprintf(`cmd.exe /c "%s"`, batPath)
 	cmd := exec.Command("schtasks", "/Create", "/F",
 		"/TN", "DevTrack",
-		"/TR", fmt.Sprintf(`"%s" start`, binaryPath),
+		"/TR", taskAction,
 		"/SC", "ONLOGON",
 		"/RL", "HIGHEST",
 	)
@@ -762,6 +833,9 @@ func installWindowsTask(binaryPath string) error {
 		return fmt.Errorf("schtasks create failed: %s", strings.TrimSpace(string(out)))
 	}
 	fmt.Println("DevTrack will now start automatically at logon.")
+	fmt.Printf("  Bat:     %s\n", batPath)
+	fmt.Printf("  Binary:  %s\n", binaryPath)
+	fmt.Println()
 	fmt.Println("Tip: re-run 'devtrack autostart-install' after changing env vars.")
 	fmt.Println("Use 'devtrack status' to verify it is running.")
 	fmt.Println("Use 'devtrack autostart-uninstall' to remove auto-start.")

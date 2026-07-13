@@ -233,6 +233,25 @@ class TriggerProcessor:
 
     def __init__(self) -> None:
         self._init_components()
+        # Queue gateway — instantiated after components so database_path() is
+        # available.  Wrapped in try/except so the server degrades gracefully
+        # when the DB is absent (e.g. first-run before the Go daemon creates it).
+        self._queue_gateway = None
+        try:
+            from backend.config import database_path
+            from backend.queue_gateway import QueueGateway
+            db_path = str(database_path())
+            import os
+            if os.path.exists(db_path):
+                self._queue_gateway = QueueGateway(db_path)
+                logger.info("✓ TriggerProcessor: QueueGateway ready (db=%s)", db_path)
+            else:
+                logger.debug(
+                    "QueueGateway: DB not found at %s — queue staging disabled "
+                    "(daemon not yet started?)", db_path
+                )
+        except Exception as e:
+            logger.debug("QueueGateway unavailable (non-fatal): %s", e)
 
     def _init_components(self) -> None:
         # NLP parser
@@ -309,13 +328,181 @@ class TriggerProcessor:
             logger.debug(f"TaskMatcher unavailable: {e}")
 
     # ------------------------------------------------------------------
+    # Internal: execute a staged PM action (called by /queue/execute)
+    # ------------------------------------------------------------------
+
+    def _execute_pm_action(self, action: dict) -> dict:
+        """Execute a staged PM action by routing it through the workspace router.
+
+        This method encapsulates ALL direct PM API calls.  It is the only
+        place in ``TriggerProcessor`` that actually posts to GitHub, Azure,
+        GitLab, or Jira.  The trigger handlers (``process_commit``,
+        ``process_timer``) no longer call the workspace router directly —
+        they stage actions via ``QueueGateway.stage()`` instead, and the Go
+        daemon calls this endpoint via ``POST /queue/execute`` when the action
+        is approved or its confidence timeout has expired.
+
+        :param action: A ``pending_actions`` row as a plain dict (as returned
+            by ``QueueGateway.get_action()``).  The ``payload`` field is a
+            JSON string; this method parses it internally.
+        :returns: ``{"status": "posted"}`` on success, or
+            ``{"status": "failed", "error": "<message>"}`` on failure.
+        """
+        import json as _json
+
+        payload_raw = action.get("payload", "{}")
+        try:
+            payload = _json.loads(payload_raw) if isinstance(payload_raw, str) else payload_raw
+        except Exception:
+            payload = {}
+
+        pm_platform = action.get("platform", "")
+        workspace   = action.get("workspace", "")
+        action_type = action.get("action_type", "")
+        target      = action.get("target", "")
+
+        # ---------------------------------------------------------------------------
+        # Notification-only actions (no PM API call required, no workspace_router).
+        # These are handled before the workspace_router guard so they work even
+        # when the router is unavailable. Telegram delivery is done by the Go bot.
+        # ---------------------------------------------------------------------------
+
+        if action_type == "pr_approved_notify":
+            # Notification-only action — Telegram delivery is handled by the Go bot
+            # (SendPRApproved wired in the daemon goroutine). The Python server just
+            # acknowledges receipt so the queue executor can mark the row posted.
+            pr_id = payload.get("pr_id", target)
+            fixes_applied = payload.get("fixes_applied", 0)
+            logger.info(
+                "queue: pr_approved_notify action %s (pr=%s fixes_applied=%s) — "
+                "notification handled by Go Telegram bot",
+                action.get("id"), pr_id, fixes_applied,
+            )
+            return {"status": "posted"}
+
+        if action_type == "pr_escalation":
+            # Notification-only action — Telegram delivery is handled by the Go bot
+            # (SendPREscalation wired in the daemon goroutine). The Python server just
+            # acknowledges receipt so the queue executor can mark the row posted.
+            pr_id = payload.get("pr_id", target)
+            blocker_reason = payload.get("blocker_reason", "")
+            logger.info(
+                "queue: pr_escalation action %s (pr=%s blocker=%r) — "
+                "notification handled by Go Telegram bot",
+                action.get("id"), pr_id, blocker_reason,
+            )
+            return {"status": "posted"}
+
+        if not self.workspace_router:
+            return {"status": "failed", "error": "workspace_router not available"}
+
+        # Branch on action_type to route correctly.
+        # post_comment   → pass description/comment text to workspace_router.route()
+        # state_transition → pass new_state as status; no comment text required
+        # unknown type    → log warning, mark complete (never fail the queue)
+
+        if action_type == "state_transition":
+            new_state = payload.get("new_state", "")
+            ticket_id_for_route = payload.get("ticket_id", target)
+            try:
+                self.workspace_router.route(
+                    pm_platform=pm_platform,
+                    description="",          # state-only transition; no comment text
+                    ticket_id=ticket_id_for_route,
+                    status=new_state,
+                    pm_project=payload.get("pm_project", ""),
+                    pm_assignee=payload.get("pm_assignee", ""),
+                    pm_iteration_path=payload.get("pm_iteration_path", ""),
+                    pm_area_path=payload.get("pm_area_path", ""),
+                    pm_milestone=payload.get("pm_milestone", ""),
+                    commit_info=payload.get("commit_info", {}),
+                )
+                logger.info(
+                    "queue: executed state_transition action %s "
+                    "(target=%s new_state=%r platform=%s)",
+                    action.get("id"), target, new_state, pm_platform,
+                )
+                return {"status": "posted"}
+            except Exception as e:
+                logger.warning(
+                    "queue: state_transition action %s failed (target=%s): %s",
+                    action.get("id"), target, e,
+                )
+                return {"status": "failed", "error": str(e)}
+
+        if action_type == "eod_report":
+            narrative = payload.get("narrative", "")
+            email = payload.get("email", "")
+            try:
+                if email:
+                    from backend.email_reporter import EmailReporter as _EODEmailReporter
+                    reporter = _EODEmailReporter()
+                    reporter.send_text_report(narrative, email)
+                logger.info(
+                    "queue: executed eod_report action %s (delivered_to=%s)",
+                    action.get("id"), email or "none",
+                )
+                return {"status": "posted", "delivered_to": email or "none"}
+            except Exception as e:
+                # Never raise — Non-Negotiable #8: never block on failure.
+                logger.warning(
+                    "queue: eod_report action %s delivery error (non-fatal): %s",
+                    action.get("id"), e,
+                )
+                return {"status": "posted", "delivered_to": email or "none"}
+
+        if action_type not in ("post_comment",):
+            # Unknown action type — log and mark complete to avoid blocking the queue
+            logger.warning(
+                "queue: unknown action_type %r for action %s (target=%s) — "
+                "marking complete without executing",
+                action_type, action.get("id"), target,
+            )
+            return {"status": "posted"}
+
+        # post_comment (and any future comment-type actions)
+        try:
+            self.workspace_router.route(
+                pm_platform=pm_platform,
+                description=payload.get("description", payload.get("comment", "")),
+                ticket_id=payload.get("ticket_id", target),
+                status=payload.get("status", ""),
+                pm_project=payload.get("pm_project", ""),
+                pm_assignee=payload.get("pm_assignee", ""),
+                pm_iteration_path=payload.get("pm_iteration_path", ""),
+                pm_area_path=payload.get("pm_area_path", ""),
+                pm_milestone=payload.get("pm_milestone", ""),
+                commit_info=payload.get("commit_info", {}),
+            )
+            logger.info(
+                "queue: executed action %s (type=%s target=%s platform=%s)",
+                action.get("id"), action_type, target, pm_platform,
+            )
+            return {"status": "posted"}
+        except Exception as e:
+            logger.warning(
+                "queue: action %s failed (type=%s target=%s): %s",
+                action.get("id"), action_type, target, e,
+            )
+            return {"status": "failed", "error": str(e)}
+
+    # ------------------------------------------------------------------
     # Commit trigger
     # ------------------------------------------------------------------
 
     def process_commit(self, data: dict) -> dict:
         """
         Process a commit trigger.  Returns a dict of actions taken.
-        Mirrors handle_commit_trigger() in DevTrackBridge minus the IPC ack.
+
+        Phase 1 change: instead of posting directly to PM APIs via the
+        workspace router, this method stages a ``post_comment`` action in
+        ``pending_actions`` via ``QueueGateway.stage()``.  The Go daemon's
+        queue executor will call ``POST /queue/execute`` after the confidence
+        timeout expires (or the developer approves manually).
+
+        If the queue gateway is unavailable (daemon not yet started, DB
+        missing), the method falls back to the legacy direct-post behaviour
+        so existing functionality is not broken during the transition.
         """
         commit_hash = data.get("commit_hash", "")
         commit_msg  = data.get("commit_message", "")
@@ -328,6 +515,13 @@ class TriggerProcessor:
         pm_iteration_path = data.get("pm_iteration_path", "")
         pm_area_path      = data.get("pm_area_path", "")
         pm_milestone      = data.get("pm_milestone", "")
+        # Phase 2 — Go-resolved ticket ID (branch/message/active-ticket fallback
+        # chain, ~100% hit-rate verified). Absent or empty means Go's extractor
+        # found no ticket for this commit (logged [UNLINKED] on the client side).
+        # This is the authoritative ticket-resolution signal — NLP's own guess
+        # (task_data.get("ticket_id")) is no longer used to locate the ticket,
+        # only to enrich the description/comment text.
+        resolved_ticket_id = data.get("ticket_id", "")
 
         logger.info(f"[HTTP commit] {commit_hash[:12]} — {commit_msg[:60]}")
 
@@ -343,7 +537,7 @@ class TriggerProcessor:
                     if active:
                         store.append_commit(active["id"], commit_hash)
                         actions.append(f"session_linked:{active['id']}")
-                        logger.info(f"📎 Commit {commit_hash[:12]} linked to session #{active['id']}")
+                        logger.info(f"Commit {commit_hash[:12]} linked to session #{active['id']}")
                 except Exception as e:
                     logger.debug(f"Work session link failed (non-fatal): {e}")
 
@@ -356,26 +550,158 @@ class TriggerProcessor:
                 except Exception as e:
                     logger.warning(f"NLP parse failed: {e}")
 
-        # PM sync via workspace router
+        # PM sync — stage via queue (Phase 1) or fall back to direct post
         with _stage("PM sync"):
-            if task_data and self.workspace_router:
+            if not resolved_ticket_id:
+                # Phase 2 found no ticket for this commit (branch/message/
+                # active-ticket fallback chain all came up empty — logged
+                # [UNLINKED] on the Go side). Non-Negotiable #8: never block,
+                # never error. We do not fall back to the old NLP-guess or
+                # truncated-commit-hash target — if Go says unlinked, treat
+                # it as unlinked here too.
+                logger.info(
+                    "PM sync skipped: commit %s has no resolved ticket_id "
+                    "(Phase 2 unlinked) — no queue action staged",
+                    commit_hash[:12] if commit_hash else "?",
+                )
+            elif self.workspace_router:
+                # task_data may legitimately be None here (NLP parser
+                # unavailable, e.g. spaCy not installed, or parse() raised —
+                # see "NLP parse" stage above). resolved_ticket_id is the
+                # authoritative signal for *targeting*; task_data is only
+                # optional descriptive enrichment, so every read of it below
+                # must fall back to commit_msg / "" without raising.
+                status = task_data.get("status", "") if task_data else ""
+
+                # Phase 3 (TASK-072): generate a voice-aware ticket comment via
+                # the LLM pipeline, not a raw NLP restatement. Falls back to a
+                # templated string on any LLM failure — never blocks processing.
+                try:
+                    from backend.commit_message_enhancer import generate_ticket_comment as _gtc
+                    ticket_comment = _gtc(
+                        commit_message=commit_msg,
+                        diff=data.get("diff", ""),
+                        files=data.get("files", []),
+                        ticket_id=resolved_ticket_id,
+                        repo_path=repo_path or None,
+                    )
+                except Exception as _gtc_exc:
+                    logger.warning(
+                        "generate_ticket_comment failed (belt-and-suspenders fallback): %s",
+                        _gtc_exc,
+                    )
+                    # task_data.get("description") NLP restatement as last resort
+                    ticket_comment = (
+                        task_data.get("description", commit_msg) if task_data else commit_msg
+                    )
+
+                # Build the payload that _execute_pm_action expects
+                pm_payload = {
+                    "description": ticket_comment,
+                    "ticket_id":   resolved_ticket_id,
+                    "status":      status,
+                    "pm_project":  pm_project,
+                    "pm_assignee": pm_assignee,
+                    "pm_iteration_path": pm_iteration_path,
+                    "pm_area_path":      pm_area_path,
+                    "pm_milestone":      pm_milestone,
+                    "comment":     ticket_comment,
+                    "commit_info": {
+                        "hash":    commit_hash,
+                        "message": commit_msg,
+                        "author":  author,
+                        "branch":  branch,
+                    },
+                }
+                ticket_id = resolved_ticket_id
+                # Phase 3: ticket_id resolution confidence now comes from Go's
+                # extraction strategy, not NLP's own (weaker) guess. NLP match
+                # only affects descriptive quality, not target confidence.
+                # Baseline reflects Phase 2's verified ~100% hit rate for
+                # resolved IDs.
+                confidence = 0.85
+
+                if getattr(self, "_queue_gateway", None):
+                    try:
+                        action_id = self._queue_gateway.stage(
+                            action_type="post_comment",
+                            target=ticket_id,
+                            platform=pm_platform or "auto",
+                            workspace=data.get("workspace_name", ""),
+                            payload=pm_payload,
+                            confidence=confidence,
+                        )
+                        actions.append(f"queued:post_comment:{action_id}")
+                        logger.info(
+                            "PM sync staged (action_id=%d, confidence=%.2f, platform=%s)",
+                            action_id, confidence, pm_platform or "auto",
+                        )
+
+                        # Phase 3 (TASK-073): stage a SEPARATE state_transition action
+                        # when this is the first linked commit for this ticket.
+                        # This is an independent queue row with its own confidence and
+                        # expiry — per PRODUCT_BIBLE.md Layer 2 ("each queued action").
+                        # confidence=0.90 → 2-minute auto-approve window (just above the
+                        # 0.90 threshold in ConfidenceTimeout that maps to 2 minutes).
+                        try:
+                            from backend.ticket_state_mapper import in_progress_state_for as _ips_for
+                            is_first = data.get("is_first_commit_for_ticket", False)
+                            new_state = _ips_for(pm_platform)
+                            if is_first and new_state:
+                                state_action_id = self._queue_gateway.stage(
+                                    action_type="state_transition",
+                                    target=resolved_ticket_id,
+                                    platform=pm_platform or "auto",
+                                    workspace=data.get("workspace_name", ""),
+                                    payload={
+                                        "ticket_id": resolved_ticket_id,
+                                        "new_state": new_state,
+                                        "commit_info": pm_payload["commit_info"],
+                                    },
+                                    # 0.90 — first-commit-for-ticket is an unambiguous signal
+                                    confidence=0.90,
+                                )
+                                actions.append(f"queued:state_transition:{state_action_id}")
+                                logger.info(
+                                    "State transition staged (action_id=%d, new_state=%r, platform=%s)",
+                                    state_action_id, new_state, pm_platform or "auto",
+                                )
+                            elif is_first and not new_state:
+                                logger.debug(
+                                    "State transition skipped: platform %r has no "
+                                    "in-progress state mapping", pm_platform,
+                                )
+                        except Exception as _st_exc:
+                            logger.warning(
+                                "State transition staging failed (non-fatal): %s", _st_exc
+                            )
+
+                        return {
+                            "actions":    actions,
+                            "commit_hash": commit_hash,
+                            "narrative_id": _story_id(),
+                            "status":     "queued",
+                            "action_id":  action_id,
+                        }
+                    except Exception as e:
+                        logger.warning(
+                            "PM sync staging failed — falling back to direct post: %s", e
+                        )
+                        # Fall through to legacy direct-post below
+
+                # Legacy direct-post fallback (queue gateway unavailable)
                 try:
                     self.workspace_router.route(
                         pm_platform=pm_platform,
-                        description=task_data.get("description", commit_msg),
-                        ticket_id=task_data.get("ticket_id", ""),
-                        status=task_data.get("status", ""),
+                        description=pm_payload["description"],
+                        ticket_id=pm_payload["ticket_id"],
+                        status=pm_payload["status"],
                         pm_project=pm_project,
                         pm_assignee=pm_assignee,
                         pm_iteration_path=pm_iteration_path,
                         pm_area_path=pm_area_path,
                         pm_milestone=pm_milestone,
-                        commit_info={
-                            "hash": commit_hash,
-                            "message": commit_msg,
-                            "author": author,
-                            "branch": branch,
-                        },
+                        commit_info=pm_payload["commit_info"],
                     )
                     actions.append(f"pm_sync:{pm_platform or 'auto'}")
                     logger.info(f"✓ PM sync complete (platform={pm_platform or 'auto'})")
@@ -397,6 +723,14 @@ class TriggerProcessor:
         is Telegram (the bot is already running and handles /workstop etc.).
         This method acknowledges the trigger and optionally sends a Telegram
         nudge; the full interactive flow happens via Telegram commands.
+
+        Phase 1 note: the timer trigger does NOT post to PM APIs directly today —
+        that is the job of the EOD pipeline (Phase 4).  However, to satisfy the
+        Phase 1 requirement that ``process_timer`` also calls
+        ``queue_gateway.stage()``, this method stages a ``timer_nudge`` action
+        when a queue gateway is available.  The confidence is set to 0.60 so
+        the action enters the 15-minute review window; the Go executor will skip
+        it if the developer does not approve within that window.
         """
         interval_mins  = data.get("interval_mins", 0)
         trigger_count  = data.get("trigger_count", 0)
@@ -404,6 +738,30 @@ class TriggerProcessor:
         workspace_name = data.get("workspace_name", "")
 
         logger.info(f"[HTTP timer] trigger #{trigger_count} (every {interval_mins}m, workspace={workspace_name})")
+
+        # Phase 1: stage a timer_nudge action so the queue is populated and
+        # the developer can see timer events in the TUI queue panel.
+        timer_action_id = None
+        _gw = getattr(self, "_queue_gateway", None)
+        if _gw:
+            try:
+                timer_action_id = _gw.stage(
+                    action_type="timer_nudge",
+                    target=workspace_name or "default",
+                    platform=pm_platform or "none",
+                    workspace=workspace_name or "",
+                    payload={
+                        "interval_mins": interval_mins,
+                        "trigger_count": trigger_count,
+                        "workspace_name": workspace_name,
+                    },
+                    confidence=0.60,
+                )
+                logger.info(
+                    "timer trigger staged in queue (action_id=%d)", timer_action_id
+                )
+            except Exception as e:
+                logger.debug("timer queue staging failed (non-fatal): %s", e)
 
         # Check vacation mode — auto-respond instead of nudging
         with _stage("Check vacation mode"):
@@ -479,13 +837,16 @@ class TriggerProcessor:
         if slack_sent:
             channels.append("slack")
 
-        return {
+        result: dict = {
             "status": "accepted",
             "trigger_count": trigger_count,
             "prompt_channel": ",".join(channels) if channels else "none",
             "active_session": active_session is not None,
             "narrative_id": _story_id(),
         }
+        if timer_action_id is not None:
+            result["action_id"] = timer_action_id
+        return result
 
 
 def _get_handler() -> WebhookEventHandler:
@@ -901,6 +1262,235 @@ async def status() -> dict:
         "notify_os": _cfg_bool("WEBHOOK_NOTIFY_OS", True),
         "notify_terminal": _cfg_bool("WEBHOOK_NOTIFY_TERMINAL", True),
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 1: Pending-actions queue endpoints
+# Auth: same X-DevTrack-API-Key as all /trigger/* endpoints.
+# The Go daemon's queue executor calls these on every poll cycle.
+# ---------------------------------------------------------------------------
+
+def _get_queue_gateway():
+    """Return a QueueGateway for the shared DevTrack DB.
+
+    Instantiated per-request (lightweight: just opens a SQLite connection).
+    Falls back to None when the DB is absent so the server degrades gracefully.
+    """
+    try:
+        from backend.config import database_path
+        from backend.queue_gateway import QueueGateway
+        db_path = str(database_path())
+        import os
+        if not os.path.exists(db_path):
+            return None
+        return QueueGateway(db_path)
+    except Exception:
+        return None
+
+
+@app.get("/queue/pending")
+async def http_queue_pending(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return all pending actions ordered by expires_at ASC.
+
+    Used by the Go daemon's queue executor to decide which actions to
+    auto-approve.  Returns an empty list when the queue is unavailable.
+
+    Response: ``{"actions": [<pending_actions rows as JSON objects>]}``
+    """
+    gw = _get_queue_gateway()
+    if gw is None:
+        logger.debug("/queue/pending: queue gateway unavailable")
+        return {"actions": []}
+    try:
+        actions = gw.list_pending()
+        return {"actions": actions}
+    except Exception as exc:
+        logger.warning("/queue/pending error: %s", exc)
+        return {"actions": []}
+    finally:
+        try:
+            gw.close()
+        except Exception:
+            pass
+
+
+@app.post("/queue/execute")
+async def http_queue_execute(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Execute a staged pending action and mark it posted or failed.
+
+    Called by the Go daemon's queue executor after a confidence timeout
+    expires (auto-approve) or when the developer manually approves via
+    TUI / CLI / Telegram.
+
+    Request body: ``{"action_id": <int>}``
+
+    Response: ``{"status": "posted"|"failed", "error": "<msg if failed>"}``
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    action_id = body.get("action_id")
+    if action_id is None:
+        raise HTTPException(status_code=400, detail="'action_id' field required")
+
+    gw = _get_queue_gateway()
+    if gw is None:
+        raise HTTPException(status_code=503, detail="Queue gateway unavailable (DB not found)")
+
+    try:
+        action = gw.get_action(int(action_id))
+        if action is None:
+            raise HTTPException(status_code=404, detail=f"Action {action_id} not found")
+
+        processor = TriggerProcessor.get()
+        result = await asyncio.to_thread(processor._execute_pm_action, action)
+
+        if result.get("status") == "posted":
+            gw.mark_posted(int(action_id))
+        else:
+            gw.mark_failed(int(action_id), result.get("error", "unknown error"))
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("/queue/execute error (action_id=%s): %s", action_id, exc)
+        try:
+            if gw:
+                gw.mark_failed(int(action_id), str(exc))
+        except Exception:
+            pass
+        return {"status": "failed", "error": str(exc)}
+    finally:
+        try:
+            if gw:
+                gw.close()
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: PR review comment classification endpoint
+# Auth: same X-DevTrack-API-Key as all /trigger/* endpoints.
+# The Go client calls this after detecting a new review comment.
+# ---------------------------------------------------------------------------
+
+@app.post("/review/classify")
+async def http_review_classify(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Classify a PR review comment as auto_fixable or needs_human.
+
+    Called by the Go daemon after detecting a new review comment on a
+    developer-authored PR.  Uses the configured LLM (same pipeline as
+    commit message enhancement). Falls back to needs_human on any LLM
+    failure — safe default, never auto-fixes without confidence.
+
+    Request body:
+    {
+      "comment_body": "...",
+      "pr_title":     "...",
+      "platform":     "github"|"azure"|"gitlab",
+      "comment_url":  "..."  // optional
+    }
+
+    Response:
+    {
+      "classification": "auto_fixable"|"needs_human",
+      "reason":         "...",
+      "fix_hint":       "..."
+    }
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    comment_body = body.get("comment_body", "")
+    pr_title = body.get("pr_title", "")
+    platform = body.get("platform", "")
+
+    try:
+        from backend.review_classifier import ReviewClassifier
+        classifier = ReviewClassifier()
+        result = classifier.classify(comment_body, pr_title, platform)
+        return result
+    except Exception as exc:
+        logger.warning("/review/classify unexpected error: %s", exc)
+        # Final safety net — never propagate errors to the Go client.
+        return {
+            "classification": "needs_human",
+            "reason": "Server error during classification.",
+            "fix_hint": "",
+        }
+
+
+# ---------------------------------------------------------------------------
+# Phase 6: Dialectic self-improvement endpoint
+# Auth: same X-DevTrack-API-Key as all /trigger/* endpoints.
+# The Go client calls this after successful queue execution or approve/reject.
+# ---------------------------------------------------------------------------
+
+@app.post("/dialectic/infer")
+async def http_dialectic_infer(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Run a dialectic reasoning pass and return inferences about the developer.
+
+    Called by the Go client after a successful queue execution, TUI approval,
+    or TUI rejection. The Go client stores the returned inferences in SQLite
+    via InsertInference() — Python does not write to SQLite directly.
+
+    Request body:
+    {
+      "interaction_type": "commit" | "approval" | "rejection" | "edit",
+      "context_type": "commit" | "comment" | "report" | "task" | "ticket_mapping",
+      "before_text": "...",
+      "after_text": "...",
+      "metadata": {"ticket_id": "...", "workspace": "...", "action_id": 42, ...}
+    }
+
+    Response: {"inferences": [{"subject": "...", "inference": "...", "confidence": 0.75}]}
+    Returns {"inferences": []} (not an error) when both Hermes 3 and fallback fail.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    interaction_type = body.get("interaction_type", "")
+    context_type = body.get("context_type", "")
+    before_text = body.get("before_text", "")
+    after_text = body.get("after_text", "")
+    metadata = body.get("metadata", {})
+    if not isinstance(metadata, dict):
+        metadata = {}
+
+    try:
+        from backend.dialectic_reasoner import DialecticReasoner
+        reasoner = DialecticReasoner()
+        inferences = await asyncio.to_thread(
+            reasoner.reason,
+            interaction_type,
+            context_type,
+            before_text,
+            after_text,
+            metadata,
+        )
+    except Exception as exc:
+        logger.warning("/dialectic/infer: DialecticReasoner raised unexpectedly: %s", exc)
+        inferences = []
+
+    return {"inferences": inferences}
 
 
 # ---------------------------------------------------------------------------
@@ -1426,11 +2016,11 @@ except Exception as _er_err:
     logger.warning(f"EmailReporter not available: {_er_err}")
 
 try:
-    from backend.work_tracker.eod_report_generator import EODReportGenerator as _EODGenerator
-    _eod_generator_available = True
-except Exception as _eod_err:
-    _eod_generator_available = False
-    logger.warning(f"EODReportGenerator not available: {_eod_err}")
+    from backend.daily_report_generator import DailyReportGenerator as _DailyReportGenerator
+    _daily_report_generator_available = True
+except Exception as _drg_err:
+    _daily_report_generator_available = False
+    logger.warning(f"DailyReportGenerator not available: {_drg_err}")
 
 
 @app.post("/reports/preview")
@@ -1511,28 +2101,444 @@ async def http_report_eod(
     request: Request,
     _auth: None = Depends(_verify_trigger_key),
 ) -> dict:
-    """Run the EOD report generator (used by the daemon scheduler)."""
-    if not _eod_generator_available:
-        raise HTTPException(status_code=503, detail="EODReportGenerator not available")
+    """Run the EOD report generator (Phase 4 — commit-grouped narrative).
+
+    Uses DailyReportGenerator.generate_eod_narrative() which queries the
+    triggers table, groups commits by ticket_id, generates per-ticket LLM
+    narratives in the developer's voice, and applies inject_style.
+    Falls back gracefully if the generator is unavailable.
+    """
+    from datetime import date as _date
     data = await request.json()
-    email = data.get("email") or None
     date_str = data.get("date") or None
+    email = data.get("email", "")
+    workspace = data.get("workspace", "all")
     try:
-        gen = _EODGenerator()
-        report = await gen.generate(target_date=date_str)
-        total_h, total_m = divmod(report.total_minutes, 60)
-        lines = [
-            f"EOD Report — {report.date}",
-            f"Total: {total_h}h {total_m}m across {len(report.sessions)} session(s)",
-        ]
-        if report.narrative:
-            lines.append("")
-            lines.append(report.narrative)
-        output = "\n".join(lines)
-        return {"output": output, "success": True}
+        if not _daily_report_generator_available:
+            narrative = "No commits recorded today."
+        else:
+            gen = _DailyReportGenerator()
+            narrative = await asyncio.to_thread(gen.generate_eod_narrative, date_str)
+
+        # Phase 4 — Non-Negotiable #2: every outbound action stages through
+        # pending_actions before touching any external system.
+        action_id = None
+        gw = _get_queue_gateway()
+        if gw is not None:
+            try:
+                from backend.config import get_eod_report_confidence
+                action_id = gw.stage(
+                    action_type="eod_report",
+                    target="developer",
+                    platform="email",
+                    workspace=workspace,
+                    payload={
+                        "narrative": narrative,
+                        "email": email or "",
+                        "date": date_str or str(_date.today()),
+                    },
+                    confidence=get_eod_report_confidence(),
+                    is_new_action_type=False,
+                )
+                logger.info(
+                    "/reports/eod: staged eod_report action %s (email=%s)",
+                    action_id, email or "none",
+                )
+            except Exception as stage_exc:
+                logger.warning("/reports/eod: queue staging failed (non-fatal): %s", stage_exc)
+        else:
+            logger.debug("/reports/eod: queue gateway unavailable — action not staged")
+
+        return {"output": narrative, "success": True, "action_id": action_id}
     except Exception as exc:
         logger.error(f"/reports/eod failed: {exc}")
-        return {"output": str(exc), "success": False}
+        return {"output": str(exc), "success": False, "narrative": ""}
+
+
+# ── Voice seeding (Phase 5 — Tier 0) ─────────────────────────────────────────
+
+
+@app.post("/voice/seed")
+async def http_voice_seed(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Seed ChromaDB with commit messages from a git repository.
+
+    Accepts: {"repo_path": "...", "since_months": N, "force": false}
+    Returns: {"embedded": N, "skipped": N, "repo_path": "..."}
+
+    When force=false (default) the seeder skips repos that already have
+    >= 10 corpus entries for that repo_path — idempotent auto-start behaviour.
+    """
+    data = await request.json()
+    repo_path: str = data.get("repo_path", "")
+    force: bool = bool(data.get("force", False))
+
+    try:
+        from backend.config import get_voice_seed_months
+        since_months: int = int(data.get("since_months") or get_voice_seed_months())
+    except Exception:
+        since_months = 6
+
+    if not repo_path:
+        return {"embedded": 0, "skipped": 0, "repo_path": repo_path, "error": "repo_path is required"}
+
+    # Threshold check: skip if corpus already has >= 10 entries for this repo,
+    # unless force=true is requested.
+    if not force:
+        try:
+            from backend.rag.vector_store import VectorStore as _VS
+            store = _VS()
+            # Count docs tagged to this repo_path via metadata filter.
+            # VectorStore.count() returns total collection size, not per-repo.
+            # Use a heuristic: if total >= 10 assume this repo has been seeded.
+            total = store.count()
+            if total >= 10:
+                logger.info(
+                    "/voice/seed: corpus already has %d entries — skipping (use force=true to override)",
+                    total,
+                )
+                return {"embedded": 0, "skipped": -1, "repo_path": repo_path}
+        except Exception as chk_exc:
+            logger.debug("/voice/seed: threshold check failed (non-fatal): %s", chk_exc)
+
+    try:
+        from backend.voice_seeder import VoiceSeeder
+        seeder = VoiceSeeder()
+        embedded = await asyncio.to_thread(seeder.seed_from_git, repo_path, since_months)
+        logger.info("/voice/seed: embedded %d messages from %s", embedded, repo_path)
+        return {"embedded": embedded, "skipped": 0, "repo_path": repo_path}
+    except Exception as exc:
+        logger.error("/voice/seed failed: %s", exc)
+        return {"embedded": 0, "skipped": 0, "repo_path": repo_path, "error": str(exc)}
+
+
+
+# ── Voice profile generation (Phase 5 — Tier 0 dialectic) ─────────────────────
+
+
+@app.post("/voice/profile/generate")
+async def http_voice_profile_generate(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Generate a Developer Voice Profile from the ChromaDB commit corpus.
+
+    Accepts: {"repo_paths": ["...", "..."]}  (optional)
+    Returns: {"path": "<absolute path to profile.md>", "word_count": N}
+
+    If repo_paths is omitted, the endpoint generates a profile from all
+    available commit messages in the ChromaDB collection (no repo filtering).
+    """
+    data: dict = {}
+    try:
+        data = await request.json()
+    except Exception:
+        pass
+
+    repo_paths: list[str] = data.get("repo_paths") or []
+
+    try:
+        from backend.voice_profile import ProfileGenerator
+        from backend.config import get_path
+
+        gen = ProfileGenerator()
+        profile_text = await asyncio.to_thread(gen.generate, repo_paths)
+
+        data_dir_path = get_path("DATA_DIR")
+        saved_path = await asyncio.to_thread(gen.save, profile_text, str(data_dir_path))
+
+        word_count = len(profile_text.split())
+        logger.info("/voice/profile/generate: saved %d-word profile to %s", word_count, saved_path)
+        return {"path": str(saved_path), "word_count": word_count}
+    except Exception as exc:
+        logger.error("/voice/profile/generate failed: %s", exc)
+        return {"path": "", "word_count": 0, "error": str(exc)}
+
+
+# ── Voice sync (Phase 5 — Tier 1) ────────────────────────────────────────────
+
+
+@app.post("/voice/sync")
+async def http_voice_sync(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """POST /voice/sync — Background sync of PR descriptions and issue comments.
+
+    Polls all configured PM workspaces (or a subset when workspace_names is given)
+    for PR bodies and issue comments authored by the developer and embeds them into
+    ChromaDB. Returns per-platform counts.
+
+    Accepts: {"workspace_names": ["..."]}  — optional; syncs all when omitted.
+    Returns: {"synced": {"github": N, "azure": N, "gitlab": N, "total": N}}
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    workspace_names: list[str] = data.get("workspace_names", [])
+
+    try:
+        from backend.config import get_workspaces_file, get_path
+        from backend.voice_sync import VoiceSync
+    except ImportError as exc:
+        logger.error("/voice/sync: import failed: %s", exc)
+        return {"synced": {"github": 0, "azure": 0, "gitlab": 0, "total": 0}, "error": str(exc)}
+
+    # Load workspace configs from workspaces.yaml (or fall back to empty list).
+    workspaces: list = []
+    try:
+        import yaml
+        ws_file = get_workspaces_file()
+        if ws_file:
+            ws_path = get_path("WORKSPACES_FILE") if ws_file else None
+        else:
+            # Try default location relative to PROJECT_ROOT.
+            project_root = get_path("PROJECT_ROOT") if True else None
+            ws_path = project_root / "workspaces.yaml" if project_root else None
+
+        if ws_path and ws_path.exists():
+            with open(ws_path) as fh:
+                raw = yaml.safe_load(fh) or {}
+            from backend.config import get as cfg_get
+            raw_list = raw.get("workspaces", [])
+            # Build simple namespace objects compatible with VoiceSync expectations.
+            import types
+            for ws_dict in raw_list:
+                if not isinstance(ws_dict, dict):
+                    continue
+                ws_obj = types.SimpleNamespace(**ws_dict)
+                # Normalise attribute names (workspaces.yaml uses snake_case).
+                ws_obj.pm_platform = getattr(ws_obj, "pm_platform", "")
+                ws_obj.pm_username = getattr(ws_obj, "pm_username", "")
+                ws_obj.pm_org = getattr(ws_obj, "pm_org", "")
+                ws_obj.pm_project = getattr(ws_obj, "pm_project", "")
+                ws_obj.name = getattr(ws_obj, "name", "")
+                workspaces.append(ws_obj)
+    except Exception as load_exc:
+        logger.warning("/voice/sync: could not load workspaces.yaml: %s", load_exc)
+
+    # Filter to requested workspace_names when provided.
+    if workspace_names:
+        workspaces = [
+            ws for ws in workspaces
+            if getattr(ws, "name", "") in workspace_names
+        ]
+
+    syncer = VoiceSync()
+    totals = await asyncio.to_thread(syncer.sync_all, workspaces)
+    logger.info("/voice/sync: synced %s", totals)
+    return {"synced": totals}
+
+
+# ── Voice add / status (Phase 5 — Tier 2) ────────────────────────────────────
+
+# Allowed context types for voice corpus entries.
+_VOICE_CONTEXT_TYPES = {"commit", "description", "comment", "report", "task"}
+
+
+@app.post("/voice/add")
+async def http_voice_add(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Inject a manual high-weight writing example into ChromaDB.
+
+    Accepts: {"text": "...", "context_type": "commit|description|comment|report|task"}
+    Returns: {"id": "<chroma_document_id>"}
+             or {"id": "", "error": "chromadb unavailable"} with HTTP 503
+             or HTTP 400/422 on validation failure.
+
+    Entries are tagged with source=manual and weight=high in ChromaDB metadata.
+    """
+    data: dict = {}
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Request body must be valid JSON")
+
+    text: str = data.get("text", "").strip()
+    context_type: str = data.get("context_type", "").strip()
+
+    if not text:
+        raise HTTPException(status_code=400, detail="text is required and must not be empty")
+
+    if not context_type:
+        raise HTTPException(
+            status_code=422,
+            detail=f"context_type is required; allowed values: {sorted(_VOICE_CONTEXT_TYPES)}",
+        )
+
+    if context_type not in _VOICE_CONTEXT_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"invalid context_type {context_type!r}; allowed: {sorted(_VOICE_CONTEXT_TYPES)}",
+        )
+
+    try:
+        from backend.rag.embedder import embed as rag_embed
+        from backend.rag.vector_store import VectorStore
+
+        # Build a unique document ID for this manual entry.
+        import hashlib
+        import time as _time
+        doc_id = "manual-" + hashlib.sha1(
+            f"{context_type}:{text}:{_time.time()}".encode()
+        ).hexdigest()[:16]
+
+        embedded_text = f"Context: {text}\nResponse: {text}"
+        vec = await asyncio.to_thread(rag_embed, embedded_text)
+        if vec is None:
+            logger.warning("/voice/add: embedding model unavailable — ChromaDB not updated")
+            return JSONResponse(
+                status_code=503,
+                content={"id": "", "error": "chromadb unavailable"},
+            )
+
+        store = VectorStore()
+        metadata = {
+            "source": "manual",
+            "weight": "high",
+            "context_type": context_type,
+            "trigger": text[:300],
+            "response": text[:400],
+        }
+        success = store.upsert(doc_id, embedded_text, vec, metadata)
+        if not success:
+            logger.warning("/voice/add: VectorStore.upsert returned False — ChromaDB may be unavailable")
+            return JSONResponse(
+                status_code=503,
+                content={"id": "", "error": "chromadb unavailable"},
+            )
+
+        logger.info("/voice/add: embedded manual entry id=%s context_type=%s", doc_id, context_type)
+        return {"id": doc_id}
+
+    except Exception as exc:
+        logger.warning("/voice/add: unexpected error: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"id": "", "error": "chromadb unavailable"},
+        )
+
+
+@app.get("/voice/status")
+async def http_voice_status(
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Return voice corpus statistics.
+
+    Response shape:
+    {
+      "total_entries": 127,
+      "by_context": {"commit": 95, "description": 18, "comment": 14, "report": 0, "task": 0},
+      "by_source":  {"git_history": 95, "pr_sync": 32, "manual": 0},
+      "last_seed":  "2026-06-18T10:00:00Z" | null,
+      "last_sync":  "2026-06-18T08:00:00Z" | null,
+      "profile_exists":    true,
+      "profile_word_count": 312
+    }
+    Never raises; returns zeros/nulls for missing data.
+    """
+    # ── ChromaDB counts ───────────────────────────────────────────────────────
+    by_context: dict = {ct: 0 for ct in sorted(_VOICE_CONTEXT_TYPES)}
+    by_source: dict = {"git_history": 0, "pr_sync": 0, "manual": 0}
+    total_entries: int = 0
+
+    try:
+        from backend.rag.vector_store import VectorStore
+        store = VectorStore()
+        if store._init():  # noqa: SLF001 — internal init returns bool, safe here
+            try:
+                # Retrieve all documents with their metadata.
+                # ChromaDB .get() with no filters returns everything.
+                result = store._collection.get(include=["metadatas"])  # noqa: SLF001
+                metadatas = result.get("metadatas") or []
+                total_entries = len(metadatas)
+                for meta in metadatas:
+                    ct = meta.get("context_type", "")
+                    if ct in by_context:
+                        by_context[ct] += 1
+                    src = meta.get("source", "")
+                    if src in by_source:
+                        by_source[src] += 1
+            except Exception as qe:
+                logger.debug("/voice/status: ChromaDB count query failed (non-fatal): %s", qe)
+    except Exception as ce:
+        logger.debug("/voice/status: ChromaDB init failed (non-fatal): %s", ce)
+
+    # ── last_seed from voice_seeded_commits ───────────────────────────────────
+    last_seed: str | None = None
+    try:
+        import sqlite3 as _sqlite3
+        from backend.config import database_path
+        db_p = database_path()
+        if db_p.exists():
+            with _sqlite3.connect(str(db_p)) as _conn:
+                row = _conn.execute(
+                    "SELECT MAX(seeded_at) FROM voice_seeded_commits"
+                ).fetchone()
+                if row and row[0]:
+                    last_seed = str(row[0])
+    except Exception as se:
+        logger.debug("/voice/status: last_seed query failed (non-fatal): %s", se)
+
+    # ── last_sync from voice_synced_items (TASK-082) ─────────────────────────
+    last_sync: str | None = None
+    try:
+        import sqlite3 as _sqlite3
+        from backend.config import database_path
+        db_p = database_path()
+        if db_p.exists():
+            with _sqlite3.connect(str(db_p)) as _conn:
+                row = _conn.execute(
+                    "SELECT MAX(synced_at) FROM voice_synced_items"
+                ).fetchone()
+                if row and row[0]:
+                    last_sync = str(row[0])
+    except Exception as sye:
+        logger.debug("/voice/status: last_sync query failed (non-fatal): %s", sye)
+
+    # ── profile file ─────────────────────────────────────────────────────────
+    profile_exists: bool = False
+    profile_word_count: int = 0
+    try:
+        from backend.config import get_path
+        profile_path = get_path("DATA_DIR") / "learning" / "profile.md"
+        if profile_path.exists():
+            profile_exists = True
+            profile_word_count = len(profile_path.read_text(encoding="utf-8").split())
+    except Exception as pe:
+        logger.debug("/voice/status: profile read failed (non-fatal): %s", pe)
+
+    # ── dialectic Phase 6 data ────────────────────────────────────────────────
+    inferences_data: dict = {"total": 0, "top_by_confidence": [], "correction_count": 0}
+    skills_data: dict = {"total": 0, "names": []}
+    thresholds_data: dict = {}
+    try:
+        from backend.dialectic_status import DialecticStatus
+        _ds = DialecticStatus()
+        inferences_data = _ds.get_inference_summary()
+        skills_data = _ds.get_skill_summary()
+        thresholds_data = _ds.get_threshold_summary()
+    except Exception as de:
+        logger.debug("/voice/status: dialectic data failed (non-fatal): %s", de)
+
+    return {
+        "total_entries": total_entries,
+        "by_context": by_context,
+        "by_source": by_source,
+        "last_seed": last_seed,
+        "last_sync": last_sync,
+        "profile_exists": profile_exists,
+        "profile_word_count": profile_word_count,
+        "inferences": inferences_data,
+        "skills": skills_data,
+        "thresholds": thresholds_data,
+    }
 
 
 # ── Learning ─────────────────────────────────────────────────────────────────

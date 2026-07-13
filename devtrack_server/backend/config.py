@@ -206,6 +206,13 @@ def ipc_port() -> str:
     return get("IPC_PORT", "35893")
 
 
+def get_devtrack_control_port() -> int:
+    """Port for the Go daemon's internal HTTP control API.
+    DEVTRACK_SERVER_HTTP_PORT (default: 35894).
+    Used by Python modules that call back to the Go daemon (e.g. /dialectic/query)."""
+    return get_int("DEVTRACK_SERVER_HTTP_PORT", 35894)
+
+
 # --- Azure DevOps (supports both AZURE_DEVOPS_PAT and AZURE_API_KEY for compatibility) ---
 def azure_pat() -> str:
     """Azure DevOps Personal Access Token."""
@@ -1408,6 +1415,11 @@ def get_eod_report_email() -> str:
     return get("EOD_REPORT_EMAIL", "")
 
 
+def get_eod_report_confidence() -> float:
+    """Confidence for staged EOD report actions. EOD_REPORT_CONFIDENCE (default: 0.88)."""
+    return float(get("EOD_REPORT_CONFIDENCE", "0.88"))
+
+
 # --- Notifications ---
 
 def get_notification_enabled() -> bool:
@@ -1425,6 +1437,18 @@ def get_commit_enhance_mode() -> bool:
 def get_workspaces_file() -> str:
     """Path to workspaces YAML file. WORKSPACES_FILE (default: "")."""
     return get("WORKSPACES_FILE", "")
+
+
+# --- Voice seeding (Phase 5) ---
+
+def get_voice_seed_months() -> int:
+    """How many months of git history to seed into ChromaDB. VOICE_SEED_MONTHS (default: 6)."""
+    return get_int("VOICE_SEED_MONTHS", 6) or 6
+
+
+def get_voice_sync_interval_hours() -> int:
+    """How often (in hours) the background voice sync job runs. VOICE_SYNC_INTERVAL_HOURS (default: 24)."""
+    return get_int("VOICE_SYNC_INTERVAL_HOURS", 24) or 24
 
 
 def get_spec_review_base_url() -> str:

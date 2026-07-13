@@ -35,7 +35,7 @@ func RunUninstall(keepData, yes bool) error {
 	fmt.Println("  • Shell integration (profile lines)")
 	fmt.Printf("  • %s  (config directory)\n", confDir)
 	if !keepData {
-		fmt.Printf("  • %s  (data: db, logs, reports)\n", dataHome)
+		fmt.Printf("  • %s  (data, .env, workspaces.yaml, and the cloned Python server if managed mode installed one)\n", dataHome)
 	} else {
 		fmt.Printf("  Note: data directory kept: %s\n", dataHome)
 	}

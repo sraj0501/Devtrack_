@@ -129,23 +129,42 @@ func (cli *CLI) handleTermsAccept() error {
 	return nil
 }
 
-// handleTelemetry enables or disables telemetry.
+// handleTelemetry enables or disables the anonymous install/active ping.
+//
+// Telemetry is opt-in and off by default. The choice is stored locally (a marker
+// file in the data dir) and read directly by the daemon, so this works in every
+// operating mode — including lightweight, where no server is running.
 func (cli *CLI) handleTelemetry() error {
 	args := os.Args[2:]
 	action := "status"
 	if len(args) > 0 {
 		action = args[0]
 	}
-	client := NewHTTPTriggerClient()
-	msg, err := client.AuthTelemetry(action)
-	if err != nil {
-		return fmt.Errorf("telemetry: %w (is the server running?)", err)
-	}
-	fmt.Println(msg)
-	if action == "status" {
+
+	switch action {
+	case "on":
+		if err := SetTelemetryEnabled(true); err != nil {
+			return fmt.Errorf("telemetry on: %w", err)
+		}
+		fmt.Println("Telemetry enabled — thank you.")
+		fmt.Println("Sends only: a random install UUID, a hashed hardware fingerprint, event type,")
+		fmt.Println("version, OS, and arch. Never code, commit text, or personal data.")
+	case "off":
+		if err := SetTelemetryEnabled(false); err != nil {
+			return fmt.Errorf("telemetry off: %w", err)
+		}
+		fmt.Println("Telemetry disabled. No pings will be sent.")
+	case "status":
+		if TelemetryEnabled() {
+			fmt.Println("Telemetry: ENABLED (opted in)")
+		} else {
+			fmt.Println("Telemetry: DISABLED (default — nothing is sent)")
+		}
 		fmt.Println()
-		fmt.Println("devtrack telemetry on   — enable")
-		fmt.Println("devtrack telemetry off  — disable")
+		fmt.Println("devtrack telemetry on   — opt in")
+		fmt.Println("devtrack telemetry off  — opt out")
+	default:
+		return fmt.Errorf("telemetry: unknown action %q (use on, off, or status)", action)
 	}
 	return nil
 }

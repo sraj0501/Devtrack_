@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ type TriggerRecord struct {
 	Author        string
 	Data          string // JSON data
 	Processed     bool
+	TicketID      string // extracted ticket ID (branch/message/active-ticket); "" = unlinked
 }
 
 // ResponseRecord represents a user response in the database
@@ -190,6 +192,15 @@ func NewDatabase() (*Database, error) {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
+	// Apply migration-managed tables (inferences, corrections, skills, etc.) so the
+	// database is fully functional without requiring the full env-var setup that
+	// RunPendingMigrations needs. Safe to call multiple times — all statements use
+	// CREATE TABLE IF NOT EXISTS.
+	if err := db.applyMigrationTables(); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("failed to apply migration tables: %w", err)
+	}
+
 	log.Printf("Database initialized: %s", dbPath)
 	return db, nil
 }
@@ -222,6 +233,7 @@ func (d *Database) initSchema() error {
 		author TEXT,
 		data TEXT,
 		processed BOOLEAN DEFAULT 0,
+		ticket_id TEXT DEFAULT '',
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
@@ -450,6 +462,7 @@ func (d *Database) initSchema() error {
 	for _, alter := range []string{
 		`ALTER TABLE deferred_commits ADD COLUMN base_sha TEXT`,
 		`ALTER TABLE deferred_commits ADD COLUMN snapshot_sha TEXT`,
+		`ALTER TABLE triggers ADD COLUMN ticket_id TEXT DEFAULT ''`,
 	} {
 		if _, err := d.db.Exec(alter); err != nil && !strings.Contains(err.Error(), "duplicate column") {
 			return fmt.Errorf("migration failed (%s): %w", alter, err)
@@ -461,8 +474,8 @@ func (d *Database) initSchema() error {
 // InsertTrigger inserts a trigger record into the database
 func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
 	query := `
-		INSERT INTO triggers (trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO triggers (trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, ticket_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	result, err := d.db.Exec(query,
@@ -475,6 +488,7 @@ func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
 		record.Author,
 		record.Data,
 		record.Processed,
+		record.TicketID,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert trigger: %w", err)
@@ -572,7 +586,7 @@ func (d *Database) InsertLog(record LogRecord) error {
 // GetTriggerByID retrieves a trigger by ID
 func (d *Database) GetTriggerByID(id int64) (*TriggerRecord, error) {
 	query := `
-		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed
+		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, COALESCE(ticket_id,'')
 		FROM triggers
 		WHERE id = ?
 	`
@@ -589,6 +603,7 @@ func (d *Database) GetTriggerByID(id int64) (*TriggerRecord, error) {
 		&record.Author,
 		&record.Data,
 		&record.Processed,
+		&record.TicketID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get trigger: %w", err)
@@ -600,7 +615,7 @@ func (d *Database) GetTriggerByID(id int64) (*TriggerRecord, error) {
 // GetRecentTriggers retrieves recent triggers
 func (d *Database) GetRecentTriggers(limit int) ([]TriggerRecord, error) {
 	query := `
-		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed
+		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, COALESCE(ticket_id,'')
 		FROM triggers
 		ORDER BY timestamp DESC
 		LIMIT ?
@@ -626,6 +641,7 @@ func (d *Database) GetRecentTriggers(limit int) ([]TriggerRecord, error) {
 			&record.Author,
 			&record.Data,
 			&record.Processed,
+			&record.TicketID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan trigger: %w", err)
@@ -634,6 +650,77 @@ func (d *Database) GetRecentTriggers(limit int) ([]TriggerRecord, error) {
 	}
 
 	return triggers, nil
+}
+
+// GetLastTicketID returns the most recently extracted (non-empty) ticket ID
+// for commit triggers in the given repo. Used by the active-ticket fallback
+// strategy (TASK-069) when branch and commit-message extraction both fail.
+// Returns "" with no error when no prior matched commit exists.
+func (d *Database) GetLastTicketID(repoPath string) (string, error) {
+	var ticketID string
+	err := d.db.QueryRow(`
+		SELECT ticket_id FROM triggers
+		WHERE trigger_type='commit'
+		  AND repo_path=?
+		  AND ticket_id != ''
+		  AND ticket_id != 'unlinked'
+		ORDER BY timestamp DESC LIMIT 1
+	`, repoPath).Scan(&ticketID)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to get last ticket id: %w", err)
+	}
+	return ticketID, nil
+}
+
+// CountTicketCommits returns the number of prior commit trigger rows that
+// reference the given ticketID in the given repoPath. The caller must invoke
+// this BEFORE InsertTrigger for the current commit so that only prior rows are
+// counted — the check answers "have we seen this ticket in this repo before?".
+// Returns (0, nil) when the ticket has never been seen. Used by the Go trigger
+// flow (TASK-073) to populate CommitTriggerData.IsFirstCommitForTicket.
+func (d *Database) CountTicketCommits(repoPath, ticketID string) (int, error) {
+	if ticketID == "" {
+		return 0, nil
+	}
+	var count int
+	err := d.db.QueryRow(`
+		SELECT COUNT(*) FROM triggers
+		WHERE trigger_type='commit'
+		  AND repo_path=?
+		  AND ticket_id=?
+	`, repoPath, ticketID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("CountTicketCommits failed: %w", err)
+	}
+	return count, nil
+}
+
+// TicketStats returns ticket extraction statistics (total/linked/unlinked) for
+// the last N commit triggers, optionally filtered by repo path. Pass repoPath=""
+// to aggregate across all workspaces. Used by `devtrack status` (TASK-070) to
+// verify the Phase 2 exit criterion: >=80% of commits mapped to a ticket.
+func (d *Database) TicketStats(repoPath string, lastN int) (total, linked, unlinked int, err error) {
+	row := d.db.QueryRow(`
+		SELECT COUNT(*) AS total,
+		       SUM(CASE WHEN ticket_id != '' AND ticket_id != 'unlinked' THEN 1 ELSE 0 END) AS linked
+		FROM (
+			SELECT ticket_id FROM triggers
+			WHERE trigger_type='commit'
+			  AND (? = '' OR repo_path = ?)
+			ORDER BY timestamp DESC LIMIT ?
+		)
+	`, repoPath, repoPath, lastN)
+
+	var linkedNullable sql.NullInt64
+	if scanErr := row.Scan(&total, &linkedNullable); scanErr != nil {
+		return 0, 0, 0, fmt.Errorf("failed to get ticket stats: %w", scanErr)
+	}
+	linked = int(linkedNullable.Int64)
+	unlinked = total - linked
+	return total, linked, unlinked, nil
 }
 
 // GetUnsyncedTaskUpdates retrieves task updates that haven't been synced
@@ -762,8 +849,8 @@ func (d *Database) CleanOldRecords(retentionDays int) error {
 }
 
 // GetStats returns database statistics
-func (d *Database) GetStats() (map[string]interface{}, error) {
-	stats := make(map[string]interface{})
+func (d *Database) GetStats() (map[string]any, error) {
+	stats := make(map[string]any)
 
 	// Count triggers
 	var triggerCount int
@@ -819,8 +906,8 @@ func (d *Database) GetStats() (map[string]interface{}, error) {
 }
 
 // GetAnalytics returns analytics: triggers today/week, top projects
-func (d *Database) GetAnalytics() (map[string]interface{}, error) {
-	analytics := make(map[string]interface{})
+func (d *Database) GetAnalytics() (map[string]any, error) {
+	analytics := make(map[string]any)
 
 	// Triggers today
 	var today int
@@ -850,12 +937,12 @@ func (d *Database) GetAnalytics() (map[string]interface{}, error) {
 	`)
 	if err == nil {
 		defer rows.Close()
-		var top []map[string]interface{}
+		var top []map[string]any
 		for rows.Next() {
 			var p string
 			var c int64
 			if rows.Scan(&p, &c) == nil {
-				top = append(top, map[string]interface{}{"project": p, "count": c})
+				top = append(top, map[string]any{"project": p, "count": c})
 			}
 		}
 		analytics["top_projects"] = top
@@ -932,7 +1019,7 @@ func (d *Database) GetReportByID(id int64) (*ReportRecord, error) {
 // GetReports retrieves reports with optional filters
 func (d *Database) GetReports(reportType string, days int, limit int) ([]ReportRecord, error) {
 	var query string
-	var args []interface{}
+	var args []any
 
 	if reportType != "" {
 		query = `
@@ -942,7 +1029,7 @@ func (d *Database) GetReports(reportType string, days int, limit int) ([]ReportR
 			ORDER BY report_date DESC
 			LIMIT ?
 		`
-		args = []interface{}{reportType, days, limit}
+		args = []any{reportType, days, limit}
 	} else {
 		query = `
 			SELECT id, report_date, report_type, format, content, summary, total_hours, task_count, completed_count, projects_count, ai_enhanced, email_sent, email_sent_at, created_at
@@ -951,7 +1038,7 @@ func (d *Database) GetReports(reportType string, days int, limit int) ([]ReportR
 			ORDER BY report_date DESC
 			LIMIT ?
 		`
-		args = []interface{}{days, limit}
+		args = []any{days, limit}
 	}
 
 	rows, err := d.db.Query(query, args...)
@@ -1770,15 +1857,18 @@ func buildJSONStringArray(items []string) string {
 	if len(items) == 0 {
 		return "[]"
 	}
-	out := "["
+	var b strings.Builder
+	b.WriteByte('[')
 	for idx, item := range items {
-		out += `"` + item + `"`
+		b.WriteByte('"')
+		b.WriteString(item)
+		b.WriteByte('"')
 		if idx < len(items)-1 {
-			out += ","
+			b.WriteByte(',')
 		}
 	}
-	out += "]"
-	return out
+	b.WriteByte(']')
+	return b.String()
 }
 
 // VacationState holds the current vacation mode configuration.
@@ -1901,7 +1991,7 @@ func (d *Database) MarkAllNotificationsRead() error {
 
 func scanNotifications(rows interface {
 	Next() bool
-	Scan(...interface{}) error
+	Scan(...any) error
 	Close() error
 }) ([]NotificationRecord, error) {
 	defer rows.Close()
@@ -2160,8 +2250,241 @@ func (d *Database) MarkPMUpdateSent(id int64) error {
 // Prefer dedicated methods; this escape hatch exists only for inline queries
 // in package main that cannot be refactored into a typed method without
 // major churn (e.g. auto-stop work sessions, expire deferred commits).
-func (d *Database) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (d *Database) Exec(query string, args ...any) (sql.Result, error) {
 	return d.db.Exec(query, args...)
+}
+
+// ExecRaw executes a raw SQL statement. Used by tests and migrations only.
+// Identical to Exec; provided under a distinct name so call sites in tests are
+// clearly distinct from production call sites.
+func (d *Database) ExecRaw(query string, args ...any) (sql.Result, error) {
+	return d.db.Exec(query, args...)
+}
+
+// NewDatabaseAtPath opens a SQLite database at an explicit path without reading
+// any environment variables. Intended for use in tests that cannot set up the
+// full environment, and for temporary databases in other contexts.
+// It applies both the base schema (initSchema) and the migration-managed tables
+// so the resulting DB is fully functional without requiring RunPendingMigrations.
+func NewDatabaseAtPath(dbPath string) (*Database, error) {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create database directory: %w", err)
+	}
+	sqlDB, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	if err := sqlDB.Ping(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+	d := &Database{db: sqlDB, path: dbPath}
+	if err := d.initSchema(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+	}
+	// Apply migration-managed tables inline so the DB is fully functional
+	// without requiring the full env-var setup that RunPendingMigrations needs.
+	if err := d.applyMigrationTables(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("failed to apply migration tables: %w", err)
+	}
+	return d, nil
+}
+
+// applyMigrationTables creates the tables that are normally applied by
+// RunPendingMigrations but are not in the base initSchema. Called by
+// NewDatabaseAtPath so test databases are fully functional without env vars.
+func (d *Database) applyMigrationTables() error {
+	stmts := []string{
+		// 006-create-pending-actions
+		`CREATE TABLE IF NOT EXISTS pending_actions (
+			id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			action_type TEXT    NOT NULL,
+			target      TEXT    NOT NULL,
+			platform    TEXT    NOT NULL,
+			workspace   TEXT    NOT NULL,
+			payload     TEXT    NOT NULL,
+			confidence  REAL    NOT NULL,
+			status      TEXT    NOT NULL DEFAULT 'pending',
+			expires_at  DATETIME NOT NULL,
+			created_at  DATETIME NOT NULL DEFAULT (datetime('now')),
+			acted_at    DATETIME,
+			acted_by    TEXT,
+			error       TEXT
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_pending_actions_status ON pending_actions(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_pending_actions_expires ON pending_actions(expires_at)`,
+		// 008-create-inferences-fts5 (plain table only; FTS5 virtual table omitted for test simplicity)
+		`CREATE TABLE IF NOT EXISTS inferences (
+			id           INTEGER PRIMARY KEY AUTOINCREMENT,
+			context_type TEXT    NOT NULL,
+			subject      TEXT    NOT NULL,
+			inference    TEXT    NOT NULL,
+			evidence     TEXT    NOT NULL,
+			confidence   REAL    NOT NULL DEFAULT 0.5,
+			source       TEXT    NOT NULL DEFAULT 'hermes3',
+			created_at   DATETIME NOT NULL DEFAULT (datetime('now')),
+			updated_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		// 009-create-corrections (needed by voice profile tools)
+		`CREATE TABLE IF NOT EXISTS corrections (
+			id           INTEGER PRIMARY KEY AUTOINCREMENT,
+			inference_id INTEGER NOT NULL,
+			correction   TEXT    NOT NULL,
+			flagged_from TEXT    NOT NULL,
+			weight       REAL    NOT NULL DEFAULT 1.0,
+			created_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		// 010-create-confidence-thresholds
+		`CREATE TABLE IF NOT EXISTS confidence_thresholds (
+			id           INTEGER PRIMARY KEY AUTOINCREMENT,
+			action_type  TEXT    NOT NULL,
+			workspace    TEXT    NOT NULL DEFAULT '',
+			threshold    REAL    NOT NULL DEFAULT 0.70,
+			approvals    INTEGER NOT NULL DEFAULT 0,
+			rejections   INTEGER NOT NULL DEFAULT 0,
+			last_updated DATETIME NOT NULL DEFAULT (datetime('now')),
+			UNIQUE(action_type, workspace)
+		)`,
+		// 011-create-skills
+		`CREATE TABLE IF NOT EXISTS skills (
+			id             INTEGER PRIMARY KEY AUTOINCREMENT,
+			name           TEXT    NOT NULL UNIQUE,
+			description    TEXT    NOT NULL,
+			context_type   TEXT    NOT NULL,
+			evidence_count INTEGER NOT NULL DEFAULT 0,
+			promoted_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+			last_seen_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		// 012-create-pr-review-comments
+		`CREATE TABLE IF NOT EXISTS pr_review_comments (
+			platform      TEXT     NOT NULL,
+			comment_id    TEXT     NOT NULL,
+			pr_id         TEXT     NOT NULL,
+			workspace     TEXT     NOT NULL,
+			status        TEXT     NOT NULL DEFAULT 'new',
+			comment_body  TEXT     NOT NULL DEFAULT '',
+			classified_as TEXT,
+			fix_hint      TEXT     NOT NULL DEFAULT '',
+			created_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+			updated_at    DATETIME NOT NULL DEFAULT (datetime('now')),
+			attempt_count INTEGER  NOT NULL DEFAULT 0,
+			PRIMARY KEY (platform, comment_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_pr_comments_status ON pr_review_comments(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_pr_comments_pr     ON pr_review_comments(pr_id, platform)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := d.db.Exec(stmt); err != nil && !strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("applyMigrationTables: %w", err)
+		}
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// MCP read-only query helpers (TASK-099)
+// ---------------------------------------------------------------------------
+
+// TriggerCommit is a minimal commit record returned by MCP tools.
+// It is a lighter-weight view than the full TriggerRecord.
+// The triggers table stores repo_path (not workspace_name) and has no branch
+// column; those fields are populated from available data.
+type TriggerCommit struct {
+	Hash      string
+	Message   string
+	TicketID  string
+	RepoPath  string // maps to triggers.repo_path
+	Timestamp string
+}
+
+// ListTodayCommits returns all commit triggers from today (UTC date), optionally
+// filtered to a specific repo path. Pass repoPath="" for all repos.
+// Results are ordered ASC by timestamp.
+func (d *Database) ListTodayCommits(repoPath string) ([]TriggerCommit, error) {
+	q := `
+		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
+		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
+		FROM triggers
+		WHERE trigger_type='commit'
+		  AND date(timestamp) = date('now')
+		  AND (? = '' OR repo_path = ?)
+		ORDER BY timestamp ASC
+	`
+	rows, err := d.db.Query(q, repoPath, repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("ListTodayCommits: %w", err)
+	}
+	defer rows.Close()
+	var out []TriggerCommit
+	for rows.Next() {
+		var c TriggerCommit
+		if err := rows.Scan(&c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp); err != nil {
+			return nil, fmt.Errorf("ListTodayCommits scan: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// ListTicketCommits returns the N most recent commit triggers for a given ticket_id.
+func (d *Database) ListTicketCommits(ticketID string, limit int) ([]TriggerCommit, error) {
+	q := `
+		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
+		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
+		FROM triggers
+		WHERE trigger_type='commit'
+		  AND ticket_id = ?
+		ORDER BY timestamp DESC
+		LIMIT ?
+	`
+	rows, err := d.db.Query(q, ticketID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ListTicketCommits: %w", err)
+	}
+	defer rows.Close()
+	var out []TriggerCommit
+	for rows.Next() {
+		var c TriggerCommit
+		if err := rows.Scan(&c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp); err != nil {
+			return nil, fmt.Errorf("ListTicketCommits scan: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// MostRecentCommit returns the most recent commit trigger across all repos.
+// Returns a zero TriggerCommit (empty fields) when no commits exist.
+func (d *Database) MostRecentCommit() (TriggerCommit, error) {
+	var c TriggerCommit
+	err := d.db.QueryRow(`
+		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
+		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
+		FROM triggers
+		WHERE trigger_type='commit'
+		ORDER BY timestamp DESC
+		LIMIT 1
+	`).Scan(&c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp)
+	if err == sql.ErrNoRows {
+		return TriggerCommit{}, nil
+	}
+	if err != nil {
+		return TriggerCommit{}, fmt.Errorf("MostRecentCommit: %w", err)
+	}
+	return c, nil
+}
+
+// CountTodayCommits returns the number of commit triggers today (UTC date).
+func (d *Database) CountTodayCommits() (int, error) {
+	var n int
+	err := d.db.QueryRow(`
+		SELECT COUNT(*) FROM triggers
+		WHERE trigger_type='commit'
+		  AND date(timestamp) = date('now')
+	`).Scan(&n)
+	return n, err
 }
 
 // MarkPMUpdateFailed increments attempts and records the error on a pm_update_queue row.

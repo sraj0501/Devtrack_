@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -13,13 +15,21 @@ import (
 type alertsDataMsg []db.NotificationRecord
 
 type alertsModel struct {
-	db     *db.Database
-	items  []db.NotificationRecord
-	width  int
-	height int
+	db      *db.Database
+	vp      viewport.Model
+	items   []db.NotificationRecord
+	spinner spinner.Model
+	loading bool
+	width   int
+	height  int
 }
 
-func newAlertsModel(db *db.Database) alertsModel { return alertsModel{db: db} }
+func newAlertsModel(database *db.Database) alertsModel {
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(ColorAccent)
+	return alertsModel{db: database, spinner: sp, loading: true}
+}
 
 func (m alertsModel) load() tea.Cmd {
 	return func() tea.Msg {
@@ -32,56 +42,84 @@ func (m alertsModel) load() tea.Cmd {
 }
 
 func (m alertsModel) Update(msg tea.Msg) (alertsModel, tea.Cmd) {
-	if d, ok := msg.(alertsDataMsg); ok {
-		m.items = []db.NotificationRecord(d)
+	switch msg := msg.(type) {
+	case alertsDataMsg:
+		m.items = []db.NotificationRecord(msg)
+		m.loading = false
+		m.vp.SetContent(m.buildContent())
+		return m, nil
+
+	case tea.WindowSizeMsg:
+		contentH := msg.Height - 5
+		if contentH < 1 {
+			contentH = 1
+		}
+		m.vp = viewport.New(msg.Width, contentH)
+		m.vp.SetContent(m.buildContent())
+		return m, nil
+
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
+	default:
+		var cmd tea.Cmd
+		m.vp, cmd = m.vp.Update(msg)
+		return m, cmd
 	}
-	return m, nil
 }
 
-func (m alertsModel) View() string {
+func (m alertsModel) sourceBadge(source string) string {
+	switch source {
+	case "github":
+		return StyleBadge(ColorAccent).Render(" " + source + " ")
+	case "azure":
+		return StyleBadge(ColorInfo).Render(" " + source + " ")
+	case "jira":
+		return StyleBadge(ColorWarning).Render(" " + source + " ")
+	default:
+		return StyleBadge(ColorMuted).Render(" " + source + " ")
+	}
+}
+
+func (m alertsModel) buildContent() string {
 	if len(m.items) == 0 {
 		return "\n  No notifications yet.\n  The ticket alerter will populate this as alerts arrive."
 	}
 
-	githubStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
-	azureStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("33"))
-	jiraStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("226"))
-	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	unread := lipgloss.NewStyle().Bold(true)
-
 	var sb strings.Builder
 	sb.WriteString("\n")
 	for _, r := range m.items {
-		srcStyle := muted
-		switch r.Source {
-		case "github":
-			srcStyle = githubStyle
-		case "azure":
-			srcStyle = azureStyle
-		case "jira":
-			srcStyle = jiraStyle
-		}
-
-		dot := muted.Render("○")
-		titleStyle := muted
+		// Unread/read dot.
+		var dot string
+		var titleStyle lipgloss.Style
 		if !r.Read {
-			dot = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Render("●")
-			titleStyle = unread
+			dot = lipgloss.NewStyle().Foreground(ColorSuccess).Render("●")
+			titleStyle = lipgloss.NewStyle().Bold(true)
+		} else {
+			dot = StyleMuted.Render("○")
+			titleStyle = StyleMuted
 		}
 
-		ts := r.CreatedAt.Format("01/02 15:04")
+		ts := StyleMuted.Render(r.CreatedAt.Format("01/02 15:04"))
+		badge := m.sourceBadge(r.Source)
+		eventType := StyleMuted.Render(fmt.Sprintf("%-14s", r.EventType))
+
 		title := r.Title
 		if len(title) > 55 {
 			title = title[:52] + "…"
 		}
 
-		sb.WriteString(fmt.Sprintf("  %s %s  %-8s %-18s %s\n",
-			dot,
-			muted.Render(ts),
-			srcStyle.Render(r.Source),
-			muted.Render(r.EventType),
-			titleStyle.Render(title),
-		))
+		sb.WriteString(fmt.Sprintf("  %s  %s  %s  %s  %s\n",
+			dot, ts, badge, eventType, titleStyle.Render(title)))
 	}
 	return sb.String()
+}
+
+func (m alertsModel) View() string {
+	if m.loading {
+		return "\n  " + m.spinner.View() + " Loading alerts…"
+	}
+	return m.vp.View()
 }

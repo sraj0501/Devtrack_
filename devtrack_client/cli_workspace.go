@@ -51,7 +51,8 @@ func (wc *WorkspaceCommands) Add(name, path, pmPlatform string) error {
 	path = expandWorkspacePath(path)
 
 	if !IsGitRepository(path) {
-		if err := offerGitInit(path); err != nil {
+		reader := bufio.NewReader(os.Stdin)
+		if err := offerGitInit(path, reader); err != nil {
 			return err
 		}
 	}
@@ -249,11 +250,16 @@ func (wc *WorkspaceCommands) InstallHooks() error {
 // the directory is immediately usable as a DevTrack workspace.
 // Returns nil if the user accepts and init succeeds, or an error otherwise
 // (including when the user declines — the caller decides whether to continue).
-func offerGitInit(path string) error {
+//
+// Takes the caller's *bufio.Reader rather than wrapping os.Stdin again: a
+// second independent bufio.Reader over the same stdin can silently steal
+// already-buffered input from the caller (or vice versa), misaligning every
+// prompt that follows — this bit a scripted `devtrack setup` run where the
+// workspace-path answer was swallowed here instead of reaching this prompt.
+func offerGitInit(path string, reader *bufio.Reader) error {
 	fmt.Printf("\n%s is not a git repository.\n", path)
 	fmt.Print("Initialize it with git init and an initial commit? [Y/n]: ")
 
-	reader := bufio.NewReader(os.Stdin)
 	answer, _ := reader.ReadString('\n')
 	answer = strings.TrimSpace(strings.ToLower(answer))
 

@@ -136,6 +136,7 @@ func (cli *CLI) handleStatus() error {
 		printStatusWorkspaces()
 		printStatusPMTokens()
 		printStatusServer()
+		printTicketExtractionStats("")
 		fmt.Println("Config files:")
 		if envPath := resolveEnvFilePath(); envPath != "" {
 			fmt.Printf("  .env          %s\n", envPath)
@@ -285,6 +286,9 @@ func (cli *CLI) handleStatus() error {
 	// Server connection
 	printStatusServer()
 
+	// Ticket extraction hit-rate (Phase 2 exit criterion)
+	printTicketExtractionStats("")
+
 	// Config file locations
 	fmt.Println("Config files:")
 	if envPath := resolveEnvFilePath(); envPath != "" {
@@ -353,6 +357,50 @@ func printStatusPMTokens() {
 		if os.Getenv(t.env) != "" {
 			fmt.Printf("  %-20s set\n", t.name)
 		}
+	}
+	fmt.Println()
+}
+
+// ticketExtractionWindow is the number of most-recent commit triggers
+// considered when computing the ticket-extraction hit rate shown in
+// `devtrack status` (TASK-070). Matches the spec's "last 50 commits" window.
+const ticketExtractionWindow = 50
+
+// ticketExtractionMinSample is the minimum number of commit triggers required
+// before a percentage is shown; below this, the sample is too small to be
+// meaningful and "Not enough data" is printed instead.
+const ticketExtractionMinSample = 5
+
+// printTicketExtractionStats shows the Phase 2 exit-criterion metric: the
+// percentage of recent commits that were successfully mapped to a ticket ID
+// (branch name -> commit message -> active-ticket fallback chain from
+// TASK-068/069). Pass repoPath="" to aggregate across all workspaces.
+func printTicketExtractionStats(repoPath string) {
+	db, err := NewDatabase()
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	total, linked, unlinked, err := db.TicketStats(repoPath, ticketExtractionWindow)
+	if err != nil {
+		return
+	}
+
+	fmt.Printf("Ticket Extraction (last %d commits):\n", ticketExtractionWindow)
+	if total < ticketExtractionMinSample {
+		fmt.Printf("  Not enough data (%d commits)\n", total)
+		fmt.Println()
+		return
+	}
+
+	pct := float64(linked) / float64(total) * 100
+	fmt.Printf("  Linked:   %d / %d  (%.0f%%)\n", linked, total, pct)
+	fmt.Printf("  Unlinked: %d / %d\n", unlinked, total)
+	if pct >= 80.0 {
+		fmt.Printf("  Status:   PASS — above 80%% target\n")
+	} else {
+		fmt.Printf("  Status:   BELOW TARGET (80%% required)\n")
 	}
 	fmt.Println()
 }

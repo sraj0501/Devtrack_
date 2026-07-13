@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -862,6 +863,36 @@ func IsAlertAzureEnabled() bool {
 	return strings.EqualFold(val, "true") || val == "1"
 }
 
+// GetReviewAgent returns the configured coding agent backend.
+// Valid values: "claude-code", "copilot-cli".
+// Defaults to "claude-code" if REVIEW_AGENT is unset or invalid (logs a warning).
+func GetReviewAgent() string {
+	v := os.Getenv("REVIEW_AGENT")
+	switch v {
+	case "claude-code", "copilot-cli":
+		return v
+	default:
+		if v != "" {
+			log.Printf("config: unknown REVIEW_AGENT %q — defaulting to claude-code", v)
+		}
+		return "claude-code"
+	}
+}
+
+// GetReviewAgentTimeoutSecs returns REVIEW_AGENT_TIMEOUT_SECS (required).
+// Panics with a clear message if the variable is not set.
+func GetReviewAgentTimeoutSecs() int {
+	val := os.Getenv("REVIEW_AGENT_TIMEOUT_SECS")
+	if val == "" {
+		panic("devtrack: REVIEW_AGENT_TIMEOUT_SECS not set — add it to .env (recommended value: 120)")
+	}
+	secs := mustParseInt("REVIEW_AGENT_TIMEOUT_SECS", val)
+	if secs <= 0 {
+		panic(fmt.Sprintf("devtrack: REVIEW_AGENT_TIMEOUT_SECS must be > 0, got %d", secs))
+	}
+	return secs
+}
+
 // GetAlertPollIntervalSecs returns ALERT_POLL_INTERVAL_SECS (default 300).
 func GetAlertPollIntervalSecs() int {
 	val := os.Getenv("ALERT_POLL_INTERVAL_SECS")
@@ -920,7 +951,7 @@ func GetTelegramChatIDs() []string {
 		return nil
 	}
 	var ids []string
-	for _, id := range strings.Split(val, ",") {
+	for id := range strings.SplitSeq(val, ",") {
 		if s := strings.TrimSpace(id); s != "" {
 			ids = append(ids, s)
 		}
@@ -937,7 +968,7 @@ func GetTelegramAllowedChatIDs() []string {
 		return nil
 	}
 	var ids []string
-	for _, id := range strings.Split(val, ",") {
+	for id := range strings.SplitSeq(val, ",") {
 		if s := strings.TrimSpace(id); s != "" {
 			ids = append(ids, s)
 		}
@@ -948,4 +979,136 @@ func GetTelegramAllowedChatIDs() []string {
 // GetSlackWebhookURL returns SLACK_WEBHOOK_URL.
 func GetSlackWebhookURL() string {
 	return os.Getenv("SLACK_WEBHOOK_URL")
+}
+
+// GetQueuePollIntervalSecs returns QUEUE_POLL_INTERVAL_SECS — how often the
+// queue executor polls /queue/pending for expired actions to auto-approve.
+// Reads QUEUE_POLL_INTERVAL_SECS from the environment; defaults to 15 if unset.
+func GetQueuePollIntervalSecs() int {
+	val := os.Getenv("QUEUE_POLL_INTERVAL_SECS")
+	if val == "" {
+		return 15
+	}
+	secs, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || secs <= 0 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid QUEUE_POLL_INTERVAL_SECS %q — using default 15\n", val)
+		return 15
+	}
+	return secs
+}
+
+// GetEODReportHour returns the hour (0–23) at which to fire the EOD report cron.
+// Reads EOD_REPORT_HOUR. Returns 0 on absent or invalid value (0 = disabled).
+// Not a panic var — missing or zero simply disables the EOD auto-report.
+func GetEODReportHour() int {
+	val := os.Getenv("EOD_REPORT_HOUR")
+	if val == "" || val == "0" {
+		return 0
+	}
+	h, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || h < 0 || h > 23 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid EOD_REPORT_HOUR %q — EOD auto-report disabled\n", val)
+		return 0
+	}
+	return h
+}
+
+// GetEODReportMinute returns the minute (0–59) within the EOD hour at which the
+// cron fires. Reads EOD_REPORT_MINUTE. Returns 0 if absent (fires on the hour).
+func GetEODReportMinute() int {
+	val := os.Getenv("EOD_REPORT_MINUTE")
+	if val == "" {
+		return 0
+	}
+	m, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || m < 0 || m > 59 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid EOD_REPORT_MINUTE %q — using 0\n", val)
+		return 0
+	}
+	return m
+}
+
+// GetEODReportEmail returns the email address for EOD report delivery.
+// Reads EOD_REPORT_EMAIL. Returns "" if not set (disables email delivery).
+func GetEODReportEmail() string {
+	return strings.TrimSpace(os.Getenv("EOD_REPORT_EMAIL"))
+}
+
+// GetWorkSessionAutoStopMinutes returns the idle duration after which an active
+// work session is automatically stopped. Reads WORK_SESSION_AUTO_STOP_MINUTES.
+// Returns 0 if absent or invalid (0 = disabled).
+func GetWorkSessionAutoStopMinutes() int {
+	val := os.Getenv("WORK_SESSION_AUTO_STOP_MINUTES")
+	if val == "" {
+		return 0
+	}
+	m, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || m <= 0 {
+		return 0
+	}
+	return m
+}
+
+// GetEODTelegramEnabled returns whether EOD reports should be delivered via Telegram.
+// Reads EOD_TELEGRAM_ENABLED. Default is false (opt-in).
+// No panic — a missing var is treated as false, not a fatal misconfiguration.
+func GetEODTelegramEnabled() bool {
+	val := strings.TrimSpace(strings.ToLower(os.Getenv("EOD_TELEGRAM_ENABLED")))
+	return val == "true" || val == "1"
+}
+
+// GetVoiceSeedMonths returns the number of months of git history to mine for
+// voice corpus seeding (Phase 5 — Tier 0). Reads VOICE_SEED_MONTHS.
+// REQUIRED: panics with a clear message if the variable is not set.
+func GetVoiceSeedMonths() int {
+	val := os.Getenv("VOICE_SEED_MONTHS")
+	if val == "" {
+		panic("devtrack: VOICE_SEED_MONTHS not set — add it to .env (recommended value: 6)")
+	}
+	months := mustParseInt("VOICE_SEED_MONTHS", val)
+	if months <= 0 {
+		panic(fmt.Sprintf("devtrack: VOICE_SEED_MONTHS must be > 0, got %d", months))
+	}
+	return months
+}
+
+// GetVoiceSyncIntervalHours returns how often (in hours) the background voice
+// sync job polls PM platforms for PR descriptions and issue comments (Phase 5 — Tier 1).
+// Reads VOICE_SYNC_INTERVAL_HOURS.
+// REQUIRED: panics with a clear message if the variable is not set.
+func GetVoiceSyncIntervalHours() int {
+	val := os.Getenv("VOICE_SYNC_INTERVAL_HOURS")
+	if val == "" {
+		panic("devtrack: VOICE_SYNC_INTERVAL_HOURS not set — add it to .env (recommended value: 24)")
+	}
+	hours := mustParseInt("VOICE_SYNC_INTERVAL_HOURS", val)
+	if hours <= 0 {
+		panic(fmt.Sprintf("devtrack: VOICE_SYNC_INTERVAL_HOURS must be > 0, got %d", hours))
+	}
+	return hours
+}
+
+// GetMCPPort returns the MCP server port from MCP_PORT.
+// Returns "0" when unset — 0 means stdio-only mode (used by Claude Code integration).
+func GetMCPPort() string {
+	v := os.Getenv("MCP_PORT")
+	if v == "" {
+		return "0"
+	}
+	return v
+}
+
+// GetReviewPollIntervalSecs returns REVIEW_POLL_INTERVAL_SECS (required).
+// Controls how often the fix loop polls for PR approval state after each fix attempt.
+// Panics with a clear message if the variable is not set.
+func GetReviewPollIntervalSecs() int {
+	val := os.Getenv("REVIEW_POLL_INTERVAL_SECS")
+	if val == "" {
+		panic("devtrack: REVIEW_POLL_INTERVAL_SECS not set — add it to .env (recommended value: 30)")
+	}
+	secs := mustParseInt("REVIEW_POLL_INTERVAL_SECS", val)
+	if secs <= 0 {
+		panic(fmt.Sprintf("devtrack: REVIEW_POLL_INTERVAL_SECS must be > 0, got %d", secs))
+	}
+	return secs
 }

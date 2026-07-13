@@ -1,25 +1,21 @@
 ---
 name: Project current state
-description: Post-pivot (2026-06-10) — direction now PRODUCT_BIBLE.md Phase 0→8; v3.0.10 shipped; platform quirks
+description: v3.0.10; Phases 0–8 + Managed Install + TASK-109 cleanup COMPLETE; next is Phase 9 (Adoption Gate, TASK-110–117); PRs #216–218 open
 type: project
 ---
 
-**Version:** v3.0.10 (latest tag). Active branch: `dev`. GitHub (`sraj0501/Devtrack_`) sole source. Releases: `.\scripts\release.ps1 [-Bump patch|minor|major]`.
+**Version:** v3.0.10. Branch: `dev` (tip `f329c8a`). GitHub `sraj0501/Devtrack_` sole source. Release: `.\scripts\release.ps1 [-Bump patch|minor|major]`. Baseline: 798 Python + 112 Go tests, zero open issues.
 
-**Migration COMPLETE (2026-06-10):** GitLab→GitHub migration achieved. The `migration` branch and the `gitlab-client` / `gitlab-server` / `gitlab-wiki` remotes are now vestigial — safe to remove. (Former "do NOT delete `migration`" protection lifted.)
+**Build arc Phases 0–8: ALL COMPLETE and merged to `dev`.** (Silent daemon → pending-actions queue → ticket extractor → silent commit → EOD → voice/dialectic → PR puppet master → MCP server.) Phase history lives in `Data/agent_logs/project_board.md` — don't re-derive it here.
 
-**Layout:** `devtrack_client/` (Go + gitsage), `devtrack_server/` (Python, port 8089), `devtrack_wiki/` (Netlify → devtrack.cloud). Legacy: `devtrack-bin/` + root `backend/` (TASK-048, no new code).
+**Post-arc shipped:** TASK-102 (Azure `IsPRApproved`); TASK-103–108 EPIC Managed Install (`devtrack setup` sparse-clones the Python server + `uv sync`); TASK-109 repo cleanup (32 remote branches → 2; telemetry flipped opt-out → **opt-in**).
 
-**Go internal packages** (`devtrack_client/internal/`): `config`, `db`, `health`, `learning`, `trigger`, `infra`, `daemon`, `tui`, `match`, `alerts`, `notify`, `telegram`. Layer: config/db/health/learning ← trigger ← infra ← daemon; trigger ← tui.
+**Next: Phase 9 — Adoption Gate** (`docs/NEXT_STEPS.md`), TASK-110–117. Next task ID is **TASK-110**. Packaging and narrative, not new capability: stranger → staged action + Claude Code context in under 10 min.
 
-**Recently shipped (v3.0 line):** `motor` optional dep; `upgrade.go` → GitHub API + semver guard; Telegram bot migrated to Go (`internal/telegram/`); boardroom + `devtrack plan` live; Windows CLI parity + autostart (Task Scheduler); automated GitHub Actions release pipeline; stale-health fix (migration 005 prunes legacy Redis/MongoDB rows); v3.0.9 `skip_issues` workspace field for dual-platform (GitHub+ADO) duplicate-ticket fix; v3.0.10 significant Windows fixes (isatty via mattn/go-isatty, editor-commit BeforeCommit/AfterCommit hooks, background auto-enhance via `DEVTRACK_AUTO_ENHANCE=true`).
+**Open PRs:** #216 (telemetry opt-in fix) and #217 (docs cleanup) → `dev`; **#218 promotes `dev` → `main`** (main is 175 commits behind — this promotion is the reason TASK-109 happened).
 
-**NEXT — driven by PRODUCT_BIBLE.md (pivot 2026-06-10):** Phase 0 remove TUI prompts from trigger flow (silent daemon) → Phase 1 pending actions queue (the trust primitive) → Phase 2 opinionated ticket extractor (branch→ticket) → Phase 3 silent commit handler → Phase 4 EOD pipeline → Phases 5-8 voice training, dialectic self-improvement, TUI-as-visibility, PR-review puppet master. See `Data/agent_logs/project_board.md`.
+**Deferred (Phase 10+):** headless orchestration (global agent control via MCP), Tier 4 Hermes voice model, GitLab `IsPRApproved`.
 
-**DEPRIORITISED (post-pivot):** PG-5 (`stats_client.py` → `/internal/stats`), Redis R-1→R-6, CLI aesthetics/theming, savings counter, how-to videos, boardroom/plan as primary features. Not cancelled — below the phases.
+**Layout:** `devtrack_client/` (Go; Go-native `gitsage/`; **zero `.py` files**), `devtrack_server/` (Python, port 8089), `devtrack_wiki/` (Netlify → devtrack.cloud). Legacy `devtrack-bin/` + root `backend/` retired (TASK-048).
 
-**Open decision:** gitsage AI commit enhancement is client-native (→Ollama), collides with "AI=server" rule — `docs/CAPABILITIES_OWNERSHIP.md`.
-
-**Platform quirks (non-obvious):**
-- Azure WIQL only accepts date-only precision (`2006-01-02`, not RFC3339) — `connectors/azure/list.go:ListWorkItemsChangedAfter`. Affects at minimum `process_intelligence` and `ei-rd-eff-deliverymetrics` projects.
-- Go notify constructors (`NewTelegramFromConfig`, `NewSlackFromConfig` in `internal/notify/`) must return `Notifier` interface, not concrete `*Telegram`/`*Slack` — returning concrete type causes nil pointer panic in alert poller when feature is disabled.
+**DEPRIORITISED:** PG-5, Redis R-1→R-6, CLI aesthetics, savings counter, videos, boardroom/plan as primary. **Never, ever:** NATS/Redis/external queues, PostgreSQL migration, Kubernetes, multi-tenancy. The two docs proposing these (`implementation-plan.md`, `devtrack-architecture.html`) were **deleted in TASK-109** — they predated the pivot and were a live trap for agents grepping docs before reading memory. Don't recreate them.

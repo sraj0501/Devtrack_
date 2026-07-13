@@ -89,6 +89,12 @@ func main() {
 			return
 		}
 
+		// devtrack mcp [serve|status] — MCP server for Claude Code integration (stdio transport)
+		if cmd == "mcp" {
+			handleMCPCommand(os.Args[2:])
+			return
+		}
+
 		// devtrack install — server architecture info
 		if cmd == "install" {
 			if err := RunInstall(); err != nil {
@@ -144,6 +150,7 @@ func main() {
 			cmd == "launchd-install" || cmd == "launchd-uninstall" ||
 			cmd == "autostart-install" || cmd == "autostart-uninstall" || cmd == "autostart-status" ||
 			cmd == "alerts" ||
+			cmd == "review" ||
 			cmd == "sage" ||
 			cmd == "work" || cmd == "vacation" ||
 			cmd == "tui" || cmd == "cloud" || cmd == "init" ||
@@ -151,6 +158,8 @@ func main() {
 			cmd == "github-check" || cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
 			cmd == "gitlab-check" || cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
 			cmd == "ticket-sync" || cmd == "narrative" || cmd == "issues" ||
+			cmd == "eod" ||
+			cmd == "voice" ||
 			cmd == "newproject" {
 			cli, err := NewCLI()
 			if err != nil {
@@ -201,6 +210,8 @@ func printBasicUsage() {
 	fmt.Println("            workspace enable|disable <name> | workspace reload")
 	fmt.Println("COMMITS:    commits pending | commits review")
 	fmt.Println("ALERTS:     alerts | alerts --all | alerts --clear")
+	fmt.Println("REVIEW:     review                                  show PR review comment queue")
+	fmt.Println("            review status                           per-PR outcome summary (last 24h)")
 	fmt.Println("REPORTS:    preview-report | send-report | save-report")
 	fmt.Println("CLOUD:      cloud login --url URL --key KEY    connect to external server")
 	fmt.Println("            cloud status | cloud logout")
@@ -208,6 +219,8 @@ func printBasicUsage() {
 	fmt.Println()
 	fmt.Println("UPDATE:     upgrade | upgrade --check")
 	fmt.Println("UNINSTALL:  uninstall | uninstall --keep-data")
+	fmt.Println()
+	fmt.Println("MCP:        mcp [serve|status]                 MCP server for Claude Code integration (stdio)")
 	fmt.Println()
 	fmt.Println("New install? Run: devtrack setup")
 	fmt.Println("Run 'devtrack help' for full usage and flags.")

@@ -13,16 +13,20 @@ import (
 // Poller polls GitHub and Azure for ticket alert notifications on a configurable
 // interval, writes new ones to SQLite, and delivers them via the notifier.
 type Poller struct {
-	database *db.Database
-	notifier notify.Notifier
-	userID   string
-	interval time.Duration
-	github   *githubAlerter
-	azure    *azureAlerter
-	cancel   context.CancelFunc
+	database          *db.Database
+	notifier          notify.Notifier
+	userID            string
+	interval          time.Duration
+	github            *githubAlerter
+	azure             *azureAlerter
+	reviewCommentHook func([]ReviewCommentEvent) // called after each cycle with new review events
+	cancel            context.CancelFunc
 }
 
 // NewPoller creates a Poller that writes to database and delivers via notifier.
+// reviewCommentHook is called with any new ReviewCommentEvents detected during
+// a poll cycle. Pass nil to skip review comment polling. The hook is called
+// synchronously inside the poll goroutine; keep it non-blocking.
 func NewPoller(database *db.Database, notifier notify.Notifier) *Poller {
 	filter := FilterFromConfig()
 	return &Poller{
@@ -35,11 +39,18 @@ func NewPoller(database *db.Database, notifier notify.Notifier) *Poller {
 	}
 }
 
+// SetReviewCommentHook registers a callback that is invoked with any new
+// ReviewCommentEvents detected during each poll cycle.
+// Must be called before Start(); not goroutine-safe after Start() returns.
+func (p *Poller) SetReviewCommentHook(hook func([]ReviewCommentEvent)) {
+	p.reviewCommentHook = hook
+}
+
 // Start launches the poll loop in a background goroutine.
 func (p *Poller) Start(ctx context.Context) {
 	ctx, p.cancel = context.WithCancel(ctx)
 	go p.run(ctx)
-	log.Printf("✓ Alert poller started (interval: %s)", p.interval)
+	log.Printf("Alert poller started (interval: %s)", p.interval)
 }
 
 // Stop cancels the poll loop.
@@ -64,6 +75,7 @@ func (p *Poller) run(ctx context.Context) {
 }
 
 func (p *Poller) cycle() {
+	// Standard notification polling.
 	var candidates []db.NotificationRecord
 
 	if cfg.IsAlertGitHubEnabled() {
@@ -83,5 +95,26 @@ func (p *Poller) cycle() {
 			label := r.EventType + " — " + r.Source
 			_ = p.notifier.Send(r.Title, label, r.URL)
 		}
+	}
+
+	// Review comment polling — only when a hook is registered.
+	if p.reviewCommentHook == nil {
+		return
+	}
+
+	var reviewEvents []ReviewCommentEvent
+	if cfg.IsAlertGitHubEnabled() {
+		evs := p.github.collectReviewComments(p.database)
+		reviewEvents = append(reviewEvents, evs...)
+	}
+	// Azure DevOps: TODO TASK-093 — review comment polling not yet implemented.
+	if cfg.IsAlertAzureEnabled() {
+		log.Printf("review polling: azure not yet implemented")
+	}
+	// GitLab: TODO TASK-093 — review comment polling not yet implemented.
+	// log.Printf("review polling: gitlab not yet implemented")
+
+	if len(reviewEvents) > 0 {
+		p.reviewCommentHook(reviewEvents)
 	}
 }

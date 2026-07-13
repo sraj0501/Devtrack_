@@ -3,6 +3,7 @@ package alerts
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/connectors/azure"
@@ -31,6 +32,50 @@ func (a *azureAlerter) collect(database *db.Database, userID string) []db.Notifi
 		all = append(all, recs...)
 	}
 	return all
+}
+
+// IsPRApproved returns true if any reviewer has cast an Approved vote (vote >= 10)
+// on the given pull request in Azure DevOps. It loads workspaces config, finds the
+// Azure workspace matching the workspace param, and calls the real ADO Pull Requests API.
+func (a *azureAlerter) IsPRApproved(prID, workspace string) (bool, error) {
+	wsCfg, err := config.LoadWorkspacesConfig()
+	if err != nil || wsCfg == nil {
+		return false, fmt.Errorf("alerts/azure/IsPRApproved: load workspaces: %w", err)
+	}
+
+	var matched *config.WorkspaceConfig
+	for i := range wsCfg.Workspaces {
+		ws := &wsCfg.Workspaces[i]
+		if ws.Name == workspace && ws.PMPlatform == "azure" {
+			matched = ws
+			break
+		}
+	}
+	if matched == nil {
+		return false, fmt.Errorf("alerts/azure/IsPRApproved: no azure workspace found for %q", workspace)
+	}
+
+	client, err := azure.NewClient(matched.PMOrg, matched.PMProject, matched.PMAPIURL)
+	if err != nil {
+		return false, fmt.Errorf("alerts/azure/IsPRApproved: build client: %w", err)
+	}
+
+	prNumber, err := strconv.Atoi(prID)
+	if err != nil {
+		return false, fmt.Errorf("alerts/azure/IsPRApproved: invalid prID %q: %w", prID, err)
+	}
+
+	reviewers, err := client.ListPRReviewers(prNumber)
+	if err != nil {
+		return false, fmt.Errorf("alerts/azure/IsPRApproved: list reviewers for PR %d: %w", prNumber, err)
+	}
+
+	for _, r := range reviewers {
+		if r.Vote >= 10 {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (a *azureAlerter) collectWorkspace(database *db.Database, userID string, ws config.WorkspaceConfig) []db.NotificationRecord {

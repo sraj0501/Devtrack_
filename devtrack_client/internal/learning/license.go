@@ -123,19 +123,9 @@ func HandleTerms(projectRoot string, args []string) error {
 	return nil
 }
 
-// HandleTelemetry enables or disables telemetry.
-func HandleTelemetry(projectRoot string, args []string) error {
-	action := "status"
-	if len(args) > 0 {
-		action = args[0]
-	}
-	msg, err := trig.NewHTTPTriggerClient().AuthTelemetry(action)
-	if err != nil {
-		return fmt.Errorf("telemetry: %w (is the server running?)", err)
-	}
-	fmt.Println(msg)
-	return nil
-}
+// Telemetry consent is client-local and opt-in: see daemon.SetTelemetryEnabled.
+// It is deliberately not routed through the server — the daemon reads the local
+// marker directly, so `devtrack telemetry off` works with no server running.
 
 // EnsureTermsAccepted checks if T&C have been accepted, prompting if not.
 // Fails open on any error (offline-safe). cmdArgs is os.Args-style.

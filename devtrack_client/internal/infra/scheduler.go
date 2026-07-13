@@ -3,8 +3,6 @@ package infra
 import (
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -34,6 +32,7 @@ type TriggerEvent struct {
 	// Workspace context (populated for commit triggers in multi-repo mode)
 	RepoPath        string
 	WorkspaceName   string
+	TicketID        string // extracted from branch name (or "" if unlinked)
 	PMPlatform      string
 	PMProject       string
 	// Per-workspace PM settings (override global .env defaults)
@@ -120,6 +119,9 @@ func (s *Scheduler) Start() error {
 
 	// Retry AI enhancement of queued (deferred) commits when the LLM is back
 	s.scheduleDeferredEnhance()
+
+	// Background voice sync: poll PM platforms for PR descriptions and issue comments
+	s.scheduleVoiceSync()
 
 	return nil
 }
@@ -343,31 +345,26 @@ func (s *Scheduler) IsWorkingHours() bool {
 	return hour >= s.config.Settings.WorkStartHour && hour < s.config.Settings.WorkEndHour
 }
 
-// scheduleEODReport adds a daily cron job at EOD_REPORT_HOUR (0 = disabled).
-// When triggered it auto-stops any active work session, then calls the Python
-// EOD report generator which emails the report to EOD_REPORT_EMAIL if set.
+// scheduleEODReport adds a daily cron job at EOD_REPORT_HOUR:EOD_REPORT_MINUTE
+// (hour = 0 disables). When triggered it auto-stops any active work session, then
+// calls the Python EOD report generator which emails the report to EOD_REPORT_EMAIL
+// if set. Config is read via typed accessors in internal/config — no bare os.Getenv.
 func (s *Scheduler) scheduleEODReport() {
-	hourStr := os.Getenv("EOD_REPORT_HOUR")
-	if hourStr == "" {
+	hour := config.GetEODReportHour()
+	if hour <= 0 {
 		return
 	}
-	hour, err := strconv.Atoi(hourStr)
-	if err != nil || hour <= 0 || hour > 23 {
-		if hourStr != "0" {
-			log.Printf("⚠️  EOD_REPORT_HOUR=%s is invalid — skipping auto EOD report", hourStr)
-		}
-		return
-	}
+	minute := config.GetEODReportMinute()
 
-	// "0 0 H * * *" fires at H:00:00 every day (cron with seconds)
-	cronExpr := fmt.Sprintf("0 0 %d * * *", hour)
-	_, err = s.cron.AddFunc(cronExpr, func() {
-		log.Printf("⏰ EOD auto-trigger at hour %d", hour)
+	// "0 M H * * *" fires at H:M:00 every day (cron with seconds)
+	cronExpr := fmt.Sprintf("0 %d %d * * *", minute, hour)
+	_, err := s.cron.AddFunc(cronExpr, func() {
+		log.Printf("⏰ EOD auto-trigger at %02d:%02d", hour, minute)
 
 		// Auto-stop active session
-		db, dbErr := db.NewDatabase()
+		database, dbErr := db.NewDatabase()
 		if dbErr == nil {
-			active, _ := db.GetActiveWorkSession()
+			active, _ := database.GetActiveWorkSession()
 			if active != nil {
 				endedAt := time.Now().UTC().Format("2006-01-02 15:04:05")
 				startTime, parseErr := time.Parse("2006-01-02 15:04:05", active.StartedAt)
@@ -378,14 +375,14 @@ func (s *Scheduler) scheduleEODReport() {
 						durationMins = 0
 					}
 				}
-				if stopErr := db.EndWorkSession(active.ID, endedAt, durationMins); stopErr == nil {
+				if stopErr := database.EndWorkSession(active.ID, endedAt, durationMins); stopErr == nil {
 					log.Printf("✅ Auto-stopped work session #%d for EOD report", active.ID)
 				}
 			}
 		}
 
 		// Send EOD report via server HTTP API.
-		recipient := os.Getenv("EOD_REPORT_EMAIL")
+		recipient := config.GetEODReportEmail()
 		trig := trigger.NewHTTPTriggerClient()
 		out, reportErr := trig.ReportEOD(recipient, "")
 		if reportErr != nil {
@@ -406,28 +403,25 @@ func (s *Scheduler) scheduleEODReport() {
 		log.Printf("⚠️  Could not schedule EOD report cron: %v", err)
 		return
 	}
-	log.Printf("✓ EOD auto-report scheduled at %02d:00 daily", hour)
+	log.Printf("✓ EOD auto-report scheduled at %02d:%02d daily", hour, minute)
 }
 
 // scheduleIdleSessionStop adds a periodic check that auto-stops sessions idle
 // for longer than WORK_SESSION_AUTO_STOP_MINUTES (0 = disabled).
+// Config is read via the typed accessor in internal/config — no bare os.Getenv.
 func (s *Scheduler) scheduleIdleSessionStop() {
-	idleStr := os.Getenv("WORK_SESSION_AUTO_STOP_MINUTES")
-	if idleStr == "" {
-		return
-	}
-	idleMins, err := strconv.Atoi(idleStr)
-	if err != nil || idleMins <= 0 {
+	idleMins := config.GetWorkSessionAutoStopMinutes()
+	if idleMins <= 0 {
 		return
 	}
 
 	// Check every minute whether the active session has been idle too long.
-	_, err = s.cron.AddFunc("0 * * * * *", func() {
-		db, dbErr := db.NewDatabase()
+	_, err := s.cron.AddFunc("0 * * * * *", func() {
+		database, dbErr := db.NewDatabase()
 		if dbErr != nil {
 			return
 		}
-		active, fetchErr := db.GetActiveWorkSession()
+		active, fetchErr := database.GetActiveWorkSession()
 		if fetchErr != nil || active == nil {
 			return
 		}
@@ -439,9 +433,9 @@ func (s *Scheduler) scheduleIdleSessionStop() {
 		elapsedMins := int(time.Since(startTime).Minutes())
 		if elapsedMins >= idleMins {
 			endedAt := time.Now().UTC().Format("2006-01-02 15:04:05")
-			if stopErr := db.EndWorkSession(active.ID, endedAt, elapsedMins); stopErr == nil {
+			if stopErr := database.EndWorkSession(active.ID, endedAt, elapsedMins); stopErr == nil {
 				// Mark auto_stopped flag
-				db.Exec("UPDATE work_sessions SET auto_stopped = 1 WHERE id = ?", active.ID) //nolint:errcheck
+				database.Exec("UPDATE work_sessions SET auto_stopped = 1 WHERE id = ?", active.ID) //nolint:errcheck
 				log.Printf("⏱️  Work session #%d auto-stopped after %d idle minutes", active.ID, elapsedMins)
 			}
 		}
@@ -501,6 +495,70 @@ func (s *Scheduler) scheduleDeferredEnhance() {
 		return
 	}
 	log.Printf("✓ Deferred-commit enhancer enabled (every 30 min)")
+}
+
+// scheduleVoiceSync adds a periodic cron job that calls POST /voice/sync to
+// embed new PR descriptions and issue comments from configured PM platforms
+// into ChromaDB (Phase 5 — Tier 1). Interval is read from
+// VOICE_SYNC_INTERVAL_HOURS via config.GetVoiceSyncIntervalHours().
+// A startup delay of 60 seconds lets the Python server come up before the first
+// call fires. Returns immediately (non-blocking) if the interval is 0 or panics.
+func (s *Scheduler) scheduleVoiceSync() {
+	var intervalHours int
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("⚠️  Voice sync scheduler: VOICE_SYNC_INTERVAL_HOURS not set — voice sync disabled (%v)", r)
+				intervalHours = 0
+			}
+		}()
+		intervalHours = config.GetVoiceSyncIntervalHours()
+	}()
+
+	if intervalHours <= 0 {
+		return
+	}
+
+	// "0 0 */H * * *" fires every H hours at minute 0.
+	cronExpr := fmt.Sprintf("0 0 */%d * * *", intervalHours)
+
+	// Add the recurring job.
+	_, err := s.cron.AddFunc(cronExpr, func() {
+		log.Printf("🔄 Voice sync: starting background PR/comment sync (interval=%dh)", intervalHours)
+		trig := trigger.NewHTTPTriggerClient()
+		counts, syncErr := trig.VoiceSync(nil)
+		if syncErr != nil {
+			log.Printf("⚠️  Voice sync failed: %v", syncErr)
+			return
+		}
+		log.Printf(
+			"✅ Voice sync complete: github=%d azure=%d gitlab=%d total=%d",
+			counts["github"], counts["azure"], counts["gitlab"], counts["total"],
+		)
+	})
+	if err != nil {
+		log.Printf("⚠️  Could not schedule voice sync cron: %v", err)
+		return
+	}
+
+	// Fire once at startup after a 60-second delay so the Python server has time
+	// to come up. This goroutine exits immediately after the one-shot call.
+	go func() {
+		startupDelay := 60 * time.Second
+		log.Printf("✓ Voice sync scheduled every %d hours (first run in %v)", intervalHours, startupDelay)
+		time.Sleep(startupDelay)
+		log.Printf("🔄 Voice sync: initial startup run")
+		trig := trigger.NewHTTPTriggerClient()
+		counts, syncErr := trig.VoiceSync(nil)
+		if syncErr != nil {
+			log.Printf("⚠️  Voice sync startup run failed (non-fatal): %v", syncErr)
+			return
+		}
+		log.Printf(
+			"✅ Voice sync startup run complete: github=%d azure=%d gitlab=%d total=%d",
+			counts["github"], counts["azure"], counts["gitlab"], counts["total"],
+		)
+	}()
 }
 
 // GetWorkHoursStatus returns current work hours status

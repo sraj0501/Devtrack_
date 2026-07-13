@@ -1,25 +1,21 @@
 ---
 name: Subsystem references
-description: gitsage (Go-native), RAG personalization, Azure DevOps config, Telegram bot
+description: Config/env details for Telegram, RAG personalization, and Azure DevOps not covered by CLAUDE.md
 type: reference
 ---
 
-## gitsage (`devtrack_client/gitsage/`) — Go-native
+_gitsage behaviour (Go-native; squash via `reset --soft`, JSON mode, Groq model choice) and the personalization design are documented in CLAUDE.md — not duplicated here. Only the settings you'd otherwise have to dig for:_
 
-Approval: `[a]` auto / `[r]` review / `[s]` suggest-only. `--yes` skips. Up to 5 follow-ups. `undo [N]` = `git reset --hard <pre-step-HEAD>`.
-Squash: `git reset --soft HEAD~N && git commit` — never `git rebase -i`.
-JSON mode: Ollama `"format":"json"`; OpenAI/Groq `response_format:{"type":"json_object"}` with `BadRequestError` fallback. Strip `provider/` prefix.
-Groq: prefer `llama-3.3-70b-versatile` over `compound-beta` (better JSON). openai SDK avoids Cloudflare 403.
+## Telegram bot (`devtrack_client/internal/telegram/`)
 
-## Telegram Bot (`devtrack_client/internal/telegram/`)
+Starts automatically with the daemon when `TELEGRAM_ENABLED=true`; implements `notify.Notifier`. Access control: `TELEGRAM_ALLOWED_CHAT_IDS` (`config_env.go`).
+Commands: `/start /help /status /logs /health /trigger /pause /resume /stop /restart /reload /commits`.
 
-Go-native bot (`bot.go` + `handlers.go`). Starts automatically with daemon when `TELEGRAM_ENABLED=true`. Implements `notify.Notifier`. Commands: /start /help /status /logs /health /trigger /pause /resume /stop /restart /reload /commits. `TELEGRAM_ALLOWED_CHAT_IDS` in config_env.go.
+## RAG personalization
 
-## RAG Personalization
-
-`backend/personalization.py:inject_style(prompt, context_type, query_text)` — style profile + ChromaDB RAG (`nomic-embed-text`). Setup: `ollama pull nomic-embed-text`. Env: `PERSONALIZATION_RAG_ENABLED`, `PERSONALIZATION_CHROMA_DIR`.
+Prerequisite the setup docs bury: `ollama pull nomic-embed-text`. Env: `PERSONALIZATION_RAG_ENABLED`, `PERSONALIZATION_CHROMA_DIR`.
 
 ## Azure DevOps
 
-`.env` secret only: `AZURE_DEVOPS_PAT` (scopes: Work Items R/W, Code R).
-`workspaces.yaml` holds all non-secret config: `pm_org`, `pm_project`, `pm_username`, `pm_api_url` (blank = dev.azure.com).
+`.env` holds the secret only — `AZURE_DEVOPS_PAT`, scopes **Work Items R/W + Code R**.
+`workspaces.yaml` holds every non-secret value: `pm_org`, `pm_project`, `pm_username`, `pm_api_url` (**blank = dev.azure.com**).

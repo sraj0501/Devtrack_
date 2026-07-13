@@ -104,3 +104,163 @@ type AuthenticatedUser struct {
 	Login string `json:"login"`
 	Name  string `json:"name"`
 }
+
+// PullRequest is a minimal PR representation from the GitHub REST API.
+type PullRequest struct {
+	Number int    `json:"number"`
+	Title  string `json:"title"`
+	State  string `json:"state"`
+	User   struct {
+		Login string `json:"login"`
+	} `json:"user"`
+	HTMLURL string `json:"html_url"`
+	Head    struct {
+		Ref string `json:"ref"` // branch name
+	} `json:"head"`
+}
+
+// PRReviewComment is a single review comment on a pull request.
+type PRReviewComment struct {
+	ID        int64  `json:"id"`
+	Body      string `json:"body"`
+	HTMLURL   string `json:"html_url"`
+	User      struct {
+		Login string `json:"login"`
+	} `json:"user"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+	// Path is the file the comment is on (for inline comments); empty for top-level.
+	Path string `json:"path"`
+}
+
+// GetAuthenticatedUser fetches the authenticated user's login.
+func (c *Client) GetAuthenticatedUser() (*AuthenticatedUser, error) {
+	var u AuthenticatedUser
+	if err := c.do("/user", &u); err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// ListOpenPRsAuthored returns all open PRs in the given repo authored by login.
+// repo is "owner/repo".
+func (c *Client) ListOpenPRsAuthored(repo, login string) ([]PullRequest, error) {
+	var all []PullRequest
+	page := 1
+	for {
+		var batch []PullRequest
+		path := fmt.Sprintf("/repos/%s/pulls?state=open&per_page=50&page=%d", repo, page)
+		if err := c.do(path, &batch); err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+		for _, pr := range batch {
+			if pr.User.Login == login {
+				all = append(all, pr)
+			}
+		}
+		if len(batch) < 50 {
+			break
+		}
+		page++
+	}
+	return all, nil
+}
+
+// ListPRReviewComments returns inline review comments for a pull request.
+// repo is "owner/repo", prNumber is the PR number.
+func (c *Client) ListPRReviewComments(repo string, prNumber int) ([]PRReviewComment, error) {
+	var all []PRReviewComment
+	page := 1
+	for {
+		var batch []PRReviewComment
+		path := fmt.Sprintf("/repos/%s/pulls/%d/comments?per_page=100&page=%d", repo, prNumber, page)
+		if err := c.do(path, &batch); err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+		all = append(all, batch...)
+		if len(batch) < 100 {
+			break
+		}
+		page++
+	}
+	return all, nil
+}
+
+// PRReview is a single formal review (approve/request-changes/comment) on a PR.
+type PRReview struct {
+	ID    int64  `json:"id"`
+	State string `json:"state"` // APPROVED | CHANGES_REQUESTED | COMMENTED | DISMISSED
+	User  struct {
+		Login string `json:"login"`
+	} `json:"user"`
+}
+
+// ListPRReviews returns all formal reviews for a pull request.
+// repo is "owner/repo", prNumber is the PR number.
+func (c *Client) ListPRReviews(repo string, prNumber int) ([]PRReview, error) {
+	var all []PRReview
+	page := 1
+	for {
+		var batch []PRReview
+		path := fmt.Sprintf("/repos/%s/pulls/%d/reviews?per_page=100&page=%d", repo, prNumber, page)
+		if err := c.do(path, &batch); err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+		all = append(all, batch...)
+		if len(batch) < 100 {
+			break
+		}
+		page++
+	}
+	return all, nil
+}
+
+// ListPRIssueComments returns top-level (non-inline) comments on a PR.
+// These are returned by the issues comments API.
+func (c *Client) ListPRIssueComments(repo string, prNumber int) ([]PRReviewComment, error) {
+	var all []PRReviewComment
+	page := 1
+	for {
+		var batch []struct {
+			ID      int64  `json:"id"`
+			Body    string `json:"body"`
+			HTMLURL string `json:"html_url"`
+			User    struct {
+				Login string `json:"login"`
+			} `json:"user"`
+			CreatedAt string `json:"created_at"`
+			UpdatedAt string `json:"updated_at"`
+		}
+		path := fmt.Sprintf("/repos/%s/issues/%d/comments?per_page=100&page=%d", repo, prNumber, page)
+		if err := c.do(path, &batch); err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+		for _, b := range batch {
+			all = append(all, PRReviewComment{
+				ID:        b.ID,
+				Body:      b.Body,
+				HTMLURL:   b.HTMLURL,
+				User:      struct{ Login string `json:"login"` }{Login: b.User.Login},
+				CreatedAt: b.CreatedAt,
+				UpdatedAt: b.UpdatedAt,
+			})
+		}
+		if len(batch) < 100 {
+			break
+		}
+		page++
+	}
+	return all, nil
+}

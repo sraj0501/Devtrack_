@@ -23,6 +23,10 @@ type VacationState = idb.VacationState
 type TicketCacheRecord = idb.TicketCacheRecord
 type PMUpdateQueueRecord = idb.PMUpdateQueueRecord
 type TicketSourceSummary = idb.TicketSourceSummary
+type Skill = idb.Skill
+type Inference = idb.Inference
+type Correction = idb.Correction
+type ConfidenceThreshold = idb.ConfidenceThreshold
 
 // ── Function forwards ─────────────────────────────────────────────────────────
 
