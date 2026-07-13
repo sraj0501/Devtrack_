@@ -119,11 +119,15 @@ opt-in, off until `devtrack telemetry on`, two anonymous events, marker file hon
 Verified: Go client builds, 798/798 Python tests pass, compose YAML valid, both JS bundles pass
 `node --check`, no dangling links, `/download` 200 on the live site.
 
-**Open infra item (code, not docs):** `ping.devtrack.dev` does not resolve, so opt-in telemetry pings go
-nowhere. Nothing leaks (fire-and-forget, off by default), but the endpoint needs standing up or removing.
-`LICENSE_CONTACT_EMAIL` defaults to `license@devtrack.dev` on the same dead domain.
+**Deferred to commercial deployment (user decision, 2026-07-13):** `ping.devtrack.dev` does not resolve,
+so opt-in telemetry pings go nowhere, and `LICENSE_CONTACT_EMAIL` defaults to `license@devtrack.dev` on
+the same dead domain. Both stand up when the app is commercially deployed. Nothing leaks in the meantime
+(telemetry is off by default; the ping is fire-and-forget and cannot block the daemon).
 
-_Next DevTrack task ID: TASK-112_
+**QUEUED — EPIC: PostgreSQL Backend (TASK-112–116).** Must land before commercial launch. See the epic
+section at the bottom of this board.
+
+_Next DevTrack task ID: TASK-117_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -5613,6 +5617,84 @@ briefly made fix #14/#15 look like they hadn't worked). Full cycle re-run clean 
 
 **COMPLETE** — 2026-07-02 (audit + bugfix, committed directly to `dev`; three passes same day —
 static, static, live end-to-end)
+
+---
+
+## QUEUED — EPIC: PostgreSQL Backend (TASK-112–116)
+
+**Priority: required before commercial launch.** Scoped 2026-07-13; not started.
+
+### Why this exists
+
+Postgres today is **half-wired, and the half that is missing fails silently.** Setting `POSTGRES_URL`
+does not give you a Postgres deployment — it gives you *two databases*:
+
+| Layer | Backend today | Portable? |
+|---|---|---|
+| `db/engine.py` (SQLAlchemy factory, dialect-aware `upsert()`, pooling) | Postgres **or** SQLite | ✅ already done |
+| 6 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket}_store` | follows `POSTGRES_URL` | ✅ |
+| 15 Python modules opening raw `sqlite3` (`daily_report_generator`, `queue_gateway`, `email_reporter`, `work_tracker/session_store`, `server_tui/stats_client`, `alert_poller`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `skill_detector`, `dialectic_status`, `learning_integration`, `vacation/auto_responder`, `webhook_server`) | **SQLite always** | ❌ |
+| Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
+
+So with `POSTGRES_URL` set, user accounts and licences go to Postgres while `triggers`, `task_updates`,
+`work_sessions` and `pending_actions` stay in a local SQLite file — and the EOD report, which reads
+`triggers`, keeps reading SQLite. **Nothing errors.** It looks like it works. `db/engine.py`'s own
+docstring concedes this ("Go-owned tables are NEVER touched by Python in PostgreSQL mode").
+
+For a single-user laptop that is harmless. For a multi-user commercial server it is fatal: every
+developer's triggers live in a SQLite file on their own machine, so the server can aggregate nothing —
+no team EOD, no admin dashboard with real numbers, no cross-device continuity.
+
+### DECIDED (user, 2026-07-13) — Postgres is server-side only
+
+**The Go client never speaks Postgres. It keeps tracking to local SQLite, always, in every mode.**
+Postgres is a `devtrack_server` concern. When a developer opts into a server, their local SQLite data
+flows *up* to Postgres on that server.
+
+This preserves offline-first Rule 0 exactly (the client needs no database server, no network, nothing),
+keeps the no-shared-artefact boundary intact, and means **no Go work beyond the sync push** — no `pgx`,
+no driver in `go.mod`, no dialect split through `internal/db/`. Local SQLite stays the client's source of
+truth; the server's Postgres is the aggregate.
+
+```
+devtrack_client (Go)                    devtrack_server (Python)
+  local SQLite  ── HTTPS /trigger/* ──▶   Postgres (opt-in, POSTGRES_URL)
+  always, offline, source of truth        aggregate across developers
+```
+
+SQLite remains the server's default too — Postgres switches on only when `POSTGRES_URL` is set.
+
+### Tasks
+
+- **TASK-112 — Port the 15 raw-`sqlite3` Python modules onto `db/engine.py`.** The bulk of the work and a
+  prerequisite for everything else; until this lands, `POSTGRES_URL` still split-brains. Mechanical but
+  wide — each module moves to `get_engine()` + dialect-aware `upsert()`. Watch for SQLite-isms Postgres
+  rejects: `INSERT OR REPLACE`, `sqlite_master` queries (`dialectic_status`), implicit `rowid`,
+  `datetime()` string functions, Python `bool`/`int` conflation.
+- **TASK-113 — Postgres test lane.** Today **zero** tests exercise Postgres — that is exactly why the
+  split-brain went unnoticed. Add a `pytest` fixture running the suite against a real Postgres (the
+  compose service, or `testcontainers`) so both backends are proven every run. Do this *alongside*
+  TASK-112, not after it.
+- **TASK-114 — Client→server sync path.** The client pushes its local SQLite rows for Go-owned tables
+  (`triggers`, `task_updates`, `work_sessions`, `pending_actions`, …) over the existing `/trigger/*` HTTP
+  boundary; the server persists them to Postgres. Needs: which tables sync, push cadence (on write vs
+  batched), idempotency (server must dedupe replays — a stable row ID per client), a `client_id` column
+  so rows are attributable per developer, and offline backlog replay when the server was unreachable.
+  Consent still applies: this is developer data leaving the machine, so it stages through the
+  pending-actions queue and is opt-in with the server.
+- **TASK-115 — Schema migrations.** `metadata.create_all()` is fine for greenfield SQLite; a commercial
+  Postgres needs versioned, reversible migrations (Alembic) plus a one-shot SQLite→Postgres import for
+  developers who already have local history.
+- **TASK-116 — Deployment surface.** `docker-compose.yml` already ships a healthy `postgres:16-alpine` —
+  wire `devtrack_server` to `depends_on` it, document a Postgres server deploy in `docs/INSTALLATION.md`,
+  and make `POSTGRES_URL` a first-class documented option rather than an undocumented env var.
+  `psycopg2-binary` is already the `postgres` extra in `pyproject.toml`.
+
+### Already in place (do not redo)
+
+`db/engine.py` dual-dialect factory · `upsert()` · `is_postgres()` · connection pooling ·
+`config.postgres_url()` · `postgres` extra in `pyproject.toml` · `postgres:16-alpine` in compose with a
+`pg_isready` healthcheck.
 
 ---
 
