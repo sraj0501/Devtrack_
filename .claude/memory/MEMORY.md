@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-06-30_ | v3.0.10 | GitHub sole source of truth; devtrack.cloud live on Netlify | ALL Phases 0–8 COMPLETE
+_Last updated: 2026-07-13_ | v3.0.10 | GitHub sole source of truth; devtrack.cloud live on Netlify | Phases 0–8 + Managed Install + TASK-109 cleanup COMPLETE; next is Phase 9 (Adoption Gate)
 
 DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enriches with AI, routes to PM systems.
 
@@ -13,7 +13,7 @@ DevTrack: offline-first Go daemon + Python backend — monitors git/timers, enri
 - [feedback_rules.md](feedback_rules.md) — Git/PR/commit rules, offline-first, CLI-only, no hardcoded values, GIT_NO_DEVTRACK, ARCHITECTURE.md boundary, uv not pip
 
 ## Project State
-- [project_current_state.md](project_current_state.md) — dev tip 0fe0aa9; ALL Phases 0–8 COMPLETE; TASK-102 COMPLETE (Azure IsPRApproved); next TASK-103
+- [project_current_state.md](project_current_state.md) — dev tip f329c8a; Phases 0–8 + Managed Install + TASK-109 done; next Phase 9 (TASK-110–117); dev ~200 commits ahead of main
 
 ## Project Context
 - [project_platform_modes.md](project_platform_modes.md) — Managed/Lightweight/External modes; Windows WSL2 dev; ARM64 .syso fix shipped

@@ -52,17 +52,27 @@
   <!-- MAIN -->
   <main class="main">
 
+    <!-- SUPERSEDED NOTICE -->
+    <div style="border:2px solid #b45309;background:#fffbeb;color:#7c2d12;padding:1rem 1.25rem;border-radius:8px;margin-bottom:1.5rem;">
+      <strong>⚠️ SUPERSEDED (2026-06-10) — NOT the current direction.</strong>
+      <p style="margin:.5rem 0 0;">The scaling proposals in this document (NATS message bus, PostgreSQL + pgvector,
+      Redis, Kubernetes, multi-tenancy, horizontal scaling — §§ 11–13) predate the product pivot and contradict its
+      non-negotiables: DevTrack is <strong>local-first, offline-first, single-machine, and not a SaaS</strong>.
+      Storage is SQLite plus ChromaDB; there is no Redis, PostgreSQL, or external message queue, and none is planned.
+      The canonical direction is <code>PRODUCT_BIBLE.md</code>; the current client↔server boundary is
+      <code>docs/ARCHITECTURE.md</code>. Kept only as a “road not taken” reference — do not implement from this document.</p>
+    </div>
+
     <!-- HERO -->
     <div class="hero">
-      <div class="hero-tag">Technical Architecture Document</div>
+      <div class="hero-tag">Technical Architecture Document — Historical / Superseded</div>
       <h1>DevTrack</h1>
       <p class="hero-subtitle">A developer automation platform that observes Git activity, applies AI enrichment, and routes work context to project management systems — automatically, with zero workflow changes for the developer.</p>
       <div class="hero-badges">
-        <span class="badge"><strong>Client</strong> Go 1.22+ · single binary</span>
+        <span class="badge"><strong>Client</strong> Go 1.24+ · single binary</span>
         <span class="badge"><strong>Server</strong> Python 3.12 · FastAPI</span>
         <span class="badge"><strong>Boundary</strong> HTTPS / JSON only</span>
-        <span class="badge"><strong>Version</strong> v3.0.0</span>
-        <span class="badge"><strong>Status</strong> Production</span>
+        <span class="badge"><strong>Status</strong> Superseded — see PRODUCT_BIBLE.md</span>
       </div>
     </div>
 

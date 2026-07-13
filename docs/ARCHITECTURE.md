@@ -12,7 +12,7 @@ Complete overview of DevTrack's system design, components, and data flow.
 
 | Directory | Language | Role |
 |---|---|---|
-| `devtrack_client/` | Go + Python (git-sage) | Binary, git monitor, scheduler, CLI — canonical Go source |
+| `devtrack_client/` | Go | Binary, git monitor, scheduler, CLI, PM connectors, git-sage — canonical Go source |
 | `devtrack_server/` | Python | AI pipeline, webhook server, admin UI — canonical Python source |
 | `devtrack_wiki/` | HTML/Markdown | Website (Netlify → devtrack.cloud) |
 
@@ -29,7 +29,7 @@ DevTrack is explicitly a **client-server tool** with two independently deployabl
 | **`devtrack` binary** | `devtrack_client/` | Pure Go | ~5 MB | Client / daemon — git monitoring, scheduling, CLI |
 | **Python server** | `devtrack_server/` | Python + uv | separate | Server — AI, NLP, integrations, reports, admin |
 
-The Go binary contains **no embedded Python** (except the bundled git-sage tool at `devtrack_client/git_sage/`). The Python server is set up separately and can run as a local subprocess, a Docker container, or a remote server.
+The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` sparse-clones it) and can run as a local subprocess, a Docker container, or a remote server.
 
 ### Server Modes
 
@@ -50,18 +50,20 @@ devtrack start         # daemon connects to the external server
 
 ### Docker Option
 
-A `Dockerfile.server` ships with the repo to containerize the Python backend:
+A `Dockerfile` ships in `devtrack_server/` to containerize the Python backend:
 
 ```bash
-# Build and run the Python backend container
-docker build -f Dockerfile.server -t devtrack-server .
+cd devtrack_server
+docker build -t devtrack-server .
 docker run -p 8089:8089 --env-file .env devtrack-server
-
-# Or use docker compose (starts Python backend + MongoDB + Redis)
-docker compose up
 ```
 
 The Go binary on the host then connects via `DEVTRACK_SERVER_MODE=external`.
+
+`devtrack_server/docker-compose.yml` is **not** the server — it starts only optional backing
+services (MongoDB, Redis, PostgreSQL) used by the deprioritised managed-cloud mode. The
+local-first path needs none of them: DevTrack's storage is SQLite plus ChromaDB, and the
+default install runs natively (Go binary + `uv`), not in Docker.
 
 ### `devtrack install`
 
@@ -150,6 +152,25 @@ The lightweight background service that monitors and coordinates.
 | **Message Queue** | queue.go | Store-and-forward IPC messages for offline resilience |
 | **Health Monitor** | health.go | Periodic service health checks with auto-restart |
 | **Deferred Commits** | deferred_commit.go | Queue commits for later AI enhancement |
+
+#### Go `internal/` packages
+
+The client is organised into acyclic layers:
+`config` · `db` · `health` · `learning` ← `trigger` ← `infra` ← `daemon`; plus `trigger` ← `tui`.
+
+| Package | Purpose |
+|---|---|
+| `config`, `db`, `health`, `learning` | Config (YAML + `.env`), SQLite access, health snapshots, AI-learning consent + license |
+| `trigger`, `infra`, `daemon` | HTTP trigger client + TLS; IPC server, `IntegratedMonitor`, scheduler, fsnotify git monitor; daemon lifecycle + HTTP control API |
+| `tui` | Bubbletea TUI (overview, activity, alerts, workspaces) — visibility only, no feature difference vs headless |
+| `alerts`, `notify`, `telegram` | Go-native ticket alert poller; Terminal/Telegram/Slack/OS notifiers; Telegram bot |
+| `ticket`, `match` | Ticket-ID extraction from branch names (Phase 2) and ticket matching |
+| `mcp` | MCP server core — JSON-RPC 2.0 over stdio; six read-only SQLite-backed tools (Phase 8) |
+| `reviewer` | PR review loop — fix-commit-push orchestration and escalation (Phase 7) |
+
+The pending-actions queue (Phase 1) is the trust primitive: outbound actions are staged in the
+`pending_actions` table (`internal/db/migrations.go`) rather than sent directly, and surfaced via
+`devtrack queue`, the TUI, and the `get_pending_actions` MCP tool.
 
 #### Single-Instance Enforcement
 
@@ -272,13 +293,21 @@ The smart processing engine that handles AI, NLP, and integrations.
 |--------|---------|
 | **backend/commit_message_enhancer.py** | AI-powered iterative commit message refinement |
 | **backend/git_diff_analyzer.py** | Analyzes staged changes for context |
-| **backend/git_sage/agent.py** | Agentic loop for autonomous git operations |
-| **backend/git_sage/llm.py** | Ollama and OpenAI-compatible LLM backends |
-| **backend/git_sage/context.py** | Git repository state collection |
-| **backend/git_sage/config.py** | ~/.config/git-sage/config.json management |
-| **backend/git_sage/git_operations.py** | Advanced git operations (branches, commits, merges, blame, stash) |
-| **backend/git_sage/conflict_resolver.py** | Intelligent conflict analysis and resolution |
-| **backend/git_sage/pr_finder.py** | PR/MR utilities and analysis |
+
+> **git-sage is client-side and Go-native.** The Python `backend/git_sage/` package was removed
+> during the client-server decoupling; it does not exist in `devtrack_server/`. The only git-sage
+> is `devtrack_client/gitsage/` and it runs without the Python server in every operating mode.
+
+| Go module (`devtrack_client/gitsage/`) | Purpose |
+|--------|---------|
+| **agent.go** | Agentic loop for autonomous git operations (plan → execute → observe → rollback) |
+| **llm.go** | Ollama and OpenAI-compatible LLM backends (JSON mode) |
+| **context.go** | Git repository state collection |
+| **config.go** | git-sage configuration management |
+| **git_ops.go** | Advanced git operations (branches, commits, merges, blame, stash) |
+| **conflict.go** | Intelligent conflict analysis and resolution |
+| **pr_finder.go** | PR/MR utilities and analysis |
+| **commit.go**, **cli.go** | `devtrack git` entry point — AI-enhanced commit/add/history + pass-through |
 
 #### External Integrations
 
@@ -720,12 +749,16 @@ The daemon checks 6 services every 30 seconds:
 
 | Service | Check Method | Auto-Restart |
 |---------|-------------|--------------|
-| Python backend | HTTP GET /health | Yes |
+| Daemon | PID file present + process liveness | — |
+| Python backend (`python_http`) | HTTP GET /health | Yes |
+| SQLite | Database file readable, schema valid | No |
 | Ollama | HTTP GET /api/tags | No |
-| Azure DevOps | Config presence check | No |
-| Webhook Server | Process liveness | Yes |
-| Telegram bot | Process liveness | Yes |
-| MongoDB | TCP dial timeout | No |
+| Ports | Bound ports recorded and re-checked across restarts | No |
+
+> There is **no Redis or MongoDB health check.** Both were Python-era services; migration 83 in
+> `internal/db/migrations.go` actively deletes any stale `redis`/`mongodb` health snapshots left
+> over from older installs. The Go daemon checks only the five services above
+> (`internal/health/health.go`).
 
 ### Deferred Commits
 
@@ -766,23 +799,32 @@ Offline-first is a core non-negotiable — see [`PRODUCT_BIBLE.md`](../PRODUCT_B
 
 ## Phases & Evolution
 
-### Phase 1: Enhanced Commit Messages
-Added git context (branch, PR, recent commits) to AI prompts for better commit message generation.
+The current build arc is defined in [`PRODUCT_BIBLE.md`](../PRODUCT_BIBLE.md) and sequenced in
+trust order — **safe → accurate → automated → autonomous**. Phases 0–8 are **complete**; live
+task state is tracked in `Data/agent_logs/project_board.md`.
 
-### Phase 2: Conflict Resolution & PR-Aware Parsing
-Automatic merge conflict resolution and git-aware work update parsing with PR/issue auto-detection.
+| Phase | Delivered |
+|---|---|
+| **0 — Foundation reset** | Silent daemon: all prompts removed from the timer- and commit-trigger flows |
+| **1 — Pending-actions queue** | Every outbound action is staged for review first (`pending_actions` table, `devtrack queue`) |
+| **2 — Ticket extractor** | Ticket IDs inferred from branch names; configurable ticket pattern |
+| **3 — Silent commit** | Commit enhancement and PM sync with no interruption |
+| **4 — EOD pipeline** | Commits grouped by ticket into an end-of-day report (`devtrack eod`) |
+| **5–6 — Voice & dialectic learning** | Writing-voice training; FTS5 inference store, adaptive thresholds, skill emergence |
+| **7 — PR puppet master** | Fix-commit-push review loop with escalation and completion notifications |
+| **8 — MCP server** | JSON-RPC 2.0 stdio server exposing six read-only SQLite-backed tools to Claude Code |
 
-### Phase 3: Event-Driven Integration
-Seamless integration of Phases 1 & 2 into webhook_server.py's real-time event pipeline.
+### Next: Phase 9 — Adoption Gate
+Packaging and narrative, not new capability: a stranger goes from README to a staged action and
+Claude Code answering *"what am I working on?"* in under ten minutes. See
+[`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
 
-### Offline-First Resilience
-Store-and-forward message queue, deferred commit enhancement, health monitoring with auto-restart, and enhanced status dashboard.
+**Deferred (Phase 10+):** headless orchestration, Tier 4 Hermes persona model, GitLab `IsPRApproved`.
 
-### Future Phases
-- Dashboard and analytics
-- Mobile notifications
-- Plugin system
-- Advanced project planning
+> **Not planned, ever:** NATS/Redis/external message queues, a PostgreSQL migration, Kubernetes,
+> or multi-tenancy. These appear in `docs/implementation-plan.md` and
+> `docs/devtrack-architecture.html`, both of which are **superseded** and retained only as
+> "road not taken" references.
 
 ---
 

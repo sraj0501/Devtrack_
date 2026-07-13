@@ -2,11 +2,11 @@
 
 # DevTrack
 
-**The developer automation layer that lives between your terminal and your project management tools.**
+**Never write a standup again.**
 
-*Watches your Git activity. Prompts at the right moments. Routes work updates through AI. Keeps Azure DevOps, GitHub, and GitLab in sync — all on your machine.*
+*You commit. Tickets update, EOD reports write themselves — silently, in your voice, entirely on your machine.*
 
-`devtrack_client` (Go binary + git-sage) | `devtrack_server` (AI pipeline + admin) | `devtrack_wiki` (docs site)
+`devtrack` — a single Go binary. Local-first. Offline by default.
 
 [![GitHub Release](https://img.shields.io/github/v/release/sraj0501/Devtrack_?label=release&color=blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
 [![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
@@ -20,11 +20,25 @@
 
 ## The 30-second pitch
 
-You finish a feature. You type `git commit`. That's where DevTrack wakes up.
+You write code. DevTrack handles the rest.
 
-It refines your commit message with AI, asks how long the work took, opens a split-pane picker so you can link to an open issue in one keypress, posts a comment on that issue, and offers to push — all before you've left the terminal. When the session ends, it generates an EOD report in your own writing style, learned from your Teams messages.
+A background daemon watches your commits and infers everything around them — which ticket you're on (from the branch name), what you did today, what the standup should say. It drafts the ticket comment and the EOD report **in your writing voice**, learned from your own git history. Your only obligation: name branches with ticket IDs.
 
-The Go daemon is a 5 MB binary. The Python backend runs as a subprocess. Nothing leaves your machine unless you want it to.
+**Nothing is sent behind your back.** Every outbound action — a Jira comment, a ticket transition, an email — is *staged* in a review queue first. You approve it, or you let it earn auto-approve over time. The daemon never prompts you, never blocks a commit, and never interrupts.
+
+### And it's the memory your AI agents lack
+
+Coding agents are session-based: they exist while invoked, then forget. DevTrack is always on. One command —
+
+```bash
+devtrack mcp setup
+```
+
+— and Claude Code knows your active ticket, today's commits, your pending queue, and how you write. Nothing else runs at 6pm, groups the day's commits by ticket, and has the EOD ready before you ask.
+
+### Trust
+
+Local Ollama by default; SQLite on disk. **Your code, commits, and diffs never leave your machine.** Optional cloud LLMs send prompt text only, and only if you configure one. Anonymous usage telemetry is **opt-in** and off unless you run `devtrack telemetry on`.
 
 ---
 
@@ -71,39 +85,47 @@ Claude Code will then read and write memory directly to the repo, keeping it in 
 
 ## The core loop
 
+The daemon is **silent**. It does not prompt, block, or interrupt — it observes and stages.
+
 ```
-You type: git commit -m "fix auth redirect"
+You:  git checkout -b feat/AUTH-42-refresh-token
+You:  git commit -m "fix auth redirect"
                 │
                 ▼
-        DevTrack intercepts
+        DevTrack observes (background — you are not interrupted)
                 │
-          ┌─────┴─────┐
-          │  AI refines │  → Accept / Enhance / Regenerate
-          └─────┬─────┘
+        ├── infers ticket AUTH-42 from the branch name
+        ├── drafts a ticket comment in your voice
+        └── STAGES it — nothing is sent yet
                 │
-        "Log this work? (y/n)"
+                ▼
+        devtrack queue        # review what's waiting
+        devtrack queue approve <id>
                 │
-        "How long? (e.g. 2h, 30m)"
-                │
-        ┌────────────────┐
-        │  Ticket picker  │  ↑/↓ to browse · / to filter · Enter to link
-        │  (split pane)   │
-        └────────┬───────┘
-                 │
-        Comment posted on issue
-        Commit hash attached
-                 │
-        "Push to origin/branch? (y/n)"
+        At 6pm: today's commits, grouped by ticket
+                ▼
+        devtrack eod          # the standup, already written
 ```
 
-Shell setup is one line, done once:
+Review the queue whenever you like — it waits for you:
 
 ```bash
-eval "$(devtrack shell-init)"    # add to ~/.zshrc or ~/.bashrc
+devtrack queue                  # what DevTrack wants to send
+devtrack queue approve <id>     # send it
+devtrack queue reject <id>      # discard it
+devtrack eod                    # preview today's EOD report
+```
+
+### Optional: AI-enhanced commits
+
+Separately, `devtrack git commit` is an **interactive** wrapper that refines your commit message with AI, offers a ticket picker, and can log time. It is opt-in and never part of the silent daemon path:
+
+```bash
+eval "$(devtrack shell-init)"    # add to ~/.zshrc or ~/.bashrc — done once
 devtrack enable-git              # opt this repo in
 ```
 
-After that, `git commit` routes through DevTrack automatically for monitored repos. Everything else (`git push`, `git pull`, `git status`) goes straight to real git, unmodified. Escape hatch: `GIT_NO_DEVTRACK=1 git commit -m "skip"`.
+After that, `git commit` routes through DevTrack for monitored repos. Everything else (`git push`, `git pull`, `git status`) goes straight to real git, unmodified. Escape hatch: `GIT_NO_DEVTRACK=1 git commit -m "skip"`.
 
 > AI commit enhancement is only active when the daemon is running. If you stop it, `git commit` passes through with zero delay and no errors.
 
@@ -126,6 +148,31 @@ After that, `git commit` routes through DevTrack automatically for monitored rep
 ---
 
 ## Key features
+
+### The pending-actions queue — nothing is sent without review
+
+Every outbound action DevTrack wants to take is **staged first**, never fired blind. This is the trust primitive: one reviewable queue for everything that would otherwise write to your Jira, GitHub, or inbox.
+
+```bash
+devtrack queue                   # list pending actions (default)
+devtrack queue --all             # include recently posted/rejected
+devtrack queue status            # one-line summary: pending / posted today / rejected today
+devtrack queue approve <id>      # send it now
+devtrack queue reject <id>       # discard — will not post
+devtrack queue edit <id> <json>  # fix the payload before it goes
+```
+
+Each action carries a confidence score. As you approve a given action type repeatedly, it can earn auto-approve — so DevTrack gets quieter the more you trust it, not louder.
+
+### End-of-day report — the standup, already written
+
+```bash
+devtrack eod                # generate today's report
+devtrack eod show           # print the most recent narrative
+devtrack eod status         # is one staged?
+```
+
+Groups the day's commits by ticket and writes the narrative in your voice. It is staged in the queue like anything else — review it, then send.
 
 ### Multi-repo monitoring
 
@@ -193,12 +240,15 @@ Runs an agentic loop: plans operations, executes them, reads output, handles fai
 ### Personalized AI ("Talk Like You")
 
 ```bash
-devtrack enable-learning        # opt in — learns from Teams messages
+devtrack enable-learning        # opt in
+devtrack learning-sync          # mine your git history
 devtrack show-profile           # view your inferred writing style
 devtrack test-response "Completed auth module"
 ```
 
-Combines a style profile with ChromaDB RAG (actual examples of how you write) to personalize every commit message, work update, and report the system generates.
+Learns your writing voice from **your own git history** — local, automatic, no external service. It combines a style profile with ChromaDB RAG (real examples of how you write) to personalize every commit message, ticket comment, and report the system generates.
+
+Microsoft Teams is an **optional** extra signal (`TEAMS_ENABLED`), not a requirement — the local git-history path is the default and works entirely offline.
 
 ### Ticket alerter
 
@@ -215,7 +265,7 @@ Background poller watches **GitHub**, **Azure DevOps**, **Jira**, and **GitLab**
 - **Jira**: Assigned to you, new comments, status transitions (via REST API)
 - **GitLab**: Issue assigned, new notes (comments), merge request review requested (`ALERT_GITLAB_ENABLED=true`)
 
-Alert state (`last_checked` timestamps per source) persists to **SQLite** when MongoDB is unavailable, so poll continuity survives daemon restarts even without a MongoDB connection.
+The poller is **Go-native** and runs inside the daemon — no Python subprocess, no MongoDB. Alert state (`last_checked` per source) and notifications persist to **SQLite**, so poll continuity survives daemon restarts.
 
 ### Telegram bot — remote control from your phone
 
@@ -395,17 +445,19 @@ Invoke from a Claude Code session:
 
 The PM and engineer agents share `Data/agent_logs/project_board.md` as a contract — PM writes tasks, engineer reads and updates status. All agent activity is captured in `Data/agent_logs/engineer_log.md`.
 
-### Anonymous telemetry
+### Anonymous telemetry — opt-in, off by default
 
-DevTrack sends an anonymous install and daily-active ping (no code, no commit text, no personal data). To opt out:
+DevTrack sends **nothing** unless you explicitly opt in:
 
 ```bash
-devtrack telemetry off      # disable all pings
-devtrack telemetry on       # re-enable
-devtrack telemetry status   # show current setting
+devtrack telemetry status   # DISABLED by default
+devtrack telemetry on       # opt in
+devtrack telemetry off      # opt back out at any time
 ```
 
-The ping sends: a random install UUID, a hashed hardware fingerprint, the event type (`install` / `active`), OS, arch, and version. Nothing else leaves your machine.
+If (and only if) you opt in, the daemon sends an anonymous install/daily-active ping containing a random install UUID, a hashed hardware fingerprint, the event type (`install` / `active`), OS, arch, and version. Never code, commit text, diffs, ticket contents, or personal data.
+
+The setting is stored locally and read directly by the daemon, so it works in every operating mode — including lightweight, with no server running.
 
 ### Admin console (CS-3)
 
@@ -464,7 +516,6 @@ The `server-tui` panel includes a **trigger throughput stats** pane that reads d
 | Daemon process | PID file present and process alive |
 | Python backend | `/health` HTTP endpoint reachable |
 | SQLite | Database file readable and schema valid |
-| Redis | `PING` roundtrip (if `REDIS_URL` is configured) |
 | Ollama | `/api/tags` reachable; response normalised across Ollama versions |
 | Ports | Bound ports recorded and checked across restarts |
 
@@ -483,9 +534,10 @@ The last-known port list is persisted to disk so that `devtrack health` can repo
 
 `devtrack setup` prompts for the mode on first run and writes it to `.env`. In **Lightweight** mode, commands that depend on the Python backend show a clear error rather than crashing.
 
-```bash
-docker compose up -d   # starts Python backend + MongoDB, Redis, PostgreSQL
-```
+> DevTrack runs **natively** — a Go binary plus a `uv`-managed Python server. It is not a Docker
+> product and needs no database server. Storage is SQLite (plus ChromaDB for RAG).
+> `devtrack_server/docker-compose.yml` starts only optional backing services (MongoDB, Redis,
+> PostgreSQL) for the deprioritised managed-cloud mode — the local-first path uses none of them.
 
 ### Python AI server
 
@@ -524,7 +576,10 @@ Key references in this repo:
 
 | I want to… | Go to |
 |-----------|-------|
+| Understand where the product is going | [**PRODUCT_BIBLE.md**](PRODUCT_BIBLE.md) — the source of truth |
+| Install it | [Installation](docs/INSTALLATION.md) |
 | Understand the architecture | [Architecture](docs/ARCHITECTURE.md) |
+| Review what DevTrack wants to send | [Pending-actions queue](#the-pending-actions-queue--nothing-is-sent-without-review) |
 | See the client↔server split | [Decoupling plan](docs/CLIENT_SERVER_DECOUPLING_PLAN.md) · [Capability ownership](docs/CAPABILITIES_OWNERSHIP.md) |
 | Set up the Telegram bot | [Telegram](docs/TELEGRAM_BOT.md) |
 | Set up interactively (new users) | [`devtrack setup`](#interactive-setup-wizard-devtrack-setup) |
@@ -556,14 +611,12 @@ The script: computes the next version, creates a git tag, cross-compiles all 5 t
 ## Testing
 
 ```bash
-cd devtrack_client && go test ./...                                       # Go client (20+ tests)
-cd devtrack_server && uv run pytest backend/tests/                        # Python server (492+ tests)
-cd devtrack_server && uv run pytest backend/tests/ -k cs1                # CS-1 HTTP trigger suite (28 tests)
-cd devtrack_server && uv run pytest backend/tests/test_server_tui.py     # server_tui helpers (37 headless tests)
-cd devtrack_server && uv run pytest backend/tests/test_admin_auth.py     # admin auth (19 tests)
-cd devtrack_server && uv run pytest backend/tests/test_admin_routes.py   # admin console routes (59+ tests)
-cd devtrack_server && uv run pytest backend/tests/test_admin_user_manager.py  # user manager (33+ tests)
-cd devtrack_server && uv run pytest backend/tests/test_jira_alerter.py   # Jira alerter (26 tests)
+cd devtrack_client && go test ./...                     # Go client — 112 tests
+cd devtrack_client && go vet ./...                      # lint
+
+cd devtrack_server && uv sync                           # uv manages the venv — never pip
+cd devtrack_server && uv run pytest backend/tests/      # Python server — 798 tests
+cd devtrack_server && uv run pytest backend/tests/ -k <name>   # filter by name
 ```
 
 The CS-2 config audit enforces that **no Python business-logic module calls `os.getenv()` directly** — all 40+ backend modules were audited (TASK-001 through TASK-007) and now route through `backend.config` typed accessors. Missing required env vars produce a `ConfigError` with the exact variable name rather than a silent `None`.
@@ -572,7 +625,12 @@ The CS-2 config audit enforces that **no Python business-logic module calls `os.
 
 ## Privacy
 
-All data stays on your machine. Ollama runs locally. External AI services (OpenAI, Anthropic, Groq) are optional — only prompt text is sent, never commit history or personal context. Learning from Teams requires explicit opt-in and can be deleted at any time with `devtrack learning-reset`.
+**Your code, commits, and diffs never leave your machine.** Ollama runs locally; state lives in SQLite on disk. DevTrack works fully offline.
+
+- **Cloud LLMs are optional.** OpenAI/Anthropic/Groq are used only if you configure one, and only prompt text is sent — never commit history or repository contents.
+- **Nothing is posted without review.** All outbound actions are staged in the pending-actions queue until you approve them.
+- **Telemetry is opt-in** and off by default (`devtrack telemetry status`). No pings are sent unless you run `devtrack telemetry on`.
+- **Voice learning is local.** It mines your own git history. Teams is an optional extra signal, requires explicit opt-in, and can be wiped with `devtrack learning-reset`.
 
 ---
 

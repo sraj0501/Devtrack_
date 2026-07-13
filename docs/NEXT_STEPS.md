@@ -147,18 +147,23 @@ survived setup.
 
 ---
 
-## Proposed task breakdown (TASK-109+, for project-vision to formalize)
+## Proposed task breakdown (TASK-110+, for project-vision to formalize)
 
 | # | Task | Workstream |
 |---|---|---|
-| TASK-109 | `devtrack setup` writes complete `.env` with visible defaults; hard-fail secrets only | 9a |
-| TASK-110 | Background server bootstrap (uv sync / spaCy / ollama pull non-blocking) + progress in `status`/`doctor` | 9b |
-| TASK-111 | First-run wow script: Tier 0 mining kickoff + guided `work report` / `mcp setup` prompts | 9b |
-| TASK-112 | Ollama detection + BYO-cloud-key fast lane in setup | 9b |
-| TASK-113 | README overhaul + demo GIF + quickstart | 9c |
-| TASK-114 | devtrack_wiki homepage rewrite + repo description/topics | 9c |
-| TASK-115 | Registry submissions (MCP lists, plugin directory) | 9d |
-| TASK-116 | Launch content: Show HN + dev.to + LinkedIn via post-generator | 9d |
+| TASK-110 | `devtrack setup` writes complete `.env` with visible defaults; hard-fail secrets only | 9a |
+| TASK-111 | Background server bootstrap (uv sync / spaCy / ollama pull non-blocking) + progress in `status`/`doctor` | 9b |
+| TASK-112 | First-run wow script: Tier 0 mining kickoff + guided `work report` / `mcp setup` prompts | 9b |
+| TASK-113 | Ollama detection + BYO-cloud-key fast lane in setup | 9b |
+| TASK-114 | Demo GIF (commit → staged action → EOD preview) + quickstart polish | 9c |
+| TASK-115 | devtrack_wiki homepage rewrite + repo description/topics | 9c |
+| TASK-116 | Registry submissions (MCP lists, plugin directory) | 9d |
+| TASK-117 | Launch content: Show HN + dev.to + LinkedIn via post-generator | 9d |
+
+> **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
+> message (hook / differentiator / trust) now leads the README, and telemetry was flipped to
+> opt-in so the "nothing leaves your machine" trust claim is actually true. What remains of 9c is
+> the demo GIF and the wiki homepage.
 
 ---
 

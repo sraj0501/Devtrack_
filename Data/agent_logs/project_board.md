@@ -8,7 +8,25 @@ without every downstream consumer being updated. Third pass actually ran `devtra
 `start` → `stop` against a sandboxed fake home and found 3 more bugs no static read would have
 caught, including one that silently broke the pending-actions queue on every fresh install. See
 TASK-108 audit findings for detail._
-_Next DevTrack task ID: TASK-109_
+**[2026-07-13] TASK-109 — Repo cleanup before dev → main promotion.** Branch
+`docs/TASK-109-repo-cleanup`. Deleted 30 stale branches (32 remote → 2: `dev`, `main`; plus 2 stale
+local). Reconciled 5 board statuses that still read IN PROGRESS despite having shipped (TASK-080,
+095, 096, 105, 106). Fixed doc drift found by auditing docs against code, not against other docs:
+git-sage described as Python (it is Go-native; the client has zero `.py` files), a Redis health
+check that does not exist, a root `Dockerfile.server`/`docker compose` that does not exist, and a
+"Phases 1–3" evolution section predating the Phase 0–8 arc. Marked
+`docs/devtrack-architecture.html` SUPERSEDED to match `implementation-plan.md` (both propose
+NATS/PostgreSQL/Redis/K8s, all rejected by the pivot). README rewritten to the NEXT_STEPS
+three-layer message and given the missing queue/EOD sections.
+
+**Telemetry was opt-out and its opt-out was broken** — `devtrack telemetry off` called the
+server's `AuthTelemetry`, which never wrote the local `telemetry_disabled` marker that `ping.go`
+actually checks, so the daemon pinged `ping.devtrack.dev` every 24h regardless. Now **opt-in**:
+marker renamed to `telemetry_enabled`, the CLI writes it locally (works in lightweight mode, no
+server needed), and `sendPing` returns early unless it exists. This makes non-negotiable #5 and
+the README's "nothing leaves your machine" claim true rather than aspirational.
+
+_Next DevTrack task ID: TASK-110_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -1826,7 +1844,7 @@ command ships in the same task.
 **Phase**: Phase 5
 **Depends on**: none
 **Branch**: `feat/TASK-080-voice-seed-commits`
-**Status**: IN PROGRESS — dispatched 2026-06-18
+**Status**: COMPLETE — verified 2026-07-13 (voice_seeder.py, POST /voice/seed, `devtrack voice` all shipped)
 
 **Spec**:
 
@@ -3775,7 +3793,7 @@ Go: `go build ./...` and `go vet ./...` must pass clean.
 
 ### TASK-095 — Fix-commit-push loop: orchestrate agent, push fix, poll review state
 **Assigned to**: engineer
-**Status**: IN PROGRESS
+**Status**: COMPLETE — verified 2026-07-13 (internal/reviewer/{agent,loop}.go shipped)
 **Priority**: HIGH
 **Phase**: Phase 7
 **Depends on**: TASK-093 (classified comments), TASK-094 (agent invocation interface)
@@ -3942,7 +3960,7 @@ must pass.
 
 ### TASK-096 — Escalation and completion notification: Telegram, TUI, and CLI channels
 **Assigned to**: engineer
-**Status**: IN PROGRESS
+**Status**: COMPLETE — verified 2026-07-13 (escalation in internal/db/pr_review.go + daemon)
 **Priority**: MEDIUM
 **Phase**: Phase 7
 **Depends on**: TASK-095 (MERGED — de48d214)
@@ -5168,7 +5186,7 @@ add it if not (reads `DEVTRACK_HOME` env var, falls back to `os.UserHomeDir()+"/
 **Assigned to**: engineer
 **Depends on**: TASK-103 (server dir established)
 **Branch**: `feat/TASK-105-upgrade-server`
-**Status**: IN PROGRESS
+**Status**: COMPLETE — merged via PR #211
 
 **Spec**:
 
@@ -5223,7 +5241,7 @@ if err := upgradeServer(config.GetDevtrackHome()); err != nil {
 **Phase**: Post-arc (Managed Install epic)
 **Depends on**: none (independent)
 **Branch**: `feat/TASK-106-windows-autostart-env`
-**Status**: IN PROGRESS
+**Status**: COMPLETE — merged via PR #212
 **Assigned to**: engineer
 **Engineer status**: 4/4 criteria done — last commit: 06c8591 "feat(autostart): bake env vars into Windows scheduled task via .bat wrapper" — 2026-06-30 13:00
 
