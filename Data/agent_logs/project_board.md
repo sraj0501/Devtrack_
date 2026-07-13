@@ -124,6 +124,34 @@ so opt-in telemetry pings go nowhere, and `LICENSE_CONTACT_EMAIL` defaults to `l
 the same dead domain. Both stand up when the app is commercially deployed. Nothing leaks in the meantime
 (telemetry is off by default; the ping is fire-and-forget and cannot block the daemon).
 
+**[2026-07-13] TASK-125 — HOTFIX: live wiki stuck on a loading screen.** Branch
+`fix/TASK-125-wiki-loading-screen`; PR #221 → `dev`, shipped to production via #222 (`dev` → `main`).
+Logged retroactively — this came in as an outage, not off the board.
+
+`renderHome()` in `devtrack_wiki/wiki/wiki.html` builds the whole home page as a single JS template
+literal. TASK-110 added bash install snippets inside it containing **raw backticks** (`` `uv sync` ``,
+`` `source .env` ``, `` `devtrack start` ``), each of which closed the literal early. A syntax error
+discards the *entire* inline `<script>`, so `DOMContentLoaded` never fired `navigate()` and every wiki
+page — not just home — sat on the static "Loading…" placeholder hardcoded in the markup. The same
+snippet also carried `devtrack_${OS}_${ARCH}.tar.gz`; once the backticks were escaped, JS would have
+interpolated `${OS}`/`${ARCH}` as undefined vars and thrown a `ReferenceError` at render time,
+reproducing the identical stuck spinner. Both classes escaped. Total fix: 4 lines.
+
+**Why the TASK-110 verification missed it:** that entry above says "both JS bundles pass `node --check`"
+— and they did. The check ran against `assets/*.js`. The bug was in an inline `<script>` in the HTML,
+which nothing checked. A green verification line that tests the wrong artefact is worse than no line,
+because it reads as coverage.
+
+**Guard (new):** `.github/workflows/wiki.yml` + `devtrack_wiki/check_inline_js.py` extract each wiki
+page's inline `<script>` and run `node --check` on it, remapping node's line numbers back to real HTML
+lines. Confirmed it fails on the offending commit (`a721720`, pointing at `wiki.html:4042`) and passes
+on the fix. Before this, **no workflow covered `devtrack_wiki/` at all** — and `ci.yml` only triggers on
+PRs to `main`, so a wiki change could not be checked on the `dev` PR where it lands.
+
+**Deploy note (cost an extra hop to learn):** Netlify serves devtrack.cloud from **`main`**, not `dev`.
+The fix merging to `dev` did not bring the site back; it needed the `dev` → `main` promotion. The
+production branch lives in the Netlify dashboard, not in `netlify.toml` — nothing in the repo says so.
+
 **QUEUED — EPIC: PostgreSQL Backend (TASK-112–116).** Must land before commercial launch. See the epic
 section at the bottom of this board.
 
@@ -132,7 +160,7 @@ not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-125_
+_Next DevTrack task ID: TASK-126_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
