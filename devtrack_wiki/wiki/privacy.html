@@ -690,8 +690,9 @@ chmod 600 ~/.devtrack/learning/*.json</code></pre>
                     <li>GitHub API: <code>https://api.github.com</code></li>
                 </ul>
 
-                <h3>No Telemetry</h3>
-                <p>DevTrack does not send telemetry, analytics, or crash reports to any external service.</p>
+                <h3>Telemetry — opt-in, off by default</h3>
+                <p>DevTrack sends <strong>no</strong> telemetry, analytics, or crash reports unless you explicitly opt in with <code>devtrack telemetry on</code>. Check the current setting at any time with <code>devtrack telemetry status</code>.</p>
+                <p>If you do opt in, a single anonymous ping is sent on install and at most once every 24 hours, containing only: a random install UUID, a hashed hardware fingerprint, the event type, the DevTrack version, your OS, and your CPU architecture. It never includes code, commit messages, diffs, ticket contents, file paths, or any personal data. Opt back out at any time with <code>devtrack telemetry off</code>.</p>
 
                 <h2>Authentication</h2>
 
