@@ -49,7 +49,7 @@ New to DevTrack? Read these in order:
 
 ## Repos
 
-- **Client (binary)**: https://gitlab.com/devtrack3_cloud/devtrack_client
-- **Server (Python)**: https://gitlab.com/devtrack3_cloud/devtrack_server
-- **Wiki**: https://gitlab.com/devtrack3_cloud/devtrack_wiki
-- **Issues**: https://gitlab.com/devtrack3_cloud/devtrack_server/-/issues
+- **Client (binary)**: https://github.com/sraj0501/Devtrack_
+- **Server (Python)**: https://github.com/sraj0501/Devtrack_
+- **Wiki**: https://github.com/sraj0501/Devtrack_
+- **Issues**: https://github.com/sraj0501/Devtrack_/issues

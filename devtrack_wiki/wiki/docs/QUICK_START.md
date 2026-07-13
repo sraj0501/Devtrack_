@@ -27,7 +27,7 @@ This gets the `devtrack` binary running. The server (`devtrack_server`) is optio
 ```bash
 # Clone the client repo
 cd ~/Documents  # or your preferred location
-git clone https://gitlab.com/devtrack3_cloud/devtrack_client.git
+git clone https://github.com/sraj0501/Devtrack_.git
 cd devtrack_client
 
 # Build the binary
@@ -42,7 +42,7 @@ source ~/.bashrc
 
 **Windows (PowerShell):**
 ```powershell
-git clone https://gitlab.com/devtrack3_cloud/devtrack_client.git
+git clone https://github.com/sraj0501/Devtrack_.git
 cd devtrack_client
 go build -o devtrack.exe .
 Move-Item devtrack.exe "$env:GOPATH\bin\devtrack.exe"
@@ -117,7 +117,7 @@ If you want NLP parsing, the boardroom feature, admin UI, or PM integrations:
 
 ```bash
 # Clone the server
-git clone https://gitlab.com/devtrack3_cloud/devtrack_server.git
+git clone https://github.com/sraj0501/Devtrack_.git
 cd devtrack_server
 
 # Install dependencies with uv (never pip)

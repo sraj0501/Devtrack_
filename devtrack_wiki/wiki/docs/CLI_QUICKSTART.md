@@ -16,30 +16,32 @@
 Pre-built binaries are published on every version tag:
 
 ```
-https://gitlab.com/devtrack3_cloud/devtrack_client/-/releases
+https://github.com/sraj0501/Devtrack_/releases/latest
 ```
 
-| Platform | Binary name |
+| Platform | Asset |
 |---|---|
-| Linux x64 | `devtrack-linux-amd64` |
-| Linux ARM64 | `devtrack-linux-arm64` |
-| macOS Apple Silicon | `devtrack-darwin-arm64` |
-| macOS Intel | `devtrack-darwin-amd64` |
-| Windows x64 | `devtrack-windows-amd64.exe` |
+| Linux x64 | `devtrack_linux_amd64.tar.gz` |
+| Linux ARM64 | `devtrack_linux_arm64.tar.gz` |
+| macOS Apple Silicon | `devtrack_darwin_arm64.tar.gz` |
+| macOS Intel | `devtrack_darwin_amd64.tar.gz` |
+| Windows x64 | `devtrack_windows_amd64.exe` |
 
 ```bash
-# Example — Linux x64
-curl -L https://gitlab.com/devtrack3_cloud/devtrack_client/-/releases/latest/download/devtrack-linux-amd64 \
-  -o devtrack
-chmod +x devtrack
-mv devtrack ~/.local/bin/
+# macOS / Linux — detect OS and architecture, then download the right binary
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+[ "$ARCH" = "x86_64" ]  && ARCH="amd64"
+[ "$ARCH" = "aarch64" ] && ARCH="arm64"
+curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
+sudo mv devtrack /usr/local/bin/
 ```
 
 ### Build from source
 
 ```bash
-git clone https://gitlab.com/devtrack3_cloud/devtrack_client.git
-cd devtrack_client
+git clone https://github.com/sraj0501/Devtrack_.git
+cd Devtrack_/devtrack_client
 go build -o devtrack .
 
 # Install globally

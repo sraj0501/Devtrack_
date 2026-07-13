@@ -1,20 +1,42 @@
 # docker-compose.yml
-# Local development infrastructure for DevTrack.
-# Spins up MongoDB, Redis, and PostgreSQL — used by:
-#   - Personalization / RAG (MongoDB)
-#   - Managed cloud mode backend (all three)
+# Runs the DevTrack Python server in a container. The Go client stays on the host
+# and talks to it over HTTPS with DEVTRACK_SERVER_MODE=external.
 #
-# DevTrack itself runs natively (Go binary + uv Python), NOT in Docker.
-# See docs/INSTALLATION.md for setup.
+# The server is the only service you need. MongoDB and PostgreSQL are opt-in extras
+# (Teams voice source; multi-user mode) — DevTrack's own state lives in local SQLite.
 #
 # Usage:
-#   docker compose up -d      # start services
-#   docker compose down       # stop services
-#   docker compose down -v    # stop + wipe volumes
+#   docker compose up -d devtrack_server   # the server
+#   docker compose up -d mongo             # optional extras, by name
+#   docker compose down                    # stop
+#   docker compose down -v                 # stop + wipe volumes
 
 services:
+  # ── DevTrack Python server ───────────────────────────────────────────────────
+  devtrack_server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devtrack-server
+    container_name: devtrack-server
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DEVTRACK_SERVER_PORT:-8089}:8089"
+    volumes:
+      - ./Data:/app/Data
+    networks:
+      - devtrack-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
   # ── MongoDB ──────────────────────────────────────────────────────────────────
-  # Used by: personalization (RAG samples, user profiles), managed mode
+  # Optional: Microsoft Teams messages as an extra voice-learning source.
   mongo:
     image: mongo:7
     container_name: devtrack-mongo
@@ -31,29 +53,6 @@ services:
       - devtrack-network
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ── Redis ─────────────────────────────────────────────────────────────────────
-  # Used by: managed cloud mode (event queue, WebSocket pub/sub)
-  redis:
-    image: redis:7-alpine
-    container_name: devtrack-redis
-    restart: unless-stopped
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD:-devtrack}
-      --maxmemory ${REDIS_MAX_MEMORY:-256mb}
-      --maxmemory-policy allkeys-lru
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - devtrack-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-devtrack}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -82,7 +81,6 @@ services:
 
 volumes:
   mongo-data:
-  redis-data:
   postgres-data:
 
 networks:

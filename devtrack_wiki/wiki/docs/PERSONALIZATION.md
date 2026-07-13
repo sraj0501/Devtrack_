@@ -85,9 +85,9 @@ Shows consent status, sample count, and last sync time.
 | Variable | Description |
 |---|---|
 | `LEARNING_CRON_SCHEDULE` | Cron expression for daily sync (e.g. `0 20 * * *` for 8pm daily) |
-| `MONGODB_URI` | Optional — if set, samples are stored in MongoDB instead of local files |
+| `MONGODB_URI` | Optional. Only used to pull Microsoft Teams messages as an extra voice source (needs `TEAMS_ENABLED` and `motor`). It is never required, and it does not replace local storage. |
 
-If `MONGODB_URI` is not set, samples and profiles are stored locally under `DATA_DIR/learning/`.
+Samples and profiles always live locally under `DATA_DIR/learning/`. DevTrack needs no database server — git history alone is enough to learn your voice.
 
 ### RAG Enhancement (Optional)
 
@@ -118,7 +118,7 @@ Revokes consent and stops all future data collection. Existing data is preserved
 devtrack learning-reset
 ```
 
-Wipes all collected data (MongoDB + local files) and resets consent. Use this to start fresh.
+Wipes all collected data (local files, plus any Teams samples in MongoDB) and resets consent. Use this to start fresh.
 
 ---
 
@@ -143,5 +143,5 @@ If no profile exists, these features fall back to standard AI output — no erro
 | Store | Location | Contents |
 |---|---|---|
 | Local files | `DATA_DIR/learning/` | Samples (JSONL), profile (JSON), consent |
-| MongoDB (optional) | `MONGODB_URI` | `communication_samples`, `user_profiles`, `learning_state` |
+| MongoDB (optional) | `MONGODB_URI` | Teams messages only, when `TEAMS_ENABLED=true`. Not required. |
 | Vector store | `DATA_DIR/learning/chroma/` | Embeddings for RAG (if AI tier installed) |
