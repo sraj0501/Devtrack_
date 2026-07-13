@@ -856,7 +856,7 @@ docker run --env-file .env devtrack start</code></pre>
 <tr><td><code>webhook_server</code></td><td>FastAPI server on port 8089 — receives HTTPS trigger POSTs from the Go daemon and inbound webhooks from Azure, GitHub, GitLab, and Jira</td></tr>
 <tr><td><code>telegram_bot</code></td><td>Telegram bot polling loop — remote control and mobile access</td></tr>
 <tr><td><code>slack_bot</code></td><td>Slack Socket Mode bot — <code>/devtrack</code> slash command and proactive work reminders (only when <code>SLACK_ENABLED=true</code>)</td></tr>
-<tr><td><code>alert_poller</code></td><td>Background ticket alerter — polls GitHub, Azure DevOps, and Jira for events assigned to you</td></tr>
+<tr><td><code>alert_poller</code></td><td>Background ticket alerter — polls GitHub and Azure DevOps for events assigned to you. Go-native, started in-process by the daemon (not a Python subprocess).</td></tr>
 </tbody>
 </table></div>
 <p>Each row shows live CPU%, memory usage, current status (<strong>running</strong> / <strong>stopped</strong> / <strong>error</strong>), and the process uptime.</p>
@@ -1043,7 +1043,7 @@ SLACK_ALLOWED_CHANNEL_IDS=C123ABC,C456DEF   # leave blank for all channels (dev 
 </table></div>
 
 <h2>Proactive Notifications</h2>
-<p>When the DevTrack timer fires (every <code>PROMPT_INTERVAL</code> minutes during work hours), the Slack bot sends a work-reminder nudge to all allowed channels — the same nudge Telegram delivers. This is stateless: the notifier uses the bot token directly without requiring the Socket Mode handler to be running.</p>
+<p>When the DevTrack timer fires (every <code>PROMPT_INTERVAL</code> minutes during work hours), the Slack bot can post a work-update nudge to all allowed channels — the same nudge Telegram delivers. This is stateless: the notifier uses the bot token directly without requiring the Socket Mode handler to be running. Note that this is a <em>chat</em> notification you opt into; the daemon itself never interrupts you in the terminal.</p>
 
 <h2>Channel Restrictions</h2>
 <p>Set <code>SLACK_ALLOWED_CHANNEL_IDS</code> to a comma-separated list of Slack channel IDs (e.g. <code>C123ABC,C456DEF</code>) to restrict commands and notifications to specific channels. Leave it blank during development to allow all channels.</p>
@@ -1067,7 +1067,7 @@ devtrack vacation status</code></pre>
 
 <h2>How It Works</h2>
 <ol>
-<li>When the DevTrack timer fires (every <code>PROMPT_INTERVAL</code> minutes), the Python backend checks vacation mode before showing any interactive prompt.</li>
+<li>When the DevTrack timer fires (every <code>PROMPT_INTERVAL</code> minutes), vacation mode is checked before any notification is delivered or any update is staged.</li>
 <li>If vacation mode is active, <code>VacationAutoResponder</code> collects the recent commits for the workspace and builds a context string.</li>
 <li>The context is sent to the configured LLM provider with a prompt that asks for a 1-3 sentence work update <strong>and</strong> a <code>CONFIDENCE: 0.0–1.0</code> score on the same response.</li>
 <li>If the confidence meets the configured threshold <strong>and</strong> <code>auto_submit</code> is enabled, the update is posted to the PM tool (Azure DevOps, GitHub, GitLab, or Jira) as a comment, prefixed with <em>"[Auto — vacation mode]"</em>.</li>
@@ -1201,7 +1201,7 @@ devtrack cloud logout</code></pre>
 </table></div>
 
 <h3>4 — Alerts</h3>
-<p>The last 30 ticket notifications from the SQLite <code>notifications</code> table — written there by the alert poller as a dual-write alongside MongoDB. Shows source (github / azure / jira), event type, ticket ID, summary, and read/unread state. This tab works fully offline (no MongoDB required).</p>
+<p>The last 30 ticket notifications from the SQLite <code>notifications</code> table — written there by the Go alert poller. Shows source (github / azure), event type, ticket ID, summary, and read/unread state. Like the rest of DevTrack, it works fully offline.</p>
 
 <h2>Key Bindings</h2>
 <div class="table-wrap"><table>
@@ -1350,7 +1350,7 @@ CREATE TABLE alert_state (
 </ul>
 <p><strong>MongoDB not configured</strong></p>
 <ul>
-<li>The alerter works fully without MongoDB — alert state is stored in SQLite and notifications are written to the local SQLite <code>notifications</code> table. Set <code>MONGODB_URI</code> only if you need cross-device notification sync.</li>
+<li>The alerter needs no database server. Alert state and notifications are written to the local SQLite <code>notifications</code> table. <code>MONGODB_URI</code> plays no part in alerting — it is only ever an optional extra source for Teams-based voice learning.</li>
 </ul>
 </div>`,
 
@@ -1483,17 +1483,20 @@ curl -s https://api.github.com/repos/sraj0501/Devtrack_/releases \
 
   DEVTRACK_SERVER: `<div class="md-body">
 <h1>devtrack-server CLI</h1>
-<p>The <strong>devtrack-server</strong> tool is a standalone management CLI bundled inside the <code>devtrack-server-{version}.tar.gz</code> release tarball. It handles the complete lifecycle of a server-side DevTrack installation — downloading the right binary, running the setup wizard, and starting/stopping the daemon — without requiring users to clone the repository or manage paths manually.</p>
+<p>The <strong>devtrack-server</strong> tool is a standalone management shell CLI (<code>devtrack_server/devtrack-server.sh</code>). It handles the complete lifecycle of a server-side DevTrack installation — downloading the right binary, running the setup wizard, and starting/stopping the daemon.</p>
+
+<blockquote><p><strong>Note:</strong> there is currently <strong>no <code>devtrack-server-*.tar.gz</code> release asset</strong>. Releases publish the client binary only (<code>devtrack_{linux,darwin}_{amd64,arm64}.tar.gz</code> and <code>devtrack_windows_amd64.exe</code>). To use <code>devtrack-server</code> today, take the script from the repository as shown below. For most people <code>devtrack setup</code> is the better path — it already fetches the Python server and runs <code>uv sync</code>.</p></blockquote>
 
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">New in v2.1.0-dev — features/standalone-cli-mode</div>
 
 <h2>Quick Start</h2>
-<pre><code class="language-bash"># Download the server tarball from the GitHub releases page
-curl -L https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack-server-linux-amd64.tar.gz | tar xz
-cd devtrack-server/
+<pre><code class="language-bash"># Get the script from the repository (no release tarball is published)
+git clone https://github.com/sraj0501/Devtrack_.git
+cd Devtrack_/devtrack_server
+chmod +x devtrack-server.sh
 
 # Install DevTrack (downloads the Go binary, runs uv sync, writes config)
-devtrack-server install
+./devtrack-server.sh install
 
 # Run the interactive setup wizard
 devtrack-server setup
@@ -1536,7 +1539,7 @@ devtrack-server status</code></pre>
 <thead><tr><th>Scenario</th><th>Recommended path</th></tr></thead>
 <tbody>
 <tr><td>Developer laptop</td><td>Download the <code>devtrack_*.tar.gz</code> binary tarball → <code>devtrack setup</code></td></tr>
-<tr><td>Headless server / VM</td><td>Download <code>devtrack-server-*.tar.gz</code> → <code>devtrack-server install</code> → <code>devtrack-server setup</code></td></tr>
+<tr><td>Headless server / VM</td><td>Clone the repo → <code>./devtrack-server.sh install</code> → <code>./devtrack-server.sh setup</code>. (No release tarball is published for this script.)</td></tr>
 <tr><td>Docker</td><td>Use the <code>docker compose</code> path in the Quick Start box on the Home page</td></tr>
 </tbody>
 </table></div>
@@ -1925,7 +1928,7 @@ devtrack start</code></pre>
 <p>Three improvements shipped on the <code>features/loadEnvs</code> branch (PR #79 targeting main): a first-run interactive setup wizard, automatic <code>.env</code> resolution at daemon startup, and complete elimination of all remaining hardcoded values from the Admin Console.</p>
 
 <div class="feature-list" style="margin-bottom:32px;">
-  <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack setup — interactive first-run wizard</h4><p>New <code>devtrack setup</code> command (<code>devtrack_client/setup.go</code>) walks through the entire initial configuration in a guided terminal flow: prerequisite check (backend/, uv, Python), git workspace selection, LLM provider and credentials, user email, project management platform (GitHub / Azure DevOps / Jira / None), and shell integration / autostart instructions. On completion it writes a complete <code>.env</code> at the project root and registers its path in <code>~/.devtrack/devtrack.conf</code>. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack setup — interactive first-run wizard</h4><p>New <code>devtrack setup</code> command (<code>devtrack_client/setup.go</code>) walks through the entire initial configuration in a guided terminal flow: prerequisite check (git, uv, Python), git workspace selection, LLM provider and credentials, user email, project management platform (GitHub / Azure DevOps / Jira / None), and shell integration / autostart instructions. On completion it writes a complete <code>.env</code> at the project root and registers its path in <code>~/.devtrack/devtrack.conf</code>. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> page.</p></div></div>
   <div class="feature-item"><div class="feature-dot">2</div><div><h4>AutoLoadEnv — automatic .env resolution at startup</h4><p>New <code>AutoLoadEnv()</code> function (<code>devtrack_client/internal/config/loadenv.go</code>) is called at the very start of <code>main()</code>. It resolves the correct <code>.env</code> file using a three-step priority order: (1) <code>DEVTRACK_ENV_FILE</code> env var for CI/Docker overrides, (2) <code>~/.devtrack/devtrack.conf</code> — the path written by <code>devtrack setup</code>, (3) <code>.env</code> next to the binary for portable installs. Existing env vars are <strong>never overridden</strong> — shell exports, CI variables, and secret managers always win. The result: developers no longer need to manually <code>source .env</code> before running <code>devtrack</code> commands. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> page.</p></div></div>
   <div class="feature-item"><div class="feature-dot">3</div><div><h4>Admin config hardening — all hardcoded values eliminated (TASK-016/017/018)</h4><p>Three commits systematically eliminated every remaining hardcoded constant from the Admin Console: <strong>TASK-016</strong> extracted the scrypt parameters (<code>SCRYPT_N</code>, <code>SCRYPT_R</code>, <code>SCRYPT_P</code>, <code>SCRYPT_DKLEN</code>) and the session cookie <code>max_age</code> (<code>ADMIN_SESSION_HOURS</code>) from <code>backend/admin/auth.py</code>; <strong>TASK-017</strong> extracted the stats refresh interval (<code>STATS_REFRESH_INTERVAL_SECONDS</code>) and process refresh interval (<code>PROCESS_REFRESH_INTERVAL_SECONDS</code>) from dashboard routes and the webhook server; <strong>TASK-018</strong> extracted the audit log query limit (<code>AUDIT_LOG_LIMIT</code>) and the license contact email (<code>LICENSE_CONTACT_EMAIL</code>) from routes and templates. All 22 variables across the codebase are now required env vars with no silent defaults.</p></div></div>
 </div>
@@ -2524,7 +2527,7 @@ SENTIMENT_ANALYSIS_WINDOW_MINUTES=120</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>PROMPT_INTERVAL</code></td><td><code>30</code></td><td>Minutes between work-update prompts</td></tr>
+<tr><td><code>PROMPT_INTERVAL</code></td><td><code>30</code></td><td>Minutes between scheduler timer ticks. Despite the legacy name it does not prompt you — it is the interval on which the daemon fires its timer trigger.</td></tr>
 <tr><td><code>WORK_HOURS_ONLY</code></td><td><code>true</code></td><td>Only prompt during work hours</td></tr>
 <tr><td><code>WORK_START_HOUR</code></td><td><code>9</code></td><td>Work day start (24h)</td></tr>
 <tr><td><code>WORK_END_HOUR</code></td><td><code>18</code></td><td>Work day end (24h)</td></tr>
@@ -4012,7 +4015,7 @@ function renderHome() {
         { id:'AUTOSTART',       icon:'🔌', title:'Auto-Start',          desc:'Auto-start DevTrack at login — OS-aware. Run <code>devtrack autostart-install</code>: launchd LaunchAgent on macOS, systemd user service on Linux/WSL, Windows Task Scheduler task on Windows, or a shell profile block on WSL without systemd. All env vars are baked into the unit at install time — no separate <code>.env</code> file needed at runtime.' },
         { id:'SERVER_TUI',      icon:'🖥️', title:'Server TUI',          desc:'Textual process monitor for the Python backend. Shows all server processes with live CPU/MEM/status, a health bar, and a trigger throughput stats panel (triggers today, commits today, errors in last 24 h). Navigate with ↑↓, restart with r, toggle logs with l.' },
         { id:'ADMIN_CONSOLE',   icon:'🛡️', title:'Admin Console',       desc:'Web UI at <code>http://localhost:8090/admin/</code> — manage users, roles, API keys; soft disable/enable users; reset passwords; license status page; HTMX trigger stats panel (30s auto-refresh); LLM config, integration credentials, and a full audit log. Run with <code>devtrack admin-start</code> or set <code>ADMIN_EMBED=true</code> to co-host on port 8089.' },
-        { id:'TELEMETRY',       icon:'📊', title:'Telemetry',           desc:'Optional usage tracking: download counts, command frequencies, version adoption. Fully transparent, no PII. Designed for a real-time admin dashboard via Server-Sent Events. See the plan in <code>docs/TELEMETRY_PLAN.md</code>.' },
+        { id:'TELEMETRY',       icon:'📊', title:'Telemetry',           desc:'Optional usage tracking: download counts, command frequencies, version adoption. Fully transparent, no PII. Opt-in only: nothing is sent unless you explicitly enable it.' },
         { id:'CLOUD_MODE',      icon:'☁️', title:'Cloud Mode',          desc:'Connect your local daemon to a remote managed backend. <code>devtrack cloud login --url URL --key KEY</code> saves credentials to <code>~/.devtrack/cloud.json</code>. Bypasses cert-pinning for CA-signed remote certs.' },
         { id:'TUI_DASHBOARD',   icon:'📟', title:'TUI Dashboard',       desc:'Bubble Tea full-screen dashboard. 4 tabs: Overview (uptime, latency, counts), Activity (last 30 triggers), Workspaces (all repos + PM platform), Alerts (last 30 notifications). Tab/1–4 to switch, <code>r</code> refresh, <code>q</code> quit.' },
         // ── Account & Licensing ───────────────────────────────────────────────
@@ -4031,32 +4034,35 @@ function renderHome() {
 
     <div class="quick-start-box">
       <h3>5-Minute Setup</h3>
-      <p style="margin:0 0 .75rem;font-size:.9rem;opacity:.8;">Option 1 — Download binary + interactive wizard (recommended)</p>
-      <pre><code class="language-bash"># macOS / Linux — download the lean ~5 MB Go binary (no Python included)
-curl -L https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_$(uname -s)_$(uname -m).tar.gz | tar xz
+      <p style="margin:0 0 .75rem;font-size:.9rem;opacity:.8;">Option 1 — Download the binary, run the wizard (recommended)</p>
+      <pre><code class="language-bash"># macOS / Linux — the lean Go binary. Normalise OS/arch to the release asset names.
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" ] && ARCH="arm64"
+curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
 sudo mv devtrack /usr/local/bin/
 
-# Run the interactive setup wizard — generates .env, creates Data/ dirs, writes shell integration, no manual sourcing needed
+# The wizard writes .env, creates Data/, and — in managed mode — fetches the
+# Python server into DEVTRACK_HOME/server and runs `uv sync` for you.
 devtrack setup
 
-# Install Python dependencies
-uv sync
-
-devtrack start       # env auto-loaded from ~/.devtrack/devtrack.conf (no source .env needed)
+devtrack start       # env auto-loaded from ~/.devtrack/devtrack.conf (no `source .env` needed)
 devtrack status</code></pre>
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 2 — Server tarball (headless / VM)</p>
-      <pre><code class="language-bash">curl -L https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack-server-linux-amd64.tar.gz | tar xz
-cd devtrack-server/
-devtrack-server install   # downloads binary + uv sync
-devtrack-server setup     # interactive wizard
-devtrack-server start</code></pre>
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 3 — Docker (Python backend in a container)</p>
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 2 — Lightweight mode (no Python at all)</p>
+      <pre><code class="language-bash"># Git monitoring, scheduling, git-sage, PM connectors and alerts are all Go-native.
+# Set this before `devtrack start` to skip the Python server entirely.
+DEVTRACK_SERVER_MODE=lightweight
+devtrack start</code></pre>
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 3 — Docker (Python server in a container)</p>
       <pre><code class="language-bash">git clone https://github.com/sraj0501/Devtrack_.git
-cd Devtrack_
-docker compose up               # starts Python server + MongoDB + Redis
+cd Devtrack_/devtrack_server
+cp .env_sample .env             # then fill it in
+docker build -t devtrack-server .
+docker run --rm -p 8089:8089 --env-file .env -v $(pwd)/Data:/app/Data devtrack-server
+
+# Point the client at the container. DevTrack needs no database server.
 # In .env: DEVTRACK_SERVER_MODE=external  DEVTRACK_SERVER_URL=http://localhost:8089
 devtrack start</code></pre>
-      <p style="margin:.5rem 0 0;font-size:.85rem;opacity:.7;">All releases: <a href="https://github.com/sraj0501/Devtrack_/releases" target="_blank">github.com/sraj0501/Devtrack_/releases</a> — Go binary and server tarballs available.</p>
+      <p style="margin:.5rem 0 0;font-size:.85rem;opacity:.7;">All releases: <a href="https://github.com/sraj0501/Devtrack_/releases" target="_blank">github.com/sraj0501/Devtrack_/releases</a> — Go binaries for Linux, macOS and Windows.</p>
     </div>
 
     <div class="feature-list">

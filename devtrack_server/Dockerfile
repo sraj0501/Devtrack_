@@ -6,20 +6,23 @@
 # The devtrack Go binary connects to this server for AI and integration processing.
 #
 # Architecture:
-#   devtrack (Go binary)  →  connects via IPC (localhost or remote)
-#   devtrack-server (this)  ←  handles AI, integrations, webhooks, Telegram bot
+#   devtrack (Go binary)  →  HTTPS POST /trigger/*  →  devtrack-server (this)
+#   The server handles AI, integrations and webhooks.
 #
 # Build:
-#   docker build -f Dockerfile.server -t devtrack-server .
+#   docker build -t devtrack-server .
 #
 # Run (local, with .env):
-#   docker run --rm -p 35893:35893 -p 8089:8089 \
+#   docker run --rm -p 8089:8089 \
 #     --env-file .env \
 #     -v $(pwd)/Data:/app/Data \
 #     devtrack-server
 #
-# Run (docker compose):
-#   docker compose up   (see docker-compose.yml)
+# Then point the client at it:
+#   DEVTRACK_SERVER_MODE=external  DEVTRACK_SERVER_URL=http://localhost:8089
+#
+# Note: docker-compose.yml does NOT build this image. It only starts the
+# optional MongoDB/PostgreSQL backing services.
 #
 FROM python:3.12-slim
 

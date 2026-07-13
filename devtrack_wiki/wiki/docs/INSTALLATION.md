@@ -249,7 +249,7 @@ Docker is best for running the **server** component with consistent dependencies
 
 ```bash
 git clone https://github.com/sraj0501/Devtrack_.git
-cd devtrack_server
+cd Devtrack_/devtrack_server
 cp .env_sample .env
 nano .env
 ```
@@ -266,13 +266,18 @@ ollama pull llama3
 ### Step 3: Build and Run Container
 
 ```bash
-DOCKER_BUILDKIT=1 docker compose build
-docker compose up devtrack_server -d
+DOCKER_BUILDKIT=1 docker build -t devtrack-server .
+docker run -d --name devtrack-server \
+  -p 8089:8089 --env-file .env \
+  -v "$(pwd)/Data:/app/Data" devtrack-server
 
 # Verify
-docker compose ps
-docker compose logs devtrack_server
+docker ps
+docker logs devtrack-server
 ```
+
+> `docker-compose.yml` does **not** build the server. It only starts the optional
+> MongoDB / PostgreSQL backing services, and DevTrack needs neither to run.
 
 ### Step 4: Install Client Binary (on host)
 
@@ -393,8 +398,11 @@ rm -rf /path/to/devtrack_server
 
 ### Docker
 ```bash
+docker rm -f devtrack-server
+docker image rm devtrack-server
+
+# Only if you started the optional mongo/postgres services:
 docker compose down -v
-docker image rm devtrack_server-devtrack_server
 ```
 
 ---

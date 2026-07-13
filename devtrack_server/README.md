@@ -55,7 +55,8 @@ curl http://localhost:8089/health
 ### Docker
 
 ```bash
-docker compose up -d          # starts MongoDB, Redis, PostgreSQL + server
+docker build -t devtrack-server .
+docker run --rm -p 8089:8089 --env-file .env -v $(pwd)/Data:/app/Data devtrack-server
 docker compose down
 ```
 
@@ -186,12 +187,11 @@ See `docs/RUNTIME_NARRATIVE.md` for the full event schema.
 Start infrastructure with Docker Compose when needed:
 
 ```bash
-docker compose up -d mongodb    # personalization, alert persistence
-docker compose up -d redis      # caching (future)
-docker compose up -d postgres   # multi-user ticket cache
+docker compose up -d mongo      # optional: Teams messages as an extra voice source
+docker compose up -d postgres   # optional: multi-user mode (POSTGRES_URL)
 ```
 
-All are optional. The server degrades to SQLite and in-memory storage when they are absent.
+Both are optional and off by default. DevTrack's own state — triggers, tickets, alerts, learning — lives in local SQLite, and the server runs fine with neither service present.
 
 ---
 

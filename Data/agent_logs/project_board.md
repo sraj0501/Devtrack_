@@ -64,12 +64,64 @@ Also: extracted index.html's 674-line inline `<style>` and 242-line inline `<scr
 `assets/style.css.bak` that was being deployed. Verified every page and asset serves 200 with no
 dangling internal links.
 
-**Still stale, deliberately not in scope:** wiki.html's deep pages (Work Tracker, Vacation Mode)
-still frame the product around the old `PROMPT_INTERVAL` interactive nudge, and there are no
-wiki pages yet for the queue, EOD, or PR-review loop. That is a full docs pass, and it belongs to
-Phase 9 proper rather than being half-done here.
+**Still stale, deliberately not in scope:** there are no wiki pages yet for the queue, EOD, or
+PR-review loop. That is a full docs pass, and it belongs to Phase 9 proper rather than being
+half-done here. (The `PROMPT_INTERVAL` framing noted here originally was fixed in TASK-111.)
 
-_Next DevTrack task ID: TASK-111_
+---
+
+**[2026-07-13] TASK-111 — Second recursive wiki/docs pass: dead code, dead files, broken commands.**
+Branch `docs/TASK-110-wiki-refresh` (continues TASK-110). Where TASK-110 audited *claims*, this pass
+audited *commands and files* — every documented command was checked against the thing it invokes.
+That found a class of bug the first pass missed entirely: **documented commands that cannot run.**
+
+Broken commands (each one fails outright if a user copies it):
+- **`docker compose up devtrack_server` — there is no `devtrack_server` service.** `docker-compose.yml`
+  defines only `mongo` and `postgres`. The Dockerfile is real and works via `docker build`/`docker run`,
+  but nothing wires it into compose. Every Docker install path in the docs was therefore dead. Rewritten
+  to build+run. The Dockerfile's own header also referenced a `Dockerfile.server` filename that does not
+  exist and described the boundary as IPC (it is HTTPS `/trigger/*`).
+- **`curl .../devtrack-server-linux-amd64.tar.gz` — no such release asset.** Releases publish only the
+  five client assets. The `devtrack-server` CLI *is* real (`devtrack_server/devtrack-server.sh`), so the
+  page now points at the repo and flags that no tarball is published.
+- **`curl .../devtrack_$(uname -s)_$(uname -m).tar.gz` — 404s.** `uname` yields `Linux`/`x86_64`; the
+  assets are `linux`/`amd64`. Now normalises OS/arch.
+- **`docker compose up -d mongodb` — service is named `mongo`.**
+- `git clone … && cd devtrack_server` — missed a directory level.
+- The wizard block ran a bare `uv sync` after `devtrack setup`, which already does it (TASK-103–108).
+
+Dead code removed:
+- **Redis, entirely.** Never imported; `redis_url()` had zero callers. It backed R-2–R-6, deprioritised
+  and never built. Removed the accessor (`backend/config.py`), the four `REDIS_*` vars (`.env_sample`),
+  the compose service + volume, and the stale `engine.py` docstring pointing at PG-5/R-1/R-2.
+  **PostgreSQL was left alone — it is live** (`db/engine.py`, `admin/user_manager.py`,
+  `work_tracker/session_store.py`, `server_tui/stats_client.py`), Bible objections notwithstanding.
+- `devtrack_wiki/wiki/vercel.json` (site is on Netlify) and `assets/devtrack_icon.png` (2 MB, referenced
+  nowhere; favicons use `devtrack.png`, the Windows build uses `devtrack_client/devtrack.ico`).
+  `demo.gif`/`standup-demo.gif` were checked and **kept** — the root README uses them.
+
+False claims fixed:
+- **`devtrack_wiki/README.md` still said "MIT License"** — missed in TASK-110's sweep. Now the
+  Community License.
+- Alerter docs still described a MongoDB dual-write and offered `MONGODB_URI` for "cross-device
+  notification sync". Neither exists; the Go poller writes only to SQLite. Also still listed Jira,
+  which the Go poller does not implement.
+- PERSONALIZATION.md said samples are "stored in MongoDB instead of local files". Local is always the
+  store; Mongo is only an optional Teams source.
+- `PROMPT_INTERVAL` is **live** (it drives the scheduler's timer tick) but was documented as an
+  interactive prompt interval, which contradicts Phase 0. Reworded rather than removed — nearly
+  deleted a working scheduler var by trusting the pivot narrative over the code.
+- Dead ref to deleted `docs/TELEMETRY_PLAN.md`; setup wizard still claimed to check the retired `backend/`.
+
+Verified: Go client builds, 798/798 Python tests pass, compose YAML valid, both JS bundles pass
+`node --check`, no dangling links, `/download` 200 on the live site.
+
+**Known, not fixed (needs a decision):** `internal/daemon/ping.go` posts telemetry to
+`https://ping.devtrack.dev`, and **that domain does not resolve** (curl → 000). Telemetry is opt-in, so
+nothing leaks — but if a user opts in, the pings go nowhere. Either stand the worker up or drop the
+feature. Same dead domain is the default for `LICENSE_CONTACT_EMAIL` (`license@devtrack.dev`).
+
+_Next DevTrack task ID: TASK-112_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_

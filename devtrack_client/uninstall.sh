@@ -170,5 +170,5 @@ echo -e "${CYAN}${BOLD}═══════════════════
 echo ""
 echo "  To reinstall:"
 echo "    1. Download the binary:  ${CYAN}https://github.com/sraj0501/Devtrack_/releases/latest${NC}"
-echo "    2. Install the server:   ${CYAN}devtrack-server install${NC}"
+echo "    2. Run the wizard:       ${CYAN}devtrack setup${NC}  (fetches the Python server too)"
 echo ""
