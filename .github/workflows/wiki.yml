@@ -1,0 +1,27 @@
+name: devtrack_wiki CI
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - "devtrack_wiki/**"
+      - ".github/workflows/wiki.yml"
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - "devtrack_wiki/**"
+      - ".github/workflows/wiki.yml"
+
+jobs:
+  inline-js:
+    name: Inline script syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: node --check inline <script> blocks
+        run: python3 devtrack_wiki/check_inline_js.py
