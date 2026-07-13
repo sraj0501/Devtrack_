@@ -1087,7 +1087,7 @@ EOF
 
 If you can't solve it:
 
-1. **Check existing issues on GitLab**: https://gitlab.com/devtrack3_cloud/devtrack_server/-/issues
+1. **Check existing issues on GitLab**: https://github.com/sraj0501/Devtrack_/issues
 2. **See Known Issues**: [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
 3. **Review Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md) - Debugging patterns section
 4. **Check Phase 3 Verification**: [PHASE_3_VERIFICATION.md](VERIFICATION.md)

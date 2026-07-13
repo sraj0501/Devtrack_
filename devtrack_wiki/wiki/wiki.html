@@ -800,7 +800,7 @@ devtrack logs</code></pre>
 <h3>devtrack.conf Format</h3>
 <p>The registration file at <code>~/.devtrack/devtrack.conf</code> is a single line containing the absolute path to the active <code>.env</code> file:</p>
 <pre><code>/home/alice/projects/automation_tools/.env</code></pre>
-<p>Written with <code>chmod 0600</code>. Managed exclusively by <code>devtrack setup</code> and <code>RegisterEnvFile()</code> in <code>devtrack-bin/loadenv.go</code>.</p>
+<p>Written with <code>chmod 0600</code>. Managed exclusively by <code>devtrack setup</code> and <code>RegisterEnvFile()</code> in <code>devtrack_client/internal/config/loadenv.go</code>.</p>
 
 <h2>CI / Docker / Automated Environments</h2>
 <p>In non-interactive environments, skip the wizard entirely and use the explicit override:</p>
@@ -815,8 +815,8 @@ docker run --env-file .env devtrack start</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/setup.go</code></td><td><code>RunSetup()</code> wizard, <code>SetupConfig</code> struct, <code>generateEnvContent()</code> template, <code>detectProjectRoot()</code>, prerequisite checks, shell and autostart instructions</td></tr>
-<tr><td><code>devtrack-bin/loadenv.go</code></td><td><code>AutoLoadEnv()</code>, <code>resolveEnvFilePath()</code>, <code>loadDotEnv()</code> parser, <code>RegisterEnvFile()</code></td></tr>
+<tr><td><code>devtrack_client/setup.go</code></td><td><code>RunSetup()</code> wizard, <code>SetupConfig</code> struct, <code>generateEnvContent()</code> template, <code>detectProjectRoot()</code>, prerequisite checks, shell and autostart instructions</td></tr>
+<tr><td><code>devtrack_client/internal/config/loadenv.go</code></td><td><code>AutoLoadEnv()</code>, <code>resolveEnvFilePath()</code>, <code>loadDotEnv()</code> parser, <code>RegisterEnvFile()</code></td></tr>
 </tbody>
 </table></div>
 </div>`,
@@ -956,7 +956,7 @@ ADMIN_EMBED=true devtrack start   # or set in .env</code></pre>
 <p>Displays the active license tier, seat count, T&amp;C acceptance status, and expiry date (for time-limited tiers). Shows a clear indicator of which tier is active — Community, Pro, or Enterprise — and links to the upgrade path. Tier detection is performed by <code>backend/license_manager.py</code> and cached for the session.</p>
 
 <h3>Server</h3>
-<p>Read-only view of the active LLM provider configuration (which provider is primary, which are fallbacks), and the status of each external integration credential (Azure DevOps, GitHub, GitLab, Jira, Telegram, Slack, MongoDB, Redis). A green tick means the credential is present and the service responded to a ping; red means missing or unreachable.</p>
+<p>Read-only view of the active LLM provider configuration (which provider is primary, which are fallbacks), and the status of each external integration credential (Azure DevOps, GitHub, GitLab, Jira, Telegram, Slack). A green tick means the credential is present and the service responded to a ping; red means missing or unreachable.</p>
 
 <h3>Audit Log</h3>
 <p>Timestamped log of every admin action — login, user creation/deletion, role change, disable/enable, password reset, key rotation — with the acting username and IP address. Useful for auditing shared team deployments.</p>
@@ -998,7 +998,7 @@ devtrack admin-start
 <li><strong>All state in SQLite</strong> — user records, API keys, roles, and audit log entries are stored in <code>Data/devtrack.db</code> alongside all other DevTrack runtime state. No separate database or file is required.</li>
 </ul>
 
-<blockquote><p><strong>Storage note:</strong> All DevTrack state — trigger history, work sessions, sync cache (Azure/GitLab items), learning data (consent, profile, samples), user records, roles, and audit log — now lives in a single SQLite database at <code>Data/devtrack.db</code>. MongoDB remains the primary store when <code>MONGODB_URI</code> is set; SQLite is the always-available local fallback. No migration is needed for a clean install.</p></blockquote>
+<blockquote><p><strong>Storage note:</strong> All DevTrack state — trigger history, work sessions, sync cache (Azure/GitLab items), learning data (consent, profile, samples), user records, roles, and audit log — now lives in a single SQLite database at <code>Data/devtrack.db</code>. SQLite is the only store DevTrack requires — there is no database server to run. MongoDB is optional, used only as an extra source for Teams-based voice learning when <code>MONGODB_URI</code> is set. No migration is needed for a clean install.</p></blockquote>
 </div>`,
 
   SLACK_BOT: `<div class="md-body">
@@ -1287,65 +1287,50 @@ devtrack alerts --clear    # mark all as read</code></pre>
 <p>When the daemon is running in a terminal session, alerts are also printed to stdout. Configure <code>ALERT_NOTIFY_TERMINAL=true</code> (default <code>true</code>).</p>
 
 <h2>Architecture</h2>
-<pre><code>alert_poller.py  (async, runs as daemon subprocess)
-  ├── GitHubAlerter    — GitHub REST API
-  ├── AzureAlerter     — Azure DevOps REST API
-  └── JiraAlerter      — Jira REST API (v1.4-dev)
+<p>The alerter is <strong>Go-native and lives in the client</strong>. The daemon starts the poller directly — there is no Python subprocess and no external database. (An earlier design ran an async <code>alert_poller.py</code> backed by MongoDB; that was retired during client–server decoupling.)</p>
+<pre><code>internal/alerts/poller.go   (goroutine, started by the daemon)
+  ├── githubAlerter    — GitHub REST API
+  └── azureAlerter     — Azure DevOps REST API
           │
           ▼
-  MongoAlertsStore     — MongoDB notifications + alert_state collections
-  SQLite fallback      — alert_state stored locally when MongoDB unavailable (v1.4-dev)
+  internal/db/  — SQLite: alert_state + notifications tables
           │
           ▼
-  AlertNotifier
-    ├── macOS: osascript
-    └── Terminal: stdout (if TTY)</code></pre>
-<p>Each alerter tracks <code>last_checked</code> per user in the <code>alert_state</code> collection so only new events are processed on each poll cycle.</p>
+  internal/notify/  — Multi notifier
+    ├── Terminal (stdout, if TTY)
+    ├── OS native (macOS / Windows / Linux)
+    ├── Telegram
+    └── Slack</code></pre>
+<p>Each alerter tracks <code>last_checked</code> per source in the SQLite <code>alert_state</code> table, so only new events are processed on each poll cycle and you never see a duplicate across daemon restarts.</p>
+<blockquote><p><strong>Jira alerting is not currently implemented in the Go poller</strong> — only GitHub and Azure DevOps sources are registered. Jira remains supported as a PM connector for ticket sync.</p></blockquote>
 
-<h2>SQLite Fallback <span style="font-size:.75rem;font-weight:400;background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:1px 8px;margin-left:6px;">v1.4-dev</span></h2>
-<p>When <code>MONGODB_URI</code> is not set, the alerter stores delta-sync timestamps in the local SQLite database. The <code>alert_state</code> table holds the last poll time per source, ensuring you don't see duplicate notifications across daemon restarts. This makes the alerter fully functional in offline-first mode without any external database.</p>
-<pre><code class="language-sql">-- alert_state table schema
+<h2>State &amp; Storage</h2>
+<p>The alerter stores everything in the local SQLite database — there is no external store and none is optional here. The <code>alert_state</code> table holds the last poll time per source, so you never see a duplicate notification across daemon restarts; delivered alerts land in <code>notifications</code>. This is what makes the alerter fully functional offline.</p>
+<pre><code class="language-sql">-- alert_state: delta-sync cursor, one row per source
 CREATE TABLE alert_state (
-    source TEXT PRIMARY KEY,
-    last_checked TEXT NOT NULL  -- ISO8601 timestamp
-);</code></pre>
+    source TEXT PRIMARY KEY,        -- "github" | "azure"
+    last_checked TEXT NOT NULL      -- ISO8601 timestamp
+);
 
-<h2>MongoDB Schema</h2>
-<pre><code>notifications collection:
-  _id:        ObjectId
-  source:     "github" | "azure" | "jira"
-  event_type: "assigned" | "comment" | "status_change" | "review_requested"
-  ticket_id:  "owner/repo#123" | "PROJ-42"
-  title:      "Fix login bug"
-  summary:    "Alice commented: LGTM"
-  url:        "https://..."
-  timestamp:  datetime
-  read:       false
-  dismissed:  false
-  raw:        { ...full API payload... }</code></pre>
+-- notifications: what was delivered to you
+--   source, event_type ("assigned" | "comment" |
+--   "status_change" | "review_requested"), ticket_id,
+--   title, summary, url, timestamp, read</code></pre>
 
 <h2>Implementation Files</h2>
+<p>All Go, all in the client:</p>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>backend/alert_poller.py</code></td><td>Main async poller; orchestrates all sources</td></tr>
-<tr><td><code>backend/alert_notifier.py</code></td><td>macOS osascript + terminal output</td></tr>
-<tr><td><code>backend/alerters/github_alerter.py</code></td><td>GitHub assigned/comments/review-requests</td></tr>
-<tr><td><code>backend/alerters/azure_alerter.py</code></td><td>Azure DevOps assigned/comments/state-changes</td></tr>
-<tr><td><code>backend/alerters/jira_alerter.py</code></td><td>Jira assigned/comments/status-changes (26 tests)</td></tr>
-<tr><td><code>backend/db/mongo_alerts.py</code></td><td>MongoAlertsStore: notifications + alert_state</td></tr>
-<tr><td><code>devtrack-bin/database.go</code></td><td>SQLite alert_state Get/Set accessors</td></tr>
+<tr><td><code>internal/alerts/poller.go</code></td><td>Poll loop started by the daemon; orchestrates sources</td></tr>
+<tr><td><code>internal/alerts/github.go</code></td><td>GitHub assigned / comments / review-requests</td></tr>
+<tr><td><code>internal/alerts/azure.go</code></td><td>Azure DevOps assigned / comments / state-changes</td></tr>
+<tr><td><code>internal/notify/notify.go</code></td><td>Multi notifier fan-out</td></tr>
+<tr><td><code>internal/notify/os_unix.go</code>, <code>os_windows.go</code></td><td>Native OS notifications</td></tr>
+<tr><td><code>internal/notify/telegram.go</code>, <code>slack.go</code></td><td>Telegram and Slack delivery</td></tr>
+<tr><td><code>internal/db/database.go</code></td><td>SQLite <code>alert_state</code> / <code>notifications</code> accessors</td></tr>
 </tbody>
 </table></div>
-
-<h2>Jira Alerter <span style="font-size:.75rem;font-weight:400;background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:1px 8px;margin-left:6px;">v1.4-dev</span></h2>
-<p>The <code>JiraAlerter</code> class (fully tested with 26 pytest tests) polls Jira Cloud for three event types:</p>
-<ul>
-<li><strong>Assigned</strong>: JQL <code>assignee changed to currentUser() AFTER "..."</code> with first-run guard</li>
-<li><strong>Comments</strong>: Fetches comments on assigned issues, skips own comments via <code>JIRA_EMAIL</code></li>
-<li><strong>Status changes</strong>: JQL + changelog delta, emits <code>old_status → new_status</code> notifications</li>
-</ul>
-<p>Configuration: <code>ALERT_JIRA_ENABLED=true</code> plus standard <code>JIRA_URL</code>, <code>JIRA_EMAIL</code>, <code>JIRA_API_TOKEN</code> variables.</p>
 
 <h2>Troubleshooting</h2>
 <p><strong>No notifications appearing</strong></p>
@@ -1375,14 +1360,14 @@ CREATE TABLE alert_state (
 
 <p>DevTrack's telemetry system is a <strong>privacy-first, three-tier</strong> approach to understanding how many people download and use the tool — without ever collecting personal data. Telemetry is always opt-in and the binary works identically with it on or off.</p>
 
-<blockquote><p><strong>Status (v1.4-dev):</strong> Tier-2 anonymous install and active pings are now implemented in <code>devtrack-bin/ping.go</code> and sent to <code>https://ping.devtrack.dev</code> (Cloudflare Worker). Two events fire: <code>install</code> on first run and <code>active</code> at most once per 24 hours. Tier-1 (GitHub Releases download stats) and Tier-3 (registered-user heartbeats) remain planned.</p></blockquote>
+<blockquote><p><strong>Status (v1.4-dev):</strong> Tier-2 anonymous install and active pings are now implemented in <code>devtrack_client/internal/daemon/ping.go</code> and sent to <code>https://ping.devtrack.dev</code> (Cloudflare Worker). Two events fire: <code>install</code> on first run and <code>active</code> at most once per 24 hours. Tier-1 (GitHub Releases download stats) and Tier-3 (registered-user heartbeats) remain planned.</p></blockquote>
 
 <h2>Three Tiers at a Glance</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>Tier</th><th>Source</th><th>What it measures</th><th>Code needed</th></tr></thead>
 <tbody>
 <tr><td><strong>1 — Downloads</strong></td><td>GitHub Releases API</td><td>Binary download counts per release, star count, forks</td><td>None — polled every 15 min by the server</td></tr>
-<tr><td><strong>2 — Anonymous usage</strong></td><td>Go binary (opt-in)</td><td>install / command / heartbeat / signup events; random UUID; no PII</td><td><code>devtrack-bin/telemetry.go</code> + CLI wiring</td></tr>
+<tr><td><strong>2 — Anonymous usage</strong></td><td>Go binary (opt-in)</td><td>install / command / heartbeat / signup events; random UUID; no PII</td><td><code>devtrack_client/internal/daemon/ping.go</code> + CLI wiring</td></tr>
 <tr><td><strong>3 — Registered users</strong></td><td>CS-4 cloud server</td><td><code>api_keys.last_seen_at</code> — active registered users (D1/D7/D30)</td><td><code>api_keys</code> table extension</td></tr>
 </tbody>
 </table></div>
@@ -1430,12 +1415,7 @@ CREATE TABLE alert_state (
 </tbody>
 </table></div>
 
-<p>State is stored in <code>~/.devtrack/telemetry.json</code> (chmod 0600):</p>
-<pre><code class="language-json">{
-  "enabled": true,
-  "install_id": "a3f8c2d1-…",
-  "opted_in_at": "2026-03-29T10:00:00Z"
-}</code></pre>
+<p>Consent is stored as a <strong>marker file</strong> in the DevTrack data directory: <code>telemetry_enabled</code> (chmod 0600). The file's presence <em>is</em> the opt-in — no marker, no ping, ever. <code>devtrack telemetry on</code> creates it; <code>devtrack telemetry off</code> removes it. The check is entirely local: it needs no server, and it fails closed, so any error resolving the data directory means telemetry stays off.</p>
 
 <h2>Real-Time Admin Dashboard</h2>
 <p>When telemetry is enabled on the server, the Admin Console gains a live telemetry panel powered by <strong>Server-Sent Events (SSE) + HTMX</strong> — no JavaScript needed on the frontend.</p>
@@ -1489,7 +1469,7 @@ curl -s https://api.github.com/repos/sraj0501/Devtrack_/releases \
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/telemetry.go</code></td><td><code>TelemetryConfig</code>, <code>LoadTelemetryConfig()</code>, <code>SaveTelemetryConfig()</code>, <code>Track(event, props)</code> (non-blocking goroutine POST), <code>handleTelemetry()</code> CLI dispatcher</td></tr>
+<tr><td><code>devtrack_client/internal/daemon/ping.go</code></td><td><code>TelemetryConfig</code>, <code>LoadTelemetryConfig()</code>, <code>SaveTelemetryConfig()</code>, <code>Track(event, props)</code> (non-blocking goroutine POST), <code>handleTelemetry()</code> CLI dispatcher</td></tr>
 <tr><td><code>backend/telemetry/__init__.py</code></td><td>Package init</td></tr>
 <tr><td><code>backend/telemetry/store.py</code></td><td><code>TelemetryStore</code>: INSERT event, aggregate queries (DAU, MAU, signups, command histogram)</td></tr>
 <tr><td><code>backend/telemetry/router.py</code></td><td>FastAPI router: <code>POST /telemetry/event</code>, <code>GET /admin/telemetry/stream</code> (SSE)</td></tr>
@@ -1498,7 +1478,7 @@ curl -s https://api.github.com/repos/sraj0501/Devtrack_/releases \
 </tbody>
 </table></div>
 
-<blockquote><p><strong>Implementation status (v1.4-dev):</strong> Tier-2 anonymous pings are now implemented in <code>devtrack-bin/ping.go</code>. The <code>install</code> event fires on the first daemon start; the <code>active</code> event fires at most once per 24 hours. Both are fire-and-forget goroutines to a Cloudflare Worker at <code>https://ping.devtrack.dev</code>. The server-side foundation, real-time admin dashboard (Tier 1 GitHub stats, Tier 2 SSE live feed), and Tier-3 registered-user heartbeats described above remain planned. The four-phase implementation plan is documented in <code>docs/TELEMETRY_PLAN.md</code>.</p></blockquote>
+<blockquote><p><strong>Implementation status (v1.4-dev):</strong> Tier-2 anonymous pings are now implemented in <code>devtrack_client/internal/daemon/ping.go</code>. The <code>install</code> event fires on the first daemon start; the <code>active</code> event fires at most once per 24 hours. Both are fire-and-forget goroutines to a Cloudflare Worker at <code>https://ping.devtrack.dev</code>. The server-side foundation, real-time admin dashboard (Tier 1 GitHub stats, Tier 2 SSE live feed), and Tier-3 registered-user heartbeats described above remain planned.</p></blockquote>
 </div>`,
 
   DEVTRACK_SERVER: `<div class="md-body">
@@ -1630,10 +1610,10 @@ Copy-Item "$env:TEMP\devtrack_new.exe" "C:\Program Files\devtrack\devtrack.exe" 
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/upgrade.go</code></td><td><code>RunUpgrade()</code> — GitLab API fetch, download, verify, extract (<code>.tar.gz</code> and <code>.zip</code>), auto-restart</td></tr>
-<tr><td><code>devtrack-bin/upgrade_unix.go</code></td><td>Unix elevated-replace path — <code>sudo cp</code> fallback for root-owned binary locations</td></tr>
-<tr><td><code>devtrack-bin/upgrade_windows.go</code></td><td>Windows elevated-replace path — prints Administrator guidance when write permission is denied</td></tr>
-<tr><td><code>devtrack-bin/migrate.go</code></td><td>Migration registry, <code>RunMigrations()</code>, schema version tracking in <code>~/.devtrack/schema_version</code></td></tr>
+<tr><td><code>devtrack_client/upgrade.go</code></td><td><code>RunUpgrade()</code> — GitLab API fetch, download, verify, extract (<code>.tar.gz</code> and <code>.zip</code>), auto-restart</td></tr>
+<tr><td><code>devtrack_client/upgrade_unix.go</code></td><td>Unix elevated-replace path — <code>sudo cp</code> fallback for root-owned binary locations</td></tr>
+<tr><td><code>devtrack_client/upgrade_windows.go</code></td><td>Windows elevated-replace path — prints Administrator guidance when write permission is denied</td></tr>
+<tr><td><code>devtrack_client/internal/db/migrations.go</code></td><td>Migration registry, <code>RunMigrations()</code>, schema version tracking in <code>~/.devtrack/schema_version</code></td></tr>
 </tbody>
 </table></div>
 </div>`,
@@ -1701,7 +1681,7 @@ devtrack start</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/cli.go</code></td><td><code>RunUninstall()</code> — orchestrates all uninstall steps; <code>--yes</code> flag handling; platform-detection for autostart and binary removal</td></tr>
+<tr><td><code>devtrack_client/cli.go</code></td><td><code>RunUninstall()</code> — orchestrates all uninstall steps; <code>--yes</code> flag handling; platform-detection for autostart and binary removal</td></tr>
 </tbody>
 </table></div>
 </div>`,
@@ -1850,11 +1830,11 @@ devtrack start</code></pre>
 <p>This batch (merged from <code>feat/uninstall-and-upgrade-fix</code> via PRs #121–122) adds a cross-platform uninstall command, fixes the upgrade pipeline to use the GitLab Releases API and Windows <code>.zip</code> extraction, hardens the health monitor with concurrent checks and Redis/SQLite monitors, and eliminates log spam from empty repositories.</p>
 
 <div class="feature-list" style="margin-bottom:32px;">
-  <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack uninstall — cross-platform clean removal (feat: 112da8f)</h4><p>New <code>devtrack uninstall</code> command (<code>devtrack-bin/cli.go</code>) performs an interactive, step-by-step teardown: stops the running daemon, removes the launchd LaunchAgent / systemd unit / shell profile block installed by <code>devtrack autostart-install</code>, deletes the <code>Data/</code> directory and the <code>~/.devtrack/</code> XDG home, and removes the binary. Each step asks for confirmation unless <code>--yes</code> is passed. On Windows, binary deletion prints a manual-removal hint if the file is locked. Your <code>.env</code>, Python virtualenv, and git repositories are left intact. See the <a href="#UNINSTALL" onclick="navigate('UNINSTALL');return false;">Uninstall</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack uninstall — cross-platform clean removal (feat: 112da8f)</h4><p>New <code>devtrack uninstall</code> command (<code>devtrack_client/cli.go</code>) performs an interactive, step-by-step teardown: stops the running daemon, removes the launchd LaunchAgent / systemd unit / shell profile block installed by <code>devtrack autostart-install</code>, deletes the <code>Data/</code> directory and the <code>~/.devtrack/</code> XDG home, and removes the binary. Each step asks for confirmation unless <code>--yes</code> is passed. On Windows, binary deletion prints a manual-removal hint if the file is locked. Your <code>.env</code>, Python virtualenv, and git repositories are left intact. See the <a href="#UNINSTALL" onclick="navigate('UNINSTALL');return false;">Uninstall</a> page.</p></div></div>
   <div class="feature-item"><div class="feature-dot">2</div><div><h4>devtrack upgrade — GitLab Releases API + Windows .zip fix (feat: 112da8f)</h4><p><code>devtrack upgrade</code> now fetches the latest release from the <strong>GitLab Releases API</strong> (not GitHub) and handles the Windows <code>.zip</code> asset alongside the Linux/macOS <code>.tar.gz</code> archives. The elevated-replace path has been split into <code>upgrade_unix.go</code> (which uses <code>sudo cp</code>) and <code>upgrade_windows.go</code> (which prints clear Administrator guidance instead of attempting a privileged copy that Windows UAC would block silently). See the <a href="#UPGRADE" onclick="navigate('UPGRADE');return false;">Upgrade</a> page.</p></div></div>
   <div class="feature-item"><div class="feature-dot">3</div><div><h4>Health monitor enhancements (feat: c537169)</h4><p>The <code>devtrack health</code> check has been overhauled: all service probes now run <strong>concurrently</strong> (reducing total wait time from sum-of-timeouts to max-of-timeouts), Redis and SQLite connection checks are included as first-class monitors, port numbers are persisted so health knows which port to probe without reading <code>.env</code> again, and Ollama model lists are normalised for consistent output regardless of the server version. These improvements make <code>devtrack health</code> significantly faster and more reliable in environments where some services are intentionally absent.</p></div></div>
   <div class="feature-item"><div class="feature-dot">4</div><div><h4>Empty-repo fix in git_monitor.go</h4><p>The git activity monitor previously logged a noisy warning on every poll when monitoring a repository that has no commits yet (e.g. a freshly <code>git init</code>-ed workspace). The monitor now silently skips repositories with no HEAD commit and resumes monitoring as soon as the first commit is made — no configuration change needed.</p></div></div>
-  <div class="feature-item"><div class="feature-dot">5</div><div><h4>Windows single-instance enforcement (lock_windows.go + process_windows.go)</h4><p>On Windows, the daemon now uses <code>LockFileEx</code> (via <code>devtrack-bin/lock_windows.go</code>) to hold an exclusive lock on the PID file for the lifetime of the process — preventing a second <code>devtrack start</code> from running silently alongside the first. The Unix equivalent uses <code>flock</code> (<code>lock_unix.go</code>). Platform-specific process utilities live in <code>process_windows.go</code> and <code>process_unix.go</code>.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">5</div><div><h4>Windows single-instance enforcement (lock_windows.go + process_windows.go)</h4><p>On Windows, the daemon now uses <code>LockFileEx</code> (via <code>devtrack_client/internal/daemon/lock_windows.go</code>) to hold an exclusive lock on the PID file for the lifetime of the process — preventing a second <code>devtrack start</code> from running silently alongside the first. The Unix equivalent uses <code>flock</code> (<code>lock_unix.go</code>). Platform-specific process utilities live in <code>process_windows.go</code> and <code>process_unix.go</code>.</p></div></div>
 </div>
 
 <h2>New CLI Commands (v2.2.11)</h2>
@@ -1869,12 +1849,12 @@ devtrack start</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/upgrade_unix.go</code></td><td>Unix elevated-replace path — <code>sudo cp</code> fallback for root-owned binary locations</td></tr>
-<tr><td><code>devtrack-bin/upgrade_windows.go</code></td><td>Windows elevated-replace path — prints Administrator guidance when write permission is denied</td></tr>
-<tr><td><code>devtrack-bin/lock_unix.go</code></td><td>Unix single-instance enforcement using <code>flock</code></td></tr>
-<tr><td><code>devtrack-bin/lock_windows.go</code></td><td>Windows single-instance enforcement using <code>LockFileEx</code></td></tr>
-<tr><td><code>devtrack-bin/process_unix.go</code></td><td>Unix process utilities (signal, PID resolution)</td></tr>
-<tr><td><code>devtrack-bin/process_windows.go</code></td><td>Windows process utilities (OpenProcess, TerminateProcess)</td></tr>
+<tr><td><code>devtrack_client/upgrade_unix.go</code></td><td>Unix elevated-replace path — <code>sudo cp</code> fallback for root-owned binary locations</td></tr>
+<tr><td><code>devtrack_client/upgrade_windows.go</code></td><td>Windows elevated-replace path — prints Administrator guidance when write permission is denied</td></tr>
+<tr><td><code>devtrack_client/internal/daemon/lock_unix.go</code></td><td>Unix single-instance enforcement using <code>flock</code></td></tr>
+<tr><td><code>devtrack_client/internal/daemon/lock_windows.go</code></td><td>Windows single-instance enforcement using <code>LockFileEx</code></td></tr>
+<tr><td><code>devtrack_client/internal/daemon/process_unix.go</code></td><td>Unix process utilities (signal, PID resolution)</td></tr>
+<tr><td><code>devtrack_client/internal/daemon/process_windows.go</code></td><td>Windows process utilities (OpenProcess, TerminateProcess)</td></tr>
 </tbody>
 </table></div>
 
@@ -1886,7 +1866,7 @@ devtrack start</code></pre>
 
 <div class="feature-list" style="margin-bottom:32px;">
   <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack-server management CLI (feat: 8196279, 94a3b40)</h4><p>A new <code>devtrack-server</code> binary ships in the <code>devtrack-server-{version}.tar.gz</code> release tarball. It handles the full headless server lifecycle: <code>devtrack-server install</code> downloads the Go binary and runs <code>uv sync</code>; <code>devtrack-server setup</code> launches the interactive wizard; <code>devtrack-server start/stop/status</code> manage the daemon. The tarball excludes development-only paths (<code>.claude/</code>, CI configs, <code>workspaces.yaml</code>). The legacy <code>setup_local.sh</code> script has been removed — all its functionality is now covered by <code>devtrack setup</code> and <code>devtrack-server install</code>. See the <a href="#DEVTRACK_SERVER" onclick="navigate('DEVTRACK_SERVER');return false;">devtrack-server CLI</a> page.</p></div></div>
-  <div class="feature-item"><div class="feature-dot">2</div><div><h4>devtrack upgrade — self-update with versioned migration (feat: 214d78a)</h4><p>New <code>devtrack upgrade</code> command (<code>devtrack-bin/upgrade.go</code>) fetches the latest release from GitHub Releases, replaces the binary on disk (with automatic <code>sudo cp</code> fallback for root-owned install paths), runs any pending versioned migrations via <code>devtrack-bin/migrate.go</code>, and auto-restarts the daemon if it was running — all in one step. A <code>~/.devtrack/schema_version</code> file tracks which migrations have been applied. Run <code>sudo devtrack upgrade</code> if the binary is in a root-owned directory. See the <a href="#UPGRADE" onclick="navigate('UPGRADE');return false;">Upgrade</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>devtrack upgrade — self-update with versioned migration (feat: 214d78a)</h4><p>New <code>devtrack upgrade</code> command (<code>devtrack_client/upgrade.go</code>) fetches the latest release from GitHub Releases, replaces the binary on disk (with automatic <code>sudo cp</code> fallback for root-owned install paths), runs any pending versioned migrations via <code>devtrack_client/internal/db/migrations.go</code>, and auto-restarts the daemon if it was running — all in one step. A <code>~/.devtrack/schema_version</code> file tracks which migrations have been applied. Run <code>sudo devtrack upgrade</code> if the binary is in a root-owned directory. See the <a href="#UPGRADE" onclick="navigate('UPGRADE');return false;">Upgrade</a> page.</p></div></div>
   <div class="feature-item"><div class="feature-dot">3</div><div><h4>Mode selection wizard — Managed / Lightweight / External (TASK-021, PR #82)</h4><p>The <code>devtrack setup</code> wizard now begins with a <strong>mode selection step</strong> that asks which server mode to use: <strong>Managed</strong> (daemon spawns the Python backend subprocess — the default), <strong>Lightweight</strong> (daemon runs with no Python dependency; git monitoring, scheduling, and SQLite logging all work, but AI and PM sync features are disabled), or <strong>External</strong> (user provides a separately-running backend URL). The selected mode is written to <code>.env</code> as <code>DEVTRACK_SERVER_MODE</code>. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> and <a href="#CLOUD_MODE" onclick="navigate('CLOUD_MODE');return false;">Server Modes</a> pages for details.</p></div></div>
   <div class="feature-item"><div class="feature-dot">4</div><div><h4>Lightweight mode — daemon skips Python spawn (TASK-022)</h4><p>When <code>DEVTRACK_SERVER_MODE=lightweight</code>, the Go daemon starts without spawning the Python backend subprocess. Git monitoring, the cron scheduler, SQLite trigger logging, and the TUI dashboard all work normally. The 28 CLI commands that require the Python backend (AI enhancement, PM sync, report generation, etc.) are guarded: they print a clear "feature not available in lightweight mode" message and exit cleanly instead of hanging or crashing. This is the recommended mode for minimal environments (e.g., pure git activity logging without AI or PM integration). See the <a href="#CLOUD_MODE" onclick="navigate('CLOUD_MODE');return false;">Server Modes</a> page.</p></div></div>
   <div class="feature-item"><div class="feature-dot">5</div><div><h4>Setup wizard enhancements (feat: 491ccd3, 4ddf157, 9904c43)</h4><p>Three improvements to <code>devtrack setup</code>: (1) <strong>Git prereq check</strong> — the wizard now verifies <code>git</code> is installed and on <code>PATH</code> before proceeding; a clear error is shown with install instructions if missing. (2) <strong>Auto-generate ADMIN_SECRET_KEY</strong> — the wizard generates a cryptographically random 32-byte hex secret automatically, so no manual <code>python3 -c "..."</code> step is needed. (3) <strong>XDG home + shell integration written automatically</strong> — the wizard creates <code>~/.devtrack/</code> and writes the <code>eval "$(devtrack shell-init)"</code> line directly to the detected shell profile (<code>~/.zshrc</code> or <code>~/.bashrc</code>) so shell integration is active without any manual copy-paste. (4) <strong>workspaces.yaml bootstrap</strong> — a starter <code>workspaces.yaml</code> is written to the XDG home directory on first run and <code>WORKSPACES_FILE</code> is set in the generated <code>.env</code>. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> page.</p></div></div>
@@ -1918,8 +1898,8 @@ devtrack start</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/upgrade.go</code></td><td><code>RunUpgrade()</code> — GitHub Releases fetch, download, binary replace, sudo fallback, auto-restart</td></tr>
-<tr><td><code>devtrack-bin/migrate.go</code></td><td>Migration registry and <code>RunMigrations()</code> — schema version tracking in <code>~/.devtrack/schema_version</code></td></tr>
+<tr><td><code>devtrack_client/upgrade.go</code></td><td><code>RunUpgrade()</code> — GitHub Releases fetch, download, binary replace, sudo fallback, auto-restart</td></tr>
+<tr><td><code>devtrack_client/internal/db/migrations.go</code></td><td>Migration registry and <code>RunMigrations()</code> — schema version tracking in <code>~/.devtrack/schema_version</code></td></tr>
 </tbody>
 </table></div>
 
@@ -1945,8 +1925,8 @@ devtrack start</code></pre>
 <p>Three improvements shipped on the <code>features/loadEnvs</code> branch (PR #79 targeting main): a first-run interactive setup wizard, automatic <code>.env</code> resolution at daemon startup, and complete elimination of all remaining hardcoded values from the Admin Console.</p>
 
 <div class="feature-list" style="margin-bottom:32px;">
-  <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack setup — interactive first-run wizard</h4><p>New <code>devtrack setup</code> command (<code>devtrack-bin/setup.go</code>) walks through the entire initial configuration in a guided terminal flow: prerequisite check (backend/, uv, Python), git workspace selection, LLM provider and credentials, user email, project management platform (GitHub / Azure DevOps / Jira / None), and shell integration / autostart instructions. On completion it writes a complete <code>.env</code> at the project root and registers its path in <code>~/.devtrack/devtrack.conf</code>. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> page.</p></div></div>
-  <div class="feature-item"><div class="feature-dot">2</div><div><h4>AutoLoadEnv — automatic .env resolution at startup</h4><p>New <code>AutoLoadEnv()</code> function (<code>devtrack-bin/loadenv.go</code>) is called at the very start of <code>main()</code>. It resolves the correct <code>.env</code> file using a three-step priority order: (1) <code>DEVTRACK_ENV_FILE</code> env var for CI/Docker overrides, (2) <code>~/.devtrack/devtrack.conf</code> — the path written by <code>devtrack setup</code>, (3) <code>.env</code> next to the binary for portable installs. Existing env vars are <strong>never overridden</strong> — shell exports, CI variables, and secret managers always win. The result: developers no longer need to manually <code>source .env</code> before running <code>devtrack</code> commands. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>devtrack setup — interactive first-run wizard</h4><p>New <code>devtrack setup</code> command (<code>devtrack_client/setup.go</code>) walks through the entire initial configuration in a guided terminal flow: prerequisite check (backend/, uv, Python), git workspace selection, LLM provider and credentials, user email, project management platform (GitHub / Azure DevOps / Jira / None), and shell integration / autostart instructions. On completion it writes a complete <code>.env</code> at the project root and registers its path in <code>~/.devtrack/devtrack.conf</code>. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> page.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>AutoLoadEnv — automatic .env resolution at startup</h4><p>New <code>AutoLoadEnv()</code> function (<code>devtrack_client/internal/config/loadenv.go</code>) is called at the very start of <code>main()</code>. It resolves the correct <code>.env</code> file using a three-step priority order: (1) <code>DEVTRACK_ENV_FILE</code> env var for CI/Docker overrides, (2) <code>~/.devtrack/devtrack.conf</code> — the path written by <code>devtrack setup</code>, (3) <code>.env</code> next to the binary for portable installs. Existing env vars are <strong>never overridden</strong> — shell exports, CI variables, and secret managers always win. The result: developers no longer need to manually <code>source .env</code> before running <code>devtrack</code> commands. See the <a href="#SETUP_WIZARD" onclick="navigate('SETUP_WIZARD');return false;">Setup Wizard</a> page.</p></div></div>
   <div class="feature-item"><div class="feature-dot">3</div><div><h4>Admin config hardening — all hardcoded values eliminated (TASK-016/017/018)</h4><p>Three commits systematically eliminated every remaining hardcoded constant from the Admin Console: <strong>TASK-016</strong> extracted the scrypt parameters (<code>SCRYPT_N</code>, <code>SCRYPT_R</code>, <code>SCRYPT_P</code>, <code>SCRYPT_DKLEN</code>) and the session cookie <code>max_age</code> (<code>ADMIN_SESSION_HOURS</code>) from <code>backend/admin/auth.py</code>; <strong>TASK-017</strong> extracted the stats refresh interval (<code>STATS_REFRESH_INTERVAL_SECONDS</code>) and process refresh interval (<code>PROCESS_REFRESH_INTERVAL_SECONDS</code>) from dashboard routes and the webhook server; <strong>TASK-018</strong> extracted the audit log query limit (<code>AUDIT_LOG_LIMIT</code>) and the license contact email (<code>LICENSE_CONTACT_EMAIL</code>) from routes and templates. All 22 variables across the codebase are now required env vars with no silent defaults.</p></div></div>
 </div>
 
@@ -1978,8 +1958,8 @@ devtrack start</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/loadenv.go</code></td><td><code>AutoLoadEnv()</code>, <code>resolveEnvFilePath()</code>, <code>loadDotEnv()</code> parser, <code>RegisterEnvFile()</code> — automatic <code>.env</code> discovery and loading at daemon startup</td></tr>
-<tr><td><code>devtrack-bin/setup.go</code></td><td><code>RunSetup()</code> interactive onboarding wizard, <code>generateEnvContent()</code> template covering all config sections, prerequisite checks, directory creation</td></tr>
+<tr><td><code>devtrack_client/internal/config/loadenv.go</code></td><td><code>AutoLoadEnv()</code>, <code>resolveEnvFilePath()</code>, <code>loadDotEnv()</code> parser, <code>RegisterEnvFile()</code> — automatic <code>.env</code> discovery and loading at daemon startup</td></tr>
+<tr><td><code>devtrack_client/setup.go</code></td><td><code>RunSetup()</code> interactive onboarding wizard, <code>generateEnvContent()</code> template covering all config sections, prerequisite checks, directory creation</td></tr>
 </tbody>
 </table></div>
 
@@ -2091,7 +2071,7 @@ devtrack start</code></pre>
   <div class="feature-item"><div class="feature-dot">4</div><div><h4>Multi-repo: <code>ignore_branches</code> and branch tracking</h4><p>Workspaces in <code>workspaces.yaml</code> now support an <code>ignore_branches</code> list. Commits on listed branches (e.g. <code>main</code>, <code>release/**</code>) are silently skipped — no prompt, no trigger, no log entry. The daemon also tracks the active branch per workspace and surfaces it in the TUI Workspaces tab. See <a href="#MULTI_REPO" onclick="navigate('MULTI_REPO');return false;">Multi-Repo Setup</a>.</p></div></div>
   <div class="feature-item"><div class="feature-dot">5</div><div><h4>Phase 4B — SQLite persistence for PM projects, backlog &amp; sprints</h4><p>The Go daemon's SQLite schema gains three new tables: <code>pm_projects</code> (synced project/repo metadata per workspace), <code>backlog_items</code> (cached issue/ticket records), and <code>sprints</code> (iteration metadata). These tables are written by the Go daemon from PM API responses and read by the TUI Workspaces tab to show project status without an API round-trip. No migration needed for clean installs.</p></div></div>
   <div class="feature-item"><div class="feature-dot">6</div><div><h4>Autostart env-baking — launchd/systemd/profile</h4><p><code>devtrack autostart-install</code> has been upgraded to <strong>bake all current environment variables</strong> into the generated plist (macOS) or systemd unit (Linux). This means the daemon, when started by the OS at login, inherits the exact same configuration that was active when you ran <code>autostart-install</code> — no wrapper scripts, no <code>EnvironmentFile=</code> hacks. Re-run <code>devtrack autostart-install</code> after changing <code>.env</code> values to refresh the baked env. See <a href="#AUTOSTART" onclick="navigate('AUTOSTART');return false;">Auto-Start</a>.</p></div></div>
-  <div class="feature-item"><div class="feature-dot">7</div><div><h4>Anonymous install &amp; active telemetry ping (Tier 2 implemented)</h4><p><code>devtrack-bin/ping.go</code> implements the Tier-2 anonymous usage pings described in the Telemetry plan. On install, a random UUID is created at <code>~/.devtrack/id</code>. A SHA-256 of the hardware platform UUID is computed as a stable fingerprint (raw value never leaves the machine). Two events are fired: <code>install</code> on first run, and <code>active</code> at most once per 24 hours when the daemon is running. Both POSTs are fire-and-forget goroutines — failures are silent. The telemetry endpoint is <code>https://ping.devtrack.dev</code> (Cloudflare Worker). Disabled by a sentinel file written by <code>devtrack telemetry off</code>. See <a href="#TELEMETRY" onclick="navigate('TELEMETRY');return false;">Telemetry</a>.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">7</div><div><h4>Anonymous install &amp; active telemetry ping (Tier 2 implemented)</h4><p><code>devtrack_client/internal/daemon/ping.go</code> implements the Tier-2 anonymous usage pings described in the Telemetry plan. On install, a random UUID is created at <code>~/.devtrack/id</code>. A SHA-256 of the hardware platform UUID is computed as a stable fingerprint (raw value never leaves the machine). Two events are fired: <code>install</code> on first run, and <code>active</code> at most once per 24 hours when the daemon is running. Both POSTs are fire-and-forget goroutines — failures are silent. The telemetry endpoint is <code>https://ping.devtrack.dev</code> (Cloudflare Worker). Disabled by a sentinel file written by <code>devtrack telemetry off</code>. See <a href="#TELEMETRY" onclick="navigate('TELEMETRY');return false;">Telemetry</a>.</p></div></div>
   <div class="feature-item"><div class="feature-dot">8</div><div><h4>SQLite alert_state fallback for ticket alerter</h4><p>The ticket alerter now persists <code>last_checked</code> timestamps to SQLite when MongoDB is unavailable. The <code>alert_state</code> table in <code>Data/devtrack.db</code> tracks the last poll time per source (github/azure/jira), enabling full delta-sync functionality in offline-first mode. Go accessors <code>GetAlertLastChecked</code>/<code>SetAlertLastChecked</code> added to <code>database.go</code>. See <a href="#TICKET_ALERTER" onclick="navigate('TICKET_ALERTER');return false;">Ticket Alerter</a>.</p></div></div>
   <div class="feature-item"><div class="feature-dot">9</div><div><h4>Per-workspace PM overrides (WorkspaceRouter)</h4><p>Workspaces now support per-platform PM overrides: <code>pm_assignee</code>, <code>pm_iteration_path</code> (Azure), <code>pm_area_path</code> (Azure), and <code>pm_milestone</code> (GitHub/GitLab). These are extracted from commit trigger POST data and forwarded to the appropriate platform API when creating work items or issues. Azure gets assigned_to/area_path/iteration_path; GitHub gets assignees/milestone; GitLab gets assignee_ids/milestone_id. See <a href="#MULTI_REPO" onclick="navigate('MULTI_REPO');return false;">Multi-Repo Setup</a>.</p></div></div>
   <div class="feature-item"><div class="feature-dot">10</div><div><h4>Webhook + Trigger Server added (<code>backend/webhook_server.py</code>)</h4><p>The CS-1 FastAPI webhook and trigger server is now present in the repository as <code>backend/webhook_server.py</code>. It serves as the single HTTP entry-point for both inbound platform webhooks (Azure DevOps, GitHub, GitLab, Jira) and outbound trigger calls from the Go daemon (<code>commit_trigger</code>, <code>timer_trigger</code>, and the full IPC message vocabulary). All <code>/trigger/*</code> endpoints require the <code>X-DevTrack-API-Key</code> header. Run with <code>python -m backend.webhook_server</code> or via the Server TUI. The <code>alert_poller</code> background service is also now present as <code>backend/alert_poller.py</code> — start it as a subprocess or via <code>devtrack server-tui</code>. See the <a href="#SERVER_TUI" onclick="navigate('SERVER_TUI');return false;">Server TUI</a> page.</p></div></div>
@@ -2121,7 +2101,7 @@ devtrack start</code></pre>
 <tr><td><code>backend/webhook_server.py</code></td><td>CS-1 FastAPI webhook + trigger server — single HTTP entry-point for inbound platform webhooks and Go daemon trigger calls</td></tr>
 <tr><td><code>backend/alert_poller.py</code></td><td>Async background poller — polls GitHub, Azure DevOps, and Jira for developer-relevant events; stores to MongoDB or SQLite fallback</td></tr>
 <tr><td><code>backend/alerters/jira_alerter.py</code></td><td>Jira-specific alerter — assigned, comment, and status-change polling via Jira Cloud REST API</td></tr>
-<tr><td><code>devtrack-bin/ping.go</code></td><td>Anonymous install + active telemetry pings (Tier 2)</td></tr>
+<tr><td><code>devtrack_client/internal/daemon/ping.go</code></td><td>Anonymous install + active telemetry pings (Tier 2)</td></tr>
 <tr><td><code>backend/db/project_store.py</code></td><td>SQLite CRUD store for PM projects, backlog items, and sprints (Phase 4B)</td></tr>
 <tr><td><code>backend/workspace_router.py</code></td><td>Routes commit triggers to the correct PM platform with per-workspace PM override support</td></tr>
 </tbody>
@@ -2153,7 +2133,7 @@ devtrack start</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Layer</th><th>Tests added</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/http_trigger_test.go</code></td><td>Go</td><td>HTTP trigger validation (auth, payload schema, edge cases)</td></tr>
+<tr><td><code>devtrack_client/internal/trigger/http_trigger_test.go</code></td><td>Go</td><td>HTTP trigger validation (auth, payload schema, edge cases)</td></tr>
 <tr><td><code>backend/tests/test_http_triggers.py</code></td><td>Python</td><td>FastAPI webhook trigger routes end-to-end</td></tr>
 <tr><td><code>backend/tests/test_admin_auth.py</code></td><td>Python</td><td>Admin Console login, JWT sessions</td></tr>
 <tr><td><code>backend/tests/test_admin_user_manager.py</code></td><td>Python</td><td>User create/delete/list/key rotation</td></tr>
@@ -2487,7 +2467,7 @@ SENTIMENT_ANALYSIS_WINDOW_MINUTES=120</code></pre>
 <thead><tr><th>Variable</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>PROJECT_ROOT</code></td><td>YES</td><td>Absolute path to the <code>automation_tools</code> repo root</td></tr>
-<tr><td><code>DEVTRACK_HOME</code></td><td>YES</td><td>Directory containing the <code>devtrack</code> binary (default: <code>\${PROJECT_ROOT}/devtrack-bin</code>)</td></tr>
+<tr><td><code>DEVTRACK_HOME</code></td><td>YES</td><td>DevTrack's data home — the XDG data directory (<code>$XDG_DATA_HOME/devtrack</code>) under which <code>Data/</code> lives. Written by <code>devtrack setup</code>. Not a binary path.</td></tr>
 <tr><td><code>DEVTRACK_WORKSPACE</code></td><td>Single-repo only</td><td>Git repo to monitor; ignored when <code>workspaces.yaml</code> is present</td></tr>
 <tr><td><code>WORKSPACES_FILE</code></td><td>No</td><td>Override path to <code>workspaces.yaml</code> (multi-repo mode)</td></tr>
 <tr><td><code>DATA_DIR</code></td><td>YES</td><td>Root data directory (<code>db/</code>, <code>logs/</code>, <code>pids/</code>, <code>reports/</code>)</td></tr>
@@ -2627,7 +2607,7 @@ SENTIMENT_ANALYSIS_WINDOW_MINUTES=120</code></pre>
 <p>The daemon checks <code>terms_version</code> on startup. If a new version of the terms is released, you will be prompted again on the next start.</p>
 
 <h2>Enterprise Licensing</h2>
-<p>If you are deploying DevTrack for 11 or more users, or running it as a hosted/SaaS service, a commercial enterprise licence is required. Contact <a href="mailto:enterprise@devtrack.dev" target="_blank" rel="noopener">enterprise@devtrack.dev</a> or visit <a href="https://devtrack.dev/enterprise" target="_blank" rel="noopener">devtrack.dev/enterprise</a>.</p>
+<p>If you are deploying DevTrack for 11 or more users, or running it as a hosted/SaaS service, a commercial enterprise licence is required. Contact <a href="mailto:enterprise@devtrack.dev" target="_blank" rel="noopener">enterprise@devtrack.dev</a> or visit <a href="https://github.com/sraj0501/Devtrack_/blob/main/LICENSE" target="_blank" rel="noopener">the DevTrack Community License</a>.</p>
 <p>In a self-hosted deployment, <code>backend/license_manager.py</code> detects the tier from the user count in the Admin Console. Tier enforcement is advisory in local mode — the daemon will warn but not block. In SaaS mode, the tier is enforced server-side.</p>
 
 <h2>Privacy Summary</h2>
@@ -2638,7 +2618,7 @@ SENTIMENT_ANALYSIS_WINDOW_MINUTES=120</code></pre>
 <li><strong>Login</strong>: optional for Personal and Team tiers. Magic-link login is used only if <code>DEVTRACK_API_URL</code> is set.</li>
 </ul>
 
-<p>Full terms: <code>TERMS.md</code> in the DevTrack installation directory, or <a href="https://devtrack.dev/terms" target="_blank" rel="noopener">devtrack.dev/terms</a>.</p>
+<p>Full terms: <code>TERMS.md</code> in the DevTrack installation directory, or <a href="https://github.com/sraj0501/Devtrack_/blob/main/TERMS.md" target="_blank" rel="noopener">TERMS.md on GitHub</a>.</p>
 </div>`,
 
   AUTH: `<div class="md-body">
@@ -2716,7 +2696,7 @@ SENTIMENT_ANALYSIS_WINDOW_MINUTES=120</code></pre>
 
 <h2>Running the Tests</h2>
 <h3>Go tests</h3>
-<pre><code class="language-bash">cd devtrack-bin
+<pre><code class="language-bash">cd devtrack_client
 go test ./...        # run all Go tests
 go test -run TestHTTPTrigger ./...   # run only HTTP trigger tests</code></pre>
 
@@ -2743,7 +2723,7 @@ uv run pytest backend/tests/ -k test_name</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Layer</th><th>What it covers</th></tr></thead>
 <tbody>
-<tr><td><code>devtrack-bin/http_trigger_test.go</code></td><td>Go</td><td>HTTP trigger validation — correct payloads accepted, malformed or unauthenticated requests rejected, edge cases for missing fields and invalid JSON</td></tr>
+<tr><td><code>devtrack_client/internal/trigger/http_trigger_test.go</code></td><td>Go</td><td>HTTP trigger validation — correct payloads accepted, malformed or unauthenticated requests rejected, edge cases for missing fields and invalid JSON</td></tr>
 <tr><td><code>backend/tests/test_http_triggers.py</code></td><td>Python</td><td>End-to-end HTTP trigger handling in the FastAPI webhook server — commit and timer trigger routes, auth header validation, payload schema enforcement</td></tr>
 <tr><td><code>backend/tests/test_admin_auth.py</code></td><td>Python</td><td>Admin console authentication — login flow, JWT session cookie issuance, expiry, and rejection of bad credentials</td></tr>
 <tr><td><code>backend/tests/test_admin_user_manager.py</code></td><td>Python</td><td>User lifecycle via the Admin Console — create, delete, list, and API key rotation; enforces that duplicate usernames are rejected</td></tr>

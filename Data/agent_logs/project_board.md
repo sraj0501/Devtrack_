@@ -28,7 +28,48 @@ marker renamed to `telemetry_enabled`, the CLI writes it locally (works in light
 server needed), and `sendPing` returns early unless it exists. This makes non-negotiable #5 and
 the README's "nothing leaves your machine" claim true rather than aspirational.
 
-_Next DevTrack task ID: TASK-110_
+**[2026-07-13] TASK-110 — Website + wiki reconciled with the shipped product.** Branch
+`docs/TASK-110-wiki-refresh`. TASK-109 fixed the repo docs but stopped at the repo boundary; the
+public site (`devtrack_wiki/`, Netlify → devtrack.cloud) still sold the pre-pivot, prompt-driven
+product. Same method as TASK-109 — audit the site against the code, not against other docs.
+
+Factual corrections (the site was making claims the code contradicts):
+- **The site claimed "MIT License" in four places.** The repo ships the DevTrack Community
+  License (free for individuals and teams ≤ 10; commercial licence above that, and for any SaaS
+  use). A wrong licence on the download page is the one error a user can act on to their cost, so
+  this was the most important find. Now names the real licence and links to it.
+- **privacy.html claimed "no cloud AI services or external API calls for processing."** Cloud
+  providers (OpenAI/Anthropic/Groq) are supported and opt-in. Reworded to the README's honest
+  line: local Ollama by default; if you opt in, prompt text only — never code, diffs, or repo.
+- **Every clone/install link on the docs site pointed at `gitlab.com/devtrack3_cloud/*`**, which
+  is not the source of truth and is unreachable — i.e. the documented install path was broken.
+  All rewritten to `github.com/sraj0501/Devtrack_`, with the real release asset names
+  (`devtrack_${os}_${arch}.tar.gz`, verified against `release.yml` and the published assets).
+- wiki.html: "MongoDB remains the primary store" → SQLite is the only required store; Mongo is an
+  optional Teams-voice source. Removed the Redis/MongoDB admin health checks (they do not exist).
+- wiki.html telemetry doc described `~/.devtrack/telemetry.json` and `devtrack-bin/telemetry.go`
+  (retired in TASK-048); now documents the real `telemetry_enabled` marker file, fail-closed.
+- download.html: dropped "Docker is started automatically if MongoDB/Redis are missing."
+
+Positioning (carries the TASK-109 README message to the site): hero is now "Never write a standup
+again"; the silent daemon, the pending-actions queue ("nothing is sent behind your back"), the EOD
+report, and the MCP/agent-memory layer are all on the page — none of them were. Removed the
+interactive `Accept [A] · Enhance [E]` prompt from the hero terminal: the daemon does not prompt,
+and showing it did contradicted Phase 0. Personalization no longer claims to learn from Teams (it
+learns from git history; Teams is optional and off).
+
+Also: extracted index.html's 674-line inline `<style>` and 242-line inline `<script>` into
+`assets/home.css` + `assets/home.js` (1510 → 594 lines). Kept as separate files from
+`assets/style.css`, which is privacy.html's stylesheet, not a shared one. Deleted the
+`assets/style.css.bak` that was being deployed. Verified every page and asset serves 200 with no
+dangling internal links.
+
+**Still stale, deliberately not in scope:** wiki.html's deep pages (Work Tracker, Vacation Mode)
+still frame the product around the old `PROMPT_INTERVAL` interactive nudge, and there are no
+wiki pages yet for the queue, EOD, or PR-review loop. That is a full docs pass, and it belongs to
+Phase 9 proper rather than being half-done here.
+
+_Next DevTrack task ID: TASK-111_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_

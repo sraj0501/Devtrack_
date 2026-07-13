@@ -79,7 +79,7 @@ go version
 ### Step 2: Clone and Build the Binary
 
 ```bash
-git clone https://gitlab.com/devtrack3_cloud/devtrack_client.git
+git clone https://github.com/sraj0501/Devtrack_.git
 cd devtrack_client
 go build -o devtrack .
 
@@ -180,7 +180,7 @@ Do the **Client-Only** steps above first, then continue here.
 ### Step 1: Clone the Server
 
 ```bash
-git clone https://gitlab.com/devtrack3_cloud/devtrack_server.git
+git clone https://github.com/sraj0501/Devtrack_.git
 cd devtrack_server
 ```
 
@@ -248,7 +248,7 @@ Docker is best for running the **server** component with consistent dependencies
 ### Step 1: Clone the Server Repo
 
 ```bash
-git clone https://gitlab.com/devtrack3_cloud/devtrack_server.git
+git clone https://github.com/sraj0501/Devtrack_.git
 cd devtrack_server
 cp .env_sample .env
 nano .env

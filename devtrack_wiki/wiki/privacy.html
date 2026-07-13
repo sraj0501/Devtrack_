@@ -79,14 +79,13 @@
             <!-- Overview Tab -->
             <section id="overview" class="tab-content active">
                 <h1>Privacy Policy</h1>
-                <p class="lead">DevTrack is built with privacy as a core principle. All data processing happens locally
-                    on your machine, and no information is ever sent to external cloud services.</p>
+                <p class="lead">DevTrack is built with privacy as a core principle. By default every piece of processing happens locally on your machine, on a local Ollama model, and nothing is sent anywhere. Cloud AI providers are strictly opt-in — see <em>AI Processing</em> below for exactly what leaves your machine if you configure one.</p>
 
                 <div class="privacy-highlight">
                     <h2>Privacy-First Design Principles</h2>
                     <ul class="check-list">
                         <li>All data stored locally on your machine</li>
-                        <li>No cloud AI services or external API calls for processing</li>
+                        <li>Local Ollama by default — no cloud AI unless you explicitly configure a provider</li>
                         <li>Explicit user consent required before ANY data collection</li>
                         <li>Complete transparency about what data is collected</li>
                         <li>Full data deletion option available at any time</li>
@@ -103,8 +102,8 @@
                     </div>
                     <div class="info-card">
                         <h3>Local AI Processing</h3>
-                        <p>Uses Ollama running locally on your machine. No data sent to OpenAI, Anthropic, or other
-                            cloud AI services.</p>
+                        <p>Uses Ollama running locally on your machine by default — nothing is sent to OpenAI, Anthropic, or any
+                            other cloud service. If you opt in to a cloud provider, only the prompt text is sent; your code, diffs, and repository never are.</p>
                     </div>
                     <div class="info-card">
                         <h3>Consent-Based</h3>
@@ -113,7 +112,7 @@
                     </div>
                     <div class="info-card">
                         <h3>Transparent</h3>
-                        <p>Open source code allows you to verify exactly what data is collected and how it's used.</p>
+                        <p>The source is public, so you can verify exactly what data is collected and how it is used.</p>
                     </div>
                 </div>
 
@@ -637,11 +636,10 @@ cp ~/.devtrack/learning/*.json ~/export/</code></pre>
                 </ul>
 
                 <h2>Contact & Questions</h2>
-                <p>DevTrack is an open source project. For questions or concerns about privacy:</p>
+                <p>DevTrack's source is public — every claim on this page can be checked against it. For questions or concerns about privacy:</p>
                 <ul>
-                    <li><strong>Review the code:</strong> <a href="https://gitlab.com/devtrack3_cloud/devtrack_server">GitLab
-                            Repository</a></li>
-                    <li><strong>Open an issue:</strong> Report privacy concerns on <a href="https://gitlab.com/devtrack3_cloud/devtrack_server/-/issues">GitLab Issues</a></li>
+                    <li><strong>Review the code:</strong> <a href="https://github.com/sraj0501/Devtrack_">github.com/sraj0501/Devtrack_</a></li>
+                    <li><strong>Open an issue:</strong> Report privacy concerns on <a href="https://github.com/sraj0501/Devtrack_/issues">GitHub Issues</a></li>
                     <li><strong>Read documentation:</strong> All features are documented in the wiki</li>
                 </ul>
             </section>
@@ -749,7 +747,7 @@ chmod 600 ~/.devtrack/learning/*.json</code></pre>
                     <li><strong>Check logs:</strong> Review <code>~/.devtrack/daemon.log</code> for suspicious activity
                     </li>
                     <li><strong>Reset credentials:</strong> Generate new tokens and update configuration</li>
-                    <li><strong>Report:</strong> Open a <a href="https://gitlab.com/devtrack3_cloud/devtrack_server/-/issues">GitLab issue</a> if the problem is with DevTrack itself</li>
+                    <li><strong>Report:</strong> Open a <a href="https://github.com/sraj0501/Devtrack_/issues">GitLab issue</a> if the problem is with DevTrack itself</li>
                 </ol>
 
                 <div class="warning-box">
