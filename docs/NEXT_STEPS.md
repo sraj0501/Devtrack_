@@ -141,24 +141,32 @@ finish booting:
 
 ### Success signal
 
-No telemetry (non-negotiable #5). The metric is: **the first issue or PR from a
-stranger.** Stars are vanity; a bug report from someone unknown means a real install
-survived setup.
+Assume no telemetry signal. TASK-109 shipped anonymous install/active pings, but they are
+**opt-in and off by default**, so adoption numbers will be absent or unrepresentative by
+design — don't plan to measure the launch with them.
+
+The metric is: **the first issue or PR from a stranger.** Stars are vanity; a bug report
+from someone unknown means a real install survived setup.
 
 ---
 
-## Proposed task breakdown (TASK-110+, for project-vision to formalize)
+## Proposed task breakdown (TASK-117+, for project-vision to formalize)
 
 | # | Task | Workstream |
 |---|---|---|
-| TASK-110 | `devtrack setup` writes complete `.env` with visible defaults; hard-fail secrets only | 9a |
-| TASK-111 | Background server bootstrap (uv sync / spaCy / ollama pull non-blocking) + progress in `status`/`doctor` | 9b |
-| TASK-112 | First-run wow script: Tier 0 mining kickoff + guided `work report` / `mcp setup` prompts | 9b |
-| TASK-113 | Ollama detection + BYO-cloud-key fast lane in setup | 9b |
-| TASK-114 | Demo GIF (commit → staged action → EOD preview) + quickstart polish | 9c |
-| TASK-115 | devtrack_wiki homepage rewrite + repo description/topics | 9c |
-| TASK-116 | Registry submissions (MCP lists, plugin directory) | 9d |
-| TASK-117 | Launch content: Show HN + dev.to + LinkedIn via post-generator | 9d |
+| TASK-117 | `devtrack setup` writes complete `.env` with visible defaults; hard-fail secrets only | 9a |
+| TASK-118 | Background server bootstrap (uv sync / spaCy / ollama pull non-blocking) + progress in `status`/`doctor` | 9b |
+| TASK-119 | First-run wow script: Tier 0 mining kickoff + guided `work report` / `mcp setup` prompts | 9b |
+| TASK-120 | Ollama detection + BYO-cloud-key fast lane in setup | 9b |
+| TASK-121 | Demo GIF (commit → staged action → EOD preview) + quickstart polish | 9c |
+| TASK-122 | devtrack_wiki homepage rewrite + repo description/topics | 9c |
+| TASK-123 | Registry submissions (MCP lists, plugin directory) | 9d |
+| TASK-124 | Launch content: Show HN + dev.to + LinkedIn via post-generator | 9d |
+
+> **Numbering:** this table originally proposed TASK-110–117, but the project board has since
+> issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL
+> backend epic, queued). `Data/agent_logs/project_board.md` is the authoritative ID ledger; the
+> adoption gate was renumbered to TASK-117–124 to match it.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to

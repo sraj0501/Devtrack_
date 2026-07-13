@@ -4,7 +4,7 @@ description: Wedge, positioning rules, channel sequence, decision framework — 
 type: project
 ---
 
-_Relevant again: Phase 9 (Adoption Gate, TASK-110–117) is packaging and narrative, so these positioning rules are the input to it._
+_Relevant again: Phase 9 (Adoption Gate, TASK-117–124) is packaging and narrative, so these positioning rules are the input to it._
 
 **Wedge:** "DevTrack writes your standup update when you commit." One feature at launch.
 
