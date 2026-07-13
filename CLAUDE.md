@@ -82,6 +82,8 @@ channel (`127.0.0.1:35893`) is retained internally but new trigger types must us
 ### Go client packages (`devtrack_client/`)
 The client was refactored into layered `internal/` packages (acyclic):
 `config` · `db` · `health` · `learning` ← `trigger` ← `infra` ← `daemon`; plus `trigger` ← `tui`.
+Phase 1–8 added `ticket` (branch → ticket-ID extraction), `match`, `reviewer` (PR review loop),
+and `mcp` (JSON-RPC 2.0 stdio server).
 
 | Package / file | Purpose |
 |---|---|
@@ -95,6 +97,10 @@ The client was refactored into layered `internal/` packages (acyclic):
 | `internal/health/`, `internal/learning/` | Health snapshots; AI-learning consent + license |
 | `internal/tui/` | Bubbletea TUI (overview, activity, alerts, workspaces) |
 | `internal/alerts/`, `internal/notify/` | **Go-native** ticket alert poller + notifiers (Terminal/Telegram/Slack/OS) |
+| `internal/ticket/`, `internal/match/` | Ticket-ID extraction from branch names (Phase 2) + ticket matching |
+| `internal/reviewer/` | PR review loop — fix-commit-push orchestration + escalation (Phase 7) |
+| `internal/mcp/`, `mcp_cmd.go` | MCP server (JSON-RPC 2.0 stdio); 6 read-only SQLite tools (Phase 8) |
+| `cli_queue.go`, `cli_eod.go`, `cli_review.go` | Pending-actions queue, EOD report, PR review CLI groups |
 | `internal/telegram/` | **Go-native** Telegram bot; starts with daemon when `TELEGRAM_ENABLED=true` |
 | `connectors/{github,gitlab,azure}/` | **Go-native** PM connectors (list/view/sync/check) |
 | `gitsage/` | **Go-native** git-sage (commit enhance, agent, conflict, git ops, PR finder) — the only git-sage |

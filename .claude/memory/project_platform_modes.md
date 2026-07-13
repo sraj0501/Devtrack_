@@ -1,19 +1,11 @@
 ---
 name: Platform modes and Windows gap
-description: Managed/Lightweight/External modes; Windows compile errors and workaround
+description: The non-obvious bits of managed/lightweight/external modes; Windows signal gap
 type: project
 ---
 
-## Operating Modes (`devtrack_client/internal/config/config.go`)
+The three modes (`managed` / `lightweight` / `external`) are documented in CLAUDE.md — only the non-obvious parts are recorded here:
 
-| Mode | `DEVTRACK_SERVER_MODE` | Behaviour |
-|------|----------------------|-----------|
-| Managed (default) | `managed` | Spawns Python `webhook_server.py` as subprocess (AI features) |
-| Lightweight | `lightweight` | Git monitoring + scheduling + Go-native commands only; AI/server commands blocked |
-| External | `external` | Daemon only; Python on separate server via `DEVTRACK_SERVER_URL` |
-
-`IsLightweightMode()` guards `requiresManagedMode()` in `cli.go`. Never read `DEVTRACK_SERVER_MODE` directly — use `GetServerMode()`. New commands needing Python must be added to the guard list. (Post-decoupling, PM connectors, gitsage, and alerts are Go-native and work in all modes.)
-
-## Windows
-
-Go daemon Unix signals (`Setsid`, `SIGUSR2`) not present on Windows — daemon targets linux_amd64 via WSL2 on developer machine. ARM64 `.syso` fix already shipped (see CLAUDE.md).
+- **Never read `DEVTRACK_SERVER_MODE` directly** — use `GetServerMode()` (`internal/config/config.go`). `IsLightweightMode()` guards `requiresManagedMode()` in `cli.go`; **any new command that needs Python must be added to that guard list**, or it fails obscurely in lightweight mode.
+- PM connectors, gitsage, and alerts are Go-native and work in **all** modes — only AI/server commands are mode-gated.
+- **Windows:** the Go daemon's Unix signals (`Setsid`, `SIGUSR2`) don't exist on Windows; the daemon targets linux_amd64 via WSL2 on the dev machine. The ARM64 `.syso` fix already shipped.
