@@ -1,22 +1,42 @@
 # docker-compose.yml
-# Optional local infrastructure for DevTrack.
+# Runs the DevTrack Python server in a container. The Go client stays on the host
+# and talks to it over HTTPS with DEVTRACK_SERVER_MODE=external.
 #
-# DevTrack does NOT need any of this to run. Its own state lives in local SQLite.
-# These services are only for opt-in extras:
-#   - MongoDB    — Microsoft Teams messages as an extra voice-learning source
-#   - PostgreSQL — multi-user mode for the Python-owned tables (POSTGRES_URL)
-#
-# DevTrack itself runs natively (Go binary + uv Python), NOT in Docker.
-# See docs/INSTALLATION.md for setup.
+# The server is the only service you need. MongoDB and PostgreSQL are opt-in extras
+# (Teams voice source; multi-user mode) — DevTrack's own state lives in local SQLite.
 #
 # Usage:
-#   docker compose up -d mongo      # start a service
-#   docker compose down             # stop services
-#   docker compose down -v          # stop + wipe volumes
+#   docker compose up -d devtrack_server   # the server
+#   docker compose up -d mongo             # optional extras, by name
+#   docker compose down                    # stop
+#   docker compose down -v                 # stop + wipe volumes
 
 services:
+  # ── DevTrack Python server ───────────────────────────────────────────────────
+  devtrack_server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devtrack-server
+    container_name: devtrack-server
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DEVTRACK_SERVER_PORT:-8089}:8089"
+    volumes:
+      - ./Data:/app/Data
+    networks:
+      - devtrack-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
   # ── MongoDB ──────────────────────────────────────────────────────────────────
-  # Used by: personalization (RAG samples, user profiles), managed mode
+  # Optional: Microsoft Teams messages as an extra voice-learning source.
   mongo:
     image: mongo:7
     container_name: devtrack-mongo

@@ -1302,7 +1302,6 @@ devtrack alerts --clear    # mark all as read</code></pre>
     ├── Telegram
     └── Slack</code></pre>
 <p>Each alerter tracks <code>last_checked</code> per source in the SQLite <code>alert_state</code> table, so only new events are processed on each poll cycle and you never see a duplicate across daemon restarts.</p>
-<blockquote><p><strong>Jira alerting is not currently implemented in the Go poller</strong> — only GitHub and Azure DevOps sources are registered. Jira remains supported as a PM connector for ticket sync.</p></blockquote>
 
 <h2>State &amp; Storage</h2>
 <p>The alerter stores everything in the local SQLite database — there is no external store and none is optional here. The <code>alert_state</code> table holds the last poll time per source, so you never see a duplicate notification across daemon restarts; delivered alerts land in <code>notifications</code>. This is what makes the alerter fully functional offline.</p>
@@ -1360,7 +1359,7 @@ CREATE TABLE alert_state (
 
 <p>DevTrack's telemetry system is a <strong>privacy-first, three-tier</strong> approach to understanding how many people download and use the tool — without ever collecting personal data. Telemetry is always opt-in and the binary works identically with it on or off.</p>
 
-<blockquote><p><strong>Status (v1.4-dev):</strong> Tier-2 anonymous install and active pings are now implemented in <code>devtrack_client/internal/daemon/ping.go</code> and sent to <code>https://ping.devtrack.dev</code> (Cloudflare Worker). Two events fire: <code>install</code> on first run and <code>active</code> at most once per 24 hours. Tier-1 (GitHub Releases download stats) and Tier-3 (registered-user heartbeats) remain planned.</p></blockquote>
+<blockquote><p><strong>Telemetry is opt-in and off by default.</strong> Nothing is sent unless you run <code>devtrack telemetry on</code>. When enabled, two anonymous events fire from <code>devtrack_client/internal/daemon/ping.go</code>: <code>install</code> on first run, and <code>active</code> at most once per 24 hours. Each carries only a random install UUID, a hashed hardware fingerprint, event type, version, OS and arch — never code, commit text, or personal data. Check or change the setting any time with <code>devtrack telemetry status</code> / <code>on</code> / <code>off</code>.</p></blockquote>
 
 <h2>Three Tiers at a Glance</h2>
 <div class="table-wrap"><table>
@@ -1478,19 +1477,17 @@ curl -s https://api.github.com/repos/sraj0501/Devtrack_/releases \
 </tbody>
 </table></div>
 
-<blockquote><p><strong>Implementation status (v1.4-dev):</strong> Tier-2 anonymous pings are now implemented in <code>devtrack_client/internal/daemon/ping.go</code>. The <code>install</code> event fires on the first daemon start; the <code>active</code> event fires at most once per 24 hours. Both are fire-and-forget goroutines to a Cloudflare Worker at <code>https://ping.devtrack.dev</code>. The server-side foundation, real-time admin dashboard (Tier 1 GitHub stats, Tier 2 SSE live feed), and Tier-3 registered-user heartbeats described above remain planned.</p></blockquote>
+<blockquote><p><strong>Opt-in, and off by default.</strong> The <code>install</code> event fires on the first daemon start and <code>active</code> at most once per 24 hours — but only after <code>devtrack telemetry on</code>. Both are fire-and-forget goroutines, so a failed ping never blocks or slows the daemon. The opt-in choice is a marker file in the data dir, read directly by the daemon, so it is honoured in every operating mode including lightweight.</p></blockquote>
 </div>`,
 
   DEVTRACK_SERVER: `<div class="md-body">
 <h1>devtrack-server CLI</h1>
-<p>The <strong>devtrack-server</strong> tool is a standalone management shell CLI (<code>devtrack_server/devtrack-server.sh</code>). It handles the complete lifecycle of a server-side DevTrack installation — downloading the right binary, running the setup wizard, and starting/stopping the daemon.</p>
-
-<blockquote><p><strong>Note:</strong> there is currently <strong>no <code>devtrack-server-*.tar.gz</code> release asset</strong>. Releases publish the client binary only (<code>devtrack_{linux,darwin}_{amd64,arm64}.tar.gz</code> and <code>devtrack_windows_amd64.exe</code>). To use <code>devtrack-server</code> today, take the script from the repository as shown below. For most people <code>devtrack setup</code> is the better path — it already fetches the Python server and runs <code>uv sync</code>.</p></blockquote>
+<p>The <strong>devtrack-server</strong> tool is a standalone management shell CLI (<code>devtrack_server/devtrack-server.sh</code>). It handles the complete lifecycle of a server-side DevTrack installation — downloading the right binary, running the setup wizard, and starting/stopping the daemon. It is aimed at headless servers and VMs; on a workstation, <code>devtrack setup</code> covers the same ground and also fetches the Python server for you.</p>
 
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">New in v2.1.0-dev — features/standalone-cli-mode</div>
 
 <h2>Quick Start</h2>
-<pre><code class="language-bash"># Get the script from the repository (no release tarball is published)
+<pre><code class="language-bash"># Get the script from the repository
 git clone https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_server
 chmod +x devtrack-server.sh
@@ -1539,7 +1536,7 @@ devtrack-server status</code></pre>
 <thead><tr><th>Scenario</th><th>Recommended path</th></tr></thead>
 <tbody>
 <tr><td>Developer laptop</td><td>Download the <code>devtrack_*.tar.gz</code> binary tarball → <code>devtrack setup</code></td></tr>
-<tr><td>Headless server / VM</td><td>Clone the repo → <code>./devtrack-server.sh install</code> → <code>./devtrack-server.sh setup</code>. (No release tarball is published for this script.)</td></tr>
+<tr><td>Headless server / VM</td><td>Clone the repo → <code>./devtrack-server.sh install</code> → <code>./devtrack-server.sh setup</code></td></tr>
 <tr><td>Docker</td><td>Use the <code>docker compose</code> path in the Quick Start box on the Home page</td></tr>
 </tbody>
 </table></div>
@@ -4055,11 +4052,10 @@ devtrack start</code></pre>
       <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 3 — Docker (Python server in a container)</p>
       <pre><code class="language-bash">git clone https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_server
-cp .env_sample .env             # then fill it in
-docker build -t devtrack-server .
-docker run --rm -p 8089:8089 --env-file .env -v $(pwd)/Data:/app/Data devtrack-server
+cp .env_sample .env                      # then fill it in
+docker compose up -d devtrack_server     # DevTrack needs no database server
 
-# Point the client at the container. DevTrack needs no database server.
+# Point the client at the container.
 # In .env: DEVTRACK_SERVER_MODE=external  DEVTRACK_SERVER_URL=http://localhost:8089
 devtrack start</code></pre>
       <p style="margin:.5rem 0 0;font-size:.85rem;opacity:.7;">All releases: <a href="https://github.com/sraj0501/Devtrack_/releases" target="_blank">github.com/sraj0501/Devtrack_/releases</a> — Go binaries for Linux, macOS and Windows.</p>

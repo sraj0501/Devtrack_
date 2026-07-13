@@ -55,8 +55,7 @@ curl http://localhost:8089/health
 ### Docker
 
 ```bash
-docker build -t devtrack-server .
-docker run --rm -p 8089:8089 --env-file .env -v $(pwd)/Data:/app/Data devtrack-server
+docker compose up -d devtrack_server
 docker compose down
 ```
 

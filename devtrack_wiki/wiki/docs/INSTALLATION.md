@@ -266,18 +266,15 @@ ollama pull llama3
 ### Step 3: Build and Run Container
 
 ```bash
-DOCKER_BUILDKIT=1 docker build -t devtrack-server .
-docker run -d --name devtrack-server \
-  -p 8089:8089 --env-file .env \
-  -v "$(pwd)/Data:/app/Data" devtrack-server
+DOCKER_BUILDKIT=1 docker compose build devtrack_server
+docker compose up -d devtrack_server
 
 # Verify
-docker ps
-docker logs devtrack-server
+docker compose ps
+docker compose logs devtrack_server
 ```
 
-> `docker-compose.yml` does **not** build the server. It only starts the optional
-> MongoDB / PostgreSQL backing services, and DevTrack needs neither to run.
+The server is the only service you need — DevTrack's state lives in local SQLite.
 
 ### Step 4: Install Client Binary (on host)
 
@@ -398,11 +395,8 @@ rm -rf /path/to/devtrack_server
 
 ### Docker
 ```bash
-docker rm -f devtrack-server
-docker image rm devtrack-server
-
-# Only if you started the optional mongo/postgres services:
 docker compose down -v
+docker image rm devtrack-server
 ```
 
 ---

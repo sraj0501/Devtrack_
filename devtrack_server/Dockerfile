@@ -18,11 +18,11 @@
 #     -v $(pwd)/Data:/app/Data \
 #     devtrack-server
 #
+# Run (docker compose):
+#   docker compose up -d devtrack_server
+#
 # Then point the client at it:
 #   DEVTRACK_SERVER_MODE=external  DEVTRACK_SERVER_URL=http://localhost:8089
-#
-# Note: docker-compose.yml does NOT build this image. It only starts the
-# optional MongoDB/PostgreSQL backing services.
 #
 FROM python:3.12-slim
 
@@ -41,11 +41,15 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 WORKDIR /app
 
-# Install Python dependencies (cache layer)
+# Install Python dependencies (cache layer).
+# UV_PROJECT_ENVIRONMENT is what makes `uv sync` target /opt/venv; without it uv
+# resolves the project venv to /app/.venv and the image ships without its deps.
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv /opt/venv
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv venv /opt/venv && \
-    VIRTUAL_ENV=/opt/venv uv sync --frozen --no-dev
+    uv sync --frozen --no-dev
 
 ENV PATH="/opt/venv/bin:${PATH}"
 ENV VIRTUAL_ENV="/opt/venv"

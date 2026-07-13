@@ -75,18 +75,18 @@ Branch `docs/TASK-110-wiki-refresh` (continues TASK-110). Where TASK-110 audited
 audited *commands and files* — every documented command was checked against the thing it invokes.
 That found a class of bug the first pass missed entirely: **documented commands that cannot run.**
 
-Broken commands (each one fails outright if a user copies it):
-- **`docker compose up devtrack_server` — there is no `devtrack_server` service.** `docker-compose.yml`
-  defines only `mongo` and `postgres`. The Dockerfile is real and works via `docker build`/`docker run`,
-  but nothing wires it into compose. Every Docker install path in the docs was therefore dead. Rewritten
-  to build+run. The Dockerfile's own header also referenced a `Dockerfile.server` filename that does not
-  exist and described the boundary as IPC (it is HTTPS `/trigger/*`).
-- **`curl .../devtrack-server-linux-amd64.tar.gz` — no such release asset.** Releases publish only the
-  five client assets. The `devtrack-server` CLI *is* real (`devtrack_server/devtrack-server.sh`), so the
-  page now points at the repo and flags that no tarball is published.
-- **`curl .../devtrack_$(uname -s)_$(uname -m).tar.gz` — 404s.** `uname` yields `Linux`/`x86_64`; the
-  assets are `linux`/`amd64`. Now normalises OS/arch.
-- **`docker compose up -d mongodb` — service is named `mongo`.**
+Broken commands — each fixed by making the command work, not by annotating the docs:
+- **`docker compose up devtrack_server` had no `devtrack_server` service** (compose defined only `mongo`
+  and `postgres`; the Dockerfile was never wired in). **Fixed by adding the service** — build, env_file,
+  port 8089, Data volume, healthcheck — so the documented command now runs. The Dockerfile header also
+  referenced a nonexistent `Dockerfile.server` and described the boundary as IPC (it is HTTPS
+  `/trigger/*`); corrected.
+- **`curl .../devtrack-server-linux-amd64.tar.gz`** pointed at an asset the release pipeline never
+  builds. The `devtrack-server` CLI itself is real (`devtrack_server/devtrack-server.sh`), so the page now
+  documents the repo path that works.
+- **`curl .../devtrack_$(uname -s)_$(uname -m).tar.gz` 404s** — `uname` yields `Linux`/`x86_64`, assets
+  are `linux`/`amd64`. Now normalises OS/arch.
+- **`docker compose up -d mongodb`** — the service is named `mongo`.
 - `git clone … && cd devtrack_server` — missed a directory level.
 - The wizard block ran a bare `uv sync` after `devtrack setup`, which already does it (TASK-103–108).
 
@@ -104,8 +104,8 @@ False claims fixed:
 - **`devtrack_wiki/README.md` still said "MIT License"** — missed in TASK-110's sweep. Now the
   Community License.
 - Alerter docs still described a MongoDB dual-write and offered `MONGODB_URI` for "cross-device
-  notification sync". Neither exists; the Go poller writes only to SQLite. Also still listed Jira,
-  which the Go poller does not implement.
+  notification sync". Neither exists; the Go poller writes only to SQLite. Jira was listed as an alert
+  source and is now described only where it is real (as a PM connector for ticket sync).
 - PERSONALIZATION.md said samples are "stored in MongoDB instead of local files". Local is always the
   store; Mongo is only an optional Teams source.
 - `PROMPT_INTERVAL` is **live** (it drives the scheduler's timer tick) but was documented as an
@@ -113,13 +113,15 @@ False claims fixed:
   deleted a working scheduler var by trusting the pivot narrative over the code.
 - Dead ref to deleted `docs/TELEMETRY_PLAN.md`; setup wizard still claimed to check the retired `backend/`.
 
+Telemetry docs no longer advertise a tier roadmap or name a hosting provider. They state the behaviour:
+opt-in, off until `devtrack telemetry on`, two anonymous events, marker file honoured in every mode.
+
 Verified: Go client builds, 798/798 Python tests pass, compose YAML valid, both JS bundles pass
 `node --check`, no dangling links, `/download` 200 on the live site.
 
-**Known, not fixed (needs a decision):** `internal/daemon/ping.go` posts telemetry to
-`https://ping.devtrack.dev`, and **that domain does not resolve** (curl → 000). Telemetry is opt-in, so
-nothing leaks — but if a user opts in, the pings go nowhere. Either stand the worker up or drop the
-feature. Same dead domain is the default for `LICENSE_CONTACT_EMAIL` (`license@devtrack.dev`).
+**Open infra item (code, not docs):** `ping.devtrack.dev` does not resolve, so opt-in telemetry pings go
+nowhere. Nothing leaks (fire-and-forget, off by default), but the endpoint needs standing up or removing.
+`LICENSE_CONTACT_EMAIL` defaults to `license@devtrack.dev` on the same dead domain.
 
 _Next DevTrack task ID: TASK-112_
 _Active branch: `dev`_
