@@ -127,7 +127,12 @@ the same dead domain. Both stand up when the app is commercially deployed. Nothi
 **QUEUED — EPIC: PostgreSQL Backend (TASK-112–116).** Must land before commercial launch. See the epic
 section at the bottom of this board.
 
-_Next DevTrack task ID: TASK-117_
+**QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
+not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
+issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
+authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
+
+_Next DevTrack task ID: TASK-125_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_

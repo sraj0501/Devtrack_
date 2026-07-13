@@ -4035,18 +4035,18 @@ function renderHome() {
       <pre><code class="language-bash"># macOS / Linux — the lean Go binary. Normalise OS/arch to the release asset names.
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" ] && ARCH="arm64"
-curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
+curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_\${OS}_\${ARCH}.tar.gz" | tar xz
 sudo mv devtrack /usr/local/bin/
 
 # The wizard writes .env, creates Data/, and — in managed mode — fetches the
-# Python server into DEVTRACK_HOME/server and runs `uv sync` for you.
+# Python server into DEVTRACK_HOME/server and runs \`uv sync\` for you.
 devtrack setup
 
-devtrack start       # env auto-loaded from ~/.devtrack/devtrack.conf (no `source .env` needed)
+devtrack start       # env auto-loaded from ~/.devtrack/devtrack.conf (no \`source .env\` needed)
 devtrack status</code></pre>
       <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 2 — Lightweight mode (no Python at all)</p>
       <pre><code class="language-bash"># Git monitoring, scheduling, git-sage, PM connectors and alerts are all Go-native.
-# Set this before `devtrack start` to skip the Python server entirely.
+# Set this before \`devtrack start\` to skip the Python server entirely.
 DEVTRACK_SERVER_MODE=lightweight
 devtrack start</code></pre>
       <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 3 — Docker (Python server in a container)</p>
