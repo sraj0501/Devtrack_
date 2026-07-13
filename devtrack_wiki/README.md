@@ -140,7 +140,7 @@ When updating documentation:
 
 ## License
 
-Same as the main project (MIT License).
+Same as the main project — the [DevTrack Community License](../LICENSE): free for individuals and teams of up to 10. A commercial licence is required above that, and for any SaaS or hosted-service use.
 
 ## Credits
 

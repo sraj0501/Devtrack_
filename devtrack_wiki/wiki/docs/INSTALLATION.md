@@ -79,7 +79,7 @@ go version
 ### Step 2: Clone and Build the Binary
 
 ```bash
-git clone https://gitlab.com/devtrack3_cloud/devtrack_client.git
+git clone https://github.com/sraj0501/Devtrack_.git
 cd devtrack_client
 go build -o devtrack .
 
@@ -180,7 +180,7 @@ Do the **Client-Only** steps above first, then continue here.
 ### Step 1: Clone the Server
 
 ```bash
-git clone https://gitlab.com/devtrack3_cloud/devtrack_server.git
+git clone https://github.com/sraj0501/Devtrack_.git
 cd devtrack_server
 ```
 
@@ -248,8 +248,8 @@ Docker is best for running the **server** component with consistent dependencies
 ### Step 1: Clone the Server Repo
 
 ```bash
-git clone https://gitlab.com/devtrack3_cloud/devtrack_server.git
-cd devtrack_server
+git clone https://github.com/sraj0501/Devtrack_.git
+cd Devtrack_/devtrack_server
 cp .env_sample .env
 nano .env
 ```
@@ -266,13 +266,15 @@ ollama pull llama3
 ### Step 3: Build and Run Container
 
 ```bash
-DOCKER_BUILDKIT=1 docker compose build
-docker compose up devtrack_server -d
+DOCKER_BUILDKIT=1 docker compose build devtrack_server
+docker compose up -d devtrack_server
 
 # Verify
 docker compose ps
 docker compose logs devtrack_server
 ```
+
+The server is the only service you need — DevTrack's state lives in local SQLite.
 
 ### Step 4: Install Client Binary (on host)
 
@@ -394,7 +396,7 @@ rm -rf /path/to/devtrack_server
 ### Docker
 ```bash
 docker compose down -v
-docker image rm devtrack_server-devtrack_server
+docker image rm devtrack-server
 ```
 
 ---

@@ -9,8 +9,7 @@ Table objects against it.  `init_all_tables()` then creates every registered
 table in a single `metadata.create_all()` call — safe to call on every startup.
 
 Go-owned tables (`triggers`, `task_updates`, `work_sessions`) are NEVER touched
-by Python in PostgreSQL mode.  Stats and active-session data will come via
-Go's HTTP stats endpoint (PG-5) or Redis bridge (R-1/R-2).
+by Python in PostgreSQL mode.
 
 Usage in a store module
 -----------------------

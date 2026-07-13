@@ -536,8 +536,8 @@ The last-known port list is persisted to disk so that `devtrack health` can repo
 
 > DevTrack runs **natively** — a Go binary plus a `uv`-managed Python server. It is not a Docker
 > product and needs no database server. Storage is SQLite (plus ChromaDB for RAG).
-> `devtrack_server/docker-compose.yml` starts only optional backing services (MongoDB, Redis,
-> PostgreSQL) for the deprioritised managed-cloud mode — the local-first path uses none of them.
+> `devtrack_server/docker-compose.yml` starts only optional backing services (MongoDB for the
+> Teams voice source, PostgreSQL for multi-user mode) — the local-first path uses neither.
 
 ### Python AI server
 

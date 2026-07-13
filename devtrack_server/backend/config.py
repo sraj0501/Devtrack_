@@ -1477,18 +1477,6 @@ def postgres_url() -> Optional[str]:
     return val if val else None
 
 
-def redis_url() -> Optional[str]:
-    """Redis connection URL. REDIS_URL — optional.
-
-    Used for the Go→Python stats bridge (R-2), HTMX stats cache (R-3),
-    WebSocket pub/sub (R-5), and admin JWT revocation (R-6).
-    When absent all Redis features degrade gracefully to stubs/zeros.
-    Install the driver: uv add redis
-    """
-    val = get("REDIS_URL", "")
-    return val if val else None
-
-
 def get_notification_enabled() -> bool:
     """Whether cross-platform desktop notifications are enabled. NOTIFICATION_ENABLED (default: true)."""
     return get_bool("NOTIFICATION_ENABLED", default=True)

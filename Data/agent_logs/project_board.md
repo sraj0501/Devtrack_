@@ -28,7 +28,106 @@ marker renamed to `telemetry_enabled`, the CLI writes it locally (works in light
 server needed), and `sendPing` returns early unless it exists. This makes non-negotiable #5 and
 the README's "nothing leaves your machine" claim true rather than aspirational.
 
-_Next DevTrack task ID: TASK-110_
+**[2026-07-13] TASK-110 — Website + wiki reconciled with the shipped product.** Branch
+`docs/TASK-110-wiki-refresh`. TASK-109 fixed the repo docs but stopped at the repo boundary; the
+public site (`devtrack_wiki/`, Netlify → devtrack.cloud) still sold the pre-pivot, prompt-driven
+product. Same method as TASK-109 — audit the site against the code, not against other docs.
+
+Factual corrections (the site was making claims the code contradicts):
+- **The site claimed "MIT License" in four places.** The repo ships the DevTrack Community
+  License (free for individuals and teams ≤ 10; commercial licence above that, and for any SaaS
+  use). A wrong licence on the download page is the one error a user can act on to their cost, so
+  this was the most important find. Now names the real licence and links to it.
+- **privacy.html claimed "no cloud AI services or external API calls for processing."** Cloud
+  providers (OpenAI/Anthropic/Groq) are supported and opt-in. Reworded to the README's honest
+  line: local Ollama by default; if you opt in, prompt text only — never code, diffs, or repo.
+- **Every clone/install link on the docs site pointed at `gitlab.com/devtrack3_cloud/*`**, which
+  is not the source of truth and is unreachable — i.e. the documented install path was broken.
+  All rewritten to `github.com/sraj0501/Devtrack_`, with the real release asset names
+  (`devtrack_${os}_${arch}.tar.gz`, verified against `release.yml` and the published assets).
+- wiki.html: "MongoDB remains the primary store" → SQLite is the only required store; Mongo is an
+  optional Teams-voice source. Removed the Redis/MongoDB admin health checks (they do not exist).
+- wiki.html telemetry doc described `~/.devtrack/telemetry.json` and `devtrack-bin/telemetry.go`
+  (retired in TASK-048); now documents the real `telemetry_enabled` marker file, fail-closed.
+- download.html: dropped "Docker is started automatically if MongoDB/Redis are missing."
+
+Positioning (carries the TASK-109 README message to the site): hero is now "Never write a standup
+again"; the silent daemon, the pending-actions queue ("nothing is sent behind your back"), the EOD
+report, and the MCP/agent-memory layer are all on the page — none of them were. Removed the
+interactive `Accept [A] · Enhance [E]` prompt from the hero terminal: the daemon does not prompt,
+and showing it did contradicted Phase 0. Personalization no longer claims to learn from Teams (it
+learns from git history; Teams is optional and off).
+
+Also: extracted index.html's 674-line inline `<style>` and 242-line inline `<script>` into
+`assets/home.css` + `assets/home.js` (1510 → 594 lines). Kept as separate files from
+`assets/style.css`, which is privacy.html's stylesheet, not a shared one. Deleted the
+`assets/style.css.bak` that was being deployed. Verified every page and asset serves 200 with no
+dangling internal links.
+
+**Still stale, deliberately not in scope:** there are no wiki pages yet for the queue, EOD, or
+PR-review loop. That is a full docs pass, and it belongs to Phase 9 proper rather than being
+half-done here. (The `PROMPT_INTERVAL` framing noted here originally was fixed in TASK-111.)
+
+---
+
+**[2026-07-13] TASK-111 — Second recursive wiki/docs pass: dead code, dead files, broken commands.**
+Branch `docs/TASK-110-wiki-refresh` (continues TASK-110). Where TASK-110 audited *claims*, this pass
+audited *commands and files* — every documented command was checked against the thing it invokes.
+That found a class of bug the first pass missed entirely: **documented commands that cannot run.**
+
+Broken commands — each fixed by making the command work, not by annotating the docs:
+- **`docker compose up devtrack_server` had no `devtrack_server` service** (compose defined only `mongo`
+  and `postgres`; the Dockerfile was never wired in). **Fixed by adding the service** — build, env_file,
+  port 8089, Data volume, healthcheck — so the documented command now runs. The Dockerfile header also
+  referenced a nonexistent `Dockerfile.server` and described the boundary as IPC (it is HTTPS
+  `/trigger/*`); corrected.
+- **`curl .../devtrack-server-linux-amd64.tar.gz`** pointed at an asset the release pipeline never
+  builds. The `devtrack-server` CLI itself is real (`devtrack_server/devtrack-server.sh`), so the page now
+  documents the repo path that works.
+- **`curl .../devtrack_$(uname -s)_$(uname -m).tar.gz` 404s** — `uname` yields `Linux`/`x86_64`, assets
+  are `linux`/`amd64`. Now normalises OS/arch.
+- **`docker compose up -d mongodb`** — the service is named `mongo`.
+- `git clone … && cd devtrack_server` — missed a directory level.
+- The wizard block ran a bare `uv sync` after `devtrack setup`, which already does it (TASK-103–108).
+
+Dead code removed:
+- **Redis, entirely.** Never imported; `redis_url()` had zero callers. It backed R-2–R-6, deprioritised
+  and never built. Removed the accessor (`backend/config.py`), the four `REDIS_*` vars (`.env_sample`),
+  the compose service + volume, and the stale `engine.py` docstring pointing at PG-5/R-1/R-2.
+  **PostgreSQL was left alone — it is live** (`db/engine.py`, `admin/user_manager.py`,
+  `work_tracker/session_store.py`, `server_tui/stats_client.py`), Bible objections notwithstanding.
+- `devtrack_wiki/wiki/vercel.json` (site is on Netlify) and `assets/devtrack_icon.png` (2 MB, referenced
+  nowhere; favicons use `devtrack.png`, the Windows build uses `devtrack_client/devtrack.ico`).
+  `demo.gif`/`standup-demo.gif` were checked and **kept** — the root README uses them.
+
+False claims fixed:
+- **`devtrack_wiki/README.md` still said "MIT License"** — missed in TASK-110's sweep. Now the
+  Community License.
+- Alerter docs still described a MongoDB dual-write and offered `MONGODB_URI` for "cross-device
+  notification sync". Neither exists; the Go poller writes only to SQLite. Jira was listed as an alert
+  source and is now described only where it is real (as a PM connector for ticket sync).
+- PERSONALIZATION.md said samples are "stored in MongoDB instead of local files". Local is always the
+  store; Mongo is only an optional Teams source.
+- `PROMPT_INTERVAL` is **live** (it drives the scheduler's timer tick) but was documented as an
+  interactive prompt interval, which contradicts Phase 0. Reworded rather than removed — nearly
+  deleted a working scheduler var by trusting the pivot narrative over the code.
+- Dead ref to deleted `docs/TELEMETRY_PLAN.md`; setup wizard still claimed to check the retired `backend/`.
+
+Telemetry docs no longer advertise a tier roadmap or name a hosting provider. They state the behaviour:
+opt-in, off until `devtrack telemetry on`, two anonymous events, marker file honoured in every mode.
+
+Verified: Go client builds, 798/798 Python tests pass, compose YAML valid, both JS bundles pass
+`node --check`, no dangling links, `/download` 200 on the live site.
+
+**Deferred to commercial deployment (user decision, 2026-07-13):** `ping.devtrack.dev` does not resolve,
+so opt-in telemetry pings go nowhere, and `LICENSE_CONTACT_EMAIL` defaults to `license@devtrack.dev` on
+the same dead domain. Both stand up when the app is commercially deployed. Nothing leaks in the meantime
+(telemetry is off by default; the ping is fire-and-forget and cannot block the daemon).
+
+**QUEUED — EPIC: PostgreSQL Backend (TASK-112–116).** Must land before commercial launch. See the epic
+section at the bottom of this board.
+
+_Next DevTrack task ID: TASK-117_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -5518,6 +5617,84 @@ briefly made fix #14/#15 look like they hadn't worked). Full cycle re-run clean 
 
 **COMPLETE** — 2026-07-02 (audit + bugfix, committed directly to `dev`; three passes same day —
 static, static, live end-to-end)
+
+---
+
+## QUEUED — EPIC: PostgreSQL Backend (TASK-112–116)
+
+**Priority: required before commercial launch.** Scoped 2026-07-13; not started.
+
+### Why this exists
+
+Postgres today is **half-wired, and the half that is missing fails silently.** Setting `POSTGRES_URL`
+does not give you a Postgres deployment — it gives you *two databases*:
+
+| Layer | Backend today | Portable? |
+|---|---|---|
+| `db/engine.py` (SQLAlchemy factory, dialect-aware `upsert()`, pooling) | Postgres **or** SQLite | ✅ already done |
+| 6 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket}_store` | follows `POSTGRES_URL` | ✅ |
+| 15 Python modules opening raw `sqlite3` (`daily_report_generator`, `queue_gateway`, `email_reporter`, `work_tracker/session_store`, `server_tui/stats_client`, `alert_poller`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `skill_detector`, `dialectic_status`, `learning_integration`, `vacation/auto_responder`, `webhook_server`) | **SQLite always** | ❌ |
+| Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
+
+So with `POSTGRES_URL` set, user accounts and licences go to Postgres while `triggers`, `task_updates`,
+`work_sessions` and `pending_actions` stay in a local SQLite file — and the EOD report, which reads
+`triggers`, keeps reading SQLite. **Nothing errors.** It looks like it works. `db/engine.py`'s own
+docstring concedes this ("Go-owned tables are NEVER touched by Python in PostgreSQL mode").
+
+For a single-user laptop that is harmless. For a multi-user commercial server it is fatal: every
+developer's triggers live in a SQLite file on their own machine, so the server can aggregate nothing —
+no team EOD, no admin dashboard with real numbers, no cross-device continuity.
+
+### DECIDED (user, 2026-07-13) — Postgres is server-side only
+
+**The Go client never speaks Postgres. It keeps tracking to local SQLite, always, in every mode.**
+Postgres is a `devtrack_server` concern. When a developer opts into a server, their local SQLite data
+flows *up* to Postgres on that server.
+
+This preserves offline-first Rule 0 exactly (the client needs no database server, no network, nothing),
+keeps the no-shared-artefact boundary intact, and means **no Go work beyond the sync push** — no `pgx`,
+no driver in `go.mod`, no dialect split through `internal/db/`. Local SQLite stays the client's source of
+truth; the server's Postgres is the aggregate.
+
+```
+devtrack_client (Go)                    devtrack_server (Python)
+  local SQLite  ── HTTPS /trigger/* ──▶   Postgres (opt-in, POSTGRES_URL)
+  always, offline, source of truth        aggregate across developers
+```
+
+SQLite remains the server's default too — Postgres switches on only when `POSTGRES_URL` is set.
+
+### Tasks
+
+- **TASK-112 — Port the 15 raw-`sqlite3` Python modules onto `db/engine.py`.** The bulk of the work and a
+  prerequisite for everything else; until this lands, `POSTGRES_URL` still split-brains. Mechanical but
+  wide — each module moves to `get_engine()` + dialect-aware `upsert()`. Watch for SQLite-isms Postgres
+  rejects: `INSERT OR REPLACE`, `sqlite_master` queries (`dialectic_status`), implicit `rowid`,
+  `datetime()` string functions, Python `bool`/`int` conflation.
+- **TASK-113 — Postgres test lane.** Today **zero** tests exercise Postgres — that is exactly why the
+  split-brain went unnoticed. Add a `pytest` fixture running the suite against a real Postgres (the
+  compose service, or `testcontainers`) so both backends are proven every run. Do this *alongside*
+  TASK-112, not after it.
+- **TASK-114 — Client→server sync path.** The client pushes its local SQLite rows for Go-owned tables
+  (`triggers`, `task_updates`, `work_sessions`, `pending_actions`, …) over the existing `/trigger/*` HTTP
+  boundary; the server persists them to Postgres. Needs: which tables sync, push cadence (on write vs
+  batched), idempotency (server must dedupe replays — a stable row ID per client), a `client_id` column
+  so rows are attributable per developer, and offline backlog replay when the server was unreachable.
+  Consent still applies: this is developer data leaving the machine, so it stages through the
+  pending-actions queue and is opt-in with the server.
+- **TASK-115 — Schema migrations.** `metadata.create_all()` is fine for greenfield SQLite; a commercial
+  Postgres needs versioned, reversible migrations (Alembic) plus a one-shot SQLite→Postgres import for
+  developers who already have local history.
+- **TASK-116 — Deployment surface.** `docker-compose.yml` already ships a healthy `postgres:16-alpine` —
+  wire `devtrack_server` to `depends_on` it, document a Postgres server deploy in `docs/INSTALLATION.md`,
+  and make `POSTGRES_URL` a first-class documented option rather than an undocumented env var.
+  `psycopg2-binary` is already the `postgres` extra in `pyproject.toml`.
+
+### Already in place (do not redo)
+
+`db/engine.py` dual-dialect factory · `upsert()` · `is_postgres()` · connection pooling ·
+`config.postgres_url()` · `postgres` extra in `pyproject.toml` · `postgres:16-alpine` in compose with a
+`pg_isready` healthcheck.
 
 ---
 

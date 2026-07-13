@@ -34,7 +34,7 @@ Excluded from this audit per spec: `.git/`, `devtrack_wiki/`, `Data/`, `.claude/
 | `pyproject.toml` | SERVER | Python project manifest; client uses `go.mod` only |
 | `uv.lock` | SERVER | uv lockfile for Python deps; server only |
 | `python_bridge.py` | DELETE | Legacy bridge at repo root; superseded by `backend/webhook_server.py` |
-| `docker-compose.yml` | SERVER | Starts MongoDB, Redis, PostgreSQL for Python backend |
+| `docker-compose.yml` | SERVER | Optional backing services for the Python server: MongoDB (Teams voice source), PostgreSQL (multi-user mode). Neither is required. |
 | `Dockerfile` | SERVER | Builds Python backend image |
 | `Dockerfile.server` | SERVER | Alternate/named server Dockerfile |
 | `devtrack-server` | SERVER | `devtrack-server` CLI script (Python server management binary) |

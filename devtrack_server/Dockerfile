@@ -6,20 +6,23 @@
 # The devtrack Go binary connects to this server for AI and integration processing.
 #
 # Architecture:
-#   devtrack (Go binary)  →  connects via IPC (localhost or remote)
-#   devtrack-server (this)  ←  handles AI, integrations, webhooks, Telegram bot
+#   devtrack (Go binary)  →  HTTPS POST /trigger/*  →  devtrack-server (this)
+#   The server handles AI, integrations and webhooks.
 #
 # Build:
-#   docker build -f Dockerfile.server -t devtrack-server .
+#   docker build -t devtrack-server .
 #
 # Run (local, with .env):
-#   docker run --rm -p 35893:35893 -p 8089:8089 \
+#   docker run --rm -p 8089:8089 \
 #     --env-file .env \
 #     -v $(pwd)/Data:/app/Data \
 #     devtrack-server
 #
 # Run (docker compose):
-#   docker compose up   (see docker-compose.yml)
+#   docker compose up -d devtrack_server
+#
+# Then point the client at it:
+#   DEVTRACK_SERVER_MODE=external  DEVTRACK_SERVER_URL=http://localhost:8089
 #
 FROM python:3.12-slim
 
@@ -38,11 +41,15 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 WORKDIR /app
 
-# Install Python dependencies (cache layer)
+# Install Python dependencies (cache layer).
+# UV_PROJECT_ENVIRONMENT is what makes `uv sync` target /opt/venv; without it uv
+# resolves the project venv to /app/.venv and the image ships without its deps.
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv /opt/venv
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv venv /opt/venv && \
-    VIRTUAL_ENV=/opt/venv uv sync --frozen --no-dev
+    uv sync --frozen --no-dev
 
 ENV PATH="/opt/venv/bin:${PATH}"
 ENV VIRTUAL_ENV="/opt/venv"

@@ -61,9 +61,9 @@ docker run -p 8089:8089 --env-file .env devtrack-server
 The Go binary on the host then connects via `DEVTRACK_SERVER_MODE=external`.
 
 `devtrack_server/docker-compose.yml` is **not** the server — it starts only optional backing
-services (MongoDB, Redis, PostgreSQL) used by the deprioritised managed-cloud mode. The
-local-first path needs none of them: DevTrack's storage is SQLite plus ChromaDB, and the
-default install runs natively (Go binary + `uv`), not in Docker.
+services: MongoDB (Microsoft Teams as an extra voice-learning source) and PostgreSQL (multi-user
+mode, via `POSTGRES_URL`). The local-first path needs neither: DevTrack's storage is SQLite plus
+ChromaDB, and the default install runs natively (Go binary + `uv`), not in Docker.
 
 ### `devtrack install`
 
