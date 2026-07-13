@@ -38,5 +38,7 @@ func NewDaemon(repoPath string) (*Daemon, error) {
 }
 func KillDaemon(pidFile string) error              { return dmn.KillDaemon(pidFile) }
 func SendActivePingIfDue()                         { dmn.SendActivePingIfDue() }
+func SetTelemetryEnabled(on bool) error            { return dmn.SetTelemetryEnabled(on) }
+func TelemetryEnabled() bool                       { return dmn.TelemetryEnabled() }
 func CheckProcessAlive(pid int) bool               { return dmn.CheckProcessAlive(pid) }
 func SendReloadSignal(proc *os.Process) error      { return dmn.SendReloadSignal(proc) }

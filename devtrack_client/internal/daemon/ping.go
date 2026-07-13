@@ -24,7 +24,7 @@ const (
 	activePingInterval = 24 * time.Hour
 	installIDFile      = ".devtrack/id"         // relative to home dir
 	lastActivePingFile = "last_active_ping"      // relative to Data dir
-	telemetryDisabled  = "telemetry_disabled"    // relative to Data dir
+	telemetryEnabled   = "telemetry_enabled"     // relative to Data dir
 )
 
 // pingPayload is what gets POSTed to the ping server.
@@ -37,15 +37,40 @@ type pingPayload struct {
 	Arch        string `json:"arch"`
 }
 
-// isTelemetryDisabled returns true when the user has run `devtrack telemetry off`.
-func isTelemetryDisabled() bool {
+// isTelemetryEnabled reports whether the user has explicitly opted in via
+// `devtrack telemetry on`. Telemetry is opt-in: absent the marker file — and on
+// any error resolving the data directory — no ping is ever sent.
+func isTelemetryEnabled() bool {
 	dataDir := dataDir()
 	if dataDir == "" {
 		return false
 	}
-	_, err := os.Stat(filepath.Join(dataDir, telemetryDisabled))
+	_, err := os.Stat(filepath.Join(dataDir, telemetryEnabled))
 	return err == nil
 }
+
+// SetTelemetryEnabled records the user's telemetry choice locally, creating the
+// opt-in marker on enable and removing it on disable.
+func SetTelemetryEnabled(on bool) error {
+	dir := dataDir()
+	if dir == "" {
+		return fmt.Errorf("cannot resolve DevTrack data directory (set DEVTRACK_HOME or PROJECT_ROOT)")
+	}
+	marker := filepath.Join(dir, telemetryEnabled)
+	if !on {
+		if err := os.Remove(marker); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	return os.WriteFile(marker, []byte("enabled\n"), 0600)
+}
+
+// TelemetryEnabled reports the current opt-in state for the CLI.
+func TelemetryEnabled() bool { return isTelemetryEnabled() }
 
 // dataDir returns the DevTrack data directory, empty string on any error.
 // Avoids calling config.GetDevTrackDir() which panics on missing config.
@@ -168,7 +193,7 @@ func pingURL() string {
 // sendPing fires an anonymous event ping in the background.
 // It returns immediately — network errors are silently swallowed.
 func sendPing(event string) {
-	if isTelemetryDisabled() {
+	if !isTelemetryEnabled() {
 		return
 	}
 	url := pingURL()
