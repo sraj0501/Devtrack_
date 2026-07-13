@@ -822,9 +822,10 @@ Claude Code answering *"what am I working on?"* in under ten minutes. See
 **Deferred (Phase 10+):** headless orchestration, Tier 4 Hermes persona model, GitLab `IsPRApproved`.
 
 > **Not planned, ever:** NATS/Redis/external message queues, a PostgreSQL migration, Kubernetes,
-> or multi-tenancy. These appear in `docs/implementation-plan.md` and
-> `docs/devtrack-architecture.html`, both of which are **superseded** and retained only as
-> "road not taken" references.
+> or multi-tenancy. DevTrack is local-first, offline-first, single-machine, and not a SaaS.
+> Storage is SQLite plus ChromaDB. An earlier scaling plan proposing all of the above was
+> **deleted in TASK-109** — it predated the 2026-06-10 pivot and contradicted its
+> non-negotiables. Do not reintroduce it.
 
 ---
 

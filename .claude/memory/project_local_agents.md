@@ -1,14 +1,13 @@
 ---
 name: Agent system
-description: 6 global agents at ~/.claude/agents/; project-level copies archived; pm-config.md drives project-specific values
+description: 5 agents defined in .claude/agents/_archive/ (still active despite the name); pm-config.md drives project values
 type: project
 ---
 
-**Agents live globally** at `~/.claude/agents/` (6): project-vision, engineer, git-agent, memory-compactor, post-generator, production-engineer. Project-level copies are archived/unused at `.claude/agents/_archive/`.
-**pm-config:** `.claude/pm-config.md` (project root)
+**Agents live at `.claude/agents/_archive/`** (5): project-vision, devtrack-engineer, git-agent, memory-compactor, post-generator. Despite the `_archive` directory name these are the **live** definitions — Claude Code recurses into it, and there is **no `~/.claude/agents/`** on this machine. [Verified 2026-07-13; an older memory claiming "6 global agents at `~/.claude/agents/`" was wrong.]
 
-**Rules:** project-vision always first (creates board task) → engineer (only when dispatched) → git-agent for push/PR (never commits). memory-compactor: Sunday 9:13am cron. post-generator: weekly engineer log → posts.
+**Project values:** `.claude/pm-config.md` (repo root).
 
-**Runtime files** (gitignored): `Data/agent_logs/project_board.md`, `Data/agent_logs/engineer_log.md`, `Data/agent_logs/feature_tracker.md`.
+**Rules:** project-vision always first (creates the board task) → devtrack-engineer (only when dispatched) → git-agent for push/PR (never commits). memory-compactor: weekly. post-generator: weekly engineer log → posts.
 
-**Bootstrap:** `/init` — generates CLAUDE.md + pm-config. Fill `vision.rules` + `posts.author` manually.
+**Runtime files** (gitignored): `Data/agent_logs/{project_board,engineer_log,feature_tracker}.md`.

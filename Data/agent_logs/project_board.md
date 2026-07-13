@@ -14,10 +14,12 @@ local). Reconciled 5 board statuses that still read IN PROGRESS despite having s
 095, 096, 105, 106). Fixed doc drift found by auditing docs against code, not against other docs:
 git-sage described as Python (it is Go-native; the client has zero `.py` files), a Redis health
 check that does not exist, a root `Dockerfile.server`/`docker compose` that does not exist, and a
-"Phases 1–3" evolution section predating the Phase 0–8 arc. Marked
-`docs/devtrack-architecture.html` SUPERSEDED to match `implementation-plan.md` (both propose
-NATS/PostgreSQL/Redis/K8s, all rejected by the pivot). README rewritten to the NEXT_STEPS
-three-layer message and given the missing queue/EOD sections.
+"Phases 1–3" evolution section predating the Phase 0–8 arc. **Deleted** the two superseded
+architecture docs (`docs/implementation-plan.md`, `docs/devtrack-architecture.html` + its .css/.js):
+both proposed NATS/PostgreSQL/Redis/K8s, all rejected by the pivot, and a SUPERSEDED banner was not
+enough — they stayed a live trap for any agent grepping docs before reading memory. The "never
+planned" rule now lives in `docs/ARCHITECTURE.md` § Phases & Evolution instead. README rewritten to
+the NEXT_STEPS three-layer message and given the missing queue/EOD sections.
 
 **Telemetry was opt-out and its opt-out was broken** — `devtrack telemetry off` called the
 server's `AuthTelemetry`, which never wrote the local `telemetry_disabled` marker that `ping.go`
