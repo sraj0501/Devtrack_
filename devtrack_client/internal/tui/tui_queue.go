@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -35,6 +36,24 @@ type queueModel struct {
 	flaggingActionID int64
 	flagInput        textinput.Model
 	flagErrMsg       string
+
+	// Editing mode — active when editingActionID != 0.
+	editingActionID int64
+	editInput       textinput.Model
+	editErrMsg      string
+}
+
+// extractCommentField pulls the "comment" string out of a pending action's
+// raw JSON payload. Only post_comment (and similar text-bearing) actions
+// carry this field — state_transition and notification actions don't, so
+// callers must check ok before treating the value as editable.
+func extractCommentField(payload string) (string, bool) {
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(payload), &parsed); err != nil {
+		return "", false
+	}
+	comment, ok := parsed["comment"].(string)
+	return comment, ok
 }
 
 func newQueueModel(database *db.Database, tc *trigger.HTTPTriggerClient) queueModel {
@@ -114,6 +133,67 @@ func (m queueModel) submitFlag() (queueModel, tea.Cmd) {
 	return m, m.load()
 }
 
+// submitEdit rewrites the "comment" field of the currently edited pending
+// action's payload and resets editing mode.
+// Returns (updated model, cmd-to-reload) — the caller must return these from Update.
+func (m queueModel) submitEdit() (queueModel, tea.Cmd) {
+	var action *db.PendingAction
+	for i := range m.items {
+		if m.items[i].ID == m.editingActionID {
+			action = &m.items[i]
+			break
+		}
+	}
+	if action == nil {
+		m.editErrMsg = "Action not found — it may have expired."
+		return m, nil
+	}
+	if action.Status != "pending" {
+		m.editErrMsg = "Only pending actions can be edited."
+		return m, nil
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(action.Payload), &payload); err != nil {
+		m.editErrMsg = "Payload is not editable (parse failed)."
+		return m, nil
+	}
+	if _, ok := payload["comment"].(string); !ok {
+		m.editErrMsg = "This action type has no editable text."
+		return m, nil
+	}
+
+	newText := m.editInput.Value()
+	if strings.TrimSpace(newText) == "" {
+		m.editErrMsg = "Comment text cannot be empty."
+		return m, nil
+	}
+
+	payload["comment"] = newText
+	if _, ok := payload["description"]; ok {
+		// pm/queue.go mirrors comment into description; keep them in sync.
+		payload["description"] = newText
+	}
+
+	newPayload, err := json.Marshal(payload)
+	if err != nil {
+		m.editErrMsg = fmt.Sprintf("Failed to encode payload: %v", err)
+		return m, nil
+	}
+
+	if updErr := m.db.UpdatePendingActionPayload(action.ID, string(newPayload)); updErr != nil {
+		log.Printf("tui: UpdatePendingActionPayload failed for action %d: %v", action.ID, updErr)
+		m.editErrMsg = fmt.Sprintf("Failed to save edit: %v", updErr)
+		return m, nil
+	}
+
+	m.editingActionID = 0
+	m.editInput.Reset()
+	m.editErrMsg = ""
+
+	return m, m.load()
+}
+
 // Update handles messages for the Queue tab.
 func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 	// When in flagging mode, route all key events to the text input first.
@@ -132,6 +212,28 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 			default:
 				var cmd tea.Cmd
 				m.flagInput, cmd = m.flagInput.Update(msg)
+				return m, cmd
+			}
+		}
+		// Non-key messages still fall through to normal handling below.
+	}
+
+	// When in editing mode, route all key events to the text input first.
+	if m.editingActionID != 0 {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				return m.submitEdit()
+			case "esc":
+				// Cancel with no DB changes.
+				m.editingActionID = 0
+				m.editInput.Reset()
+				m.editErrMsg = ""
+				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.editInput, cmd = m.editInput.Update(msg)
 				return m, cmd
 			}
 		}
@@ -240,8 +342,23 @@ func (m queueModel) Update(msg tea.Msg) (queueModel, tea.Cmd) {
 				}
 			}
 		case "e":
-			// Edit not implemented yet — placeholder for Phase 1 completion.
-			return m, nil
+			if len(m.items) > 0 && m.cursor < len(m.items) {
+				item := m.items[m.cursor]
+				m.editingActionID = item.ID
+				ti := textinput.New()
+				ti.CharLimit = 2000
+				ti.Width = 60
+				if comment, ok := extractCommentField(item.Payload); ok {
+					ti.SetValue(comment)
+					ti.CursorEnd()
+				} else {
+					ti.Placeholder = "No editable text on this action"
+				}
+				_ = ti.Focus()
+				m.editInput = ti
+				m.editErrMsg = ""
+				return m, textinput.Blink
+			}
 		case "f":
 			// Enter flagging mode for the currently selected pending action.
 			if len(m.items) > 0 && m.cursor < len(m.items) {
@@ -380,6 +497,29 @@ func (m queueModel) flagOverlay() string {
 	return box
 }
 
+// editOverlay renders the inline text-input box used when editing a pending
+// action's comment text before approval.
+func (m queueModel) editOverlay() string {
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(ColorAccent).
+		Padding(0, 1).
+		Width(68)
+
+	title := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true).Render("Edit pending comment")
+	inputLine := "Comment: " + m.editInput.View()
+	hint := StyleMuted.Render("(Enter to save · Esc to cancel)")
+
+	content := title + "\n" + inputLine + "\n" + hint
+	box := boxStyle.Render(content)
+
+	if m.editErrMsg != "" {
+		errLine := lipgloss.NewStyle().Foreground(ColorDanger).Render("  " + m.editErrMsg)
+		return box + "\n" + errLine
+	}
+	return box
+}
+
 // View renders the Queue tab.
 func (m queueModel) View() string {
 	if m.loading {
@@ -391,6 +531,9 @@ func (m queueModel) View() string {
 		empty := "\n  No pending actions in the last 24 hours.\n\n"
 		if m.flaggingActionID != 0 {
 			return empty + "\n" + m.flagOverlay() + "\n"
+		}
+		if m.editingActionID != 0 {
+			return empty + "\n" + m.editOverlay() + "\n"
 		}
 		return empty + footer
 	}
@@ -429,9 +572,11 @@ func (m queueModel) View() string {
 
 	sb.WriteString("\n")
 
-	// When in flagging mode, replace the footer with the overlay.
+	// When in flagging or editing mode, replace the footer with the overlay.
 	if m.flaggingActionID != 0 {
 		sb.WriteString(m.flagOverlay())
+	} else if m.editingActionID != 0 {
+		sb.WriteString(m.editOverlay())
 	} else {
 		sb.WriteString(queueFooter(m.lastLoad))
 	}
