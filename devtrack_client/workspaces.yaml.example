@@ -18,6 +18,10 @@
 #   pm_area_path:      Azure DevOps area path (e.g. "MyProject\\Backend")
 #   pm_milestone:      GitHub milestone number OR GitLab milestone ID to assign
 #                      when auto-creating new issues (0 = no milestone).
+#   in_progress_label: GitHub/GitLab only — label applied on the first commit
+#                      for a ticket (their issue APIs have no in-progress state)
+#                      and removed automatically on close. Default "in-progress";
+#                      set to "none" to disable.
 
 version: "1"
 workspaces:
@@ -52,6 +56,7 @@ workspaces:
     ignore_branches: []
     tags: ["personal"]
     pm_milestone: 3   # optional: GitHub milestone number to assign on new issues
+    in_progress_label: "in-progress"   # optional: label convention ("none" disables)
 
   # GitLab project (supply the numeric project ID)
   - name: "oss-lib"

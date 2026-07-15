@@ -219,6 +219,215 @@ class WorkspaceRouter:
         return None, None
 
     # ------------------------------------------------------------------
+    # Direct state transitions (TASK-126)
+    # ------------------------------------------------------------------
+
+    #: Logical status values that mean "this ticket's work is finished".
+    DONE_WORDS = ("done", "completed", "closed")
+
+    def route_state_transition(
+        self,
+        pm_platform: str,
+        ticket_id: str,
+        new_state: str,
+        pm_project: str = "",
+        clear_label: str = "",
+    ) -> bool:
+        """Apply a state transition to an exact ticket, targeted by ID.
+
+        Unlike :meth:`route`, which fuzzy-matches open items against commit
+        text, this targets the ticket the extractor already identified — the
+        state_transition queue action carries a resolved ticket_id, and
+        guessing when the answer is in hand is a correctness bug.
+
+        ``new_state`` is one of:
+        - the logical ``"done"`` (mapped per platform: Azure → configured done
+          state, GitHub/GitLab → close issue),
+        - a platform-native state string (e.g. Azure ``"Active"``, Jira
+          ``"In Progress"``) applied verbatim where supported,
+        - ``"label:<name>"`` (TASK-129) — GitHub/GitLab in-progress convention:
+          apply the label to the issue (their APIs have no in-progress state).
+
+        ``clear_label`` names a label to best-effort remove on done transitions
+        (GitHub/GitLab), so the in-progress label doesn't linger on closed
+        issues.
+
+        Returns True when the transition was applied, False when it was
+        skipped (unsupported platform/state) or failed.
+        """
+        platform = (pm_platform or "").strip().lower()
+        coro = self._async_state_transition(platform, ticket_id, new_state, pm_project, clear_label)
+        return self._run_coro(coro, f"route_state_transition({platform})")
+
+    async def _async_state_transition(self, platform, ticket_id, new_state, pm_project, clear_label="") -> bool:
+        import re
+
+        try:
+            import backend.config as config
+        except ImportError:
+            config = None
+
+        num_match = re.search(r"(\d+)$", ticket_id or "")
+        if not num_match:
+            logger.warning(f"state_transition: no numeric ID in ticket_id={ticket_id!r}, skipping")
+            return False
+        item_id = int(num_match.group(1))
+        state_str = (new_state or "").strip()
+        is_done = state_str.lower() in self.DONE_WORDS
+        label = state_str[len("label:"):].strip() if state_str.lower().startswith("label:") else ""
+
+        if platform == "azure":
+            if not self.azure_client:
+                logger.debug("state_transition: Azure client not configured, skipping")
+                return False
+            state = new_state
+            if is_done:
+                state = "Done"
+                if config:
+                    try:
+                        state = config.get_azure_done_state()
+                    except Exception:
+                        pass
+            ok = await self.azure_client.update_work_item_state(item_id, state)
+            logger.info(f"state_transition: Azure #{item_id} → {state!r} ({'ok' if ok else 'failed'})")
+            return bool(ok)
+
+        if platform == "github":
+            if not self.github_client:
+                logger.debug("state_transition: GitHub client not configured, skipping")
+                return False
+            if label:
+                # TASK-129: in-progress via label convention.
+                ok = await self.github_client.add_label(item_id, label)
+                logger.info(f"state_transition: GitHub #{item_id} label {label!r} ({'ok' if ok else 'failed'})")
+                return bool(ok)
+            if not is_done:
+                logger.info(f"state_transition: GitHub has no state {new_state!r}, skipping")
+                return False
+            ok = await self.github_client.close_issue(item_id)
+            if ok and clear_label:
+                # Best-effort — a lingering label never fails the transition.
+                await self.github_client.remove_label(item_id, clear_label)
+            logger.info(f"state_transition: GitHub #{item_id} closed ({'ok' if ok else 'failed'})")
+            return bool(ok)
+
+        if platform == "gitlab":
+            if not self.gitlab_client:
+                logger.debug("state_transition: GitLab client not configured, skipping")
+                return False
+            project_id = None
+            if pm_project:
+                try:
+                    project_id = int(pm_project)
+                except ValueError:
+                    pass
+            if project_id is None and config:
+                try:
+                    project_id = config.get_gitlab_default_project_id()
+                except Exception:
+                    pass
+            if project_id is None:
+                logger.warning(f"state_transition: no GitLab project_id for issue #{item_id}, skipping")
+                return False
+            if label:
+                # TASK-129: in-progress via label convention (additive API param).
+                ok = await self.gitlab_client.update_issue(project_id, item_id, {"add_labels": label})
+                logger.info(f"state_transition: GitLab #{item_id} label {label!r} ({'ok' if ok else 'failed'})")
+                return bool(ok)
+            if not is_done:
+                logger.info(f"state_transition: GitLab has no state {new_state!r}, skipping")
+                return False
+            ok = await self.gitlab_client.close_issue(project_id, item_id)
+            if ok and clear_label:
+                await self.gitlab_client.update_issue(project_id, item_id, {"remove_labels": clear_label})
+            logger.info(f"state_transition: GitLab #{item_id} closed ({'ok' if ok else 'failed'})")
+            return bool(ok)
+
+        logger.info(f"state_transition: platform {platform!r} not supported, skipping")
+        return False
+
+    def route_comment(self, pm_platform: str, ticket_id: str, comment: str, pm_project: str = "") -> bool:
+        """Post a comment on an exact ticket, targeted by ID (TASK-127).
+
+        Used by queue actions that carry a resolved ticket_id (e.g. staged by
+        ``devtrack git`` or the offline outbox) — the fuzzy-matching
+        :meth:`route` must not run when the target is already known.
+
+        Returns True when the comment was posted.
+        """
+        platform = (pm_platform or "").strip().lower()
+        coro = self._async_comment(platform, ticket_id, comment, pm_project)
+        return self._run_coro(coro, f"route_comment({platform})")
+
+    @staticmethod
+    def _run_coro(coro, label: str) -> bool:
+        """Run a coroutine to completion from sync code, safely whether or not
+        an event loop is already running in this thread."""
+        import asyncio
+
+        try:
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                return asyncio.run(coro)
+            # A loop is running in this thread — execute on a worker thread.
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                return pool.submit(asyncio.run, coro).result(timeout=30)
+        except Exception as e:
+            logger.error(f"WorkspaceRouter.{label} failed: {e}")
+            return False
+
+    async def _async_comment(self, platform, ticket_id, comment, pm_project) -> bool:
+        import re
+
+        try:
+            import backend.config as config
+        except ImportError:
+            config = None
+
+        num_match = re.search(r"(\d+)$", ticket_id or "")
+        if not num_match:
+            logger.warning(f"route_comment: no numeric ID in ticket_id={ticket_id!r}, skipping")
+            return False
+        item_id = int(num_match.group(1))
+
+        if platform == "azure":
+            if not self.azure_client:
+                return False
+            ok = await self.azure_client.add_comment(item_id, comment)
+            return bool(ok)
+
+        if platform == "github":
+            if not self.github_client:
+                return False
+            ok = await self.github_client.add_comment(item_id, comment)
+            return bool(ok)
+
+        if platform == "gitlab":
+            if not self.gitlab_client:
+                return False
+            project_id = None
+            if pm_project:
+                try:
+                    project_id = int(pm_project)
+                except ValueError:
+                    pass
+            if project_id is None and config:
+                try:
+                    project_id = config.get_gitlab_default_project_id()
+                except Exception:
+                    pass
+            if project_id is None:
+                logger.warning(f"route_comment: no GitLab project_id for issue #{item_id}, skipping")
+                return False
+            ok = await self.gitlab_client.add_comment(project_id, item_id, comment)
+            return bool(ok)
+
+        logger.info(f"route_comment: platform {platform!r} not supported, skipping")
+        return False
+
+    # ------------------------------------------------------------------
     # Sync dispatcher — calls the appropriate async helper via asyncio
     # ------------------------------------------------------------------
 

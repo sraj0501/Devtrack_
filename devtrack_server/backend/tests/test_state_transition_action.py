@@ -178,38 +178,59 @@ class TestStateTransitionNotStagedOnSubsequentCommit:
 
 
 # ---------------------------------------------------------------------------
-# 3. state_transition NOT staged for unknown/unsupported platform
+# 3. GitHub/GitLab in-progress: label convention (TASK-129); unknown platforms skip
 # ---------------------------------------------------------------------------
 
-class TestStateTransitionNotStagedForUnsupportedPlatform:
-    """GitHub and GitLab have no native in-progress state mapping — no
-    state_transition should be staged for these platforms."""
+class TestInProgressLabelConvention:
+    """GitHub and GitLab have no native in-progress state — the first commit
+    stages a label:<name> transition instead (default 'in-progress',
+    workspace-configurable, 'none' opts out). Unknown platforms stage nothing."""
 
-    def _test_platform_no_state_transition(self, platform):
-        proc, mock_gw = _processor_with_gateway()
-        payload = {
+    def _first_commit_payload(self, platform, **extra):
+        return {
             **COMMIT_PAYLOAD_BASE,
             "ticket_id": "PROJ-42",
             "is_first_commit_for_ticket": True,
             "pm_platform": platform,
+            **extra,
         }
-        proc.process_commit(payload)
 
-        # Only the post_comment must be staged
-        assert mock_gw.stage.call_count == 1, (
-            f"Platform {platform!r}: expected 1 stage() call, got {mock_gw.stage.call_count}"
+    def test_github_stages_default_label(self):
+        proc, mock_gw = _processor_with_gateway()
+        proc.process_commit(self._first_commit_payload("github"))
+
+        assert mock_gw.stage.call_count == 2
+        _, kwargs = mock_gw.stage.call_args_list[1]
+        assert kwargs["action_type"] == "state_transition"
+        assert kwargs["payload"]["new_state"] == "label:in-progress"
+
+    def test_gitlab_stages_configured_label(self):
+        proc, mock_gw = _processor_with_gateway()
+        proc.process_commit(
+            self._first_commit_payload("gitlab", pm_in_progress_label="doing")
         )
+
+        assert mock_gw.stage.call_count == 2
+        _, kwargs = mock_gw.stage.call_args_list[1]
+        assert kwargs["payload"]["new_state"] == "label:doing"
+
+    def test_label_none_opts_out(self):
+        proc, mock_gw = _processor_with_gateway()
+        proc.process_commit(
+            self._first_commit_payload("github", pm_in_progress_label="none")
+        )
+
+        assert mock_gw.stage.call_count == 1
         _, kwargs = mock_gw.stage.call_args
         assert kwargs["action_type"] == "post_comment"
 
-    def test_github_no_state_transition(self):
-        self._test_platform_no_state_transition("github")
-
-    def test_gitlab_no_state_transition(self):
-        self._test_platform_no_state_transition("gitlab")
-
     def test_unknown_platform_no_state_transition(self):
-        self._test_platform_no_state_transition("bitbucket")
+        proc, mock_gw = _processor_with_gateway()
+        proc.process_commit(self._first_commit_payload("bitbucket"))
+
+        assert mock_gw.stage.call_count == 1
+        _, kwargs = mock_gw.stage.call_args
+        assert kwargs["action_type"] == "post_comment"
 
     def test_empty_platform_no_state_transition(self):
         proc, mock_gw = _processor_with_gateway()
@@ -255,12 +276,69 @@ class TestStateTransitionNotStagedWhenUnlinked:
 
 
 # ---------------------------------------------------------------------------
-# 5. _execute_pm_action routes state_transition to workspace_router.route()
+# 4b. TASK-126: merge-to-default stages a done transition
+# ---------------------------------------------------------------------------
+
+class TestMergeToDefaultStagesDone:
+    """is_merge_to_default=True must stage a state_transition with the logical
+    'done' state — and must NOT stage an in-progress transition, even when the
+    merge is the first commit seen for the ticket."""
+
+    def _merge_payload(self, platform="azure"):
+        return {
+            **COMMIT_PAYLOAD_BASE,
+            "ticket_id": "PROJ-42",
+            "branch": "main",
+            "commit_message": "Merge branch 'feat/PROJ-42-auth'",
+            "is_merge_to_default": True,
+            "is_first_commit_for_ticket": False,
+            "pm_platform": platform,
+        }
+
+    def test_done_transition_staged_on_merge(self):
+        proc, mock_gw = _processor_with_gateway()
+        proc.process_commit(self._merge_payload())
+
+        assert mock_gw.stage.call_count == 2
+        _, second_kwargs = mock_gw.stage.call_args_list[1]
+        assert second_kwargs["action_type"] == "state_transition"
+        assert second_kwargs["payload"]["new_state"] == "done"
+        assert second_kwargs["payload"]["ticket_id"] == "PROJ-42"
+        assert second_kwargs["confidence"] == 0.90
+
+    def test_done_staged_even_for_github(self):
+        """Unlike in-progress (no GH state), done maps to closing the issue —
+        the done transition must be staged for every platform."""
+        proc, mock_gw = _processor_with_gateway()
+        proc.process_commit(self._merge_payload(platform="github"))
+
+        assert mock_gw.stage.call_count == 2
+        _, second_kwargs = mock_gw.stage.call_args_list[1]
+        assert second_kwargs["action_type"] == "state_transition"
+        assert second_kwargs["payload"]["new_state"] == "done"
+
+    def test_no_in_progress_when_merge_is_first_commit(self):
+        proc, mock_gw = _processor_with_gateway()
+        payload = self._merge_payload()
+        payload["is_first_commit_for_ticket"] = True
+        proc.process_commit(payload)
+
+        transition_calls = [
+            kwargs for _, kwargs in mock_gw.stage.call_args_list
+            if kwargs["action_type"] == "state_transition"
+        ]
+        assert len(transition_calls) == 1
+        assert transition_calls[0]["payload"]["new_state"] == "done"
+
+
+# ---------------------------------------------------------------------------
+# 5. _execute_pm_action routes state_transition to route_state_transition()
 # ---------------------------------------------------------------------------
 
 class TestExecutePmActionStateTransition:
     """_execute_pm_action with action_type='state_transition' must call
-    workspace_router.route() with status=new_state and description=""."""
+    workspace_router.route_state_transition() targeted by exact ticket_id
+    (TASK-126) — never the fuzzy-matching route()."""
 
     def _action(self, new_state="Active", platform="azure", ticket_id="PROJ-42"):
         import json
@@ -277,44 +355,53 @@ class TestExecutePmActionStateTransition:
             }),
         }
 
-    def test_routes_with_new_state_as_status(self):
+    def test_calls_direct_transition_with_new_state(self):
         proc = _bare_processor()
         mock_router = MagicMock()
-        mock_router.route.return_value = (42, "azure")
+        mock_router.route_state_transition.return_value = True
         proc.workspace_router = mock_router
 
         result = proc._execute_pm_action(self._action(new_state="Active"))
 
         assert result["status"] == "posted"
-        mock_router.route.assert_called_once()
-        _, kwargs = mock_router.route.call_args
-        assert kwargs["status"] == "Active"
+        mock_router.route_state_transition.assert_called_once()
+        _, kwargs = mock_router.route_state_transition.call_args
+        assert kwargs["new_state"] == "Active"
+        assert kwargs["ticket_id"] == "PROJ-42"
 
-    def test_description_is_empty_string(self):
-        """state_transition must NOT require or post comment text."""
+    def test_fuzzy_route_never_used_for_state_transition(self):
+        """The exact ticket_id is in hand — fuzzy route() must not run."""
         proc = _bare_processor()
         mock_router = MagicMock()
-        mock_router.route.return_value = (42, "azure")
+        mock_router.route_state_transition.return_value = True
         proc.workspace_router = mock_router
 
         proc._execute_pm_action(self._action())
 
-        _, kwargs = mock_router.route.call_args
-        assert kwargs["description"] == ""
+        mock_router.route.assert_not_called()
 
     def test_returns_posted_on_success(self):
         proc = _bare_processor()
         mock_router = MagicMock()
-        mock_router.route.return_value = (42, "azure")
+        mock_router.route_state_transition.return_value = True
         proc.workspace_router = mock_router
 
         result = proc._execute_pm_action(self._action())
         assert result == {"status": "posted"}
 
+    def test_returns_failed_when_not_applied(self):
+        proc = _bare_processor()
+        mock_router = MagicMock()
+        mock_router.route_state_transition.return_value = False
+        proc.workspace_router = mock_router
+
+        result = proc._execute_pm_action(self._action())
+        assert result["status"] == "failed"
+
     def test_returns_failed_when_router_raises(self):
         proc = _bare_processor()
         mock_router = MagicMock()
-        mock_router.route.side_effect = RuntimeError("Azure API error")
+        mock_router.route_state_transition.side_effect = RuntimeError("Azure API error")
         proc.workspace_router = mock_router
 
         result = proc._execute_pm_action(self._action())
@@ -361,3 +448,77 @@ class TestExecutePmActionUnknownType:
 
         proc._execute_pm_action(self._unknown_action())
         mock_router.route.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# 7. TASK-128: extraction-strategy confidence + commit-language demotion
+# ---------------------------------------------------------------------------
+
+class TestExtractionConfidencePlumbing:
+    """Go's ticket_confidence drives staged-action confidence; commit-language
+    completion words stage a LOW-confidence done transition instead of
+    auto-closing via the comment route."""
+
+    def test_fallback_ticket_lands_in_review_tier(self):
+        proc, mock_gw = _processor_with_gateway()
+        payload = {
+            **COMMIT_PAYLOAD_BASE,
+            "ticket_id": "PROJ-42",
+            "ticket_confidence": 0.60,  # active-ticket fallback
+            "is_first_commit_for_ticket": True,
+            "pm_platform": "azure",
+        }
+        proc.process_commit(payload)
+
+        _, first_kwargs = mock_gw.stage.call_args_list[0]
+        assert first_kwargs["confidence"] == 0.60
+        _, second_kwargs = mock_gw.stage.call_args_list[1]
+        assert second_kwargs["action_type"] == "state_transition"
+        assert second_kwargs["confidence"] == pytest.approx(0.65)
+
+    def test_branch_ticket_keeps_high_confidence(self):
+        proc, mock_gw = _processor_with_gateway()
+        payload = {
+            **COMMIT_PAYLOAD_BASE,
+            "ticket_id": "PROJ-42",
+            "ticket_confidence": 0.95,
+            "is_first_commit_for_ticket": True,
+            "pm_platform": "azure",
+        }
+        proc.process_commit(payload)
+
+        _, first_kwargs = mock_gw.stage.call_args_list[0]
+        assert first_kwargs["confidence"] == 0.95
+        _, second_kwargs = mock_gw.stage.call_args_list[1]
+        assert second_kwargs["confidence"] == pytest.approx(0.90)  # capped
+
+    def test_commit_language_done_is_demoted(self):
+        """'done'-word commits: status stripped from the comment payload and a
+        separate 0.65-confidence done transition staged for explicit review."""
+        proc, mock_gw = _processor_with_gateway()
+        proc.nlp_parser = MagicMock()
+        proc.nlp_parser.parse.return_value = {
+            "status": "completed",
+            "description": "finished the auth flow",
+        }
+        payload = {
+            **COMMIT_PAYLOAD_BASE,
+            "commit_message": "finished the auth flow",
+            "ticket_id": "PROJ-42",
+            "ticket_confidence": 0.95,
+            "is_first_commit_for_ticket": False,
+            "pm_platform": "azure",
+        }
+        proc.process_commit(payload)
+
+        _, first_kwargs = mock_gw.stage.call_args_list[0]
+        assert first_kwargs["action_type"] == "post_comment"
+        assert first_kwargs["payload"]["status"] == ""  # never auto-closes via route()
+
+        transition_calls = [
+            kwargs for _, kwargs in mock_gw.stage.call_args_list
+            if kwargs["action_type"] == "state_transition"
+        ]
+        assert len(transition_calls) == 1
+        assert transition_calls[0]["payload"]["new_state"] == "done"
+        assert transition_calls[0]["confidence"] == pytest.approx(0.65)

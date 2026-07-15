@@ -388,3 +388,131 @@ def test_overrides_ignored_for_none_platform():
     )
 
     assert result == (None, None)
+
+
+# ---------------------------------------------------------------------------
+# route_state_transition (TASK-126) — direct-by-ID transitions
+# ---------------------------------------------------------------------------
+
+def test_state_transition_azure_applies_native_state():
+    """Azure in-progress: the platform-native state string is applied verbatim
+    to the exact work item ID — no fuzzy matching, no done-word gate."""
+    azure = MagicMock()
+    azure.update_work_item_state = AsyncMock(return_value=True)
+    router = make_router(azure=azure)
+
+    ok = router.route_state_transition(pm_platform="azure", ticket_id="PROJ-42", new_state="Active")
+
+    assert ok is True
+    azure.update_work_item_state.assert_awaited_once_with(42, "Active")
+
+
+def test_state_transition_azure_done_uses_configured_done_state():
+    azure = MagicMock()
+    azure.update_work_item_state = AsyncMock(return_value=True)
+    router = make_router(azure=azure)
+
+    with patch("backend.config.get_azure_done_state", return_value="Closed", create=True):
+        ok = router.route_state_transition(pm_platform="azure", ticket_id="AB#7", new_state="done")
+
+    assert ok is True
+    azure.update_work_item_state.assert_awaited_once_with(7, "Closed")
+
+
+def test_state_transition_github_done_closes_issue():
+    github = MagicMock()
+    github.close_issue = AsyncMock(return_value=True)
+    router = make_router(github=github)
+
+    ok = router.route_state_transition(pm_platform="github", ticket_id="#123", new_state="done")
+
+    assert ok is True
+    github.close_issue.assert_awaited_once_with(123)
+
+
+def test_state_transition_github_in_progress_is_skipped():
+    """GitHub has no native in-progress state — must skip, never guess."""
+    github = MagicMock()
+    github.close_issue = AsyncMock(return_value=True)
+    router = make_router(github=github)
+
+    ok = router.route_state_transition(pm_platform="github", ticket_id="#123", new_state="in-progress")
+
+    assert ok is False
+    github.close_issue.assert_not_awaited()
+
+
+def test_state_transition_gitlab_done_closes_issue_with_project():
+    gitlab = MagicMock()
+    gitlab.close_issue = AsyncMock(return_value=True)
+    router = make_router(gitlab=gitlab)
+
+    ok = router.route_state_transition(
+        pm_platform="gitlab", ticket_id="#9", new_state="closed", pm_project="55"
+    )
+
+    assert ok is True
+    gitlab.close_issue.assert_awaited_once_with(55, 9)
+
+
+def test_state_transition_no_numeric_id_skips():
+    azure = MagicMock()
+    azure.update_work_item_state = AsyncMock(return_value=True)
+    router = make_router(azure=azure)
+
+    ok = router.route_state_transition(pm_platform="azure", ticket_id="not-a-ticket", new_state="done")
+
+    assert ok is False
+    azure.update_work_item_state.assert_not_awaited()
+
+
+def test_state_transition_unconfigured_client_skips():
+    router = make_router()  # no clients
+    ok = router.route_state_transition(pm_platform="azure", ticket_id="PROJ-1", new_state="done")
+    assert ok is False
+
+
+# ---------------------------------------------------------------------------
+# route_state_transition label handling (TASK-129)
+# ---------------------------------------------------------------------------
+
+def test_state_transition_github_label_applied():
+    github = MagicMock()
+    github.add_label = AsyncMock(return_value=True)
+    router = make_router(github=github)
+
+    ok = router.route_state_transition(
+        pm_platform="github", ticket_id="#123", new_state="label:in-progress"
+    )
+
+    assert ok is True
+    github.add_label.assert_awaited_once_with(123, "in-progress")
+
+
+def test_state_transition_github_done_clears_label():
+    github = MagicMock()
+    github.close_issue = AsyncMock(return_value=True)
+    github.remove_label = AsyncMock(return_value=True)
+    router = make_router(github=github)
+
+    ok = router.route_state_transition(
+        pm_platform="github", ticket_id="#123", new_state="done",
+        clear_label="in-progress",
+    )
+
+    assert ok is True
+    github.close_issue.assert_awaited_once_with(123)
+    github.remove_label.assert_awaited_once_with(123, "in-progress")
+
+
+def test_state_transition_gitlab_label_applied():
+    gitlab = MagicMock()
+    gitlab.update_issue = AsyncMock(return_value=True)
+    router = make_router(gitlab=gitlab)
+
+    ok = router.route_state_transition(
+        pm_platform="gitlab", ticket_id="#9", new_state="label:doing", pm_project="55"
+    )
+
+    assert ok is True
+    gitlab.update_issue.assert_awaited_once_with(55, 9, {"add_labels": "doing"})

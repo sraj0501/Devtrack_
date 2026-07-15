@@ -20,6 +20,7 @@ type Poller struct {
 	github            *githubAlerter
 	azure             *azureAlerter
 	reviewCommentHook func([]ReviewCommentEvent) // called after each cycle with new review events
+	mergedPRHook      func([]MergedPREvent)      // called after each cycle with newly merged PRs (TASK-126)
 	cancel            context.CancelFunc
 }
 
@@ -44,6 +45,14 @@ func NewPoller(database *db.Database, notifier notify.Notifier) *Poller {
 // Must be called before Start(); not goroutine-safe after Start() returns.
 func (p *Poller) SetReviewCommentHook(hook func([]ReviewCommentEvent)) {
 	p.reviewCommentHook = hook
+}
+
+// SetMergedPRHook registers a callback that is invoked with any PRs authored
+// by the developer that merged into their repo's default branch since the last
+// poll (TASK-126: "merged to main → Done").
+// Must be called before Start(); not goroutine-safe after Start() returns.
+func (p *Poller) SetMergedPRHook(hook func([]MergedPREvent)) {
+	p.mergedPRHook = hook
 }
 
 // Start launches the poll loop in a background goroutine.
@@ -94,6 +103,14 @@ func (p *Poller) cycle() {
 		if inserted && p.notifier != nil {
 			label := r.EventType + " — " + r.Source
 			_ = p.notifier.Send(r.Title, label, r.URL)
+		}
+	}
+
+	// Merged-PR polling (TASK-126) — only when a hook is registered.
+	// GitHub only for now; Azure/GitLab merged-PR detection not yet implemented.
+	if p.mergedPRHook != nil && cfg.IsAlertGitHubEnabled() {
+		if evs := p.github.collectMergedPRs(p.database, p.userID); len(evs) > 0 {
+			p.mergedPRHook(evs)
 		}
 	}
 

@@ -350,6 +350,32 @@ class GitHubClient:
             return issue
         return None
 
+    async def add_label(self, number: int, label: str) -> bool:
+        """POST /repos/{owner}/{repo}/issues/{number}/labels — additive; never
+        clobbers existing labels (unlike update_issue(labels=...))."""
+        url = self._api(f"/repos/{self._owner}/{self._repo}/issues/{number}/labels")
+        data = await self._post(url, json_body={"labels": [label]})
+        if data is not None:
+            logger.info(f"Added label {label!r} to GitHub issue #{number}")
+            return True
+        return False
+
+    async def remove_label(self, number: int, label: str) -> bool:
+        """DELETE /repos/{owner}/{repo}/issues/{number}/labels/{label}.
+        Missing label (404) is treated as success — the goal state holds."""
+        session = await self._get_session()
+        url = self._api(f"/repos/{self._owner}/{self._repo}/issues/{number}/labels/{label}")
+        try:
+            async with session.delete(url) as resp:
+                if resp.status in (200, 404):
+                    logger.info(f"Removed label {label!r} from GitHub issue #{number}")
+                    return True
+                logger.warning(f"DELETE {url} → {resp.status}: {await resp.text()}")
+                return False
+        except Exception as e:
+            logger.warning(f"DELETE {url} failed: {e}")
+            return False
+
     async def close_issue(self, number: int) -> bool:
         """Close an issue (PATCH state=closed)."""
         result = await self.update_issue(number, state="closed")
