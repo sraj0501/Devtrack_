@@ -124,6 +124,56 @@ so opt-in telemetry pings go nowhere, and `LICENSE_CONTACT_EMAIL` defaults to `l
 the same dead domain. Both stand up when the app is commercially deployed. Nothing leaks in the meantime
 (telemetry is off by default; the ping is fire-and-forget and cannot block the daemon).
 
+**[2026-07-13] TASK-125 — HOTFIX: live wiki stuck on a loading screen.** Branch
+`fix/TASK-125-wiki-loading-screen`; PR #221 → `dev`. Logged retroactively — this came in as an
+outage, not off the board. **Correction (2026-07-15 re-audit):** this entry originally claimed the
+fix shipped to production via #222 (`dev` → `main`). It did not — #221 merged to `dev` two minutes
+before #222 merged `dev` → `main`, but #222's merge did not pick up the new commit (a merge race,
+not a code bug), so `main` never got the fix. Caught during a drift re-audit; see that entry below
+for the resolution (PR #224).
+
+`renderHome()` in `devtrack_wiki/wiki/wiki.html` builds the whole home page as a single JS template
+literal. TASK-110 added bash install snippets inside it containing **raw backticks** (`` `uv sync` ``,
+`` `source .env` ``, `` `devtrack start` ``), each of which closed the literal early. A syntax error
+discards the *entire* inline `<script>`, so `DOMContentLoaded` never fired `navigate()` and every wiki
+page — not just home — sat on the static "Loading…" placeholder hardcoded in the markup. The same
+snippet also carried `devtrack_${OS}_${ARCH}.tar.gz`; once the backticks were escaped, JS would have
+interpolated `${OS}`/`${ARCH}` as undefined vars and thrown a `ReferenceError` at render time,
+reproducing the identical stuck spinner. Both classes escaped. Total fix: 4 lines.
+
+**Why the TASK-110 verification missed it:** that entry above says "both JS bundles pass `node --check`"
+— and they did. The check ran against `assets/*.js`. The bug was in an inline `<script>` in the HTML,
+which nothing checked. A green verification line that tests the wrong artefact is worse than no line,
+because it reads as coverage.
+
+**Guard (new):** `.github/workflows/wiki.yml` + `devtrack_wiki/check_inline_js.py` extract each wiki
+page's inline `<script>` and run `node --check` on it, remapping node's line numbers back to real HTML
+lines. Confirmed it fails on the offending commit (`a721720`, pointing at `wiki.html:4042`) and passes
+on the fix. Before this, **no workflow covered `devtrack_wiki/` at all** — and `ci.yml` only triggers on
+PRs to `main`, so a wiki change could not be checked on the `dev` PR where it lands.
+
+**Deploy note (cost an extra hop to learn):** Netlify serves devtrack.cloud from **`main`**, not `dev`.
+The fix merging to `dev` did not bring the site back; it needed the `dev` → `main` promotion. The
+production branch lives in the Netlify dashboard, not in `netlify.toml` — nothing in the repo says so.
+
+**[2026-07-15] Drift re-audit (post-TASK-109/110/111).** User asked to re-run the "audit against
+reality, not against other docs" pass. Found one real gap: **TASK-125** (a wiki hotfix — the
+`renderHome` template literal had unescaped backticks, leaving devtrack.cloud stuck on its loading
+screen; PR #221, merged to `dev` 2026-07-14) had its fix land on `dev` but never got promoted to
+`main`, and its board-logging follow-up (PR #223) sat open and unmerged — so this board never
+recorded TASK-125 at all despite it being the "next issued ID". Resolved: merged #223 to `dev`,
+opened PR #224 (`dev` → `main`) for the user to review/merge — not merged directly, per standing
+instruction that `main` promotions always need explicit per-instance go-ahead. Also found this
+local clone's branch cleanup (TASK-109) never actually ran here: 47 stale local branches were
+sitting alongside 3 dead `gitlab-*` remotes (GitLab retired 2026-05-27) with no live content behind
+them. Deleted 39 confirmed-safe branches (28 by literal merge-ancestry, 12 more force-deleted after
+cross-checking their names against GitHub's merged-PR list, since squash merges break `git branch
+-d`'s local ancestry check) and removed the 3 `gitlab-*` remotes. Left 5 old (May–June 2026,
+pre-monorepo-split) branches alone — `feat/client-server-decoupling`, `feat/go-native-git-commit-flow`,
+`features/TASK-020-windows-force-trigger`, `features/TASK-021-windows-sighup-reload`, `migration` —
+each still carries a real, unexplained diff against `main` and wasn't provably superseded, so they
+need a human look rather than a guess.
+
 **QUEUED — EPIC: PostgreSQL Backend (TASK-112–116).** Must land before commercial launch. See the epic
 section at the bottom of this board.
 
@@ -132,7 +182,7 @@ not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-125_
+_Next DevTrack task ID: TASK-126_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
