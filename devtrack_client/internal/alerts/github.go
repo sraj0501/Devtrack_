@@ -188,6 +188,84 @@ func (a *githubAlerter) collectReviewCommentsForRepo(
 	return events
 }
 
+// collectMergedPRs polls GitHub for PRs authored by the developer that merged
+// into each workspace repo's default branch since the last check (TASK-126).
+// The first run only records the checkpoint — it never back-fires for the
+// repo's entire merge history.
+func (a *githubAlerter) collectMergedPRs(database *db.Database, userID string) []MergedPREvent {
+	client, err := github.NewClient("")
+	if err != nil {
+		log.Printf("alerts/github/merged: build client: %v", err)
+		return nil
+	}
+
+	since, found, err := database.GetAlertLastChecked(userID, "github_merged")
+	if err != nil {
+		log.Printf("alerts/github/merged: load last_checked: %v", err)
+		return nil
+	}
+	now := time.Now()
+	if setErr := database.SetAlertLastChecked(userID, "github_merged", now); setErr != nil {
+		log.Printf("alerts/github/merged: save last_checked: %v", setErr)
+	}
+	if !found {
+		return nil // first run: checkpoint only
+	}
+
+	authUser, err := client.GetAuthenticatedUser()
+	if err != nil {
+		log.Printf("alerts/github/merged: get authenticated user: %v", err)
+		return nil
+	}
+
+	wsCfg, err := cfg.LoadWorkspacesConfig()
+	if err != nil || wsCfg == nil {
+		log.Printf("alerts/github/merged: load workspaces: %v", err)
+		return nil
+	}
+
+	var events []MergedPREvent
+	for _, ws := range wsCfg.Workspaces {
+		if ws.PMPlatform != "github" || !ws.Enabled {
+			continue
+		}
+		repo := ws.PMProject
+		if repo == "" && ws.PMOrg != "" && ws.Name != "" {
+			repo = ws.PMOrg + "/" + ws.Name
+		}
+		if repo == "" {
+			continue
+		}
+
+		defaultBranch, err := client.GetDefaultBranch(repo)
+		if err != nil || defaultBranch == "" {
+			log.Printf("alerts/github/merged[%s]: default branch: %v", repo, err)
+			continue
+		}
+
+		prs, err := client.ListMergedPRsSince(repo, authUser.Login, defaultBranch, since)
+		if err != nil {
+			log.Printf("alerts/github/merged[%s]: list merged PRs: %v", repo, err)
+			continue
+		}
+		for _, pr := range prs {
+			mergedAt, _ := time.Parse(time.RFC3339, pr.MergedAt)
+			events = append(events, MergedPREvent{
+				Platform:   "github",
+				Workspace:  ws.Name,
+				PRID:       strconv.Itoa(pr.Number),
+				PRTitle:    pr.Title,
+				HeadBranch: pr.Head.Ref,
+				BaseBranch: pr.Base.Ref,
+				MergeSHA:   pr.MergeCommitSHA,
+				PRURL:      pr.HTMLURL,
+				MergedAt:   mergedAt,
+			})
+		}
+	}
+	return events
+}
+
 // IsPRApproved returns true if any reviewer has submitted an APPROVED review on
 // the given PR. It looks up the repo via the workspace name in workspaces.yaml.
 func (a *githubAlerter) IsPRApproved(prID, workspace string) (bool, error) {

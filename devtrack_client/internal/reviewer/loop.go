@@ -73,7 +73,12 @@ func (l *PRFixLoop) Run(ctx context.Context, platform, prID, workspace, repoPath
 		if len(fixable) == 0 {
 			// No pending fixable comments — check if PR is approved.
 			if l.checker == nil {
-				log.Printf("review/loop: no approval checker configured — PR %s waiting for manual check", prID)
+				// Platform cannot report approval state (e.g. GitLab): escalate with
+				// a clear reason instead of polling forever (Non-Negotiable #8).
+				return EscalationReport{
+					Stuck:         true,
+					BlockerReason: "all auto-fixable comments resolved; approval state not checkable on " + platform + " — verify the PR manually",
+				}
 			} else {
 				approved, err := l.checker.IsPRApproved(prID, workspace)
 				if err != nil {

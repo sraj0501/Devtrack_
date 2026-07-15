@@ -436,8 +436,9 @@ class TestProcessCommitQueueStaging:
         payload = {**COMMIT_PAYLOAD, "ticket_id": "PROJ-123"}
         result = proc.process_commit(payload)
 
-        mock_gateway.stage.assert_called_once()
-        _, kwargs = mock_gateway.stage.call_args
+        # NLP status "done" additionally stages a demoted (0.65) done
+        # transition (TASK-128) — the post_comment is always the first call.
+        _, kwargs = mock_gateway.stage.call_args_list[0]
         assert kwargs["target"] == "PROJ-123"
         assert kwargs["confidence"] == 0.85
         assert kwargs["action_type"] == "post_comment"
@@ -458,7 +459,7 @@ class TestProcessCommitQueueStaging:
         payload = {**COMMIT_PAYLOAD, "ticket_id": "PROJ-999"}
         proc.process_commit(payload)
 
-        _, kwargs = mock_gateway.stage.call_args
+        _, kwargs = mock_gateway.stage.call_args_list[0]
         assert kwargs["confidence"] == 0.85
         assert kwargs["target"] == "PROJ-999"
 

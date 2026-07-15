@@ -25,21 +25,30 @@ const (
 
 // TriggerEvent represents an event that triggers a prompt
 type TriggerEvent struct {
-	Type          TriggerType
-	Timestamp     time.Time
-	Source        string
-	Data          interface{}
+	Type      TriggerType
+	Timestamp time.Time
+	Source    string
+	Data      interface{}
 	// Workspace context (populated for commit triggers in multi-repo mode)
-	RepoPath        string
-	WorkspaceName   string
-	TicketID        string // extracted from branch name (or "" if unlinked)
-	PMPlatform      string
-	PMProject       string
+	RepoPath      string
+	WorkspaceName string
+	TicketID      string // extracted from branch name (or "" if unlinked)
+	// TicketConfidence reflects the extraction strategy that produced TicketID:
+	// 0.95 branch name, 0.85 commit message, 0.60 active-ticket fallback.
+	TicketConfidence float64
+	// IsMergeToDefault is true when the commit is a merge commit that landed on
+	// the repository's default branch — the "merged to main → Done" signal.
+	IsMergeToDefault bool
+	PMPlatform       string
+	PMProject        string
 	// Per-workspace PM settings (override global .env defaults)
 	PMAssignee      string
 	PMIterationPath string
 	PMAreaPath      string
 	PMMilestone     int
+	// PMInProgressLabel is the GitHub/GitLab in-progress label convention
+	// (TASK-129); "" = default "in-progress", "none" = disabled.
+	PMInProgressLabel string
 }
 
 // Scheduler manages time-based triggers and scheduling

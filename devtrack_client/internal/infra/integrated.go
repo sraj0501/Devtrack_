@@ -20,29 +20,32 @@ import (
 
 // WorkspaceMonitor pairs a GitMonitor with its workspace routing metadata
 type WorkspaceMonitor struct {
-	gitMonitor      *GitMonitor
-	workspaceName   string
-	pmPlatform      string
-	pmProject       string
+	gitMonitor    *GitMonitor
+	workspaceName string
+	pmPlatform    string
+	pmProject     string
 	// Per-workspace PM settings
 	pmAssignee      string
 	pmIterationPath string
 	pmAreaPath      string
 	pmMilestone     int
 	// Filtering
-	ignoreBranches  []string // commits on these branches are silently skipped
+	ignoreBranches []string // commits on these branches are silently skipped
 	// ticketPattern is a custom regex used to extract ticket IDs from branch
 	// names/commit messages for this workspace; empty = use default patterns.
 	ticketPattern string
+	// inProgressLabel is the GitHub/GitLab in-progress label convention
+	// (TASK-129); "" = default, "none" = disabled.
+	inProgressLabel string
 }
 
 // IntegratedMonitor combines Git monitoring and time-based scheduling
 type IntegratedMonitor struct {
-	workspaceMonitors    []*WorkspaceMonitor // one per repo (single-repo has exactly one)
-	scheduler            *Scheduler
-	config               *config.Config
-	database             *db.Database
-	lastActiveWorkspace  *WorkspaceMonitor
+	workspaceMonitors     []*WorkspaceMonitor // one per repo (single-repo has exactly one)
+	scheduler             *Scheduler
+	config                *config.Config
+	database              *db.Database
+	lastActiveWorkspace   *WorkspaceMonitor
 	lastActiveWorkspaceMu sync.Mutex
 	// enhancedHashes tracks commit hashes that were amended by the auto-enhancer
 	// so we don't re-process our own amendments (infinite-loop guard).
@@ -94,6 +97,7 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 				pmMilestone:     ws.PMMilestone,
 				ignoreBranches:  ws.IgnoreBranches,
 				ticketPattern:   ws.TicketPattern,
+				inProgressLabel: ws.InProgressLabel,
 			})
 			log.Printf("  ✓ Workspace %q → %s (platform: %q)", ws.Name, ws.Path, ws.PMPlatform)
 		}
@@ -298,6 +302,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 			pmMilestone:     ws.PMMilestone,
 			ignoreBranches:  ws.IgnoreBranches,
 			ticketPattern:   ws.TicketPattern,
+			inProgressLabel: ws.InProgressLabel,
 		}
 		wmCopy := wm
 		if err := wmCopy.gitMonitor.Start(func(commit CommitInfo) {
@@ -337,12 +342,15 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 
 	// If DEVTRACK_AUTO_ENHANCE=true and Ollama is running, generate a better
 	// commit message and amend the commit before firing the trigger.
-	if newHash, newMsg, ok := tryAutoEnhance(ws.gitMonitor.repoPath, commit); ok {
-		im.enhancedHashesMu.Lock()
-		im.enhancedHashes[newHash] = true
-		im.enhancedHashesMu.Unlock()
-		commit.Hash = newHash
-		commit.Message = newMsg
+	// Never amend merge commits — rewriting them breaks the merge topology.
+	if !commit.IsMerge {
+		if newHash, newMsg, ok := tryAutoEnhance(ws.gitMonitor.repoPath, commit); ok {
+			im.enhancedHashesMu.Lock()
+			im.enhancedHashes[newHash] = true
+			im.enhancedHashesMu.Unlock()
+			commit.Hash = newHash
+			commit.Message = newMsg
+		}
 	}
 
 	im.lastActiveWorkspaceMu.Lock()
@@ -356,12 +364,22 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 	//   3. Active-ticket fallback — last successfully matched ticket for this
 	//      repo (TASK-069 strategy 3)
 	// If all three fail, ticketID stays "" and the trigger is logged unlinked.
+	// TASK-128: the extraction strategy that produced the ticket ID is the
+	// confidence signal for every action staged downstream (bible: "confidence
+	// is always explicit"). Branch names are the developer contract (highest);
+	// message scan is strong; the active-ticket fallback is a guess (lowest —
+	// lands in the 15-minute review tier, per the <0.70 timeout mapping).
 	ext, _ := ticket.NewExtractor(ws.ticketPattern) // falls back to defaults on ""
+	ticketConfidence := 0.0
 	ticketID := ext.Extract(commit.Branch)
+	if ticketID != "" {
+		ticketConfidence = 0.95
+	}
 
 	if ticketID == "" {
 		ticketID = ext.Extract(commit.Message)
 		if ticketID != "" {
+			ticketConfidence = 0.85
 			log.Printf("trigger commit: hash=%s ticket_id=%q (from commit message)", commit.Hash[:8], ticketID)
 		}
 	}
@@ -369,24 +387,41 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 	if ticketID == "" && im.database != nil {
 		if last, err := im.database.GetLastTicketID(ws.gitMonitor.repoPath); err == nil && last != "" {
 			ticketID = last
+			ticketConfidence = 0.60
 			log.Printf("trigger commit: hash=%s ticket_id=%q (active-ticket fallback)", commit.Hash[:8], ticketID)
 		}
 	}
 
+	// TASK-126: a merge commit landing on the default branch signals the ticket's
+	// work is done ("merged to main → Done"). The ticket ID for a merge commit
+	// comes from the merge subject ("Merge branch 'fix/PROJ-123-x'") via the
+	// message-scan strategy above — the branch itself is the default branch.
+	isMergeToDefault := false
+	if commit.IsMerge && commit.Branch != "" {
+		if def := ws.gitMonitor.DefaultBranch(); def != "" && strings.EqualFold(commit.Branch, def) {
+			isMergeToDefault = true
+			log.Printf("trigger commit: hash=%s merge to default branch %q detected (ticket_id=%q)",
+				commit.Hash[:8], def, ticketID)
+		}
+	}
+
 	event := TriggerEvent{
-		Type:            TriggerTypeCommit,
-		Timestamp:       commit.Timestamp,
-		Source:          "git",
-		Data:            commit,
-		RepoPath:        ws.gitMonitor.repoPath,
-		WorkspaceName:   ws.workspaceName,
-		PMPlatform:      ws.pmPlatform,
-		PMProject:       ws.pmProject,
-		PMAssignee:      ws.pmAssignee,
-		PMIterationPath: ws.pmIterationPath,
-		PMAreaPath:      ws.pmAreaPath,
-		PMMilestone:     ws.pmMilestone,
-		TicketID:        ticketID,
+		Type:              TriggerTypeCommit,
+		Timestamp:         commit.Timestamp,
+		Source:            "git",
+		Data:              commit,
+		RepoPath:          ws.gitMonitor.repoPath,
+		WorkspaceName:     ws.workspaceName,
+		PMPlatform:        ws.pmPlatform,
+		PMProject:         ws.pmProject,
+		PMAssignee:        ws.pmAssignee,
+		PMIterationPath:   ws.pmIterationPath,
+		PMAreaPath:        ws.pmAreaPath,
+		PMMilestone:       ws.pmMilestone,
+		PMInProgressLabel: ws.inProgressLabel,
+		TicketID:          ticketID,
+		TicketConfidence:  ticketConfidence,
+		IsMergeToDefault:  isMergeToDefault,
 	}
 	im.handleTrigger(event)
 }
@@ -444,7 +479,9 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 				FilesChanged:           commit.Files,
 				Branch:                 commit.Branch,
 				TicketID:               event.TicketID,
+				TicketConfidence:       event.TicketConfidence,
 				IsFirstCommitForTicket: isFirstCommitForTicket,
+				IsMergeToDefault:       event.IsMergeToDefault,
 				WorkspaceName:          event.WorkspaceName,
 				PMPlatform:             event.PMPlatform,
 				PMProject:              event.PMProject,
@@ -452,6 +489,7 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 				PMIterationPath:        event.PMIterationPath,
 				PMAreaPath:             event.PMAreaPath,
 				PMMilestone:            event.PMMilestone,
+				PMInProgressLabel:      event.PMInProgressLabel,
 			}
 			commitData = &cd
 
@@ -486,13 +524,13 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 			lastWS := im.lastActiveWorkspace
 			im.lastActiveWorkspaceMu.Unlock()
 			if lastWS != nil {
-				td.WorkspaceName   = lastWS.workspaceName
-				td.PMPlatform      = lastWS.pmPlatform
-				td.PMProject       = lastWS.pmProject
-				td.PMAssignee      = lastWS.pmAssignee
+				td.WorkspaceName = lastWS.workspaceName
+				td.PMPlatform = lastWS.pmPlatform
+				td.PMProject = lastWS.pmProject
+				td.PMAssignee = lastWS.pmAssignee
 				td.PMIterationPath = lastWS.pmIterationPath
-				td.PMAreaPath      = lastWS.pmAreaPath
-				td.PMMilestone     = lastWS.pmMilestone
+				td.PMAreaPath = lastWS.pmAreaPath
+				td.PMMilestone = lastWS.pmMilestone
 			}
 
 			timerData = &td

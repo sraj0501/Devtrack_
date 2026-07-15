@@ -14,6 +14,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/match"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/tui"
 )
 
@@ -258,18 +259,31 @@ func gitAfterCommit(repoPath, hash, branch, message string, state any) {
 			}
 		}
 
-		// --- Immediate PM sync with offline-queue fallback ---
+		// --- PM sync: queue-first (TASK-127, Non-Negotiable #2) ---
+		// When the server is up the comment is STAGED in pending_actions, never
+		// posted directly — it auto-posts after the confidence window and can be
+		// edited/rejected via `devtrack queue` until then. Direct post remains
+		// only as the no-server (lightweight/offline) degradation.
 		if hasTicket {
 			if confirmYN(reader, fmt.Sprintf("→ Post commit update to %s?", ticket.ID), true) {
 				ws, _ := config.ResolveWorkspaceForPath(repoPath)
-				if err := pm.AddComment(ws, ticket, body); err != nil {
-					if qErr := pm.EnqueueComment(database, ticket, body, hash); qErr == nil {
-						fmt.Printf("  ⚠️  %s unreachable — queued for sync when back online.\n", ticket.Platform)
-					} else {
-						fmt.Printf("  ✗ Sync failed and could not queue: %v\n", err)
+				staged := false
+				if trigger.NewHTTPTriggerClient().Ping() {
+					if id, err := pm.StagePendingComment(database, ws, ticket, body); err == nil {
+						fmt.Printf("  ✓ Staged update for %s (queue #%d — posts in ~2 min; `devtrack queue list` to review)\n", ticket.ID, id)
+						staged = true
 					}
-				} else {
-					fmt.Printf("  ✓ Posted to %s\n", ticket.ID)
+				}
+				if !staged {
+					if err := pm.AddComment(ws, ticket, body); err != nil {
+						if qErr := pm.EnqueueComment(database, ticket, body, hash); qErr == nil {
+							fmt.Printf("  ⚠️  %s unreachable — queued for sync when back online.\n", ticket.Platform)
+						} else {
+							fmt.Printf("  ✗ Sync failed and could not queue: %v\n", err)
+						}
+					} else {
+						fmt.Printf("  ✓ Posted to %s\n", ticket.ID)
+					}
 				}
 			}
 		}

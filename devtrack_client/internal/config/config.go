@@ -62,6 +62,11 @@ type WorkspaceConfig struct {
 	// If empty, the global EOD_REPORT_HOUR / EOD_REPORT_MINUTE settings are used.
 	// Example: "18:00" fires at 6 PM. "0" or absent disables per-workspace override.
 	EODTime string `yaml:"eod_time,omitempty"`
+	// InProgressLabel (GitHub/GitLab only) is the label applied on the first
+	// commit for a ticket — their issue APIs have no in-progress state, so the
+	// label convention stands in (TASK-129). Empty = default "in-progress";
+	// "none" disables the label entirely. Removed automatically on close.
+	InProgressLabel string `yaml:"in_progress_label,omitempty"`
 }
 
 // WorkspacesConfig is the top-level structure of workspaces.yaml

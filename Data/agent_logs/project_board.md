@@ -174,6 +174,42 @@ pre-monorepo-split) branches alone — `feat/client-server-decoupling`, `feat/go
 each still carries a real, unexplained diff against `main` and wasn't provably superseded, so they
 need a human look rather than a guess.
 
+**[2026-07-13] IMPLEMENTED (uncommitted, awaiting review/commit) — EPIC: Silent Worker Correctness (TASK-126–130).** Branch
+`features/TASK-126-silent-worker-correctness`. User decision 2026-07-13: the silent-background-worker
+persona (commit → ticket → comment + state staged in queue → auto-approve → EOD) is the non-negotiable
+sell and must reach correctness + completeness before other work. Source: code-vs-Bible audit this date
+(findings in the session plan; headline: "merged → Done" had NO implementation anywhere — the only
+done-path was NLP completion-words in commit messages; `cli_git.go` and the PM outbox posted around the
+pending-actions queue; daemon-staged actions hardcoded confidence 1.0; PR fix loop was wired with a nil
+approval checker so "PR approved" could never fire).
+
+- **TASK-126** — Merge-to-Done detection, local-first: Go monitor detects merge commits on the default
+  branch, `is_merge_to_default` on `/trigger/commit`; Python stages `state_transition` with
+  `done_state_for(platform)` (Azure `get_azure_done_state()`, Jira "Done", GitHub/GitLab close issue).
+  Poller PR-merged enhancement where tokens exist (GitHub first).
+- **TASK-127** — Close queue bypasses: `cli_git.go` stages instead of direct `pm.AddComment`; PM outbox
+  retries flow through/are visible in `pending_actions`.
+- **TASK-128** — Real confidence on daemon-staged actions; commit-language done-transitions demoted to
+  low confidence (<0.7 ⇒ 15-min review tier).
+- **TASK-129** — GitHub/GitLab in-progress via configurable label (default `in-progress`), applied on
+  first commit, removed on close.
+- **TASK-130** — Pass a real `IsPRApproved` checker into the PR fix loop (GitHub/Azure exist; GitLab
+  gracefully unsupported). Ride-along fix, puppet-master scope.
+
+All five tasks implemented same day. Verification: Go build/vet clean, all Go package tests pass;
+Python 816/816 pass. **Additional correctness find during implementation:** `workspace_router.route()`
+threaded `ticket_id` through every layer and never used it — all PM targeting was fuzzy commit-text
+matching even with the exact ID in hand, and `_async_sync` only transitions on done-words, so the
+TASK-073 in-progress transition never actually applied (it posted an empty comment). Fixed with
+direct-by-ID `route_state_transition()` / `route_comment()`; the state_transition and direct-ticket
+post_comment queue actions now bypass fuzzy matching entirely. Local merge detection covers merge
+commits on the default branch (go-git `NumParents>=2` + `refs/remotes/origin/HEAD`); squash/rebase
+merges are covered by the GitHub merged-PR poller (`github_merged` checkpoint in alert_state; first
+run checkpoints only, never back-fires). Merge commits are never auto-enhance amended (topology).
+Known limitations queued for follow-up: Azure/GitLab merged-PR polling; Go-native queue execution in
+lightweight mode (cli_git/outbox still direct-post when no server, explicitly logged); Jira routing
+still unimplemented in workspace_router.
+
 **QUEUED — EPIC: PostgreSQL Backend (TASK-112–116).** Must land before commercial launch. See the epic
 section at the bottom of this board.
 
@@ -182,8 +218,8 @@ not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-126_
-_Active branch: `dev`_
+_Next DevTrack task ID: TASK-131_
+_Active branch: `features/TASK-126-silent-worker-correctness`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 

@@ -34,6 +34,7 @@ type CommitInfo struct {
 	Timestamp time.Time
 	Files     []string
 	Branch    string // current branch name at commit time ("" if detached HEAD)
+	IsMerge   bool   // true when the commit has 2+ parents (a merge commit)
 }
 
 // NewGitMonitor creates a new GitMonitor instance
@@ -215,7 +216,29 @@ func (gm *GitMonitor) getLatestCommit() (*CommitInfo, error) {
 		Timestamp: commit.Author.When,
 		Files:     files,
 		Branch:    branch,
+		IsMerge:   commit.NumParents() >= 2,
 	}, nil
+}
+
+// DefaultBranch returns the repository's default branch name. It prefers the
+// remote HEAD symbolic ref (refs/remotes/origin/HEAD → origin's default), and
+// falls back to a local "main" or "master" branch. Returns "" when neither
+// can be determined (e.g. a repo with no remote and a custom trunk name).
+func (gm *GitMonitor) DefaultBranch() string {
+	if ref, err := gm.repo.Reference(plumbing.ReferenceName("refs/remotes/origin/HEAD"), false); err == nil &&
+		ref.Type() == plumbing.SymbolicReference {
+		// Target is e.g. refs/remotes/origin/main → default branch "main".
+		target := ref.Target().String()
+		if name, ok := strings.CutPrefix(target, "refs/remotes/origin/"); ok && name != "" {
+			return name
+		}
+	}
+	for _, name := range []string{"main", "master"} {
+		if _, err := gm.repo.Reference(plumbing.NewBranchReferenceName(name), false); err == nil {
+			return name
+		}
+	}
+	return ""
 }
 
 // getChangedFiles returns the list of files changed in a commit
