@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -117,14 +118,20 @@ type PullRequest struct {
 	Head    struct {
 		Ref string `json:"ref"` // branch name
 	} `json:"head"`
+	Base struct {
+		Ref string `json:"ref"` // target branch name
+	} `json:"base"`
+	MergedAt       string `json:"merged_at"`        // RFC3339; empty when not merged
+	MergeCommitSHA string `json:"merge_commit_sha"` // SHA of the merge/squash commit
+	UpdatedAt      string `json:"updated_at"`       // RFC3339
 }
 
 // PRReviewComment is a single review comment on a pull request.
 type PRReviewComment struct {
-	ID        int64  `json:"id"`
-	Body      string `json:"body"`
-	HTMLURL   string `json:"html_url"`
-	User      struct {
+	ID      int64  `json:"id"`
+	Body    string `json:"body"`
+	HTMLURL string `json:"html_url"`
+	User    struct {
 		Login string `json:"login"`
 	} `json:"user"`
 	CreatedAt string `json:"created_at"`
@@ -167,6 +174,62 @@ func (c *Client) ListOpenPRsAuthored(repo, login string) ([]PullRequest, error) 
 		page++
 	}
 	return all, nil
+}
+
+// repoInfo is a minimal repository representation from the GitHub REST API.
+type repoInfo struct {
+	DefaultBranch string `json:"default_branch"`
+}
+
+// GetDefaultBranch returns the repository's default branch name.
+// repo is "owner/repo".
+func (c *Client) GetDefaultBranch(repo string) (string, error) {
+	var info repoInfo
+	if err := c.do("/repos/"+repo, &info); err != nil {
+		return "", err
+	}
+	return info.DefaultBranch, nil
+}
+
+// ListMergedPRsSince returns PRs in the given repo authored by login that were
+// merged into base after since. repo is "owner/repo". Results are sorted by
+// most-recently-updated first by the API; scanning stops at the first page
+// whose PRs were all updated before since.
+func (c *Client) ListMergedPRsSince(repo, login, base string, since time.Time) ([]PullRequest, error) {
+	var merged []PullRequest
+	page := 1
+	for {
+		var batch []PullRequest
+		path := fmt.Sprintf("/repos/%s/pulls?state=closed&base=%s&sort=updated&direction=desc&per_page=50&page=%d",
+			repo, url.QueryEscape(base), page)
+		if err := c.do(path, &batch); err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+		pageExhausted := false
+		for _, pr := range batch {
+			if updatedAt, err := time.Parse(time.RFC3339, pr.UpdatedAt); err == nil && !updatedAt.After(since) {
+				// Sorted by updated desc — everything from here on is older.
+				pageExhausted = true
+				break
+			}
+			if pr.User.Login != login || pr.MergedAt == "" {
+				continue
+			}
+			mergedAt, err := time.Parse(time.RFC3339, pr.MergedAt)
+			if err != nil || !mergedAt.After(since) {
+				continue
+			}
+			merged = append(merged, pr)
+		}
+		if pageExhausted || len(batch) < 50 {
+			break
+		}
+		page++
+	}
+	return merged, nil
 }
 
 // ListPRReviewComments returns inline review comments for a pull request.
@@ -249,10 +312,12 @@ func (c *Client) ListPRIssueComments(repo string, prNumber int) ([]PRReviewComme
 		}
 		for _, b := range batch {
 			all = append(all, PRReviewComment{
-				ID:        b.ID,
-				Body:      b.Body,
-				HTMLURL:   b.HTMLURL,
-				User:      struct{ Login string `json:"login"` }{Login: b.User.Login},
+				ID:      b.ID,
+				Body:    b.Body,
+				HTMLURL: b.HTMLURL,
+				User: struct {
+					Login string `json:"login"`
+				}{Login: b.User.Login},
 				CreatedAt: b.CreatedAt,
 				UpdatedAt: b.UpdatedAt,
 			})

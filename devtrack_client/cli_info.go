@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -13,9 +16,7 @@ func (cli *CLI) handleLogs() error {
 
 	if len(os.Args) > 2 {
 		if os.Args[2] == "-f" || os.Args[2] == "--follow" {
-			fmt.Println("❌ Follow mode not yet implemented")
-			fmt.Printf("Use: tail -f %s\n", GetLogFilePath())
-			return nil
+			return followLogs(lines)
 		}
 	}
 
@@ -37,6 +38,89 @@ func (cli *CLI) handleLogs() error {
 	}
 
 	return nil
+}
+
+// followLogs prints the last N log lines, then polls the log file for new
+// content until interrupted (Ctrl+C) — a self-contained equivalent of
+// `tail -f` that works the same on Windows, where the shell has no tail.
+func followLogs(lines int) error {
+	logPath := GetLogFilePath()
+
+	f, err := os.Open(logPath)
+	if err != nil {
+		fmt.Printf("❌ Failed to open log file: %v\n", err)
+		return err
+	}
+
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		fmt.Printf("❌ Failed to stat log file: %v\n", err)
+		return err
+	}
+
+	// Print the existing tail, matching the non-follow view.
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	var tail []string
+	for scanner.Scan() {
+		tail = append(tail, scanner.Text())
+		if len(tail) > lines {
+			tail = tail[1:]
+		}
+	}
+	f.Close()
+	fmt.Printf("📄 Last %d log entries (following — Ctrl+C to stop):\n", len(tail))
+	fmt.Println("════════════════════════")
+	for _, line := range tail {
+		fmt.Println(line)
+	}
+
+	offset := info.Size()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-sigChan:
+			fmt.Println("\n✓ Stopped following logs.")
+			return nil
+		case <-ticker.C:
+			info, statErr := os.Stat(logPath)
+			if statErr != nil {
+				// Log file rotated out from under us or removed; keep polling.
+				continue
+			}
+			if info.Size() < offset {
+				// Truncated or rotated to a fresh file — restart from the top.
+				offset = 0
+			}
+			if info.Size() == offset {
+				continue
+			}
+			// Reopen by path each tick so a rename-based rotation (new file,
+			// same path) is picked up instead of reading a stale deleted inode.
+			nf, openErr := os.Open(logPath)
+			if openErr != nil {
+				continue
+			}
+			if _, err := nf.Seek(offset, 0); err != nil {
+				nf.Close()
+				continue
+			}
+			reader := bufio.NewScanner(nf)
+			reader.Buffer(make([]byte, 64*1024), 1024*1024)
+			for reader.Scan() {
+				fmt.Println(reader.Text())
+			}
+			nf.Close()
+			offset = info.Size()
+		}
+	}
 }
 
 // handleVersion shows version information

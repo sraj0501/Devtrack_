@@ -23,6 +23,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/notify"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/reviewer"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/telegram"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
@@ -53,8 +54,8 @@ type Daemon struct {
 	cancel        context.CancelFunc
 	isRunning     bool
 	webhookServer *exec.Cmd
-	alertPoller   *alerts.Poller   // native Go alert poller (Phase 2)
-	telegramBot   *telegram.Bot    // interactive Telegram bot (Phase 3)
+	alertPoller   *alerts.Poller // native Go alert poller (Phase 2)
+	telegramBot   *telegram.Bot  // interactive Telegram bot (Phase 3)
 	startTime     time.Time
 	healthMonitor *health.HealthMonitor
 	prLoopGuard   sync.Map // guards one PRFixLoop goroutine per "platform:prID"
@@ -562,7 +563,6 @@ func (d *Daemon) startWebhookServer() error {
 	return nil
 }
 
-
 // restartWebhookServer restarts the webhook server process
 func (d *Daemon) restartWebhookServer() error {
 	if d.webhookServer != nil && d.webhookServer.Process != nil {
@@ -639,7 +639,13 @@ func (d *Daemon) startAlertPoller() {
 							reviewer.AgentBackend(config.GetReviewAgent()),
 							config.GetReviewAgentTimeoutSecs(),
 						)
-						loop := reviewer.NewPRFixLoop(database, ag, nil)
+						// Nil-interface care: NewApprovalChecker returns a typed nil for
+						// unsupported platforms — never assign it to the interface directly.
+						var checker reviewer.PRApprovalChecker
+						if c := alerts.NewApprovalChecker(event.Platform); c != nil {
+							checker = c
+						}
+						loop := reviewer.NewPRFixLoop(database, ag, checker)
 						report := loop.Run(d.ctx, event.Platform, event.PRID, event.Workspace, "")
 
 						// Count fixes applied so far for this PR.
@@ -736,6 +742,68 @@ func (d *Daemon) startAlertPoller() {
 				_ = database.UpdatePRReviewCommentStatus(ev.Platform, ev.CommentID, "escalated", classification, fixHint)
 				log.Printf("review: staged pr_escalation (needs_human) for PR %s comment %s", ev.PRID, ev.CommentID)
 			}
+		}
+	})
+
+	// TASK-126: merged-PR hook — a PR authored by the developer merged into the
+	// default branch means the ticket's work is done. Convert each event into a
+	// commit trigger with is_merge_to_default=true; the Python server stages the
+	// done state-transition in the pending-actions queue (never posts directly).
+	poller.SetMergedPRHook(func(events []alerts.MergedPREvent) {
+		wsCfg, err := config.LoadWorkspacesConfig()
+		if err != nil || wsCfg == nil {
+			log.Printf("merged-pr: load workspaces: %v", err)
+			return
+		}
+		tc := trigger.NewHTTPTriggerClient()
+		for _, ev := range events {
+			var ws *config.WorkspaceConfig
+			for i := range wsCfg.Workspaces {
+				if wsCfg.Workspaces[i].Name == ev.Workspace {
+					ws = &wsCfg.Workspaces[i]
+					break
+				}
+			}
+			if ws == nil {
+				log.Printf("merged-pr: no workspace %q for PR %s, skipping", ev.Workspace, ev.PRID)
+				continue
+			}
+			ext, _ := ticket.NewExtractor(ws.TicketPattern)
+			ticketConfidence := 0.95 // merged branch name — developer contract
+			ticketID := ext.Extract(ev.HeadBranch)
+			if ticketID == "" {
+				ticketID = ext.Extract(ev.PRTitle)
+				ticketConfidence = 0.85
+			}
+			if ticketID == "" {
+				log.Printf("[UNLINKED] merged PR %s (%q → %q) workspace=%q — no ticket ID extracted",
+					ev.PRID, ev.HeadBranch, ev.BaseBranch, ev.Workspace)
+				continue
+			}
+			err := tc.SendCommitTrigger(trigger.CommitTriggerData{
+				RepoPath:          ws.Path,
+				CommitHash:        ev.MergeSHA,
+				CommitMessage:     fmt.Sprintf("Merge PR #%s: %s (branch %s)", ev.PRID, ev.PRTitle, ev.HeadBranch),
+				Timestamp:         ev.MergedAt.Format(time.RFC3339),
+				Branch:            ev.BaseBranch,
+				TicketID:          ticketID,
+				TicketConfidence:  ticketConfidence,
+				IsMergeToDefault:  true,
+				WorkspaceName:     ws.Name,
+				PMPlatform:        ws.PMPlatform,
+				PMProject:         ws.PMProject,
+				PMAssignee:        ws.PMAssignee,
+				PMIterationPath:   ws.PMIterationPath,
+				PMAreaPath:        ws.PMAreaPath,
+				PMMilestone:       ws.PMMilestone,
+				PMInProgressLabel: ws.InProgressLabel,
+			})
+			if err != nil {
+				log.Printf("merged-pr: send trigger for PR %s (ticket %s): %v", ev.PRID, ticketID, err)
+				continue
+			}
+			log.Printf("merged-pr: PR %s merged into %s → staged done transition for ticket %s",
+				ev.PRID, ev.BaseBranch, ticketID)
 		}
 	})
 

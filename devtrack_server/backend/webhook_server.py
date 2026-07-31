@@ -405,24 +405,25 @@ class TriggerProcessor:
             new_state = payload.get("new_state", "")
             ticket_id_for_route = payload.get("ticket_id", target)
             try:
-                self.workspace_router.route(
+                # TASK-126: direct-by-ID transition. The old path went through
+                # route(), which fuzzy-matches commit text and only transitions
+                # on done-words — so in-progress transitions never applied and
+                # the exact ticket_id in hand was ignored.
+                applied = self.workspace_router.route_state_transition(
                     pm_platform=pm_platform,
-                    description="",          # state-only transition; no comment text
                     ticket_id=ticket_id_for_route,
-                    status=new_state,
+                    new_state=new_state,
                     pm_project=payload.get("pm_project", ""),
-                    pm_assignee=payload.get("pm_assignee", ""),
-                    pm_iteration_path=payload.get("pm_iteration_path", ""),
-                    pm_area_path=payload.get("pm_area_path", ""),
-                    pm_milestone=payload.get("pm_milestone", ""),
-                    commit_info=payload.get("commit_info", {}),
+                    clear_label=payload.get("in_progress_label", ""),
                 )
                 logger.info(
                     "queue: executed state_transition action %s "
-                    "(target=%s new_state=%r platform=%s)",
-                    action.get("id"), target, new_state, pm_platform,
+                    "(target=%s new_state=%r platform=%s applied=%s)",
+                    action.get("id"), target, new_state, pm_platform, applied,
                 )
-                return {"status": "posted"}
+                if applied:
+                    return {"status": "posted"}
+                return {"status": "failed", "error": "transition not applied (unsupported or API error)"}
             except Exception as e:
                 logger.warning(
                     "queue: state_transition action %s failed (target=%s): %s",
@@ -461,6 +462,27 @@ class TriggerProcessor:
             return {"status": "posted"}
 
         # post_comment (and any future comment-type actions)
+        # TASK-127: actions staged with an exact, developer-confirmed ticket
+        # (devtrack git / offline outbox) set direct_ticket=true — post by ID,
+        # never fuzzy-match a target the developer already named.
+        if payload.get("direct_ticket"):
+            try:
+                posted = self.workspace_router.route_comment(
+                    pm_platform=pm_platform,
+                    ticket_id=payload.get("ticket_id", target),
+                    comment=payload.get("comment", payload.get("description", "")),
+                    pm_project=payload.get("pm_project", ""),
+                )
+                if posted:
+                    return {"status": "posted"}
+                return {"status": "failed", "error": "direct comment not posted (unsupported or API error)"}
+            except Exception as e:
+                logger.warning(
+                    "queue: direct post_comment action %s failed (target=%s): %s",
+                    action.get("id"), target, e,
+                )
+                return {"status": "failed", "error": str(e)}
+
         try:
             self.workspace_router.route(
                 pm_platform=pm_platform,
@@ -573,6 +595,16 @@ class TriggerProcessor:
                 # must fall back to commit_msg / "" without raising.
                 status = task_data.get("status", "") if task_data else ""
 
+                # TASK-128: completion words in a commit message ("done",
+                # "finished") are a weak signal — "done with refactor prep"
+                # must not close a ticket. Strip the status from the comment
+                # payload (the fuzzy route auto-transitions on done-words) and
+                # stage an explicit low-confidence state_transition instead
+                # (<0.70 → 15-minute review tier), further below.
+                language_done = status in ("done", "completed", "closed")
+                if language_done:
+                    status = ""
+
                 # Phase 3 (TASK-072): generate a voice-aware ticket comment via
                 # the LLM pipeline, not a raw NLP restatement. Falls back to a
                 # templated string on any LLM failure — never blocks processing.
@@ -614,12 +646,13 @@ class TriggerProcessor:
                     },
                 }
                 ticket_id = resolved_ticket_id
-                # Phase 3: ticket_id resolution confidence now comes from Go's
-                # extraction strategy, not NLP's own (weaker) guess. NLP match
-                # only affects descriptive quality, not target confidence.
-                # Baseline reflects Phase 2's verified ~100% hit rate for
-                # resolved IDs.
-                confidence = 0.85
+                # TASK-128: confidence comes from Go's extraction strategy
+                # (0.95 branch / 0.85 message / 0.60 active-ticket fallback),
+                # carried in the trigger payload. Fallback-derived tickets land
+                # below 0.70 → the 15-minute explicit-review tier. 0.85 remains
+                # the default for older clients that don't send the field.
+                confidence = float(data.get("ticket_confidence") or 0.85)
+                confidence = max(0.0, min(confidence, 1.0))
 
                 if getattr(self, "_queue_gateway", None):
                     try:
@@ -646,8 +679,59 @@ class TriggerProcessor:
                         try:
                             from backend.ticket_state_mapper import in_progress_state_for as _ips_for
                             is_first = data.get("is_first_commit_for_ticket", False)
+                            is_merge_to_default = data.get("is_merge_to_default", False)
                             new_state = _ips_for(pm_platform)
-                            if is_first and new_state:
+
+                            # TASK-129: GitHub/GitLab have no in-progress API state —
+                            # use the label convention instead. Configurable per
+                            # workspace (in_progress_label in workspaces.yaml, carried
+                            # in the trigger payload); "none" opts out.
+                            in_progress_label = ""
+                            if not new_state and (pm_platform or "").lower() in ("github", "gitlab"):
+                                in_progress_label = (
+                                    data.get("pm_in_progress_label") or "in-progress"
+                                ).strip()
+                                if in_progress_label.lower() == "none":
+                                    in_progress_label = ""
+                                elif is_first and not is_merge_to_default:
+                                    new_state = f"label:{in_progress_label}"
+
+                            # TASK-126: merge commit landed on the default branch —
+                            # "merged to main → Done". Stage a done transition instead
+                            # of (never alongside) an in-progress one. The logical
+                            # "done" is mapped per platform at execution time
+                            # (route_state_transition: Azure done-state, GH/GL close).
+                            if is_merge_to_default or language_done:
+                                # Merge to default branch: unambiguous completion
+                                # signal, capped at 0.90 but tied to how surely the
+                                # ticket itself was identified (TASK-128).
+                                # Commit-language "done": weak signal — fixed 0.65,
+                                # the 15-minute explicit-review tier.
+                                done_confidence = (
+                                    min(0.90, confidence + 0.05) if is_merge_to_default else 0.65
+                                )
+                                done_action_id = self._queue_gateway.stage(
+                                    action_type="state_transition",
+                                    target=resolved_ticket_id,
+                                    platform=pm_platform or "auto",
+                                    workspace=data.get("workspace_name", ""),
+                                    payload={
+                                        "ticket_id": resolved_ticket_id,
+                                        "new_state": "done",
+                                        "pm_project": pm_project,
+                                        "in_progress_label": in_progress_label,
+                                        "commit_info": pm_payload["commit_info"],
+                                    },
+                                    confidence=done_confidence,
+                                )
+                                actions.append(f"queued:state_transition:{done_action_id}")
+                                logger.info(
+                                    "Done transition staged (action_id=%d, platform=%s, ticket=%s, "
+                                    "confidence=%.2f, signal=%s)",
+                                    done_action_id, pm_platform or "auto", resolved_ticket_id,
+                                    done_confidence, "merge" if is_merge_to_default else "commit-language",
+                                )
+                            elif is_first and new_state:
                                 state_action_id = self._queue_gateway.stage(
                                     action_type="state_transition",
                                     target=resolved_ticket_id,
@@ -656,10 +740,14 @@ class TriggerProcessor:
                                     payload={
                                         "ticket_id": resolved_ticket_id,
                                         "new_state": new_state,
+                                        "pm_project": pm_project,
                                         "commit_info": pm_payload["commit_info"],
                                     },
-                                    # 0.90 — first-commit-for-ticket is an unambiguous signal
-                                    confidence=0.90,
+                                    # First-commit-for-ticket is a strong signal, but only
+                                    # as strong as the ticket identification itself
+                                    # (TASK-128): capped at 0.90, fallback-derived tickets
+                                    # land in the explicit-review tier.
+                                    confidence=min(0.90, confidence + 0.05),
                                 )
                                 actions.append(f"queued:state_transition:{state_action_id}")
                                 logger.info(
