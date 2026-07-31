@@ -389,14 +389,35 @@ def _ts(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
+@pytest.fixture()
+def isolated_stats_engine(tmp_path, monkeypatch):
+    """Point DATABASE_DIR at a fresh temp directory and reset the shared
+    SQLAlchemy engine singleton so stats_client's engine-based reads hit an
+    isolated SQLite file instead of whatever engine a prior test built (same
+    fixture shape as test_skill_detector.py's isolated_engine and
+    test_voice_add_status.py's isolated_dialectic_engine).
+
+    Yields the temp directory; the DB file itself is `devtrack.db` inside it
+    (backend.config.database_path()'s default filename) — _query_stats() no
+    longer takes a path argument, it resolves its own path via
+    backend.db.engine.get_engine() same as production code.
+    """
+    from backend.db.engine import reset_engine
+
+    monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+    reset_engine()
+    yield tmp_path
+    reset_engine()
+
+
 class TestGetTriggerStats:
     """stats_client.get_trigger_stats() / _query_stats() — SQLite queries."""
 
-    def test_happy_path_counts_today(self, tmp_path):
+    def test_happy_path_counts_today(self, isolated_stats_engine):
         """triggers_today and commits_today reflect only today's rows."""
         from backend.server_tui.stats_client import _query_stats
 
-        db = tmp_path / "devtrack.db"
+        db = isolated_stats_engine / "devtrack.db"
         now = datetime.now(timezone.utc)
         yesterday = now - timedelta(days=1)
 
@@ -414,16 +435,16 @@ class TestGetTriggerStats:
                          ("commit", _ts(yesterday)))
             conn.commit()
 
-        stats = _query_stats(db)
+        stats = _query_stats()
 
         assert stats.triggers_today == 3
         assert stats.commits_today == 1
 
-    def test_last_trigger_formatted_as_hhmm(self, tmp_path):
+    def test_last_trigger_formatted_as_hhmm(self, isolated_stats_engine):
         """last_trigger is returned as HH:MM."""
         from backend.server_tui.stats_client import _query_stats
 
-        db = tmp_path / "devtrack.db"
+        db = isolated_stats_engine / "devtrack.db"
         now = datetime.now(timezone.utc)
 
         with sqlite3.connect(str(db)) as conn:
@@ -432,45 +453,57 @@ class TestGetTriggerStats:
                          ("commit", _ts(now)))
             conn.commit()
 
-        stats = _query_stats(db)
+        stats = _query_stats()
         # Must be HH:MM format — 5 characters, digit:digit
         assert len(stats.last_trigger) == 5
         assert stats.last_trigger[2] == ":"
 
-    def test_graceful_zero_when_db_absent(self, tmp_path):
-        """get_trigger_stats() returns zeros when the DB file does not exist."""
+    def test_graceful_zero_when_db_absent(self, isolated_stats_engine):
+        """get_trigger_stats() returns zeros when the DB file does not exist.
+
+        isolated_stats_engine points DATABASE_DIR at a fresh tmp_path with no
+        devtrack.db file in it yet — database_path() resolves to a path that
+        does not exist, so _stats_from_sqlite()'s own existence pre-check
+        short-circuits before the engine is ever touched. No patch of
+        _db_path needed (mirrors test_voice_add_status.py's
+        test_get_inference_summary_nonexistent_db_returns_safe_default).
+        """
         from backend.server_tui.stats_client import get_trigger_stats
 
-        missing = tmp_path / "no_db.db"
-        with patch("backend.server_tui.stats_client._db_path", return_value=missing):
-            stats = get_trigger_stats()
+        stats = get_trigger_stats()
 
         assert stats.triggers_today == 0
         assert stats.commits_today == 0
         assert stats.last_trigger == "—"
         assert stats.errors_24h == 0
 
-    def test_graceful_zero_when_table_missing(self, tmp_path):
-        """get_trigger_stats() returns zeros when 'triggers' table does not exist."""
+    def test_graceful_zero_when_table_missing(self, isolated_stats_engine):
+        """get_trigger_stats() returns zeros when 'triggers' table does not exist.
+
+        The DB file is created at the isolated_stats_engine's own
+        database_path() (devtrack.db under the fixture's tmp_path) so the
+        existence pre-check passes and the engine reads the same file — no
+        need to patch _db_path directly since DATABASE_DIR + reset_engine()
+        already make get_engine() and _db_path() agree on the same file.
+        """
         from backend.server_tui.stats_client import get_trigger_stats
 
-        db = tmp_path / "empty.db"
+        db = isolated_stats_engine / "devtrack.db"
         with sqlite3.connect(str(db)) as conn:
             conn.execute("CREATE TABLE unrelated (id INTEGER PRIMARY KEY)")
             conn.commit()
 
-        with patch("backend.server_tui.stats_client._db_path", return_value=db):
-            stats = get_trigger_stats()
+        stats = get_trigger_stats()
 
         assert stats.triggers_today == 0
         assert stats.commits_today == 0
         assert stats.errors_24h == 0
 
-    def test_error_counting_unprocessed_old_row(self, tmp_path):
+    def test_error_counting_unprocessed_old_row(self, isolated_stats_engine):
         """Unprocessed rows older than 5 min but within 24 h count as errors."""
         from backend.server_tui.stats_client import _query_stats
 
-        db = tmp_path / "devtrack.db"
+        db = isolated_stats_engine / "devtrack.db"
         now = datetime.now(timezone.utc)
         # 10 minutes ago — old enough to be an error, within 24 h window
         error_ts = now - timedelta(minutes=10)
@@ -483,14 +516,14 @@ class TestGetTriggerStats:
             )
             conn.commit()
 
-        stats = _query_stats(db)
+        stats = _query_stats()
         assert stats.errors_24h == 1
 
-    def test_recent_unprocessed_row_not_counted_as_error(self, tmp_path):
+    def test_recent_unprocessed_row_not_counted_as_error(self, isolated_stats_engine):
         """Unprocessed rows less than 5 min old are NOT errors yet."""
         from backend.server_tui.stats_client import _query_stats
 
-        db = tmp_path / "devtrack.db"
+        db = isolated_stats_engine / "devtrack.db"
         now = datetime.now(timezone.utc)
         # 2 minutes ago — too recent to be an error
         recent_ts = now - timedelta(minutes=2)
@@ -503,14 +536,14 @@ class TestGetTriggerStats:
             )
             conn.commit()
 
-        stats = _query_stats(db)
+        stats = _query_stats()
         assert stats.errors_24h == 0
 
-    def test_timestamp_format_iso_z(self, tmp_path):
+    def test_timestamp_format_iso_z(self, isolated_stats_engine):
         """Timestamp format '2006-01-02T15:04:05Z' is parsed to HH:MM."""
         from backend.server_tui.stats_client import _query_stats
 
-        db = tmp_path / "devtrack.db"
+        db = isolated_stats_engine / "devtrack.db"
         with sqlite3.connect(str(db)) as conn:
             _create_triggers_table(conn)
             conn.execute(
@@ -519,14 +552,14 @@ class TestGetTriggerStats:
             )
             conn.commit()
 
-        stats = _query_stats(db)
+        stats = _query_stats()
         assert stats.last_trigger == "14:30"
 
-    def test_timestamp_format_iso_no_z(self, tmp_path):
+    def test_timestamp_format_iso_no_z(self, isolated_stats_engine):
         """Timestamp format '2006-01-02T15:04:05' (no Z) is parsed to HH:MM."""
         from backend.server_tui.stats_client import _query_stats
 
-        db = tmp_path / "devtrack.db"
+        db = isolated_stats_engine / "devtrack.db"
         with sqlite3.connect(str(db)) as conn:
             _create_triggers_table(conn)
             conn.execute(
@@ -535,14 +568,14 @@ class TestGetTriggerStats:
             )
             conn.commit()
 
-        stats = _query_stats(db)
+        stats = _query_stats()
         assert stats.last_trigger == "09:15"
 
-    def test_timestamp_format_space_separated(self, tmp_path):
+    def test_timestamp_format_space_separated(self, isolated_stats_engine):
         """Timestamp format '2006-01-02 15:04:05' (space separator) is parsed to HH:MM."""
         from backend.server_tui.stats_client import _query_stats
 
-        db = tmp_path / "devtrack.db"
+        db = isolated_stats_engine / "devtrack.db"
         with sqlite3.connect(str(db)) as conn:
             _create_triggers_table(conn)
             conn.execute(
@@ -551,8 +584,37 @@ class TestGetTriggerStats:
             )
             conn.commit()
 
-        stats = _query_stats(db)
+        stats = _query_stats()
         assert stats.last_trigger == "22:45"
+
+
+class TestGetTriggerStatsPostgresDispatch:
+    """get_trigger_stats() dispatch in PostgreSQL mode.
+
+    Not the fail-closed pattern used by skill_detector.py/dialectic_status.py
+    tests — the ``triggers`` table is Go-owned with no Postgres equivalent,
+    but stats_client already has a working Go-HTTP branch for it
+    (_stats_from_go_http()), so this asserts get_trigger_stats() dispatches
+    there — and never touches the SQLite engine — when POSTGRES_URL is set.
+    """
+
+    def test_dispatches_to_go_http_and_skips_sqlite_engine(self, monkeypatch):
+        from backend.server_tui import stats_client
+        from backend.server_tui.stats_client import TriggerStats, get_trigger_stats
+
+        monkeypatch.setattr(
+            "backend.config.postgres_url",
+            lambda: "postgresql://user:pass@localhost/devtrack",
+        )
+        sentinel = TriggerStats(triggers_today=7, commits_today=2,
+                                 last_trigger="10:15", errors_24h=1)
+        with patch.object(stats_client, "_stats_from_go_http", return_value=sentinel) as mock_http, \
+             patch.object(stats_client, "_stats_from_sqlite") as mock_sqlite:
+            stats = get_trigger_stats()
+
+        mock_http.assert_called_once()
+        mock_sqlite.assert_not_called()
+        assert stats == sentinel
 
 
 # ---------------------------------------------------------------------------

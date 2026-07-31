@@ -10,15 +10,26 @@ PostgreSQL mode (separate-machine constraint). Two backends are provided:
 
 If either backend is unavailable (daemon not running, DB missing, etc.) a
 zero-valued TriggerStats is returned — no crash.
+
+Note this module's SQLite-mode split is *not* the fail-closed pattern used by
+``skill_detector.py``/``dialectic_status.py`` — ``triggers`` is a Go-owned
+table (see ``backend.db.engine``'s module docstring: Go-owned tables are
+NEVER touched by Python in PostgreSQL mode), so PostgreSQL mode here calls the
+Go daemon's internal HTTP endpoint instead of reading SQLite directly. Only
+the SQLite-mode internals (``_query_sqlite``) go through
+``backend.db.engine.get_engine()`` via SQLAlchemy ``text()`` instead of a
+bespoke ``sqlite3.connect()`` — the PostgreSQL/HTTP branch is untouched.
 """
 from __future__ import annotations
 
 import logging
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 
 logger = logging.getLogger(__name__)
 
@@ -97,45 +108,58 @@ def _stats_from_sqlite() -> TriggerStats:
     if path is None or not path.exists():
         return TriggerStats()
     try:
-        return _query_sqlite(path)
+        return _query_sqlite()
     except Exception as exc:
         logger.debug("stats_from_sqlite: %s", exc)
         return TriggerStats()
 
 
-def _query_sqlite(path: Path) -> TriggerStats:
+def _query_sqlite() -> TriggerStats:
+    """Query the ``triggers`` table via the shared SQLAlchemy engine.
+
+    ``triggers`` is a Go-owned table living in the same devtrack.db file the
+    dual-dialect engine already points at in SQLite mode, so this reads
+    through ``backend.db.engine.get_engine()`` instead of a bespoke
+    ``sqlite3.connect()`` — same pattern as ``dialectic_status.py`` and
+    ``skill_detector.py``. Each of the four stats is queried independently
+    and defaults to its zero-value if that specific query fails (e.g. the
+    table does not exist yet).
+    """
+    from backend.db.engine import get_engine
+
     now_utc = datetime.now(timezone.utc)
     today_str = now_utc.strftime("%Y-%m-%d")
     cutoff_24h = (now_utc - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
     error_cutoff = (now_utc - timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
 
-    with sqlite3.connect(str(path)) as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-
+    with get_engine().connect() as conn:
         triggers_today: int = 0
         try:
-            row = cur.execute(
-                "SELECT COUNT(*) FROM triggers WHERE date(timestamp) = ?", (today_str,)
+            row = conn.execute(
+                text("SELECT COUNT(*) FROM triggers WHERE date(timestamp) = :today"),
+                {"today": today_str},
             ).fetchone()
             triggers_today = int(row[0]) if row else 0
-        except sqlite3.OperationalError:
+        except OperationalError:
             pass
 
         commits_today: int = 0
         try:
-            row = cur.execute(
-                "SELECT COUNT(*) FROM triggers WHERE trigger_type = 'commit' AND date(timestamp) = ?",
-                (today_str,),
+            row = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM triggers "
+                    "WHERE trigger_type = 'commit' AND date(timestamp) = :today"
+                ),
+                {"today": today_str},
             ).fetchone()
             commits_today = int(row[0]) if row else 0
-        except sqlite3.OperationalError:
+        except OperationalError:
             pass
 
         last_trigger: str = "—"
         try:
-            row = cur.execute(
-                "SELECT timestamp FROM triggers ORDER BY timestamp DESC LIMIT 1"
+            row = conn.execute(
+                text("SELECT timestamp FROM triggers ORDER BY timestamp DESC LIMIT 1")
             ).fetchone()
             if row and row[0]:
                 ts_raw: str = row[0]
@@ -146,20 +170,22 @@ def _query_sqlite(path: Path) -> TriggerStats:
                         break
                     except ValueError:
                         continue
-        except sqlite3.OperationalError:
+        except OperationalError:
             pass
 
         errors_24h: int = 0
         try:
-            row = cur.execute(
-                """SELECT COUNT(*) FROM triggers
-                   WHERE processed = 0
-                     AND timestamp >= ?
-                     AND timestamp <= ?""",
-                (cutoff_24h, error_cutoff),
+            row = conn.execute(
+                text(
+                    """SELECT COUNT(*) FROM triggers
+                       WHERE processed = 0
+                         AND timestamp >= :cutoff_24h
+                         AND timestamp <= :error_cutoff"""
+                ),
+                {"cutoff_24h": cutoff_24h, "error_cutoff": error_cutoff},
             ).fetchone()
             errors_24h = int(row[0]) if row else 0
-        except sqlite3.OperationalError:
+        except OperationalError:
             pass
 
     return TriggerStats(
