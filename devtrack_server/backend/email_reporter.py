@@ -3,19 +3,39 @@ Automated Email Report Generation
 
 This module generates professional daily/weekly status reports by compiling
 activities from the SQLite database and sending them via Microsoft Graph API.
+
+Boundary rule
+-------------
+``task_updates`` is a Go-owned table (written by the Go daemon — see
+``devtrack_client/internal/db/database.go``). This module never defines a
+SQLAlchemy ``Table`` for it and never runs DDL against it.
+
+  SQLite mode     (POSTGRES_URL unset) — reads go through
+    ``backend.db.engine.get_engine()`` via SQLAlchemy ``text()``.
+  PostgreSQL mode (POSTGRES_URL set)   — Go never speaks Postgres (decided
+    2026-07-13), so ``task_updates`` doesn't exist there and there is no Go
+    internal-HTTP endpoint exposing it yet. ``get_daily_activities`` fails
+    closed immediately in this mode (empty list, never raise — see the
+    PostgreSQL Backend epic, ``Data/agent_logs/project_board.md``).
 """
 
 import os
 import sys
 import json
-import sqlite3
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 
+from sqlalchemy import text
+
+from backend.db.engine import get_engine, is_postgres
+
 # Add project root for backend imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+logger = logging.getLogger("devtrack.email_reporter")
 
 
 @dataclass
@@ -88,63 +108,75 @@ class EmailReporter:
         """
         if date is None:
             date = datetime.now()
-        
+
         start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = date.replace(hour=23, minute=59, second=59, microsecond=999999)
-        
-        activities = []
-        
+
+        activities: List[ActivitySummary] = []
+
+        if is_postgres():
+            logger.debug(
+                "email_reporter: get_daily_activities is a no-op in PostgreSQL "
+                "mode — task_updates is a Go-owned SQLite-only table with no "
+                "Postgres equivalent yet"
+            )
+            return activities
+
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # Query task updates for the day (schema: Go devtrack uses timestamp, project,
-            # ticket_id, status, update_text; no time_estimate/source - use 0 and 'manual')
-            cursor.execute("PRAGMA table_info(task_updates)")
-            columns = [r[1] for r in cursor.fetchall()]
-            has_time_estimate = "time_estimate" in columns
-            has_source = "source" in columns
+            with get_engine().connect() as conn:
+                # Query task updates for the day (schema: Go devtrack uses timestamp,
+                # project, ticket_id, status, update_text; no time_estimate/source -
+                # use 0 and 'manual')
+                columns = [
+                    r[1] for r in conn.execute(text("PRAGMA table_info(task_updates)")).fetchall()
+                ]
+                has_time_estimate = "time_estimate" in columns
+                has_source = "source" in columns
 
-            if has_time_estimate and has_source:
-                query = """
-                    SELECT timestamp, project, ticket_id, status, update_text,
-                           time_estimate, source
-                    FROM task_updates
-                    WHERE timestamp >= ? AND timestamp <= ?
-                    ORDER BY timestamp ASC
-                """
-            else:
-                query = """
-                    SELECT timestamp, project, ticket_id, status, update_text
-                    FROM task_updates
-                    WHERE timestamp >= ? AND timestamp <= ?
-                    ORDER BY timestamp ASC
-                """
-
-            cursor.execute(query, (start_of_day.isoformat(), end_of_day.isoformat()))
-
-            for row in cursor.fetchall():
                 if has_time_estimate and has_source:
-                    timestamp_str, project, ticket_id, status, description, time_est, source = row
+                    query = text(
+                        """
+                        SELECT timestamp, project, ticket_id, status, update_text,
+                               time_estimate, source
+                        FROM task_updates
+                        WHERE timestamp >= :start AND timestamp <= :end
+                        ORDER BY timestamp ASC
+                        """
+                    )
                 else:
-                    timestamp_str, project, ticket_id, status, description = row
-                    time_est, source = 0, "manual"
-                
-                activities.append(ActivitySummary(
-                    timestamp=datetime.fromisoformat(timestamp_str),
-                    project=project or "Unknown",
-                    ticket_id=ticket_id or "",
-                    status=status or "in_progress",
-                    description=description or "",
-                    time_spent=float(time_est or 0),
-                    source=source or "manual"
-                ))
-            
-            conn.close()
-            
+                    query = text(
+                        """
+                        SELECT timestamp, project, ticket_id, status, update_text
+                        FROM task_updates
+                        WHERE timestamp >= :start AND timestamp <= :end
+                        ORDER BY timestamp ASC
+                        """
+                    )
+
+                rows = conn.execute(
+                    query, {"start": start_of_day.isoformat(), "end": end_of_day.isoformat()}
+                ).fetchall()
+
+                for row in rows:
+                    if has_time_estimate and has_source:
+                        timestamp_str, project, ticket_id, status, description, time_est, source = row
+                    else:
+                        timestamp_str, project, ticket_id, status, description = row
+                        time_est, source = 0, "manual"
+
+                    activities.append(ActivitySummary(
+                        timestamp=datetime.fromisoformat(timestamp_str),
+                        project=project or "Unknown",
+                        ticket_id=ticket_id or "",
+                        status=status or "in_progress",
+                        description=description or "",
+                        time_spent=float(time_est or 0),
+                        source=source or "manual"
+                    ))
+
         except Exception as e:
             print(f"Error fetching activities: {e}")
-        
+
         return activities
     
     def generate_daily_report(self, date: Optional[datetime] = None) -> DailyReport:
