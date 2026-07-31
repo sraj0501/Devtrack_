@@ -184,7 +184,7 @@ def _make_enhanced_report(report_type_hint: str = "daily"):
     """Build a minimal EnhancedReport with no AI insights (is_ai_enhanced=False)
     so format_report(TERMINAL) needs no LLM/AI dependency."""
     from backend.daily_report_generator import EnhancedReport, ReportStyle
-    from email_reporter import DailyReport, ActivitySummary
+    from backend.email_reporter import DailyReport, ActivitySummary
 
     activity = ActivitySummary(
         timestamp=datetime(2026, 7, 31, 9, 0, 0),

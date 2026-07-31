@@ -2,8 +2,12 @@
 health_snapshots_store.py — Read-only access to the Go-owned health_snapshots table.
 
 Shared by backend/slack/handlers.py and backend/telegram/handlers.py's
-``/devtrack health`` command (both previously had their own bespoke
-``sqlite3.connect()`` copies of this query).
+``/devtrack health``/``/health`` commands (both previously had their own
+bespoke ``sqlite3.connect()`` copies of this query -- Slack takes the most
+recent N rows and deduplicates per-service in Python; Telegram uses a
+"latest row per service" grouped subquery. Both variants are kept as
+separate functions below rather than picking one, to preserve each
+caller's exact prior behavior).
 
 Boundary rule
 -------------
@@ -53,6 +57,40 @@ def get_recent_snapshots(limit: int = 20) -> List[Dict]:
                     "ORDER BY checked_at DESC LIMIT :limit"
                 ),
                 {"limit": limit},
+            ).mappings().all()
+            return [dict(r) for r in rows]
+    except Exception as e:
+        logger.debug("Could not read health_snapshots: %s", e)
+        return []
+
+
+def get_latest_snapshot_per_service() -> List[Dict]:
+    """Return the single most recent health_snapshot row per distinct
+    service, ordered by service name.
+
+    Each row: {"service", "status", "latency_ms", "details", "checked_at"}.
+    Returns ``[]`` on any DB error, or immediately in PostgreSQL mode.
+    """
+    if is_postgres():
+        logger.debug(
+            "health_snapshots_store: get_latest_snapshot_per_service is a "
+            "no-op in PostgreSQL mode — health_snapshots is a Go-owned "
+            "SQLite-only table with no Postgres equivalent yet"
+        )
+        return []
+    try:
+        with get_engine().connect() as conn:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT service, status, latency_ms, details, checked_at
+                    FROM health_snapshots h1
+                    WHERE checked_at = (
+                        SELECT MAX(checked_at) FROM health_snapshots h2 WHERE h2.service = h1.service
+                    )
+                    ORDER BY service
+                    """
+                )
             ).mappings().all()
             return [dict(r) for r in rows]
     except Exception as e:

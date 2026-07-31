@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import re
-import sqlite3
 import subprocess
 from typing import TYPE_CHECKING
 
@@ -267,17 +266,8 @@ async def _cmd_resume(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "
 async def _cmd_queue(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
     """Handle /queue -- show message queue stats."""
     try:
-        db_path = _get_db_path()
-        if not db_path:
-            await update.message.reply_text("Database not found")
-            return
-
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT status, COUNT(*) FROM message_queue GROUP BY status")
-        rows = cursor.fetchall()
-        conn.close()
+        from backend.queue_status_store import get_status_counts
+        rows = get_status_counts("message_queue")
 
         if not rows:
             await update.message.reply_text("Message queue is empty")
@@ -295,17 +285,8 @@ async def _cmd_queue(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "D
 async def _cmd_commits(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
     """Handle /commits -- show deferred commit status."""
     try:
-        db_path = _get_db_path()
-        if not db_path:
-            await update.message.reply_text("Database not found")
-            return
-
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT status, COUNT(*) FROM deferred_commits GROUP BY status")
-        rows = cursor.fetchall()
-        conn.close()
+        from backend.queue_status_store import get_status_counts
+        rows = get_status_counts("deferred_commits")
 
         if not rows:
             await update.message.reply_text("No deferred commits")
@@ -323,25 +304,8 @@ async def _cmd_commits(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: 
 async def _cmd_health(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
     """Handle /health -- show detailed service health."""
     try:
-        db_path = _get_db_path()
-        if not db_path:
-            await update.message.reply_text("Database not found")
-            return
-
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        # Get latest health snapshot per service
-        cursor.execute("""
-            SELECT service, status, latency_ms, details, checked_at
-            FROM health_snapshots h1
-            WHERE checked_at = (
-                SELECT MAX(checked_at) FROM health_snapshots h2 WHERE h2.service = h1.service
-            )
-            ORDER BY service
-        """)
-        rows = cursor.fetchall()
-        conn.close()
+        from backend.health_snapshots_store import get_latest_snapshot_per_service
+        rows = get_latest_snapshot_per_service()
 
         if not rows:
             await update.message.reply_text("No health data available yet")
@@ -352,12 +316,12 @@ async def _cmd_health(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "
             "up": "UP", "down": "DOWN", "degraded": "DEGRADED", "unconfigured": "N/A"
         }
 
-        for service, status, latency_ms, details, checked_at in rows:
-            name = _service_display_name(service)
-            label = status_map.get(status, status)
+        for row in rows:
+            name = _service_display_name(row["service"])
+            label = status_map.get(row["status"], row["status"])
             line = f"*{name}*: {label}"
-            if latency_ms and latency_ms > 0:
-                line += f" ({latency_ms}ms)"
+            if row["latency_ms"] and row["latency_ms"] > 0:
+                line += f" ({row['latency_ms']}ms)"
             text += line + "\n"
 
         await update.message.reply_text(text, parse_mode="Markdown")
@@ -744,21 +708,6 @@ def _strip_html(text: str) -> str:
     text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", "", text)
     return text.strip()
-
-
-def _get_db_path() -> str:
-    """Get the SQLite database path."""
-    from backend.config import get_path
-    try:
-        db_dir = get_path("DATABASE_DIR")
-        from backend.config import get as _cfg
-        db_file = _cfg("DATABASE_FILE_NAME", "devtrack.db")
-        path = os.path.join(db_dir, db_file)
-        if os.path.exists(path):
-            return path
-    except Exception:
-        pass
-    return ""
 
 
 def _service_display_name(service: str) -> str:
@@ -2103,16 +2052,10 @@ async def _cmd_workstart(update: Update, context: ContextTypes.DEFAULT_TYPE, bot
             await update.message.reply_text(msg)
             return
 
-        from backend.config import database_path
-        import sqlite3
-        conn = sqlite3.connect(str(database_path()))
-        cur = conn.execute(
-            "INSERT INTO work_sessions (started_at, ticket_ref, commits) VALUES (datetime('now'), ?, '[]')",
-            (ticket_ref,),
-        )
-        session_id = cur.lastrowid
-        conn.commit()
-        conn.close()
+        session_id = await asyncio.to_thread(store.start_session, ticket_ref)
+        if session_id is None:
+            await update.message.reply_text("Could not start a work session (not available yet in this server mode).")
+            return
 
         msg = f"✅ Work session started (ID {session_id})"
         if ticket_ref:
@@ -2289,13 +2232,7 @@ async def _cmd_vacation(update: Update, context: ContextTypes.DEFAULT_TYPE, bot:
     sub = args[0].lower() if args else "status"
 
     try:
-        from backend.vacation.auto_responder import get_vacation_state, is_vacation_active
-        import sqlite3
-        from backend.config import get_path, get
-
-        def _db():
-            db_path = get_path("DATABASE_DIR") / get("DATABASE_FILE_NAME")
-            return sqlite3.connect(str(db_path))
+        from backend.vacation.auto_responder import get_vacation_state, is_vacation_active, set_vacation_state
 
         if sub == "status":
             state = get_vacation_state()
@@ -2325,23 +2262,18 @@ async def _cmd_vacation(update: Update, context: ContextTypes.DEFAULT_TYPE, bot:
                 elif args[i] == "--no-submit":
                     auto_submit = False
                 i += 1
-            from datetime import datetime, timezone
-            enabled_at = datetime.now(timezone.utc).isoformat()
-            conn = _db()
-            conn.execute(
-                "UPDATE vacation_mode SET enabled=1, enabled_at=?, until=?, confidence_threshold=?, auto_submit=? WHERE id=1",
-                (enabled_at, until, threshold, int(auto_submit)),
-            )
-            conn.commit(); conn.close()
+            if not set_vacation_state(True, until=until, confidence_threshold=threshold, auto_submit=auto_submit):
+                await update.message.reply_text("Could not enable vacation mode (not available yet in this server mode).")
+                return
             msg = f"✈️ Vacation mode *ON*"
             if until:
                 msg += f" (until {until})"
             await update.message.reply_text(msg, parse_mode="Markdown")
 
         elif sub == "off":
-            conn = _db()
-            conn.execute("UPDATE vacation_mode SET enabled=0 WHERE id=1")
-            conn.commit(); conn.close()
+            if not set_vacation_state(False):
+                await update.message.reply_text("Could not disable vacation mode (not available yet in this server mode).")
+                return
             await update.message.reply_text("✅ Vacation mode *OFF* — normal prompting resumed", parse_mode="Markdown")
 
         else:
