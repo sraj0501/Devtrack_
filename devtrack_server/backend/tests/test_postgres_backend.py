@@ -47,6 +47,7 @@ def pg_engine():
     import backend.db.project_store      # noqa: F401
     import backend.db.platform_store     # noqa: F401
     import backend.admin.user_manager    # noqa: F401
+    import backend.db.report_store       # noqa: F401
 
     engine_mod.reset_engine()
     os.environ["POSTGRES_URL"] = POSTGRES_URL
@@ -70,9 +71,10 @@ def test_dialect_is_postgres(pg_engine):
 
 def test_init_all_tables_registers_every_migrated_module(pg_engine):
     """metadata.create_all() must succeed for every Table registered by the
-    6 modules already ported onto engine.py (db/{ticket_db,learning_store,
-    project_store,platform_store}.py, admin/user_manager.py) — this is the
-    schema-compatibility check that catches SQLite-only DDL assumptions."""
+    modules already ported onto engine.py (db/{ticket_db,learning_store,
+    project_store,platform_store,report_store}.py, admin/user_manager.py) —
+    this is the schema-compatibility check that catches SQLite-only DDL
+    assumptions."""
     from backend.db import engine as engine_mod
     assert len(engine_mod.metadata.tables) > 0
     with pg_engine.connect() as conn:
