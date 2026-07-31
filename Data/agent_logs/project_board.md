@@ -330,12 +330,27 @@ patterns now confirmed (see `postgres_epic.md` memory for full detail):
   `voice_sync.py`, and `webhook_server.py`'s own remaining direct `sqlite3` usage (outside
   `queue_gateway`'s call sites). TASK-114/115/116 still unstarted.
 
+**[2026-07-31] TASK-133 — Removed dead pre-Go-native alert-polling code (PR #239, merge `c1f6e21`).**
+Found while starting `alert_poller.py`'s TASK-112 port: it and its entire dependency chain were
+orphaned — no import or subprocess wiring anywhere called `run_poll_loop()` or any of these modules.
+`CLAUDE.md` already documented ticket alerts as Go-native (retired from Python in client-server
+decoupling Phase 2), and `docs/CAPABILITIES_OWNERSHIP.md` already said "Python `alert_poller.py`
+retired" — the code just never got deleted. Removed the whole subtree: `alert_poller.py`,
+`db/mongo_alerts.py` (its exclusive MongoDB store), `alert_notifier.py` (its exclusive notification
+delivery), `alerters/{github,azure,jira,gitlab}_alerter.py` (per-source pollers, only ever called
+from `alert_poller.py`), and `test_jira_alerter.py`. `ALERT_*` config vars untouched — confirmed Go's
+`internal/config/config_env.go` reads the same names for the live Go-native poller. Reduces TASK-112's
+real remaining count: of the original 15 raw-`sqlite3` modules, 6 are ported and 1 (`alert_poller.py`)
+was dead code, never actually portable. **8 modules remain:** `daily_report_generator.py`,
+`email_reporter.py`, `learning_integration.py`, `slack/handlers.py`, `telegram/handlers.py`,
+`voice_seeder.py`, `voice_sync.py`, and `webhook_server.py`'s own remaining `sqlite3` usage.
+
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-133_
+_Next DevTrack task ID: TASK-134_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -5831,7 +5846,8 @@ static, static, live end-to-end)
 ## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
 **Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**6 of 15 raw-`sqlite3` modules ported as of 2026-07-31** (PRs #231–#236, see the dated log entries
+**6 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — 8 real modules remain** as of 2026-07-31 (PRs #231–#236, #239, see the dated log entries
 above for full detail on each). TASK-114/115/116 still unstarted.
 
 ### Why this exists
@@ -5844,7 +5860,8 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | `db/engine.py` (SQLAlchemy factory, dialect-aware `upsert()`, pooling) | Postgres **or** SQLite | ✅ already done |
 | 6 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket}_store` | follows `POSTGRES_URL` | ✅ |
 | 6 of 15 modules ported as of 2026-07-31: `skill_detector`, `dialectic_status`, `server_tui/stats_client`, `work_tracker/session_store`, `queue_gateway`, `vacation/auto_responder` | fail-closed / HTTP-dispatch / hard-raise (see log entries above) | ✅ |
-| 9 modules still opening raw `sqlite3` (`daily_report_generator`, `email_reporter`, `alert_poller`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `learning_integration`, `webhook_server`) | **SQLite always** | ❌ |
+| 8 modules still opening raw `sqlite3` (`daily_report_generator`, `email_reporter`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `learning_integration`, `webhook_server`) | **SQLite always** | ❌ |
+| ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
 So with `POSTGRES_URL` set, user accounts and licences go to Postgres while `triggers`, `task_updates`,
