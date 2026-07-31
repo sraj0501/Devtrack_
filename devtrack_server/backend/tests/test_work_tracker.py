@@ -199,6 +199,21 @@ class TestWorkSessionStore:
         sessions = self.store.get_sessions_for_date("2099-01-01")
         assert sessions == []
 
+    def test_start_session_creates_open_session(self):
+        session_id = self.store.start_session("PROJ-1")
+        assert session_id is not None
+        active = self.store.get_active_session()
+        assert active is not None
+        assert active["id"] == session_id
+        assert active["ticket_ref"] == "PROJ-1"
+        assert active["ended_at"] is None
+
+    def test_start_session_empty_ticket_ref(self):
+        session_id = self.store.start_session()
+        active = self.store.get_active_session()
+        assert active["id"] == session_id
+        assert active["ticket_ref"] == ""
+
 
 class TestWorkSessionStorePostgresMode:
     """PostgreSQL-mode boundary-rule behaviour for the two methods this port
@@ -240,6 +255,23 @@ class TestWorkSessionStorePostgresMode:
                 sessions = store.get_sessions_for_date("2026-03-28")
 
             assert sessions == []
+            mock_get_engine.assert_not_called()
+        finally:
+            reset_engine()
+
+    def test_start_session_skips_write_in_postgres_mode(self, tmp_path, monkeypatch):
+        from backend.db.engine import reset_engine
+        from backend.work_tracker import session_store as ss
+
+        monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+        reset_engine()
+        try:
+            with patch("backend.work_tracker.session_store._is_postgres_mode", return_value=True), \
+                 patch("backend.db.engine.get_engine") as mock_get_engine:
+                store = ss.WorkSessionStore()
+                result = store.start_session("PROJ-1")
+
+            assert result is None
             mock_get_engine.assert_not_called()
         finally:
             reset_engine()
