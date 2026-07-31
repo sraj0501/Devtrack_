@@ -268,8 +268,37 @@ header already claiming Phase 2 complete; corrected all three to Go-native
 (`internal/alerts/`, `internal/telegram/`, `internal/notify/`). README/NEXT_STEPS.md checked, no
 stale claims found.
 
-**QUEUED — EPIC: PostgreSQL Backend (TASK-112–116).** Must land before commercial launch. See the epic
-section at the bottom of this board.
+**[2026-07-31] STARTED — EPIC: PostgreSQL Backend (TASK-112–116, PR #231, merge `ee87d5f`).** Must
+land before commercial launch. Full task breakdown at the bottom of this board. First increment:
+- **TASK-112** (1 of 15 raw-`sqlite3` modules ported): `skill_detector.py` → `db/engine.py`. It owns
+  no table of its own (reads the Go-owned `corrections` table), so it follows the existing
+  boundary-rule precedent from `work_tracker/session_store.py`/`server_tui/stats_client.py`: SQLite
+  mode reads via `get_engine()`, Postgres mode fails closed (no promotions) until a Go internal-HTTP
+  endpoint exposes `corrections` (candidate: TASK-114). Bug found en route: the original code read a
+  config var (`DATABASE_PATH`) that doesn't exist, so `get_path` silently fell back to `"."` and
+  every DB call raised and was swallowed by the module's own try/except — skill detection has likely
+  never successfully promoted a skill in production. Fixed by switching to `get_engine()`. Remaining
+  14 modules (`alert_poller.py`, `daily_report_generator.py`, `dialectic_status.py`,
+  `email_reporter.py`, `learning_integration.py`, `queue_gateway.py`, `server_tui/stats_client.py`,
+  `slack/handlers.py`, `telegram/handlers.py`, `vacation/auto_responder.py`, `voice_seeder.py`,
+  `voice_sync.py`, `webhook_server.py`, `work_tracker/session_store.py`) still on raw `sqlite3` —
+  not started.
+- **TASK-113 (Postgres test lane) — foundation laid, not fully general yet.** Added
+  `backend/tests/test_postgres_backend.py`: the first tests to ever exercise Postgres, proving
+  `db/engine.py`'s dual-dialect factory and every already-migrated module's schema
+  (`ticket_db`/`learning_store`/`project_store`/`platform_store`/`admin.user_manager`) work against
+  a real server. Wired a `postgres:16-alpine` service container into `.github/workflows/ci.yml`,
+  scoped to run only this one file — **not** the full suite. Verified locally that running the whole
+  suite against one shared Postgres instance causes 45 unrelated cross-test failures: most of
+  `backend/tests/` relies on a per-test `DATABASE_DIR`→`tmp_path` SQLite isolation fixture with no
+  Postgres equivalent, so state leaks between tests on a shared Postgres. Giving Postgres the same
+  per-test isolation is real follow-up work, still open.
+- **Side fix:** `ci.yml` only triggered on PRs targeting `main`, never `dev` — so Python tests
+  (including this new lane) would never have run on the normal feature-branch→`dev` path. Added
+  `dev` to both its `push` and `pull_request` triggers.
+- **Also found, not fixed (out of scope for this task):** `SkillDetector` isn't called anywhere in
+  `webhook_server.py` despite its own docstring implying it is — zero callers outside the module and
+  its test file.
 
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
