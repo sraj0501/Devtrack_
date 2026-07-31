@@ -4,10 +4,13 @@ Run the following three sub-agents **in parallel** (launch all three in a single
 
 ---
 
-## Agent 1 — Wiki (`wiki/wiki.html`)
+## Agent 1 — Wiki (`devtrack_wiki/wiki/wiki.html`)
 
-1. Run `GIT_NO_DEVTRACK=1 git log --oneline -20` to see what changed recently.
-2. Read `wiki/wiki.html` to understand the current structure (single-file SPA with inline page sections, nav sidebar, and home grid cards).
+1. See what changed recently:
+   ```bash
+   GIT_NO_DEVTRACK=1 git log --oneline -20
+   ```
+2. Read `devtrack_wiki/wiki/wiki.html` to understand the current structure (single-file SPA with inline page sections, nav sidebar, and home grid cards).
 3. For each new feature or change identified from git log:
    - Add a new inline page section (`<div class="content" id="PAGE_ID">`) if the feature warrants its own page
    - Add a nav entry in the appropriate group in the sidebar
@@ -17,10 +20,15 @@ Run the following three sub-agents **in parallel** (launch all three in a single
 
 ---
 
-## Agent 2 — Memory (`/Users/sraj/.claude/projects/-Users-sraj-git-apps-personal-automation-tools/memory/`)
+## Agent 2 — Memory (`/home/sraj/.claude/projects/-home-sraj-git-apps-Devtrack-/memory/`)
 
-1. Run `GIT_NO_DEVTRACK=1 git log --oneline -20` to see what changed recently.
-2. Read `MEMORY.md` to understand what's already recorded.
+This is a user-level auto-memory directory outside the git repo — never `git add` it.
+
+1. See what changed recently:
+   ```bash
+   GIT_NO_DEVTRACK=1 git log --oneline -20
+   ```
+2. Read `MEMORY.md` (in that directory) to understand what's already recorded.
 3. Update `MEMORY.md`:
    - Add a new "Completed" subsection for the session date with bullet points for each shipped feature
    - Move any items from "Planned" to "Completed" if they are now shipped
@@ -33,7 +41,10 @@ Run the following three sub-agents **in parallel** (launch all three in a single
 
 ## Agent 3 — README (`README.md`)
 
-1. Run `GIT_NO_DEVTRACK=1 git log --oneline -20` to see what changed recently.
+1. See what changed recently:
+   ```bash
+   GIT_NO_DEVTRACK=1 git log --oneline -20
+   ```
 2. Read `README.md` to understand current structure.
 3. For each new major feature:
    - Add a row to any relevant feature/command tables
@@ -45,12 +56,22 @@ Run the following three sub-agents **in parallel** (launch all three in a single
 
 ## After all three agents complete
 
-1. Run `GIT_NO_DEVTRACK=1 git status --short` to see which doc files changed.
-2. Stage and commit only the documentation files with:
+1. See which doc files changed:
+   ```bash
+   GIT_NO_DEVTRACK=1 git status --short
    ```
-   GIT_NO_DEVTRACK=1 git add wiki/wiki.html README.md docs/ memory/
+2. Stage and commit only the in-repo documentation files (never the memory directory — it lives
+   outside the repo, at `/home/sraj/.claude/projects/-home-sraj-git-apps-Devtrack-/memory/`, and
+   is never `git add`ed):
+   ```bash
+   GIT_NO_DEVTRACK=1 git add devtrack_wiki/wiki/wiki.html README.md docs/
    GIT_NO_DEVTRACK=1 git commit -m "docs: <brief summary of what was documented>"
    ```
-3. Push: `GIT_NO_DEVTRACK=1 git push origin main`
+3. Push to `dev`, never `main`:
+   ```bash
+   GIT_NO_DEVTRACK=1 git push origin dev
+   ```
+   (PRs in this project always target `dev`. For non-trivial doc changes, use a
+   `docs/TASK-NNN-*` branch and open a PR instead of pushing straight to `dev`.)
 
 Do NOT commit or modify any source code files (.go, .py, etc.). Documentation only.
