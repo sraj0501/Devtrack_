@@ -65,16 +65,31 @@ def _insert_session(conn, started_at, ended_at=None, ticket_ref="",
 
 class TestWorkSessionStore:
     @pytest.fixture(autouse=True)
-    def setup(self, tmp_path):
-        self.db_path = str(tmp_path / "test.db")
+    def setup(self, tmp_path, monkeypatch):
+        """Point DATABASE_DIR at a fresh temp directory and reset the shared
+        SQLAlchemy engine singleton so session_store's engine-based reads/writes
+        hit an isolated SQLite file instead of whatever engine a prior test
+        built (same fixture shape as test_skill_detector.py's isolated_engine
+        and test_server_tui.py's isolated_stats_engine).
+
+        The DB file itself is `devtrack.db` inside the temp dir
+        (backend.config.database_path()'s default filename) — the store no
+        longer takes a path argument anywhere, it resolves its own path via
+        backend.db.engine.get_engine() same as production code.
+        """
+        from backend.db.engine import reset_engine
+
+        monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+        reset_engine()
+
+        self.db_path = str(tmp_path / "devtrack.db")
         conn = _make_db(self.db_path)
         conn.close()
 
-        # Patch _db_path so the store hits our temp file
-        with patch("backend.work_tracker.session_store._db_path", return_value=self.db_path):
-            from backend.work_tracker.session_store import WorkSessionStore
-            self.store = WorkSessionStore()
-            yield
+        from backend.work_tracker.session_store import WorkSessionStore
+        self.store = WorkSessionStore()
+        yield
+        reset_engine()
 
     def test_get_active_session_none_when_empty(self):
         assert self.store.get_active_session() is None
@@ -185,6 +200,51 @@ class TestWorkSessionStore:
         assert sessions == []
 
 
+class TestWorkSessionStorePostgresMode:
+    """PostgreSQL-mode boundary-rule behaviour for the two methods this port
+    touched: adjust_time (write — previously had NO Postgres-mode guard at
+    all, a real gap) and get_sessions_for_date (read — previously had no
+    Postgres-mode branch either, so it silently read whatever local SQLite
+    file happened to exist). Both now fail closed / no-op the same way
+    append_commit and end_session already did, without ever touching the
+    SQLAlchemy engine — mirrors TestSkillDetectorPostgresMode's
+    "mock_get_engine.assert_not_called()" shape.
+    """
+
+    def test_adjust_time_skips_write_in_postgres_mode(self, tmp_path, monkeypatch):
+        from backend.db.engine import reset_engine
+        from backend.work_tracker import session_store as ss
+
+        monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+        reset_engine()
+        try:
+            with patch("backend.work_tracker.session_store._is_postgres_mode", return_value=True), \
+                 patch("backend.db.engine.get_engine") as mock_get_engine:
+                store = ss.WorkSessionStore()
+                store.adjust_time(1, 90)
+
+            mock_get_engine.assert_not_called()
+        finally:
+            reset_engine()
+
+    def test_get_sessions_for_date_fails_closed_in_postgres_mode(self, tmp_path, monkeypatch):
+        from backend.db.engine import reset_engine
+        from backend.work_tracker import session_store as ss
+
+        monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+        reset_engine()
+        try:
+            with patch("backend.work_tracker.session_store._is_postgres_mode", return_value=True), \
+                 patch("backend.db.engine.get_engine") as mock_get_engine:
+                store = ss.WorkSessionStore()
+                sessions = store.get_sessions_for_date("2026-03-28")
+
+            assert sessions == []
+            mock_get_engine.assert_not_called()
+        finally:
+            reset_engine()
+
+
 # ---------------------------------------------------------------------------
 # EODReport tests
 # ---------------------------------------------------------------------------
@@ -251,8 +311,19 @@ class TestEODReport:
 
 class TestEODReportGenerator:
     @pytest.fixture(autouse=True)
-    def setup(self, tmp_path):
-        self.db_path = str(tmp_path / "test.db")
+    def setup(self, tmp_path, monkeypatch):
+        """Same DATABASE_DIR + reset_engine() isolation as TestWorkSessionStore
+        above — EODReportGenerator goes through WorkSessionStore, which now
+        resolves its DB file via backend.db.engine.get_engine() instead of a
+        patchable _db_path(), so the file this fixture creates and the file
+        the engine singleton resolves to must be the same path.
+        """
+        from backend.db.engine import reset_engine
+
+        monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+        reset_engine()
+
+        self.db_path = str(tmp_path / "devtrack.db")
         conn = _make_db(self.db_path)
         _insert_session(
             conn, "2026-03-28 09:00:00",
@@ -269,29 +340,16 @@ class TestEODReportGenerator:
             adjusted_minutes=90,
         )
         conn.close()
-
-    def _make_generator(self, db_path):
-        from backend.work_tracker.eod_report_generator import EODReportGenerator
-        gen = EODReportGenerator(include_ai=False)
-
-        # Patch the session store to use our temp DB
-        orig_init = gen.__class__.__init__
-
-        def patched_store():
-            from backend.work_tracker.session_store import WorkSessionStore
-            store = WorkSessionStore()
-            return store
-
-        return gen, patched_store
+        yield
+        from backend.db.engine import reset_engine
+        reset_engine()
 
     def test_generate_sums_sessions(self):
         from backend.work_tracker.eod_report_generator import EODReportGenerator
 
         async def run():
-            with patch("backend.work_tracker.session_store._db_path", return_value=self.db_path):
-                gen = EODReportGenerator(include_ai=False)
-                report = await gen.generate("2026-03-28")
-            return report
+            gen = EODReportGenerator(include_ai=False)
+            return await gen.generate("2026-03-28")
 
         report = asyncio.run(run())
         assert len(report.sessions) == 2
@@ -302,10 +360,8 @@ class TestEODReportGenerator:
         from backend.work_tracker.eod_report_generator import EODReportGenerator
 
         async def run():
-            with patch("backend.work_tracker.session_store._db_path", return_value=self.db_path):
-                gen = EODReportGenerator(include_ai=False)
-                report = await gen.generate("2099-01-01")
-            return report
+            gen = EODReportGenerator(include_ai=False)
+            return await gen.generate("2099-01-01")
 
         report = asyncio.run(run())
         assert report.sessions == []
@@ -316,10 +372,8 @@ class TestEODReportGenerator:
         from backend.work_tracker.eod_report_generator import EODReportGenerator
 
         async def run():
-            with patch("backend.work_tracker.session_store._db_path", return_value=self.db_path):
-                gen = EODReportGenerator(include_ai=False)
-                report = await gen.generate("2026-03-28")
-            return report
+            gen = EODReportGenerator(include_ai=False)
+            return await gen.generate("2026-03-28")
 
         report = asyncio.run(run())
         auth_session = next(s for s in report.sessions if s.ticket_ref == "AUTH-42")
@@ -329,10 +383,8 @@ class TestEODReportGenerator:
         from backend.work_tracker.eod_report_generator import EODReportGenerator
 
         async def run():
-            with patch("backend.work_tracker.session_store._db_path", return_value=self.db_path):
-                gen = EODReportGenerator(include_ai=False)
-                report = await gen.generate("2026-03-28")
-            return report
+            gen = EODReportGenerator(include_ai=False)
+            return await gen.generate("2026-03-28")
 
         report = asyncio.run(run())
         proj_session = next(s for s in report.sessions if s.ticket_ref == "PROJ-88")
