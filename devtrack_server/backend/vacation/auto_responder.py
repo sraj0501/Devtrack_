@@ -4,17 +4,37 @@ Vacation mode auto-responder.
 When vacation mode is active, this module replaces the interactive TUI prompt:
 it generates a work update from recent commits using the LLM, scores confidence,
 and (optionally) auto-submits it to the configured PM platform.
+
+Boundary rule
+-------------
+``vacation_mode`` is a Go-owned table (created and written by the Go daemon —
+see ``devtrack_client/internal/db/database.go``). This module never defines a
+SQLAlchemy ``Table`` for it and never runs DDL against it — Python must not
+create or own its schema (see the PostgreSQL Backend epic,
+``Data/agent_logs/project_board.md``).
+
+  SQLite mode     (POSTGRES_URL unset) — ``vacation_mode`` lives in the same
+    devtrack.db file the dual-dialect engine already points at, so the read
+    goes through ``backend.db.engine.get_engine()`` instead of a bespoke
+    ``sqlite3.connect()``.
+  PostgreSQL mode (POSTGRES_URL set)   — Go never speaks Postgres (decided
+    2026-07-13), so ``vacation_mode`` does not exist there and there is no Go
+    internal-HTTP endpoint exposing it yet. Vacation state resolution is a
+    no-op in this mode until that lands — fails closed (vacation mode reads
+    as inactive) rather than guessing, and still never raises.
 """
 
 from __future__ import annotations
 
 import logging
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
-from backend.config import get, get_float, get_bool, get_path, ConfigError
+from sqlalchemy import text
+
+from backend.config import database_path
+from backend.db.engine import get_engine, is_postgres
 
 logger = logging.getLogger(__name__)
 
@@ -33,15 +53,28 @@ class VacationState:
 
 
 def get_vacation_state() -> Optional[VacationState]:
-    """Read vacation mode state from devtrack.db. Returns None on any error."""
+    """Read vacation mode state from devtrack.db. Returns None on any error,
+    including if the DB or the ``vacation_mode`` table does not exist yet, or
+    immediately in PostgreSQL mode (see the boundary-rule note at the top of
+    this module).
+    """
+    if is_postgres():
+        logger.debug(
+            "get_vacation_state: no-op in PostgreSQL mode — vacation_mode is "
+            "a Go-owned SQLite-only table with no Postgres equivalent yet"
+        )
+        return None
     try:
-        db_path = get_path("DATABASE_DIR") / get("DATABASE_FILE_NAME")
-        conn = sqlite3.connect(str(db_path))
-        row = conn.execute(
-            "SELECT enabled, enabled_at, until, confidence_threshold, auto_submit "
-            "FROM vacation_mode WHERE id = 1"
-        ).fetchone()
-        conn.close()
+        db_path = database_path()
+        if not db_path.exists():
+            return None
+        with get_engine().connect() as conn:
+            row = conn.execute(
+                text(
+                    "SELECT enabled, enabled_at, until, confidence_threshold, auto_submit "
+                    "FROM vacation_mode WHERE id = 1"
+                )
+            ).fetchone()
         if row is None:
             return None
         return VacationState(
