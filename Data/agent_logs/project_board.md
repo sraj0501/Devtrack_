@@ -361,12 +361,23 @@ modules remain:** `email_reporter.py`, `learning_integration.py`, `slack/handler
 `telegram/handlers.py`, `voice_seeder.py`, `voice_sync.py`, `webhook_server.py`'s own remaining
 `sqlite3` usage.
 
+**[2026-07-31] TASK-134 — `email_reporter.py` ported (PR #241, merge `0a92bb6`).** 8th module. Single
+`sqlite3.connect()` call site (`get_daily_activities()`), reading the Go-owned `task_updates` table —
+the simplest shape so far: one method, one table, read-only. Got the standard fail-closed treatment
+(empty list, never raise in Postgres mode) — same as `dialectic_status.py`/`skill_detector.py`, since
+`task_updates` has no Go internal-HTTP endpoint yet. The module had zero dedicated test coverage before
+this port (only a `MagicMock` stand-in in `test_eod_queue_action.py`); added `test_email_reporter.py`
+covering both SQLite-mode reads (with/without the optional `time_estimate`/`source` columns, for
+cross-version Go-client schema compatibility) and Postgres-mode fail-closed behavior. **6 modules
+remain:** `learning_integration.py`, `slack/handlers.py`, `telegram/handlers.py`, `voice_seeder.py`,
+`voice_sync.py`, `webhook_server.py`'s own remaining `sqlite3` usage.
+
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-134_
+_Next DevTrack task ID: TASK-135_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -5862,9 +5873,9 @@ static, static, live end-to-end)
 ## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
 **Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**7 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
-PR #239) — 7 real modules remain** as of 2026-07-31 (PRs #231–#236, #239, #240, see the dated log
-entries above for full detail on each). TASK-114/115/116 still unstarted.
+**8 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — 6 real modules remain** as of 2026-07-31 (PRs #231–#236, #239, #240, #241, see the dated
+log entries above for full detail on each). TASK-114/115/116 still unstarted.
 
 ### Why this exists
 
@@ -5877,7 +5888,8 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | 7 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket,report}_store` | follows `POSTGRES_URL` | ✅ |
 | 6 of 15 modules ported fail-closed/HTTP-dispatch/hard-raise as of 2026-07-31: `skill_detector`, `dialectic_status`, `server_tui/stats_client`, `work_tracker/session_store`, `queue_gateway`, `vacation/auto_responder` | see log entries above | ✅ |
 | `daily_report_generator` (7th module ported) — mixed: `reports` table is Python-owned (now on the engine like the row above), `triggers` read is Go-owned (fail-closed) | see log entries above | ✅ |
-| 7 modules still opening raw `sqlite3` (`email_reporter`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `learning_integration`, `webhook_server`) | **SQLite always** | ❌ |
+| `email_reporter` (8th module ported) — fail-closed, single call site reading Go-owned `task_updates` | see log entries above | ✅ |
+| 6 modules still opening raw `sqlite3` (`telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `learning_integration`, `webhook_server`) | **SQLite always** | ❌ |
 | ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
