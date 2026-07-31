@@ -345,6 +345,22 @@ was dead code, never actually portable. **8 modules remain:** `daily_report_gene
 `email_reporter.py`, `learning_integration.py`, `slack/handlers.py`, `telegram/handlers.py`,
 `voice_seeder.py`, `voice_sync.py`, and `webhook_server.py`'s own remaining `sqlite3` usage.
 
+**[2026-07-31] TASK-112 — `daily_report_generator.py` ported (PR #240, merge `278c631`).** 7th module,
+first with a genuinely Python-owned table: `reports` (its own `CREATE TABLE`, no Go involvement,
+confirmed sole-owned via repo-wide grep). New `backend/db/report_store.py` follows the
+`ticket_db.py`/`learning_store.py` convention — a real SQLAlchemy `Table` on the shared engine's
+metadata, works identically in SQLite and Postgres mode, added to `test_postgres_backend.py`'s CI
+fixture. Separately, `triggers` (read for EOD narrative generation) is Go-owned — ported to the usual
+fail-closed pattern. **Found and flagged, not acted on:** `devtrack_client/internal/db/database.go`
+defines an identical `reports` schema and full CRUD surface (`InsertReport`, `GetReportByID`, etc.)
+with zero callers anywhere in the Go codebase — dead code, mirror image of the TASK-133 finding but
+on the Go side. Not deleted (a Go-side decision, out of scope for this Python port) — flagged here in
+case it's ever wired up, which would reproduce the exact split-brain this epic exists to fix (Go never
+speaks Postgres, so Go writing `reports` would diverge from Python's Postgres-mode writes). **7
+modules remain:** `email_reporter.py`, `learning_integration.py`, `slack/handlers.py`,
+`telegram/handlers.py`, `voice_seeder.py`, `voice_sync.py`, `webhook_server.py`'s own remaining
+`sqlite3` usage.
+
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
@@ -5846,9 +5862,9 @@ static, static, live end-to-end)
 ## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
 **Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**6 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
-PR #239) — 8 real modules remain** as of 2026-07-31 (PRs #231–#236, #239, see the dated log entries
-above for full detail on each). TASK-114/115/116 still unstarted.
+**7 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — 7 real modules remain** as of 2026-07-31 (PRs #231–#236, #239, #240, see the dated log
+entries above for full detail on each). TASK-114/115/116 still unstarted.
 
 ### Why this exists
 
@@ -5858,9 +5874,10 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | Layer | Backend today | Portable? |
 |---|---|---|
 | `db/engine.py` (SQLAlchemy factory, dialect-aware `upsert()`, pooling) | Postgres **or** SQLite | ✅ already done |
-| 6 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket}_store` | follows `POSTGRES_URL` | ✅ |
-| 6 of 15 modules ported as of 2026-07-31: `skill_detector`, `dialectic_status`, `server_tui/stats_client`, `work_tracker/session_store`, `queue_gateway`, `vacation/auto_responder` | fail-closed / HTTP-dispatch / hard-raise (see log entries above) | ✅ |
-| 8 modules still opening raw `sqlite3` (`daily_report_generator`, `email_reporter`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `learning_integration`, `webhook_server`) | **SQLite always** | ❌ |
+| 7 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket,report}_store` | follows `POSTGRES_URL` | ✅ |
+| 6 of 15 modules ported fail-closed/HTTP-dispatch/hard-raise as of 2026-07-31: `skill_detector`, `dialectic_status`, `server_tui/stats_client`, `work_tracker/session_store`, `queue_gateway`, `vacation/auto_responder` | see log entries above | ✅ |
+| `daily_report_generator` (7th module ported) — mixed: `reports` table is Python-owned (now on the engine like the row above), `triggers` read is Go-owned (fail-closed) | see log entries above | ✅ |
+| 7 modules still opening raw `sqlite3` (`email_reporter`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `learning_integration`, `webhook_server`) | **SQLite always** | ❌ |
 | ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
