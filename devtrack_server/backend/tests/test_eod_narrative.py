@@ -8,12 +8,22 @@ Five test classes as specified by the task acceptance criteria:
   3. Empty commit history — returns "No commits recorded" string, never raises.
   4. inject_style called with context_type="report" (mock/spy assertion).
   5. Unlinked commits (ticket_id = "") — appear under "Other commits" section, not silently dropped.
+
+TASK-112 (Postgres backend epic) note: ``_query_commit_rows`` (the method
+backing this narrative) now reads the Go-owned ``triggers`` table through
+``backend.db.engine.get_engine()`` instead of a bespoke ``sqlite3.connect()``
+— see the boundary-rule docstring on that method in
+``backend/daily_report_generator.py``. get_engine() is a process-wide
+singleton resolved from DATABASE_DIR/database_path(), so an arbitrary
+``db_path=...`` passed straight to ``DailyReportGenerator`` is silently
+ignored for these reads. Tests below use the DATABASE_DIR + reset_engine()
+isolated-engine fixture already established in test_skill_detector.py /
+test_server_tui.py / test_work_tracker.py / test_queue_gateway.py instead.
 """
 from __future__ import annotations
 
 import sqlite3
 import sys
-import tempfile
 from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -46,17 +56,38 @@ _UNLINKED_ROWS = [
 _ALL_ROWS = _LINKED_ROWS + _UNLINKED_ROWS
 
 
-def _make_db_with_rows(rows: list[dict]) -> str:
-    """Create a temp SQLite DB populated with the given trigger rows.
+@pytest.fixture()
+def isolated_engine(tmp_path, monkeypatch):
+    """Point DATABASE_DIR at a fresh temp directory and reset the shared
+    SQLAlchemy engine singleton so DailyReportGenerator's engine-based
+    ``triggers`` reads hit an isolated SQLite file instead of whatever
+    engine a prior test built (same fixture shape as
+    test_skill_detector.py's isolated_engine / test_server_tui.py's
+    isolated_stats_engine).
 
-    Returns the path string so DailyReportGenerator can be pointed at it.
+    Yields the temp directory; the DB file itself is ``devtrack.db`` inside
+    it (backend.config.database_path()'s default filename).
     """
-    tf = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    tf.close()
-    conn = sqlite3.connect(tf.name)
+    from backend.db.engine import reset_engine
+
+    monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+    reset_engine()
+    yield tmp_path
+    reset_engine()
+
+
+def _make_db_with_rows(db_dir: Path, rows: list[dict]) -> None:
+    """Create/populate the ``triggers`` table inside db_dir/devtrack.db.
+
+    ``triggers`` is a Go-owned table (see the boundary-rule docstring on
+    ``DailyReportGenerator._query_commit_rows``) — tests create its schema
+    by hand, same as test_skill_detector.py does for ``corrections``.
+    """
+    db_path = db_dir / "devtrack.db"
+    conn = sqlite3.connect(str(db_path))
     conn.execute(
         """
-        CREATE TABLE triggers (
+        CREATE TABLE IF NOT EXISTS triggers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             trigger_type TEXT NOT NULL,
             ticket_id TEXT DEFAULT '',
@@ -73,7 +104,6 @@ def _make_db_with_rows(rows: list[dict]) -> str:
         )
     conn.commit()
     conn.close()
-    return tf.name
 
 
 def _make_mock_provider(response: str) -> MagicMock:
@@ -99,41 +129,41 @@ def _config_patches():
 class TestEODNarrativeLLMAvailable:
     """When the LLM is reachable the report should contain per-ticket sections."""
 
-    def test_returns_string(self):
-        db_path = _make_db_with_rows(_LINKED_ROWS)
+    def test_returns_string(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _LINKED_ROWS)
         mock_provider = _make_mock_provider("I fixed the login issue and resolved the bug.")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             result = gen.generate_eod_narrative(target_date=TODAY)
         assert isinstance(result, str)
         assert result.strip()
 
-    def test_contains_ticket_ids(self):
-        db_path = _make_db_with_rows(_LINKED_ROWS)
+    def test_contains_ticket_ids(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _LINKED_ROWS)
         mock_provider = _make_mock_provider("Completed work on the ticket.")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             result = gen.generate_eod_narrative(target_date=TODAY)
         assert "PROJ-1" in result, f"Expected PROJ-1 in report; got:\n{result}"
         assert "PROJ-2" in result, f"Expected PROJ-2 in report; got:\n{result}"
 
-    def test_header_contains_date(self):
-        db_path = _make_db_with_rows(_LINKED_ROWS)
+    def test_header_contains_date(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _LINKED_ROWS)
         mock_provider = _make_mock_provider("Done.")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             result = gen.generate_eod_narrative(target_date=TODAY)
         assert TODAY in result, f"Report header should contain target_date; got:\n{result}"
 
-    def test_llm_called_for_each_ticket(self):
-        db_path = _make_db_with_rows(_LINKED_ROWS)
+    def test_llm_called_for_each_ticket(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _LINKED_ROWS)
         mock_provider = _make_mock_provider("Narrative paragraph.")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             gen.generate_eod_narrative(target_date=TODAY)
         # Two distinct ticket IDs → two LLM calls
         assert mock_provider.generate.call_count == 2, (
@@ -148,37 +178,37 @@ class TestEODNarrativeLLMAvailable:
 class TestEODNarrativeLLMUnavailable:
     """When the LLM raises the report should contain raw commit messages as bullets."""
 
-    def test_no_exception_propagates(self):
-        db_path = _make_db_with_rows(_LINKED_ROWS)
+    def test_no_exception_propagates(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _LINKED_ROWS)
         mock_provider = MagicMock()
         mock_provider.generate.side_effect = ConnectionError("Ollama unreachable")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             # Must not raise
             result = gen.generate_eod_narrative(target_date=TODAY)
         assert isinstance(result, str)
 
-    def test_fallback_contains_commit_messages(self):
-        db_path = _make_db_with_rows(_LINKED_ROWS)
+    def test_fallback_contains_commit_messages(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _LINKED_ROWS)
         mock_provider = MagicMock()
         mock_provider.generate.side_effect = RuntimeError("model not loaded")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             result = gen.generate_eod_narrative(target_date=TODAY)
         # The fallback uses bullet lists of the raw commit messages
         assert "fix: resolve login bug" in result or "fix: add unit test for login" in result, (
             f"Fallback should contain raw commit messages; got:\n{result}"
         )
 
-    def test_fallback_result_not_empty(self):
-        db_path = _make_db_with_rows(_LINKED_ROWS)
+    def test_fallback_result_not_empty(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _LINKED_ROWS)
         mock_provider = MagicMock()
         mock_provider.generate.side_effect = OSError("connection refused")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             result = gen.generate_eod_narrative(target_date=TODAY)
         assert result.strip(), "Fallback result must be a non-empty string"
 
@@ -190,30 +220,30 @@ class TestEODNarrativeLLMUnavailable:
 class TestEODNarrativeEmptyHistory:
     """When there are no commits for today the method should return a safe message."""
 
-    def test_no_exception_on_empty_db(self):
-        db_path = _make_db_with_rows([])  # No rows at all
+    def test_no_exception_on_empty_db(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, [])  # No rows at all
         from backend.daily_report_generator import DailyReportGenerator
-        gen = DailyReportGenerator(db_path=db_path)
+        gen = DailyReportGenerator()
         # Must not raise
         result = gen.generate_eod_narrative(target_date=TODAY)
         assert isinstance(result, str)
 
-    def test_returns_no_commits_message(self):
-        db_path = _make_db_with_rows([])
+    def test_returns_no_commits_message(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, [])
         from backend.daily_report_generator import DailyReportGenerator
-        gen = DailyReportGenerator(db_path=db_path)
+        gen = DailyReportGenerator()
         result = gen.generate_eod_narrative(target_date=TODAY)
         assert "No commits recorded" in result, (
             f"Expected 'No commits recorded' in empty-day result; got: {result!r}"
         )
 
-    def test_no_commits_on_different_date(self):
+    def test_no_commits_on_different_date(self, isolated_engine):
         """Rows exist but for a different date — should still return empty-day message."""
-        db_path = _make_db_with_rows([
+        _make_db_with_rows(isolated_engine, [
             {"ticket_id": "PROJ-1", "commit_message": "old commit", "commit_hash": "fff", "timestamp": "2020-01-01 09:00:00"},
         ])
         from backend.daily_report_generator import DailyReportGenerator
-        gen = DailyReportGenerator(db_path=db_path)
+        gen = DailyReportGenerator()
         result = gen.generate_eod_narrative(target_date=TODAY)
         assert "No commits recorded" in result
 
@@ -225,8 +255,8 @@ class TestEODNarrativeEmptyHistory:
 class TestEODNarrativeInjectStyle:
     """inject_style must be called with context_type='report' for each ticket section."""
 
-    def test_inject_style_called_with_report_context(self):
-        db_path = _make_db_with_rows(_LINKED_ROWS)
+    def test_inject_style_called_with_report_context(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _LINKED_ROWS)
         mock_provider = _make_mock_provider("Done.")
         with (
             _config_patches(),
@@ -236,7 +266,7 @@ class TestEODNarrativeInjectStyle:
             ) as mock_inject,
         ):
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             gen.generate_eod_narrative(target_date=TODAY)
 
         assert mock_inject.called, "_inject_style must have been called at least once"
@@ -248,8 +278,8 @@ class TestEODNarrativeInjectStyle:
                 f"got: {kwargs.get('context_type')!r}"
             )
 
-    def test_inject_style_called_once_per_ticket(self):
-        db_path = _make_db_with_rows(_LINKED_ROWS)
+    def test_inject_style_called_once_per_ticket(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _LINKED_ROWS)
         mock_provider = _make_mock_provider("Done.")
         with (
             _config_patches(),
@@ -259,7 +289,7 @@ class TestEODNarrativeInjectStyle:
             ) as mock_inject,
         ):
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             gen.generate_eod_narrative(target_date=TODAY)
 
         # _LINKED_ROWS has 2 distinct ticket IDs → 2 inject_style calls
@@ -275,47 +305,47 @@ class TestEODNarrativeInjectStyle:
 class TestEODNarrativeUnlinkedCommits:
     """Commits with empty or 'unlinked' ticket_id must appear under 'Other commits'."""
 
-    def test_other_commits_section_present(self):
-        db_path = _make_db_with_rows(_UNLINKED_ROWS)
+    def test_other_commits_section_present(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _UNLINKED_ROWS)
         mock_provider = _make_mock_provider("Done.")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             result = gen.generate_eod_narrative(target_date=TODAY)
         assert "Other commits" in result, (
             f"Expected 'Other commits' section for unlinked rows; got:\n{result}"
         )
 
-    def test_unlinked_commits_not_silently_dropped(self):
-        db_path = _make_db_with_rows(_UNLINKED_ROWS)
+    def test_unlinked_commits_not_silently_dropped(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _UNLINKED_ROWS)
         mock_provider = _make_mock_provider("Done.")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             result = gen.generate_eod_narrative(target_date=TODAY)
         # The actual commit messages from unlinked rows must be in the output
         assert "update README" in result or "bump version" in result, (
             f"Unlinked commit messages must appear in report; got:\n{result}"
         )
 
-    def test_mixed_linked_and_unlinked(self):
-        db_path = _make_db_with_rows(_ALL_ROWS)
+    def test_mixed_linked_and_unlinked(self, isolated_engine):
+        _make_db_with_rows(isolated_engine, _ALL_ROWS)
         mock_provider = _make_mock_provider("Narrative for this ticket.")
         with _config_patches():
             from backend.daily_report_generator import DailyReportGenerator
-            gen = DailyReportGenerator(db_path=db_path, provider=mock_provider)
+            gen = DailyReportGenerator(provider=mock_provider)
             result = gen.generate_eod_narrative(target_date=TODAY)
         assert "PROJ-1" in result
         assert "PROJ-2" in result
         assert "Other commits" in result
 
-    def test_unlinked_string_ticket_id_also_bucketed(self):
+    def test_unlinked_string_ticket_id_also_bucketed(self, isolated_engine):
         """The literal string 'unlinked' should go into Other commits, not its own section."""
-        db_path = _make_db_with_rows([
+        _make_db_with_rows(isolated_engine, [
             {"ticket_id": "unlinked", "commit_message": "chore: cleanup", "commit_hash": "ggg", "timestamp": f"{TODAY} 08:00:00"},
         ])
         from backend.daily_report_generator import DailyReportGenerator
-        gen = DailyReportGenerator(db_path=db_path)
+        gen = DailyReportGenerator()
         result = gen.generate_eod_narrative(target_date=TODAY)
         assert "Other commits" in result
         # The section header should NOT be "## unlinked"
