@@ -7,16 +7,36 @@ confidence-threshold data so the /voice/status endpoint can surface them.
 All three public methods return empty/zero values on any DB error — they
 never raise (graceful degradation — Non-Negotiable #8).
 
-Config: db_path resolved via backend.config.get_path("DATABASE_PATH") —
+Config: db_path resolved via backend.config.database_path() —
 no os.getenv calls anywhere in this module.
+
+Boundary rule
+-------------
+``inferences``, ``corrections``, ``skills``, and ``confidence_thresholds``
+are Go-owned tables (created and written by the Go daemon — see
+``devtrack_client/internal/db/migrations.go`` and ``database.go``).  This
+module never defines a SQLAlchemy ``Table`` for any of them and never runs
+DDL against them — Python must not create or own their schema (see the
+PostgreSQL Backend epic, ``Data/agent_logs/project_board.md``).
+
+  SQLite mode     (POSTGRES_URL unset) — all four tables live in the same
+    devtrack.db file the dual-dialect engine already points at, so reads go
+    through ``backend.db.engine.get_engine()`` via SQLAlchemy ``text()``
+    instead of a bespoke ``sqlite3.connect()``.
+  PostgreSQL mode (POSTGRES_URL set)   — Go never speaks Postgres (decided
+    2026-07-13), so none of these four tables exist there and there is no Go
+    internal-HTTP endpoint exposing them yet. Every method fails closed
+    immediately in this mode — safe default, never raise, never queried.
 """
 
 from __future__ import annotations
 
 import logging
-import sqlite3
+
+from sqlalchemy import text
 
 from backend.config import database_path
+from backend.db.engine import get_engine, is_postgres
 
 logger = logging.getLogger("devtrack.dialectic_status")
 
@@ -62,29 +82,37 @@ class DialecticStatus:
             }
 
         Returns ``{"total": 0, "top_by_confidence": [], "correction_count": 0}``
-        on any DB error.
+        on any DB error, or immediately in PostgreSQL mode (see the
+        boundary-rule note at the top of this module).
         """
         _safe = {"total": 0, "top_by_confidence": [], "correction_count": 0}
+        if is_postgres():
+            logger.debug(
+                "dialectic_status: get_inference_summary is a no-op in PostgreSQL "
+                "mode — inferences/corrections are Go-owned SQLite-only tables "
+                "with no Postgres equivalent yet"
+            )
+            return _safe
         try:
             db_path = self._resolve_db_path()
             if not db_path.exists():
                 return _safe
-            with sqlite3.connect(str(db_path)) as conn:
-                conn.row_factory = sqlite3.Row
-
+            with get_engine().connect() as conn:
                 # Total inferences.
-                row = conn.execute("SELECT COUNT(*) FROM inferences").fetchone()
+                row = conn.execute(text("SELECT COUNT(*) FROM inferences")).fetchone()
                 total = int(row[0]) if row else 0
 
                 # Top 5 by confidence DESC.
                 rows = conn.execute(
-                    """
-                    SELECT id, subject, inference, confidence, context_type
-                      FROM inferences
-                     ORDER BY confidence DESC
-                     LIMIT 5
-                    """
-                ).fetchall()
+                    text(
+                        """
+                        SELECT id, subject, inference, confidence, context_type
+                          FROM inferences
+                         ORDER BY confidence DESC
+                         LIMIT 5
+                        """
+                    )
+                ).mappings().all()
                 top = [
                     {
                         "id": int(r["id"]),
@@ -97,7 +125,7 @@ class DialecticStatus:
                 ]
 
                 # Count developer corrections.
-                row = conn.execute("SELECT COUNT(*) FROM corrections").fetchone()
+                row = conn.execute(text("SELECT COUNT(*) FROM corrections")).fetchone()
                 correction_count = int(row[0]) if row else 0
 
             return {
@@ -117,24 +145,36 @@ class DialecticStatus:
 
             {"total": 3, "names": ["imperative_commit_tone", "bracket_ticket_prefix", ...]}
 
-        Returns ``{"total": 0, "names": []}`` on any DB error or if the
-        skills table does not yet exist (TASK-089 may not be merged yet).
+        Returns ``{"total": 0, "names": []}`` on any DB error, if the skills
+        table does not yet exist (TASK-089 may not be merged yet), or
+        immediately in PostgreSQL mode (see the boundary-rule note at the
+        top of this module).
         """
         _safe: dict = {"total": 0, "names": []}
+        if is_postgres():
+            logger.debug(
+                "dialectic_status: get_skill_summary is a no-op in PostgreSQL "
+                "mode — skills is a Go-owned SQLite-only table with no "
+                "Postgres equivalent yet"
+            )
+            return _safe
         try:
             db_path = self._resolve_db_path()
             if not db_path.exists():
                 return _safe
-            with sqlite3.connect(str(db_path)) as conn:
+            with get_engine().connect() as conn:
                 # Check whether the table exists first — TASK-089 may not be merged yet.
                 table_exists = conn.execute(
-                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='skills'"
+                    text(
+                        "SELECT COUNT(*) FROM sqlite_master "
+                        "WHERE type='table' AND name='skills'"
+                    )
                 ).fetchone()[0]
                 if not table_exists:
                     return _safe
 
                 rows = conn.execute(
-                    "SELECT name FROM skills ORDER BY promoted_at ASC"
+                    text("SELECT name FROM skills ORDER BY promoted_at ASC")
                 ).fetchall()
                 names = [r[0] for r in rows]
             return {"total": len(names), "names": names}
@@ -154,31 +194,42 @@ class DialecticStatus:
               ...
             }
 
-        Returns ``{}`` on any DB error or if the table does not yet exist.
+        Returns ``{}`` on any DB error, if the table does not yet exist, or
+        immediately in PostgreSQL mode (see the boundary-rule note at the
+        top of this module).
         """
         _safe: dict = {}
+        if is_postgres():
+            logger.debug(
+                "dialectic_status: get_threshold_summary is a no-op in "
+                "PostgreSQL mode — confidence_thresholds is a Go-owned "
+                "SQLite-only table with no Postgres equivalent yet"
+            )
+            return _safe
         try:
             db_path = self._resolve_db_path()
             if not db_path.exists():
                 return _safe
-            with sqlite3.connect(str(db_path)) as conn:
-                conn.row_factory = sqlite3.Row
-
+            with get_engine().connect() as conn:
                 # Check table exists.
                 table_exists = conn.execute(
-                    "SELECT COUNT(*) FROM sqlite_master "
-                    "WHERE type='table' AND name='confidence_thresholds'"
+                    text(
+                        "SELECT COUNT(*) FROM sqlite_master "
+                        "WHERE type='table' AND name='confidence_thresholds'"
+                    )
                 ).fetchone()[0]
                 if not table_exists:
                     return _safe
 
                 rows = conn.execute(
-                    """
-                    SELECT action_type, threshold, approvals, rejections
-                      FROM confidence_thresholds
-                     ORDER BY action_type ASC
-                    """
-                ).fetchall()
+                    text(
+                        """
+                        SELECT action_type, threshold, approvals, rejections
+                          FROM confidence_thresholds
+                         ORDER BY action_type ASC
+                        """
+                    )
+                ).mappings().all()
 
             result: dict = {}
             for r in rows:
