@@ -432,12 +432,26 @@ that module standalone would ever catch — run the *full* suite, not just the n
 any port as done.** **3 modules remain:** `voice_seeder.py`, `voice_sync.py`, `webhook_server.py`'s own
 remaining `sqlite3` usage.
 
+**[2026-07-31] TASK-138 — `voice_seeder.py` ported (PR #245, merge `413bd55`).** 12th module — the second
+"Python fully owns this table" case (after `daily_report_generator.py`'s `reports`). `voice_seeded_commits`
+has zero Go involvement (confirmed via repo-wide grep), so it follows `db/ticket_db.py`'s convention: a
+real SQLAlchemy `Table` in new `backend/db/voice_seed_store.py`, registered on the shared `metadata`,
+works identically in SQLite and Postgres mode — no boundary-rule guard needed, unlike every Go-owned-table
+module ported so far. `voice_seeder.py` itself dropped its own `sqlite3.connect()` +
+`_ensure_seed_table()`/`_is_already_seeded()`/`_mark_seeded()` entirely in favor of the new store's
+`is_already_seeded()`/`mark_seeded()`. Migrated its existing tests off
+`patch("backend.voice_seeder._db_path", ...)` to the `DATABASE_DIR`+`reset_engine()` isolated-engine
+pattern — same recurring gotcha as every other port this epic (a patched path silently stops mattering
+once code switches to `get_engine()`, a process-wide singleton that resolves its own path). Added to
+`test_postgres_backend.py`'s CI fixture. **2 modules remain:** `voice_sync.py`, `webhook_server.py`'s own
+remaining `sqlite3` usage.
+
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-138_
+_Next DevTrack task ID: TASK-139_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -5933,8 +5947,8 @@ static, static, live end-to-end)
 ## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
 **Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**11 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
-PR #239) — 3 real modules remain** as of 2026-07-31 (PRs #231–#236, #239–#244, see the dated log
+**12 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — 2 real modules remain** as of 2026-07-31 (PRs #231–#236, #239–#245, see the dated log
 entries above for full detail on each). TASK-114/115/116 still unstarted.
 
 ### Why this exists
@@ -5952,7 +5966,8 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | `learning_integration` (9th module ported) — delegates to already-engine-based `learning_store`; fixed a silent broken-import bug along the way | see log entries above | ✅ |
 | `slack/handlers` (10th module ported) — 3 distinct fixes: new `health_snapshots_store` (fail-closed), new `WorkSessionStore.start_session()` (no-op), new `auto_responder.set_vacation_state()` (first writer, returns False) | see log entries above | ✅ |
 | `telegram/handlers` (11th module ported) — reused 2 of slack's helpers directly, added new `queue_status_store` + a second `health_snapshots_store` function; also fixed a dormant sys.path/import-shadowing bug across 3 other modules | see log entries above | ✅ |
-| 3 modules still opening raw `sqlite3` (`voice_sync`, `voice_seeder`, `webhook_server`) | **SQLite always** | ❌ |
+| `voice_seeder` (12th module ported) — 2nd "Python fully owns this table" case, new `db/voice_seed_store` | see log entries above | ✅ |
+| 2 modules still opening raw `sqlite3` (`voice_sync`, `webhook_server`) | **SQLite always** | ❌ |
 | ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
