@@ -49,6 +49,7 @@ def pg_engine():
     import backend.admin.user_manager    # noqa: F401
     import backend.db.report_store       # noqa: F401
     import backend.db.voice_seed_store   # noqa: F401
+    import backend.db.voice_sync_store   # noqa: F401
 
     engine_mod.reset_engine()
     os.environ["POSTGRES_URL"] = POSTGRES_URL

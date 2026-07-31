@@ -8,15 +8,23 @@ Covers:
 4. sync_issue_comments: idempotent — second call with same comment IDs returns 0.
 5. sync_all: one platform client raises → that platform returns 0, others succeed.
 6. Endpoint smoke: POST /voice/sync returns {"synced": {...}}.
+
+voice_synced_items is a Python-owned table (backend.db.voice_sync_store,
+TASK-112 port) on the shared SQLAlchemy engine -- tests use the DATABASE_DIR
++ reset_engine() isolated-engine fixture (same pattern as
+test_voice_seeder.py) instead of patching a _db_path()-style helper, since
+get_engine() is a process-wide singleton that resolves its own path and
+would ignore an explicitly-passed one.
 """
 from __future__ import annotations
 
-import sqlite3
 import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
+
+from backend.db.engine import reset_engine
 
 
 # ---------------------------------------------------------------------------
@@ -43,9 +51,15 @@ def _make_workspace(
 
 
 @pytest.fixture()
-def tmp_db(tmp_path: Path) -> Path:
-    """Return a path to a fresh SQLite DB for idempotency tracking."""
-    return tmp_path / "devtrack.db"
+def isolated_engine(tmp_path: Path, monkeypatch):
+    import backend.db.voice_sync_store as vss
+
+    monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+    reset_engine()
+    vss._schema_done = False
+    yield tmp_path
+    reset_engine()
+    vss._schema_done = False
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +88,7 @@ class TestSyncPRDescriptions:
             {"id": "103", "author": "DEVUSER", "body": "Refactored session handler."},  # case-insensitive
         ]
 
-    def test_author_filter_and_count(self, tmp_db: Path) -> None:
+    def test_author_filter_and_count(self, isolated_engine: Path) -> None:
         """Only PRs authored by pm_username (case-insensitive) are embedded."""
         from backend.voice_sync import VoiceSync
 
@@ -86,7 +100,6 @@ class TestSyncPRDescriptions:
             return True
 
         with (
-            patch("backend.voice_sync._db_path", return_value=tmp_db),
             patch("backend.voice_sync._embed_text", side_effect=fake_embed),
             patch.object(
                 VoiceSync,
@@ -103,7 +116,7 @@ class TestSyncPRDescriptions:
         assert "github-pr-103" in embedded_ids
         assert "github-pr-102" not in embedded_ids
 
-    def test_idempotent_second_call(self, tmp_db: Path) -> None:
+    def test_idempotent_second_call(self, isolated_engine: Path) -> None:
         """Second call with same PR IDs returns 0 newly embedded."""
         from backend.voice_sync import VoiceSync
 
@@ -111,7 +124,6 @@ class TestSyncPRDescriptions:
         prs = [{"id": "101", "author": "devuser", "body": "Fixed the auth bug."}]
 
         with (
-            patch("backend.voice_sync._db_path", return_value=tmp_db),
             patch("backend.voice_sync._embed_text", return_value=True),
             patch.object(
                 VoiceSync, "_fetch_prs", new=AsyncMock(return_value=prs)
@@ -124,7 +136,7 @@ class TestSyncPRDescriptions:
         assert first == 1
         assert second == 0  # idempotent
 
-    def test_empty_body_skipped(self, tmp_db: Path) -> None:
+    def test_empty_body_skipped(self, isolated_engine: Path) -> None:
         """PRs with an empty body are not embedded."""
         from backend.voice_sync import VoiceSync
 
@@ -135,7 +147,6 @@ class TestSyncPRDescriptions:
         ]
 
         with (
-            patch("backend.voice_sync._db_path", return_value=tmp_db),
             patch("backend.voice_sync._embed_text", return_value=True),
             patch.object(
                 VoiceSync, "_fetch_prs", new=AsyncMock(return_value=prs)
@@ -146,15 +157,14 @@ class TestSyncPRDescriptions:
 
         assert count == 0
 
-    def test_no_pm_username_returns_zero(self, tmp_db: Path) -> None:
+    def test_no_pm_username_returns_zero(self, isolated_engine: Path) -> None:
         """When pm_username is empty, sync is skipped and returns 0."""
         from backend.voice_sync import VoiceSync
 
         ws = _make_workspace(pm_username="")
 
-        with patch("backend.voice_sync._db_path", return_value=tmp_db):
-            syncer = VoiceSync()
-            count = syncer.sync_pr_descriptions(ws)
+        syncer = VoiceSync()
+        count = syncer.sync_pr_descriptions(ws)
 
         assert count == 0
 
@@ -174,7 +184,7 @@ class TestSyncIssueComments:
             {"id": "503", "author": "devuser", "body": "Added test coverage as requested."},
         ]
 
-    def test_author_filter_and_count(self, tmp_db: Path) -> None:
+    def test_author_filter_and_count(self, isolated_engine: Path) -> None:
         """Only comments authored by pm_username are embedded."""
         from backend.voice_sync import VoiceSync
 
@@ -186,7 +196,6 @@ class TestSyncIssueComments:
             return True
 
         with (
-            patch("backend.voice_sync._db_path", return_value=tmp_db),
             patch("backend.voice_sync._embed_text", side_effect=fake_embed),
             patch.object(
                 VoiceSync,
@@ -202,7 +211,7 @@ class TestSyncIssueComments:
         assert "github-comment-503" in embedded_ids
         assert "github-comment-502" not in embedded_ids
 
-    def test_idempotent_second_call(self, tmp_db: Path) -> None:
+    def test_idempotent_second_call(self, isolated_engine: Path) -> None:
         """Second call with same comment IDs returns 0 newly embedded."""
         from backend.voice_sync import VoiceSync
 
@@ -210,7 +219,6 @@ class TestSyncIssueComments:
         comments = [{"id": "501", "author": "devuser", "body": "Fixed as discussed."}]
 
         with (
-            patch("backend.voice_sync._db_path", return_value=tmp_db),
             patch("backend.voice_sync._embed_text", return_value=True),
             patch.object(
                 VoiceSync, "_fetch_comments", new=AsyncMock(return_value=comments)
@@ -232,7 +240,7 @@ class TestSyncIssueComments:
 class TestSyncAll:
     """sync_all: one platform failing does not block others."""
 
-    def test_platform_failure_isolated(self, tmp_db: Path) -> None:
+    def test_platform_failure_isolated(self, isolated_engine: Path) -> None:
         """When GitHub _fetch_prs raises, azure still syncs; no exception raised."""
         from backend.voice_sync import VoiceSync
 
@@ -256,7 +264,6 @@ class TestSyncAll:
             return []
 
         with (
-            patch("backend.voice_sync._db_path", return_value=tmp_db),
             patch("backend.voice_sync._embed_text", return_value=True),
             patch.object(VoiceSync, "_fetch_prs", new=fake_fetch_prs),
             patch.object(VoiceSync, "_fetch_comments", new=fake_fetch_comments),
@@ -270,15 +277,12 @@ class TestSyncAll:
         # Total should equal azure count.
         assert totals["total"] == totals["azure"]
 
-    def test_totals_structure(self, tmp_db: Path) -> None:
+    def test_totals_structure(self, isolated_engine: Path) -> None:
         """sync_all always returns the expected keys."""
         from backend.voice_sync import VoiceSync
 
-        with (
-            patch("backend.voice_sync._db_path", return_value=tmp_db),
-        ):
-            syncer = VoiceSync()
-            totals = syncer.sync_all([])
+        syncer = VoiceSync()
+        totals = syncer.sync_all([])
 
         assert "github" in totals
         assert "azure" in totals
