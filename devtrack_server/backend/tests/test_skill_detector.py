@@ -1,7 +1,18 @@
-"""Tests for SkillDetector (backend/skill_detector.py)."""
-import pytest
-from unittest.mock import MagicMock, patch
+"""Tests for SkillDetector (backend/skill_detector.py).
 
+skill_detector.py reads the Go-owned ``corrections`` table through
+``backend.db.engine.get_engine()`` (SQLite mode) rather than a bespoke
+``sqlite3.connect()``. These tests exercise that path against a real,
+temp-directory SQLite DB — created and migrated the way pytest fixtures for
+other engine.py-backed modules do (see test_project_manager.py) — plus the
+PostgreSQL-mode no-op path via a monkeypatched ``is_postgres()``.
+"""
+from unittest.mock import patch
+
+import pytest
+from sqlalchemy import text
+
+from backend.db.engine import get_engine, reset_engine
 from backend.skill_detector import SkillDetector, EMERGENCE_THRESHOLD
 
 
@@ -18,33 +29,53 @@ def make_inferences(
     ]
 
 
+@pytest.fixture(autouse=True)
+def isolated_engine(tmp_path, monkeypatch):
+    """Point DATABASE_DIR at a fresh temp directory and reset the engine
+    singleton so each test gets its own SQLite file, then create the
+    Go-owned ``corrections`` table by hand (Python never owns its schema —
+    see the boundary-rule docstring in skill_detector.py).
+    """
+    monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+    reset_engine()
+    with get_engine().connect() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS corrections ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "inference_id INTEGER NOT NULL, "
+                "correction TEXT, "
+                "flagged_from TEXT, "
+                "weight REAL"
+                ")"
+            )
+        )
+        conn.commit()
+    yield
+    reset_engine()
+
+
+def add_correction(inference_id: int) -> None:
+    with get_engine().connect() as conn:
+        conn.execute(
+            text("INSERT INTO corrections (inference_id, correction) VALUES (:iid, :c)"),
+            {"iid": inference_id, "c": "developer edited this"},
+        )
+        conn.commit()
+
+
 class TestSkillDetector:
     """Unit tests for SkillDetector.detect_and_promote."""
-
-    def _make_db_mock(self, correction_count: int = 0):
-        """Return a sqlite3.connect mock that reports correction_count corrections."""
-        mock_cursor = MagicMock()
-        mock_cursor.fetchone.return_value = (correction_count,)
-
-        mock_conn = MagicMock()
-        mock_conn.execute.return_value = mock_cursor
-        # Support both context-manager and plain use (our code uses plain close()).
-        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
-        mock_conn.__exit__ = MagicMock(return_value=False)
-
-        return mock_conn
 
     def test_promotes_when_threshold_met_no_corrections(self):
         """EMERGENCE_THRESHOLD+1 inferences, same cluster, 0 corrections → promotes once."""
         infs = make_inferences(EMERGENCE_THRESHOLD + 1)
         detector = SkillDetector()
-        mock_conn = self._make_db_mock(correction_count=0)
 
-        with patch("backend.skill_detector.sqlite3.connect", return_value=mock_conn), \
-             patch.object(
-                 detector, "_promote_skill",
-                 return_value={"name": "use_imperative_mood"}
-             ) as mock_promote:
+        with patch.object(
+            detector, "_promote_skill",
+            return_value={"name": "use_imperative_mood"}
+        ) as mock_promote:
             result = detector.detect_and_promote(infs)
 
         mock_promote.assert_called_once()
@@ -53,11 +84,10 @@ class TestSkillDetector:
     def test_no_promotion_when_corrections_exist(self):
         """EMERGENCE_THRESHOLD inferences but 1 correction → not promoted."""
         infs = make_inferences(EMERGENCE_THRESHOLD)
+        add_correction(infs[0]["id"])
         detector = SkillDetector()
-        mock_conn = self._make_db_mock(correction_count=1)
 
-        with patch("backend.skill_detector.sqlite3.connect", return_value=mock_conn), \
-             patch.object(detector, "_promote_skill") as mock_promote:
+        with patch.object(detector, "_promote_skill") as mock_promote:
             result = detector.detect_and_promote(infs)
 
         mock_promote.assert_not_called()
@@ -68,12 +98,12 @@ class TestSkillDetector:
         infs = make_inferences(EMERGENCE_THRESHOLD - 1)
         detector = SkillDetector()
 
-        with patch("backend.skill_detector.sqlite3.connect") as mock_connect, \
-             patch.object(detector, "_promote_skill") as mock_promote:
+        with patch.object(detector, "_promote_skill") as mock_promote, \
+             patch("backend.skill_detector.get_engine") as mock_get_engine:
             result = detector.detect_and_promote(infs)
 
         # DB should NOT be opened when no cluster reaches the threshold.
-        mock_connect.assert_not_called()
+        mock_get_engine.assert_not_called()
         mock_promote.assert_not_called()
         assert result == []
 
@@ -82,19 +112,34 @@ class TestSkillDetector:
         infs = make_inferences(EMERGENCE_THRESHOLD + 1)
         detector = SkillDetector()
 
-        with patch("backend.skill_detector.sqlite3.connect", side_effect=Exception("db error")):
+        with patch("backend.skill_detector.get_engine", side_effect=Exception("db error")):
             result = detector.detect_and_promote(infs)
 
+        assert result == []
+
+    def test_missing_corrections_table_returns_empty(self):
+        """corrections table absent (e.g. Go daemon never migrated) → [] without raising."""
+        with get_engine().connect() as conn:
+            conn.execute(text("DROP TABLE corrections"))
+            conn.commit()
+
+        infs = make_inferences(EMERGENCE_THRESHOLD + 1)
+        detector = SkillDetector()
+
+        with patch.object(detector, "_promote_skill") as mock_promote:
+            result = detector.detect_and_promote(infs)
+
+        mock_promote.assert_not_called()
         assert result == []
 
     def test_empty_input_returns_empty(self):
         """No inferences → empty list without touching DB."""
         detector = SkillDetector()
 
-        with patch("backend.skill_detector.sqlite3.connect") as mock_connect:
+        with patch("backend.skill_detector.get_engine") as mock_get_engine:
             result = detector.detect_and_promote([])
 
-        mock_connect.assert_not_called()
+        mock_get_engine.assert_not_called()
         assert result == []
 
     def test_two_clusters_promotes_both(self):
@@ -104,13 +149,11 @@ class TestSkillDetector:
         all_infs = infs_a + infs_b
 
         detector = SkillDetector()
-        mock_conn = self._make_db_mock(correction_count=0)
 
-        with patch("backend.skill_detector.sqlite3.connect", return_value=mock_conn), \
-             patch.object(
-                 detector, "_promote_skill",
-                 side_effect=lambda name, ctx, ev: {"name": name}
-             ) as mock_promote:
+        with patch.object(
+            detector, "_promote_skill",
+            side_effect=lambda name, ctx, ev: {"name": name}
+        ) as mock_promote:
             result = detector.detect_and_promote(all_infs)
 
         assert mock_promote.call_count == 2
@@ -141,15 +184,12 @@ class TestSkillDetector:
         ]
 
         detector = SkillDetector()
-        # Mock DB: 0 corrections for every inference in this cluster.
-        mock_conn = self._make_db_mock(correction_count=0)
 
-        with patch("backend.skill_detector.sqlite3.connect", return_value=mock_conn), \
-             patch.object(
-                 detector,
-                 "_promote_skill",
-                 return_value={"name": "commit_tone"},
-             ) as mock_promote:
+        with patch.object(
+            detector,
+            "_promote_skill",
+            return_value={"name": "commit_tone"},
+        ) as mock_promote:
             result = detector.detect_and_promote(inferences)
 
         # The promote endpoint must have been called once (one cluster).
@@ -159,3 +199,21 @@ class TestSkillDetector:
         assert result[0]["name"] == "commit_tone", (
             f"Expected skill name 'commit_tone', got {result[0]['name']!r}"
         )
+
+
+class TestSkillDetectorPostgresMode:
+    """PostgreSQL-mode boundary-rule behaviour: corrections is Go-owned and not
+    yet exposed over HTTP (TASK-114), so detection must no-op, not crash."""
+
+    def test_postgres_mode_skips_promotion_without_touching_engine(self):
+        infs = make_inferences(EMERGENCE_THRESHOLD + 1)
+        detector = SkillDetector()
+
+        with patch("backend.skill_detector.is_postgres", return_value=True), \
+             patch("backend.skill_detector.get_engine") as mock_get_engine, \
+             patch.object(detector, "_promote_skill") as mock_promote:
+            result = detector.detect_and_promote(infs)
+
+        mock_get_engine.assert_not_called()
+        mock_promote.assert_not_called()
+        assert result == []

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, bot_automation]
+    branches: [main, dev, bot_automation]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   go-test:
@@ -50,3 +50,47 @@ jobs:
       - name: Run pytest
         working-directory: devtrack_server
         run: uv run pytest backend/tests/ -q --tb=short
+
+  python-test-postgres:
+    name: Python tests (Postgres, TASK-113)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: devtrack
+          POSTGRES_PASSWORD: devtrack
+          POSTGRES_DB: devtrack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U devtrack -d devtrack"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        working-directory: devtrack_server
+        run: uv sync --extra postgres
+
+      - name: Run Postgres-backed tests
+        working-directory: devtrack_server
+        env:
+          POSTGRES_URL: postgresql://devtrack:devtrack@localhost:5432/devtrack
+        run: uv run pytest backend/tests/test_postgres_backend.py -q --tb=short
+        # Scoped to this one file, not the full suite: most of backend/tests/
+        # relies on a per-test DATABASE_DIR->tmp_path SQLite fixture for
+        # isolation, which has no Postgres equivalent today — running the
+        # whole suite against one shared Postgres instance causes real
+        # cross-test contamination (verified locally: 45 unrelated failures).
+        # Giving Postgres the same per-test isolation SQLite gets is real
+        # follow-up work, tracked on the board under the Postgres epic.
