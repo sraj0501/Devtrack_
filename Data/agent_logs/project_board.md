@@ -257,6 +257,17 @@ TASK-126–130 written before the epic actually merged; resolved by keeping `dev
 accurate post-merge account), same resolution as the earlier PR #224 board conflict. CI green on
 both PRs before merge (Go build/vet ubuntu+windows, Go tests, API contract tests, Python tests).
 
+**[2026-07-31] TASK-132 — Doc/wiki sync to current state (PR #230, merge `211cff7`).** User asked to
+update docs/memory/wiki to reflect PR #226–229. Also caught a `docu-agent` skill invocation that
+returned instructions scoped to a *different* project (wrong OS/paths, told the caller to push
+straight to `main`) — not executed, redone by hand. Updated `devtrack_wiki/wiki/wiki.html` (What's
+New page + home card) for the Silent Worker epic + TASK-131. `docs/CAPABILITIES_OWNERSHIP.md` was
+stale beyond just this change — still listed `logs --follow` as a stub, and still showed ticket
+alerts/Telegram/Slack delivery as Python-in-client with Phase 2 "port to Go" pending despite its own
+header already claiming Phase 2 complete; corrected all three to Go-native
+(`internal/alerts/`, `internal/telegram/`, `internal/notify/`). README/NEXT_STEPS.md checked, no
+stale claims found.
+
 **QUEUED — EPIC: PostgreSQL Backend (TASK-112–116).** Must land before commercial launch. See the epic
 section at the bottom of this board.
 
@@ -265,7 +276,7 @@ not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-132_
+_Next DevTrack task ID: TASK-133_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
