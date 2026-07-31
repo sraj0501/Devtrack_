@@ -21,7 +21,10 @@ create or own its schema (see the PostgreSQL Backend epic,
     2026-07-13), so ``vacation_mode`` does not exist there and there is no Go
     internal-HTTP endpoint exposing it yet. Vacation state resolution is a
     no-op in this mode until that lands — fails closed (vacation mode reads
-    as inactive) rather than guessing, and still never raises.
+    as inactive) rather than guessing, and still never raises. ``set_vacation_state``
+    (the only writer — used by the Slack/Telegram ``/devtrack vacation on|off``
+    commands) returns ``False`` in this mode instead of writing; callers must
+    surface that as a user-facing "not available yet" message, not a silent no-op.
 """
 
 from __future__ import annotations
@@ -87,6 +90,50 @@ def get_vacation_state() -> Optional[VacationState]:
     except Exception as e:
         logger.debug("Could not read vacation state: %s", e)
         return None
+
+
+def set_vacation_state(
+    enabled: bool,
+    until: str = "",
+    confidence_threshold: float = 0.7,
+    auto_submit: bool = True,
+) -> bool:
+    """Enable or disable vacation mode. Returns True on success, False if the
+    write could not happen (Postgres mode, missing DB/row, or any DB error) —
+    never raises. Callers (Slack/Telegram ``vacation on|off`` commands) must
+    check the return value and tell the user when it comes back False, rather
+    than assuming the toggle took effect.
+    """
+    if is_postgres():
+        logger.debug(
+            "set_vacation_state: no-op in PostgreSQL mode — vacation_mode is "
+            "a Go-owned SQLite-only table with no Postgres equivalent yet"
+        )
+        return False
+    try:
+        with get_engine().connect() as conn:
+            if enabled:
+                enabled_at = datetime.now(timezone.utc).isoformat()
+                result = conn.execute(
+                    text(
+                        "UPDATE vacation_mode SET enabled=1, enabled_at=:enabled_at, "
+                        "until=:until, confidence_threshold=:threshold, "
+                        "auto_submit=:auto_submit WHERE id=1"
+                    ),
+                    {
+                        "enabled_at": enabled_at,
+                        "until": until,
+                        "threshold": confidence_threshold,
+                        "auto_submit": int(auto_submit),
+                    },
+                )
+            else:
+                result = conn.execute(text("UPDATE vacation_mode SET enabled=0 WHERE id=1"))
+            conn.commit()
+            return result.rowcount > 0
+    except Exception as e:
+        logger.debug("Could not write vacation state: %s", e)
+        return False
 
 
 def is_vacation_active() -> bool:

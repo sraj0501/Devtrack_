@@ -143,28 +143,21 @@ def cmd_trigger(args: str, respond: Callable, bot: "SlackBot") -> None:
 @_cmd("health")
 def cmd_health(args: str, respond: Callable, bot: "SlackBot") -> None:
     try:
-        import sqlite3
-        from backend.config import database_path
-        conn = sqlite3.connect(str(database_path()))
-        rows = conn.execute(
-            "SELECT service, status, latency_ms, checked_at "
-            "FROM health_snapshots "
-            "ORDER BY checked_at DESC LIMIT 20"
-        ).fetchall()
-        conn.close()
+        from backend.health_snapshots_store import get_recent_snapshots
+        rows = get_recent_snapshots(limit=20)
         if not rows:
             respond("No health data available yet.")
             return
-        seen: dict[str, tuple] = {}
+        seen: dict[str, dict] = {}
         for row in rows:
-            if row[0] not in seen:
-                seen[row[0]] = row
+            if row["service"] not in seen:
+                seen[row["service"]] = row
         lines = ["*Service Health*"]
         icons = {"up": ":green_circle:", "down": ":red_circle:", "degraded": ":yellow_circle:"}
-        for svc, status, latency, checked_at in seen.values():
-            icon = icons.get(status, ":white_circle:")
-            lat = f"  {latency}ms" if latency else ""
-            lines.append(f"{icon} *{svc}*: {status}{lat}")
+        for row in seen.values():
+            icon = icons.get(row["status"], ":white_circle:")
+            lat = f"  {row['latency_ms']}ms" if row["latency_ms"] else ""
+            lines.append(f"{icon} *{row['service']}*: {row['status']}{lat}")
         respond("\n".join(lines))
     except Exception as e:
         respond(f":x: Health check error: {e}")
@@ -183,8 +176,6 @@ def cmd_workstart(args: str, respond: Callable, bot: "SlackBot") -> None:
     ticket_ref = args.strip()
     try:
         from backend.work_tracker.session_store import WorkSessionStore
-        from backend.config import database_path
-        import sqlite3
 
         store = WorkSessionStore()
         active = store.get_active_session()
@@ -196,14 +187,10 @@ def cmd_workstart(args: str, respond: Callable, bot: "SlackBot") -> None:
             respond(msg)
             return
 
-        conn = sqlite3.connect(str(database_path()))
-        cur = conn.execute(
-            "INSERT INTO work_sessions (started_at, ticket_ref, commits) VALUES (datetime('now'), ?, '[]')",
-            (ticket_ref,),
-        )
-        session_id = cur.lastrowid
-        conn.commit()
-        conn.close()
+        session_id = store.start_session(ticket_ref)
+        if session_id is None:
+            respond(":x: Could not start a work session (not available yet in this server mode).")
+            return
 
         msg = f":white_check_mark: Work session started (ID {session_id})"
         if ticket_ref:
@@ -409,13 +396,7 @@ def cmd_vacation(args: str, respond: Callable, bot: "SlackBot") -> None:
     sub = parts[0].lower() if parts else "status"
 
     try:
-        from backend.vacation.auto_responder import get_vacation_state
-        import sqlite3
-        from backend.config import get_path, get
-
-        def _db():
-            db_path = get_path("DATABASE_DIR") / get("DATABASE_FILE_NAME")
-            return sqlite3.connect(str(db_path))
+        from backend.vacation.auto_responder import get_vacation_state, set_vacation_state
 
         if sub == "status":
             state = get_vacation_state()
@@ -441,22 +422,17 @@ def cmd_vacation(args: str, respond: Callable, bot: "SlackBot") -> None:
                 elif parts[i] == "--no-submit":
                     auto_submit = False
                 i += 1
-            from datetime import datetime, timezone
-            enabled_at = datetime.now(timezone.utc).isoformat()
-            conn = _db()
-            conn.execute(
-                "UPDATE vacation_mode SET enabled=1, enabled_at=?, until=?, confidence_threshold=?, auto_submit=? WHERE id=1",
-                (enabled_at, until, threshold, int(auto_submit)),
-            )
-            conn.commit(); conn.close()
+            if not set_vacation_state(True, until=until, confidence_threshold=threshold, auto_submit=auto_submit):
+                respond(":x: Could not enable vacation mode (not available yet in this server mode).")
+                return
             msg = ":airplane: Vacation mode *ON*"
             if until:
                 msg += f" (until {until})"
             respond(msg)
         elif sub == "off":
-            conn = _db()
-            conn.execute("UPDATE vacation_mode SET enabled=0 WHERE id=1")
-            conn.commit(); conn.close()
+            if not set_vacation_state(False):
+                respond(":x: Could not disable vacation mode (not available yet in this server mode).")
+                return
             respond(":white_check_mark: Vacation mode *OFF* — normal prompting resumed")
         else:
             respond("Usage: `/devtrack vacation [on|off|status] [--until YYYY-MM-DD] [--threshold 0.7] [--no-submit]`")

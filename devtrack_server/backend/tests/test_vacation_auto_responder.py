@@ -265,6 +265,78 @@ class TestIsVacationActive:
 # PostgreSQL-mode boundary-rule behaviour
 # ---------------------------------------------------------------------------
 
+class TestSetVacationState:
+    """set_vacation_state() -- the only writer, added for the Slack/Telegram
+    /devtrack vacation on|off commands' Postgres port (TASK-112, module 10)."""
+
+    def test_enable_writes_row(self, isolated_vacation_engine: Path) -> None:
+        from backend.vacation.auto_responder import set_vacation_state, get_vacation_state
+
+        db_path = isolated_vacation_engine / "devtrack.db"
+        _make_vacation_db(db_path, enabled=0)
+
+        ok = set_vacation_state(True, until="2026-09-01", confidence_threshold=0.9, auto_submit=False)
+
+        assert ok is True
+        state = get_vacation_state()
+        assert state.enabled is True
+        assert state.until == "2026-09-01"
+        assert state.confidence_threshold == 0.9
+        assert state.auto_submit is False
+
+    def test_disable_writes_row(self, isolated_vacation_engine: Path) -> None:
+        from backend.vacation.auto_responder import set_vacation_state, get_vacation_state
+
+        db_path = isolated_vacation_engine / "devtrack.db"
+        _make_vacation_db(db_path, enabled=1)
+
+        ok = set_vacation_state(False)
+
+        assert ok is True
+        assert get_vacation_state().enabled is False
+
+    def test_missing_row_returns_false(self, isolated_vacation_engine: Path) -> None:
+        """UPDATE ... WHERE id=1 against a table with no row updates nothing --
+        matches the original raw-sqlite3 code's behavior (no INSERT fallback)."""
+        from backend.vacation.auto_responder import set_vacation_state
+
+        db_path = isolated_vacation_engine / "devtrack.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            """
+            CREATE TABLE vacation_mode (
+                id                   INTEGER PRIMARY KEY CHECK (id = 1),
+                enabled              INTEGER NOT NULL DEFAULT 0,
+                enabled_at           TEXT,
+                until                TEXT,
+                confidence_threshold REAL    NOT NULL DEFAULT 0.7,
+                auto_submit          INTEGER NOT NULL DEFAULT 1
+            )
+            """
+        )
+        conn.commit()
+        conn.close()
+
+        assert set_vacation_state(True) is False
+
+    def test_nonexistent_db_returns_false_never_raises(
+        self, isolated_vacation_engine: Path
+    ) -> None:
+        from backend.vacation.auto_responder import set_vacation_state
+
+        assert set_vacation_state(True) is False
+
+    def test_postgres_mode_returns_false_without_touching_engine(self) -> None:
+        from backend.vacation.auto_responder import set_vacation_state
+
+        with patch("backend.vacation.auto_responder.is_postgres", return_value=True), \
+             patch("backend.vacation.auto_responder.get_engine") as mock_get_engine:
+            result = set_vacation_state(True)
+
+        mock_get_engine.assert_not_called()
+        assert result is False
+
+
 class TestVacationStatePostgresMode:
     """PostgreSQL-mode boundary-rule behaviour: vacation_mode is a Go-owned
     SQLite-only table not yet exposed over HTTP, so get_vacation_state() must
