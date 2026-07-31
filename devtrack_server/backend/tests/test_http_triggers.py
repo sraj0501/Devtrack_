@@ -299,7 +299,17 @@ class TestTriggerProcessorCommit:
         result = proc.process_commit({})
         assert "actions" in result
 
-    def test_calls_workspace_router_when_nlp_parses(self):
+    def test_no_direct_route_call_when_queue_gateway_unavailable(self):
+        """process_commit() must never call workspace_router.route() directly.
+
+        The "legacy direct-post fallback" (queue gateway unavailable ->
+        call workspace_router.route() directly, bypassing the pending-actions
+        queue) was removed: every outbound PM action must stage in the queue
+        first, with no exceptions. _bare_processor() never sets
+        `_queue_gateway`, so `getattr(self, "_queue_gateway", None)` is None
+        here — PM sync must be skipped entirely (logged, not raised), not
+        routed directly through workspace_router.
+        """
         proc = _bare_processor()
         mock_parser = MagicMock()
         mock_parser.parse.return_value = {
@@ -314,9 +324,13 @@ class TestTriggerProcessorCommit:
         # Phase 3: the queue target now comes from the Go-resolved ticket_id
         # field on the payload, not from the NLP parser's own guess.
         payload = {**COMMIT_PAYLOAD, "ticket_id": "GH-1"}
-        proc.process_commit(payload)
+        result = proc.process_commit(payload)
 
-        mock_router.route.assert_called_once()
+        mock_router.route.assert_not_called()
+        assert not any(
+            a.startswith("pm_sync:") or a.startswith("queued:")
+            for a in result["actions"]
+        )
 
     def test_stages_pm_sync_when_nlp_returns_none_but_ticket_id_resolved(self):
         """Regression guard (PR #178 PM review fix): task_data being None

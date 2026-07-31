@@ -1,11 +1,20 @@
 """
 Tests for QueueGateway (backend/queue_gateway.py) and the /queue/* endpoints.
 
-All tests use a temporary SQLite DB (via pytest's tmp_path fixture) so no
-persistent file is created and tests are fully isolated from each other.
+queue_gateway.py no longer holds its own sqlite3 connection — every method
+opens the shared SQLAlchemy engine (backend.db.engine.get_engine()) per
+call, and the constructor takes no path argument. Tests therefore point
+DATABASE_DIR at a fresh temp directory and reset the engine singleton per
+test (same isolated-engine pattern as test_skill_detector.py /
+test_server_tui.py / test_work_tracker.py), then create devtrack.db (the
+default filename backend.config.database_path() resolves to) directly with
+the pending_actions table DDL so the tests do not depend on the Go daemon
+having run migrations first. The DDL is inlined here (same as Go migration
+006).
 
-The pending_actions table DDL is inlined here (same as Go migration 006) so
-the tests do not depend on the Go daemon having run migrations first.
+Raw sqlite3 connections are still used within individual tests to assert on
+row contents — that's fine, they just point at the same devtrack.db file the
+engine-backed QueueGateway methods read/write.
 """
 
 from __future__ import annotations
@@ -55,10 +64,32 @@ CREATE INDEX IF NOT EXISTS idx_pending_actions_expires ON pending_actions(expire
 # Fixtures
 # ---------------------------------------------------------------------------
 
+@pytest.fixture(autouse=True)
+def isolated_engine(tmp_path, monkeypatch):
+    """Point DATABASE_DIR at a fresh temp directory and reset the shared
+    SQLAlchemy engine singleton so QueueGateway's engine-based reads/writes
+    hit an isolated SQLite file instead of whatever engine a prior test
+    built (same fixture shape as test_skill_detector.py's isolated_engine
+    and test_work_tracker.py's TestWorkSessionStore.setup).
+    """
+    from backend.db.engine import reset_engine
+
+    monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+    reset_engine()
+    yield
+    reset_engine()
+
+
 @pytest.fixture()
 def db_path(tmp_path) -> str:
-    """Return the path to a fresh SQLite DB with the pending_actions table."""
-    path = str(tmp_path / "devtrack_test.db")
+    """Return the path to a fresh SQLite DB with the pending_actions table.
+
+    Filename must match backend.config.database_path()'s default
+    ("devtrack.db") since QueueGateway no longer takes a path argument — it
+    resolves its own path via backend.db.engine.get_engine(), same as
+    production code.
+    """
+    path = str(tmp_path / "devtrack.db")
     conn = sqlite3.connect(path)
     conn.executescript(_CREATE_TABLE_SQL)
     conn.commit()
@@ -68,9 +99,9 @@ def db_path(tmp_path) -> str:
 
 @pytest.fixture()
 def gateway(db_path):
-    """Return a QueueGateway backed by the temp test DB."""
+    """Return a QueueGateway backed by the temp test DB (via the shared engine)."""
     from backend.queue_gateway import QueueGateway
-    gw = QueueGateway(db_path)
+    gw = QueueGateway()
     yield gw
     gw.close()
 
@@ -369,6 +400,81 @@ class TestConfidenceTimeout:
 
 
 # ---------------------------------------------------------------------------
+# PostgreSQL-mode boundary-rule behaviour
+# ---------------------------------------------------------------------------
+
+class TestQueueGatewayPostgresMode:
+    """pending_actions has no PostgreSQL-mode implementation yet (TASK-114) —
+    every public method must raise QueueGatewayUnavailableError before ever
+    touching get_engine() (mirrors TestSkillDetectorPostgresMode /
+    TestWorkSessionStorePostgresMode's "mock_get_engine.assert_not_called()"
+    shape). This is a deliberate loud failure, not a silent empty/no-op
+    default — see the boundary-rule docstring at the top of queue_gateway.py
+    for why (a swallowed failure here used to trigger an unreviewed direct
+    PM post fallback in webhook_server.py, removed alongside this change).
+    """
+
+    def test_stage_raises_in_postgres_mode(self):
+        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
+        with patch("backend.queue_gateway.is_postgres", return_value=True), \
+             patch("backend.queue_gateway.get_engine") as mock_get_engine:
+            gw = QueueGateway()
+            with pytest.raises(QueueGatewayUnavailableError):
+                gw.stage(
+                    action_type="post_comment",
+                    target="T",
+                    platform="github",
+                    workspace="ws",
+                    payload={},
+                    confidence=0.8,
+                )
+        mock_get_engine.assert_not_called()
+
+    def test_mark_posted_raises_in_postgres_mode(self):
+        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
+        with patch("backend.queue_gateway.is_postgres", return_value=True), \
+             patch("backend.queue_gateway.get_engine") as mock_get_engine:
+            gw = QueueGateway()
+            with pytest.raises(QueueGatewayUnavailableError):
+                gw.mark_posted(1)
+        mock_get_engine.assert_not_called()
+
+    def test_mark_failed_raises_in_postgres_mode(self):
+        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
+        with patch("backend.queue_gateway.is_postgres", return_value=True), \
+             patch("backend.queue_gateway.get_engine") as mock_get_engine:
+            gw = QueueGateway()
+            with pytest.raises(QueueGatewayUnavailableError):
+                gw.mark_failed(1, "boom")
+        mock_get_engine.assert_not_called()
+
+    def test_list_pending_raises_in_postgres_mode(self):
+        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
+        with patch("backend.queue_gateway.is_postgres", return_value=True), \
+             patch("backend.queue_gateway.get_engine") as mock_get_engine:
+            gw = QueueGateway()
+            with pytest.raises(QueueGatewayUnavailableError):
+                gw.list_pending()
+        mock_get_engine.assert_not_called()
+
+    def test_get_action_raises_in_postgres_mode(self):
+        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
+        with patch("backend.queue_gateway.is_postgres", return_value=True), \
+             patch("backend.queue_gateway.get_engine") as mock_get_engine:
+            gw = QueueGateway()
+            with pytest.raises(QueueGatewayUnavailableError):
+                gw.get_action(1)
+        mock_get_engine.assert_not_called()
+
+    def test_close_is_still_safe_in_postgres_mode(self):
+        """close() is a no-op regardless of backend — must never raise."""
+        from backend.queue_gateway import QueueGateway
+        with patch("backend.queue_gateway.is_postgres", return_value=True):
+            gw = QueueGateway()
+            gw.close()  # must not raise
+
+
+# ---------------------------------------------------------------------------
 # Integration smoke tests — /queue/pending endpoint via FastAPI TestClient
 # ---------------------------------------------------------------------------
 
@@ -410,7 +516,7 @@ def api_client_with_queue(monkeypatch, db_path):
 
     # Patch _get_queue_gateway to return a real gateway backed by our temp DB
     from backend.queue_gateway import QueueGateway
-    gw_instance = QueueGateway(db_path)
+    gw_instance = QueueGateway()
 
     with patch("backend.webhook_server._get_queue_gateway", return_value=gw_instance):
         from fastapi.testclient import TestClient
@@ -440,7 +546,7 @@ class TestGetQueuePendingEndpoint:
         """Stage a row directly, then verify /queue/pending lists it."""
         # Stage a row using the gateway directly
         from backend.queue_gateway import QueueGateway
-        gw = QueueGateway(db_path)
+        gw = QueueGateway()
         action_id = gw.stage(
             action_type="post_comment",
             target="PROJ-001",
@@ -461,7 +567,7 @@ class TestGetQueuePendingEndpoint:
     def test_only_pending_rows_returned(self, api_client_with_queue, db_path):
         """Actions with status != 'pending' should not appear."""
         from backend.queue_gateway import QueueGateway
-        gw = QueueGateway(db_path)
+        gw = QueueGateway()
         pending_id = gw.stage(
             action_type="post_comment",
             target="P1",
@@ -500,7 +606,7 @@ class TestPostQueueExecuteEndpoint:
     def test_execute_marks_posted_on_success(self, api_client_with_queue, db_path):
         """A successful _execute_pm_action should result in status='posted' in the DB."""
         from backend.queue_gateway import QueueGateway
-        gw = QueueGateway(db_path)
+        gw = QueueGateway()
         action_id = gw.stage(
             action_type="post_comment",
             target="PROJ-001",
@@ -536,7 +642,7 @@ class TestPostQueueExecuteEndpoint:
     def test_execute_marks_failed_on_error(self, api_client_with_queue, db_path):
         """A failed _execute_pm_action should result in status='failed' in the DB."""
         from backend.queue_gateway import QueueGateway
-        gw = QueueGateway(db_path)
+        gw = QueueGateway()
         action_id = gw.stage(
             action_type="post_comment",
             target="PROJ-002",

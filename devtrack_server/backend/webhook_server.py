@@ -233,23 +233,18 @@ class TriggerProcessor:
 
     def __init__(self) -> None:
         self._init_components()
-        # Queue gateway — instantiated after components so database_path() is
-        # available.  Wrapped in try/except so the server degrades gracefully
-        # when the DB is absent (e.g. first-run before the Go daemon creates it).
+        # Queue gateway — holds no connection of its own (backed by the
+        # shared engine, opened per-call). Construction is lightweight and
+        # only fails on an import error; actual DB/queue-availability
+        # failures surface later, from individual method calls (e.g.
+        # QueueGatewayUnavailableError in PostgreSQL mode, or a "no such
+        # table" error if the Go daemon hasn't migrated the DB yet) — those
+        # are handled at the call site in process_commit(), not here.
         self._queue_gateway = None
         try:
-            from backend.config import database_path
             from backend.queue_gateway import QueueGateway
-            db_path = str(database_path())
-            import os
-            if os.path.exists(db_path):
-                self._queue_gateway = QueueGateway(db_path)
-                logger.info("✓ TriggerProcessor: QueueGateway ready (db=%s)", db_path)
-            else:
-                logger.debug(
-                    "QueueGateway: DB not found at %s — queue staging disabled "
-                    "(daemon not yet started?)", db_path
-                )
+            self._queue_gateway = QueueGateway()
+            logger.info("✓ TriggerProcessor: QueueGateway ready")
         except Exception as e:
             logger.debug("QueueGateway unavailable (non-fatal): %s", e)
 
@@ -523,8 +518,15 @@ class TriggerProcessor:
         timeout expires (or the developer approves manually).
 
         If the queue gateway is unavailable (daemon not yet started, DB
-        missing), the method falls back to the legacy direct-post behaviour
-        so existing functionality is not broken during the transition.
+        missing, ``.stage()`` raises for any reason including
+        PostgreSQL-mode's ``QueueGatewayUnavailableError``), PM sync is
+        skipped for this commit — logged, not raised. There is no
+        direct-post fallback: every outbound PM action must stage in the
+        pending-actions queue first (non-negotiable), so a queue failure
+        here can never result in an unreviewed direct PM API call. This
+        method itself never raises — Non-Negotiable #8 (never block, never
+        raise back to the trigger caller) still applies; the HTTP response
+        is always a clean 200 with whatever ``actions`` were actually taken.
         """
         commit_hash = data.get("commit_hash", "")
         commit_msg  = data.get("commit_message", "")
@@ -772,29 +774,23 @@ class TriggerProcessor:
                             "action_id":  action_id,
                         }
                     except Exception as e:
-                        logger.warning(
-                            "PM sync staging failed — falling back to direct post: %s", e
+                        # No direct-post fallback (removed — see TASK-112 module
+                        # 5/15 notes): every outbound PM action must stage in the
+                        # pending-actions queue first, so a staging failure means
+                        # PM sync did not happen for this commit, not that it
+                        # happens some other way. Never raise out of
+                        # process_commit() — Non-Negotiable #8.
+                        logger.error(
+                            "PM sync could not be staged (queue unavailable) — "
+                            "PM sync skipped for this commit, no direct-post "
+                            "fallback: %s", e,
                         )
-                        # Fall through to legacy direct-post below
-
-                # Legacy direct-post fallback (queue gateway unavailable)
-                try:
-                    self.workspace_router.route(
-                        pm_platform=pm_platform,
-                        description=pm_payload["description"],
-                        ticket_id=pm_payload["ticket_id"],
-                        status=pm_payload["status"],
-                        pm_project=pm_project,
-                        pm_assignee=pm_assignee,
-                        pm_iteration_path=pm_iteration_path,
-                        pm_area_path=pm_area_path,
-                        pm_milestone=pm_milestone,
-                        commit_info=pm_payload["commit_info"],
+                else:
+                    logger.error(
+                        "PM sync skipped: queue gateway unavailable — "
+                        "no direct-post fallback (every outbound PM action "
+                        "must stage in the pending-actions queue first)"
                     )
-                    actions.append(f"pm_sync:{pm_platform or 'auto'}")
-                    logger.info(f"✓ PM sync complete (platform={pm_platform or 'auto'})")
-                except Exception as e:
-                    logger.warning(f"PM sync failed: {e}")
 
         return {"actions": actions, "commit_hash": commit_hash, "narrative_id": _story_id()}
 
@@ -1361,17 +1357,15 @@ async def status() -> dict:
 def _get_queue_gateway():
     """Return a QueueGateway for the shared DevTrack DB.
 
-    Instantiated per-request (lightweight: just opens a SQLite connection).
-    Falls back to None when the DB is absent so the server degrades gracefully.
+    Instantiated per-request (lightweight: holds no connection of its own —
+    each QueueGateway method opens the shared engine per call). Falls back
+    to None on import error so the server degrades gracefully; individual
+    methods may still raise (e.g. QueueGatewayUnavailableError in
+    PostgreSQL mode) and are handled by each endpoint's own try/except.
     """
     try:
-        from backend.config import database_path
         from backend.queue_gateway import QueueGateway
-        db_path = str(database_path())
-        import os
-        if not os.path.exists(db_path):
-            return None
-        return QueueGateway(db_path)
+        return QueueGateway()
     except Exception:
         return None
 
