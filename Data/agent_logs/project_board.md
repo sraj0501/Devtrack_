@@ -372,12 +372,29 @@ cross-version Go-client schema compatibility) and Postgres-mode fail-closed beha
 remain:** `learning_integration.py`, `slack/handlers.py`, `telegram/handlers.py`, `voice_seeder.py`,
 `voice_sync.py`, `webhook_server.py`'s own remaining `sqlite3` usage.
 
+**[2026-07-31] TASK-135 — `learning_integration.py` ported (PR #242, merge `12fcd1d`).** 9th module —
+turned out to be a bug fix, not a normal fail-closed/HTTP-dispatch/hard-raise port. Its only raw
+`sqlite3` call site, `_load_last_collected()`, imported `backend.db.learning_store._db_path()` — a
+helper that no longer exists because `learning_store.py` was already ported onto the engine earlier
+in this epic (it's one of the "7 modules on that engine" in the table below, predating even TASK-112's
+2026-07-31 start). That import has been silently failing ever since (swallowed by the enclosing
+`try/except`), so the function always returned `None` and Teams delta-fetch fallback never actually
+worked — every non-MongoDB sync silently did a full refetch instead of an incremental one. Fixed by
+delegating to `learning_store.load_last_collected(user_email)` (already dual-dialect,
+`learning_sync_state` is Python-owned). Added dedicated test coverage (module had none) — hit the same
+`_schema_done` lazy-init test-isolation gap `report_store.py`'s tests found, fixed the same way (reset
+the flag alongside `reset_engine()`). **Lesson: when a module in the "15 to port" list already imports
+from an *already-ported* module, check that the import still resolves before assuming the shape of the
+fix — a prior port can silently break a caller's raw-sqlite3 helper reference.** **5 modules remain:**
+`slack/handlers.py`, `telegram/handlers.py`, `voice_seeder.py`, `voice_sync.py`, `webhook_server.py`'s
+own remaining `sqlite3` usage.
+
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-135_
+_Next DevTrack task ID: TASK-136_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -5873,9 +5890,9 @@ static, static, live end-to-end)
 ## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
 **Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**8 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
-PR #239) — 6 real modules remain** as of 2026-07-31 (PRs #231–#236, #239, #240, #241, see the dated
-log entries above for full detail on each). TASK-114/115/116 still unstarted.
+**9 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — 5 real modules remain** as of 2026-07-31 (PRs #231–#236, #239, #240, #241, #242, see the
+dated log entries above for full detail on each). TASK-114/115/116 still unstarted.
 
 ### Why this exists
 
@@ -5889,7 +5906,8 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | 6 of 15 modules ported fail-closed/HTTP-dispatch/hard-raise as of 2026-07-31: `skill_detector`, `dialectic_status`, `server_tui/stats_client`, `work_tracker/session_store`, `queue_gateway`, `vacation/auto_responder` | see log entries above | ✅ |
 | `daily_report_generator` (7th module ported) — mixed: `reports` table is Python-owned (now on the engine like the row above), `triggers` read is Go-owned (fail-closed) | see log entries above | ✅ |
 | `email_reporter` (8th module ported) — fail-closed, single call site reading Go-owned `task_updates` | see log entries above | ✅ |
-| 6 modules still opening raw `sqlite3` (`telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `learning_integration`, `webhook_server`) | **SQLite always** | ❌ |
+| `learning_integration` (9th module ported) — delegates to already-engine-based `learning_store`; fixed a silent broken-import bug along the way | see log entries above | ✅ |
+| 5 modules still opening raw `sqlite3` (`telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `webhook_server`) | **SQLite always** | ❌ |
 | ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 

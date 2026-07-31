@@ -165,11 +165,11 @@ from someone unknown means a real install survived setup.
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL
-> backend epic, in progress — 8 of 15 modules ported as of 2026-07-31, PRs #231-236, #240-241).
+> backend epic, in progress — 9 of 15 modules ported as of 2026-07-31, PRs #231-236, #240-242).
 > `Data/agent_logs/project_board.md` is the authoritative ID ledger; the
 > adoption gate was renumbered to TASK-117–124 to match it. The Postgres epic
-> is now numbered through TASK-134 (8 of 15 modules ported as of 2026-07-31,
-> PRs #231-236, #240-241); next open ID is TASK-135.
+> is now numbered through TASK-135 (9 of 15 modules ported as of 2026-07-31,
+> PRs #231-236, #240-242); next open ID is TASK-136.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to
