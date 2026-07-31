@@ -389,12 +389,33 @@ fix — a prior port can silently break a caller's raw-sqlite3 helper reference.
 `slack/handlers.py`, `telegram/handlers.py`, `voice_seeder.py`, `voice_sync.py`, `webhook_server.py`'s
 own remaining `sqlite3` usage.
 
+**[2026-07-31] TASK-136 — `slack/handlers.py` ported (PR #243, merge `f343bc3`).** 10th module — the
+first with more than one distinct table/shape in the same file. Three raw `sqlite3` call sites, three
+different fixes:
+1. `cmd_health` (reads Go-owned `health_snapshots`, no Go HTTP endpoint) — new
+   `backend/health_snapshots_store.py`, fail-closed, written to be shared with `telegram/handlers.py`'s
+   near-identical query (next module).
+2. `cmd_workstart` (writes Go-owned `work_sessions`) — new `WorkSessionStore.start_session()`, matching
+   the no-op-in-Postgres pattern `append_commit`/`end_session`/`adjust_time` already used. This closed a
+   real abstraction gap: `WorkSessionStore` had no session-starting method at all before this, so Slack
+   (and presumably Telegram) hand-rolled the INSERT directly.
+3. `cmd_vacation on/off` (writes Go-owned `vacation_mode`) — new `auto_responder.set_vacation_state()`,
+   the *first* writer for that table (only `get_vacation_state()` existed before, read-only). Returns
+   `False` in Postgres mode; the caller already wraps every command in try/except and shows the user an
+   error message, so surfacing "not available yet" this way carries none of the queue-bypass risk found
+   in `queue_gateway.py` — no caller reacts to the failure by doing something worse.
+
+No raw `sqlite3` remains in `slack/handlers.py`. **4 modules remain:** `telegram/handlers.py` (shares
+all 3 of the above tables/shapes — expect to reuse `health_snapshots_store.py` and the new
+`WorkSessionStore`/`auto_responder` write helpers directly), `voice_seeder.py`, `voice_sync.py`,
+`webhook_server.py`'s own remaining `sqlite3` usage.
+
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-136_
+_Next DevTrack task ID: TASK-137_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -5890,9 +5911,9 @@ static, static, live end-to-end)
 ## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
 **Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**9 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
-PR #239) — 5 real modules remain** as of 2026-07-31 (PRs #231–#236, #239, #240, #241, #242, see the
-dated log entries above for full detail on each). TASK-114/115/116 still unstarted.
+**10 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — 4 real modules remain** as of 2026-07-31 (PRs #231–#236, #239–#243, see the dated log
+entries above for full detail on each). TASK-114/115/116 still unstarted.
 
 ### Why this exists
 
@@ -5907,7 +5928,8 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | `daily_report_generator` (7th module ported) — mixed: `reports` table is Python-owned (now on the engine like the row above), `triggers` read is Go-owned (fail-closed) | see log entries above | ✅ |
 | `email_reporter` (8th module ported) — fail-closed, single call site reading Go-owned `task_updates` | see log entries above | ✅ |
 | `learning_integration` (9th module ported) — delegates to already-engine-based `learning_store`; fixed a silent broken-import bug along the way | see log entries above | ✅ |
-| 5 modules still opening raw `sqlite3` (`telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `webhook_server`) | **SQLite always** | ❌ |
+| `slack/handlers` (10th module ported) — 3 distinct fixes: new `health_snapshots_store` (fail-closed), new `WorkSessionStore.start_session()` (no-op), new `auto_responder.set_vacation_state()` (first writer, returns False) | see log entries above | ✅ |
+| 4 modules still opening raw `sqlite3` (`telegram/handlers`, `voice_sync`, `voice_seeder`, `webhook_server`) | **SQLite always** | ❌ |
 | ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
