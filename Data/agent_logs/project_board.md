@@ -410,12 +410,34 @@ all 3 of the above tables/shapes — expect to reuse `health_snapshots_store.py`
 `WorkSessionStore`/`auto_responder` write helpers directly), `voice_seeder.py`, `voice_sync.py`,
 `webhook_server.py`'s own remaining `sqlite3` usage.
 
+**[2026-07-31] TASK-137 — `telegram/handlers.py` ported (PR #244, merge `aca6537`).** 11th module — six
+raw `sqlite3` call sites (plus one now-dead `_get_db_path()` helper, removed). Reused every helper
+`slack/handlers.py`'s port (TASK-136) already built (`WorkSessionStore.start_session()`,
+`auto_responder.set_vacation_state()`) plus two new fail-closed ones for tables only Telegram touches:
+`backend/queue_status_store.py` (`message_queue`, `deferred_commits` — simple status-count aggregates,
+no Go HTTP endpoint for either) and `health_snapshots_store.get_latest_snapshot_per_service()`
+(Telegram's "latest row per service" grouped-subquery variant of Slack's `/health`, kept as a second
+function rather than unifying the two, to preserve each caller's exact prior output). **Also fixed a
+real, previously-dormant bug this module's first-ever test file exposed:** `data_collectors.py`,
+`learning_integration.py`, and `daily_report_generator.py` each did `sys.path.insert(0,
+os.path.dirname(__file__))` to support bare `from personalized_ai import ...`/`from email_reporter
+import ...` — that puts `backend/` itself on `sys.path`, so `import telegram` (the real
+`python-telegram-bot` package) would resolve to `backend/telegram/` instead whenever one of those three
+modules got imported earlier in the same test process. Dormant since nothing exercised
+`backend.telegram.handlers` in the suite until this port added its first test file. Fixed by switching
+the three bare imports to `backend.`-qualified ones and dropping the `backend/`-itself path inserts (the
+`msgraph_python` vendor path insert and the repo-root insert both stay). **Lesson: adding a module's
+first-ever test to the suite can surface latent cross-module sys.path hazards that no amount of running
+that module standalone would ever catch — run the *full* suite, not just the new file, before treating
+any port as done.** **3 modules remain:** `voice_seeder.py`, `voice_sync.py`, `webhook_server.py`'s own
+remaining `sqlite3` usage.
+
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-137_
+_Next DevTrack task ID: TASK-138_
 _Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
@@ -5911,8 +5933,8 @@ static, static, live end-to-end)
 ## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
 **Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**10 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
-PR #239) — 4 real modules remain** as of 2026-07-31 (PRs #231–#236, #239–#243, see the dated log
+**11 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — 3 real modules remain** as of 2026-07-31 (PRs #231–#236, #239–#244, see the dated log
 entries above for full detail on each). TASK-114/115/116 still unstarted.
 
 ### Why this exists
@@ -5929,7 +5951,8 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | `email_reporter` (8th module ported) — fail-closed, single call site reading Go-owned `task_updates` | see log entries above | ✅ |
 | `learning_integration` (9th module ported) — delegates to already-engine-based `learning_store`; fixed a silent broken-import bug along the way | see log entries above | ✅ |
 | `slack/handlers` (10th module ported) — 3 distinct fixes: new `health_snapshots_store` (fail-closed), new `WorkSessionStore.start_session()` (no-op), new `auto_responder.set_vacation_state()` (first writer, returns False) | see log entries above | ✅ |
-| 4 modules still opening raw `sqlite3` (`telegram/handlers`, `voice_sync`, `voice_seeder`, `webhook_server`) | **SQLite always** | ❌ |
+| `telegram/handlers` (11th module ported) — reused 2 of slack's helpers directly, added new `queue_status_store` + a second `health_snapshots_store` function; also fixed a dormant sys.path/import-shadowing bug across 3 other modules | see log entries above | ✅ |
+| 3 modules still opening raw `sqlite3` (`voice_sync`, `voice_seeder`, `webhook_server`) | **SQLite always** | ❌ |
 | ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
