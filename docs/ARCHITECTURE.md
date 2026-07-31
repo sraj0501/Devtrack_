@@ -831,8 +831,8 @@ Claude Code answering *"what am I working on?"* in under ten minutes. See
 > **Exception, decided 2026-07-13:** PostgreSQL is wanted as a **server-side-only** option
 > before commercial launch, so a multi-user server can aggregate data instead of every
 > developer's triggers living in a SQLite file on their own laptop. Scoped as **EPIC
-> TASK-112–116** on `Data/agent_logs/project_board.md` (started 2026-07-31, PR #231 —
-> `devtrack_server/backend/db/engine.py` is the dual-dialect factory; 1 of 15 raw-`sqlite3`
+> TASK-112–116** on `Data/agent_logs/project_board.md` (started 2026-07-31, PRs #231-236 —
+> `devtrack_server/backend/db/engine.py` is the dual-dialect factory; 6 of 15 raw-`sqlite3`
 > modules ported so far). SQLite stays the default everywhere; Postgres only activates when
 > `POSTGRES_URL` is set on the server, and local client data flows up over the existing
 > `/trigger/*` boundary. Offline-first Rule 0 holds untouched.

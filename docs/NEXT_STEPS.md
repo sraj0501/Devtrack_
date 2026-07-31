@@ -165,7 +165,7 @@ from someone unknown means a real install survived setup.
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL
-> backend epic, started — TASK-112/113 first increment merged 2026-07-31, PR #231).
+> backend epic, in progress — 6 of 15 modules ported as of 2026-07-31, PRs #231-236).
 > `Data/agent_logs/project_board.md` is the authoritative ID ledger; the
 > adoption gate was renumbered to TASK-117–124 to match it.
 
