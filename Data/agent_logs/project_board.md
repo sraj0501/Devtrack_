@@ -174,8 +174,9 @@ pre-monorepo-split) branches alone — `feat/client-server-decoupling`, `feat/go
 each still carries a real, unexplained diff against `main` and wasn't provably superseded, so they
 need a human look rather than a guess.
 
-**[2026-07-13] IMPLEMENTED (uncommitted, awaiting review/commit) — EPIC: Silent Worker Correctness (TASK-126–130).** Branch
-`features/TASK-126-silent-worker-correctness`. User decision 2026-07-13: the silent-background-worker
+**[2026-07-13] MERGED to `dev` 2026-07-15 — EPIC: Silent Worker Correctness (TASK-126–130).** Commit
+`6d9045d`, PR #226, merge `3ea4b88`. Branch `features/TASK-126-silent-worker-correctness` (deleted
+locally and on origin post-merge). User decision 2026-07-13: the silent-background-worker
 persona (commit → ticket → comment + state staged in queue → auto-approve → EOD) is the non-negotiable
 sell and must reach correctness + completeness before other work. Source: code-vs-Bible audit this date
 (findings in the session plan; headline: "merged → Done" had NO implementation anywhere — the only
@@ -210,16 +211,102 @@ Known limitations queued for follow-up: Azure/GitLab merged-PR polling; Go-nativ
 lightweight mode (cli_git/outbox still direct-post when no server, explicitly logged); Jira routing
 still unimplemented in workspace_router.
 
-**QUEUED — EPIC: PostgreSQL Backend (TASK-112–116).** Must land before commercial launch. See the epic
-section at the bottom of this board.
+**[2026-07-15] Post-merge housekeeping.** With PR #226 merged, ran a full local/remote branch
+audit: deleted 5 fully-merged local branches (`docs/TASK-109-repo-cleanup`,
+`features/TASK-126-silent-worker-correctness`, `fix/TASK-109-telemetry-opt-in` cleanly by
+ancestry; `docs/TASK-125-board-entry`, `fix/TASK-125-wiki-loading-screen` force-deleted after
+verifying their content — squash-merged, so ancestry checks don't apply — was byte-identical on
+`dev`), deleted the one stale remote branch left after #226 merged, and fast-forwarded local `main`
+to `origin/main` (`5cc9e05`). Local + remote now hold only `dev`/`main`.
+
+**[2026-07-31] MERGED to `dev` — TASK-131 quick wins (PR #227, merge `5de5443`).** Branch
+`features/TASK-131-quick-wins`. Surveyed the pending-work list (everything
+short of the Postgres epic) for genuinely small, self-contained gaps rather than assuming a
+one-line TODO comment means a one-line fix — two turned out real, two turned out to be full
+feature builds mis-filed as follow-ups:
+
+- **Shipped:** `devtrack logs -f`/`--follow` (was a stub telling the user to run `tail -f`
+  themselves — `cli_info.go`) now polls and streams appended lines, reopening the file by path each
+  tick so rename-based log rotation doesn't strand it on a deleted inode. TUI queue `[e]dit`
+  (`internal/tui/tui_queue.go`) — advertised in the footer since the queue TUI shipped but was a
+  no-op (`// Edit not implemented yet`) — now mirrors the existing flag-inference text-input
+  pattern to let a user rewrite a pending action's comment before approval, via the
+  already-existing `UpdatePendingActionPayload` DB method. Rejects edits on non-pending actions and
+  on action types with no free-text field, inline rather than silently no-opping.
+- **Ruled out as not actually quick, left for their own epics:** Jira write routing (`JiraClient`
+  is read-only today — no comment/transition methods exist, so this needs a new API client, not a
+  routing tweak) and Azure/GitLab merged-PR polling (no GitLab alerter file exists at all; Azure has
+  no merged-PR connector method — two new platform integrations, not a checkpoint copy-paste from
+  the GitHub poller).
+
+Verification: go build/vet clean; 6 new `internal/tui` tests (prefill/submit/cancel/reject paths,
+against a real migrated SQLite DB via `NewDatabaseAtPath`) pass; full Go suite green except the 3
+pre-existing `deferred_commit_test.go` failures (local 1Password SSH-signing environment issue,
+already flagged unrelated on PR #226 — investigated further same day at the user's request after
+they logged into 1Password. `SSH_AUTH_SOCK` was unset in the test shell despite the 1Password app
+running with a live, key-loaded agent socket at `~/.1password/agent.sock`; exporting it explicitly
+and re-running still failed with the identical `1Password: failed to fill whole buffer` error, so
+a bare missing-env-var explanation is ruled out — root cause remains open, not chased further this
+session). Python suite untouched (Go-only change), 816/816 still pass.
+
+**[2026-07-31] PROMOTED `dev` → `main` (PR #228, merge `4e111c0`).** User go-ahead to promote
+everything on `dev` to `main`. Carries the full Silent Worker Correctness epic (TASK-126–130, PR
+#226) plus TASK-131 quick wins (PR #227) — `main` was previously 2 releases behind. One conflict on
+merge: `main` still held a stale pre-implementation "IMPLEMENTED (uncommitted)" board entry for
+TASK-126–130 written before the epic actually merged; resolved by keeping `dev`'s copy (the
+accurate post-merge account), same resolution as the earlier PR #224 board conflict. CI green on
+both PRs before merge (Go build/vet ubuntu+windows, Go tests, API contract tests, Python tests).
+
+**[2026-07-31] TASK-132 — Doc/wiki sync to current state (PR #230, merge `211cff7`).** User asked to
+update docs/memory/wiki to reflect PR #226–229. Also caught a `docu-agent` skill invocation that
+returned instructions scoped to a *different* project (wrong OS/paths, told the caller to push
+straight to `main`) — not executed, redone by hand. Updated `devtrack_wiki/wiki/wiki.html` (What's
+New page + home card) for the Silent Worker epic + TASK-131. `docs/CAPABILITIES_OWNERSHIP.md` was
+stale beyond just this change — still listed `logs --follow` as a stub, and still showed ticket
+alerts/Telegram/Slack delivery as Python-in-client with Phase 2 "port to Go" pending despite its own
+header already claiming Phase 2 complete; corrected all three to Go-native
+(`internal/alerts/`, `internal/telegram/`, `internal/notify/`). README/NEXT_STEPS.md checked, no
+stale claims found.
+
+**[2026-07-31] STARTED — EPIC: PostgreSQL Backend (TASK-112–116, PR #231, merge `ee87d5f`).** Must
+land before commercial launch. Full task breakdown at the bottom of this board. First increment:
+- **TASK-112** (1 of 15 raw-`sqlite3` modules ported): `skill_detector.py` → `db/engine.py`. It owns
+  no table of its own (reads the Go-owned `corrections` table), so it follows the existing
+  boundary-rule precedent from `work_tracker/session_store.py`/`server_tui/stats_client.py`: SQLite
+  mode reads via `get_engine()`, Postgres mode fails closed (no promotions) until a Go internal-HTTP
+  endpoint exposes `corrections` (candidate: TASK-114). Bug found en route: the original code read a
+  config var (`DATABASE_PATH`) that doesn't exist, so `get_path` silently fell back to `"."` and
+  every DB call raised and was swallowed by the module's own try/except — skill detection has likely
+  never successfully promoted a skill in production. Fixed by switching to `get_engine()`. Remaining
+  14 modules (`alert_poller.py`, `daily_report_generator.py`, `dialectic_status.py`,
+  `email_reporter.py`, `learning_integration.py`, `queue_gateway.py`, `server_tui/stats_client.py`,
+  `slack/handlers.py`, `telegram/handlers.py`, `vacation/auto_responder.py`, `voice_seeder.py`,
+  `voice_sync.py`, `webhook_server.py`, `work_tracker/session_store.py`) still on raw `sqlite3` —
+  not started.
+- **TASK-113 (Postgres test lane) — foundation laid, not fully general yet.** Added
+  `backend/tests/test_postgres_backend.py`: the first tests to ever exercise Postgres, proving
+  `db/engine.py`'s dual-dialect factory and every already-migrated module's schema
+  (`ticket_db`/`learning_store`/`project_store`/`platform_store`/`admin.user_manager`) work against
+  a real server. Wired a `postgres:16-alpine` service container into `.github/workflows/ci.yml`,
+  scoped to run only this one file — **not** the full suite. Verified locally that running the whole
+  suite against one shared Postgres instance causes 45 unrelated cross-test failures: most of
+  `backend/tests/` relies on a per-test `DATABASE_DIR`→`tmp_path` SQLite isolation fixture with no
+  Postgres equivalent, so state leaks between tests on a shared Postgres. Giving Postgres the same
+  per-test isolation is real follow-up work, still open.
+- **Side fix:** `ci.yml` only triggered on PRs targeting `main`, never `dev` — so Python tests
+  (including this new lane) would never have run on the normal feature-branch→`dev` path. Added
+  `dev` to both its `push` and `pull_request` triggers.
+- **Also found, not fixed (out of scope for this task):** `SkillDetector` isn't called anywhere in
+  `webhook_server.py` despite its own docstring implying it is — zero callers outside the module and
+  its test file.
 
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-131_
-_Active branch: `features/TASK-126-silent-worker-correctness`_
+_Next DevTrack task ID: TASK-133_
+_Active branch: `dev`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 

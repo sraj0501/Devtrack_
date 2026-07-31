@@ -10,19 +10,29 @@ work_sessions is a Go-owned table.  In PostgreSQL mode (POSTGRES_URL set),
 Python and Go may run on different machines — Python MUST NOT open the Go
 SQLite file directly.
 
-  SQLite mode  (POSTGRES_URL unset)  — all methods use direct SQLite access.
+  SQLite mode  (POSTGRES_URL unset)  — all methods use the shared SQLAlchemy
+    engine (``backend.db.engine.get_engine()``) instead of a bespoke
+    ``sqlite3.connect()``, but still read/write the same devtrack.db file.
   PostgreSQL mode (POSTGRES_URL set) — read methods call Go's internal HTTP
-    endpoints (GET /internal/sessions/active).  Write methods (append_commit,
-    end_session) log a warning and no-op; they require Go API support to work
-    in multi-machine mode (deferred to a later phase).
+    endpoints where one exists (``get_active_session`` →
+    GET /internal/sessions/active). Where no such endpoint exists yet
+    (``get_sessions_for_date`` — Go only exposes the single active session
+    over HTTP today, not a date-range query) the method fails closed and
+    returns ``[]`` rather than silently reading a local SQLite file that may
+    not reflect Go's real state on a separate machine — same pattern as
+    ``dialectic_status.py``/``skill_detector.py`` for tables/queries with no
+    HTTP equivalent. Write methods (append_commit, end_session, adjust_time)
+    log a debug message and no-op; they require Go API support to work in
+    multi-machine mode (deferred to a later phase).
 """
 
 import json
 import logging
 import os
-import sqlite3
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -41,28 +51,12 @@ def _go_internal_base_url() -> str:
     return f"http://{host}:{port}"
 
 
-def _db_path() -> str:
-    try:
-        from backend.config import database_path
-        return str(database_path())
-    except Exception:
-        from backend.config import get_project_root
-        root = get_project_root() or "."
-        return os.path.join(root, "Data", "db", "devtrack.db")
-
-
-def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
 class WorkSessionStore:
     """Sync-friendly wrapper around work_sessions SQLite table.
 
-    Although DevTrack's Python layer is async, sqlite3 is not natively async.
-    All methods run synchronous SQLite calls directly. Callers that need true
-    async behaviour should wrap calls with ``asyncio.to_thread``.
+    Although DevTrack's Python layer is async, the shared engine is used
+    synchronously. All methods run synchronous DB calls directly. Callers
+    that need true async behaviour should wrap calls with ``asyncio.to_thread``.
     """
 
     # ------------------------------------------------------------------
@@ -95,16 +89,18 @@ class WorkSessionStore:
 
     def _get_active_session_sqlite(self) -> Optional[Dict[str, Any]]:
         try:
-            conn = _connect()
-            row = conn.execute(
-                """
-                SELECT * FROM work_sessions
-                WHERE ended_at IS NULL
-                ORDER BY started_at DESC
-                LIMIT 1
-                """
-            ).fetchone()
-            conn.close()
+            from backend.db.engine import get_engine
+            with get_engine().connect() as conn:
+                row = conn.execute(
+                    text(
+                        """
+                        SELECT * FROM work_sessions
+                        WHERE ended_at IS NULL
+                        ORDER BY started_at DESC
+                        LIMIT 1
+                        """
+                    )
+                ).mappings().fetchone()
             return dict(row) if row else None
         except Exception as exc:
             logger.debug("get_active_session (sqlite): %s", exc)
@@ -114,14 +110,30 @@ class WorkSessionStore:
         """Return all sessions whose started_at date matches YYYY-MM-DD.
 
         Includes both completed and still-active sessions.
+
+        Fails closed (returns []) in PostgreSQL mode: work_sessions is a
+        Go-owned table and Go's internal HTTP server only exposes the single
+        active session (GET /internal/sessions/active), not a date-range
+        query — there is no Postgres-safe way to serve this today. See the
+        boundary-rule note at the top of this module.
         """
+        if _is_postgres_mode():
+            logger.debug(
+                "get_sessions_for_date: fail-closed in PostgreSQL mode — "
+                "work_sessions is a Go-owned table with no date-range HTTP "
+                "endpoint (only /internal/sessions/active exists)"
+            )
+            return []
         try:
-            conn = _connect()
-            rows = conn.execute(
-                "SELECT * FROM work_sessions WHERE date(started_at) = ? ORDER BY started_at ASC",
-                (date,),
-            ).fetchall()
-            conn.close()
+            from backend.db.engine import get_engine
+            with get_engine().connect() as conn:
+                rows = conn.execute(
+                    text(
+                        "SELECT * FROM work_sessions WHERE date(started_at) = :date "
+                        "ORDER BY started_at ASC"
+                    ),
+                    {"date": date},
+                ).mappings().all()
             return [dict(r) for r in rows]
         except Exception as e:
             logger.debug(f"WorkSessionStore.get_sessions_for_date error: {e}")
@@ -141,30 +153,30 @@ class WorkSessionStore:
             logger.debug("append_commit: skipped in PostgreSQL mode (Go-owned table)")
             return
         try:
-            conn = _connect()
-            row = conn.execute(
-                "SELECT commits FROM work_sessions WHERE id = ?", (session_id,)
-            ).fetchone()
-            if not row:
-                conn.close()
-                return
+            from backend.db.engine import get_engine
+            with get_engine().connect() as conn:
+                row = conn.execute(
+                    text("SELECT commits FROM work_sessions WHERE id = :id"),
+                    {"id": session_id},
+                ).mappings().fetchone()
+                if not row:
+                    return
 
-            commits: List[str] = []
-            raw = (row["commits"] or "[]").strip()
-            try:
-                commits = json.loads(raw)
-            except json.JSONDecodeError:
-                commits = []
+                commits: List[str] = []
+                raw = (row["commits"] or "[]").strip()
+                try:
+                    commits = json.loads(raw)
+                except json.JSONDecodeError:
+                    commits = []
 
-            if commit_hash not in commits:
-                commits.append(commit_hash)
+                if commit_hash not in commits:
+                    commits.append(commit_hash)
 
-            conn.execute(
-                "UPDATE work_sessions SET commits = ? WHERE id = ?",
-                (json.dumps(commits), session_id),
-            )
-            conn.commit()
-            conn.close()
+                conn.execute(
+                    text("UPDATE work_sessions SET commits = :commits WHERE id = :id"),
+                    {"commits": json.dumps(commits), "id": session_id},
+                )
+                conn.commit()
         except Exception as e:
             logger.debug(f"WorkSessionStore.append_commit error: {e}")
 
@@ -177,42 +189,57 @@ class WorkSessionStore:
             logger.debug("end_session: skipped in PostgreSQL mode (Go-owned table)")
             return
         try:
-            conn = _connect()
-            row = conn.execute(
-                "SELECT started_at FROM work_sessions WHERE id = ?", (session_id,)
-            ).fetchone()
-            if not row:
-                conn.close()
-                return
+            from backend.db.engine import get_engine
+            with get_engine().connect() as conn:
+                row = conn.execute(
+                    text("SELECT started_at FROM work_sessions WHERE id = :id"),
+                    {"id": session_id},
+                ).mappings().fetchone()
+                if not row:
+                    return
 
-            started_at = row["started_at"]
-            try:
-                start = datetime.fromisoformat(started_at)
-            except ValueError:
-                start = datetime.strptime(started_at, "%Y-%m-%d %H:%M:%S")
-            now = datetime.now(timezone.utc).replace(tzinfo=None)
-            duration_mins = max(0, int((now - start).total_seconds() / 60))
-            ended_at = now.strftime("%Y-%m-%d %H:%M:%S")
+                started_at = row["started_at"]
+                try:
+                    start = datetime.fromisoformat(started_at)
+                except ValueError:
+                    start = datetime.strptime(started_at, "%Y-%m-%d %H:%M:%S")
+                now = datetime.now(timezone.utc).replace(tzinfo=None)
+                duration_mins = max(0, int((now - start).total_seconds() / 60))
+                ended_at = now.strftime("%Y-%m-%d %H:%M:%S")
 
-            conn.execute(
-                "UPDATE work_sessions SET ended_at = ?, duration_minutes = ? WHERE id = ?",
-                (ended_at, duration_mins, session_id),
-            )
-            conn.commit()
-            conn.close()
+                conn.execute(
+                    text(
+                        "UPDATE work_sessions SET ended_at = :ended_at, "
+                        "duration_minutes = :duration_minutes WHERE id = :id"
+                    ),
+                    {"ended_at": ended_at, "duration_minutes": duration_mins, "id": session_id},
+                )
+                conn.commit()
         except Exception as e:
             logger.debug(f"WorkSessionStore.end_session error: {e}")
 
     def adjust_time(self, session_id: int, adjusted_minutes: int) -> None:
-        """Set user-overridden time. Auto-measured duration_minutes is preserved."""
+        """Set user-overridden time. Auto-measured duration_minutes is preserved.
+
+        No-op in PostgreSQL mode — work_sessions is a Go-owned table and cannot
+        be written directly when Python and Go are on separate machines (same
+        boundary rule as append_commit/end_session; this guard was previously
+        missing here — see TASK-112 module 4/15 port notes).
+        """
+        if _is_postgres_mode():
+            logger.debug("adjust_time: skipped in PostgreSQL mode (Go-owned table)")
+            return
         try:
-            conn = _connect()
-            conn.execute(
-                "UPDATE work_sessions SET adjusted_minutes = ? WHERE id = ?",
-                (adjusted_minutes, session_id),
-            )
-            conn.commit()
-            conn.close()
+            from backend.db.engine import get_engine
+            with get_engine().connect() as conn:
+                conn.execute(
+                    text(
+                        "UPDATE work_sessions SET adjusted_minutes = :adjusted_minutes "
+                        "WHERE id = :id"
+                    ),
+                    {"adjusted_minutes": adjusted_minutes, "id": session_id},
+                )
+                conn.commit()
         except Exception as e:
             logger.debug(f"WorkSessionStore.adjust_time error: {e}")
 

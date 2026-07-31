@@ -821,11 +821,21 @@ Claude Code answering *"what am I working on?"* in under ten minutes. See
 
 **Deferred (Phase 10+):** headless orchestration, Tier 4 Hermes persona model, GitLab `IsPRApproved`.
 
-> **Not planned, ever:** NATS/Redis/external message queues, a PostgreSQL migration, Kubernetes,
-> or multi-tenancy. DevTrack is local-first, offline-first, single-machine, and not a SaaS.
-> Storage is SQLite plus ChromaDB. An earlier scaling plan proposing all of the above was
-> **deleted in TASK-109** — it predated the 2026-06-10 pivot and contradicted its
-> non-negotiables. Do not reintroduce it.
+> **Not planned, ever:** NATS/Redis/external message queues, Kubernetes, or multi-tenancy.
+> DevTrack is local-first, offline-first, single-machine, and not a SaaS. The Go client's
+> storage is SQLite only — it never speaks Postgres, in any mode. An earlier scaling plan
+> proposing all of the above (plus a blanket Postgres migration) was **deleted in TASK-109**
+> — it predated the 2026-06-10 pivot and contradicted its non-negotiables. Do not reintroduce
+> a client-side Postgres driver or a dialect split in `internal/db/`.
+>
+> **Exception, decided 2026-07-13:** PostgreSQL is wanted as a **server-side-only** option
+> before commercial launch, so a multi-user server can aggregate data instead of every
+> developer's triggers living in a SQLite file on their own laptop. Scoped as **EPIC
+> TASK-112–116** on `Data/agent_logs/project_board.md` (started 2026-07-31, PR #231 —
+> `devtrack_server/backend/db/engine.py` is the dual-dialect factory; 1 of 15 raw-`sqlite3`
+> modules ported so far). SQLite stays the default everywhere; Postgres only activates when
+> `POSTGRES_URL` is set on the server, and local client data flows up over the existing
+> `/trigger/*` boundary. Offline-first Rule 0 holds untouched.
 
 ---
 

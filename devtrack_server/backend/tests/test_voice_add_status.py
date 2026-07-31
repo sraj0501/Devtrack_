@@ -18,6 +18,18 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+# Force-import backend.dialectic_status here, before any test in this file
+# patches backend.config.database_path/get_path. dialectic_status.py binds
+# `database_path` into its own module namespace at import time
+# (`from backend.config import database_path`); TestVoiceStatusDialecticFields
+# below triggers the module's *first* import lazily, from inside a patched
+# `backend.config.database_path` context (via the endpoint's own
+# `from backend.dialectic_status import DialecticStatus`) — if that import
+# happens first, the mock gets bound permanently, breaking every later test
+# that relies on DialecticStatus resolving the real database_path(). Importing
+# eagerly here, unpatched, pins the real function before that can happen.
+import backend.dialectic_status  # noqa: F401
+
 
 # ---------------------------------------------------------------------------
 # Fixture: FastAPI test client
@@ -479,24 +491,143 @@ class TestVoiceStatusDialecticFields:
 
 
 # ---------------------------------------------------------------------------
-# DialecticStatus unit tests (TASK-091)
+# DialecticStatus unit tests (TASK-091; engine-based port TASK-112/113)
 # ---------------------------------------------------------------------------
+#
+# dialectic_status.py reads the Go-owned inferences/corrections/skills/
+# confidence_thresholds tables through backend.db.engine.get_engine()
+# (SQLite mode) rather than a bespoke sqlite3.connect(). These tests exercise
+# that path against a real, temp-directory SQLite DB via an isolated engine
+# (see the same fixture pattern in test_skill_detector.py), plus the
+# PostgreSQL-mode fail-closed path via a monkeypatched is_postgres().
+
+@pytest.fixture()
+def isolated_dialectic_engine(tmp_path: Path, monkeypatch):
+    """Point DATABASE_DIR at a fresh temp directory and reset the shared
+    SQLAlchemy engine singleton so DialecticStatus's engine-based reads hit
+    an isolated SQLite file instead of whatever engine a prior test built.
+    Yields the temp directory; the DB file itself is `devtrack.db` inside it
+    (backend.config.database_path()'s default filename) unless a test
+    creates it under a different name and never touches database_path().
+    """
+    from backend.db.engine import reset_engine
+
+    monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+    reset_engine()
+    yield tmp_path
+    reset_engine()
+
+
+def _make_dialectic_db(db_path: Path) -> None:
+    """Create inferences/corrections/skills/confidence_thresholds tables
+    with representative rows — mirrors the Go client's migrations.go schema
+    closely enough for these read-only summary methods.
+    """
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        """
+        CREATE TABLE inferences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            context_type TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            inference TEXT NOT NULL,
+            evidence TEXT NOT NULL DEFAULT '[]',
+            confidence REAL NOT NULL DEFAULT 0.5,
+            source TEXT NOT NULL DEFAULT 'hermes3',
+            created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+            updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE corrections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            inference_id INTEGER NOT NULL,
+            correction TEXT NOT NULL,
+            flagged_from TEXT NOT NULL DEFAULT 'tui',
+            weight REAL NOT NULL DEFAULT 2.0,
+            created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE skills (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            context_type TEXT,
+            evidence_count INTEGER NOT NULL DEFAULT 0,
+            promoted_at DATETIME NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE confidence_thresholds (
+            action_type TEXT PRIMARY KEY,
+            threshold REAL NOT NULL,
+            approvals INTEGER NOT NULL DEFAULT 0,
+            rejections INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    # Insert 2 inferences.
+    conn.execute(
+        "INSERT INTO inferences (context_type, subject, inference, evidence, confidence)"
+        " VALUES (?, ?, ?, ?, ?)",
+        ("commit", "tone", "Uses imperative mood.", "[]", 0.91),
+    )
+    conn.execute(
+        "INSERT INTO inferences (context_type, subject, inference, evidence, confidence)"
+        " VALUES (?, ?, ?, ?, ?)",
+        ("comment", "prefix", "Brackets ticket ID.", "[]", 0.87),
+    )
+    # Insert 1 correction.
+    conn.execute(
+        "INSERT INTO corrections (inference_id, correction) VALUES (?, ?)",
+        (1, "Actually uses past tense sometimes."),
+    )
+    # Insert 2 skills, out of promoted_at order to verify ORDER BY.
+    conn.execute(
+        "INSERT INTO skills (name, description, context_type, evidence_count, promoted_at)"
+        " VALUES (?, ?, ?, ?, ?)",
+        ("bracket_ticket_prefix", "desc", "comment", 6, "2026-01-02 00:00:00"),
+    )
+    conn.execute(
+        "INSERT INTO skills (name, description, context_type, evidence_count, promoted_at)"
+        " VALUES (?, ?, ?, ?, ?)",
+        ("imperative_commit_tone", "desc", "commit", 5, "2026-01-01 00:00:00"),
+    )
+    # Insert 2 confidence thresholds.
+    conn.execute(
+        "INSERT INTO confidence_thresholds (action_type, threshold, approvals, rejections)"
+        " VALUES (?, ?, ?, ?)",
+        ("post_comment", 0.86, 43, 4),
+    )
+    conn.execute(
+        "INSERT INTO confidence_thresholds (action_type, threshold, approvals, rejections)"
+        " VALUES (?, ?, ?, ?)",
+        ("state_transition", 0.82, 21, 7),
+    )
+    conn.commit()
+    conn.close()
+
 
 class TestDialecticStatusUnit:
-    """Unit tests for DialecticStatus helper methods."""
+    """Unit tests for DialecticStatus helper methods (SQLite mode)."""
 
     def test_get_inference_summary_nonexistent_db_returns_safe_default(
-        self, tmp_path: Path
+        self, isolated_dialectic_engine: Path
     ) -> None:
         """get_inference_summary() with a nonexistent DB path returns zeros without raising."""
         from backend.dialectic_status import DialecticStatus
 
-        nonexistent = tmp_path / "does_not_exist.db"
-
-        # Patch the database_path name in the dialectic_status module's own namespace.
-        with patch("backend.dialectic_status.database_path", return_value=nonexistent):
-            ds = DialecticStatus()
-            result = ds.get_inference_summary()
+        # isolated_dialectic_engine points DATABASE_DIR at a fresh tmp_path
+        # with no devtrack.db file in it yet.
+        ds = DialecticStatus()
+        result = ds.get_inference_summary()
 
         assert result == {
             "total": 0,
@@ -504,64 +635,17 @@ class TestDialecticStatusUnit:
             "correction_count": 0,
         }, f"expected safe default, got: {result}"
 
-    def test_get_inference_summary_with_real_db(self, tmp_path: Path) -> None:
+    def test_get_inference_summary_with_real_db(
+        self, isolated_dialectic_engine: Path
+    ) -> None:
         """get_inference_summary() returns correct counts from a real SQLite DB."""
-        import sqlite3 as _sqlite3
         from backend.dialectic_status import DialecticStatus
 
-        db_path = tmp_path / "devtrack.db"
-        conn = _sqlite3.connect(str(db_path))
-        conn.execute(
-            """
-            CREATE TABLE inferences (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                context_type TEXT NOT NULL,
-                subject TEXT NOT NULL,
-                inference TEXT NOT NULL,
-                evidence TEXT NOT NULL DEFAULT '[]',
-                confidence REAL NOT NULL DEFAULT 0.5,
-                source TEXT NOT NULL DEFAULT 'hermes3',
-                created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-                updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE corrections (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                inference_id INTEGER NOT NULL,
-                correction TEXT NOT NULL,
-                flagged_from TEXT NOT NULL DEFAULT 'tui',
-                weight REAL NOT NULL DEFAULT 2.0,
-                created_at DATETIME NOT NULL DEFAULT (datetime('now'))
-            )
-            """
-        )
-        # Insert 2 inferences.
-        conn.execute(
-            "INSERT INTO inferences (context_type, subject, inference, evidence, confidence)"
-            " VALUES (?, ?, ?, ?, ?)",
-            ("commit", "tone", "Uses imperative mood.", "[]", 0.91),
-        )
-        conn.execute(
-            "INSERT INTO inferences (context_type, subject, inference, evidence, confidence)"
-            " VALUES (?, ?, ?, ?, ?)",
-            ("comment", "prefix", "Brackets ticket ID.", "[]", 0.87),
-        )
-        # Insert 1 correction.
-        conn.execute(
-            "INSERT INTO corrections (inference_id, correction) VALUES (?, ?)",
-            (1, "Actually uses past tense sometimes."),
-        )
-        conn.commit()
-        conn.close()
+        db_path = isolated_dialectic_engine / "devtrack.db"
+        _make_dialectic_db(db_path)
 
-        # Patch database_path in the dialectic_status module namespace so
-        # _resolve_db_path() returns our real test DB.
-        with patch("backend.dialectic_status.database_path", return_value=db_path):
-            ds = DialecticStatus()
-            result = ds.get_inference_summary()
+        ds = DialecticStatus()
+        result = ds.get_inference_summary()
 
         assert result["total"] == 2, f"expected total=2, got {result['total']}"
         assert result["correction_count"] == 1, (
@@ -570,3 +654,123 @@ class TestDialecticStatusUnit:
         assert len(result["top_by_confidence"]) == 2
         # First entry should be highest confidence (0.91).
         assert result["top_by_confidence"][0]["confidence"] == 0.91
+
+    def test_get_skill_summary_with_real_db(
+        self, isolated_dialectic_engine: Path
+    ) -> None:
+        """get_skill_summary() returns names ordered by promoted_at ASC."""
+        from backend.dialectic_status import DialecticStatus
+
+        db_path = isolated_dialectic_engine / "devtrack.db"
+        _make_dialectic_db(db_path)
+
+        ds = DialecticStatus()
+        result = ds.get_skill_summary()
+
+        assert result["total"] == 2, f"expected total=2, got {result['total']}"
+        assert result["names"] == [
+            "imperative_commit_tone",
+            "bracket_ticket_prefix",
+        ], f"expected promoted_at ASC order, got: {result['names']}"
+
+    def test_get_skill_summary_missing_table_returns_safe_default(
+        self, isolated_dialectic_engine: Path
+    ) -> None:
+        """skills table absent (old client DB, pre-TASK-089) -> safe default, no raise."""
+        from backend.dialectic_status import DialecticStatus
+
+        db_path = isolated_dialectic_engine / "devtrack.db"
+        _make_dialectic_db(db_path)
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("DROP TABLE skills")
+        conn.commit()
+        conn.close()
+
+        ds = DialecticStatus()
+        result = ds.get_skill_summary()
+
+        assert result == {"total": 0, "names": []}
+
+    def test_get_skill_summary_nonexistent_db_returns_safe_default(
+        self, isolated_dialectic_engine: Path
+    ) -> None:
+        """get_skill_summary() with a nonexistent DB path returns safe default."""
+        from backend.dialectic_status import DialecticStatus
+
+        ds = DialecticStatus()
+        result = ds.get_skill_summary()
+
+        assert result == {"total": 0, "names": []}
+
+    def test_get_threshold_summary_with_real_db(
+        self, isolated_dialectic_engine: Path
+    ) -> None:
+        """get_threshold_summary() returns a dict keyed by action_type."""
+        from backend.dialectic_status import DialecticStatus
+
+        db_path = isolated_dialectic_engine / "devtrack.db"
+        _make_dialectic_db(db_path)
+
+        ds = DialecticStatus()
+        result = ds.get_threshold_summary()
+
+        assert result == {
+            "post_comment": {"threshold": 0.86, "approvals": 43, "rejections": 4},
+            "state_transition": {"threshold": 0.82, "approvals": 21, "rejections": 7},
+        }, f"unexpected result: {result}"
+
+    def test_get_threshold_summary_missing_table_returns_safe_default(
+        self, isolated_dialectic_engine: Path
+    ) -> None:
+        """confidence_thresholds table absent -> safe default {}, no raise."""
+        from backend.dialectic_status import DialecticStatus
+
+        db_path = isolated_dialectic_engine / "devtrack.db"
+        _make_dialectic_db(db_path)
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("DROP TABLE confidence_thresholds")
+        conn.commit()
+        conn.close()
+
+        ds = DialecticStatus()
+        result = ds.get_threshold_summary()
+
+        assert result == {}
+
+    def test_get_threshold_summary_nonexistent_db_returns_safe_default(
+        self, isolated_dialectic_engine: Path
+    ) -> None:
+        """get_threshold_summary() with a nonexistent DB path returns {}."""
+        from backend.dialectic_status import DialecticStatus
+
+        ds = DialecticStatus()
+        result = ds.get_threshold_summary()
+
+        assert result == {}
+
+
+class TestDialecticStatusPostgresMode:
+    """PostgreSQL-mode boundary-rule behaviour: inferences/corrections/skills/
+    confidence_thresholds are Go-owned SQLite-only tables not yet exposed
+    over HTTP, so every method must fail closed (safe default) without
+    touching the engine or raising."""
+
+    def test_all_methods_return_safe_defaults_without_touching_engine(self) -> None:
+        from backend.dialectic_status import DialecticStatus
+
+        ds = DialecticStatus()
+
+        with patch("backend.dialectic_status.is_postgres", return_value=True), \
+             patch("backend.dialectic_status.get_engine") as mock_get_engine:
+            inference_result = ds.get_inference_summary()
+            skill_result = ds.get_skill_summary()
+            threshold_result = ds.get_threshold_summary()
+
+        mock_get_engine.assert_not_called()
+        assert inference_result == {
+            "total": 0,
+            "top_by_confidence": [],
+            "correction_count": 0,
+        }
+        assert skill_result == {"total": 0, "names": []}
+        assert threshold_result == {}
