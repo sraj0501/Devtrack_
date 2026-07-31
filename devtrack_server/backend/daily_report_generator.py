@@ -41,10 +41,12 @@ except ImportError:
     def _stage(name):  # type: ignore[misc]
         yield
 
-# Add paths for imports
-sys.path.insert(0, os.path.dirname(__file__))
-
-from email_reporter import EmailReporter, DailyReport, ActivitySummary
+# Deliberately NOT sys.path.insert(0, os.path.dirname(__file__)) (backend/
+# itself) here -- that let `import telegram` resolve to backend/telegram/
+# instead of the real python-telegram-bot package whenever this module got
+# imported first in the same process (found via test_telegram_handlers.py,
+# TASK-112).
+from backend.email_reporter import EmailReporter, DailyReport, ActivitySummary
 
 from sqlalchemy import text
 

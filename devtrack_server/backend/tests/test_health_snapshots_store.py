@@ -92,3 +92,41 @@ class TestGetRecentSnapshotsPostgresMode:
 
         mock_get_engine.assert_not_called()
         assert result == []
+
+
+class TestGetLatestSnapshotPerService:
+    """Telegram's /health variant -- one row per service, not top-N overall."""
+
+    def test_returns_one_row_per_service_the_latest(self, isolated_engine: Path):
+        from backend.health_snapshots_store import get_latest_snapshot_per_service
+
+        db_path = isolated_engine / "devtrack.db"
+        _make_health_db(db_path, [
+            ("ollama", "up", 12, "", "2026-07-31T09:00:00"),
+            ("ollama", "down", None, "connection refused", "2026-07-31T10:00:00"),
+            ("webhook_server", "up", 5, "", "2026-07-31T09:30:00"),
+        ])
+
+        rows = get_latest_snapshot_per_service()
+
+        assert len(rows) == 2
+        by_service = {r["service"]: r for r in rows}
+        assert by_service["ollama"]["status"] == "down"
+        assert by_service["webhook_server"]["status"] == "up"
+
+    def test_nonexistent_db_returns_empty_list(self, isolated_engine: Path):
+        from backend.health_snapshots_store import get_latest_snapshot_per_service
+
+        assert get_latest_snapshot_per_service() == []
+
+
+class TestGetLatestSnapshotPerServicePostgresMode:
+    def test_fails_closed_without_touching_engine(self):
+        from backend.health_snapshots_store import get_latest_snapshot_per_service
+
+        with patch("backend.health_snapshots_store.is_postgres", return_value=True), \
+             patch("backend.health_snapshots_store.get_engine") as mock_get_engine:
+            result = get_latest_snapshot_per_service()
+
+        mock_get_engine.assert_not_called()
+        assert result == []

@@ -13,15 +13,15 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime, timezone
 
-# Add paths
-sys.path.insert(0, os.path.dirname(__file__))
+# Add paths. Deliberately NOT inserting os.path.dirname(__file__) (backend/
+# itself) -- that let `import telegram` resolve to backend/telegram/ instead
+# of the real python-telegram-bot package whenever this module got imported
+# first in the same process (found via test_telegram_handlers.py, TASK-112).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'msgraph_python'))
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # repo root for backend.* imports
 
-from personalized_ai import PersonalizedAI, CommunicationSample
-from data_collectors import (
-    TeamsDataCollector
-)
+from backend.personalized_ai import PersonalizedAI, CommunicationSample
+from backend.data_collectors import TeamsDataCollector
 
 try:
     from backend.db.mongo_learning import get_store as _get_mongo_store
