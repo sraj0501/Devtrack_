@@ -9,7 +9,9 @@ written communication beyond commit messages.
 Non-negotiable patterns:
 - Never calls os.getenv directly — all config via backend.config.
 - Graceful per-platform failure: one platform failing never blocks others.
-- Idempotent: already-embedded items are skipped (tracked by SQLite table).
+- Idempotent: already-embedded items are skipped (tracked via
+  backend.db.voice_sync_store's Python-owned voice_synced_items table,
+  dual-dialect through backend.db.engine).
 - context_type="description" for PR/MR bodies.
 - context_type="comment" for issue/work-item comments.
 """
@@ -17,66 +19,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import sqlite3
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
-
-
-# ── SQLite tracking helpers ───────────────────────────────────────────────────
-
-
-def _db_path() -> Path:
-    """Resolve the SQLite database path via backend.config."""
-    try:
-        from backend.config import database_path
-        return database_path()
-    except Exception:
-        return Path("Data") / "db" / "devtrack.db"
-
-
-def _ensure_sync_table(conn: sqlite3.Connection) -> None:
-    """Create the voice_synced_items tracking table if it does not exist."""
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS voice_synced_items (
-            platform     TEXT NOT NULL,
-            item_id      TEXT NOT NULL,
-            context_type TEXT NOT NULL,
-            synced_at    DATETIME NOT NULL DEFAULT (datetime('now')),
-            PRIMARY KEY (platform, item_id, context_type)
-        )
-        """
-    )
-    conn.commit()
-
-
-def _is_already_synced(
-    conn: sqlite3.Connection, platform: str, item_id: str, context_type: str
-) -> bool:
-    """Return True if this (platform, item_id, context_type) is already tracked."""
-    row = conn.execute(
-        "SELECT 1 FROM voice_synced_items WHERE platform=? AND item_id=? AND context_type=?",
-        (platform, item_id, context_type),
-    ).fetchone()
-    return row is not None
-
-
-def _mark_synced(
-    conn: sqlite3.Connection, platform: str, item_id: str, context_type: str
-) -> None:
-    """Insert a row to mark an item as synced."""
-    conn.execute(
-        """
-        INSERT OR IGNORE INTO voice_synced_items (platform, item_id, context_type, synced_at)
-        VALUES (?, ?, ?, ?)
-        """,
-        (platform, item_id, context_type,
-         datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")),
-    )
-    conn.commit()
 
 
 # ── ChromaDB embedding helper ─────────────────────────────────────────────────
@@ -210,18 +155,10 @@ class VoiceSync:
 
     # ── internal ──────────────────────────────────────────────────────────────
 
-    def _open_tracking_conn(self) -> Optional[sqlite3.Connection]:
-        """Open the tracking DB. Returns None on failure (idempotency guard disabled)."""
-        try:
-            conn = sqlite3.connect(str(_db_path()))
-            _ensure_sync_table(conn)
-            return conn
-        except Exception as exc:
-            logger.warning("voice_sync: cannot open DB for idempotency tracking: %s", exc)
-            return None
-
     def _sync_prs(self, workspace: Any) -> int:
         """Internal: fetch and embed PR descriptions for one workspace."""
+        from backend.db.voice_sync_store import is_already_synced, mark_synced
+
         platform = getattr(workspace, "pm_platform", "").lower()
         pm_username = getattr(workspace, "pm_username", "")
         ws_name = getattr(workspace, "name", "?")
@@ -232,7 +169,6 @@ class VoiceSync:
             )
             return 0
 
-        conn = self._open_tracking_conn()
         embedded = 0
 
         try:
@@ -242,8 +178,6 @@ class VoiceSync:
                 "voice_sync: failed to fetch PRs for workspace %s (%s): %s",
                 ws_name, platform, exc,
             )
-            if conn:
-                conn.close()
             return 0
 
         for pr in prs:
@@ -261,17 +195,13 @@ class VoiceSync:
             doc_id = f"{platform}-pr-{pr_id}"
 
             # Idempotency check.
-            if conn is not None and _is_already_synced(conn, platform, doc_id, "description"):
+            if is_already_synced(platform, doc_id, "description"):
                 continue
 
             success = _embed_text(doc_id, body, "description", "pr_sync")
             if success:
-                if conn is not None:
-                    _mark_synced(conn, platform, doc_id, "description")
+                mark_synced(platform, doc_id, "description")
                 embedded += 1
-
-        if conn:
-            conn.close()
 
         if embedded:
             logger.info(
@@ -282,6 +212,8 @@ class VoiceSync:
 
     def _sync_comments(self, workspace: Any) -> int:
         """Internal: fetch and embed issue comments for one workspace."""
+        from backend.db.voice_sync_store import is_already_synced, mark_synced
+
         platform = getattr(workspace, "pm_platform", "").lower()
         pm_username = getattr(workspace, "pm_username", "")
         ws_name = getattr(workspace, "name", "?")
@@ -292,7 +224,6 @@ class VoiceSync:
             )
             return 0
 
-        conn = self._open_tracking_conn()
         embedded = 0
 
         try:
@@ -302,8 +233,6 @@ class VoiceSync:
                 "voice_sync: failed to fetch comments for workspace %s (%s): %s",
                 ws_name, platform, exc,
             )
-            if conn:
-                conn.close()
             return 0
 
         for comment in comments:
@@ -321,17 +250,13 @@ class VoiceSync:
             doc_id = f"{platform}-comment-{comment_id}"
 
             # Idempotency check.
-            if conn is not None and _is_already_synced(conn, platform, doc_id, "comment"):
+            if is_already_synced(platform, doc_id, "comment"):
                 continue
 
             success = _embed_text(doc_id, body, "comment", "pr_sync")
             if success:
-                if conn is not None:
-                    _mark_synced(conn, platform, doc_id, "comment")
+                mark_synced(platform, doc_id, "comment")
                 embedded += 1
-
-        if conn:
-            conn.close()
 
         if embedded:
             logger.info(
