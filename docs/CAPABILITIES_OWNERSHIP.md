@@ -6,7 +6,8 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-06-10 (client-server decoupling Phase 1 + Phase 2 complete)._
+_Last updated: 2026-07-31 (client-server decoupling Phase 1 + Phase 2 both complete; `logs --follow`
+corrected per TASK-131)._
 
 ## Ownership model (intended)
 
@@ -38,7 +39,7 @@ _Last updated: 2026-06-10 (client-server decoupling Phase 1 + Phase 2 complete).
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
 | Start/stop/restart daemon | `start`, `stop`, `restart` | Go-native | Client | |
-| Status / logs | `status`, `logs` | Go-native | Client | `logs --follow` not implemented (stub) |
+| Status / logs | `status`, `logs` | Go-native | Client | `logs --follow` implemented (TASK-131) — polls and streams appended lines, survives log rotation |
 | Pause/resume/skip triggers | `pause`, `resume`, `skip-next`, `force-trigger`, `on`, `off` | Go-native | Client | |
 | Config reload | `reload`, `reload-config`, `settings` | Go-native | Client | |
 | DB stats / version / help | `db-stats`, `version`, `help` | Go-native | Client | |
@@ -108,15 +109,15 @@ _Last updated: 2026-06-10 (client-server decoupling Phase 1 + Phase 2 complete).
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Alert polling (GitHub/Azure/Jira) | (daemon) | Python (in client) | Client | ⚠ Phase 2: Port to Go (reuse connectors + SQLite); remove `backend.alert_poller` |
-| Read / clear alerts | `alerts` | Python (in client) | Client | ⚠ Phase 2: Read from SQLite natively |
+| Alert polling (GitHub/Azure/Jira) | (daemon) | Go-native | Client | ✅ Phase 2 complete: `internal/alerts/` — poller + per-source alerters, reuses connectors + SQLite; Python `alert_poller.py` retired |
+| Read / clear alerts | `alerts` | Go-native | Client | ✅ Reads from SQLite via `internal/db/` |
 
 ## 9. Notifications (delivery) — Owner: **Client**
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Telegram delivery | `telegram-status` | Python (in client) | Client | ⚠ Phase 2: Port delivery to Go (Telegram Bot API). AI-conversational processing → Server |
-| Slack delivery | (daemon) | Python (in client) | Client | ⚠ Phase 2: Port delivery to Go (Slack webhook) |
+| Telegram delivery | `telegram-status` | Go-native | Client | ✅ Phase 2 complete: `internal/telegram/` — Go-native bot, starts with daemon when `TELEGRAM_ENABLED=true` |
+| Slack delivery | (daemon) | Go-native | Client | ✅ Phase 2 complete: `internal/notify/` — `NewSlackFromConfig` |
 
 ## 10. Cloud / auth / license — Owner: **Server** (cloud), local gating client-side
 
@@ -137,7 +138,8 @@ _Last updated: 2026-06-10 (client-server decoupling Phase 1 + Phase 2 complete).
 
 ## Summary of current mismatches (⚠ = decoupling work)
 
-Phase 1 (remove + convert-to-HTTP) is **complete**. Only Phase 2 items remain.
+Phase 1 (remove + convert-to-HTTP) and Phase 2 (port alerts/notify delivery to Go) are both
+**complete**. No known mismatches remain.
 
 | Capability | Intended owner | Status |
 |---|---|---|
@@ -146,10 +148,10 @@ Phase 1 (remove + convert-to-HTTP) is **complete**. Only Phase 2 items remain.
 | Reports (preview/send/save/summary/EOD) | Server | ✅ HTTP → server (Phase 1c) |
 | Learning suite (all `learning-*`, profile, test-response, revoke) | Server | ✅ HTTP → server (Phase 1c) |
 | Cloud/auth/license (`login/logout/whoami/license/terms`) | Server | ✅ HTTP → server (Phase 1c) |
-| Ticket alerts (`alerts`, poller) | Client | ⚠ **Port to Go** (Phase 2) |
-| Telegram / Slack delivery | Client | ⚠ **Port to Go** (Phase 2) |
+| Ticket alerts (`alerts`, poller) | Client | ✅ Ported to Go (Phase 2 — `internal/alerts/`) |
+| Telegram / Slack delivery | Client | ✅ Ported to Go (Phase 2 — `internal/telegram/`, `internal/notify/`) |
 
-Everything not marked ⚠ already matches its intended owner.
+Everything matches its intended owner.
 
 ## How to change ownership
 
