@@ -300,6 +300,36 @@ land before commercial launch. Full task breakdown at the bottom of this board. 
   `webhook_server.py` despite its own docstring implying it is — zero callers outside the module and
   its test file.
 
+**[2026-07-31] EPIC: PostgreSQL Backend — 6 of 15 modules ported (PRs #232–#236), promoted to `main`
+(PR #237, merge `5172251`).** Same session as TASK-112's first increment above; user authorized
+merging straight to `dev` all day and promoting to `main` at end of day. Three distinct per-module
+patterns now confirmed (see `postgres_epic.md` memory for full detail):
+- **Fail-closed** (`dialectic_status.py`): reads Go-owned `inferences`/`corrections`/`skills`/
+  `confidence_thresholds`, no Go HTTP endpoint exists — safe default in Postgres mode, never raises.
+- **HTTP-dispatch** (`server_tui/stats_client.py`, `work_tracker/session_store.py`'s reads): a Go
+  internal-HTTP endpoint already exists (`/internal/stats`, `/internal/sessions/active`) — Postgres
+  mode calls that instead of touching SQLite. `session_store.py` also had two real gaps fixed:
+  `adjust_time()` had no Postgres-mode guard at all (would have silently written to local SQLite),
+  and `get_sessions_for_date()` had no Postgres-mode branch either (a read returning silently wrong
+  data, not just a no-op) — now fails closed, confirmed via `internal/daemon/http_api.go` that no
+  date-range endpoint exists.
+- **Hard-raise, no mode yet** (`queue_gateway.py`): `pending_actions` is Go-owned but Python-written
+  (`stage()` is the only Python write path), no Go HTTP endpoint at all, real unscoped design work
+  (TASK-114). Every method now raises `QueueGatewayUnavailableError` immediately in Postgres mode.
+  **This surfaced a real, separate bug**: `TriggerProcessor.process_commit()` in `webhook_server.py`
+  had a "Legacy direct-post fallback" that called `workspace_router.route()` directly — bypassing the
+  pending-actions queue entirely — whenever the gateway was unavailable or `.stage()` raised. This is
+  the exact queue-bypass anti-pattern the Silent Worker epic (TASK-127) was supposed to have closed
+  everywhere, but this instance (the main `/trigger/commit` handler) survived that pass undetected.
+  Removed entirely — a staging failure now just skips PM sync for that commit (logged, no exception
+  raised out of `process_commit()`), never falls through to an unreviewed direct PM post.
+- `vacation/auto_responder.py` ported (fail-closed shape, `vacation_mode` table) and given its first
+  ever test coverage (13 tests — none existed before).
+- 9 modules remain: `alert_poller.py`, `daily_report_generator.py`, `email_reporter.py`,
+  `learning_integration.py`, `slack/handlers.py`, `telegram/handlers.py`, `voice_seeder.py`,
+  `voice_sync.py`, and `webhook_server.py`'s own remaining direct `sqlite3` usage (outside
+  `queue_gateway`'s call sites). TASK-114/115/116 still unstarted.
+
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
@@ -5798,9 +5828,11 @@ static, static, live end-to-end)
 
 ---
 
-## QUEUED — EPIC: PostgreSQL Backend (TASK-112–116)
+## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
-**Priority: required before commercial launch.** Scoped 2026-07-13; not started.
+**Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
+**6 of 15 raw-`sqlite3` modules ported as of 2026-07-31** (PRs #231–#236, see the dated log entries
+above for full detail on each). TASK-114/115/116 still unstarted.
 
 ### Why this exists
 
@@ -5811,7 +5843,8 @@ does not give you a Postgres deployment — it gives you *two databases*:
 |---|---|---|
 | `db/engine.py` (SQLAlchemy factory, dialect-aware `upsert()`, pooling) | Postgres **or** SQLite | ✅ already done |
 | 6 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket}_store` | follows `POSTGRES_URL` | ✅ |
-| 15 Python modules opening raw `sqlite3` (`daily_report_generator`, `queue_gateway`, `email_reporter`, `work_tracker/session_store`, `server_tui/stats_client`, `alert_poller`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `skill_detector`, `dialectic_status`, `learning_integration`, `vacation/auto_responder`, `webhook_server`) | **SQLite always** | ❌ |
+| 6 of 15 modules ported as of 2026-07-31: `skill_detector`, `dialectic_status`, `server_tui/stats_client`, `work_tracker/session_store`, `queue_gateway`, `vacation/auto_responder` | fail-closed / HTTP-dispatch / hard-raise (see log entries above) | ✅ |
+| 9 modules still opening raw `sqlite3` (`daily_report_generator`, `email_reporter`, `alert_poller`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `learning_integration`, `webhook_server`) | **SQLite always** | ❌ |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
 So with `POSTGRES_URL` set, user accounts and licences go to Postgres while `triggers`, `task_updates`,
