@@ -14,7 +14,7 @@ See `docs/ARCHITECTURE.md` for the HTTP/JSON boundary between `devtrack_client` 
 ```bash
 cd devtrack_server
 
-# Install dependencies
+# Install dependencies (includes required PostgreSQL driver)
 uv sync                                      # core deps (no AI/spaCy)
 uv sync --extra ai                           # include AI/NLP deps
 
@@ -70,7 +70,7 @@ devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
 | `backend/github/` | GitHub API integration |
 | `backend/azure/` | Azure DevOps integration |
 | `backend/msgraph_python/` | Microsoft Graph (Teams, Outlook) |
-| `backend/db/` | Database models and migrations (SQLite + optional MongoDB) |
+| `backend/db/` | PostgreSQL-backed server stores and migrations; client SQLite boundary helpers |
 | `backend/ai/` | Low-level AI utilities (Ollama client, inference helpers) |
 | `backend/admin/` | Admin console routes (FastAPI + HTMX, JWT auth, user/license management) |
 
@@ -85,7 +85,11 @@ All Python modules access config via `backend.config.get()`, `get_int()`, `get_b
 
 Server-side env vars are documented in `devtrack_server/.env_sample`. The server requires these at startup; missing vars raise `ConfigError` with the exact variable name.
 
-Key server vars: `DEVTRACK_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SECRET_KEY`, `LLM_PROVIDER`, `OLLAMA_HOST`, `HTTP_TIMEOUT`, `LLM_REQUEST_TIMEOUT_SECS`.
+Key server vars: `POSTGRES_URL` (required target architecture), `DEVTRACK_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SECRET_KEY`, `LLM_PROVIDER`, `OLLAMA_HOST`, `HTTP_TIMEOUT`, `LLM_REQUEST_TIMEOUT_SECS`.
+
+PostgreSQL is mandatory for server persistence and server-side events. SQLite belongs to the Go
+client's offline source-of-truth path; remaining Python SQLite branches are migration compatibility
+debt tracked by TASK-141 and TASK-114–116, not the final server storage mode.
 
 ## Client-Server Boundary
 

@@ -72,8 +72,11 @@ devtrack_client/ (Go)            devtrack_server/ (Python)         devtrack_wiki
         │   HTTPS POST /trigger/* │                                  Netlify
         │ ───────────────────────▶│
 Git commits / cron / CLI    NLP · LLM · Admin UI · Personalization
-SQLite (Data/db/)           Azure DevOps · GitHub · GitLab · Jira · MS Graph
+SQLite (offline source)     PostgreSQL server events · PM APIs · MS Graph
 ```
+
+PostgreSQL is mandatory for Python server persistence and server-side events. The Go client remains
+SQLite-only so observation, queueing, MCP context, and offline backlog replay do not require a server.
 
 The only client↔server interface is **HTTPS POST to `/trigger/*`** and related endpoints
 (see `docs/ARCHITECTURE.md`). There is no shared compiled artefact. The legacy TCP IPC

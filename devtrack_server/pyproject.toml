@@ -22,6 +22,7 @@ dependencies = [
     "openai>=2.24.0",
     "python-telegram-bot>=22.7",
     "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
     "runtime-narrative>=0.1.0",
     # Server TUI (CS-2)
     "textual>=0.65.0",
@@ -41,7 +42,6 @@ openai = ["openai>=1.0.0"]
 anthropic = ["anthropic>=0.25.0"]
 cloud = ["openai>=1.0.0", "anthropic>=0.25.0"]
 mongodb = ["motor>=3.3.0"]
-postgres = ["psycopg2-binary>=2.9"]
 notifications = ["plyer>=2.1"]
 
 [build-system]

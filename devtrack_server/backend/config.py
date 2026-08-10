@@ -1467,11 +1467,11 @@ def get_mongodb_db() -> str:
 
 
 def postgres_url() -> Optional[str]:
-    """PostgreSQL connection URL. POSTGRES_URL — optional.
+    """PostgreSQL connection URL from POSTGRES_URL.
 
-    When set the Python server uses PostgreSQL for all Python-owned tables.
-    When absent (or empty) SQLite at database_path() is used instead.
-    Install the driver: uv sync --extra postgres
+    PostgreSQL is the required target for server persistence and server-side events.
+    Until TASK-116 enforces it at startup, an absent value preserves the transitional
+    SQLite compatibility path while the remaining server stores are migrated.
     """
     val = get("POSTGRES_URL", "")
     return val if val else None

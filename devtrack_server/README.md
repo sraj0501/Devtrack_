@@ -158,7 +158,7 @@ Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Session is JWT cookie, valid for
 | `backend/work_tracker/` | Work session tracking and EOD report generation |
 | `backend/alert_poller.py` | Background polling for ticket assignments and comments |
 | `backend/rag/` | ChromaDB RAG for personalization (optional, `--extra ai`) |
-| `backend/db/` | Database models (SQLite primary, MongoDB/PostgreSQL optional) |
+| `backend/db/` | PostgreSQL-backed server stores and migration-era SQLite compatibility |
 
 ---
 
@@ -181,16 +181,20 @@ See `docs/RUNTIME_NARRATIVE.md` for the full event schema.
 
 ---
 
-## Optional services
+## Backing services
 
-Start infrastructure with Docker Compose when needed:
+PostgreSQL is the required persistence target for the Python server. During the current migration,
+start it explicitly and set `POSTGRES_URL`; TASK-116 will make Compose provisioning and startup
+validation automatic. MongoDB is optional:
 
 ```bash
+docker compose up -d postgres   # required server persistence (POSTGRES_URL)
 docker compose up -d mongo      # optional: Teams messages as an extra voice source
-docker compose up -d postgres   # optional: multi-user mode (POSTGRES_URL)
 ```
 
-Both are optional and off by default. DevTrack's own state — triggers, tickets, alerts, learning — lives in local SQLite, and the server runs fine with neither service present.
+The Go client continues storing observation, queue, and replay state in local SQLite. Server-side
+events and aggregate state belong in PostgreSQL; any remaining Python SQLite path is migration debt,
+not a supported final deployment mode.
 
 ---
 
@@ -202,6 +206,5 @@ uv sync --extra openai       # OpenAI provider
 uv sync --extra anthropic    # Anthropic provider
 uv sync --extra cloud        # OpenAI + Anthropic
 uv sync --extra mongodb      # motor async MongoDB driver
-uv sync --extra postgres     # psycopg2 PostgreSQL driver
 uv sync --extra notifications # desktop notifications (plyer)
 ```

@@ -2,12 +2,13 @@
 # Runs the DevTrack Python server in a container. The Go client stays on the host
 # and talks to it over HTTPS with DEVTRACK_SERVER_MODE=external.
 #
-# The server is the only service you need. MongoDB and PostgreSQL are opt-in extras
-# (Teams voice source; multi-user mode) — DevTrack's own state lives in local SQLite.
+# PostgreSQL is the required persistence target for server-side data. MongoDB is an
+# optional Teams voice-learning source. Until TASK-116 wires service dependencies and
+# validates POSTGRES_URL automatically, start PostgreSQL explicitly for server deployments.
 #
 # Usage:
-#   docker compose up -d devtrack_server   # the server
-#   docker compose up -d mongo             # optional extras, by name
+#   docker compose up -d postgres devtrack_server
+#   docker compose up -d mongo             # optional Teams voice source
 #   docker compose down                    # stop
 #   docker compose down -v                 # stop + wipe volumes
 
@@ -58,7 +59,7 @@ services:
       retries: 5
 
   # ── PostgreSQL ────────────────────────────────────────────────────────────────
-  # Used by: managed cloud mode (user accounts, API keys, team config)
+  # Required persistence target for server-side events and aggregate state.
   postgres:
     image: postgres:16-alpine
     container_name: devtrack-postgres

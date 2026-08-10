@@ -1,13 +1,9 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-07-02 by PM — EPIC: Managed Install (TASK-103–108) COMPLETE. All 5 PRs
-(#210–214) merged to dev; TASK-108 audit (three passes: static, static, then a real live end-to-end
-run) found + fixed 10 bugs total. First two passes (6 bugs) were path/doc-consistency issues
-stemming from PROJECT_ROOT's meaning changing from "Go client dir" to "cloned Python server dir"
-without every downstream consumer being updated. Third pass actually ran `devtrack setup` →
-`start` → `stop` against a sandboxed fake home and found 3 more bugs no static read would have
-caught, including one that silently broke the pending-actions queue on every fresh install. See
-TASK-108 audit findings for detail._
+_Last updated: 2026-08-10 by PM — PostgreSQL is mandatory for `devtrack_server` persistence and
+server-side events (user decision, supersedes the earlier optional-server wording). TASK-140 is
+complete and authorized for publication from `fix/TASK-140-postgres-ci` to `dev`. The Go client
+remains SQLite-backed and offline-first._
 **[2026-07-13] TASK-109 — Repo cleanup before dev → main promotion.** Branch
 `docs/TASK-109-repo-cleanup`. Deleted 30 stale branches (32 remote → 2: `dev`, `main`; plus 2 stale
 local). Reconciled 5 board statuses that still read IN PROGRESS despite having shipped (TASK-080,
@@ -446,13 +442,50 @@ once code switches to `get_engine()`, a process-wide singleton that resolves its
 `test_postgres_backend.py`'s CI fixture. **2 modules remain:** `voice_sync.py`, `webhook_server.py`'s own
 remaining `sqlite3` usage.
 
+**[2026-07-31] TASK-139 — `voice_sync.py` ported (PR #246, merge `f071a56`).** 13th module and the
+last live standalone module in TASK-112's original 15-module inventory. `voice_synced_items` is
+Python-owned, so new `backend/db/voice_sync_store.py` registers it on the shared SQLAlchemy metadata
+with a composite `(platform, item_id, context_type)` primary key and dialect-aware idempotent writes.
+`voice_sync.py` now delegates tracking to that store and its tests use the isolated shared-engine
+pattern. Of the original 15 modules, 13 are ported and one (`alert_poller.py`) was dead code removed
+under TASK-133. **1 real raw-`sqlite3` module remains:** `webhook_server.py`.
+
+### TASK-140 — Make PostgreSQL a core server dependency and restore CI
+**Assigned to**: engineer
+**Phase**: PostgreSQL Backend / TASK-113 test lane
+**Started**: 2026-08-10
+**Branch**: `fix/TASK-140-postgres-ci`
+
+**Spec**:
+Make the PostgreSQL driver part of the normal `devtrack_server` installation, not an optional extra.
+The standard test lane must exercise the real PostgreSQL SQLAlchemy dialect when tests select
+PostgreSQL mode, while the dedicated service-backed lane continues proving live database behavior.
+This is the dependency/CI foundation for the approved architecture: the Go client retains SQLite as
+its offline source of truth; server persistence and server-side events move to mandatory PostgreSQL
+through TASK-141 and TASK-114–116. Reconcile the task ledger and documentation with merged TASK-139
+and this superseding product decision.
+
+**Acceptance criteria**:
+- [x] `psycopg2-binary` is a core server dependency and the `postgres` optional extra is removed.
+- [x] Standard and dedicated PostgreSQL CI lanes both install the normal server dependency set.
+- [x] Email, Slack, and Telegram PostgreSQL-mode tests construct the real PostgreSQL dialect without
+      connecting to the fake URL.
+- [x] Focused and full default Python suites pass with `psycopg2` installed.
+- [x] Board, architecture docs, and shared memory record mandatory server PostgreSQL, client-only
+      SQLite, TASK-139 merged, one raw-`sqlite3` module remaining, and TASK-141 as next unused ID.
+
+**Engineer status**: COMPLETE — `psycopg2-binary==2.9.12` is in the normal locked environment;
+focused tests passed 29/29 and the full suite passed 896 with 3 skips on 2026-08-10. Publication and
+merge to `dev` authorized by the user.
+**Blockers**: none
+
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
 not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-139_
-_Active branch: `dev`_
+_Next DevTrack task ID: TASK-141_
+_Active branch: `fix/TASK-140-postgres-ci`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -5947,8 +5980,8 @@ static, static, live end-to-end)
 ## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
 **Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**12 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
-PR #239) — 2 real modules remain** as of 2026-07-31 (PRs #231–#236, #239–#245, see the dated log
+**13 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — 1 real module remains** as of 2026-07-31 (PRs #231–#236, #239–#246, see the dated log
 entries above for full detail on each). TASK-114/115/116 still unstarted.
 
 ### Why this exists
@@ -5967,7 +6000,8 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | `slack/handlers` (10th module ported) — 3 distinct fixes: new `health_snapshots_store` (fail-closed), new `WorkSessionStore.start_session()` (no-op), new `auto_responder.set_vacation_state()` (first writer, returns False) | see log entries above | ✅ |
 | `telegram/handlers` (11th module ported) — reused 2 of slack's helpers directly, added new `queue_status_store` + a second `health_snapshots_store` function; also fixed a dormant sys.path/import-shadowing bug across 3 other modules | see log entries above | ✅ |
 | `voice_seeder` (12th module ported) — 2nd "Python fully owns this table" case, new `db/voice_seed_store` | see log entries above | ✅ |
-| 2 modules still opening raw `sqlite3` (`voice_sync`, `webhook_server`) | **SQLite always** | ❌ |
+| `voice_sync` (13th module ported) — 3rd Python-owned-table case, new `db/voice_sync_store` | see log entries above | ✅ |
+| 1 module still opening raw `sqlite3` (`webhook_server`) | **SQLite always** | ❌ |
 | ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
@@ -5980,24 +6014,29 @@ For a single-user laptop that is harmless. For a multi-user commercial server it
 developer's triggers live in a SQLite file on their own machine, so the server can aggregate nothing —
 no team EOD, no admin dashboard with real numbers, no cross-device continuity.
 
-### DECIDED (user, 2026-07-13) — Postgres is server-side only
+### DECIDED (user, 2026-08-10) — Postgres is mandatory server-side
 
 **The Go client never speaks Postgres. It keeps tracking to local SQLite, always, in every mode.**
-Postgres is a `devtrack_server` concern. When a developer opts into a server, their local SQLite data
-flows *up* to Postgres on that server.
+Postgres is the required persistent store for `devtrack_server`, including all server-side events.
+When the client connects to a server, its local SQLite data flows *up* to Postgres. There is no
+server-side SQLite fallback in the target architecture and the PostgreSQL driver is a core server
+dependency, not an install extra.
 
-This preserves offline-first Rule 0 exactly (the client needs no database server, no network, nothing),
-keeps the no-shared-artefact boundary intact, and means **no Go work beyond the sync push** — no `pgx`,
-no driver in `go.mod`, no dialect split through `internal/db/`. Local SQLite stays the client's source of
-truth; the server's Postgres is the aggregate.
+This preserves offline-first Rule 0 at the client boundary: local observation, queueing, MCP reads,
+and backlog replay work from the Go client's SQLite without a server connection. It also keeps the
+no-shared-artefact boundary intact and means **no Go Postgres driver** — no `pgx` and no dialect split
+through `internal/db/`. Local SQLite stays the client's source of truth; server Postgres is the
+authoritative aggregate for server-side data.
 
 ```
 devtrack_client (Go)                    devtrack_server (Python)
-  local SQLite  ── HTTPS /trigger/* ──▶   Postgres (opt-in, POSTGRES_URL)
+  local SQLite  ── HTTPS /trigger/* ──▶   Postgres (required on server)
   always, offline, source of truth        aggregate across developers
 ```
 
-SQLite remains the server's default too — Postgres switches on only when `POSTGRES_URL` is set.
+During the migration, remaining SQLite branches are compatibility debt, not a supported final mode.
+TASK-141 removes the last raw server module; TASK-114 moves client events into Postgres; TASK-115 adds
+migrations/import; TASK-116 provisions and validates mandatory `POSTGRES_URL` deployment.
 
 ### Tasks
 
@@ -6021,14 +6060,14 @@ SQLite remains the server's default too — Postgres switches on only when `POST
   Postgres needs versioned, reversible migrations (Alembic) plus a one-shot SQLite→Postgres import for
   developers who already have local history.
 - **TASK-116 — Deployment surface.** `docker-compose.yml` already ships a healthy `postgres:16-alpine` —
-  wire `devtrack_server` to `depends_on` it, document a Postgres server deploy in `docs/INSTALLATION.md`,
-  and make `POSTGRES_URL` a first-class documented option rather than an undocumented env var.
-  `psycopg2-binary` is already the `postgres` extra in `pyproject.toml`.
+  wire `devtrack_server` to `depends_on` it, document local and remote Postgres server deploys in
+  `docs/INSTALLATION.md`, and require/validate `POSTGRES_URL` for server startup. Managed installation
+  must provision or clearly connect to Postgres; there is no server SQLite fallback.
 
 ### Already in place (do not redo)
 
 `db/engine.py` dual-dialect factory · `upsert()` · `is_postgres()` · connection pooling ·
-`config.postgres_url()` · `postgres` extra in `pyproject.toml` · `postgres:16-alpine` in compose with a
+`config.postgres_url()` · core `psycopg2-binary` dependency · `postgres:16-alpine` in compose with a
 `pg_isready` healthcheck.
 
 ---

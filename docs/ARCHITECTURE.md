@@ -60,10 +60,11 @@ docker run -p 8089:8089 --env-file .env devtrack-server
 
 The Go binary on the host then connects via `DEVTRACK_SERVER_MODE=external`.
 
-`devtrack_server/docker-compose.yml` is **not** the server — it starts only optional backing
-services: MongoDB (Microsoft Teams as an extra voice-learning source) and PostgreSQL (multi-user
-mode, via `POSTGRES_URL`). The local-first path needs neither: DevTrack's storage is SQLite plus
-ChromaDB, and the default install runs natively (Go binary + `uv`), not in Docker.
+`devtrack_server/docker-compose.yml` provides backing services for the Python server. PostgreSQL is
+required for server persistence and server-side events (`POSTGRES_URL`); MongoDB remains optional
+and is used only as a Microsoft Teams voice-learning source. The Go client does not require either:
+its local-first observation, queue, MCP, and replay path remains SQLite-backed and works offline.
+TASK-116 owns PostgreSQL provisioning for managed and containerized server installs.
 
 ### `devtrack install`
 
@@ -828,14 +829,14 @@ Claude Code answering *"what am I working on?"* in under ten minutes. See
 > — it predated the 2026-06-10 pivot and contradicted its non-negotiables. Do not reintroduce
 > a client-side Postgres driver or a dialect split in `internal/db/`.
 >
-> **Exception, decided 2026-07-13:** PostgreSQL is wanted as a **server-side-only** option
-> before commercial launch, so a multi-user server can aggregate data instead of every
-> developer's triggers living in a SQLite file on their own laptop. Scoped as **EPIC
-> TASK-112–116** on `Data/agent_logs/project_board.md` (started 2026-07-31, PRs #231-236 —
-> `devtrack_server/backend/db/engine.py` is the dual-dialect factory; 6 of 15 raw-`sqlite3`
-> modules ported so far). SQLite stays the default everywhere; Postgres only activates when
-> `POSTGRES_URL` is set on the server, and local client data flows up over the existing
-> `/trigger/*` boundary. Offline-first Rule 0 holds untouched.
+> **Server storage decision, superseded 2026-08-10:** PostgreSQL is **mandatory** for
+> `devtrack_server` persistence and server-side events, not an optional multi-user mode.
+> Scoped as **EPIC TASK-112–116** plus TASK-140/141 on
+> `Data/agent_logs/project_board.md`: 13 of 15 scoped raw-`sqlite3` modules are ported,
+> one dead module was removed, and only `webhook_server.py` remains. Client data flows
+> from local SQLite into server PostgreSQL over the HTTP boundary. Offline-first Rule 0
+> is preserved by the Go client continuing to observe, queue, serve MCP context, and
+> replay locally without a server connection; do not add a Go PostgreSQL driver.
 
 ---
 

@@ -534,10 +534,11 @@ The last-known port list is persisted to disk so that `devtrack health` can repo
 
 `devtrack setup` prompts for the mode on first run and writes it to `.env`. In **Lightweight** mode, commands that depend on the Python backend show a clear error rather than crashing.
 
-> DevTrack runs **natively** — a Go binary plus a `uv`-managed Python server. It is not a Docker
-> product and needs no database server. Storage is SQLite (plus ChromaDB for RAG).
-> `devtrack_server/docker-compose.yml` starts only optional backing services (MongoDB for the
-> Teams voice source, PostgreSQL for multi-user mode) — the local-first path uses neither.
+> DevTrack runs **natively** — a Go binary plus a `uv`-managed Python server. The Go client keeps its
+> offline source of truth in local SQLite and does not connect to a database server. PostgreSQL is
+> mandatory for Python-server persistence and server-side events; MongoDB remains optional as a
+> Teams voice-learning source. The remaining server-side SQLite fallback is migration debt and is
+> being removed before PostgreSQL deployment enforcement lands.
 
 ### Python AI server
 
