@@ -1,6 +1,6 @@
 ---
 name: Project current state
-description: v3.0.10; Phases 0–8 complete; mandatory server PostgreSQL migration has one raw-sqlite module left; Phase 9 next
+description: v3.0.10; Phases 0–8 complete; mandatory server PostgreSQL migration has no raw-sqlite modules left; Phase 9 next
 type: project
 ---
 
@@ -10,11 +10,11 @@ type: project
 
 **Post-arc shipped:** TASK-102 (Azure `IsPRApproved`); TASK-103–108 Managed Install; TASK-109 repo cleanup + opt-in telemetry; TASK-110/111 wiki+docs reconciliation; **Silent Worker Correctness epic (TASK-126–130, PR #226)** — fixed ticket_id routing, merge→Done detection, PR-loop nil approval checker, queue bypasses; **TASK-131 quick wins (PR #227)** — `devtrack logs -f` and TUI queue edit; **TASK-132 doc/wiki sync (PR #230)**.
 
-**In progress: EPIC PostgreSQL Backend (TASK-112–116, started 2026-07-31, PR #231)** — PostgreSQL is mandatory for Python server persistence and server-side events (user decision, 2026-08-10). The Go client remains SQLite-only for offline observation, queueing, MCP, and replay. 13 of 15 originally-scoped raw-`sqlite3` modules are ported; `alert_poller.py` was dead code removed under TASK-133; only `webhook_server.py` remains. TASK-114 client→server event sync, TASK-115 migrations/import, and TASK-116 required-Postgres deployment are unstarted.
+**In progress: EPIC PostgreSQL Backend (TASK-112–116, started 2026-07-31, PR #231)** — PostgreSQL is mandatory for Python server persistence and server-side events (user decision, 2026-08-10). The Go client remains SQLite-only for offline observation, queueing, MCP, and replay. TASK-141 completes the original module inventory locally: 14 of 15 raw-`sqlite3` modules are ported and `alert_poller.py` was dead code removed under TASK-133, leaving no production raw-`sqlite3` imports. TASK-114 client→server event sync, TASK-115 migrations/import, and TASK-116 required-Postgres deployment are unstarted.
 
-**TASK-140:** moves `psycopg2-binary` from an optional extra into core server dependencies, restores real PostgreSQL-dialect tests in the default lane, and repairs the previously red upstream CI.
+**TASK-140:** merged to `dev` at `f7a95a6`; it moved `psycopg2-binary` into core dependencies and restored green standard/live-PostgreSQL CI. **TASK-141:** complete locally and uncommitted; `/voice/status` now uses the shared SQLAlchemy stores, with 900/4-skipped full-suite and 4/4 live-PostgreSQL verification.
 
-**Task-ID ledger:** `Data/agent_logs/project_board.md` is authoritative. TASK-139 merged in PR #246; TASK-140 is active; next unused ID: **TASK-141**.
+**Task-ID ledger:** `Data/agent_logs/project_board.md` is authoritative. TASK-140 is on `dev`; TASK-141 is active locally; next unused ID: **TASK-142**.
 
 **Queued next:** Phase 9 — Adoption Gate — TASK-117–124 (`docs/NEXT_STEPS.md`), after the Postgres epic.
 

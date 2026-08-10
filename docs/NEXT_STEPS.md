@@ -165,12 +165,11 @@ from someone unknown means a real install survived setup.
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL
-> backend epic, in progress — 13 of 15 modules ported as of 2026-07-31, PRs #231-236, #240-246;
-> one additional module was dead code removed under TASK-133, leaving only `webhook_server.py`).
+> backend epic, in progress — 14 of 15 modules ported through TASK-141;
+> one additional module was dead code removed under TASK-133, leaving no production raw-`sqlite3` imports).
 > `Data/agent_logs/project_board.md` is the authoritative ID ledger; the
 > adoption gate was renumbered to TASK-117–124 to match it. The Postgres epic
-> is now numbered through TASK-139; TASK-140 is the active CI repair and the
-> next open ID is TASK-141.
+> is now numbered through TASK-141; TASK-114–116 remain and the next open ID is TASK-142.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to

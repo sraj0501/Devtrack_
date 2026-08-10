@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Column, Table, Text
+from sqlalchemy import Column, Table, Text, func, select
 from sqlalchemy.engine import Engine
 
 from backend.db.engine import get_engine, metadata, upsert
@@ -75,3 +75,21 @@ def mark_seeded(commit_hash: str, repo_path: str, engine: Optional[Engine] = Non
             )
     except Exception as e:
         logger.warning("voice_seed_store: could not mark seeded: %s", e)
+
+
+def latest_seeded_at(engine: Optional[Engine] = None) -> Optional[str]:
+    """Return the latest seed timestamp, or ``None`` when unavailable.
+
+    The voice status endpoint is informational and must never fail because its
+    backing store is unavailable, so database errors deliberately fail closed.
+    """
+    try:
+        eng = _init(engine)
+        with eng.connect() as conn:
+            value = conn.execute(
+                select(func.max(voice_seeded_commits_table.c.seeded_at))
+            ).scalar_one_or_none()
+        return str(value) if value is not None else None
+    except Exception as e:
+        logger.warning("voice_seed_store: could not read latest seed timestamp: %s", e)
+        return None

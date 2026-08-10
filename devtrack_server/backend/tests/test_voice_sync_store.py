@@ -63,3 +63,22 @@ class TestIsAlreadySyncedMarkSynced:
         mark_synced("github", "42", "description")
 
         assert is_already_synced("github", "42", "description") is True
+
+    def test_latest_synced_at(self, isolated_engine: Path):
+        from backend.db.voice_sync_store import latest_synced_at, mark_synced
+
+        assert latest_synced_at() is None
+
+        mark_synced("github", "42", "description")
+
+        assert latest_synced_at() is not None
+
+    def test_latest_synced_at_fails_closed(self, isolated_engine: Path):
+        from unittest.mock import MagicMock
+
+        from backend.db.voice_sync_store import latest_synced_at
+
+        broken_engine = MagicMock()
+        broken_engine.connect.side_effect = RuntimeError("database unavailable")
+
+        assert latest_synced_at(broken_engine) is None

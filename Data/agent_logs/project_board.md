@@ -1,9 +1,8 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-08-10 by PM — PostgreSQL is mandatory for `devtrack_server` persistence and
-server-side events (user decision, supersedes the earlier optional-server wording). TASK-140 is
-complete and authorized for publication from `fix/TASK-140-postgres-ci` to `dev`. The Go client
-remains SQLite-backed and offline-first._
+_Last updated: 2026-08-10 by PM — TASK-140 is on `dev` at `f7a95a6` with all CI lanes green.
+TASK-141 is complete and authorized for publication to `dev`: production Python server code has no
+raw `sqlite3` imports. PostgreSQL is mandatory server-side; the Go client remains SQLite-backed._
 **[2026-07-13] TASK-109 — Repo cleanup before dev → main promotion.** Branch
 `docs/TASK-109-repo-cleanup`. Deleted 30 stale branches (32 remote → 2: `dev`, `main`; plus 2 stale
 local). Reconciled 5 board statuses that still read IN PROGRESS despite having shipped (TASK-080,
@@ -476,7 +475,37 @@ and this superseding product decision.
 
 **Engineer status**: COMPLETE — `psycopg2-binary==2.9.12` is in the normal locked environment;
 focused tests passed 29/29 and the full suite passed 896 with 3 skips on 2026-08-10. Publication and
-merge to `dev` authorized by the user.
+merge to `dev` authorized by the user. Integrated at `f7a95a6`; CI run 31383782274 passed all jobs.
+**Blockers**: none
+
+### TASK-141 — Port webhook voice-status reads off raw SQLite
+**Assigned to**: engineer
+**Phase**: PostgreSQL Backend / completion of TASK-112
+**Started**: 2026-08-10
+**Branch**: `fix/TASK-141-port-webhook-server`
+
+**Spec**:
+Remove the final production `sqlite3` calls from `backend/webhook_server.py`. The `/voice/status`
+endpoint currently opens the local SQLite file directly to calculate the latest voice seed and sync
+timestamps even though both tables are Python-owned and already registered on the shared SQLAlchemy
+metadata. Add fail-closed timestamp readers to `db/voice_seed_store.py` and
+`db/voice_sync_store.py`, delegate the endpoint to them, and prove the path against both isolated
+SQLite and the live PostgreSQL CI lane. Do not add a Go PostgreSQL dependency or move Go-owned event
+tables in this task; client event synchronization remains TASK-114.
+
+**Acceptance criteria**:
+- [x] `webhook_server.py` contains no direct `sqlite3` import, connection, or database-path lookup.
+- [x] Voice seed/sync stores expose dialect-neutral latest-timestamp reads and return `None` on DB
+      errors so `/voice/status` retains its never-raise behavior.
+- [x] `/voice/status` reports both timestamps through the shared SQLAlchemy engine in SQLite mode.
+- [x] The live PostgreSQL lane proves both latest-timestamp readers against PostgreSQL.
+- [x] Focused endpoint/store tests and the full Python suite pass; production server code has no
+      remaining raw `sqlite3` imports.
+
+**Engineer status**: COMPLETE — focused tests passed 15 with 4 live-service skips; the live
+PostgreSQL file passed 4/4; the full Python 3.12 suite passed 900 with 4 skips. Production
+`devtrack_server/backend` contains no raw `sqlite3` import outside tests. Commit, push, and PR to
+`dev` authorized by the user.
 **Blockers**: none
 
 **QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
@@ -484,8 +513,8 @@ not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was
 issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
 authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-141_
-_Active branch: `fix/TASK-140-postgres-ci`_
+_Next DevTrack task ID: TASK-142_
+_Active branch: `fix/TASK-141-port-webhook-server`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -5980,9 +6009,9 @@ static, static, live end-to-end)
 ## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
 
 **Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**13 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
-PR #239) — 1 real module remains** as of 2026-07-31 (PRs #231–#236, #239–#246, see the dated log
-entries above for full detail on each). TASK-114/115/116 still unstarted.
+**14 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — no production raw-`sqlite3` modules remain** as of TASK-141. TASK-114/115/116 are the
+remaining client-sync, migration/import, and deployment-enforcement work.
 
 ### Why this exists
 
@@ -6001,7 +6030,7 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | `telegram/handlers` (11th module ported) — reused 2 of slack's helpers directly, added new `queue_status_store` + a second `health_snapshots_store` function; also fixed a dormant sys.path/import-shadowing bug across 3 other modules | see log entries above | ✅ |
 | `voice_seeder` (12th module ported) — 2nd "Python fully owns this table" case, new `db/voice_seed_store` | see log entries above | ✅ |
 | `voice_sync` (13th module ported) — 3rd Python-owned-table case, new `db/voice_sync_store` | see log entries above | ✅ |
-| 1 module still opening raw `sqlite3` (`webhook_server`) | **SQLite always** | ❌ |
+| `webhook_server` (14th module ported, TASK-141) — `/voice/status` reads both Python-owned voice timestamps through their shared-engine stores | local TASK-141 verification | ✅ |
 | ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
@@ -6034,9 +6063,9 @@ devtrack_client (Go)                    devtrack_server (Python)
   always, offline, source of truth        aggregate across developers
 ```
 
-During the migration, remaining SQLite branches are compatibility debt, not a supported final mode.
-TASK-141 removes the last raw server module; TASK-114 moves client events into Postgres; TASK-115 adds
-migrations/import; TASK-116 provisions and validates mandatory `POSTGRES_URL` deployment.
+During the migration, remaining SQLite compatibility branches are debt, not a supported final mode.
+TASK-141 removed the last raw server module. TASK-114 moves client events into Postgres; TASK-115
+adds migrations/import; TASK-116 provisions and validates mandatory `POSTGRES_URL` deployment.
 
 ### Tasks
 
@@ -6049,6 +6078,9 @@ migrations/import; TASK-116 provisions and validates mandatory `POSTGRES_URL` de
   split-brain went unnoticed. Add a `pytest` fixture running the suite against a real Postgres (the
   compose service, or `testcontainers`) so both backends are proven every run. Do this *alongside*
   TASK-112, not after it.
+- **TASK-141 — Final raw-SQLite server port.** `webhook_server.py` now delegates `/voice/status`'s
+  latest seed/sync timestamp reads to the existing Python-owned SQLAlchemy stores. Verified against
+  isolated SQLite, a live PostgreSQL 16 service, and the full Python 3.12 suite.
 - **TASK-114 — Client→server sync path.** The client pushes its local SQLite rows for Go-owned tables
   (`triggers`, `task_updates`, `work_sessions`, `pending_actions`, …) over the existing `/trigger/*` HTTP
   boundary; the server persists them to Postgres. Needs: which tables sync, push cadence (on write vs
