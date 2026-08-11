@@ -832,8 +832,8 @@ Claude Code answering *"what am I working on?"* in under ten minutes. See
 > **Server storage decision, superseded 2026-08-10:** PostgreSQL is **mandatory** for
 > `devtrack_server` persistence and server-side events, not an optional multi-user mode.
 > Scoped as **EPIC TASK-112–116** plus TASK-140/141 on
-> `Data/agent_logs/project_board.md`: 13 of 15 scoped raw-`sqlite3` modules are ported,
-> one dead module was removed, and only `webhook_server.py` remains. Client data flows
+> `Data/agent_logs/project_board.md`: 14 of 15 scoped raw-`sqlite3` modules are ported
+> and one dead module was removed, so no production raw-`sqlite3` imports remain. Client data flows
 > from local SQLite into server PostgreSQL over the HTTP boundary. Offline-first Rule 0
 > is preserved by the Go client continuing to observe, queue, serve MCP context, and
 > replay locally without a server connection; do not add a Go PostgreSQL driver.

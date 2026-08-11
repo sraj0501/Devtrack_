@@ -137,3 +137,36 @@ def test_upsert_dialect_switch_roundtrip(pg_engine):
         ).fetchone()
     assert result is not None
     assert result.title == "updated title"
+
+
+def test_voice_status_timestamps_roundtrip(pg_engine):
+    """The webhook voice-status readers use the live PostgreSQL engine."""
+    from backend.db.engine import upsert
+    from backend.db.voice_seed_store import (
+        latest_seeded_at,
+        voice_seeded_commits_table,
+    )
+    from backend.db.voice_sync_store import (
+        latest_synced_at,
+        voice_synced_items_table,
+    )
+
+    with pg_engine.begin() as conn:
+        conn.execute(
+            upsert(voice_seeded_commits_table).values(
+                hash="task-141-seed",
+                repo_path="/repo",
+                seeded_at="2026-08-10 10:00:00",
+            )
+        )
+        conn.execute(
+            upsert(voice_synced_items_table).values(
+                platform="github",
+                item_id="task-141-sync",
+                context_type="description",
+                synced_at="2026-08-10 11:00:00",
+            )
+        )
+
+    assert latest_seeded_at(pg_engine) == "2026-08-10 10:00:00"
+    assert latest_synced_at(pg_engine) == "2026-08-10 11:00:00"

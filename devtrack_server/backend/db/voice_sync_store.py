@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Column, Table, Text
+from sqlalchemy import Column, Table, Text, func, select
 from sqlalchemy.engine import Engine
 
 from backend.db.engine import get_engine, metadata, upsert
@@ -82,3 +82,21 @@ def mark_synced(
             )
     except Exception as e:
         logger.warning("voice_sync_store: could not mark synced: %s", e)
+
+
+def latest_synced_at(engine: Optional[Engine] = None) -> Optional[str]:
+    """Return the latest sync timestamp, or ``None`` when unavailable.
+
+    Voice corpus status is best-effort visibility, so a database failure is
+    logged and converted to ``None`` instead of escaping to the HTTP endpoint.
+    """
+    try:
+        eng = _init(engine)
+        with eng.connect() as conn:
+            value = conn.execute(
+                select(func.max(voice_synced_items_table.c.synced_at))
+            ).scalar_one_or_none()
+        return str(value) if value is not None else None
+    except Exception as e:
+        logger.warning("voice_sync_store: could not read latest sync timestamp: %s", e)
+        return None

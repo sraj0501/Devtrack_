@@ -55,6 +55,25 @@ class TestIsAlreadySeededMarkSeeded:
 
         assert is_already_seeded("abc123", "/repo/path") is True
 
+    def test_latest_seeded_at(self, isolated_engine: Path):
+        from backend.db.voice_seed_store import latest_seeded_at, mark_seeded
+
+        assert latest_seeded_at() is None
+
+        mark_seeded("abc123", "/repo/path")
+
+        assert latest_seeded_at() is not None
+
+    def test_latest_seeded_at_fails_closed(self, isolated_engine: Path):
+        from unittest.mock import MagicMock
+
+        from backend.db.voice_seed_store import latest_seeded_at
+
+        broken_engine = MagicMock()
+        broken_engine.connect.side_effect = RuntimeError("database unavailable")
+
+        assert latest_seeded_at(broken_engine) is None
+
     def test_works_across_postgres_and_sqlite_without_boundary_guard(self, isolated_engine: Path):
         """Unlike Go-owned tables, this one has no is_postgres() fail-closed
         branch -- it's Python-owned, so it must work the same in both modes.

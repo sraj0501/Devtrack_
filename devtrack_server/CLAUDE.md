@@ -89,7 +89,8 @@ Key server vars: `POSTGRES_URL` (required target architecture), `DEVTRACK_API_KE
 
 PostgreSQL is mandatory for server persistence and server-side events. SQLite belongs to the Go
 client's offline source-of-truth path; remaining Python SQLite branches are migration compatibility
-debt tracked by TASK-141 and TASK-114–116, not the final server storage mode.
+debt tracked by TASK-114–116, not the final server storage mode. TASK-141 removed the final direct
+`sqlite3` import from production server code.
 
 ## Client-Server Boundary
 

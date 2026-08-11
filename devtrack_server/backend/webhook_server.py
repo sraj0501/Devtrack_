@@ -2555,32 +2555,16 @@ async def http_voice_status(
     # ── last_seed from voice_seeded_commits ───────────────────────────────────
     last_seed: str | None = None
     try:
-        import sqlite3 as _sqlite3
-        from backend.config import database_path
-        db_p = database_path()
-        if db_p.exists():
-            with _sqlite3.connect(str(db_p)) as _conn:
-                row = _conn.execute(
-                    "SELECT MAX(seeded_at) FROM voice_seeded_commits"
-                ).fetchone()
-                if row and row[0]:
-                    last_seed = str(row[0])
+        from backend.db.voice_seed_store import latest_seeded_at
+        last_seed = latest_seeded_at()
     except Exception as se:
         logger.debug("/voice/status: last_seed query failed (non-fatal): %s", se)
 
     # ── last_sync from voice_synced_items (TASK-082) ─────────────────────────
     last_sync: str | None = None
     try:
-        import sqlite3 as _sqlite3
-        from backend.config import database_path
-        db_p = database_path()
-        if db_p.exists():
-            with _sqlite3.connect(str(db_p)) as _conn:
-                row = _conn.execute(
-                    "SELECT MAX(synced_at) FROM voice_synced_items"
-                ).fetchone()
-                if row and row[0]:
-                    last_sync = str(row[0])
+        from backend.db.voice_sync_store import latest_synced_at
+        last_sync = latest_synced_at()
     except Exception as sye:
         logger.debug("/voice/status: last_sync query failed (non-fatal): %s", sye)
 

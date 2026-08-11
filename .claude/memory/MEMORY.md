@@ -6,8 +6,8 @@ DevTrack: offline-first Go daemon + Python backend — watches git/timers, enric
 
 ## Read first
 - **`PRODUCT_BIBLE.md`** (repo root) is the definitive source of truth for product direction (pivot 2026-06-10).
-- Build arc **Phases 0–8 ALL COMPLETE**; Managed Install, TASK-109 cleanup, TASK-110/111 wiki+docs, Silent Worker epic (TASK-126–131), TASK-132 doc sync all done. **In progress: EPIC PostgreSQL Backend (TASK-112–116)** — PostgreSQL is mandatory for server persistence/events; Go remains SQLite-only and offline-first. 13 of 15 scoped modules are ported, one dead module removed, only `webhook_server.py` remains on raw `sqlite3`. TASK-140 moves the driver into core dependencies and repairs CI. Queued next after the epic: **Phase 9 Adoption Gate** (`docs/NEXT_STEPS.md`, TASK-117–124).
-- Task history and the authoritative task-ID ledger: `Data/agent_logs/project_board.md`. Next unused ID: **TASK-141**.
+- Build arc **Phases 0–8 ALL COMPLETE**; Managed Install, TASK-109 cleanup, TASK-110/111 wiki+docs, Silent Worker epic (TASK-126–131), TASK-132 doc sync all done. **In progress: EPIC PostgreSQL Backend (TASK-112–116)** — PostgreSQL is mandatory for server persistence/events; Go remains SQLite-only and offline-first. TASK-141 completes the original module inventory: 14 of 15 raw-`sqlite3` modules are ported and one dead module was removed, leaving no production raw-`sqlite3` imports. TASK-114–116 remain. Queued after the epic: **Phase 9 Adoption Gate** (`docs/NEXT_STEPS.md`, TASK-117–124).
+- Task history and the authoritative task-ID ledger: `Data/agent_logs/project_board.md`. Next unused ID: **TASK-142**.
 
 ## Rules
 - [feedback_rules.md](feedback_rules.md) — git/PR flow, GIT_NO_DEVTRACK, telemetry is opt-in, offline-first, no hardcoded values, uv not pip
