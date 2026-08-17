@@ -355,6 +355,26 @@ func GetOllamaModel() string {
 	return "llama3.2"
 }
 
+// GetOllamaHost returns the configured local Ollama endpoint. Setup uses this
+// before a complete environment file necessarily exists.
+func GetOllamaHost() string {
+	if value := strings.TrimSpace(os.Getenv("OLLAMA_HOST")); value != "" {
+		return value
+	}
+	return "http://localhost:11434"
+}
+
+// GetOpenAIAPIKeyOptional and GetAnthropicAPIKeyOptional expose pre-existing
+// cloud credentials to the setup wizard without making them daemon
+// requirements. The wizard never prints their values.
+func GetOpenAIAPIKeyOptional() string {
+	return strings.TrimSpace(os.Getenv("OPENAI_API_KEY"))
+}
+
+func GetAnthropicAPIKeyOptional() string {
+	return strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
+}
+
 func mustParseInt(name, raw string) int {
 	value, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil {

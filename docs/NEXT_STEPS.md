@@ -115,7 +115,7 @@ finish booting:
   `git monitoring ✓ · MCP ✓ · ticket sync ✓ · voice generation — downloading model (4.1 GB, ~8 min)`.
   Every server failure mode degrades to something the Go client still does (the
   optional-import discipline already enforces this server-side).
-- **LLM fast lane:** detect an existing Ollama install with a usable model and use
+- **TASK-120 in progress — LLM fast lane:** detect an existing Ollama install with a usable model and use
   it immediately (don't force a specific pull). If `ANTHROPIC_API_KEY` /
   `OPENAI_API_KEY` is present, offer it for instant generation while the local model
   downloads, then default back to Ollama once it lands. Offline-first is the steady
@@ -156,8 +156,8 @@ from someone unknown means a real install survived setup.
 |---|---|---|
 | TASK-117 | **DONE** — `devtrack setup` writes complete environment with visible defaults; invalid overrides fail clearly | 9a |
 | TASK-118 | **DONE (PR #254)** — background server bootstrap (`uv sync` / local `ollama pull` non-blocking) + durable progress/retry in `status`/`doctor` | 9b |
-| TASK-119 | **IN PROGRESS** — automatic Tier 0 mining/profile build + guided `work report` / `mcp setup` prompts | 9b |
-| TASK-120 | Ollama detection + BYO-cloud-key fast lane in setup | 9b |
+| TASK-119 | **DONE (PR #255)** — automatic Tier 0 mining/profile build + guided `work report` / `mcp setup` prompts | 9b |
+| TASK-120 | **IN PROGRESS** — Ollama detection + BYO-cloud-key fast lane in setup | 9b |
 | TASK-121 | Demo GIF (commit → staged action → EOD preview) + quickstart polish | 9c |
 | TASK-122 | devtrack_wiki homepage rewrite + repo description/topics | 9c |
 | TASK-123 | Registry submissions (MCP lists, plugin directory) | 9d |

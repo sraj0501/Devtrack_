@@ -66,6 +66,11 @@ enabled local repositories in Managed mode and builds the voice profile once the
 `devtrack status` and `devtrack doctor` show the persistent result and suggest
 `devtrack work report` when the profile is ready.
 
+Setup also checks Ollama's local model inventory. An existing generation model is used immediately
+without another pull. If no usable local model is ready and an OpenAI or Anthropic key is already in
+the environment, setup offers that key as a temporary fallback while Ollama downloads; Ollama stays
+primary and automatically takes over when the local model becomes available.
+
 > **Updating?** Run `devtrack upgrade` to download and install the latest binary automatically (fetched from GitHub Releases; supports Linux/macOS and Windows).
 > If the binary is in a root-owned location (e.g. `/usr/local/bin`), run `sudo devtrack upgrade` instead. On Windows, re-run as Administrator if a permission error occurs.
 > Versioned migrations are applied automatically and the daemon is restarted after a successful upgrade.
@@ -346,8 +351,11 @@ devtrack setup
 What it does:
 - Checks Git is installed before proceeding
 - Prompts for operating mode (Managed / External) and LLM provider credentials
-- In Managed mode, starts the optional Python checkout, `uv sync`, and local Ollama model pull in a
-  detached worker; setup does not wait for them
+- Reuses an installed generation-capable Ollama model without downloading a prescribed model
+- When Ollama still needs a model, can retain an already-present OpenAI/Anthropic key as an explicit
+  temporary fallback; key values are never displayed and declining keeps setup local-only
+- In Managed mode, starts the optional Python checkout, `uv sync`, and any needed local Ollama model
+  pull in a detached worker; setup does not wait for them
 - Generates the registered XDG environment file with visible runtime defaults and an auto-generated `ADMIN_SECRET_KEY`
 - In Managed mode, writes and validates the required PostgreSQL connection configuration
 - Creates `~/.devtrack/` (XDG home dir) and writes `workspaces.yaml` there
@@ -560,7 +568,9 @@ The last-known port list is persisted to disk so that `devtrack health` can repo
 
 **Managed mode** (default): `devtrack setup` configures the deterministic server location and starts
 a background sparse checkout into `~/.local/share/devtrack/server/`, followed by `uv sync` and, for
-the local Ollama provider only, the configured model pull. The wizard does not wait for these steps;
+the local Ollama provider only, a model pull when no usable generation model is already installed.
+An opted-in cloud-key fast lane remains a fallback behind Ollama, so local inference takes over as
+soon as the model is ready. The wizard does not wait for these steps;
 `devtrack doctor` shows durable progress and failures. No manual dependency setup is needed.
 
 **External mode** (server on a separate host): clone the repo on that host,

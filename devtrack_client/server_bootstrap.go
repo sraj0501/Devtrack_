@@ -20,18 +20,19 @@ const (
 )
 
 type serverBootstrapState struct {
-	Status      string    `json:"status"`
-	Step        string    `json:"step,omitempty"`
-	Message     string    `json:"message,omitempty"`
-	Error       string    `json:"error,omitempty"`
-	PID         int       `json:"pid,omitempty"`
-	ProjectRoot string    `json:"project_root"`
-	Provider    string    `json:"provider,omitempty"`
-	Model       string    `json:"model,omitempty"`
-	LogPath     string    `json:"log_path"`
-	StartedAt   time.Time `json:"started_at,omitempty"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	CompletedAt time.Time `json:"completed_at,omitempty"`
+	Status        string    `json:"status"`
+	Step          string    `json:"step,omitempty"`
+	Message       string    `json:"message,omitempty"`
+	Error         string    `json:"error,omitempty"`
+	PID           int       `json:"pid,omitempty"`
+	ProjectRoot   string    `json:"project_root"`
+	Provider      string    `json:"provider,omitempty"`
+	Model         string    `json:"model,omitempty"`
+	SkipModelPull bool      `json:"skip_model_pull,omitempty"`
+	LogPath       string    `json:"log_path"`
+	StartedAt     time.Time `json:"started_at,omitempty"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	CompletedAt   time.Time `json:"completed_at,omitempty"`
 }
 
 type bootstrapCommandRunner func(dir, name string, args ...string) error
@@ -134,7 +135,7 @@ func acquireBootstrapLock(home string) (func(), error) {
 	return func() { _ = os.Remove(lockPath) }, nil
 }
 
-func runServerBootstrap(home, projectRoot, provider, model string, runner bootstrapCommandRunner) error {
+func runServerBootstrap(home, projectRoot, provider, model string, runner bootstrapCommandRunner, skipModelPull ...bool) error {
 	release, err := acquireBootstrapLock(home)
 	if err != nil {
 		return err
@@ -144,7 +145,7 @@ func runServerBootstrap(home, projectRoot, provider, model string, runner bootst
 	_, _, logPath := bootstrapPaths(home)
 	state := &serverBootstrapState{
 		Status: "running", PID: os.Getpid(), ProjectRoot: projectRoot,
-		Provider: provider, Model: model, LogPath: logPath, StartedAt: time.Now().UTC(),
+		Provider: provider, Model: model, SkipModelPull: firstBool(skipModelPull), LogPath: logPath, StartedAt: time.Now().UTC(),
 	}
 	update := func(step, message string) error {
 		state.Step, state.Message, state.Error = step, message, ""
@@ -197,7 +198,7 @@ func runServerBootstrap(home, projectRoot, provider, model string, runner bootst
 		return fail("syncing", fmt.Errorf("uv sync: %w", err))
 	}
 
-	if provider == "ollama" && model != "" {
+	if provider == "ollama" && model != "" && !state.SkipModelPull {
 		if err := update("pulling_model", "Pulling local Ollama model "+model); err != nil {
 			return err
 		}
@@ -211,7 +212,8 @@ func runServerBootstrap(home, projectRoot, provider, model string, runner bootst
 	return writeServerBootstrapState(home, state)
 }
 
-func startServerBootstrap(home, projectRoot, provider, model string) (bool, error) {
+func startServerBootstrap(home, projectRoot, provider, model string, skipModelPull ...bool) (bool, error) {
+	skipPull := firstBool(skipModelPull)
 	if state, err := readServerBootstrapState(home); err == nil && (state.Status == "queued" || state.Status == "running") {
 		if state.PID == 0 || CheckProcessAlive(state.PID) {
 			return false, nil
@@ -220,7 +222,7 @@ func startServerBootstrap(home, projectRoot, provider, model string) (bool, erro
 	_, _, logPath := bootstrapPaths(home)
 	queued := &serverBootstrapState{
 		Status: "queued", Step: "starting", Message: "Background bootstrap is starting.",
-		ProjectRoot: projectRoot, Provider: provider, Model: model, LogPath: logPath,
+		ProjectRoot: projectRoot, Provider: provider, Model: model, SkipModelPull: skipPull, LogPath: logPath,
 	}
 	if err := writeServerBootstrapState(home, queued); err != nil {
 		return false, err
@@ -234,7 +236,7 @@ func startServerBootstrap(home, projectRoot, provider, model string) (bool, erro
 		return false, err
 	}
 	defer logFile.Close()
-	cmd := exec.Command(exe, "bootstrap-server", "--home", home, "--project-root", projectRoot, "--provider", provider, "--model", model)
+	cmd := exec.Command(exe, "bootstrap-server", "--home", home, "--project-root", projectRoot, "--provider", provider, "--model", model, "--skip-model-pull", strconv.FormatBool(skipPull))
 	cmd.Stdout, cmd.Stderr, cmd.Stdin = logFile, logFile, nil
 	setSetsid(cmd)
 	if err := cmd.Start(); err != nil {
@@ -261,7 +263,12 @@ func runServerBootstrapCommand(args []string) error {
 			return fmt.Errorf("bootstrap-server requires %s", key)
 		}
 	}
-	return runServerBootstrap(values["--home"], values["--project-root"], values["--provider"], values["--model"], executeBootstrapCommand)
+	skipModelPull, _ := strconv.ParseBool(values["--skip-model-pull"])
+	return runServerBootstrap(values["--home"], values["--project-root"], values["--provider"], values["--model"], executeBootstrapCommand, skipModelPull)
+}
+
+func firstBool(values []bool) bool {
+	return len(values) > 0 && values[0]
 }
 
 func printBootstrapCapabilities(out io.Writer) {
@@ -327,7 +334,7 @@ func RunDoctor(repair bool) error {
 				ProjectRoot: projectRoot, Provider: GetLLMProvider(), Model: GetOllamaModel(), LogPath: logPath,
 			}
 		}
-		started, err := startServerBootstrap(home, state.ProjectRoot, state.Provider, state.Model)
+		started, err := startServerBootstrap(home, state.ProjectRoot, state.Provider, state.Model, state.SkipModelPull)
 		if err != nil {
 			return err
 		}

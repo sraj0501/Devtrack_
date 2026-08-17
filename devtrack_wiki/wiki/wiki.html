@@ -733,7 +733,7 @@ const CONTENT = {
 <h1>Setup Wizard</h1>
 <p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode, LLM provider, credentials, workspace, project-management platform, and shell integration, then writes a complete environment file under the DevTrack XDG data directory and registers it so every subsequent <code>devtrack</code> invocation auto-loads it. Managed mode also collects and validates the required PostgreSQL URL.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — non-blocking managed server bootstrap with doctor/status progress</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — first-run Ollama detection and optional cloud fast lane</div>
 
 <h2>Running the Wizard</h2>
 <pre><code class="language-bash">devtrack setup</code></pre>
@@ -747,7 +747,7 @@ const CONTENT = {
 <tr><td><strong>1. Prerequisites</strong></td><td>Checks <code>git</code>, which the Go-native product uses immediately. Managed Python/<code>uv</code>/Ollama work runs later in the background and cannot block the wizard.</td></tr>
 <tr><td><strong>2. Server mode</strong></td><td>Choose <strong>Managed</strong> (daemon starts the optional local Python server — default) or <strong>External</strong> (provide a URL for a separately-running backend). Go-native capabilities remain usable without a ready server; advanced users can still set <code>DEVTRACK_SERVER_MODE=lightweight</code> directly.</td></tr>
 <tr><td><strong>3. Workspace</strong></td><td>Prompts for the git repository to monitor. Defaults to the project root. Warns if the path is not a git repository.</td></tr>
-<tr><td><strong>4. LLM provider</strong></td><td>Offers Ollama (local, default), OpenAI, Anthropic, Groq, or Skip. Prompts for host/model or API key depending on choice; only local Ollama triggers a background model pull.</td></tr>
+<tr><td><strong>4. LLM provider</strong></td><td>Offers Ollama (local, default), OpenAI, Anthropic, Groq, or Skip. Setup reuses the first installed generation-capable Ollama model and ignores embedding-only models. If no local model is ready, an already-present OpenAI/Anthropic key can be accepted as a temporary fallback without displaying it; declining keeps setup local-only.</td></tr>
 <tr><td><strong>5. Identity</strong></td><td>Optional email address — used to filter your own comments in integrations and to identify you in reports.</td></tr>
 <tr><td><strong>6. PM platform</strong></td><td>GitHub Issues, Azure DevOps, Jira, or None. Prompts for the relevant tokens/credentials.</td></tr>
 <tr><td><strong>7. Data directories</strong></td><td>Creates all required subdirectories under <code>Data/</code> (<code>db/</code>, <code>logs/</code>, <code>pids/</code>, <code>configs/</code>, <code>learning/</code>, <code>reports/</code>, <code>tls/</code>).</td></tr>
@@ -757,7 +757,7 @@ const CONTENT = {
 <tr><td><strong>11. Register .env</strong></td><td>Writes the <code>.env</code> path to <code>~/.devtrack/devtrack.conf</code>. All future <code>devtrack</code> commands pick this up automatically via <code>AutoLoadEnv()</code>.</td></tr>
 <tr><td><strong>12. Shell integration</strong></td><td><strong>(v2.1.0-dev)</strong> Writes <code>eval "$(devtrack shell-init)"</code> directly to the detected shell profile (<code>~/.zshrc</code> or <code>~/.bashrc</code>) — no manual copy-paste. No <code>source .env</code> needed.</td></tr>
 <tr><td><strong>13. Autostart</strong></td><td>Prompts to install OS-native autostart via <code>devtrack autostart-install</code>.</td></tr>
-<tr><td><strong>14. Background bootstrap</strong></td><td>Managed mode starts a detached, idempotent sparse checkout, <code>uv sync</code>, and local Ollama model pull. Atomic state and a local log make every step visible in <code>devtrack doctor</code> and <code>devtrack status</code>.</td></tr>
+<tr><td><strong>14. Background bootstrap</strong></td><td>Managed mode starts a detached, idempotent sparse checkout, <code>uv sync</code>, and a local Ollama model pull only when setup found no usable installed generation model. Atomic state and a local log make every step visible in <code>devtrack doctor</code> and <code>devtrack status</code>.</td></tr>
 <tr><td><strong>15. First-run quick win</strong></td><td>Setup immediately suggests <code>devtrack mcp setup</code> and the question “What am I working on?” — both SQLite-backed and available without Python. In Managed mode, when the optional local AI server becomes ready, the daemon mines enabled local Git workspaces once, builds the voice profile, and suggests <code>devtrack work report</code>. External mode never sends local learning data automatically.</td></tr>
 </tbody>
 </table></div>
@@ -1695,7 +1695,7 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — Phase 9 background bootstrap shipped; first-run voice onboarding in progress</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — Phase 9 first-run value shipped; LLM fast lane in progress</div>
 
 <h2>PostgreSQL Backend + Phase 9 Baseline</h2>
 <p>The server persistence migration is complete on <code>dev</code>. PostgreSQL is required for the Python server, while the Go client remains local-SQLite and offline-first.</p>
@@ -1704,6 +1704,7 @@ devtrack start</code></pre>
   <div class="feature-item"><div class="feature-dot">2</div><div><h4>Visible managed-install defaults (TASK-117)</h4><p><code>devtrack setup</code> writes editable runtime defaults to its registered XDG environment file, preserves valid external overrides, rejects invalid values, and includes the required PostgreSQL connection surface.</p></div></div>
   <div class="feature-item"><div class="feature-dot">3</div><div><h4>Non-blocking managed server bootstrap (TASK-118)</h4><p>Setup and upgrade now start sparse checkout, <code>uv sync</code>, and local Ollama model pulls in a detached worker. <code>devtrack status</code> and <code>devtrack doctor</code> keep Go-native capability readiness visible alongside durable install progress, errors, logs, and safe repair.</p></div></div>
   <div class="feature-item"><div class="feature-dot">4</div><div><h4>Scripted first-run value (TASK-119)</h4><p>The CLI immediately guides users to the SQLite-only MCP moment. Once the optional AI server is reachable, the daemon idempotently mines local Git voice data, builds the first profile without blocking startup, stores the local result, and points users to an immediate <code>devtrack work report</code> preview.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">5</div><div><h4>Use the fastest available LLM path (TASK-120)</h4><p>Setup now discovers installed Ollama generation models through <code>/api/tags</code> and skips redundant pulls. When no local generation model is ready, users with a pre-existing OpenAI or Anthropic key can explicitly enable it as a temporary fallback. Ollama remains primary and automatically resumes generation when its model is available.</p></div></div>
 </div>
 
 <hr>

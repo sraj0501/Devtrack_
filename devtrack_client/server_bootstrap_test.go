@@ -82,6 +82,32 @@ func TestServerBootstrapExistingCheckoutSyncsAndPullsLocalModel(t *testing.T) {
 	}
 }
 
+func TestServerBootstrapSkipsPullForDetectedLocalModel(t *testing.T) {
+	home := t.TempDir()
+	projectRoot := filepath.Join(t.TempDir(), "devtrack_server")
+	if err := os.MkdirAll(filepath.Join(projectRoot, "backend"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	var calls []string
+	runner := func(dir, name string, args ...string) error {
+		calls = append(calls, name+" "+strings.Join(args, " "))
+		return nil
+	}
+	if err := runServerBootstrap(home, projectRoot, "ollama", "qwen2.5:7b", runner, true); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(calls, "\n"); got != "uv sync" {
+		t.Fatalf("bootstrap commands = %q, want only uv sync", got)
+	}
+	state, err := readServerBootstrapState(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Model != "qwen2.5:7b" || !state.SkipModelPull {
+		t.Fatalf("detected-model state not preserved: %+v", state)
+	}
+}
+
 func TestServerBootstrapCloudProviderNeverPullsModel(t *testing.T) {
 	home := t.TempDir()
 	projectRoot := filepath.Join(t.TempDir(), "devtrack_server")

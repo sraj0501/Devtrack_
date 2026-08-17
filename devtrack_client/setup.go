@@ -39,15 +39,16 @@ type SetupConfig struct {
 	PostgresURL string
 
 	// LLM
-	LLMProvider    string
-	OllamaHost     string
-	OllamaModel    string
-	OpenAIKey      string
-	OpenAIModel    string
-	AnthropicKey   string
-	AnthropicModel string
-	GroqKey        string
-	GroqModel      string
+	LLMProvider      string
+	OllamaHost       string
+	OllamaModel      string
+	OpenAIKey        string
+	OpenAIModel      string
+	AnthropicKey     string
+	AnthropicModel   string
+	GroqKey          string
+	GroqModel        string
+	OllamaModelReady bool
 
 	// User identity
 	UserEmail string
@@ -180,11 +181,18 @@ func RunSetup() error {
 	fmt.Println()
 
 	// ── 5. LLM provider ──────────────────────────────────────────────────────
+	detectedHost := GetOllamaHost()
+	detectedModel, _ := detectUsableOllamaModel(detectedHost, setupHTTPClient())
 	fmt.Println("─── AI / LLM Provider ───────────────────────────────────────────")
 	fmt.Println("DevTrack uses an LLM to enhance commit messages, generate reports,")
 	fmt.Println("and parse your work updates.")
 	fmt.Println()
-	fmt.Println("  1) Ollama  (local, free — recommended for privacy)")
+	if detectedModel != "" {
+		fmt.Printf("  ✓ Ollama is ready with local model %s\n", detectedModel)
+		fmt.Println("  1) Ollama  (local, ready — recommended for privacy)")
+	} else {
+		fmt.Println("  1) Ollama  (local, free — recommended for privacy)")
+	}
 	fmt.Println("  2) OpenAI  (cloud, API key required)")
 	fmt.Println("  3) Anthropic / Claude (cloud, API key required)")
 	fmt.Println("  4) Groq    (cloud, free tier available)")
@@ -197,19 +205,7 @@ func RunSetup() error {
 
 	switch choice {
 	case "1":
-		cfg.LLMProvider = "ollama"
-		fmt.Print("Ollama host [http://localhost:11434]: ")
-		host := readLine(reader)
-		if host == "" {
-			host = "http://localhost:11434"
-		}
-		cfg.OllamaHost = host
-		fmt.Print("Ollama model [llama3.2]: ")
-		model := readLine(reader)
-		if model == "" {
-			model = "llama3.2"
-		}
-		cfg.OllamaModel = model
+		configureOllamaSetup(reader, cfg, detectedHost, detectedModel)
 
 	case "2":
 		cfg.LLMProvider = "openai"
@@ -250,9 +246,7 @@ func RunSetup() error {
 		cfg.LLMProvider = ""
 
 	default:
-		cfg.LLMProvider = "ollama"
-		cfg.OllamaHost = "http://localhost:11434"
-		cfg.OllamaModel = "llama3.2"
+		configureOllamaSetup(reader, cfg, detectedHost, detectedModel)
 	}
 	fmt.Println()
 
@@ -353,7 +347,7 @@ func RunSetup() error {
 	// Record all current migrations as applied — setup already did everything they do.
 	MarkAllMigrationsApplied()
 	if cfg.Mode == ModeManaged {
-		started, bootstrapErr := startServerBootstrap(xdgHome, cfg.ProjectRoot, cfg.LLMProvider, cfg.OllamaModel)
+		started, bootstrapErr := startServerBootstrap(xdgHome, cfg.ProjectRoot, cfg.LLMProvider, cfg.OllamaModel, cfg.OllamaModelReady)
 		if bootstrapErr != nil {
 			fmt.Printf("  Warning: background server bootstrap could not start: %v\n", bootstrapErr)
 			fmt.Println("  Retry with: devtrack doctor --repair")
