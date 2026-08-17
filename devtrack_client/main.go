@@ -54,6 +54,25 @@ func main() {
 			return
 		}
 
+		// Internal detached worker launched by setup/doctor.
+		if cmd == "bootstrap-server" {
+			if err := runServerBootstrapCommand(os.Args[2:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+
+		// devtrack doctor [--repair] — capability and bootstrap diagnostics.
+		if cmd == "doctor" {
+			repair := len(os.Args) > 2 && os.Args[2] == "--repair"
+			if err := RunDoctor(repair); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+
 		// devtrack upgrade [--check] — self-update binary and run migrations
 		if cmd == "upgrade" {
 			checkOnly := len(os.Args) > 2 && os.Args[2] == "--check"
@@ -190,7 +209,7 @@ func printBasicUsage() {
 	fmt.Println("Usage: devtrack <command> [options]")
 	fmt.Println()
 	fmt.Println("SETUP:      setup                              first-run configuration wizard")
-	fmt.Println("DAEMON:     start | stop | restart | status")
+	fmt.Println("DAEMON:     start | stop | restart | status | doctor [--repair]")
 	fmt.Println("SCHEDULER:  pause | resume | force-trigger | skip-next | send-summary")
 	fmt.Println("INFO:       logs | db-stats | stats | version | settings | help")
 	fmt.Println()
@@ -226,4 +245,3 @@ func printBasicUsage() {
 	fmt.Println("Run 'devtrack help' for full usage and flags.")
 	fmt.Println()
 }
-

@@ -102,14 +102,15 @@ finish booting:
 **9a — Kill setup friction**
 - **TASK-117 complete:** `devtrack setup` writes a complete working environment file with all 12
   runtime defaults visible and editable; invalid overrides still fail clearly.
-- TASK-142 establishes the configured-LLM enrichment boundary before background bootstrap continues.
+- **TASK-142 complete (PR #253):** configured-LLM enrichment now owns structured parsing and degrades
+  to raw/template data without the obsolete NLP/spaCy surface.
 
 **9b — Script the wow**
 - First-run flow after setup: Tier 0 voice mining kicks off, then print
   "Profile built from N commits. Try: `devtrack work report`" and
   "Run `devtrack mcp setup` and ask Claude Code what you're working on."
   The MCP moment is the screenshot people share.
-- **Background server bootstrap with visible degradation map:** `devtrack doctor`
+- **TASK-118 in progress — background server bootstrap with visible degradation map:** `devtrack doctor`
   (or upgraded `devtrack status`) shows honestly what works now and what is coming:
   `git monitoring ✓ · MCP ✓ · ticket sync ✓ · voice generation — downloading model (4.1 GB, ~8 min)`.
   Every server failure mode degrades to something the Go client still does (the
@@ -154,14 +155,14 @@ from someone unknown means a real install survived setup.
 | # | Task | Workstream |
 |---|---|---|
 | TASK-117 | **DONE** — `devtrack setup` writes complete environment with visible defaults; invalid overrides fail clearly | 9a |
-| TASK-118 | Background server bootstrap (`uv sync` / `ollama pull` non-blocking) + progress in `status`/`doctor` | 9b |
+| TASK-118 | **IN PROGRESS** — background server bootstrap (`uv sync` / local `ollama pull` non-blocking) + durable progress/retry in `status`/`doctor` | 9b |
 | TASK-119 | First-run wow script: Tier 0 mining kickoff + guided `work report` / `mcp setup` prompts | 9b |
 | TASK-120 | Ollama detection + BYO-cloud-key fast lane in setup | 9b |
 | TASK-121 | Demo GIF (commit → staged action → EOD preview) + quickstart polish | 9c |
 | TASK-122 | devtrack_wiki homepage rewrite + repo description/topics | 9c |
 | TASK-123 | Registry submissions (MCP lists, plugin directory) | 9d |
 | TASK-124 | Launch content: Show HN + dev.to + LinkedIn via post-generator | 9d |
-| TASK-142 | Establish configured-LLM task enrichment with strict validation and a non-blocking raw/template fallback. Sequence before TASK-118. | 9a prerequisite |
+| TASK-142 | **DONE (PR #253)** — configured-LLM task enrichment with strict validation and a non-blocking raw/template fallback | 9a prerequisite |
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL

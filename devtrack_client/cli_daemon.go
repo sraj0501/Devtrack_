@@ -136,6 +136,7 @@ func (cli *CLI) handleStatus() error {
 		printStatusWorkspaces()
 		printStatusPMTokens()
 		printStatusServer()
+		printBootstrapCapabilities(os.Stdout)
 		printTicketExtractionStats("")
 		fmt.Println("Config files:")
 		if envPath := resolveEnvFilePath(); envPath != "" {
@@ -285,6 +286,7 @@ func (cli *CLI) handleStatus() error {
 
 	// Server connection
 	printStatusServer()
+	printBootstrapCapabilities(os.Stdout)
 
 	// Ticket extraction hit-rate (Phase 2 exit criterion)
 	printTicketExtractionStats("")
@@ -407,9 +409,20 @@ func printTicketExtractionStats(repoPath string) {
 
 // printStatusServer shows the AI server connection state and last narrative failure.
 func printStatusServer() {
-	serverURL := os.Getenv("DEVTRACK_SERVER_URL")
+	if GetServerMode() == ServerModeManaged && GetProjectRootOptional() == "" {
+		return
+	}
+	serverURL := GetServerURL()
 	if serverURL == "" {
 		return
+	}
+	if GetServerMode() == ServerModeManaged {
+		if home, err := devtrackDataHome(); err == nil {
+			if state, stateErr := readServerBootstrapState(home); stateErr == nil && state.Status != "ready" {
+				fmt.Printf("AI server:     unavailable (bootstrap %s: %s)\n\n", state.Status, state.Step)
+				return
+			}
+		}
 	}
 	client := NewHTTPTriggerClient()
 	if client.Ping() {

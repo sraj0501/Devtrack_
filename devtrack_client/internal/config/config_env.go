@@ -331,6 +331,30 @@ func GetCLIAppName() string {
 	return config.CLIAppName
 }
 
+// GetProjectRootOptional returns the configured server project root without
+// requiring the complete daemon configuration. Setup/doctor use it before the
+// daemon is necessarily ready.
+func GetProjectRootOptional() string {
+	return expandPath(os.Getenv("PROJECT_ROOT"))
+}
+
+// GetLLMProvider returns the selected provider. Ollama is the offline-first
+// default when setup has not written an explicit value.
+func GetLLMProvider() string {
+	if value := strings.TrimSpace(os.Getenv("LLM_PROVIDER")); value != "" {
+		return strings.ToLower(value)
+	}
+	return "ollama"
+}
+
+// GetOllamaModel returns the configured local model name.
+func GetOllamaModel() string {
+	if value := strings.TrimSpace(os.Getenv("OLLAMA_MODEL")); value != "" {
+		return value
+	}
+	return "llama3.2"
+}
+
 func mustParseInt(name, raw string) int {
 	value, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil {

@@ -1,8 +1,7 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-08-18 by PM — the PostgreSQL backend epic is complete on `dev`; TASK-117 opened
-Phase 9 with visible managed-install defaults. TASK-118 is next in the adoption sequence, after the
-newly planned TASK-142 removes the legacy NLP-parser surface and obsolete spaCy assumptions._
+_Last updated: 2026-08-18 by PM — TASK-142 is merged to `dev` in PR #253; TASK-118 is active on
+`features/TASK-118-background-bootstrap` as the next Phase 9 adoption task._
 
 **[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
 (PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at
@@ -514,13 +513,13 @@ PostgreSQL file passed 4/4; the full Python 3.12 suite passed 900 with 4 skips. 
 `dev` authorized by the user.
 **Blockers**: none
 
-**ACTIVE — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. TASK-117 is complete;
-TASK-118 is next after TASK-142 removes the obsolete NLP-parser/spaCy setup surface. This phase is
+**ACTIVE — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. TASK-117 and the
+prerequisite TASK-142 are complete; TASK-118 is in progress. This phase is
 packaging and narrative, not a new capability. **This board is the authoritative ID ledger** —
 `NEXT_STEPS.md` follows it, not the other way round.
 
 _Next DevTrack task ID: TASK-143_
-_Active branch: `docs/TASK-116-postgres-phase9-sync`_
+_Active branch: `features/TASK-118-background-bootstrap`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -6111,46 +6110,49 @@ adds migrations/import; TASK-116 provisions and validates mandatory `POSTGRES_UR
 
 ---
 
-## PLANNED — TASK-142: Remove the legacy NLP parser surface
+## SHIPPED — TASK-142: Replace the legacy NLP parser with LLM enrichment
 
-**Priority: HIGH. Sequence before TASK-118.** The server's `nlp_parser.py` is already LLM-first, but
-its legacy name, regex semantic fallback, `NLPTaskParser` integration surface, and stale spaCy
-availability/install checks make the architecture look like two competing parsing systems. Replace
-that compatibility layer with an explicitly LLM-owned structured task parser using the configured
-provider abstraction (local Ollama by default; cloud only when the user opts in).
+Merged to `dev` in PR #253 (`47a2d59`); the obsolete parser/spaCy surface is removed and provider
+failures now degrade to raw commit data without changing authoritative ticket routing.
 
-**Branch:** `features/TASK-142-remove-nlp-parser`
+## IN PROGRESS — TASK-118: Non-blocking managed server bootstrap and capability status
+
+**Priority: HIGH. Phase 9 adoption gate.** A first run must make the Go-native product useful before
+the optional Python/LLM layer has finished installing. Managed setup currently waits for sparse
+checkout and `uv sync`, hiding the already-available Git monitoring, SQLite, MCP, and scheduling
+capabilities behind Python setup latency.
+
+**Branch:** `features/TASK-118-background-bootstrap`
 
 **Scope:**
-- Move structured work parsing out of `backend/nlp_parser.py`; rename `NLPTaskParser` and the
-  `TriggerProcessor.nlp_parser` stage to an LLM task-parser boundary with strict JSON validation.
-- Keep the Go-resolved ticket ID authoritative for routing. LLM output may enrich description,
-  action, time, project, and status, but must never redirect a PM update.
-- When the LLM is absent, times out, or returns malformed output, continue with the raw commit text
-  and empty optional enrichment. Do not retain a second regex-based semantic classifier.
-- Preserve explicit confidence on automated decisions and keep every outbound effect staged through
-  `pending_actions`; parsing failure must never block the developer's Git workflow.
-- Remove production and test references to `nlp_parser`, `NLPTaskParser`, and spaCy, including the
-  obsolete `config.is_ai_available()` probe and server setup/feature documentation. The optional AI
-  dependency group should describe RAG/personalization only.
-- Replace legacy parser tests and webhook mocks with focused LLM-parser validation, malformed-output,
-  provider-unavailable, and authoritative-ticket tests. Maintain GitHub, GitLab, Azure DevOps, and
-  Jira parity.
+- Let managed setup choose its deterministic server path and finish configuration without waiting
+  for repository checkout, `uv sync`, or the configured local Ollama model pull.
+- Run those steps in a detached, idempotent bootstrap process with durable, atomic progress state and
+  a local log. Avoid duplicate workers and keep failed installs explicitly retriable.
+- Add `devtrack doctor` and extend `devtrack status` with the same honest capability/degradation map:
+  Go-native monitoring and local features remain available while server-backed AI is installing or
+  unavailable; show the active step, last error, log path, and recovery command.
+- Pull a model only for the local Ollama provider. Never select or contact a cloud provider, change
+  credentials, start the daemon, or perform an outbound PM/Git/email action during bootstrap.
+- Preserve external-server and existing developer-checkout behavior; make cross-platform detached
+  execution and status-file handling testable without invoking real installers.
 
 **Acceptance criteria:**
-1. No production import, path, or symbol named `nlp_parser`/`NLPTaskParser`, and no active spaCy
-   dependency, bootstrap, or capability check remains.
-2. Structured parsing uses the configured LLM provider and a validated schema with explicit
-   confidence; local Ollama remains the default daily path.
-3. Provider failure or invalid output degrades to raw/template data without blocking commits,
-   dropping the authoritative ticket, or sending an action directly.
-4. The Go-resolved ticket ID is the sole routing target; server inference is enrichment only.
-5. Focused parser/webhook tests, the full Python suite, and relevant Go/API contract tests pass.
-6. README, server guide, installation, architecture, and runtime narrative contain no current-state
-   claim that spaCy or a separate NLP parser is required.
+1. Fresh managed setup returns without waiting for Git, `uv`, or Ollama and leaves Go-native daily
+   functionality usable immediately.
+2. Bootstrap state survives CLI exit, exposes each step and failure, is written atomically, and
+   prevents concurrent duplicate installs.
+3. `status` and `doctor` report capability readiness/degradation without treating an optional server
+   failure as a daemon or Git-workflow failure.
+4. Re-running bootstrap is safe after partial success or failure, and the CLI presents a concrete
+   retry command plus log location.
+5. External mode and an already-present managed server do not receive an unnecessary clone; local
+   Ollama remains the default and cloud use remains opt-in.
+6. Focused tests, `go test ./...`, `go vet ./...`, and proportionate cross-platform compilation pass.
 
-**Vision check:** PASS — dependency removal strengthens offline-first operation and the configured
-LLM boundary while preserving confidence, provider choice, pending-action safety, and PM parity.
+**Vision check:** PASS — this exposes the daemon-first, offline-capable product immediately while
+keeping optional AI dependencies observable, non-blocking, local by default, and outside the Git
+critical path.
 
 ---
 
