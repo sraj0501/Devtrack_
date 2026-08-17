@@ -66,6 +66,12 @@ and is used only as a Microsoft Teams voice-learning source. The Go client does 
 its local-first observation, queue, MCP, and replay path remains SQLite-backed and works offline.
 TASK-116 owns PostgreSQL provisioning for managed and containerized server installs.
 
+Client activity leaves SQLite only when `SERVER_EVENT_SYNC_ENABLED=true`. The daemon captures
+latest-state snapshots for `triggers`, `task_updates`, `work_sessions`, and client-originated
+`pending_actions` in a local outbox. Each batch is itself staged in `pending_actions`, then sent to
+`POST /trigger/client_events`. PostgreSQL deduplicates replays by `(client_id, event_id)` and rejects
+stale revisions; an unreachable server leaves the outbox intact for the next queue poll.
+
 ### `devtrack install`
 
 Running `devtrack install` prints setup instructions for the client-server architecture — it does **not** extract or bundle Python. Use the printed instructions to set up the Python backend in whichever mode suits your environment.
@@ -714,6 +720,7 @@ X-DevTrack-API-Key: <DEVTRACK_API_KEY>   (if configured)
 | `POST /trigger/commit_trigger` | Go → Python | Git commit detected |
 | `POST /trigger/timer_trigger` | Go → Python | Scheduled time reached |
 | `POST /trigger/workspace_reload` | Go → Python | Reload workspaces.yaml |
+| `POST /trigger/client_events` | Go → Python | Persist an opted-in, replay-safe batch of Go-owned event snapshots |
 | `GET  /health` | Go → Python | Liveness check |
 
 ### TLS Configuration
@@ -743,6 +750,36 @@ Trigger → MessageQueue.SendOrQueue()
                           → Send pending messages
                           → Mark completed/retry
 ```
+
+### PostgreSQL Event Outbox
+
+```text
+Go-owned row insert/update
+        ↓
+SQLite server_event_outbox (stable event_id + monotonic revision)
+        ↓
+local pending_actions review entry (explicit opt-in only)
+        ↓
+POST /trigger/client_events
+        ↓
+PostgreSQL client_events upsert
+        ↓
+acknowledge only the exact local revision accepted by the server
+```
+
+The server's own `pending_actions` queue is registered directly on the shared SQLAlchemy metadata,
+so normal server operation persists it in PostgreSQL. `/queue/pending` returns complete queue rows
+to the Go executor, preserving confidence thresholds and non-TUI notifications without sharing a
+database file. Go-originated actions remain authoritative in local SQLite: after their local review
+window expires (or the developer approves them), the client sends the complete staged row to the
+authenticated `POST /queue/execute_staged` endpoint. This avoids treating unrelated SQLite and
+PostgreSQL numeric IDs as the same action. Transport failures leave the local row queued for retry.
+
+| Queue endpoint | Purpose |
+|---|---|
+| `GET /queue/pending` | List server-originated PostgreSQL queue rows |
+| `POST /queue/execute` | Execute a server-originated row by its PostgreSQL ID |
+| `POST /queue/execute_staged` | Execute a complete Go-local row after local approval/expiry |
 
 ### Health Monitoring
 

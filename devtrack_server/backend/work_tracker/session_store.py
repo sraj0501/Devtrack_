@@ -70,7 +70,15 @@ class WorkSessionStore:
         In SQLite mode reads the shared devtrack.db directly.
         """
         if _is_postgres_mode():
-            return self._get_active_session_via_http()
+            from backend.db.client_event_store import list_client_rows
+
+            sessions = [
+                row for row in list_client_rows("work_sessions")
+                if row.get("ended_at") in (None, "")
+            ]
+            if not sessions:
+                return None
+            return max(sessions, key=lambda row: str(row.get("started_at", "")))
         return self._get_active_session_sqlite()
 
     def _get_active_session_via_http(self) -> Optional[Dict[str, Any]]:
@@ -148,12 +156,14 @@ class WorkSessionStore:
         boundary-rule note at the top of this module.
         """
         if _is_postgres_mode():
-            logger.debug(
-                "get_sessions_for_date: fail-closed in PostgreSQL mode — "
-                "work_sessions is a Go-owned table with no date-range HTTP "
-                "endpoint (only /internal/sessions/active exists)"
-            )
-            return []
+            from backend.db.client_event_store import list_client_rows
+
+            sessions = [
+                row for row in list_client_rows("work_sessions")
+                if str(row.get("started_at", ""))[:10] == date
+            ]
+            sessions.sort(key=lambda row: str(row.get("started_at", "")))
+            return sessions
         try:
             from backend.db.engine import get_engine
             with get_engine().connect() as conn:

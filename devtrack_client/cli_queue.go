@@ -186,6 +186,13 @@ func runQueueApprove() error {
 		return fmt.Errorf("queue approve: open database: %w", err)
 	}
 	defer d.Close()
+	action, err := d.GetPendingAction(id)
+	if err != nil {
+		return fmt.Errorf("queue approve: read action: %w", err)
+	}
+	if action == nil {
+		return fmt.Errorf("queue approve: action %d not found", id)
+	}
 
 	if err := d.UpdatePendingActionStatus(id, "approved", "cli"); err != nil {
 		return fmt.Errorf("queue approve: update status: %w", err)
@@ -193,7 +200,30 @@ func runQueueApprove() error {
 
 	// Fire the action immediately via the Python queue endpoint.
 	tc := trigger.NewHTTPTriggerClient()
-	resp, err := tc.ExecuteQueueAction(id)
+	if action.ActionType == db.ServerEventSyncActionType {
+		var payload trigger.ClientEventSyncPayload
+		if err := json.Unmarshal([]byte(action.Payload), &payload); err != nil {
+			return fmt.Errorf("queue approve: decode server event batch: %w", err)
+		}
+		if _, err := tc.SendClientEvents(payload); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: approved locally but server event sync failed: %v\n", err)
+			fmt.Fprintln(os.Stderr, "         The local outbox is intact and will retry on the next queue poll.")
+			return nil
+		}
+		keys := make([]db.ServerEventKey, 0, len(payload.Events))
+		for _, event := range payload.Events {
+			keys = append(keys, db.ServerEventKey{EventID: event.EventID, Revision: event.Revision})
+		}
+		if err := d.MarkServerEventsSynced(keys); err != nil {
+			return fmt.Errorf("queue approve: acknowledge server event batch: %w", err)
+		}
+		if err := d.UpdatePendingActionStatus(id, "posted", "cli"); err != nil {
+			return fmt.Errorf("queue approve: mark server event action posted: %w", err)
+		}
+		fmt.Printf("approved: action %d synced %d server event(s)\n", id, len(payload.Events))
+		return nil
+	}
+	resp, err := tc.ExecuteStagedQueueAction(*action)
 	if err != nil {
 		// Action is already marked approved in the DB; the queue executor will
 		// handle it on the next poll. Surface the error so the user knows.
@@ -202,7 +232,11 @@ func runQueueApprove() error {
 		return nil
 	}
 	if resp.Status == "failed" {
+		_ = d.UpdatePendingActionError(id, resp.Error)
 		return fmt.Errorf("approved: action %d dispatched but server reported failure: %s", id, resp.Error)
+	}
+	if err := d.UpdatePendingActionStatus(id, "posted", "cli"); err != nil {
+		return fmt.Errorf("queue approve: mark action posted: %w", err)
 	}
 
 	fmt.Printf("approved: action %d dispatched\n", id)

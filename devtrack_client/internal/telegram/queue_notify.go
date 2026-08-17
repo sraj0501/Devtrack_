@@ -12,6 +12,7 @@ package telegram
 // No new external dependencies; uses the existing go-telegram-bot-api package.
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -114,6 +115,15 @@ func (b *Bot) handleApproveCallback(chatID int64, messageID int, actionID int64)
 		b.editMessage(chatID, messageID, "Queue not available (database not wired).")
 		return
 	}
+	action, err := b.hooks.Queue.Database.GetPendingAction(actionID)
+	if err != nil || action == nil {
+		if err == nil {
+			err = fmt.Errorf("action not found")
+		}
+		log.Printf("telegram queue: approve %d: read action: %v", actionID, err)
+		b.editMessage(chatID, messageID, fmt.Sprintf("Failed to approve action %d: %s", actionID, err.Error()))
+		return
+	}
 
 	if err := b.hooks.Queue.Database.UpdatePendingActionStatus(actionID, "approved", "telegram"); err != nil {
 		log.Printf("telegram queue: approve %d: update status: %v", actionID, err)
@@ -123,14 +133,48 @@ func (b *Bot) handleApproveCallback(chatID int64, messageID int, actionID int64)
 
 	// Fire the action via the Python queue endpoint.
 	if b.hooks.Queue.TriggerClient != nil {
-		resp, err := b.hooks.Queue.TriggerClient.ExecuteQueueAction(actionID)
+		if action.ActionType == db.ServerEventSyncActionType {
+			var payload trigger.ClientEventSyncPayload
+			if err := json.Unmarshal([]byte(action.Payload), &payload); err != nil {
+				log.Printf("telegram queue: approve %d: decode event sync: %v", actionID, err)
+				b.editMessage(chatID, messageID, fmt.Sprintf("Approved locally but the event batch is invalid: %s", err.Error()))
+				return
+			}
+			if _, err := b.hooks.Queue.TriggerClient.SendClientEvents(payload); err != nil {
+				log.Printf("telegram queue: approve %d: event sync failed: %v", actionID, err)
+				b.editMessage(chatID, messageID, fmt.Sprintf("Approved locally but sync failed: %s\nThe queue executor will retry.", err.Error()))
+				return
+			}
+			keys := make([]db.ServerEventKey, 0, len(payload.Events))
+			for _, event := range payload.Events {
+				keys = append(keys, db.ServerEventKey{EventID: event.EventID, Revision: event.Revision})
+			}
+			if err := b.hooks.Queue.Database.MarkServerEventsSynced(keys); err != nil {
+				log.Printf("telegram queue: approve %d: acknowledge event sync: %v", actionID, err)
+				b.editMessage(chatID, messageID, fmt.Sprintf("Server accepted the batch, but local acknowledgement failed: %s", err.Error()))
+				return
+			}
+			if err := b.hooks.Queue.Database.UpdatePendingActionStatus(actionID, "posted", "telegram"); err != nil {
+				log.Printf("telegram queue: approve %d: mark event sync posted: %v", actionID, err)
+				return
+			}
+			b.editMessage(chatID, messageID, fmt.Sprintf("Approved and synced. (action %d)", actionID))
+			return
+		}
+		resp, err := b.hooks.Queue.TriggerClient.ExecuteStagedQueueAction(*action)
 		if err != nil {
 			log.Printf("telegram queue: approve %d: execute failed: %v", actionID, err)
 			b.editMessage(chatID, messageID, fmt.Sprintf("Approved locally but dispatch failed: %s\nThe queue executor will retry.", err.Error()))
 			return
 		}
 		if resp.Status == "failed" {
+			_ = b.hooks.Queue.Database.UpdatePendingActionError(actionID, resp.Error)
 			b.editMessage(chatID, messageID, fmt.Sprintf("Approved but server reported failure: %s", resp.Error))
+			return
+		}
+		if err := b.hooks.Queue.Database.UpdatePendingActionStatus(actionID, "posted", "telegram"); err != nil {
+			log.Printf("telegram queue: approve %d: mark posted: %v", actionID, err)
+			b.editMessage(chatID, messageID, fmt.Sprintf("Dispatched, but failed to update local status: %s", err.Error()))
 			return
 		}
 	}
@@ -213,14 +257,27 @@ func (b *Bot) handlePotentialEditReply(msg *tgbotapi.Message) bool {
 
 	// Dispatch the edited action.
 	if b.hooks.Queue.TriggerClient != nil {
-		resp, err := b.hooks.Queue.TriggerClient.ExecuteQueueAction(edit.ActionID)
+		action, readErr := b.hooks.Queue.Database.GetPendingAction(edit.ActionID)
+		if readErr != nil || action == nil {
+			if readErr == nil {
+				readErr = fmt.Errorf("action not found")
+			}
+			b.reply(msg, fmt.Sprintf("Edited locally, but dispatch failed: %s", readErr.Error()))
+			return true
+		}
+		resp, err := b.hooks.Queue.TriggerClient.ExecuteStagedQueueAction(*action)
 		if err != nil {
 			b.reply(msg, fmt.Sprintf("Edited and approved locally, but dispatch failed: %s\nThe queue executor will retry.", err.Error()))
 			b.editMessage(msg.Chat.ID, edit.PromptMsgID, fmt.Sprintf("Edited and approved. (action %d — dispatch pending)", edit.ActionID))
 			return true
 		}
 		if resp.Status == "failed" {
+			_ = b.hooks.Queue.Database.UpdatePendingActionError(edit.ActionID, resp.Error)
 			b.reply(msg, fmt.Sprintf("Edited but server reported failure: %s", resp.Error))
+			return true
+		}
+		if err := b.hooks.Queue.Database.UpdatePendingActionStatus(edit.ActionID, "posted", "telegram"); err != nil {
+			b.reply(msg, fmt.Sprintf("Dispatched, but failed to update local status: %s", err.Error()))
 			return true
 		}
 	}

@@ -200,6 +200,10 @@ func NewDatabase() (*Database, error) {
 		database.Close()
 		return nil, fmt.Errorf("failed to apply migration tables: %w", err)
 	}
+	if err := db.initServerEventSync(); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("failed to initialize server event sync: %w", err)
+	}
 
 	log.Printf("Database initialized: %s", dbPath)
 	return db, nil
@@ -2288,6 +2292,10 @@ func NewDatabaseAtPath(dbPath string) (*Database, error) {
 	if err := d.applyMigrationTables(); err != nil {
 		sqlDB.Close()
 		return nil, fmt.Errorf("failed to apply migration tables: %w", err)
+	}
+	if err := d.initServerEventSync(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("failed to initialize server event sync: %w", err)
 	}
 	return d, nil
 }

@@ -1670,12 +1670,24 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
             pattern as ``dialectic_status.py``/``skill_detector.py``.
         """
         if is_postgres():
-            import logging as _logging
-            _logging.getLogger(__name__).debug(
-                "_query_commit_rows: no-op in PostgreSQL mode — triggers is "
-                "a Go-owned SQLite-only table with no Postgres equivalent yet"
-            )
-            return []
+            from backend.db.client_event_store import list_client_rows
+
+            rows = [
+                row
+                for row in list_client_rows("triggers")
+                if row.get("trigger_type") == "commit"
+                and str(row.get("timestamp", ""))[:10] == target_date
+            ]
+            rows.sort(key=lambda row: str(row.get("timestamp", "")))
+            return [
+                {
+                    "ticket_id": row.get("ticket_id", ""),
+                    "commit_message": row.get("commit_message", ""),
+                    "commit_hash": row.get("commit_hash", ""),
+                    "timestamp": row.get("timestamp", ""),
+                }
+                for row in rows
+            ]
         try:
             with get_engine().connect() as conn:
                 rows = conn.execute(

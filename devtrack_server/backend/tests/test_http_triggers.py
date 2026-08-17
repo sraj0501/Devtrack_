@@ -155,6 +155,73 @@ class TestPingEndpoint:
         assert data.get("status") == "ok"
 
 
+class TestClientEventsEndpoint:
+    payload = {
+        "client_id": "client-a",
+        "events": [{
+            "event_id": "triggers:1",
+            "table_name": "triggers",
+            "source_row_id": "1",
+            "revision": 1,
+            "payload": {"ticket_id": "TASK-114"},
+            "updated_at": "2026-08-11 10:00:00",
+        }],
+    }
+
+    def test_accepts_valid_batch(self, client):
+        with patch(
+            "backend.db.client_event_store.persist_client_events", return_value=1
+        ) as persist:
+            response = client.post("/trigger/client_events", json=self.payload)
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok", "accepted": 1}
+        persist.assert_called_once_with("client-a", self.payload["events"])
+
+    def test_rejects_empty_batch(self, client):
+        response = client.post(
+            "/trigger/client_events", json={"client_id": "client-a", "events": []}
+        )
+        assert response.status_code == 400
+
+    def test_requires_api_key_when_configured(self, client_with_key):
+        response = client_with_key.post("/trigger/client_events", json=self.payload)
+        assert response.status_code == 403
+
+
+class TestExecuteStagedQueueActionEndpoint:
+    payload = {
+        "id": 42,
+        "action_type": "post_comment",
+        "target": "TASK-114",
+        "platform": "github",
+        "workspace": "devtrack",
+        "payload": '{"comment":"ready"}',
+        "confidence": 0.95,
+    }
+
+    def test_executes_full_locally_staged_action(self, client):
+        with patch(
+            "backend.webhook_server.TriggerProcessor.get"
+        ) as get_processor:
+            get_processor.return_value._execute_pm_action.return_value = {
+                "status": "posted"
+            }
+            response = client.post("/queue/execute_staged", json=self.payload)
+        assert response.status_code == 200
+        assert response.json() == {"status": "posted"}
+        get_processor.return_value._execute_pm_action.assert_called_once_with(self.payload)
+
+    def test_rejects_invalid_embedded_payload(self, client):
+        response = client.post(
+            "/queue/execute_staged", json={**self.payload, "payload": "not-json"}
+        )
+        assert response.status_code == 400
+
+    def test_requires_api_key_when_configured(self, client_with_key):
+        response = client_with_key.post("/queue/execute_staged", json=self.payload)
+        assert response.status_code == 403
+
+
 # ---------------------------------------------------------------------------
 # /trigger/commit
 # ---------------------------------------------------------------------------
