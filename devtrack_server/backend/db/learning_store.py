@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import Boolean, Column, Index, Integer, Table, Text, func, select
 from sqlalchemy.engine import Engine
 
-from backend.db.engine import get_engine, metadata, upsert
+from backend.db.engine import ensure_tables, get_engine, metadata, upsert
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def _init(engine: Optional[Engine] = None) -> Engine:
     global _schema_done
     eng = engine or get_engine()
     if not _schema_done:
-        metadata.create_all(eng, tables=_own_tables)
+        ensure_tables(eng, tables=_own_tables)
         _schema_done = True
     return eng
 

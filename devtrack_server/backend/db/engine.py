@@ -5,8 +5,8 @@ Central SQLAlchemy engine factory for devtrack_server.
   POSTGRES_URL unset → SQLite at database_path()  (local / single-user mode)
 
 All Python-owned store modules import `metadata` from here and register their
-Table objects against it.  `init_all_tables()` then creates every registered
-table in a single `metadata.create_all()` call — safe to call on every startup.
+Table objects against it. SQLite test/local compatibility uses
+``metadata.create_all()``; PostgreSQL always advances through Alembic.
 
 Go-owned tables (`triggers`, `task_updates`, `work_sessions`) are NEVER touched
 by Python in PostgreSQL mode.
@@ -57,6 +57,8 @@ metadata = MetaData()
 # ---------------------------------------------------------------------------
 _engine: Optional[Engine] = None
 _engine_lock = threading.Lock()
+_migrations_done = False
+_migrations_lock = threading.Lock()
 
 
 def _redact_url(url: str) -> str:
@@ -125,21 +127,41 @@ def reset_engine() -> None:
     Used in tests to switch database backends between test cases.
     After calling this, the next get_engine() call picks up current env vars.
     """
-    global _engine
+    global _engine, _migrations_done
     with _engine_lock:
         if _engine is not None:
             _engine.dispose()
             _engine = None
+        _migrations_done = False
+
+
+def ensure_tables(
+    engine: Optional[Engine] = None,
+    *,
+    tables=None,
+    schema_metadata: Optional[MetaData] = None,
+) -> Engine:
+    """Ensure a store schema exists without bypassing PostgreSQL revisions."""
+    global _migrations_done
+    eng = engine or get_engine()
+    if eng.dialect.name == "postgresql":
+        if not _migrations_done:
+            with _migrations_lock:
+                if not _migrations_done:
+                    from backend.db.migrate import upgrade
+
+                    upgrade()
+                    _migrations_done = True
+        return eng
+
+    registry = schema_metadata or metadata
+    registry.create_all(eng, tables=tables)
+    return eng
 
 
 def init_all_tables() -> None:
-    """Create all Python-owned tables that have been registered with `metadata`.
-
-    Idempotent — safe to call on every server startup.  Tables are created with
-    CREATE TABLE IF NOT EXISTS semantics via checkfirst=True (SQLAlchemy default).
-    """
-    engine = get_engine()
-    metadata.create_all(engine)
+    """Bring PostgreSQL to Alembic head or create SQLite compatibility tables."""
+    engine = ensure_tables()
     logger.debug("db/engine: schema initialised (%d tables)", len(metadata.tables))
 
 

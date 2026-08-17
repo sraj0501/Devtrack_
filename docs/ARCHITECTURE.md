@@ -874,6 +874,12 @@ Claude Code answering *"what am I working on?"* in under ten minutes. See
 > from local SQLite into server PostgreSQL over the HTTP boundary. Offline-first Rule 0
 > is preserved by the Go client continuing to observe, queue, serve MCP context, and
 > replay locally without a server connection; do not add a Go PostgreSQL driver.
+> Server schema changes are versioned under `devtrack_server/migrations/` and applied
+> through `python -m backend.db.migrate`; PostgreSQL store initialization advances to
+> Alembic head instead of calling `metadata.create_all()`. Existing local history can
+> be copied once with `python -m backend.db.sqlite_import`: server-owned rows retain
+> their keys, while Go-owned activity becomes attributable revision-zero
+> `client_events` that later live sync revisions supersede.
 
 ---
 

@@ -13,7 +13,7 @@ from typing import Any, Iterable, Mapping, Optional
 from sqlalchemy import Column, Integer, JSON, Table, Text, select
 from sqlalchemy.engine import Engine
 
-from backend.db.engine import get_engine, metadata, upsert
+from backend.db.engine import ensure_tables, get_engine, metadata, upsert
 
 
 ALLOWED_EVENT_TABLES = frozenset(
@@ -41,7 +41,7 @@ def _init(engine: Optional[Engine] = None) -> Engine:
     eng = engine or get_engine()
     if engine is None and _schema_done:
         return eng
-    metadata.create_all(eng, tables=[client_events_table])
+    ensure_tables(eng, tables=[client_events_table])
     if engine is None:
         _schema_done = True
     return eng
