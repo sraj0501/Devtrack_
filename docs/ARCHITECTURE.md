@@ -64,7 +64,9 @@ The Go binary on the host then connects via `DEVTRACK_SERVER_MODE=external`.
 required for server persistence and server-side events (`POSTGRES_URL`); MongoDB remains optional
 and is used only as a Microsoft Teams voice-learning source. The Go client does not require either:
 its local-first observation, queue, MCP, and replay path remains SQLite-backed and works offline.
-TASK-116 owns PostgreSQL provisioning for managed and containerized server installs.
+Server startup validates PostgreSQL connectivity and advances the schema to Alembic head before
+accepting requests. Compose waits for its bundled PostgreSQL health check; managed installs require
+an explicit local or remote `POSTGRES_URL` and do not fall back to server-side SQLite.
 
 Client activity leaves SQLite only when `SERVER_EVENT_SYNC_ENABLED=true`. The daemon captures
 latest-state snapshots for `triggers`, `task_updates`, `work_sessions`, and client-originated

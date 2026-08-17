@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,7 +35,8 @@ type SetupConfig struct {
 	DataDir       string
 
 	// Mode
-	Mode DevTrackMode
+	Mode        DevTrackMode
+	PostgresURL string
 
 	// LLM
 	LLMProvider    string
@@ -132,7 +134,7 @@ func RunSetup() error {
 		}
 	}
 
-		// ── 1b. XDG data home ────────────────────────────────────────────────────
+	// ── 1b. XDG data home ────────────────────────────────────────────────────
 	xdgHome, err := devtrackDataHome()
 	if err != nil {
 		return fmt.Errorf("could not determine data home: %w", err)
@@ -164,6 +166,9 @@ func RunSetup() error {
 	if cfg.Mode == ModeManaged {
 		if err := checkPythonBackend(projectRoot); err != nil {
 			return fmt.Errorf("Python backend check failed: %w", err)
+		}
+		if err := collectPostgresURL(reader, cfg); err != nil {
+			return err
 		}
 	} else {
 		fmt.Println("[" + string(cfg.Mode) + " mode] Python backend not required — skipping.")
@@ -541,6 +546,9 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("CONFIG_DIR_PATH=" + filepath.Join(dataDir, "configs") + "\n")
 	b.WriteString("LEARNING_DIR_PATH=" + filepath.Join(dataDir, "learning") + "\n\n")
 
+	b.WriteString("## SERVER DATABASE\n")
+	b.WriteString("POSTGRES_URL=" + cfg.PostgresURL + "\n\n")
+
 	b.WriteString("## DAEMON INTERNALS\n")
 	b.WriteString("DEVTRACK_SERVER_MODE=" + string(cfg.Mode) + "\n")
 	b.WriteString("DEVTRACK_SERVER_URL=\n")
@@ -664,10 +672,10 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("## AZURE DEVOPS\n")
 	b.WriteString("# Secrets + identity — org/project/api_url go in workspaces.yaml\n")
 	b.WriteString("AZURE_DEVOPS_PAT=" + cfg.AzurePAT + "\n")
-	b.WriteString("AZURE_API_KEY=\n")                                     // alias for AZURE_DEVOPS_PAT accepted by Python server + cli_info
-	b.WriteString("AZURE_ORGANIZATION=" + cfg.AzureOrganization + "\n")  // Go health check + devtrack settings + Python server
-	b.WriteString("AZURE_PROJECT=" + cfg.AzureProject + "\n")            // Go health check + devtrack settings + Python server
-	b.WriteString("AZURE_EMAIL=" + cfg.UserEmail + "\n")                  // alert poller: skip own comments
+	b.WriteString("AZURE_API_KEY=\n")                                   // alias for AZURE_DEVOPS_PAT accepted by Python server + cli_info
+	b.WriteString("AZURE_ORGANIZATION=" + cfg.AzureOrganization + "\n") // Go health check + devtrack settings + Python server
+	b.WriteString("AZURE_PROJECT=" + cfg.AzureProject + "\n")           // Go health check + devtrack settings + Python server
+	b.WriteString("AZURE_EMAIL=" + cfg.UserEmail + "\n")                // alert poller: skip own comments
 	b.WriteString("AZURE_SYNC_ENABLED=false\n")
 	b.WriteString("AZURE_SYNC_AUTO_COMMENT=true\n")
 	b.WriteString("AZURE_SYNC_AUTO_TRANSITION=false\n")
@@ -783,12 +791,12 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("TELEGRAM_ALLOWED_CHAT_IDS=\n")
 	b.WriteString("TELEGRAM_NOTIFY_COMMITS=false\n")
 	b.WriteString("TELEGRAM_NOTIFY_TRIGGERS=true\n")
-	b.WriteString("TELEGRAM_CHAT_ID=\n")        // Go native notifier: chat to send to
+	b.WriteString("TELEGRAM_CHAT_ID=\n") // Go native notifier: chat to send to
 	b.WriteString("TELEGRAM_NOTIFY_HEALTH=true\n\n")
 
 	b.WriteString("## SLACK\n")
-	b.WriteString("SLACK_WEBHOOK_URL=\n")        // Go native notifier: incoming webhook URL
-	b.WriteString("SLACK_ENABLED=false\n")       // Python bot
+	b.WriteString("SLACK_WEBHOOK_URL=\n")  // Go native notifier: incoming webhook URL
+	b.WriteString("SLACK_ENABLED=false\n") // Python bot
 	b.WriteString("SLACK_BOT_TOKEN=\n")
 	b.WriteString("SLACK_APP_TOKEN=\n")
 	b.WriteString("SLACK_ALLOWED_CHANNEL_IDS=\n\n")
@@ -805,7 +813,6 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("## PROJECT PLANNING\n")
 	b.WriteString("NEWPROJECT_ENABLED=true\n")
 	b.WriteString("SPEC_REVIEW_BASE_URL=http://localhost:8089\n\n")
-
 
 	b.WriteString("## AZURE AD (optional — for MS Graph / Teams / email)\n")
 	b.WriteString("AZURE_CLIENT_ID=\n")
@@ -829,6 +836,42 @@ func checkCommonPrereqs() {
 	} else {
 		fmt.Println("  ✓ git found")
 	}
+}
+
+func collectPostgresURL(reader *bufio.Reader, cfg *SetupConfig) error {
+	fmt.Println("─── PostgreSQL Server Database ───────────────────────────────────")
+	fmt.Println("The managed Python server requires PostgreSQL. Supply a connection URL")
+	fmt.Println("for an existing database. For a local database, the bundled Compose file")
+	fmt.Println("can provision PostgreSQL; see docs/INSTALLATION.md.")
+	for {
+		fmt.Print("POSTGRES_URL: ")
+		value := readLine(reader)
+		if err := validatePostgresURL(value); err != nil {
+			fmt.Printf("  ✗ %v\n", err)
+			continue
+		}
+		cfg.PostgresURL = value
+		fmt.Println("  ✓ PostgreSQL connection configured")
+		fmt.Println()
+		return nil
+	}
+}
+
+func validatePostgresURL(value string) error {
+	if strings.TrimSpace(value) == "" {
+		return fmt.Errorf("POSTGRES_URL is required in managed mode")
+	}
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return fmt.Errorf("invalid POSTGRES_URL: %w", err)
+	}
+	if parsed.Scheme != "postgresql" && !strings.HasPrefix(parsed.Scheme, "postgresql+") {
+		return fmt.Errorf("POSTGRES_URL must use the postgresql:// scheme")
+	}
+	if strings.Trim(parsed.Path, "/") == "" {
+		return fmt.Errorf("POSTGRES_URL must include a database name")
+	}
+	return nil
 }
 
 // generateSecret returns a cryptographically random hex string of n bytes.

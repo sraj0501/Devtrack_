@@ -63,6 +63,14 @@ def test_dialect_is_postgres(pg_engine):
     assert pg_engine.dialect.name == "postgresql"
 
 
+def test_server_startup_validation_reaches_postgres_and_migration_head(pg_engine):
+    from backend.db.startup import initialize_server_database
+
+    initialize_server_database()
+    with pg_engine.connect() as conn:
+        assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0001_initial"
+
+
 def test_alembic_registers_every_server_table(pg_engine):
     """The migration head must contain every shared server table."""
     from backend.db import engine as engine_mod

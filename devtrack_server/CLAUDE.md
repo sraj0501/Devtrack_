@@ -18,7 +18,7 @@ cd devtrack_server
 uv sync                                      # core deps (no AI/spaCy)
 uv sync --extra ai                           # include AI/NLP deps
 
-# Start the server
+# Start the server (POSTGRES_URL is required; migrations run automatically)
 uv run python -m backend.webhook_server      # FastAPI on port 8089
 
 # Run tests
@@ -85,12 +85,13 @@ All Python modules access config via `backend.config.get()`, `get_int()`, `get_b
 
 Server-side env vars are documented in `devtrack_server/.env_sample`. The server requires these at startup; missing vars raise `ConfigError` with the exact variable name.
 
-Key server vars: `POSTGRES_URL` (required target architecture), `DEVTRACK_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SECRET_KEY`, `LLM_PROVIDER`, `OLLAMA_HOST`, `HTTP_TIMEOUT`, `LLM_REQUEST_TIMEOUT_SECS`.
+Key server vars: `POSTGRES_URL` (required), `DEVTRACK_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SECRET_KEY`, `LLM_PROVIDER`, `OLLAMA_HOST`, `HTTP_TIMEOUT`, `LLM_REQUEST_TIMEOUT_SECS`.
 
 PostgreSQL is mandatory for server persistence and server-side events. SQLite belongs to the Go
 client's offline source-of-truth path; remaining Python SQLite branches are migration compatibility
-debt tracked by TASK-114–116, not the final server storage mode. TASK-141 removed the final direct
-`sqlite3` import from production server code.
+debt, not the final server storage mode. Server startup validates PostgreSQL connectivity and applies
+Alembic migrations before accepting requests. TASK-141 removed the final direct `sqlite3` import
+from production server code.
 
 ## Client-Server Boundary
 

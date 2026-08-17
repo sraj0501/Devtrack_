@@ -43,3 +43,37 @@ def test_ipc_host_port_return_values():
     port = ipc_port()
     assert host in ("127.0.0.1", "localhost") or len(host) > 0
     assert port.isdigit() and int(port) > 0
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "postgresql://user:pass@localhost:5432/devtrack",
+        "postgresql+psycopg2://user:pass@db/devtrack",
+        "postgresql:///devtrack",
+    ],
+)
+def test_require_postgres_url_accepts_postgres(monkeypatch, value):
+    from backend.config import require_postgres_url
+
+    monkeypatch.setenv("POSTGRES_URL", value)
+    assert require_postgres_url() == value
+
+
+@pytest.mark.parametrize(
+    "value, message",
+    [
+        (None, "required"),
+        ("sqlite:///devtrack.db", "postgresql"),
+        ("postgresql://user:pass@localhost", "database name"),
+    ],
+)
+def test_require_postgres_url_rejects_invalid(monkeypatch, value, message):
+    from backend.config import ConfigError, require_postgres_url
+
+    if value is None:
+        monkeypatch.delenv("POSTGRES_URL", raising=False)
+    else:
+        monkeypatch.setenv("POSTGRES_URL", value)
+    with pytest.raises(ConfigError, match=message):
+        require_postgres_url()

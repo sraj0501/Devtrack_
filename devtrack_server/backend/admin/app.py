@@ -7,6 +7,7 @@ Entry points:
 """
 from __future__ import annotations
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -19,6 +20,9 @@ from backend.admin.routes import router, startup
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from backend.db.startup import initialize_server_database
+
+    await asyncio.to_thread(initialize_server_database)
     startup()
     yield
 
