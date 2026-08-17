@@ -3,8 +3,7 @@
 # and talks to it over HTTPS with DEVTRACK_SERVER_MODE=external.
 #
 # PostgreSQL is the required persistence target for server-side data. MongoDB is an
-# optional Teams voice-learning source. Until TASK-116 wires service dependencies and
-# validates POSTGRES_URL automatically, start PostgreSQL explicitly for server deployments.
+# optional Teams voice-learning source.
 #
 # Usage:
 #   docker compose up -d postgres devtrack_server
@@ -23,12 +22,17 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      POSTGRES_URL: ${POSTGRES_URL:?POSTGRES_URL must be set}
     ports:
       - "${DEVTRACK_SERVER_PORT:-8089}:8089"
     volumes:
       - ./Data:/app/Data
     networks:
       - devtrack-network
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8089/health"]
       interval: 30s
@@ -66,7 +70,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-devtrack}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devtrack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-devtrack}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"

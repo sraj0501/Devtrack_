@@ -56,6 +56,8 @@ ENV VIRTUAL_ENV="/opt/venv"
 
 # Copy backend source
 COPY backend/ ./backend/
+COPY alembic.ini ./alembic.ini
+COPY migrations/ ./migrations/
 
 # Data directory for SQLite, logs, etc.
 RUN mkdir -p /app/Data

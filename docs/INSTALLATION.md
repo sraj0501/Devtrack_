@@ -6,6 +6,7 @@
 |---|---|---|
 | **Git** | Yes | Used for repository monitoring and server clone |
 | **uv** | Yes (managed mode) | Python package manager — [install guide](https://docs.astral.sh/uv/getting-started/installation/) |
+| **PostgreSQL 16+** | Yes (Python server) | Required server persistence; local Compose or a reachable remote database |
 | **Ollama** | No | Local AI inference — any LLM provider works; Ollama is the default |
 
 Install uv (Linux / macOS):
@@ -61,14 +62,15 @@ The setup wizard walks through:
    - **Managed**: the daemon spawns the Python AI server automatically.
    - **External**: you run the Python server separately (see External mode below).
 2. **Server clone** (managed mode only) — if the Python server is not already present, DevTrack sparse-clones only `devtrack_server/` (~5 MB) from GitHub into `~/.local/share/devtrack/server/devtrack_server/` and runs `uv sync` to install Python dependencies.
-3. **Git repository** — the path DevTrack will monitor for commits.
-4. **LLM provider** — Ollama (local, default), OpenAI, Anthropic, Groq, or skip (configure later in `.env`).
-5. **Identity** — your email address (used to filter your own comments in integrations).
-6. **PM platform** — GitHub Issues, Azure DevOps, Jira, or none.
-7. **Directories** — creates `~/.local/share/devtrack/data/{db,logs,pids,reports,...}`.
-8. **Config files** — writes `~/.local/share/devtrack/.env` and `~/.local/share/devtrack/workspaces.yaml`.
-9. **Shell integration** — appends `eval "$(devtrack shell-init)"` to your shell RC file (`~/.zshrc` or `~/.bashrc`). This transparently routes `git commit`/`add`/`history` through DevTrack for monitored workspaces, honouring per-repo opt-in/out (`devtrack enable-git` / `disable-git`) and the `GIT_NO_DEVTRACK=1` bypass.
-10. **Autostart** (optional) — installs a login item that starts the daemon automatically after login.
+3. **Server database** (managed mode) — requires a PostgreSQL connection URL and writes it as `POSTGRES_URL`.
+4. **Git repository** — the path DevTrack will monitor for commits.
+5. **LLM provider** — Ollama (local, default), OpenAI, Anthropic, Groq, or skip (configure later in `.env`).
+6. **Identity** — your email address (used to filter your own comments in integrations).
+7. **PM platform** — GitHub Issues, Azure DevOps, Jira, or none.
+8. **Directories** — creates `~/.local/share/devtrack/data/{db,logs,pids,reports,...}`.
+9. **Config files** — writes `~/.local/share/devtrack/.env` and `~/.local/share/devtrack/workspaces.yaml`.
+10. **Shell integration** — appends `eval "$(devtrack shell-init)"` to your shell RC file (`~/.zshrc` or `~/.bashrc`). This transparently routes `git commit`/`add`/`history` through DevTrack for monitored workspaces, honouring per-repo opt-in/out (`devtrack enable-git` / `disable-git`) and the `GIT_NO_DEVTRACK=1` bypass.
+11. **Autostart** (optional) — installs a login item that starts the daemon automatically after login.
 
 The `.env` path is registered in `~/.devtrack/devtrack.conf`. Subsequent `devtrack` commands load it automatically — no manual `source .env` is needed.
 
@@ -93,6 +95,78 @@ OLLAMA_MODEL=llama3.2
 ```
 
 See `devtrack_client/.env_sample` for the full list of variables and their defaults.
+
+---
+
+## PostgreSQL deployment
+
+The Python server has no SQLite fallback. It validates `POSTGRES_URL`, connects to PostgreSQL,
+and applies Alembic migrations before opening for traffic. The Go client remains SQLite-backed and
+continues observing, queueing, and serving MCP context when the server is unavailable.
+
+### Local PostgreSQL for managed mode
+
+The managed daemon runs Python on the host. You can provision only PostgreSQL with the bundled
+Compose file:
+
+```sh
+cd /path/to/devtrack_server
+cp .env_sample .env
+# Set POSTGRES_PASSWORD to a strong local password.
+# Set POSTGRES_URL using host `postgres` so Compose validation succeeds.
+docker compose up -d postgres
+docker compose ps postgres
+```
+
+When `devtrack setup` asks for the managed-server URL, use the host-facing address:
+
+```text
+postgresql://devtrack:<password>@localhost:5432/devtrack
+```
+
+The generated `~/.local/share/devtrack/.env` is mode `0600` and supplies that URL to the managed
+Python child process.
+
+### Full local Compose deployment
+
+In `devtrack_server/.env`, set matching values and use the Compose service hostname in the URL:
+
+```dotenv
+POSTGRES_USER=devtrack
+POSTGRES_PASSWORD=<strong-password>
+POSTGRES_DB=devtrack
+POSTGRES_URL=postgresql://devtrack:<strong-password>@postgres:5432/devtrack
+```
+
+Then start the server. Compose waits until `pg_isready` succeeds before launching Python:
+
+```sh
+docker compose up -d devtrack_server
+docker compose ps
+docker compose logs devtrack_server
+```
+
+### Remote PostgreSQL
+
+Create a dedicated database and least-privilege role on the PostgreSQL host, allow network access
+only from the DevTrack server, and require TLS. On the Python server host:
+
+```dotenv
+POSTGRES_URL=postgresql://<user>:<password>@<db-host>:5432/<database>?sslmode=require
+```
+
+Verify connectivity and migrate before the first start:
+
+```sh
+cd Devtrack_/devtrack_server
+uv sync --frozen
+uv run python -m backend.db.migrate upgrade
+uv run python -m backend.db.migrate current
+uv run python -m backend.webhook_server
+```
+
+If the URL is missing, malformed, unreachable, or points to a non-PostgreSQL backend, startup fails
+with an actionable error instead of silently creating a local SQLite database.
 
 Open `~/.local/share/devtrack/workspaces.yaml` and set project-specific details:
 
@@ -162,6 +236,8 @@ On the server host:
 git clone https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_server
 uv sync
+export POSTGRES_URL='postgresql://<user>:<password>@<db-host>:5432/<database>?sslmode=require'
+uv run python -m backend.db.migrate upgrade
 uv run python -m backend.webhook_server
 ```
 
@@ -188,7 +264,7 @@ devtrack status
 
 **`PROJECT_ROOT` already set**: If you previously set `PROJECT_ROOT` manually in your environment, DevTrack will use that path instead of the managed-install location. Unset it or point it at the `devtrack_server/` directory inside your managed-install path (`~/.local/share/devtrack/server/devtrack_server/`).
 
-**Server not starting**: Run `devtrack logs` and look for Python errors. Common causes: `uv sync` was not run, or a required env var is missing. Re-run `devtrack setup` to reset the configuration.
+**Server not starting**: Run `devtrack logs` and look for Python errors. Common causes: `uv sync` was not run, `POSTGRES_URL` is missing, PostgreSQL is unreachable, or credentials/database names do not match. Check with `uv run python -m backend.db.migrate current`, then re-run `devtrack setup` if the managed URL is wrong.
 
 **Daemon already running**: `devtrack stop` then `devtrack start`.
 

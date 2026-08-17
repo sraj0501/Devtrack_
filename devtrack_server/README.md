@@ -40,8 +40,8 @@ uv sync --extra ai         # + ChromaDB RAG for personalization
 
 # 2. Configure
 cp .env_sample .env
-# Edit .env — at minimum set PROJECT_ROOT, LLM_PROVIDER, DEVTRACK_API_KEY,
-# ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY
+# Edit .env — at minimum set POSTGRES_URL, PROJECT_ROOT, LLM_PROVIDER,
+# DEVTRACK_API_KEY, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY
 
 # 3. Start
 uv run python -m backend.webhook_server
@@ -55,6 +55,8 @@ curl http://localhost:8089/health
 ### Docker
 
 ```bash
+cp .env_sample .env
+# Set POSTGRES_PASSWORD and use postgres as the hostname in POSTGRES_URL.
 docker compose up -d devtrack_server
 docker compose down
 ```
@@ -223,12 +225,12 @@ See `docs/RUNTIME_NARRATIVE.md` for the full event schema.
 
 ## Backing services
 
-PostgreSQL is the required persistence target for the Python server. During the current migration,
-start it explicitly and set `POSTGRES_URL`; TASK-116 will make Compose provisioning and startup
-validation automatic. MongoDB is optional:
+PostgreSQL is required for every Python server process. Startup validates connectivity and applies
+Alembic migrations before accepting traffic. Compose waits for its PostgreSQL health check; MongoDB
+remains optional:
 
 ```bash
-docker compose up -d postgres   # required server persistence (POSTGRES_URL)
+docker compose up -d devtrack_server  # starts PostgreSQL first and waits for it
 docker compose up -d mongo      # optional: Teams messages as an extra voice source
 ```
 

@@ -12,6 +12,7 @@ import importlib.util
 import os
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 
 def _expand(val: str) -> str:
@@ -1469,12 +1470,28 @@ def get_mongodb_db() -> str:
 def postgres_url() -> Optional[str]:
     """PostgreSQL connection URL from POSTGRES_URL.
 
-    PostgreSQL is the required target for server persistence and server-side events.
-    Until TASK-116 enforces it at startup, an absent value preserves the transitional
-    SQLite compatibility path while the remaining server stores are migrated.
+    SQLite remains available only to isolated compatibility tests and the one-shot
+    import path. Server startup must call :func:`require_postgres_url`.
     """
     val = get("POSTGRES_URL", "")
     return val if val else None
+
+
+def require_postgres_url() -> str:
+    """Return a minimally valid PostgreSQL URL or fail with actionable context."""
+    value = postgres_url()
+    if not value:
+        raise ConfigError(
+            "POSTGRES_URL",
+            "POSTGRES_URL is required for devtrack_server. "
+            "Set it to a PostgreSQL connection URL before starting the server."
+        )
+    parsed = urlparse(value)
+    if parsed.scheme != "postgresql" and not parsed.scheme.startswith("postgresql+"):
+        raise ConfigError("POSTGRES_URL", "POSTGRES_URL must use the postgresql:// scheme")
+    if not parsed.path or parsed.path == "/":
+        raise ConfigError("POSTGRES_URL", "POSTGRES_URL must include a database name")
+    return value
 
 
 def get_notification_enabled() -> bool:
