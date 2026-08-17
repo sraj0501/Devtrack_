@@ -1037,6 +1037,8 @@ func printSetupComplete(projectRoot string, mode DevTrackMode) {
 		fmt.Println("Edit .env at any time to add integrations (GitHub, Azure, Jira, etc.)")
 		fmt.Printf("Optional Python server location: %s\n", projectRoot)
 		fmt.Println("Run 'devtrack doctor' to follow background installation progress.")
+		fmt.Println()
+		printFirstRunGuidance(os.Stdout)
 	} else {
 		fmt.Println("Next steps:")
 		fmt.Println("  1. Set DEVTRACK_SERVER_URL in .env to point at your Python server.")
@@ -1046,6 +1048,8 @@ func printSetupComplete(projectRoot string, mode DevTrackMode) {
 		fmt.Println()
 		fmt.Println("Note: AI features require the Python server to be reachable at DEVTRACK_SERVER_URL.")
 		fmt.Println("Without a server URL, git monitoring and scheduling still run normally.")
+		fmt.Println()
+		printFirstRunGuidance(os.Stdout)
 	}
 	fmt.Println()
 }

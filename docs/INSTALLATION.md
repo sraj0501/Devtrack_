@@ -91,6 +91,22 @@ devtrack status             # daemon/service status plus the same capability map
 devtrack doctor --repair    # retry safely after a failed or interrupted bootstrap
 ```
 
+Setup, start, status, and doctor also show the dependency-free first step:
+
+```sh
+devtrack mcp setup
+# Reload Claude Code, then ask: "What am I working on?"
+```
+
+In Managed mode, after the optional local AI server becomes reachable, the daemon automatically mines commit messages from
+enabled local workspaces and generates the first voice profile. This one-time work is idempotent,
+never blocks daemon startup, and records a local `first-run-profile.json` result. Once ready,
+`status` and `doctor` print the commit count and suggest `devtrack work report` for an immediate EOD
+preview in the learned voice.
+
+External mode never starts this automatic learning path: local training data is not sent to a remote
+server implicitly.
+
 ---
 
 ## Configure

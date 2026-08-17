@@ -110,7 +110,7 @@ finish booting:
   "Profile built from N commits. Try: `devtrack work report`" and
   "Run `devtrack mcp setup` and ask Claude Code what you're working on."
   The MCP moment is the screenshot people share.
-- **TASK-118 in progress — background server bootstrap with visible degradation map:** `devtrack doctor`
+- **TASK-118 complete (PR #254) — background server bootstrap with visible degradation map:** `devtrack doctor`
   (or upgraded `devtrack status`) shows honestly what works now and what is coming:
   `git monitoring ✓ · MCP ✓ · ticket sync ✓ · voice generation — downloading model (4.1 GB, ~8 min)`.
   Every server failure mode degrades to something the Go client still does (the
@@ -155,8 +155,8 @@ from someone unknown means a real install survived setup.
 | # | Task | Workstream |
 |---|---|---|
 | TASK-117 | **DONE** — `devtrack setup` writes complete environment with visible defaults; invalid overrides fail clearly | 9a |
-| TASK-118 | **IN PROGRESS** — background server bootstrap (`uv sync` / local `ollama pull` non-blocking) + durable progress/retry in `status`/`doctor` | 9b |
-| TASK-119 | First-run wow script: Tier 0 mining kickoff + guided `work report` / `mcp setup` prompts | 9b |
+| TASK-118 | **DONE (PR #254)** — background server bootstrap (`uv sync` / local `ollama pull` non-blocking) + durable progress/retry in `status`/`doctor` | 9b |
+| TASK-119 | **IN PROGRESS** — automatic Tier 0 mining/profile build + guided `work report` / `mcp setup` prompts | 9b |
 | TASK-120 | Ollama detection + BYO-cloud-key fast lane in setup | 9b |
 | TASK-121 | Demo GIF (commit → staged action → EOD preview) + quickstart polish | 9c |
 | TASK-122 | devtrack_wiki homepage rewrite + repo description/topics | 9c |

@@ -339,5 +339,6 @@ func RunDoctor(repair bool) error {
 	}
 	printStatusServer()
 	printBootstrapCapabilities(os.Stdout)
+	printFirstRunGuidance(os.Stdout)
 	return nil
 }
