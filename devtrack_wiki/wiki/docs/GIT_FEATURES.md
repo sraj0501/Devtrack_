@@ -329,11 +329,11 @@ You type natural language
 "Working on PR #42 - fixing OAuth (2h)"
         │
         ▼
-NLP Parsing (LLM-first · regex fallback)
-├─ Extract task: PR #42
-├─ Extract action: working on
-├─ Extract duration: 2 hours
-└─ Extract description: fixing OAuth
+Go ticket resolution + LLM task enrichment
+├─ Preserve authoritative task: PR #42
+├─ Enrich action: working on
+├─ Enrich duration: 2 hours
+└─ Enrich description: fixing OAuth
         │
         ▼
 Work Context Enhancement (Git)
@@ -413,7 +413,7 @@ DevTrack extracts:
 | **Status** | Context from action | "in_progress", "done", "blocked" |
 | **Category** | Type of work | "feature", "bug", "doc", "refactor" |
 
-### NLP Examples
+### LLM Enrichment Examples
 
 #### Example 1: Basic Update
 
@@ -487,7 +487,6 @@ In `.env`:
 # Work update parsing
 WORK_UPDATE_ENABLED=true
 WORK_UPDATE_TIMER_INTERVAL=120        # Minutes between prompts
-WORK_UPDATE_NLP_ENABLED=true          # Use LLM-enhanced NLP (regex fallback when LLM unavailable)
 WORK_UPDATE_CONTEXT_ENABLED=true      # Add git context
 WORK_UPDATE_AI_ENHANCEMENT=true       # Improve descriptions
 
@@ -591,8 +590,8 @@ devtrack resolve-conflicts --manual
 # Check LLM is reachable
 curl http://localhost:11434/api/tags
 
-# Test NLP parsing
-uv run python -c "from backend.nlp_parser import parse_update; print(parse_update('Working on PR #42 (2h)'))"
+# Test LLM task enrichment
+uv run python -c "from backend.llm_task_parser import parse_task; print(parse_task('Working on PR #42 (2h)').to_dict())"
 
 # Check git context
 uv run python -c "from backend.work_update_enhancer import enhance_update; print(enhance_update('Working on PR #42 (2h)', '.'))"

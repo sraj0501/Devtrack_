@@ -27,7 +27,7 @@ def _bare_processor():
     """Build a TriggerProcessor with no real components wired in."""
     from backend.webhook_server import TriggerProcessor
     proc = TriggerProcessor.__new__(TriggerProcessor)
-    proc.nlp_parser = None
+    proc.llm_task_parser = None
     proc.description_enhancer = None
     proc.azure_client = None
     proc.gitlab_client = None

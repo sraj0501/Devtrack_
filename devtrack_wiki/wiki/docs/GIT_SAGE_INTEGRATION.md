@@ -93,7 +93,7 @@ devtrack logs | grep -i conflict
 
 ### Work Update Context Enrichment
 
-When the scheduler fires and prompts you for a work update, DevTrack uses git-sage to inject the current branch name, recent commits, and any linked PR numbers into the NLP pipeline — so your update is automatically enriched with git context without you having to type it.
+When the scheduler fires and prompts you for a work update, DevTrack injects the current branch name, recent commits, and linked PR context into the LLM enrichment pipeline — so your update gains repository context without you having to type it.
 
 ---
 

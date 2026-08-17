@@ -180,7 +180,7 @@ func (d *Daemon) Start() error {
 		log.Println("HTTP trigger functionality will be unavailable")
 	} else {
 		// Wait up to 30 s for the Python HTTP server to become healthy. A cold
-		// start (NLP parser, description enhancer, task matcher init) measured
+		// start (LLM task parser, description enhancer, task matcher init) measured
 		// ~14s on a fresh managed install; 10s produced a false-alarm warning
 		// on every first run even though the server came up fine moments later.
 		d.waitForPythonHTTP(30)

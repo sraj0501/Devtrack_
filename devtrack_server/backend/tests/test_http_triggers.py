@@ -28,7 +28,7 @@ if str(_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 # Module-level patches — applied once before any test in this module imports
 # the webhook_server app.  Patches _init_components so the lazy singleton
-# creation inside request handlers is instantaneous (no spaCy / Azure init).
+# creation inside request handlers is instantaneous (no LLM provider / Azure init).
 # We do NOT use TestClient as a context manager because the lifespan calls
 # asyncio.to_thread(TriggerProcessor.get) which hangs in a test event loop.
 # ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ def _patch_slow_startup():
     the client is not used as a context manager. Two things in the lifespan
     block in test environments:
 
-      1. TriggerProcessor._init_components — loads spaCy, Azure SDKs, etc.
+      1. TriggerProcessor._init_components — loads LLM provider, Azure SDKs, etc.
       2. _ensure_gitlab_webhooks        — makes outbound HTTP calls to GitLab.
 
     Both are patched here so any test request returns immediately.
@@ -91,7 +91,7 @@ def client_with_key(monkeypatch):
 def _bare_processor():
     from backend.webhook_server import TriggerProcessor
     proc = TriggerProcessor.__new__(TriggerProcessor)
-    proc.nlp_parser = None
+    proc.llm_task_parser = None
     proc.description_enhancer = None
     proc.azure_client = None
     proc.gitlab_client = None
@@ -384,12 +384,12 @@ class TestTriggerProcessorCommit:
             "ticket_id": "GH-1",
             "status": "done",
         }
-        proc.nlp_parser = mock_parser
+        proc.llm_task_parser = mock_parser
         mock_router = MagicMock()
         proc.workspace_router = mock_router
 
         # Phase 3: the queue target now comes from the Go-resolved ticket_id
-        # field on the payload, not from the NLP parser's own guess.
+        # field on the payload, not from the LLM task parser's own guess.
         payload = {**COMMIT_PAYLOAD, "ticket_id": "GH-1"}
         result = proc.process_commit(payload)
 
@@ -399,16 +399,16 @@ class TestTriggerProcessorCommit:
             for a in result["actions"]
         )
 
-    def test_stages_pm_sync_when_nlp_returns_none_but_ticket_id_resolved(self):
+    def test_stages_pm_sync_when_enrichment_returns_none_but_ticket_id_resolved(self):
         """Regression guard (PR #178 PM review fix): task_data being None
-        (NLP parser returned None, e.g. degraded/unavailable spaCy) must NOT
+        (LLM task parser returned None, e.g. degraded/unavailable LLM provider) must NOT
         skip PM sync when a Phase-2-resolved ticket_id and workspace_router
         are both present — task_data is optional enrichment, not a gate on
         whether the ticket gets a queued comment at all."""
         proc = _bare_processor()
         mock_parser = MagicMock()
         mock_parser.parse.return_value = None
-        proc.nlp_parser = mock_parser
+        proc.llm_task_parser = mock_parser
         proc.workspace_router = MagicMock()
         mock_gateway = MagicMock()
         mock_gateway.stage.return_value = 13
@@ -434,7 +434,7 @@ class TestTriggerProcessorCommit:
         proc = _bare_processor()
         mock_parser = MagicMock()
         mock_parser.parse.return_value = {"description": "fix", "ticket_id": "X-1", "status": "done"}
-        proc.nlp_parser = mock_parser
+        proc.llm_task_parser = mock_parser
         # workspace_router stays None
 
         payload = {**COMMIT_PAYLOAD, "ticket_id": "X-1"}
@@ -448,10 +448,10 @@ class TestTriggerProcessorCommit:
         mock_parser = MagicMock()
         mock_parser.parse.return_value = {
             "description": "fix login",
-            "ticket_id": "GH-1",  # NLP's own guess must NOT be used as a fallback target
+            "ticket_id": "GH-1",  # Server guess must NOT be used as a fallback target
             "status": "done",
         }
-        proc.nlp_parser = mock_parser
+        proc.llm_task_parser = mock_parser
         mock_router = MagicMock()
         proc.workspace_router = mock_router
 
@@ -470,7 +470,7 @@ class TestTriggerProcessorCommit:
             "ticket_id": "GH-1",
             "status": "done",
         }
-        proc.nlp_parser = mock_parser
+        proc.llm_task_parser = mock_parser
         mock_router = MagicMock()
         proc.workspace_router = mock_router
 
@@ -484,11 +484,11 @@ class TestTriggerProcessorCommit:
     def test_no_commit_hash_truncation_fallback_target(self):
         """Phase 3: the old commit_hash[:12] fallback target is dead — confirm a
         commit with no ticket_id never reaches workspace_router with a hash-based
-        target, even when commit_hash is present and NLP found nothing useful."""
+        target, even when commit_hash is present and enrichment found nothing useful."""
         proc = _bare_processor()
         mock_parser = MagicMock()
         mock_parser.parse.return_value = {"description": "misc work", "status": ""}
-        proc.nlp_parser = mock_parser
+        proc.llm_task_parser = mock_parser
         mock_router = MagicMock()
         proc.workspace_router = mock_router
 
@@ -508,7 +508,7 @@ class TestProcessCommitQueueStaging:
         proc = _bare_processor()
         mock_parser = MagicMock()
         mock_parser.parse.return_value = {"description": "fix login", "status": "done"}
-        proc.nlp_parser = mock_parser
+        proc.llm_task_parser = mock_parser
         proc.workspace_router = MagicMock()
         mock_gateway = MagicMock()
         mock_gateway.stage.return_value = 7
@@ -517,7 +517,7 @@ class TestProcessCommitQueueStaging:
         payload = {**COMMIT_PAYLOAD, "ticket_id": "PROJ-123"}
         result = proc.process_commit(payload)
 
-        # NLP status "done" additionally stages a demoted (0.65) done
+        # LLM-enriched status "done" additionally stages a demoted (0.65) done
         # transition (TASK-128) — the post_comment is always the first call.
         _, kwargs = mock_gateway.stage.call_args_list[0]
         assert kwargs["target"] == "PROJ-123"
@@ -525,13 +525,12 @@ class TestProcessCommitQueueStaging:
         assert kwargs["action_type"] == "post_comment"
         assert "queued:post_comment:7" in result["actions"]
 
-    def test_confidence_independent_of_nlp_ticket_guess(self):
-        """Confidence is 0.85 whether or not NLP separately found a ticket id —
-        NLP's role is descriptive only, never the ticket-targeting signal."""
+    def test_confidence_independent_of_server_enrichment(self):
+        """Ticket confidence remains Go-owned regardless of server enrichment."""
         proc = _bare_processor()
         mock_parser = MagicMock()
-        mock_parser.parse.return_value = {"description": "fix login", "status": "done"}  # no ticket_id from NLP
-        proc.nlp_parser = mock_parser
+        mock_parser.parse.return_value = {"description": "fix login", "status": "done"}
+        proc.llm_task_parser = mock_parser
         proc.workspace_router = MagicMock()
         mock_gateway = MagicMock()
         mock_gateway.stage.return_value = 9
@@ -548,7 +547,7 @@ class TestProcessCommitQueueStaging:
         proc = _bare_processor()
         mock_parser = MagicMock()
         mock_parser.parse.return_value = {"description": "fix login", "ticket_id": "GH-1", "status": "done"}
-        proc.nlp_parser = mock_parser
+        proc.llm_task_parser = mock_parser
         proc.workspace_router = MagicMock()
         mock_gateway = MagicMock()
         proc._queue_gateway = mock_gateway
@@ -559,17 +558,17 @@ class TestProcessCommitQueueStaging:
         assert not any("queued:post_comment" in a for a in result["actions"])
 
     def test_stages_when_task_data_is_none_but_ticket_id_resolved(self):
-        """Regression (PM review on PR #178): when the NLP parser is
-        unavailable (e.g. spaCy not installed) or parse() raises, task_data
+        """Regression (PM review on PR #178): when the LLM task parser is
+        unavailable (e.g. LLM provider not installed) or parse() raises, task_data
         is None — but a Phase-2-resolved ticket_id plus a workspace_router
         is everything process_commit needs to stage a PM sync action.
         Previously the `elif task_data and self.workspace_router:` gate
         skipped staging entirely in this case, silently breaking Phase 3
-        ticket commenting on any setup with degraded NLP. task_data must be
+        ticket commenting on any setup with degraded enrichment. task_data must be
         treated as optional enrichment, falling back to the raw commit
         message for the description/comment text."""
         proc = _bare_processor()
-        proc.nlp_parser = None  # simulates spaCy unavailable
+        proc.llm_task_parser = None  # simulates LLM provider unavailable
         proc.workspace_router = MagicMock()
         mock_gateway = MagicMock()
         mock_gateway.stage.return_value = 11
@@ -594,14 +593,14 @@ class TestProcessCommitQueueStaging:
         assert kwargs["payload"]["status"] == ""
         assert "queued:post_comment:11" in result["actions"]
 
-    def test_stages_when_nlp_parse_raises_but_ticket_id_resolved(self):
-        """Same regression, but task_data is None because nlp_parser.parse()
-        raised (caught by the 'NLP parse' stage) rather than the parser being
+    def test_stages_when_llm_task_parse_raises_but_ticket_id_resolved(self):
+        """Same regression, but task_data is None because llm_task_parser.parse()
+        raised (caught by the 'LLM task parse' stage) rather than the parser being
         absent entirely."""
         proc = _bare_processor()
         mock_parser = MagicMock()
-        mock_parser.parse.side_effect = RuntimeError("spaCy model load failed")
-        proc.nlp_parser = mock_parser
+        mock_parser.parse.side_effect = RuntimeError("LLM provider model load failed")
+        proc.llm_task_parser = mock_parser
         proc.workspace_router = MagicMock()
         mock_gateway = MagicMock()
         mock_gateway.stage.return_value = 12

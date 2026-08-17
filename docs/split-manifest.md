@@ -6,7 +6,7 @@ This document catalogues every file and directory in the monorepo root and assig
 to one of five owners:
 
 - **CLIENT** — belongs in `devtrack_client` (Go binary + bundled git-sage Python tool)
-- **SERVER** — belongs in `devtrack_server` (Python AI pipeline, NLP, LLM, admin GUI, integrations)
+- **SERVER** — belongs in `devtrack_server` (Python LLM pipeline, admin GUI, integrations)
 - **BOTH** — genuinely needed by both repos (with notes on what changes per codebase)
 - **WIKI** — already separated into `devtrack_wiki/`; classified with source-of-truth note
 - **DELETE** — dead code, migration artefacts, or superseded files
@@ -136,7 +136,7 @@ Everything else in `backend/` is SERVER unless noted.
 | `webhook_handlers.py` | SERVER | Routes Azure/GitHub/Jira events |
 | `config.py` | SERVER | Centralised Python config; all modules use `backend.config.get()` |
 | `ipc_client.py` | SERVER | TCP IPC client (Python side); legacy internal channel |
-| `nlp_parser.py` | SERVER | spaCy-based NLP; entity/action extraction |
+| `llm_task_parser.py` | SERVER | Strict configured-provider task enrichment; no ticket routing inference |
 | `description_enhancer.py` | SERVER | Ollama-based description enhancement |
 | `commit_message_enhancer.py` | SERVER | AI commit message refinement pipeline |
 | `git_diff_analyzer.py` | SERVER | Staged-change analysis for commit context |
@@ -238,7 +238,7 @@ All tests belong to the server package. The Go client has its own `*_test.go` fi
 | `test_jira_*.py` | SERVER | Jira client and alerter tests |
 | `test_license_manager.py` | SERVER | License manager tests |
 | `test_llm_providers.py` | SERVER | LLM provider tests |
-| `test_nlp_parser.py` | SERVER | NLP parser tests (requires spaCy — in `ai` extras group) |
+| `test_llm_task_parser.py` | SERVER | Structured schema, invalid response, provider failure, and raw fallback tests |
 | `test_pm_agent.py` | SERVER | PM agent tests |
 | `test_pr_analyzer.py` | SERVER | PR analyser tests |
 | `test_project_*.py` | SERVER | Project management tests |

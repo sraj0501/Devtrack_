@@ -76,7 +76,7 @@ func TestGitMonitor() {
 
 		fmt.Println("\n👉 Next steps:")
 		fmt.Println("   • Prompt user: 'What did you work on?'")
-		fmt.Println("   • Parse response with NLP")
+		fmt.Println("   • Enrich response with the configured LLM")
 		fmt.Println("   • Update Azure DevOps/GitHub")
 		fmt.Println("   • Log to database")
 		fmt.Println()
@@ -184,7 +184,7 @@ func TestScheduler() {
 
 		fmt.Println("\n👉 Next steps:")
 		fmt.Println("   • Prompt user: 'What have you been working on?'")
-		fmt.Println("   • Send to Python NLP parser")
+		fmt.Println("   • Send to Python LLM task enrichment")
 		fmt.Println("   • Update project management tools")
 		fmt.Println()
 	})

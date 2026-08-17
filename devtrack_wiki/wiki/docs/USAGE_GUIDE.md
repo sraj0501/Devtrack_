@@ -10,12 +10,8 @@ Once DevTrack is installed and running, it automatically tracks your coding acti
 DevTrack monitors your Git activity in real-time. Whenever you **commit code**, the daemon:
 
 1. **Detects the commit** (via fsnotify - instant detection)
-2. **Parses the commit message** with NLP (LLM-first, regex fallback)
-3. **Extracts task information**:
-   - Ticket IDs (#123, PROJ-456, etc.)
-   - Action verbs (fixed, implemented, started, etc.)
-   - Time estimates/spent
-   - Status (completed, in_progress, etc.)
+2. **Uses the Go-resolved ticket ID** from branch, message, or active-work signals
+3. **Optionally enriches descriptive fields** through the configured LLM; invalid or unavailable output falls back to the raw commit text
 4. **Logs to database** (SQLite at `~/.devtrack/devtrack.db`)
 5. **Sends to APIs** (Azure DevOps, GitHub - if configured)
 
@@ -100,7 +96,7 @@ tail -50 ~/.devtrack/daemon.log
 
 # Look for:
 # - 🎯 COMMIT TRIGGER
-# - 📝 Parsing commit message with NLP...
+# - 📝 Enriching commit message with configured LLM...
 # - Parsed result: ticket_id, action_verb, status, etc.
 ```
 
@@ -280,14 +276,14 @@ grep "Git repository" ~/.devtrack/daemon.log
 # Should show the directory where you started the daemon
 ```
 
-### Verify NLP Parser is Working
+### Verify LLM Task Enrichment is Working
 ```bash
-# Check logs for NLP initialization
-grep -i "nlp\|llm\|parser" ~/.devtrack/daemon.log
+# Check logs for LLM task enrichment
+grep -i "llm task\|provider" ~/.devtrack/daemon.log
 
 # Should see:
-# - ✓ NLP parser initialized (LLM-first)
-# or: NLP parser using regex fallback (if LLM unavailable)
+# - ✓ TriggerProcessor: LLM task parser ready
+# Provider failures use raw commit text and do not block processing.
 ```
 
 ### Test Commit Detection
@@ -303,7 +299,7 @@ tail -50 ~/.devtrack/daemon.log
 # Should see:
 # - New commit detected (fsnotify)
 # - 🎯 COMMIT TRIGGER
-# - 📝 Parsing commit message with NLP...
+# - 📝 Enriching commit message with configured LLM...
 # - Parsed result: {...}
 ```
 
@@ -331,7 +327,7 @@ devtrack status
 tail -100 ~/.devtrack/daemon.log | grep -i error
 ```
 
-### ❌ NLP Not Extracting Ticket IDs
+### ❌ Ticket ID Not Resolved
 
 **Supported formats:**
 - `#123` - Simple number
@@ -342,7 +338,7 @@ tail -100 ~/.devtrack/daemon.log | grep -i error
 - `ticket 123` (no # or prefix)
 - `Story #123` (keyword before #)
 
-**Check NLP parsing output:**
+**Check the Go ticket-resolution output:**
 ```bash
 grep "Parsed result" ~/.devtrack/daemon.log | tail -5
 ```

@@ -28,7 +28,7 @@ if str(_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 # Module-level patches applied before any import of the FastAPI app.
 # These mirror the pattern established in test_http_triggers.py to avoid
-# blocking lifespan calls (spaCy, Azure SDK init, GitLab HTTP calls).
+# blocking lifespan calls (LLM provider, Azure SDK init, GitLab HTTP calls).
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="module", autouse=True)

@@ -13,7 +13,7 @@ DevTrack is split into two independent codebases:
 | **devtrack** binary | `devtrack_client` | Go daemon — git monitor, scheduler, CLI, git-sage. Works standalone. |
 | **devtrack_server** | `devtrack_server` | Python AI pipeline, admin UI, PM integrations. Optional. |
 
-The binary works fully offline with local Ollama. The server unlocks richer AI features (boardroom, NLP pipeline, admin GUI, Azure/GitHub/Jira integrations). Set `DEVTRACK_SERVER_URL` in your `.env` to activate it.
+The binary works fully offline with local Ollama. The server unlocks richer AI features (boardroom, validated LLM task enrichment, admin GUI, Azure/GitHub/Jira integrations). Set `DEVTRACK_SERVER_URL` in your `.env` to activate it.
 
 ---
 
@@ -27,7 +27,7 @@ Choose one:
    - ~10 minutes
 
 2. **[Client + Server](#client--server-installation)** — binary plus the Python AI pipeline
-   - Unlocks boardroom, NLP parsing, admin GUI, PM integrations (Jira, Azure, GitHub)
+   - Unlocks boardroom, LLM task enrichment, admin GUI, PM integrations (Jira, Azure, GitHub)
    - ~20 minutes
 
 3. **[Docker](#docker-installation)** — containerised server for Windows or consistent cross-platform setup

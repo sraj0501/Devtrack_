@@ -8,7 +8,6 @@ EnvironmentVariables, Docker env, etc.) before starting the process.
 All backend modules should use backend.config.get() instead of os.getenv() directly.
 """
 
-import importlib.util
 import os
 from pathlib import Path
 from typing import Optional
@@ -167,11 +166,6 @@ def rag_k() -> int:
 def rag_enabled() -> bool:
     """Enable RAG personalization. From .env: PERSONALIZATION_RAG_ENABLED (default true)."""
     return get_bool("PERSONALIZATION_RAG_ENABLED", True)
-
-
-def is_ai_available() -> bool:
-    """Return True if the optional 'ai' extra is installed (spaCy present)."""
-    return importlib.util.find_spec("spacy") is not None
 
 
 def log_dir() -> Path:

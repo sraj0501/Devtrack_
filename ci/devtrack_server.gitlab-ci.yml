@@ -17,7 +17,7 @@ core-tests:
     - pip install uv --quiet
     - uv sync --group dev
   script:
-    - uv run pytest backend/tests/ -x -q --tb=short --ignore=backend/tests/test_nlp_parser.py
+    - uv run pytest backend/tests/ -x -q --tb=short
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH

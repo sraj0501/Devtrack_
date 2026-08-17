@@ -50,7 +50,7 @@ differentiator, not the headline. Three layers, in order, in every external arti
 The Bible does not change; it already contains all three. Only the *first sentence*
 of each external artifact changes.
 
-**Positioning note on the server:** the Python server is the brains (NLP, voice,
+**Positioning note on the server:** the Python server is the brains (LLM enrichment, voice,
 dialectic learning, boardroom) and is *why* the differentiator claim is true — thin
 harness wrappers have no personalization pipeline sitting on months of local data.
 But externally it must be **invisible brains**: a stranger never learns there are two
@@ -81,7 +81,7 @@ raw material exists: `devtrack mcp setup/test` runs standalone on SQLite (no Pyt
 ### The friction math (why sequencing matters)
 
 The true cost of bringing the brains online is not DevTrack's code — it is the
-dependency chain: Python + uv, spaCy model, ChromaDB, and above all Ollama model
+dependency chain: Python + uv, optional ChromaDB, and above all Ollama model
 pulls (several GB, 10+ minutes). No setup polish makes that instant. The fix is to
 **sequence the wow moments in dependency order** so value arrives before the brains
 finish booting:
@@ -89,7 +89,7 @@ finish booting:
 1. **Minute 0–2, no Python.** Go binary is self-sufficient for the first wow:
    daemon starts, git monitor watches, MCP server answers from SQLite.
    `devtrack mcp setup` → ask Claude Code "what am I working on" → answer.
-2. **Background bootstrap.** `uv sync`, spaCy model, `ollama pull` kick off
+2. **Background bootstrap.** `uv sync` and `ollama pull` kick off
    non-blocking during first run — the non-negotiable #1 posture ("never block,
    never prompt") applied to installation.
 3. **Second wow when ready.** When the voice pipeline comes online, notify:
@@ -100,10 +100,9 @@ finish booting:
 ### Workstreams (in order — a Show HN spike is one-shot; friction fixes land first)
 
 **9a — Kill setup friction**
-- `devtrack setup` writes a complete working `.env`: all 12 required vars get sane
-  defaults *written into the generated file* (visible and editable — the "no silent
-  fallbacks" rule survives in spirit). Hard-fail stays for secrets only.
-- Extends the Managed Install epic; server bootstrap becomes part of the same flow.
+- **TASK-117 complete:** `devtrack setup` writes a complete working environment file with all 12
+  runtime defaults visible and editable; invalid overrides still fail clearly.
+- TASK-142 establishes the configured-LLM enrichment boundary before background bootstrap continues.
 
 **9b — Script the wow**
 - First-run flow after setup: Tier 0 voice mining kicks off, then print
@@ -154,22 +153,23 @@ from someone unknown means a real install survived setup.
 
 | # | Task | Workstream |
 |---|---|---|
-| TASK-117 | `devtrack setup` writes complete `.env` with visible defaults; hard-fail secrets only | 9a |
-| TASK-118 | Background server bootstrap (uv sync / spaCy / ollama pull non-blocking) + progress in `status`/`doctor` | 9b |
+| TASK-117 | **DONE** — `devtrack setup` writes complete environment with visible defaults; invalid overrides fail clearly | 9a |
+| TASK-118 | Background server bootstrap (`uv sync` / `ollama pull` non-blocking) + progress in `status`/`doctor` | 9b |
 | TASK-119 | First-run wow script: Tier 0 mining kickoff + guided `work report` / `mcp setup` prompts | 9b |
 | TASK-120 | Ollama detection + BYO-cloud-key fast lane in setup | 9b |
 | TASK-121 | Demo GIF (commit → staged action → EOD preview) + quickstart polish | 9c |
 | TASK-122 | devtrack_wiki homepage rewrite + repo description/topics | 9c |
 | TASK-123 | Registry submissions (MCP lists, plugin directory) | 9d |
 | TASK-124 | Launch content: Show HN + dev.to + LinkedIn via post-generator | 9d |
+| TASK-142 | Establish configured-LLM task enrichment with strict validation and a non-blocking raw/template fallback. Sequence before TASK-118. | 9a prerequisite |
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL
-> backend epic, in progress — 14 of 15 modules ported through TASK-141;
-> one additional module was dead code removed under TASK-133, leaving no production raw-`sqlite3` imports).
+> backend epic, complete through PR #251; 14 of 15 modules were ported and one dead module was
+> removed under TASK-133, leaving no production raw-`sqlite3` imports).
 > `Data/agent_logs/project_board.md` is the authoritative ID ledger; the
-> adoption gate was renumbered to TASK-117–124 to match it. The Postgres epic
-> is now numbered through TASK-141; TASK-114–116 remain and the next open ID is TASK-142.
+> adoption gate was renumbered to TASK-117–124 to match it. TASK-117 is complete. TASK-142 is now
+> assigned to the parser cleanup, and the next unused ID is TASK-143.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to

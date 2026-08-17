@@ -52,7 +52,7 @@ class WorkspaceRouter:
             pm_platform: Platform key from workspaces.yaml ("azure", "gitlab",
                          "github", "jira", "none", or "" for priority chain).
             description:  Human-readable work description.
-            ticket_id:    Ticket/issue ID extracted by NLP (may be empty).
+            ticket_id:    Authoritative ticket/issue ID resolved by the Go client.
             status:       Task status string (e.g. "in_progress", "done").
             pm_project:        Optional platform-specific project override.
             pm_assignee:       Assignee to set when creating work items (Azure: email/name; GitHub: login; GitLab: user ID int).

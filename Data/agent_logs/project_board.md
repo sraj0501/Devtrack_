@@ -1,8 +1,14 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-08-10 by PM — TASK-140 is on `dev` at `f7a95a6` with all CI lanes green.
-TASK-141 is complete and authorized for publication to `dev`: production Python server code has no
-raw `sqlite3` imports. PostgreSQL is mandatory server-side; the Go client remains SQLite-backed._
+_Last updated: 2026-08-18 by PM — the PostgreSQL backend epic is complete on `dev`; TASK-117 opened
+Phase 9 with visible managed-install defaults. TASK-118 is next in the adoption sequence, after the
+newly planned TASK-142 removes the legacy NLP-parser surface and obsolete spaCy assumptions._
+
+**[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
+(PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at
+`197c079`. The server now requires PostgreSQL, applies versioned Alembic migrations, and exposes the
+opt-in client-to-server sync boundary; managed setup writes visible runtime defaults and validates
+invalid overrides. All seven CI checks passed for the final deployment and setup changes.
 **[2026-07-13] TASK-109 — Repo cleanup before dev → main promotion.** Branch
 `docs/TASK-109-repo-cleanup`. Deleted 30 stale branches (32 remote → 2: `dev`, `main`; plus 2 stale
 local). Reconciled 5 board statuses that still read IN PROGRESS despite having shipped (TASK-080,
@@ -508,13 +514,13 @@ PostgreSQL file passed 4/4; the full Python 3.12 suite passed 900 with 4 skips. 
 `dev` authorized by the user.
 **Blockers**: none
 
-**QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
-not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
-issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
-authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
+**ACTIVE — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. TASK-117 is complete;
+TASK-118 is next after TASK-142 removes the obsolete NLP-parser/spaCy setup surface. This phase is
+packaging and narrative, not a new capability. **This board is the authoritative ID ledger** —
+`NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-142_
-_Active branch: `fix/TASK-141-port-webhook-server`_
+_Next DevTrack task ID: TASK-143_
+_Active branch: `docs/TASK-116-postgres-phase9-sync`_
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -6006,19 +6012,20 @@ static, static, live end-to-end)
 
 ---
 
-## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
+## COMPLETE — EPIC: PostgreSQL Backend (TASK-112–116)
 
-**Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
+**Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231),
+completed on `dev` 2026-08-18 through PR #251.
 **14 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
-PR #239) — no production raw-`sqlite3` modules remain** as of TASK-141. TASK-114/115/116 are the
-remaining client-sync, migration/import, and deployment-enforcement work.
+PR #239) — no production raw-`sqlite3` modules remain** as of TASK-141. TASK-114/115/116 completed
+the opt-in client sync, migration/import, and deployment-enforcement work.
 
-### Why this exists
+### Why this existed
 
-Postgres today is **half-wired, and the half that is missing fails silently.** Setting `POSTGRES_URL`
-does not give you a Postgres deployment — it gives you *two databases*:
+At the start of the epic, Postgres was **half-wired, and the missing half failed silently.** Setting
+`POSTGRES_URL` produced *two databases*:
 
-| Layer | Backend today | Portable? |
+| Layer at epic start | Backend | Portable? |
 |---|---|---|
 | `db/engine.py` (SQLAlchemy factory, dialect-aware `upsert()`, pooling) | Postgres **or** SQLite | ✅ already done |
 | 7 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket,report}_store` | follows `POSTGRES_URL` | ✅ |
@@ -6034,10 +6041,10 @@ does not give you a Postgres deployment — it gives you *two databases*:
 | ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
-So with `POSTGRES_URL` set, user accounts and licences go to Postgres while `triggers`, `task_updates`,
-`work_sessions` and `pending_actions` stay in a local SQLite file — and the EOD report, which reads
-`triggers`, keeps reading SQLite. **Nothing errors.** It looks like it works. `db/engine.py`'s own
-docstring concedes this ("Go-owned tables are NEVER touched by Python in PostgreSQL mode").
+Before the epic, setting `POSTGRES_URL` sent user accounts and licences to Postgres while `triggers`,
+`task_updates`, `work_sessions`, and `pending_actions` stayed in a local SQLite file. **Nothing
+errored.** The completed sync, migration, and deployment work removed that silent split for server
+operation while preserving client-local SQLite.
 
 For a single-user laptop that is harmless. For a multi-user commercial server it is fatal: every
 developer's triggers live in a SQLite file on their own machine, so the server can aggregate nothing —
@@ -6081,17 +6088,17 @@ adds migrations/import; TASK-116 provisions and validates mandatory `POSTGRES_UR
 - **TASK-141 — Final raw-SQLite server port.** `webhook_server.py` now delegates `/voice/status`'s
   latest seed/sync timestamp reads to the existing Python-owned SQLAlchemy stores. Verified against
   isolated SQLite, a live PostgreSQL 16 service, and the full Python 3.12 suite.
-- **TASK-114 — Client→server sync path.** The client pushes its local SQLite rows for Go-owned tables
+- **TASK-114 — Client→server sync path (COMPLETE, PR #249).** The client pushes its local SQLite rows for Go-owned tables
   (`triggers`, `task_updates`, `work_sessions`, `pending_actions`, …) over the existing `/trigger/*` HTTP
   boundary; the server persists them to Postgres. Needs: which tables sync, push cadence (on write vs
   batched), idempotency (server must dedupe replays — a stable row ID per client), a `client_id` column
   so rows are attributable per developer, and offline backlog replay when the server was unreachable.
   Consent still applies: this is developer data leaving the machine, so it stages through the
   pending-actions queue and is opt-in with the server.
-- **TASK-115 — Schema migrations.** `metadata.create_all()` is fine for greenfield SQLite; a commercial
+- **TASK-115 — Schema migrations (COMPLETE, PR #250).** A commercial
   Postgres needs versioned, reversible migrations (Alembic) plus a one-shot SQLite→Postgres import for
   developers who already have local history.
-- **TASK-116 — Deployment surface.** `docker-compose.yml` already ships a healthy `postgres:16-alpine` —
+- **TASK-116 — Deployment surface (COMPLETE, PR #251).** `docker-compose.yml` ships a healthy `postgres:16-alpine` —
   wire `devtrack_server` to `depends_on` it, document local and remote Postgres server deploys in
   `docs/INSTALLATION.md`, and require/validate `POSTGRES_URL` for server startup. Managed installation
   must provision or clearly connect to Postgres; there is no server SQLite fallback.
@@ -6101,6 +6108,49 @@ adds migrations/import; TASK-116 provisions and validates mandatory `POSTGRES_UR
 `db/engine.py` dual-dialect factory · `upsert()` · `is_postgres()` · connection pooling ·
 `config.postgres_url()` · core `psycopg2-binary` dependency · `postgres:16-alpine` in compose with a
 `pg_isready` healthcheck.
+
+---
+
+## PLANNED — TASK-142: Remove the legacy NLP parser surface
+
+**Priority: HIGH. Sequence before TASK-118.** The server's `nlp_parser.py` is already LLM-first, but
+its legacy name, regex semantic fallback, `NLPTaskParser` integration surface, and stale spaCy
+availability/install checks make the architecture look like two competing parsing systems. Replace
+that compatibility layer with an explicitly LLM-owned structured task parser using the configured
+provider abstraction (local Ollama by default; cloud only when the user opts in).
+
+**Branch:** `features/TASK-142-remove-nlp-parser`
+
+**Scope:**
+- Move structured work parsing out of `backend/nlp_parser.py`; rename `NLPTaskParser` and the
+  `TriggerProcessor.nlp_parser` stage to an LLM task-parser boundary with strict JSON validation.
+- Keep the Go-resolved ticket ID authoritative for routing. LLM output may enrich description,
+  action, time, project, and status, but must never redirect a PM update.
+- When the LLM is absent, times out, or returns malformed output, continue with the raw commit text
+  and empty optional enrichment. Do not retain a second regex-based semantic classifier.
+- Preserve explicit confidence on automated decisions and keep every outbound effect staged through
+  `pending_actions`; parsing failure must never block the developer's Git workflow.
+- Remove production and test references to `nlp_parser`, `NLPTaskParser`, and spaCy, including the
+  obsolete `config.is_ai_available()` probe and server setup/feature documentation. The optional AI
+  dependency group should describe RAG/personalization only.
+- Replace legacy parser tests and webhook mocks with focused LLM-parser validation, malformed-output,
+  provider-unavailable, and authoritative-ticket tests. Maintain GitHub, GitLab, Azure DevOps, and
+  Jira parity.
+
+**Acceptance criteria:**
+1. No production import, path, or symbol named `nlp_parser`/`NLPTaskParser`, and no active spaCy
+   dependency, bootstrap, or capability check remains.
+2. Structured parsing uses the configured LLM provider and a validated schema with explicit
+   confidence; local Ollama remains the default daily path.
+3. Provider failure or invalid output degrades to raw/template data without blocking commits,
+   dropping the authoritative ticket, or sending an action directly.
+4. The Go-resolved ticket ID is the sole routing target; server inference is enrichment only.
+5. Focused parser/webhook tests, the full Python suite, and relevant Go/API contract tests pass.
+6. README, server guide, installation, architecture, and runtime narrative contain no current-state
+   claim that spaCy or a separate NLP parser is required.
+
+**Vision check:** PASS — dependency removal strengthens offline-first operation and the configured
+LLM boundary while preserving confidence, provider choice, pending-action safety, and PM parity.
 
 ---
 
