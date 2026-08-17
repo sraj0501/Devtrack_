@@ -61,7 +61,10 @@ The setup wizard walks through:
 1. **Mode** — choose Managed (default) or External.
    - **Managed**: the daemon spawns the Python AI server automatically.
    - **External**: you run the Python server separately (see External mode below).
-2. **Server clone** (managed mode only) — if the Python server is not already present, DevTrack sparse-clones only `devtrack_server/` (~5 MB) from GitHub into `~/.local/share/devtrack/server/devtrack_server/` and runs `uv sync` to install Python dependencies.
+2. **Background server bootstrap** (managed mode only) — setup records
+   `~/.local/share/devtrack/server/devtrack_server/` immediately, then a detached worker
+   sparse-clones only `devtrack_server/` (~5 MB), runs `uv sync`, and pulls the configured model when
+   the selected provider is local Ollama. The wizard does not wait for these steps.
 3. **Server database** (managed mode) — requires a PostgreSQL connection URL and writes it as `POSTGRES_URL`.
 4. **Git repository** — the path DevTrack will monitor for commits.
 5. **LLM provider** — Ollama (local, default), OpenAI, Anthropic, Groq, or skip (configure later in `.env`).
@@ -78,6 +81,15 @@ The generated file writes the standard timeout, model, and local-service default
 fresh install is immediately usable and every value remains visible and editable. Missing non-secret
 runtime settings fall back to those same values; invalid overrides and required secrets still fail
 with an actionable configuration error.
+
+Go-native Git monitoring, SQLite, scheduling, and MCP remain available during bootstrap. Progress is
+written atomically to the DevTrack data home and shown by both commands:
+
+```sh
+devtrack doctor             # capability map, active step, error, and bootstrap log
+devtrack status             # daemon/service status plus the same capability map
+devtrack doctor --repair    # retry safely after a failed or interrupted bootstrap
+```
 
 ---
 
@@ -228,7 +240,8 @@ This installs a launchd plist (macOS), a systemd user unit (Linux), or a Schedul
 devtrack upgrade
 ```
 
-This upgrades the binary and runs `git pull + uv sync` on the Python server in managed mode.
+This upgrades the binary immediately, then starts the managed Python checkout/update, `uv sync`, and
+local Ollama model pull in the same non-blocking bootstrap worker. Follow it with `devtrack doctor`.
 
 ---
 
@@ -269,7 +282,12 @@ devtrack status
 
 **`PROJECT_ROOT` already set**: If you previously set `PROJECT_ROOT` manually in your environment, DevTrack will use that path instead of the managed-install location. Unset it or point it at the `devtrack_server/` directory inside your managed-install path (`~/.local/share/devtrack/server/devtrack_server/`).
 
-**Server not starting**: Run `devtrack logs` and look for Python errors. Common causes: `uv sync` was not run, `POSTGRES_URL` is missing, PostgreSQL is unreachable, or credentials/database names do not match. Check with `uv run python -m backend.db.migrate current`, then re-run `devtrack setup` if the managed URL is wrong.
+**Server not starting**: Run `devtrack doctor` first; it reports the bootstrap step, last error, and
+log path while confirming which Go-native features still work. Common causes are missing `uv` or
+Ollama, an incomplete model pull, a missing `POSTGRES_URL`, unreachable PostgreSQL, or incorrect
+database credentials. Retry installation with `devtrack doctor --repair`. For database failures,
+check with `uv run python -m backend.db.migrate current`, then re-run `devtrack setup` if the managed
+URL is wrong.
 
 **Daemon already running**: `devtrack stop` then `devtrack start`.
 

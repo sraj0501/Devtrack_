@@ -29,7 +29,7 @@ DevTrack is explicitly a **client-server tool** with two independently deployabl
 | **`devtrack` binary** | `devtrack_client/` | Pure Go | ~5 MB | Client / daemon — git monitoring, scheduling, CLI |
 | **Python server** | `devtrack_server/` | Python + uv | separate | Server — LLM enrichment, integrations, reports, admin |
 
-The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` sparse-clones it) and can run as a local subprocess, a Docker container, or a remote server.
+The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` starts a non-blocking, stateful sparse-checkout/`uv sync` worker) and can run as a local subprocess, a Docker container, or a remote server. Setup, Git monitoring, SQLite, scheduling, and MCP do not wait for that worker; `status` and `doctor` expose its degradation state.
 
 ### Server Modes
 

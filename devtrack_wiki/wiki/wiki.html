@@ -733,7 +733,7 @@ const CONTENT = {
 <h1>Setup Wizard</h1>
 <p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode, LLM provider, credentials, workspace, project-management platform, and shell integration, then writes a complete environment file under the DevTrack XDG data directory and registers it so every subsequent <code>devtrack</code> invocation auto-loads it. Managed mode also collects and validates the required PostgreSQL URL.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — visible runtime defaults, XDG environment file, managed PostgreSQL validation</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — non-blocking managed server bootstrap with doctor/status progress</div>
 
 <h2>Running the Wizard</h2>
 <pre><code class="language-bash">devtrack setup</code></pre>
@@ -744,12 +744,12 @@ const CONTENT = {
 <div class="table-wrap"><table>
 <thead><tr><th>Step</th><th>What happens</th></tr></thead>
 <tbody>
-<tr><td><strong>1. Prerequisites</strong></td><td>Checks <code>git</code> and, for Managed mode, the Python 3.12+ / <code>uv</code> server toolchain. Prints a clear install hint for each missing item.</td></tr>
-<tr><td><strong>2. Server mode</strong></td><td><strong>(v2.1.0-dev)</strong> Choose <strong>Managed</strong> (daemon spawns Python — default), <strong>Lightweight</strong> (no Python, git monitoring only), or <strong>External</strong> (provide a URL for a separately-running backend). Written as <code>DEVTRACK_SERVER_MODE</code>.</td></tr>
+<tr><td><strong>1. Prerequisites</strong></td><td>Checks <code>git</code>, which the Go-native product uses immediately. Managed Python/<code>uv</code>/Ollama work runs later in the background and cannot block the wizard.</td></tr>
+<tr><td><strong>2. Server mode</strong></td><td>Choose <strong>Managed</strong> (daemon starts the optional local Python server — default) or <strong>External</strong> (provide a URL for a separately-running backend). Go-native capabilities remain usable without a ready server; advanced users can still set <code>DEVTRACK_SERVER_MODE=lightweight</code> directly.</td></tr>
 <tr><td><strong>3. Workspace</strong></td><td>Prompts for the git repository to monitor. Defaults to the project root. Warns if the path is not a git repository.</td></tr>
-<tr><td><strong>4. LLM provider</strong></td><td>Offers Ollama (local, default), OpenAI, Anthropic, Groq, or Skip. Prompts for host/model or API key depending on choice. Skipped in Lightweight mode.</td></tr>
+<tr><td><strong>4. LLM provider</strong></td><td>Offers Ollama (local, default), OpenAI, Anthropic, Groq, or Skip. Prompts for host/model or API key depending on choice; only local Ollama triggers a background model pull.</td></tr>
 <tr><td><strong>5. Identity</strong></td><td>Optional email address — used to filter your own comments in integrations and to identify you in reports.</td></tr>
-<tr><td><strong>6. PM platform</strong></td><td>GitHub Issues, Azure DevOps, Jira, or None. Prompts for the relevant tokens/credentials. Skipped in Lightweight mode.</td></tr>
+<tr><td><strong>6. PM platform</strong></td><td>GitHub Issues, Azure DevOps, Jira, or None. Prompts for the relevant tokens/credentials.</td></tr>
 <tr><td><strong>7. Data directories</strong></td><td>Creates all required subdirectories under <code>Data/</code> (<code>db/</code>, <code>logs/</code>, <code>pids/</code>, <code>configs/</code>, <code>learning/</code>, <code>reports/</code>, <code>tls/</code>).</td></tr>
 <tr><td><strong>8. XDG home</strong></td><td><strong>(v2.1.0-dev)</strong> Creates <code>~/.devtrack/</code> if it does not exist.</td></tr>
 <tr><td><strong>9. workspaces.yaml</strong></td><td>Writes a starter <code>workspaces.yaml</code> under the DevTrack XDG data directory and sets <code>WORKSPACES_FILE</code> in the generated environment file.</td></tr>
@@ -757,6 +757,7 @@ const CONTENT = {
 <tr><td><strong>11. Register .env</strong></td><td>Writes the <code>.env</code> path to <code>~/.devtrack/devtrack.conf</code>. All future <code>devtrack</code> commands pick this up automatically via <code>AutoLoadEnv()</code>.</td></tr>
 <tr><td><strong>12. Shell integration</strong></td><td><strong>(v2.1.0-dev)</strong> Writes <code>eval "$(devtrack shell-init)"</code> directly to the detected shell profile (<code>~/.zshrc</code> or <code>~/.bashrc</code>) — no manual copy-paste. No <code>source .env</code> needed.</td></tr>
 <tr><td><strong>13. Autostart</strong></td><td>Prompts to install OS-native autostart via <code>devtrack autostart-install</code>.</td></tr>
+<tr><td><strong>14. Background bootstrap</strong></td><td>Managed mode starts a detached, idempotent sparse checkout, <code>uv sync</code>, and local Ollama model pull. Atomic state and a local log make every step visible in <code>devtrack doctor</code> and <code>devtrack status</code>.</td></tr>
 </tbody>
 </table></div>
 
@@ -764,9 +765,12 @@ const CONTENT = {
 <pre><code class="language-bash"># 1. Start DevTrack — managed dependencies and env are already configured
 devtrack start
 
-# 2. Check it's running
+# 2. Check the daemon and optional server bootstrap
 devtrack status
+devtrack doctor
 devtrack logs</code></pre>
+
+<p>Git monitoring, SQLite, scheduling, and MCP are ready while the optional AI server installs. A failed or interrupted bootstrap does not stop those capabilities; use <code>devtrack doctor --repair</code> to retry safely.</p>
 
 <blockquote><p><strong>No more <code>source .env</code>:</strong> Once <code>devtrack setup</code> completes, every <code>devtrack</code> command auto-loads the registered <code>.env</code> file. Shell exports, CI variables, and secrets managers always take precedence over file values — the file is only applied for keys not already in the environment.</p></blockquote>
 
@@ -812,6 +816,7 @@ docker run --env-file .env devtrack start</code></pre>
 <thead><tr><th>File</th><th>Purpose</th></tr></thead>
 <tbody>
 <tr><td><code>devtrack_client/setup.go</code></td><td><code>RunSetup()</code> wizard, <code>SetupConfig</code> struct, <code>generateEnvContent()</code> template, <code>detectProjectRoot()</code>, prerequisite checks, shell and autostart instructions</td></tr>
+<tr><td><code>devtrack_client/server_bootstrap.go</code></td><td>Detached managed-server worker, atomic progress state, duplicate-run lock, capability map, and <code>doctor --repair</code></td></tr>
 <tr><td><code>devtrack_client/internal/config/loadenv.go</code></td><td><code>AutoLoadEnv()</code>, <code>resolveEnvFilePath()</code>, <code>loadDotEnv()</code> parser, <code>RegisterEnvFile()</code></td></tr>
 </tbody>
 </table></div>
@@ -1572,6 +1577,7 @@ sudo devtrack upgrade</code></pre>
   </ul>
 </li>
 <li>Runs any <strong>versioned migrations</strong> needed to update local data files (<code>Data/</code>, <code>~/.devtrack/</code>) to the new schema.</li>
+<li>In Managed mode, starts the Python checkout/update, <code>uv sync</code>, and local Ollama model pull in the same non-blocking worker used by setup. Follow progress with <code>devtrack doctor</code>.</li>
 <li>If the daemon was running, restarts it automatically so the new version takes effect immediately — no manual <code>devtrack restart</code> needed.</li>
 </ol>
 
@@ -1607,6 +1613,7 @@ Copy-Item "$env:TEMP\devtrack_new.exe" "C:\Program Files\devtrack\devtrack.exe" 
 <thead><tr><th>File</th><th>Purpose</th></tr></thead>
 <tbody>
 <tr><td><code>devtrack_client/upgrade.go</code></td><td><code>RunUpgrade()</code> — GitLab API fetch, download, verify, extract (<code>.tar.gz</code> and <code>.zip</code>), auto-restart</td></tr>
+<tr><td><code>devtrack_client/server_bootstrap.go</code></td><td>Non-blocking managed server update plus durable progress and repair state</td></tr>
 <tr><td><code>devtrack_client/upgrade_unix.go</code></td><td>Unix elevated-replace path — <code>sudo cp</code> fallback for root-owned binary locations</td></tr>
 <tr><td><code>devtrack_client/upgrade_windows.go</code></td><td>Windows elevated-replace path — prints Administrator guidance when write permission is denied</td></tr>
 <tr><td><code>devtrack_client/internal/db/migrations.go</code></td><td>Migration registry, <code>RunMigrations()</code>, schema version tracking in <code>~/.devtrack/schema_version</code></td></tr>
@@ -1684,13 +1691,14 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — PostgreSQL backend complete; Phase 9 setup baseline shipped</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — PostgreSQL backend complete; Phase 9 background bootstrap in progress</div>
 
 <h2>PostgreSQL Backend + Phase 9 Baseline</h2>
 <p>The server persistence migration is complete on <code>dev</code>. PostgreSQL is required for the Python server, while the Go client remains local-SQLite and offline-first.</p>
 <div class="feature-list" style="margin-bottom:32px;">
   <div class="feature-item"><div class="feature-dot">1</div><div><h4>One explicit storage boundary (TASK-114–116, TASK-141)</h4><p>Opted-in client events sync over HTTP with idempotent replay and developer attribution. Alembic versions the server schema, existing history has a one-shot importer, and server startup validates PostgreSQL before accepting traffic.</p></div></div>
   <div class="feature-item"><div class="feature-dot">2</div><div><h4>Visible managed-install defaults (TASK-117)</h4><p><code>devtrack setup</code> writes editable runtime defaults to its registered XDG environment file, preserves valid external overrides, rejects invalid values, and includes the required PostgreSQL connection surface.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">3</div><div><h4>Non-blocking managed server bootstrap (TASK-118)</h4><p>Setup and upgrade now start sparse checkout, <code>uv sync</code>, and local Ollama model pulls in a detached worker. <code>devtrack status</code> and <code>devtrack doctor</code> keep Go-native capability readiness visible alongside durable install progress, errors, logs, and safe repair.</p></div></div>
 </div>
 
 <hr>
@@ -4009,7 +4017,7 @@ function renderHome() {
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
-        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard',       desc:'<code>devtrack setup</code> — interactive first-run wizard. Writes a registered XDG environment file with visible defaults and validates PostgreSQL for Managed mode.' },
+        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard',       desc:'<code>devtrack setup</code> — writes registered XDG config immediately, then bootstraps Managed Python/LLM dependencies in the background with <code>doctor</code> progress.' },
         // ── Reference ─────────────────────────────────────────────────────────
         { id:'CLI_REFERENCE',    icon:'⌨️', title:'CLI Reference',      desc:'All devtrack commands with flags and examples.' },
         { id:'CONFIGURATION',    icon:'🔧', title:'Configuration',      desc:'All .env variables with defaults, required vars, timeout settings, server modes, TLS, LLM providers, and feature flags.' },
@@ -4063,12 +4071,13 @@ ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" 
 curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_\${OS}_\${ARCH}.tar.gz" | tar xz
 sudo mv devtrack /usr/local/bin/
 
-# The wizard writes .env, creates Data/, and — in managed mode — fetches the
-# Python server into DEVTRACK_HOME/server and runs \`uv sync\` for you.
+# The wizard writes .env and creates Data/. In managed mode it starts the
+# Python checkout, \`uv sync\`, and local model pull without waiting.
 devtrack setup
 
 devtrack start       # env auto-loaded from ~/.devtrack/devtrack.conf (no \`source .env\` needed)
-devtrack status</code></pre>
+devtrack status
+devtrack doctor      # optional AI bootstrap progress and recovery guidance</code></pre>
       <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 2 — Lightweight mode (no Python at all)</p>
       <pre><code class="language-bash"># Git monitoring, scheduling, git-sage, PM connectors and alerts are all Go-native.
 # Set this before \`devtrack start\` to skip the Python server entirely.

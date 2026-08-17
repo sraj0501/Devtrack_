@@ -335,7 +335,9 @@ devtrack setup
 
 What it does:
 - Checks Git is installed before proceeding
-- Prompts for operating mode (Managed / Lightweight / External) and LLM provider credentials
+- Prompts for operating mode (Managed / External) and LLM provider credentials
+- In Managed mode, starts the optional Python checkout, `uv sync`, and local Ollama model pull in a
+  detached worker; setup does not wait for them
 - Generates the registered XDG environment file with visible runtime defaults and an auto-generated `ADMIN_SECRET_KEY`
 - In Managed mode, writes and validates the required PostgreSQL connection configuration
 - Creates `~/.devtrack/` (XDG home dir) and writes `workspaces.yaml` there
@@ -343,7 +345,10 @@ What it does:
 - Appends `eval "$(devtrack shell-init)"` to `.bashrc` / `.zshrc` automatically
 - Writes `~/.devtrack/devtrack.conf` pointing at the generated environment file
 
-After `devtrack setup` completes, run `devtrack start` — no manual `source .env` needed.
+After `devtrack setup` completes, run `devtrack start` — no manual `source .env` needed. Git
+monitoring, local SQLite, scheduling, and MCP are ready while the optional AI server finishes in the
+background. Use `devtrack doctor` or `devtrack status` for progress; retry a failed bootstrap with
+`devtrack doctor --repair`.
 
 ### Automatic `.env` loading
 
@@ -543,9 +548,10 @@ The last-known port list is persisted to disk so that `devtrack health` can repo
 
 ### Python AI server
 
-**Managed mode** (default): `devtrack setup` installs the Python server automatically
-via git sparse-checkout to `~/.local/share/devtrack/server/`, writes the PostgreSQL connection
-surface, and validates it. No manual dependency setup is needed.
+**Managed mode** (default): `devtrack setup` configures the deterministic server location and starts
+a background sparse checkout into `~/.local/share/devtrack/server/`, followed by `uv sync` and, for
+the local Ollama provider only, the configured model pull. The wizard does not wait for these steps;
+`devtrack doctor` shows durable progress and failures. No manual dependency setup is needed.
 
 **External mode** (server on a separate host): clone the repo on that host,
 `cd devtrack_server && uv sync && uv run python -m backend.webhook_server`.
