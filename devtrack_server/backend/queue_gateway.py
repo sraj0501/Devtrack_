@@ -33,7 +33,7 @@ from typing import Optional
 from sqlalchemy import Column, Float, Integer, Table, Text, select
 from sqlalchemy.engine import Engine
 
-from backend.db.engine import get_engine, metadata
+from backend.db.engine import ensure_tables, get_engine, metadata
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ pending_actions_table = Table(
 
 def _init(engine: Optional[Engine] = None) -> Engine:
     eng = engine or get_engine()
-    metadata.create_all(eng, tables=[pending_actions_table])
+    ensure_tables(eng, tables=[pending_actions_table])
     return eng
 
 

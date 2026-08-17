@@ -22,62 +22,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy import Column, ForeignKey, Index, Integer, Table, Text, select
+from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
 from backend.admin.auth import hash_password, verify_password
-
-# We maintain a separate metadata for admin tables so they don't pollute
-# the shared metadata used by init_all_tables() on the main DB.
-from sqlalchemy import MetaData as _MetaData
-
-_admin_metadata = _MetaData()
-
-# ---------------------------------------------------------------------------
-# Table definitions
-# ---------------------------------------------------------------------------
-
-admin_users_table = Table(
-    "admin_users", _admin_metadata,
-    Column("id",            Integer, primary_key=True, autoincrement=True),
-    Column("username",      Text, nullable=False, unique=True),
-    Column("password_hash", Text, nullable=False),
-    Column("role",          Text, nullable=False),
-    Column("created_at",    Text, nullable=False),
-    Column("last_login",    Text),
-    Column("disabled",      Integer, nullable=False),
-)
-
-admin_api_keys_table = Table(
-    "admin_api_keys", _admin_metadata,
-    Column("id",         Integer, primary_key=True, autoincrement=True),
-    Column("user_id",    Integer, ForeignKey("admin_users.id", ondelete="CASCADE"), nullable=False),
-    Column("key_prefix", Text, nullable=False),
-    Column("key_hash",   Text, nullable=False),
-    Column("label",      Text, nullable=False),
-    Column("created_at", Text, nullable=False),
-    Column("last_used",  Text),
-)
-
-audit_log_table = Table(
-    "audit_log", _admin_metadata,
-    Column("id",       Integer, primary_key=True, autoincrement=True),
-    Column("username", Text, nullable=False),
-    Column("action",   Text, nullable=False),
-    Column("detail",   Text, nullable=False),
-    Column("ip",       Text, nullable=False),
-    Column("ts",       Text, nullable=False),
-)
-
-connected_clients_table = Table(
-    "connected_clients", _admin_metadata,
-    Column("id",          Integer, primary_key=True, autoincrement=True),
-    Column("client_id",   Text, nullable=False, unique=True),   # hostname
-    Column("version",     Text, nullable=False),
-    Column("tls_enabled", Integer, nullable=False),             # 0 | 1
-    Column("workspaces",  Text, nullable=False),                # JSON array [{name, platform}]
-    Column("last_seen",   Text, nullable=False),                # ISO 8601
-    Column("ip",          Text, nullable=False),
+from backend.admin.schema import (
+    admin_api_keys_table,
+    admin_metadata as _admin_metadata,
+    admin_users_table,
+    audit_log_table,
+    connected_clients_table,
 )
 
 # ---------------------------------------------------------------------------
@@ -122,7 +76,12 @@ def _init() -> Engine:
     global _schema_done
     eng = _get_admin_engine()
     if not _schema_done:
-        _admin_metadata.create_all(eng)
+        if eng.dialect.name == "postgresql":
+            from backend.db.engine import ensure_tables
+
+            ensure_tables(eng, schema_metadata=_admin_metadata)
+        else:
+            _admin_metadata.create_all(eng)
         _schema_done = True
     return eng
 

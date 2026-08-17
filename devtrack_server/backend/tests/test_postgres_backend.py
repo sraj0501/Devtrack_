@@ -16,6 +16,7 @@ Skipped entirely unless POSTGRES_URL is set. Locally:
 In CI this is wired to a postgres service container (see .github/workflows/ci.yml).
 """
 import os
+import sqlite3
 import uuid
 
 import pytest
@@ -39,25 +40,14 @@ def pg_engine():
     """
     from backend.db import engine as engine_mod
 
-    # Table objects only register onto `metadata` when their owning module is
-    # imported (see engine.py's own docstring) — import every module ported
-    # onto engine.py so init_all_tables() actually creates their tables.
-    import backend.db.ticket_db          # noqa: F401
-    import backend.db.learning_store     # noqa: F401
-    import backend.db.project_store      # noqa: F401
-    import backend.db.platform_store     # noqa: F401
-    import backend.admin.user_manager    # noqa: F401
-    import backend.db.report_store       # noqa: F401
-    import backend.db.voice_seed_store   # noqa: F401
-    import backend.db.voice_sync_store   # noqa: F401
-    import backend.db.client_event_store # noqa: F401
-    import backend.queue_gateway         # noqa: F401
+    from backend.db.migrate import upgrade
+    import backend.db.schema  # noqa: F401
 
     engine_mod.reset_engine()
     os.environ["POSTGRES_URL"] = POSTGRES_URL
     try:
         eng = engine_mod.get_engine()
-        engine_mod.init_all_tables()
+        upgrade()
         yield eng
         with eng.connect() as conn:
             for table in reversed(engine_mod.metadata.sorted_tables):
@@ -73,12 +63,8 @@ def test_dialect_is_postgres(pg_engine):
     assert pg_engine.dialect.name == "postgresql"
 
 
-def test_init_all_tables_registers_every_migrated_module(pg_engine):
-    """metadata.create_all() must succeed for every Table registered by the
-    modules already ported onto engine.py (db/{ticket_db,learning_store,
-    project_store,platform_store,report_store}.py, admin/user_manager.py) —
-    this is the schema-compatibility check that catches SQLite-only DDL
-    assumptions."""
+def test_alembic_registers_every_server_table(pg_engine):
+    """The migration head must contain every shared server table."""
     from backend.db import engine as engine_mod
     assert len(engine_mod.metadata.tables) > 0
     with pg_engine.connect() as conn:
@@ -90,7 +76,77 @@ def test_init_all_tables_registers_every_migrated_module(pg_engine):
                 ),
                 {"name": table_name},
             )
-            assert result.scalar() is True, f"table {table_name!r} missing after init_all_tables()"
+            assert result.scalar() is True, f"table {table_name!r} missing at migration head"
+
+
+def test_alembic_initial_revision_includes_admin_schema(pg_engine):
+    from backend.admin.schema import admin_metadata
+
+    with pg_engine.connect() as conn:
+        for table_name in admin_metadata.tables:
+            result = conn.execute(
+                text(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                    "WHERE table_name = :name)"
+                ),
+                {"name": table_name},
+            )
+            assert result.scalar() is True, f"admin table {table_name!r} missing"
+
+
+def test_legacy_sqlite_import_is_idempotent(pg_engine, tmp_path):
+    from backend.db.sqlite_import import import_sqlite
+
+    source_path = tmp_path / "legacy.db"
+    source = sqlite3.connect(source_path)
+    source.executescript(
+        """
+        CREATE TABLE ticket_cache (
+            id TEXT PRIMARY KEY, source TEXT NOT NULL, external_id TEXT NOT NULL,
+            repo TEXT, title TEXT NOT NULL, description TEXT, status TEXT,
+            assignee TEXT, labels TEXT, url TEXT, synced_at TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        INSERT INTO ticket_cache VALUES
+            ('github:115', 'github', '115', 'sraj0501/Devtrack_', 'Migrations',
+             '', 'open', '', '[]', '', '2026-08-17', '2026-08-17');
+        CREATE TABLE triggers (
+            id INTEGER PRIMARY KEY, trigger_type TEXT NOT NULL,
+            timestamp TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        INSERT INTO triggers VALUES (42, 'commit', '2026-08-17T12:00:00Z', '2026-08-17');
+        """
+    )
+    source.commit()
+    source.close()
+
+    first = import_sqlite(
+        source_path,
+        client_id="migration-test-client",
+        target_engine=pg_engine,
+    )
+    second = import_sqlite(
+        source_path,
+        client_id="migration-test-client",
+        target_engine=pg_engine,
+    )
+
+    assert first.inserted["ticket_cache"] == 1
+    assert first.inserted["client_events"] == 1
+    assert second.total_inserted == 0
+    with pg_engine.connect() as conn:
+        event = conn.execute(
+            text(
+                "SELECT event_id, revision, payload->>'trigger_type' AS trigger_type "
+                "FROM client_events WHERE client_id = :client_id"
+            ),
+            {"client_id": "migration-test-client"},
+        ).mappings().one()
+    assert dict(event) == {
+        "event_id": "triggers:42",
+        "revision": 0,
+        "trigger_type": "commit",
+    }
 
 
 def test_upsert_dialect_switch_roundtrip(pg_engine):

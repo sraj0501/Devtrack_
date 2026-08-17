@@ -59,6 +59,46 @@ docker compose up -d devtrack_server
 docker compose down
 ```
 
+### Database migrations
+
+PostgreSQL schema changes are versioned with Alembic. Set `POSTGRES_URL`, then
+upgrade before starting a new server version:
+
+```bash
+uv run python -m backend.db.migrate upgrade
+uv run python -m backend.db.migrate current
+```
+
+To reverse one revision during a controlled rollback:
+
+```bash
+uv run python -m backend.db.migrate downgrade -1
+```
+
+PostgreSQL store initialization also advances to the migration head; it never
+uses `metadata.create_all()` to invent an unversioned production schema.
+
+For a one-time import from an older local installation, first preview the rows.
+The client ID must identify the developer/device that owns Go activity history:
+
+```bash
+uv run python -m backend.db.sqlite_import \
+  --source /path/to/Data/db/devtrack.db \
+  --admin-source /path/to/Data/db/admin.db \
+  --client-id my-laptop \
+  --dry-run
+
+uv run python -m backend.db.sqlite_import \
+  --source /path/to/Data/db/devtrack.db \
+  --admin-source /path/to/Data/db/admin.db \
+  --client-id my-laptop
+```
+
+The import is transactional and replay-safe. Server-owned rows use their
+existing keys; `triggers`, `task_updates`, `work_sessions`, and local
+`pending_actions` become attributable revision-zero `client_events`, allowing
+later live client sync revisions to supersede them.
+
 ---
 
 ## Running tests
@@ -158,7 +198,7 @@ Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Session is JWT cookie, valid for
 | `backend/work_tracker/` | Work session tracking and EOD report generation |
 | `backend/alert_poller.py` | Background polling for ticket assignments and comments |
 | `backend/rag/` | ChromaDB RAG for personalization (optional, `--extra ai`) |
-| `backend/db/` | PostgreSQL-backed server stores and migration-era SQLite compatibility |
+| `backend/db/` | PostgreSQL stores, Alembic entry point, and one-shot SQLite importer |
 
 ---
 
