@@ -62,6 +62,9 @@ func GetCLIAppName() string              { return cfg.GetCLIAppName() }
 func GetProjectRootOptional() string     { return cfg.GetProjectRootOptional() }
 func GetLLMProvider() string             { return cfg.GetLLMProvider() }
 func GetOllamaModel() string             { return cfg.GetOllamaModel() }
+func GetOllamaHost() string              { return cfg.GetOllamaHost() }
+func GetOpenAIAPIKeyOptional() string    { return cfg.GetOpenAIAPIKeyOptional() }
+func GetAnthropicAPIKeyOptional() string { return cfg.GetAnthropicAPIKeyOptional() }
 func GetPromptInterval() int             { return cfg.GetPromptInterval() }
 func GetWorkHoursOnly() bool             { return cfg.GetWorkHoursOnly() }
 func GetWorkStartHour() int              { return cfg.GetWorkStartHour() }

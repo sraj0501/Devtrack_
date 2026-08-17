@@ -63,11 +63,16 @@ The setup wizard walks through:
    - **External**: you run the Python server separately (see External mode below).
 2. **Background server bootstrap** (managed mode only) — setup records
    `~/.local/share/devtrack/server/devtrack_server/` immediately, then a detached worker
-   sparse-clones only `devtrack_server/` (~5 MB), runs `uv sync`, and pulls the configured model when
-   the selected provider is local Ollama. The wizard does not wait for these steps.
+   sparse-clones only `devtrack_server/` (~5 MB), runs `uv sync`, and pulls the configured model only
+   when local Ollama has no usable generation model already installed. The wizard does not wait for
+   these steps.
 3. **Server database** (managed mode) — requires a PostgreSQL connection URL and writes it as `POSTGRES_URL`.
 4. **Git repository** — the path DevTrack will monitor for commits.
 5. **LLM provider** — Ollama (local, default), OpenAI, Anthropic, Groq, or skip (configure later in `.env`).
+   Setup queries Ollama's `/api/tags` inventory and immediately selects the first generation-capable
+   model, ignoring embedding-only models. If a model download is still needed and an
+   `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is already present, the wizard offers those credentials as
+   temporary fallbacks without displaying them. Decline to keep the install local-only.
 6. **Identity** — your email address (used to filter your own comments in integrations).
 7. **PM platform** — GitHub Issues, Azure DevOps, Jira, or none.
 8. **Directories** — creates `~/.local/share/devtrack/data/{db,logs,pids,reports,...}`.
@@ -81,6 +86,12 @@ The generated file writes the standard timeout, model, and local-service default
 fresh install is immediately usable and every value remains visible and editable. Missing non-secret
 runtime settings fall back to those same values; invalid overrides and required secrets still fail
 with an actionable configuration error.
+
+The cloud fast lane does not change the steady-state provider: `LLM_PROVIDER` remains `ollama`.
+The server's existing provider chain tries an accepted cloud credential only while local generation
+is unavailable, then uses Ollama again automatically once its model is ready. Cloud fallback sends
+generation prompt text, which may contain work context, to the selected provider; local databases
+and training stores remain on the machine.
 
 Go-native Git monitoring, SQLite, scheduling, and MCP remain available during bootstrap. Progress is
 written atomically to the DevTrack data home and shown by both commands:
@@ -257,7 +268,7 @@ devtrack upgrade
 ```
 
 This upgrades the binary immediately, then starts the managed Python checkout/update, `uv sync`, and
-local Ollama model pull in the same non-blocking bootstrap worker. Follow it with `devtrack doctor`.
+local Ollama model preparation in the same non-blocking bootstrap worker. Follow it with `devtrack doctor`.
 
 ---
 
