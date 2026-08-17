@@ -29,7 +29,7 @@ flowchart TD
 
     subgraph Backend ["🟢 Python Backend — devtrack_server/backend/"]
         WS["FastAPI :8089\nwebhook_server.py"]
-        NLP["NLP Parser\nLLM-first · regex fallback"]
+        TASK_LLM["LLM Task Enrichment\nstrict JSON · raw-text fallback"]
         LLM["LLM Providers\nOllama · OpenAI · Anthropic"]
         TUI["Terminal UI\nwork prompts"]
         RPT["Reports\ndaily · HTML · email"]
@@ -89,7 +89,7 @@ SQLite database (`Data/db/devtrack.db`) stores:
 
 ### 2. Python Intelligence Layer (devtrack_server/backend/)
 
-The smart processing engine that handles AI, NLP, and integrations.
+The smart processing engine that handles LLM enrichment and integrations.
 
 #### Core Infrastructure
 
@@ -99,11 +99,11 @@ The smart processing engine that handles AI, NLP, and integrations.
 | **backend/config.py** | Centralized config; all modules use `get()`, `get_int()`, `get_bool()`, `get_path()` |
 | **backend/ipc_client.py** | Legacy TCP IPC client (internal only; new features use HTTP `/trigger/*` endpoints) |
 
-#### NLP & AI Processing
+#### LLM & AI Processing
 
 | Module | Purpose |
 |--------|---------|
-| **backend/nlp_parser.py** | LLM-first NLP for commit/user text → structured task data; pure-regex fallback when LLM unavailable |
+| **backend/llm_task_parser.py** | Strict configured-provider enrichment with explicit confidence and raw-text fallback; never selects a ticket target |
 | **backend/description_enhancer.py** | Ollama-based description enhancement and categorization |
 | **backend/llm/provider_factory.py** | Multi-provider LLM abstraction with fallback chain |
 | **backend/llm/ollama_provider.py** | Local Ollama integration |
@@ -181,7 +181,7 @@ flowchart TD
     C --> D["HTTPS POST /trigger/commit"]
     D --> E["webhook_server.py"]
     E --> F["Extract hash · message · diff\nGet git context — branch, PR, recent commits"]
-    F --> G["NLP parse (LLM-first, regex fallback)\nrepo_path support"]
+    F --> G["LLM task enrichment (strict JSON, raw fallback)\nrepo_path support"]
     G --> H["AI enhancement\nOllama / OpenAI / Anthropic"]
     H --> I["Send task_update to PM"]
     I --> J["Log completion in SQLite"]
@@ -195,7 +195,7 @@ flowchart TD
     B --> C["TUI prompt shown to developer"]
     C --> D["User types work update"]
     D --> E["Git context enrichment\nbranch · recent commits · PR detection"]
-    E --> F["NLP parse + AI enhance"]
+    E --> F["LLM task enrichment"]
     F --> G{"Merge conflicts\ndetected?"}
     G -->|Yes| H["ConflictAutoResolver\nauto-resolve or report"]
     G -->|No| I["Send task_update to PM\nstatus · work log · time"]
@@ -210,7 +210,7 @@ flowchart TD
 flowchart TD
     A(["💬 User prompt\n'Working on PR 123 — fixed auth, 2h'"]) --> B
 
-    B["NLP Parser — LLM-first\nStructured JSON extraction via LLM\ntask refs · time · action · status detection\nPure-regex fallback when LLM unavailable"]
+    B["LLM Task Enrichment\nStrict JSON validation\ndescription · time · action · status\nRaw-text fallback when unavailable"]
     B --> C["Work Update Enhancer\nGit context: branch · recent commits\nAuto-detect PR/issue from branch"]
     C --> D["AI Description Enhancer\nClarify · categorize · add technical context"]
     D --> E["Task Matcher\nFuzzy + semantic similarity\nVerify against PM system"]

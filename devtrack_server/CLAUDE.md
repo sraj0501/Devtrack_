@@ -15,8 +15,8 @@ See `docs/ARCHITECTURE.md` for the HTTP/JSON boundary between `devtrack_client` 
 cd devtrack_server
 
 # Install dependencies (includes required PostgreSQL driver)
-uv sync                                      # core deps (no AI/spaCy)
-uv sync --extra ai                           # include AI/NLP deps
+uv sync                                      # core server + configured LLM providers
+uv sync --extra ai                           # include optional RAG personalization deps
 
 # Start the server (POSTGRES_URL is required; migrations run automatically)
 uv run python -m backend.webhook_server      # FastAPI on port 8089
@@ -41,7 +41,7 @@ devtrack_client (Go)
         |
 devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
         |
-        |-- /trigger/commit  --> NLP parser -> LLM enhancement -> PM APIs
+        |-- /trigger/commit  --> LLM task enrichment -> pending actions -> PM APIs
         |-- /trigger/timer   --> TUI prompt -> work update -> report
         |-- /webhooks/*      --> webhook_handlers.py -> event routing
         |-- /admin/*         --> admin UI (HTMX, JWT auth)
@@ -59,7 +59,7 @@ devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
 | `backend/webhook_handlers.py` | `WebhookEventHandler` — routes Azure/GitHub/Jira events |
 | `backend/config.py` | All config — use `backend.config.get()`, never `os.getenv()` directly |
 | `backend/ipc_client.py` | Legacy TCP IPC client (Python side) — prefer HTTP triggers for new code |
-| `backend/nlp_parser.py` | spaCy NLP for commit/user text → structured task data |
+| `backend/llm_task_parser.py` | Strict configured-provider enrichment with explicit confidence and raw-text fallback; never selects the ticket target |
 | `backend/description_enhancer.py` | Ollama-based description enhancement |
 | `backend/llm/` | Multi-provider LLM abstraction (Ollama / OpenAI / Anthropic / Groq) |
 | `backend/user_prompt.py` | Terminal TUI for interactive work-update prompts |

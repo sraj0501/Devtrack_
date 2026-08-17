@@ -64,7 +64,7 @@ devtrack status
 > If the binary is in a root-owned location (e.g. `/usr/local/bin`), run `sudo devtrack upgrade` instead. On Windows, re-run as Administrator if a permission error occurs.
 > Versioned migrations are applied automatically and the daemon is restarted after a successful upgrade.
 
-> `devtrack setup` generates `.env` and writes `~/.devtrack/devtrack.conf` so the daemon can find it automatically. If you prefer manual setup, copy `.env_sample` to `.env` and fill in the values instead.
+> `devtrack setup` writes a complete environment file under the DevTrack XDG data directory and registers it in `~/.devtrack/devtrack.conf`. Visible runtime defaults are editable; valid shell, CI, and secret-manager overrides still take precedence.
 
 > Full walkthrough and guides: **[devtrack.cloud](https://devtrack.cloud)**
 
@@ -336,11 +336,12 @@ devtrack setup
 What it does:
 - Checks Git is installed before proceeding
 - Prompts for operating mode (Managed / Lightweight / External) and LLM provider credentials
-- Generates `.env` in the repo root with `ADMIN_SECRET_KEY` auto-generated (no manual `openssl rand` step)
+- Generates the registered XDG environment file with visible runtime defaults and an auto-generated `ADMIN_SECRET_KEY`
+- In Managed mode, writes and validates the required PostgreSQL connection configuration
 - Creates `~/.devtrack/` (XDG home dir) and writes `workspaces.yaml` there
-- Writes `WORKSPACES_FILE` into `.env` pointing at the generated file
+- Writes `WORKSPACES_FILE` into the generated environment file, pointing at the workspace file
 - Appends `eval "$(devtrack shell-init)"` to `.bashrc` / `.zshrc` automatically
-- Writes `~/.devtrack/devtrack.conf` pointing at the generated `.env`
+- Writes `~/.devtrack/devtrack.conf` pointing at the generated environment file
 
 After `devtrack setup` completes, run `devtrack start` — no manual `source .env` needed.
 
@@ -532,18 +533,19 @@ The last-known port list is persisted to disk so that `devtrack health` can repo
 | **External** | `external` | Python runs on a separate server; set `DEVTRACK_SERVER_URL` | Docker / self-hosted backend |
 | **Cloud** | — | `devtrack cloud login --url URL --key KEY` | Remote managed backend |
 
-`devtrack setup` prompts for the mode on first run and writes it to `.env`. In **Lightweight** mode, commands that depend on the Python backend show a clear error rather than crashing.
+`devtrack setup` prompts for the mode on first run and writes it to the generated environment file. In **Lightweight** mode, commands that depend on the Python backend show a clear error rather than crashing.
 
 > DevTrack runs **natively** — a Go binary plus a `uv`-managed Python server. The Go client keeps its
 > offline source of truth in local SQLite and does not connect to a database server. PostgreSQL is
 > mandatory for Python-server persistence and server-side events; MongoDB remains optional as a
-> Teams voice-learning source. The remaining server-side SQLite fallback is migration debt and is
-> being removed before PostgreSQL deployment enforcement lands.
+> Teams voice-learning source. Server startup validates PostgreSQL and advances the Alembic schema
+> before accepting traffic; there is no server-side SQLite fallback.
 
 ### Python AI server
 
 **Managed mode** (default): `devtrack setup` installs the Python server automatically
-via git sparse-checkout to `~/.local/share/devtrack/server/`. No manual steps needed.
+via git sparse-checkout to `~/.local/share/devtrack/server/`, writes the PostgreSQL connection
+surface, and validates it. No manual dependency setup is needed.
 
 **External mode** (server on a separate host): clone the repo on that host,
 `cd devtrack_server && uv sync && uv run python -m backend.webhook_server`.
@@ -558,9 +560,9 @@ See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the full setup walkthrough.
 | Layer | Stack |
 |-------|-------|
 | Daemon / CLI | Go 1.24+, fsnotify, robfig/cron, modernc/sqlite |
-| AI backend | Python 3.12+, uv, aiohttp, LLM-first NLP |
+| AI backend | Python 3.12+, uv, aiohttp, LLM-first structured task parsing |
 | Local LLM | Ollama (default) · OpenAI · Anthropic · Groq · LM Studio |
-| Storage | SQLite (app state + projects/backlog/sprints), ChromaDB (RAG), optional MongoDB |
+| Storage | Client SQLite (offline state), server PostgreSQL (required), ChromaDB (RAG), optional MongoDB |
 | Remote control | Telegram (python-telegram-bot) · Slack (slack-bolt Socket Mode) |
 | PM integrations | Azure DevOps · GitLab · GitHub · Jira REST APIs |
 | Admin console | FastAPI + HTMX, JWT auth, bcrypt passwords, SQLite user/audit store |
@@ -616,7 +618,7 @@ cd devtrack_client && go test ./...                     # Go client — 112 test
 cd devtrack_client && go vet ./...                      # lint
 
 cd devtrack_server && uv sync                           # uv manages the venv — never pip
-cd devtrack_server && uv run pytest backend/tests/      # Python server — 798 tests
+cd devtrack_server && uv run pytest backend/tests/      # Python server suite
 cd devtrack_server && uv run pytest backend/tests/ -k <name>   # filter by name
 ```
 

@@ -9,7 +9,7 @@ prompts, including:
 - Diff statistics
 - Change summary
 
-This helps the NLP parser extract better task information and provides better
+This helps LLM task enrichment include repository context and provides better
 context for AI enhancement.
 """
 

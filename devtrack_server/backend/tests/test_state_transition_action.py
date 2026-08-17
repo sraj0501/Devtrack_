@@ -44,7 +44,7 @@ def _bare_processor():
     """Build a TriggerProcessor with all components set to None."""
     from backend.webhook_server import TriggerProcessor
     proc = TriggerProcessor.__new__(TriggerProcessor)
-    proc.nlp_parser = None
+    proc.llm_task_parser = None
     proc.description_enhancer = None
     proc.azure_client = None
     proc.gitlab_client = None
@@ -496,8 +496,8 @@ class TestExtractionConfidencePlumbing:
         """'done'-word commits: status stripped from the comment payload and a
         separate 0.65-confidence done transition staged for explicit review."""
         proc, mock_gw = _processor_with_gateway()
-        proc.nlp_parser = MagicMock()
-        proc.nlp_parser.parse.return_value = {
+        proc.llm_task_parser = MagicMock()
+        proc.llm_task_parser.parse.return_value = {
             "status": "completed",
             "description": "finished the auth flow",
         }

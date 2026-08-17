@@ -27,7 +27,7 @@ DevTrack is explicitly a **client-server tool** with two independently deployabl
 | Component | Source | Technology | Size | Role |
 |---|---|---|---|---|
 | **`devtrack` binary** | `devtrack_client/` | Pure Go | ~5 MB | Client / daemon — git monitoring, scheduling, CLI |
-| **Python server** | `devtrack_server/` | Python + uv | separate | Server — AI, NLP, integrations, reports, admin |
+| **Python server** | `devtrack_server/` | Python + uv | separate | Server — LLM enrichment, integrations, reports, admin |
 
 The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` sparse-clones it) and can run as a local subprocess, a Docker container, or a remote server.
 
@@ -116,7 +116,7 @@ The Go binary (~5 MB, no Python) is published to **GitHub Releases** (`github.co
          │  FastAPI on port 8089, self-signed ECDSA cert      │
          │                                                   │
          ├─ Trigger Handlers (/trigger/commit, /timer…)      │
-         ├─ NLP Parser (spaCy)                              │
+         ├─ LLM Structured Task Parser                      │
          ├─ LLM Integration (Ollama/OpenAI/Anthropic)       │
          ├─ TUI (Terminal User Interface)                    │
          ├─ Report Generator                                │
@@ -262,7 +262,7 @@ SQLite database (`Data/db/devtrack.db`) stores:
 
 ### 2. Python Intelligence Layer (backend/)
 
-The smart processing engine that handles AI, NLP, and integrations.
+The smart processing engine that handles LLM enrichment and integrations.
 
 #### Core Infrastructure
 
@@ -271,13 +271,15 @@ The smart processing engine that handles AI, NLP, and integrations.
 | **webhook_server.py** | FastAPI entry point started by Go daemon; exposes `/trigger/*` HTTP endpoints, inbound webhooks, Admin Console, Slack bot, and Vacation auto-responder |
 | **backend/config.py** | Centralized config; all modules use `get()`, `get_int()`, `get_bool()`, `get_path()` |
 
-#### NLP & AI Processing
+#### LLM & AI Processing
 
-> **Requires the `ai` tier.** The modules below depend on `spacy`, `sentence-transformers`, and `chromadb`, which are not installed by default. Install them with `devtrack-server enable ai`. When the `ai` tier is absent, `backend/config.py:is_ai_available()` returns `False` and the server logs `feature:ai disabled` at startup — all other features continue to work normally.
+> Structured task parsing uses the configured LLM provider and is part of the normal server path.
+> Local Ollama is the default; cloud providers are opt-in. ChromaDB-backed RAG/personalization is
+> optional and degrades gracefully when its extra dependency is absent.
 
 | Module | Purpose |
 |--------|---------|
-| **backend/nlp_parser.py** | spaCy-based NLP for commit/user text → structured task data (`ai` tier) |
+| **backend/llm_task_parser.py** | Configured-provider task enrichment with strict JSON validation and raw-text fallback; never resolves routing targets |
 | **backend/description_enhancer.py** | Ollama-based description enhancement and categorization (`ai` tier) |
 | **backend/llm/provider_factory.py** | Multi-provider LLM abstraction with fallback chain |
 | **backend/llm/ollama_provider.py** | Local Ollama integration |
@@ -359,7 +361,7 @@ Python backend receives commit_trigger
          │
          ├─ Extract commit hash, message, diff
          ├─ Get git context (branch, PR, recent commits)
-         ├─ Parse commit message with NLP (repo_path support)
+         ├─ Enrich commit message through configured LLM (repo_path support)
          ├─ Enhance with AI (Ollama)
          ├─ Extract task numbers
          │
@@ -429,7 +431,7 @@ Python backend receives timer_trigger
          ├─ Show TUI prompt to user
          ├─ Get work update from user input
          ├─ Enhance with work context (git branch, recent commits)
-         ├─ Parse with NLP (repo_path support for PR detection)
+         ├─ Enrich through configured LLM (repo_path support for PR context)
          ├─ Enhance description with AI
          ├─ Extract task numbers
          │
@@ -461,23 +463,23 @@ Send acknowledge back to Go daemon
 Log completion in database
 ```
 
-### 3. User Prompt to Task Update Flow
+### 3. Observed Commit to Task Update Flow
 
 ```
-User triggered (timer or manual)
+Git monitor observes a commit
          │
          ▼
-TUI Prompt: "What are you working on?"
+Go client resolves the ticket from branch/repository context
          │
          ▼
-User types natural language: "Working on PR #123 - fixed auth bug, took 2 hours"
+HTTP/JSON trigger carries authoritative ticket ID + commit text
          │
          ▼
-NLP Parser (spaCy)
-├─ Tokenize and POS tag
-├─ Extract entities (task numbers, time)
-├─ Detect actions (working on, fixed, completed)
-└─ Create structured data: {task: "PR #123", action: "in progress", time: 2h}
+LLM structured task parser
+├─ Validate provider output against the task schema
+├─ Extract optional action/time/description enrichment
+├─ Keep the Go-resolved ticket authoritative
+└─ Degrade without blocking when the provider is unavailable
          │
          ▼
 Work Update Enhancer (Phase 2)
@@ -830,9 +832,7 @@ Offline-first is a core non-negotiable — see [`PRODUCT_BIBLE.md`](../PRODUCT_B
 - `atlassian-python-api` - Jira API
 - `msgraph-core` - Microsoft Graph SDK
 
-**AI tier** (installed via `devtrack-server enable ai`):
-- `spacy[en_core_web_sm]` - NLP and entity extraction
-- `sentence-transformers` - Semantic matching
+**Optional AI/RAG tier** (installed via `devtrack-server enable ai`):
 - `chromadb` - RAG vector store for personalization
 
 ---
@@ -868,11 +868,11 @@ Claude Code answering *"what am I working on?"* in under ten minutes. See
 > — it predated the 2026-06-10 pivot and contradicted its non-negotiables. Do not reintroduce
 > a client-side Postgres driver or a dialect split in `internal/db/`.
 >
-> **Server storage decision, superseded 2026-08-10:** PostgreSQL is **mandatory** for
+> **Server storage decision, completed 2026-08-18:** PostgreSQL is **mandatory** for
 > `devtrack_server` persistence and server-side events, not an optional multi-user mode.
-> Scoped as **EPIC TASK-112–116** plus TASK-140/141 on
-> `Data/agent_logs/project_board.md`: 14 of 15 scoped raw-`sqlite3` modules are ported
-> and one dead module was removed, so no production raw-`sqlite3` imports remain. Client data flows
+> **EPIC TASK-112–116** plus TASK-140/141 is complete on `dev` through PR #251: 14 of 15 scoped
+> raw-`sqlite3` modules were ported and one dead module was removed, so no production raw-`sqlite3`
+> imports remain. Client data flows
 > from local SQLite into server PostgreSQL over the HTTP boundary. Offline-first Rule 0
 > is preserved by the Go client continuing to observe, queue, serve MCP context, and
 > replay locally without a server connection; do not add a Go PostgreSQL driver.

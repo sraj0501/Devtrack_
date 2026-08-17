@@ -1,6 +1,6 @@
 # devtrack-server
 
-Python AI pipeline for DevTrack. Receives triggers from the Go client over HTTPS, runs NLP/LLM processing, syncs work items to Azure DevOps / GitHub / GitLab / Jira, and serves the admin console.
+Python AI pipeline for DevTrack. Receives triggers from the Go client over HTTPS, runs configured-provider LLM enrichment, stages work-item actions for Azure DevOps / GitHub / GitLab / Jira, and serves the admin console.
 
 **Version**: 1.1.0 | **Requires**: Python 3.12–3.13
 
@@ -16,7 +16,7 @@ devtrack_client (Go binary)
         ▼
 devtrack_server/backend/webhook_server.py   ← FastAPI on :8089
         │
-        ├── /trigger/commit   → NLP → LLM → PM sync
+        ├── /trigger/commit   → LLM enrichment → pending action → PM sync
         ├── /trigger/timer    → TUI prompt → work update → report
         ├── /webhooks/*       → inbound platform webhooks
         ├── /admin/*          → web admin console (JWT auth)
@@ -185,7 +185,7 @@ Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Session is JWT cookie, valid for
 | `backend/webhook_server.py` | FastAPI app, all routes, entry point |
 | `backend/webhook_handlers.py` | Routes inbound platform webhook events |
 | `backend/config.py` | Centralized config — the only place `os.getenv` is called |
-| `backend/nlp_parser.py` | LLM-first NLP: commit/user text → structured task data; pure-regex fallback when LLM unavailable |
+| `backend/llm_task_parser.py` | Strict configured-provider task enrichment with explicit confidence and raw-text fallback; ticket routing remains Go-owned |
 | `backend/description_enhancer.py` | Ollama description enhancement |
 | `backend/llm/` | Multi-provider LLM abstraction with fallback chain |
 | `backend/admin/` | Admin console (FastAPI + HTMX, JWT auth) |

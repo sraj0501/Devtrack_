@@ -113,7 +113,7 @@ IPC Server: 127.0.0.1:35893
 
 ## Adding the Server (Optional)
 
-If you want NLP parsing, the boardroom feature, admin UI, or PM integrations:
+If you want LLM task enrichment, the boardroom feature, admin UI, or PM integrations:
 
 ```bash
 # Clone the server
@@ -229,7 +229,7 @@ After `devtrack start`:
 │
 └─ Python webhook server (subprocess, :8089) — only if DEVTRACK_SERVER_URL set
    ├─ FastAPI HTTP server (receives HTTPS POST from Go daemon)
-   ├─ NLP processor (LLM-first; pure-regex fallback when LLM unavailable)
+   ├─ LLM task enrichment (strict JSON; raw-text fallback)
    ├─ LLM client (Ollama / OpenAI / Anthropic)
    ├─ PM integrations (Azure, GitHub, Teams, Jira)
    └─ Admin UI (if ADMIN_EMBED=true)

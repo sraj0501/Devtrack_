@@ -143,11 +143,11 @@ cmd_install() {
     uv sync --directory "$SERVER_HOME" --quiet
     ok "Python dependencies ready (core)"
 
-    info "Installing AI extras (spaCy + NLP model)..."
+    info "Installing optional RAG personalization dependencies..."
     if ( cd "$SERVER_HOME" && uv sync --extra ai --quiet 2>&1 ); then
-        ok "AI extras installed (spaCy, en_core_web_sm, ChromaDB)"
+        ok "RAG personalization dependencies installed (ChromaDB)"
     else
-        warn "AI extras failed — NLP features will be unavailable"
+        warn "RAG dependencies failed — personalization will run without vector retrieval"
         warn "Retry manually: cd $SERVER_HOME && uv sync --extra ai"
     fi
 
@@ -505,18 +505,18 @@ cmd_uninstall() {
 cmd_features() {
     _load_env
     hdr "DevTrack Server Features"
-    local python_ok=false
+    local rag_ok=false
     if [[ -d "$SERVER_HOME/.venv" ]]; then
-        if ( cd "$SERVER_HOME" && uv run python -c "import spacy" 2>/dev/null ); then
-            python_ok=true
+        if ( cd "$SERVER_HOME" && uv run python -c "import chromadb" 2>/dev/null ); then
+            rag_ok=true
         fi
     fi
     echo ""
     ok "core    web server, LLM, integrations, reporting"
-    if [[ "$python_ok" == true ]]; then
-        ok "ai      NLP parser, RAG personalization"
+    if [[ "$rag_ok" == true ]]; then
+        ok "ai      RAG personalization"
     else
-        err "ai      NLP parser, RAG personalization (run: devtrack-server enable ai)"
+        err "ai      RAG personalization (run: devtrack-server enable ai)"
     fi
     echo ""
 }
@@ -568,7 +568,7 @@ cmd_help() {
     echo ""
     echo -e "  ${BOLD}FEATURES${NC}"
     echo -e "    features         Show which optional feature sets are installed"
-    echo -e "    enable ai        Install the AI extra (NLP parser, RAG personalization)"
+    echo -e "    enable ai        Install the AI extra (RAG personalization)"
     echo ""
     echo -e "  ${BOLD}Environment:${NC}"
     echo -e "    DEVTRACK_SERVER_HOME  Override install directory (default: ~/.local/share/devtrack-server)"

@@ -82,7 +82,7 @@ func RunSetup() error {
 	fmt.Println("                            or use: devtrack cloud login --url URL --key KEY")
 	fmt.Println()
 	fmt.Println("  Note: git monitoring, scheduling, git-sage, and connector sync work in both modes.")
-	fmt.Println("        AI enrichment (NLP, reports, boardroom) requires the Python server.")
+	fmt.Println("        AI enrichment (LLM tasks, reports, boardroom) requires the Python server.")
 	fmt.Println()
 	fmt.Print("Choice [1]: ")
 	modeChoice := readLine(reader)

@@ -34,7 +34,7 @@ def _patch_slow_startup():
     Starlette TestClient runs the app lifespan on the first request even when
     the client is not used as a context manager. Two things in the lifespan
     block in test environments:
-      1. TriggerProcessor._init_components — loads spaCy, Azure SDKs, etc.
+      1. TriggerProcessor._init_components — loads LLM provider, Azure SDKs, etc.
       2. _ensure_gitlab_webhooks          — makes outbound HTTP calls to GitLab.
     """
     noop = AsyncMock(return_value=None)
@@ -71,7 +71,7 @@ def client(monkeypatch):
 def _bare_processor():
     from backend.webhook_server import TriggerProcessor
     proc = TriggerProcessor.__new__(TriggerProcessor)
-    proc.nlp_parser = None
+    proc.llm_task_parser = None
     proc.description_enhancer = None
     proc.azure_client = None
     proc.gitlab_client = None

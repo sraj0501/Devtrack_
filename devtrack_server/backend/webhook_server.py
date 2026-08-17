@@ -99,8 +99,6 @@ async def lifespan(app: FastAPI):
     logger.info("DevTrack Webhook + Trigger Server starting (CS-1 HTTP mode)")
     from backend.db.startup import initialize_server_database
     await asyncio.to_thread(initialize_server_database)
-    from backend.config import is_ai_available
-    logger.info("feature:ai %s", "enabled" if is_ai_available() else "disabled (run: devtrack-server enable ai)")
     await asyncio.to_thread(TriggerProcessor.get)
     await _ensure_gitlab_webhooks()
     yield
@@ -250,14 +248,14 @@ class TriggerProcessor:
             logger.debug("QueueGateway unavailable (non-fatal): %s", e)
 
     def _init_components(self) -> None:
-        # NLP parser
-        self.nlp_parser = None
+        # Optional LLM enrichment; failures degrade to the raw commit message.
+        self.llm_task_parser = None
         try:
-            from backend.nlp_parser import NLPTaskParser
-            self.nlp_parser = NLPTaskParser(use_ollama=True)
-            logger.info("✓ TriggerProcessor: NLP parser ready")
+            from backend.llm_task_parser import LLMTaskParser
+            self.llm_task_parser = LLMTaskParser()
+            logger.info("✓ TriggerProcessor: LLM task parser ready")
         except Exception as e:
-            logger.debug(f"NLP parser unavailable: {e}")
+            logger.debug("LLM task parser unavailable: %s", e)
 
         # Description enhancer
         self.description_enhancer = None
@@ -542,9 +540,9 @@ class TriggerProcessor:
         # Phase 2 — Go-resolved ticket ID (branch/message/active-ticket fallback
         # chain, ~100% hit-rate verified). Absent or empty means Go's extractor
         # found no ticket for this commit (logged [UNLINKED] on the client side).
-        # This is the authoritative ticket-resolution signal — NLP's own guess
-        # (task_data.get("ticket_id")) is no longer used to locate the ticket,
-        # only to enrich the description/comment text.
+        # This is the authoritative ticket-resolution signal. Server-side LLM
+        # parsing only enriches descriptive fields and cannot infer or redirect
+        # the PM target.
         resolved_ticket_id = data.get("ticket_id", "")
 
         logger.info(f"[HTTP commit] {commit_hash[:12]} — {commit_msg[:60]}")
@@ -565,14 +563,14 @@ class TriggerProcessor:
                 except Exception as e:
                     logger.debug(f"Work session link failed (non-fatal): {e}")
 
-        # NLP parse
+        # Optional LLM enrichment
         task_data = None
-        with _stage("NLP parse"):
-            if self.nlp_parser and commit_msg:
+        with _stage("LLM task parse"):
+            if self.llm_task_parser and commit_msg:
                 try:
-                    task_data = self.nlp_parser.parse(commit_msg, repo_path=repo_path)
+                    task_data = self.llm_task_parser.parse(commit_msg, repo_path=repo_path)
                 except Exception as e:
-                    logger.warning(f"NLP parse failed: {e}")
+                    logger.warning("LLM task enrichment failed: %s", e)
 
         # PM sync — stage via queue (Phase 1) or fall back to direct post
         with _stage("PM sync"):
@@ -580,7 +578,7 @@ class TriggerProcessor:
                 # Phase 2 found no ticket for this commit (branch/message/
                 # active-ticket fallback chain all came up empty — logged
                 # [UNLINKED] on the Go side). Non-Negotiable #8: never block,
-                # never error. We do not fall back to the old NLP-guess or
+                # never error. We do not fall back to server inference or
                 # truncated-commit-hash target — if Go says unlinked, treat
                 # it as unlinked here too.
                 logger.info(
@@ -589,9 +587,8 @@ class TriggerProcessor:
                     commit_hash[:12] if commit_hash else "?",
                 )
             elif self.workspace_router:
-                # task_data may legitimately be None here (NLP parser
-                # unavailable, e.g. spaCy not installed, or parse() raised —
-                # see "NLP parse" stage above). resolved_ticket_id is the
+                # task_data may legitimately be None here (configured provider
+                # unavailable or parse failed). resolved_ticket_id is the
                 # authoritative signal for *targeting*; task_data is only
                 # optional descriptive enrichment, so every read of it below
                 # must fall back to commit_msg / "" without raising.
@@ -608,7 +605,7 @@ class TriggerProcessor:
                     status = ""
 
                 # Phase 3 (TASK-072): generate a voice-aware ticket comment via
-                # the LLM pipeline, not a raw NLP restatement. Falls back to a
+                # the voice-aware LLM pipeline. Falls back to a
                 # templated string on any LLM failure — never blocks processing.
                 try:
                     from backend.commit_message_enhancer import generate_ticket_comment as _gtc
@@ -624,7 +621,7 @@ class TriggerProcessor:
                         "generate_ticket_comment failed (belt-and-suspenders fallback): %s",
                         _gtc_exc,
                     )
-                    # task_data.get("description") NLP restatement as last resort
+                    # Validated enrichment or raw commit text as last resort.
                     ticket_comment = (
                         task_data.get("description", commit_msg) if task_data else commit_msg
                     )

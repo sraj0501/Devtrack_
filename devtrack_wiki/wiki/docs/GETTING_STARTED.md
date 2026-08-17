@@ -10,7 +10,7 @@ DevTrack is a developer automation tool that:
 
 1. **Monitors your Git activity** — watches your repository for commits and scheduled intervals
 2. **Prompts you for work updates** — asks what you're working on at key moments
-3. **Processes with AI** — uses NLP and LLMs to understand your updates
+3. **Processes with AI** — uses the configured LLM to enrich your updates
 4. **Updates your tasks** — automatically updates Azure DevOps, GitHub, Jira, and other systems
 5. **Generates reports** — creates daily/weekly summaries of your work
 
@@ -66,7 +66,7 @@ devtrack_client/          devtrack_server/
         │   HTTPS POST /trigger/*  │
         │ ─────────────────────── ▶│
         │                          │
-Git commits / cron timer    NLP / LLM / Admin UI
+Git commits / cron timer    LLM enrichment / Admin UI
 CLI commands                Azure DevOps / GitHub / Jira
 SQLite (local)              Microsoft Graph (Teams/Email)
 ```
@@ -76,7 +76,7 @@ SQLite (local)              Microsoft Graph (Teams/Email)
 | `devtrack` binary | Go | Daemon, git monitor, scheduler, CLI, git-sage |
 | `devtrack_server` | Python | AI pipeline, admin GUI, PM integrations |
 
-**The binary works standalone** — no server required. It runs git monitoring, git-sage, commit enhancement (via local Ollama), and all CLI commands. The server unlocks richer features: boardroom, LLM-enhanced NLP, admin web UI, and full PM integrations.
+**The binary works standalone** — no server required. It runs git monitoring, git-sage, commit enhancement (via local Ollama), and all CLI commands. The server unlocks richer features: boardroom, validated LLM task enrichment, admin web UI, and full PM integrations.
 
 ---
 
@@ -166,7 +166,7 @@ devtrack force-trigger
 **A:** No. All data stays on your machine. Ollama runs locally. If you configure OpenAI or Anthropic, only AI requests go to those services — never your raw commit messages or personal context.
 
 ### Q: Do I need the server to use DevTrack?
-**A:** No. The `devtrack` binary works fully standalone. The server (`devtrack_server`) is optional — it unlocks the boardroom feature, LLM-enhanced NLP, the admin web UI, and the full PM integrations.
+**A:** No. The `devtrack` binary works fully standalone. The server (`devtrack_server`) is optional — it unlocks the boardroom feature, validated LLM task enrichment, the admin web UI, and the full PM integrations.
 
 ### Q: Can I use DevTrack with multiple Git repositories?
 **A:** Yes. Set `DEVTRACK_WORKSPACE` to a parent directory containing multiple repos, or run multiple daemon instances with different `.env` files.
@@ -193,7 +193,7 @@ devtrack force-trigger
 | Commit Enhancement | AI-powered commit messages | Ollama or cloud LLM |
 | Work Updates | Prompts for status on schedule | `.env` only |
 | git-sage | Agentic git operations via CLI | Ollama or cloud LLM |
-| NLP Parsing | Extracts tasks from natural language | `devtrack_server` + AI tier |
+| LLM task enrichment | Adds validated descriptive fields with raw-text fallback | `devtrack_server` core |
 | Conflict Resolution | Auto-resolves merge conflicts | `devtrack_server` + AI tier |
 | Report Generation | Daily/weekly AI summaries | Ollama or cloud LLM |
 | Boardroom / Plan | Multi-persona AI plan review | `devtrack_server` |

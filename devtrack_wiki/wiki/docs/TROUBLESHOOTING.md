@@ -324,11 +324,11 @@ PROJECT_ROOT=/home/user/automation_tools
 
 ---
 
-### NLP parsing returns empty/wrong fields
+### LLM task enrichment returns empty/wrong fields
 
 **Problem**: Work update text is not being parsed correctly.
 
-The NLP parser uses your configured LLM provider. If the LLM is unavailable it falls back to pure-regex extraction — ticket IDs and time patterns still work, but semantic fields (project, status) may be empty.
+Task enrichment uses your configured LLM provider. If it is unavailable or returns invalid JSON, DevTrack preserves the raw commit text and leaves optional enrichment empty. The Go-resolved ticket ID remains authoritative.
 
 **Solutions**:
 
@@ -340,13 +340,13 @@ curl http://localhost:11434/api/tags   # Ollama
 2. Test parsing directly:
 ```bash
 uv run python -c "
-from backend.nlp_parser import parse_task
-t = parse_task('Fixed auth bug in PROJ-123, spent 2h', use_ollama=True)
+from backend.llm_task_parser import parse_task
+t = parse_task('Fixed auth bug in PROJ-123, spent 2h')
 print(t.to_dict())
 "
 ```
 
-3. If LLM unavailable, regex fallback still extracts ticket IDs and time — set `WORK_UPDATE_NLP_ENABLED=false` to skip NLP entirely.
+3. If the provider is unavailable, check the server log for the fallback event. Commit processing continues with raw text.
 
 ---
 
@@ -768,7 +768,7 @@ devtrack stop && devtrack start  # no restart command — stop then start
 
 **Solutions**:
 
-1. Check LLM is reachable (NLP uses your configured LLM):
+1. Check the configured LLM is reachable:
 ```bash
 curl http://localhost:11434/api/tags   # Ollama
 # or: check LLM_PROVIDER and ensure the provider is running
@@ -777,10 +777,10 @@ curl http://localhost:11434/api/tags   # Ollama
 2. Test parsing directly:
 ```bash
 uv run python << 'EOF'
-from backend.nlp_parser import parse_update
+from backend.llm_task_parser import parse_task
 
-result = parse_update("Working on PR #42 fixing auth bug (2h)")
-print(result)
+result = parse_task("Working on PR #42 fixing auth bug (2h)")
+print(result.to_dict())
 EOF
 ```
 
@@ -1075,9 +1075,9 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 # Your test code here
-from backend.nlp_parser import parse_update
-result = parse_update("PR #42 (1h)")
-print(result)
+from backend.llm_task_parser import parse_task
+result = parse_task("PR #42 (1h)")
+print(result.to_dict())
 EOF
 ```
 

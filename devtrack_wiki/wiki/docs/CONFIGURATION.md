@@ -20,7 +20,7 @@ DevTrack is configured via a single `.env` file with **no hardcoded defaults or 
 | **core** (default) | `uv sync` | Web server, LLM providers, PM integrations |
 | **ai** (optional) | `uv sync --extra ai` | ChromaDB RAG for personalization, semantic task matching |
 
-NLP-related config (`WORK_UPDATE_NLP_ENABLED`, `CONFLICT_RESOLUTION_ENABLED`) only take effect when the AI tier is installed.
+AI-related configuration only takes effect when its corresponding server capability is enabled.
 
 ---
 
@@ -720,17 +720,6 @@ COMMIT_CONTEXT_ENABLED=true
 WORK_UPDATE_ENABLED=true
 ```
 
-#### WORK_UPDATE_NLP_ENABLED
-
-**What**: Use NLP parsing for work updates
-**Format**: `true` or `false`
-**Default**: `true`
-**Requires**: LLM provider configured (falls back to regex when LLM is unavailable)
-
-```bash
-WORK_UPDATE_NLP_ENABLED=true
-```
-
 #### WORK_UPDATE_CONTEXT_ENABLED
 
 **What**: Add git context to work updates
@@ -1000,7 +989,6 @@ COMMIT_MAX_ATTEMPTS=5
 COMMIT_CONTEXT_ENABLED=true
 
 WORK_UPDATE_ENABLED=true
-WORK_UPDATE_NLP_ENABLED=true
 WORK_UPDATE_CONTEXT_ENABLED=true
 
 CONFLICT_RESOLUTION_ENABLED=true

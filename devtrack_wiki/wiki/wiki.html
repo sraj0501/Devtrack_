@@ -731,20 +731,20 @@ function launch_icon()   { return svgIcon('<path fill-rule="evenodd" d="M11.3 1.
 const CONTENT = {
   SETUP_WIZARD: `<div class="md-body">
 <h1>Setup Wizard</h1>
-<p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode selection, LLM provider selection, credential entry, workspace selection, project management platform, and shell integration, then writes a complete <code>.env</code> and registers it so every subsequent <code>devtrack</code> invocation auto-loads it.</p>
+<p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode, LLM provider, credentials, workspace, project-management platform, and shell integration, then writes a complete environment file under the DevTrack XDG data directory and registers it so every subsequent <code>devtrack</code> invocation auto-loads it. Managed mode also collects and validates the required PostgreSQL URL.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Updated in v2.1.0-dev — mode selection, git check, auto shell integration, workspaces.yaml bootstrap</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — visible runtime defaults, XDG environment file, managed PostgreSQL validation</div>
 
 <h2>Running the Wizard</h2>
 <pre><code class="language-bash">devtrack setup</code></pre>
-<p>The wizard auto-detects the project root by walking up from the binary location looking for the <code>backend/</code> directory. No flags or environment variables are needed to run it.</p>
+<p>The wizard discovers or installs the components required by the selected mode. No flags or environment variables are needed to run it.</p>
 <p>If a <code>.env</code> already exists, the wizard asks before overwriting — the existing file is preserved unless you explicitly confirm.</p>
 
 <h2>Wizard Steps</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>Step</th><th>What happens</th></tr></thead>
 <tbody>
-<tr><td><strong>1. Prerequisites</strong></td><td>Checks <code>git</code> is on PATH (v2.1.0-dev), then checks <code>backend/</code> directory, <code>uv</code>, and Python 3.9+. Prints a clear install hint for each missing item.</td></tr>
+<tr><td><strong>1. Prerequisites</strong></td><td>Checks <code>git</code> and, for Managed mode, the Python 3.12+ / <code>uv</code> server toolchain. Prints a clear install hint for each missing item.</td></tr>
 <tr><td><strong>2. Server mode</strong></td><td><strong>(v2.1.0-dev)</strong> Choose <strong>Managed</strong> (daemon spawns Python — default), <strong>Lightweight</strong> (no Python, git monitoring only), or <strong>External</strong> (provide a URL for a separately-running backend). Written as <code>DEVTRACK_SERVER_MODE</code>.</td></tr>
 <tr><td><strong>3. Workspace</strong></td><td>Prompts for the git repository to monitor. Defaults to the project root. Warns if the path is not a git repository.</td></tr>
 <tr><td><strong>4. LLM provider</strong></td><td>Offers Ollama (local, default), OpenAI, Anthropic, Groq, or Skip. Prompts for host/model or API key depending on choice. Skipped in Lightweight mode.</td></tr>
@@ -752,8 +752,8 @@ const CONTENT = {
 <tr><td><strong>6. PM platform</strong></td><td>GitHub Issues, Azure DevOps, Jira, or None. Prompts for the relevant tokens/credentials. Skipped in Lightweight mode.</td></tr>
 <tr><td><strong>7. Data directories</strong></td><td>Creates all required subdirectories under <code>Data/</code> (<code>db/</code>, <code>logs/</code>, <code>pids/</code>, <code>configs/</code>, <code>learning/</code>, <code>reports/</code>, <code>tls/</code>).</td></tr>
 <tr><td><strong>8. XDG home</strong></td><td><strong>(v2.1.0-dev)</strong> Creates <code>~/.devtrack/</code> if it does not exist.</td></tr>
-<tr><td><strong>9. workspaces.yaml</strong></td><td><strong>(v2.1.0-dev)</strong> Writes a starter <code>workspaces.yaml</code> to <code>~/.devtrack/workspaces.yaml</code> and sets <code>WORKSPACES_FILE</code> in the generated <code>.env</code>.</td></tr>
-<tr><td><strong>10. Write .env</strong></td><td>Generates a complete <code>.env</code> at <code>PROJECT_ROOT/.env</code> with all required variables, sensible defaults, and your answers. <code>ADMIN_SECRET_KEY</code> is auto-generated as a 32-byte hex secret — no manual step needed. Written with <code>chmod 0600</code>.</td></tr>
+<tr><td><strong>9. workspaces.yaml</strong></td><td>Writes a starter <code>workspaces.yaml</code> under the DevTrack XDG data directory and sets <code>WORKSPACES_FILE</code> in the generated environment file.</td></tr>
+<tr><td><strong>10. Write .env</strong></td><td>Generates a complete <code>.env</code> under the DevTrack XDG data directory with visible runtime defaults and your answers. <code>ADMIN_SECRET_KEY</code> is auto-generated; Managed mode requires a valid <code>postgresql://</code> URL with a database name. Written with <code>chmod 0600</code>.</td></tr>
 <tr><td><strong>11. Register .env</strong></td><td>Writes the <code>.env</code> path to <code>~/.devtrack/devtrack.conf</code>. All future <code>devtrack</code> commands pick this up automatically via <code>AutoLoadEnv()</code>.</td></tr>
 <tr><td><strong>12. Shell integration</strong></td><td><strong>(v2.1.0-dev)</strong> Writes <code>eval "$(devtrack shell-init)"</code> directly to the detected shell profile (<code>~/.zshrc</code> or <code>~/.bashrc</code>) — no manual copy-paste. No <code>source .env</code> needed.</td></tr>
 <tr><td><strong>13. Autostart</strong></td><td>Prompts to install OS-native autostart via <code>devtrack autostart-install</code>.</td></tr>
@@ -761,14 +761,10 @@ const CONTENT = {
 </table></div>
 
 <h2>After Setup</h2>
-<pre><code class="language-bash"># 1. Install Python dependencies
-cd /path/to/automation_tools
-uv sync
-
-# 2. Start DevTrack — env auto-loaded, no sourcing needed
+<pre><code class="language-bash"># 1. Start DevTrack — managed dependencies and env are already configured
 devtrack start
 
-# 3. Check it's running
+# 2. Check it's running
 devtrack status
 devtrack logs</code></pre>
 
@@ -995,10 +991,10 @@ devtrack admin-start
 <li><strong>Dark theme</strong> — matches the DevTrack aesthetic; inherits CSS variables so it respects the system theme.</li>
 <li><strong>No JS build step</strong> — HTMX is loaded from CDN; all interactivity is server-rendered HTML fragments. Works without a bundler.</li>
 <li><strong>Separate from the webhook server by default</strong> — the admin console and the webhook server (port 8089) are two distinct FastAPI apps. Stopping the admin console does not affect webhook delivery. Use <code>ADMIN_EMBED=true</code> to co-host them.</li>
-<li><strong>All state in SQLite</strong> — user records, API keys, roles, and audit log entries are stored in <code>Data/devtrack.db</code> alongside all other DevTrack runtime state. No separate database or file is required.</li>
+<li><strong>One server store</strong> — user records, API keys, roles, audit entries, and server events use the required PostgreSQL database through shared SQLAlchemy stores.</li>
 </ul>
 
-<blockquote><p><strong>Storage note:</strong> All DevTrack state — trigger history, work sessions, sync cache (Azure/GitLab items), learning data (consent, profile, samples), user records, roles, and audit log — now lives in a single SQLite database at <code>Data/devtrack.db</code>. SQLite is the only store DevTrack requires — there is no database server to run. MongoDB is optional, used only as an extra source for Teams-based voice learning when <code>MONGODB_URI</code> is set. No migration is needed for a clean install.</p></blockquote>
+<blockquote><p><strong>Storage note:</strong> The Go client keeps its offline source of truth in local SQLite and can observe, queue, report, and serve MCP context without a server. The Python server requires PostgreSQL for server-side persistence and aggregate events; startup validates it and applies Alembic migrations. MongoDB is optional and used only as an extra Teams voice-learning source.</p></blockquote>
 </div>`,
 
   SLACK_BOT: `<div class="md-body">
@@ -1688,6 +1684,16 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — PostgreSQL backend complete; Phase 9 setup baseline shipped</div>
+
+<h2>PostgreSQL Backend + Phase 9 Baseline</h2>
+<p>The server persistence migration is complete on <code>dev</code>. PostgreSQL is required for the Python server, while the Go client remains local-SQLite and offline-first.</p>
+<div class="feature-list" style="margin-bottom:32px;">
+  <div class="feature-item"><div class="feature-dot">1</div><div><h4>One explicit storage boundary (TASK-114–116, TASK-141)</h4><p>Opted-in client events sync over HTTP with idempotent replay and developer attribution. Alembic versions the server schema, existing history has a one-shot importer, and server startup validates PostgreSQL before accepting traffic.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">2</div><div><h4>Visible managed-install defaults (TASK-117)</h4><p><code>devtrack setup</code> writes editable runtime defaults to its registered XDG environment file, preserves valid external overrides, rejects invalid values, and includes the required PostgreSQL connection surface.</p></div></div>
+</div>
+
+<hr>
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">TASK-126–131 — Silent Worker correctness epic + quick wins</div>
 
 <h2>TASK-126–130 — Silent Worker Correctness Epic</h2>
@@ -3231,10 +3237,10 @@ workspaces:
 <tbody>
 <tr><td>Git commit monitoring</td><td>Fully offline — uses <code>fsnotify</code> to watch the local repo</td></tr>
 <tr><td>Cron / timer triggers</td><td>Fully offline — pure Go scheduler</td></tr>
-<tr><td>Work-update prompt (TUI)</td><td>Fully offline — terminal UI, no network calls</td></tr>
+<tr><td>Queue and correction views (TUI)</td><td>Fully offline — terminal visibility, no network calls</td></tr>
 <tr><td>SQLite history &amp; task log</td><td>Fully offline — local <code>Data/db/devtrack.db</code></td></tr>
 <tr><td>Local Ollama LLM</td><td>Fully offline — runs on localhost</td></tr>
-<tr><td>NLP parsing (spaCy)</td><td>Fully offline — local model</td></tr>
+<tr><td>Structured task parsing</td><td>Uses local Ollama by default; provider failure degrades without blocking Git activity</td></tr>
 <tr><td>Daily report (terminal/HTML)</td><td>Fully offline — reads from SQLite</td></tr>
 <tr><td><code>devtrack status</code> / <code>logs</code></td><td>Fully offline</td></tr>
 </tbody>
@@ -3991,19 +3997,19 @@ function renderHome() {
     <div class="home-hero">
       <div class="home-badge">Local-First · v3.0.10</div>
       <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
-      <p class="home-sub">DevTrack monitors your Git activity, prompts for work updates, routes them through AI, and keeps your project management systems in sync — all running locally on your machine.</p>
+      <p class="home-sub">DevTrack silently observes your Git activity, stages inferred updates for review, and keeps project systems in sync — local-first and in your control.</p>
     </div>
 
     <div class="home-grid">
       ${[
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'TASK-126–130: Silent Worker correctness epic — real merge-to-Done detection, no more queue-bypassing PM writes, real confidence scoring, GitHub/GitLab in-progress labels, working PR-approval checker. TASK-131: <code>devtrack logs --follow</code> and TUI queue <code>[e]dit</code> now actually work.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'PostgreSQL backend complete: opt-in client sync, Alembic migrations, required server deployment, and visible managed-install defaults. Phase 9 Adoption Gate is now active.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitHub Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
-        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard',       desc:'<code>devtrack setup</code> — interactive first-run wizard. Walks through LLM provider, credentials, workspace, and PM platform; generates a complete <code>.env</code>; auto-registers it at <code>~/.devtrack/devtrack.conf</code> so no manual sourcing is ever needed again.' },
+        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard',       desc:'<code>devtrack setup</code> — interactive first-run wizard. Writes a registered XDG environment file with visible defaults and validates PostgreSQL for Managed mode.' },
         // ── Reference ─────────────────────────────────────────────────────────
         { id:'CLI_REFERENCE',    icon:'⌨️', title:'CLI Reference',      desc:'All devtrack commands with flags and examples.' },
         { id:'CONFIGURATION',    icon:'🔧', title:'Configuration',      desc:'All .env variables with defaults, required vars, timeout settings, server modes, TLS, LLM providers, and feature flags.' },
@@ -4072,7 +4078,7 @@ devtrack start</code></pre>
       <pre><code class="language-bash">git clone https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_server
 cp .env_sample .env                      # then fill it in
-docker compose up -d devtrack_server     # DevTrack needs no database server
+docker compose up -d devtrack_server     # starts PostgreSQL first and waits for health
 
 # Point the client at the container.
 # In .env: DEVTRACK_SERVER_MODE=external  DEVTRACK_SERVER_URL=http://localhost:8089

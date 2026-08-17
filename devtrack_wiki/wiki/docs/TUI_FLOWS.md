@@ -31,7 +31,7 @@ DevTrack has two interactive UIs that serve different purposes.
 1. Go daemon detects event (git commit or scheduler)
 2. Daemon sends IPC message to Python bridge
 3. Python bridge calls `DevTrackTUI.prompt_work_update()` or similar
-4. User input is parsed (NLP), enhanced (Ollama), and sent back to Go as task update
+4. User input is enriched through the configured LLM and returned as a task update
 5. Go persists to SQLite
 
 **File**: `devtrack_server/backend/user_prompt.py`, used by `webhook_server.py`

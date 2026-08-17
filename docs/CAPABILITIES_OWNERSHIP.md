@@ -15,7 +15,7 @@ corrected per TASK-131)._
   the git flow; notification **delivery** (telegram/slack); local UX, daemon
   lifecycle, workspace/deploy. The client reaches every *server* capability over
   HTTP — it never embeds backend logic.
-- **Server owns:** AI / NLP / LLM enhancement pipeline; the learning &
+- **Server owns:** LLM enhancement pipeline; the learning &
   personalization suite; AI-enhanced report generation; server-management tools
   (server-TUI, admin GUI); webhook ingestion.
 - **Managed mode** = deploy/bootstrap convenience (download + run server + client).
@@ -77,12 +77,12 @@ corrected per TASK-131)._
 | Git integration / hooks | `enable-git`, `disable-git`, `install-hooks`, `shell-init` | Go-native | Client | post-commit + pre-push hooks |
 | Autostart / init | `autostart-install/uninstall/status`, `launchd-install/uninstall`, `init` | Go-native | Client | |
 
-## 5. AI / NLP / LLM enhancement pipeline — Owner: **Server**
+## 5. LLM enhancement pipeline — Owner: **Server**
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
 | Commit/timer trigger pipeline | (triggers) | HTTP → server | Server | `/trigger/commit`, `/trigger/timer` |
-| NLP parsing (spaCy) | — | Python (server) | Server | `nlp_parser.py` |
+| Structured task enrichment | — | Python (server) | Server | `llm_task_parser.py`; configured provider, validated JSON, explicit confidence, raw-text fallback; Go ticket target stays authoritative |
 | Description enhancement | — | Python (server) | Server | `description_enhancer.py` |
 | Multi-provider LLM pipeline | — | Python (server) | Server | `backend/llm/` |
 | Boardroom (multi-persona review) | `boardroom` | HTTP → server | Server | `/trigger/boardroom` |
