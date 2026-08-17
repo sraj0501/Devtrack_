@@ -74,6 +74,11 @@ The setup wizard walks through:
 
 The `.env` path is registered in `~/.devtrack/devtrack.conf`. Subsequent `devtrack` commands load it automatically — no manual `source .env` is needed.
 
+The generated file writes the standard timeout, model, and local-service defaults explicitly so a
+fresh install is immediately usable and every value remains visible and editable. Missing non-secret
+runtime settings fall back to those same values; invalid overrides and required secrets still fail
+with an actionable configuration error.
+
 ---
 
 ## Configure

@@ -83,7 +83,9 @@ devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
 
 All Python modules access config via `backend.config.get()`, `get_int()`, `get_bool()`, `get_path()`. No module calls `os.getenv()` directly — this is enforced by the CS-2 audit.
 
-Server-side env vars are documented in `devtrack_server/.env_sample`. The server requires these at startup; missing vars raise `ConfigError` with the exact variable name.
+Server-side env vars are documented in `devtrack_server/.env_sample`. Non-secret runtime settings
+have visible defaults that `devtrack setup` writes into its generated `.env`; invalid overrides still
+fail validation. Mandatory secrets and `POSTGRES_URL` fail closed with the exact variable name.
 
 Key server vars: `POSTGRES_URL` (required), `DEVTRACK_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SECRET_KEY`, `LLM_PROVIDER`, `OLLAMA_HOST`, `HTTP_TIMEOUT`, `LLM_REQUEST_TIMEOUT_SECS`.
 
