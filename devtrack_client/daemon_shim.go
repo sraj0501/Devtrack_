@@ -15,6 +15,7 @@ import (
 
 type Daemon = dmn.Daemon
 type DaemonStatus = dmn.DaemonStatus
+type FirstRunResult = dmn.FirstRunResult
 
 // ── Const forward ────────────────────────────────────────────────────────────
 
@@ -42,3 +43,4 @@ func SetTelemetryEnabled(on bool) error            { return dmn.SetTelemetryEnab
 func TelemetryEnabled() bool                       { return dmn.TelemetryEnabled() }
 func CheckProcessAlive(pid int) bool               { return dmn.CheckProcessAlive(pid) }
 func SendReloadSignal(proc *os.Process) error      { return dmn.SendReloadSignal(proc) }
+func ReadFirstRunResult() (*FirstRunResult, error) { return dmn.ReadFirstRunResult() }

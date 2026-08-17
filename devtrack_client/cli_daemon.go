@@ -76,6 +76,8 @@ func (cli *CLI) handleStart() error {
 	fmt.Printf("   PID: %d\n", cmd.Process.Pid)
 	fmt.Printf("   Log: %s\n", logPath)
 	fmt.Println("\nUse 'devtrack status' to check status")
+	fmt.Println()
+	printFirstRunGuidance(os.Stdout)
 
 	enableGitForWorkspaces()
 	SendActivePingIfDue()
@@ -137,6 +139,7 @@ func (cli *CLI) handleStatus() error {
 		printStatusPMTokens()
 		printStatusServer()
 		printBootstrapCapabilities(os.Stdout)
+		printFirstRunGuidance(os.Stdout)
 		printTicketExtractionStats("")
 		fmt.Println("Config files:")
 		if envPath := resolveEnvFilePath(); envPath != "" {
@@ -287,6 +290,7 @@ func (cli *CLI) handleStatus() error {
 	// Server connection
 	printStatusServer()
 	printBootstrapCapabilities(os.Stdout)
+	printFirstRunGuidance(os.Stdout)
 
 	// Ticket extraction hit-rate (Phase 2 exit criterion)
 	printTicketExtractionStats("")

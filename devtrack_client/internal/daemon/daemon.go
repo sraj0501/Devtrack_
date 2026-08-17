@@ -54,6 +54,7 @@ type Daemon struct {
 	cancel        context.CancelFunc
 	isRunning     bool
 	webhookServer *exec.Cmd
+	webhookMu     sync.Mutex
 	alertPoller   *alerts.Poller // native Go alert poller (Phase 2)
 	telegramBot   *telegram.Bot  // interactive Telegram bot (Phase 3)
 	startTime     time.Time
@@ -219,6 +220,10 @@ func (d *Daemon) Start() error {
 	// Heartbeat: register this client with the server on startup and every 60s.
 	d.startHeartbeatLoop()
 
+	// First-run voice mining waits for the optional AI server and runs once in
+	// the background. Go-native monitoring and MCP are already available.
+	d.startFirstRunWow()
+
 	// Setup signal handlers for graceful shutdown
 	d.setupSignalHandlers()
 
@@ -257,12 +262,14 @@ func (d *Daemon) Stop() error {
 
 	// Stop webhook server (and its Python child on Windows, where "uv run"
 	// does not exec-replace itself — see KillProcessTree).
+	d.webhookMu.Lock()
 	if d.webhookServer != nil {
 		log.Println("Stopping webhook server...")
 		if err := KillProcessTree(d.webhookServer.Process.Pid); err != nil {
 			log.Printf("Warning: error stopping webhook server: %v", err)
 		}
 	}
+	d.webhookMu.Unlock()
 
 	// Stop monitoring
 	if d.monitor != nil {
@@ -503,6 +510,12 @@ func (d *Daemon) waitForPythonHTTP(timeoutSecs int) {
 // In CS-1 this is the primary Python process; python_bridge.py is no longer spawned.
 // When DEVTRACK_SERVER_MODE=external the server is managed by the user.
 func (d *Daemon) startWebhookServer() error {
+	d.webhookMu.Lock()
+	defer d.webhookMu.Unlock()
+	return d.startWebhookServerLocked()
+}
+
+func (d *Daemon) startWebhookServerLocked() error {
 	if config.IsExternalServer() {
 		log.Printf("Python backend is externally managed (DEVTRACK_SERVER_MODE=external)")
 		log.Printf("  Expected server: %s", config.GetServerURL())
@@ -565,12 +578,14 @@ func (d *Daemon) startWebhookServer() error {
 
 // restartWebhookServer restarts the webhook server process
 func (d *Daemon) restartWebhookServer() error {
+	d.webhookMu.Lock()
+	defer d.webhookMu.Unlock()
 	if d.webhookServer != nil && d.webhookServer.Process != nil {
 		KillProcessTree(d.webhookServer.Process.Pid)
 		d.webhookServer.Process.Wait()
 	}
 
-	if err := d.startWebhookServer(); err != nil {
+	if err := d.startWebhookServerLocked(); err != nil {
 		return err
 	}
 

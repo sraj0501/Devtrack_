@@ -758,6 +758,7 @@ const CONTENT = {
 <tr><td><strong>12. Shell integration</strong></td><td><strong>(v2.1.0-dev)</strong> Writes <code>eval "$(devtrack shell-init)"</code> directly to the detected shell profile (<code>~/.zshrc</code> or <code>~/.bashrc</code>) — no manual copy-paste. No <code>source .env</code> needed.</td></tr>
 <tr><td><strong>13. Autostart</strong></td><td>Prompts to install OS-native autostart via <code>devtrack autostart-install</code>.</td></tr>
 <tr><td><strong>14. Background bootstrap</strong></td><td>Managed mode starts a detached, idempotent sparse checkout, <code>uv sync</code>, and local Ollama model pull. Atomic state and a local log make every step visible in <code>devtrack doctor</code> and <code>devtrack status</code>.</td></tr>
+<tr><td><strong>15. First-run quick win</strong></td><td>Setup immediately suggests <code>devtrack mcp setup</code> and the question “What am I working on?” — both SQLite-backed and available without Python. In Managed mode, when the optional local AI server becomes ready, the daemon mines enabled local Git workspaces once, builds the voice profile, and suggests <code>devtrack work report</code>. External mode never sends local learning data automatically.</td></tr>
 </tbody>
 </table></div>
 
@@ -771,6 +772,9 @@ devtrack doctor
 devtrack logs</code></pre>
 
 <p>Git monitoring, SQLite, scheduling, and MCP are ready while the optional AI server installs. A failed or interrupted bootstrap does not stop those capabilities; use <code>devtrack doctor --repair</code> to retry safely.</p>
+<pre><code class="language-bash">devtrack mcp setup
+# Reload Claude Code, then ask: "What am I working on?"</code></pre>
+<p>In Managed mode, voice mining starts automatically after the local AI server is reachable and never blocks daemon startup. The completed profile count is kept locally and appears in <code>status</code>/<code>doctor</code> with the next command: <code>devtrack work report</code>. External mode leaves local learning data untouched.</p>
 
 <blockquote><p><strong>No more <code>source .env</code>:</strong> Once <code>devtrack setup</code> completes, every <code>devtrack</code> command auto-loads the registered <code>.env</code> file. Shell exports, CI variables, and secrets managers always take precedence over file values — the file is only applied for keys not already in the environment.</p></blockquote>
 
@@ -1691,7 +1695,7 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — PostgreSQL backend complete; Phase 9 background bootstrap in progress</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — Phase 9 background bootstrap shipped; first-run voice onboarding in progress</div>
 
 <h2>PostgreSQL Backend + Phase 9 Baseline</h2>
 <p>The server persistence migration is complete on <code>dev</code>. PostgreSQL is required for the Python server, while the Go client remains local-SQLite and offline-first.</p>
@@ -1699,6 +1703,7 @@ devtrack start</code></pre>
   <div class="feature-item"><div class="feature-dot">1</div><div><h4>One explicit storage boundary (TASK-114–116, TASK-141)</h4><p>Opted-in client events sync over HTTP with idempotent replay and developer attribution. Alembic versions the server schema, existing history has a one-shot importer, and server startup validates PostgreSQL before accepting traffic.</p></div></div>
   <div class="feature-item"><div class="feature-dot">2</div><div><h4>Visible managed-install defaults (TASK-117)</h4><p><code>devtrack setup</code> writes editable runtime defaults to its registered XDG environment file, preserves valid external overrides, rejects invalid values, and includes the required PostgreSQL connection surface.</p></div></div>
   <div class="feature-item"><div class="feature-dot">3</div><div><h4>Non-blocking managed server bootstrap (TASK-118)</h4><p>Setup and upgrade now start sparse checkout, <code>uv sync</code>, and local Ollama model pulls in a detached worker. <code>devtrack status</code> and <code>devtrack doctor</code> keep Go-native capability readiness visible alongside durable install progress, errors, logs, and safe repair.</p></div></div>
+  <div class="feature-item"><div class="feature-dot">4</div><div><h4>Scripted first-run value (TASK-119)</h4><p>The CLI immediately guides users to the SQLite-only MCP moment. Once the optional AI server is reachable, the daemon idempotently mines local Git voice data, builds the first profile without blocking startup, stores the local result, and points users to an immediate <code>devtrack work report</code> preview.</p></div></div>
 </div>
 
 <hr>

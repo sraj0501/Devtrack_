@@ -60,6 +60,12 @@ devtrack start
 devtrack status
 ```
 
+The first useful moment does not wait for Python or a model download: run
+`devtrack mcp setup`, reload Claude Code, and ask **“What am I working on?”** The daemon then mines
+enabled local repositories in Managed mode and builds the voice profile once the optional local AI server is reachable.
+`devtrack status` and `devtrack doctor` show the persistent result and suggest
+`devtrack work report` when the profile is ready.
+
 > **Updating?** Run `devtrack upgrade` to download and install the latest binary automatically (fetched from GitHub Releases; supports Linux/macOS and Windows).
 > If the binary is in a root-owned location (e.g. `/usr/local/bin`), run `sudo devtrack upgrade` instead. On Windows, re-run as Administrator if a permission error occurs.
 > Versioned migrations are applied automatically and the daemon is restarted after a successful upgrade.
@@ -247,6 +253,10 @@ devtrack test-response "Completed auth module"
 ```
 
 Learns your writing voice from **your own git history** — local, automatic, no external service. It combines a style profile with ChromaDB RAG (real examples of how you write) to personalize every commit message, ticket comment, and report the system generates.
+
+On a fresh Managed installation, the daemon automatically seeds Tier 0 voice data from enabled local Git
+workspaces and generates the first profile in the background. Completion is saved locally in
+`first-run-profile.json`; no PM action is sent and daemon startup never waits for the profile.
 
 Microsoft Teams is an **optional** extra signal (`TEAMS_ENABLED`), not a requirement — the local git-history path is the default and works entirely offline.
 
