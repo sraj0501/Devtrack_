@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -11,14 +12,14 @@ import (
 // system must pass through this table first (Phase 1 non-negotiable).
 type PendingAction struct {
 	ID         int64
-	ActionType string     // e.g. "post_comment", "state_transition", "eod_report"
-	Target     string     // e.g. "PROJ-123", "PR #456", "ADO-789"
-	Platform   string     // "github", "azure", "gitlab", "jira"
-	Workspace  string     // workspace name from workspaces.yaml
-	Payload    string     // raw JSON string — callers marshal/unmarshal
-	Confidence float64    // 0.0–1.0
-	Status     string     // pending | approved | rejected | posted | failed
-	ExpiresAt  time.Time  // computed from confidence at insert time
+	ActionType string    // e.g. "post_comment", "state_transition", "eod_report"
+	Target     string    // e.g. "PROJ-123", "PR #456", "ADO-789"
+	Platform   string    // "github", "azure", "gitlab", "jira"
+	Workspace  string    // workspace name from workspaces.yaml
+	Payload    string    // raw JSON string — callers marshal/unmarshal
+	Confidence float64   // 0.0–1.0
+	Status     string    // pending | approved | rejected | posted | failed
+	ExpiresAt  time.Time // computed from confidence at insert time
 	CreatedAt  time.Time
 	ActedAt    *time.Time // nullable — set when status changes away from 'pending'
 	ActedBy    *string    // nullable — "auto" | "tui" | "cli" | "telegram"
@@ -173,14 +174,58 @@ func (d *Database) UpdatePendingActionStatus(id int64, status, actedBy string) e
 	if !validPendingActionStatuses[status] {
 		return fmt.Errorf("invalid pending action status %q: must be one of pending, approved, rejected, posted, failed", status)
 	}
+	tx, err := d.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin pending action status update for id %d: %w", id, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
 	query := `
 		UPDATE pending_actions
 		SET status = ?, acted_at = datetime('now'), acted_by = ?
 		WHERE id = ?
 	`
-	_, err := d.db.Exec(query, status, actedBy, id)
+	result, err := tx.Exec(query, status, actedBy, id)
 	if err != nil {
 		return fmt.Errorf("failed to update pending action status for id %d: %w", id, err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read pending action status result for id %d: %w", id, err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("pending action %d not found", id)
+	}
+
+	// Rejecting a server-event batch must reject the exact outbox revisions it
+	// contains. Otherwise the next queue poll would immediately stage the same
+	// developer data again, making the user's rejection meaningless. A later
+	// source-row update increments the revision and naturally makes it pending.
+	if status == "rejected" {
+		var actionType, payloadJSON string
+		if err := tx.QueryRow(
+			`SELECT action_type, payload FROM pending_actions WHERE id = ?`, id,
+		).Scan(&actionType, &payloadJSON); err != nil {
+			return fmt.Errorf("read rejected pending action %d: %w", id, err)
+		}
+		if actionType == ServerEventSyncActionType {
+			var payload ServerEventSyncPayload
+			if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
+				return fmt.Errorf("decode rejected server event action %d: %w", id, err)
+			}
+			for _, event := range payload.Events {
+				if _, err := tx.Exec(`
+					UPDATE server_event_outbox
+					SET status = 'rejected', last_error = NULL
+					WHERE event_id = ? AND revision = ?`, event.EventID, event.Revision); err != nil {
+					return fmt.Errorf("reject server event %s: %w", event.EventID, err)
+				}
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit pending action status update for id %d: %w", id, err)
 	}
 	return nil
 }
@@ -200,9 +245,35 @@ func (d *Database) UpdatePendingActionError(id int64, errMsg string) error {
 	return nil
 }
 
+// RecordPendingActionAttemptError records a transient dispatch error without
+// taking the action out of the queue. Transport failures must retain their
+// local-first retry semantics; a later queue poll can try again.
+func (d *Database) RecordPendingActionAttemptError(id int64, errMsg string) error {
+	_, err := d.db.Exec(`
+		UPDATE pending_actions
+		SET error = ?
+		WHERE id = ?`, errMsg, id)
+	if err != nil {
+		return fmt.Errorf("failed to record pending action attempt error for id %d: %w", id, err)
+	}
+	return nil
+}
+
 // UpdatePendingActionPayload updates the payload JSON for a pending action.
 // Used by the TUI edit overlay and the CLI edit command before approval.
 func (d *Database) UpdatePendingActionPayload(id int64, payload string) error {
+	var actionType string
+	if err := d.db.QueryRow(
+		`SELECT action_type FROM pending_actions WHERE id = ?`, id,
+	).Scan(&actionType); err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("pending action %d not found", id)
+		}
+		return fmt.Errorf("read pending action %d before payload update: %w", id, err)
+	}
+	if actionType == ServerEventSyncActionType {
+		return fmt.Errorf("server event sync actions cannot be edited; approve or reject the batch")
+	}
 	query := `
 		UPDATE pending_actions
 		SET payload = ?

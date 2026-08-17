@@ -20,8 +20,8 @@ import (
 // On each tick:
 //  1. Call GET /queue/pending — get all actions with status='pending'.
 //  2. For each action whose expires_at is in the past: call POST /queue/execute.
-//  3. If execution succeeds: mark the local SQLite row status='posted' (actedBy="auto").
-//  4. If execution fails: mark the local SQLite row status='failed' with the error.
+//  3. If the remote row has an exact local mirror, keep that mirror in sync.
+//  4. Never mutate an unrelated local row that happens to share the server row's ID.
 //
 // HTTP errors are logged and do not crash the executor — next tick will retry.
 // Actions whose expires_at is still in the future are skipped (still in review window).
@@ -38,7 +38,7 @@ import (
 // Telegram bot can send the report with Approve/Reject inline keyboard buttons.
 type QueueExecutor struct {
 	db            *db.Database
-	triggerClient *trigger.HTTPTriggerClient
+	triggerClient queueTriggerClient
 	pollInterval  time.Duration
 	stopCh        chan struct{}
 
@@ -57,19 +57,27 @@ type QueueExecutor struct {
 
 	// seenIDs is the set of action IDs we have already sent a notification for.
 	seenMu  sync.Mutex
-	seenIDs map[int64]struct{}
+	seenIDs map[string]struct{}
+}
+
+type queueTriggerClient interface {
+	GetQueuePending() (*trigger.QueuePendingResponse, error)
+	ExecuteQueueAction(int64) (*trigger.QueueExecuteResponse, error)
+	ExecuteStagedQueueAction(db.PendingAction) (*trigger.QueueExecuteResponse, error)
+	SendClientEvents(trigger.ClientEventSyncPayload) (*trigger.ClientEventSyncResponse, error)
+	PostDialecticInfer(db.PendingAction) ([]trigger.InferenceResult, error)
 }
 
 // NewQueueExecutor creates a QueueExecutor that polls at the interval configured
 // by QUEUE_POLL_INTERVAL_SECS. Both database and triggerClient must be non-nil.
-func NewQueueExecutor(database *db.Database, client *trigger.HTTPTriggerClient) *QueueExecutor {
+func NewQueueExecutor(database *db.Database, client queueTriggerClient) *QueueExecutor {
 	interval := time.Duration(config.GetQueuePollIntervalSecs()) * time.Second
 	return &QueueExecutor{
 		db:            database,
 		triggerClient: client,
 		pollInterval:  interval,
 		stopCh:        make(chan struct{}),
-		seenIDs:       make(map[int64]struct{}),
+		seenIDs:       make(map[string]struct{}),
 	}
 }
 
@@ -106,6 +114,10 @@ func (q *QueueExecutor) Stop() {
 // tick is the single poll iteration. Called by the ticker in Start().
 // Never panics; all errors are logged and execution continues.
 func (q *QueueExecutor) tick() {
+	now := time.Now()
+	q.tickLocalPendingActions(now)
+	q.tickServerEventSync(now)
+
 	// 1. Fetch pending actions from the Python server.
 	resp, err := q.triggerClient.GetQueuePending()
 	if err != nil {
@@ -113,7 +125,6 @@ func (q *QueueExecutor) tick() {
 		return
 	}
 
-	now := time.Now()
 	for _, action := range resp.Actions {
 		if action.Status != "pending" {
 			// Defensive: Python should only return 'pending' rows, but skip any others.
@@ -131,32 +142,28 @@ func (q *QueueExecutor) tick() {
 		//     For eod_report actions, deliver the report narrative (TASK-078 channel parity).
 		//     For other low-confidence actions, send the standard pending-action notification.
 		if !expiresAt.Before(now) {
+			remoteAction := pendingActionFromServer(action)
 			if action.ActionType == "eod_report" {
-				q.maybeEODReport(action.ID)
+				q.maybeEODReportAction("server", remoteAction)
 			} else {
-				q.maybeNotify(action.ID)
+				q.maybeNotifyAction("server", remoteAction)
 			}
 			continue
 		}
 
 		// 3b. Expired window — check adaptive threshold before dispatching.
-		//     Fetch the full action from local SQLite to get Confidence and Workspace
-		//     (QueuePendingAction only carries the fields needed for routing, not for learning).
+		//     PostgreSQL is authoritative for server queue rows. A local SQLite row may
+		//     independently use the same numeric ID, so only treat it as a mirror when
+		//     its identifying content exactly matches the remote action.
 		//     If the action's confidence is below the per-type adaptive threshold,
 		//     defer it (leave in pending state for manual review) rather than auto-approving.
-		var fullAction *db.PendingAction
+		remoteAction := pendingActionFromServer(action)
+		localMirror := q.matchingLocalAction(remoteAction)
 		if q.db != nil {
-			var dbErr error
-			fullAction, dbErr = q.db.GetPendingAction(action.ID)
-			if dbErr != nil || fullAction == nil {
-				log.Printf("queue executor: cannot fetch full action %d from SQLite: %v — proceeding with execution", action.ID, dbErr)
-			}
-		}
-		if q.db != nil && fullAction != nil {
-			threshold, threshErr := q.db.GetOrCreateThreshold(fullAction.ActionType, fullAction.Workspace)
-			if threshErr == nil && fullAction.Confidence < threshold.Threshold {
+			threshold, threshErr := q.db.GetOrCreateThreshold(remoteAction.ActionType, remoteAction.Workspace)
+			if threshErr == nil && remoteAction.Confidence < threshold.Threshold {
 				log.Printf("queue: deferring action %d (type=%s conf=%.2f below threshold=%.2f)",
-					action.ID, fullAction.ActionType, fullAction.Confidence, threshold.Threshold)
+					action.ID, remoteAction.ActionType, remoteAction.Confidence, threshold.Threshold)
 				continue
 			}
 			if threshErr != nil {
@@ -171,7 +178,7 @@ func (q *QueueExecutor) tick() {
 		if execErr != nil {
 			// HTTP-level failure: Python server unreachable or returned non-2xx.
 			log.Printf("queue executor: POST /queue/execute failed for action %d: %v", action.ID, execErr)
-			if q.db != nil {
+			if localMirror != nil {
 				if dbErr := q.db.UpdatePendingActionError(action.ID, execErr.Error()); dbErr != nil {
 					log.Printf("queue executor: failed to record error for action %d: %v", action.ID, dbErr)
 				}
@@ -179,31 +186,31 @@ func (q *QueueExecutor) tick() {
 			continue
 		}
 
-		// 4. Mirror the result in the local SQLite row.
+		// 4. Mirror the result only when this server row has an exact local counterpart.
 		if execResp.Status == "posted" {
 			log.Printf("queue: auto-approved action %d (type=%s target=%s)", action.ID, action.ActionType, action.Target)
 			if q.db != nil {
-				if dbErr := q.db.UpdatePendingActionStatus(action.ID, "posted", "auto"); dbErr != nil {
-					log.Printf("queue executor: failed to mark action %d as posted: %v", action.ID, dbErr)
+				if localMirror != nil {
+					if dbErr := q.db.UpdatePendingActionStatus(action.ID, "posted", "auto"); dbErr != nil {
+						log.Printf("queue executor: failed to mark action %d as posted: %v", action.ID, dbErr)
+					}
 				}
 				// Adaptive threshold signal — record auto-approval for per-type threshold learning.
-				// Use fullAction if available (it has Workspace); fall back to action.ActionType with "" workspace.
-				apType := action.ActionType
-				apWorkspace := ""
-				if fullAction != nil {
-					apType = fullAction.ActionType
-					apWorkspace = fullAction.Workspace
-				}
-				if logErr := q.db.RecordApproval(apType, apWorkspace); logErr != nil {
+				if logErr := q.db.RecordApproval(remoteAction.ActionType, remoteAction.Workspace); logErr != nil {
 					log.Printf("[threshold] RecordApproval (auto): %v", logErr)
 				}
 			}
 
 			// 5. Fire-and-forget: call /dialectic/infer and store the returned
-			//    inferences in SQLite. Non-blocking; errors are logged only.
-			// Re-fetch to get the updated status row (fullAction was fetched before execution).
-			if latestAction, dbErr := q.db.GetPendingAction(action.ID); dbErr == nil && latestAction != nil {
-				go q.fireDialecticInfer(*latestAction)
+			//    inferences in SQLite. Use the authoritative server action so an
+			//    unrelated local row cannot influence the inference request.
+			if q.db != nil {
+				actedAt := time.Now()
+				actedBy := "auto"
+				remoteAction.Status = "posted"
+				remoteAction.ActedAt = &actedAt
+				remoteAction.ActedBy = &actedBy
+				go q.fireDialecticInfer(remoteAction)
 			}
 		} else {
 			// status == "failed" or unexpected value
@@ -212,7 +219,7 @@ func (q *QueueExecutor) tick() {
 				errMsg = "execution failed (no error message from server)"
 			}
 			log.Printf("queue executor: action %d failed: %s", action.ID, errMsg)
-			if q.db != nil {
+			if localMirror != nil {
 				if dbErr := q.db.UpdatePendingActionError(action.ID, errMsg); dbErr != nil {
 					log.Printf("queue executor: failed to record failure for action %d: %v", action.ID, dbErr)
 				}
@@ -221,37 +228,175 @@ func (q *QueueExecutor) tick() {
 	}
 }
 
-// maybeNotify fires NotifyFn once per new low-confidence pending action.
-// It looks up the full PendingAction from the local DB so the notification has
-// all fields (payload, confidence, etc.). If the DB lookup fails or NotifyFn is
-// nil, the method is a no-op.
-func (q *QueueExecutor) maybeNotify(id int64) {
-	if q.NotifyFn == nil {
+// tickLocalPendingActions dispatches Go-originated actions from the local
+// trust queue. In PostgreSQL mode those rows no longer share a database or ID
+// sequence with the Python queue, so the complete already-staged action is
+// sent over the authenticated boundary after approval/expiry.
+func (q *QueueExecutor) tickLocalPendingActions(now time.Time) {
+	if q.db == nil || q.triggerClient == nil {
+		return
+	}
+	pending, err := q.db.ListPendingActions("pending")
+	if err != nil {
+		log.Printf("queue executor: list local pending actions: %v", err)
+		return
+	}
+	approved, err := q.db.ListPendingActions("approved")
+	if err != nil {
+		log.Printf("queue executor: list local approved actions: %v", err)
+		return
+	}
+	actions := append(pending, approved...)
+	for _, action := range actions {
+		if action.ActionType == db.ServerEventSyncActionType {
+			continue
+		}
+		if action.Status == "pending" && !action.ExpiresAt.Before(now) {
+			if action.ActionType == "eod_report" {
+				q.maybeEODReportAction("local", action)
+			} else {
+				q.maybeNotifyAction("local", action)
+			}
+			continue
+		}
+		if action.Status == "pending" {
+			threshold, thresholdErr := q.db.GetOrCreateThreshold(action.ActionType, action.Workspace)
+			if thresholdErr == nil && action.Confidence < threshold.Threshold {
+				continue
+			}
+			if thresholdErr != nil {
+				log.Printf("queue: local threshold lookup failed for action %d: %v — proceeding with execution", action.ID, thresholdErr)
+			}
+		}
+
+		response, execErr := q.triggerClient.ExecuteStagedQueueAction(action)
+		if execErr != nil {
+			log.Printf("queue executor: local action %d retained for retry: %v", action.ID, execErr)
+			if dbErr := q.db.RecordPendingActionAttemptError(action.ID, execErr.Error()); dbErr != nil {
+				log.Printf("queue executor: record local action %d retry error: %v", action.ID, dbErr)
+			}
+			continue
+		}
+		if response.Status == "posted" {
+			if dbErr := q.db.UpdatePendingActionStatus(action.ID, "posted", "auto"); dbErr != nil {
+				log.Printf("queue executor: mark local action %d posted: %v", action.ID, dbErr)
+				continue
+			}
+			if logErr := q.db.RecordApproval(action.ActionType, action.Workspace); logErr != nil {
+				log.Printf("[threshold] RecordApproval (local auto): %v", logErr)
+			}
+			actedAt := time.Now()
+			actedBy := "auto"
+			action.Status = "posted"
+			action.ActedAt = &actedAt
+			action.ActedBy = &actedBy
+			go q.fireDialecticInfer(action)
+			continue
+		}
+		errMessage := response.Error
+		if errMessage == "" {
+			errMessage = "execution failed (no error message from server)"
+		}
+		if dbErr := q.db.UpdatePendingActionError(action.ID, errMessage); dbErr != nil {
+			log.Printf("queue executor: mark local action %d failed: %v", action.ID, dbErr)
+		}
+	}
+}
+
+// matchingLocalAction returns a local row only when it is a genuine mirror of
+// the PostgreSQL action. Numeric IDs are database-local and cannot establish
+// identity across the server and client stores by themselves.
+func (q *QueueExecutor) matchingLocalAction(remote db.PendingAction) *db.PendingAction {
+	if q.db == nil {
+		return nil
+	}
+	local, err := q.db.GetPendingAction(remote.ID)
+	if err != nil {
+		log.Printf("queue executor: cannot inspect local mirror for server action %d: %v", remote.ID, err)
+		return nil
+	}
+	if local == nil ||
+		local.ActionType != remote.ActionType ||
+		local.Target != remote.Target ||
+		local.Platform != remote.Platform ||
+		local.Workspace != remote.Workspace ||
+		local.Payload != remote.Payload ||
+		local.Confidence != remote.Confidence {
+		return nil
+	}
+	return local
+}
+
+// tickServerEventSync stages and dispatches the opt-in local event outbox.
+// It runs before the server queue poll so an unreachable server never drops
+// the local backlog or blocks the rest of the daemon.
+func (q *QueueExecutor) tickServerEventSync(now time.Time) {
+	if q.db == nil || !config.GetServerEventSyncEnabled() {
+		return
+	}
+	action, err := q.db.StageServerEventSync(config.GetServerEventSyncBatchSize(), now)
+	if err != nil {
+		log.Printf("server event sync: could not stage batch: %v", err)
+		return
+	}
+	if action == nil {
+		return
+	}
+	if action.Status != "approved" && action.ExpiresAt.After(now) {
 		return
 	}
 
+	payload, err := db.DecodeServerEventSyncAction(*action)
+	if err != nil {
+		log.Printf("server event sync: invalid staged action %d: %v", action.ID, err)
+		_ = q.db.UpdatePendingActionError(action.ID, err.Error())
+		return
+	}
+	request := trigger.ClientEventSyncPayload{
+		ClientID: payload.ClientID,
+		Events:   make([]trigger.ClientEvent, 0, len(payload.Events)),
+	}
+	for _, event := range payload.Events {
+		request.Events = append(request.Events, trigger.ClientEvent{
+			EventID:     event.EventID,
+			TableName:   event.TableName,
+			SourceRowID: event.SourceRowID,
+			Revision:    event.Revision,
+			Payload:     event.Payload,
+			UpdatedAt:   event.UpdatedAt,
+		})
+	}
+	if _, err := q.triggerClient.SendClientEvents(request); err != nil {
+		log.Printf("server event sync: batch %d retained for replay: %v", action.ID, err)
+		_ = q.db.RecordServerEventSyncFailure(db.ServerEventKeys(payload), err.Error())
+		return
+	}
+	if err := q.db.MarkServerEventsSynced(db.ServerEventKeys(payload)); err != nil {
+		log.Printf("server event sync: server accepted batch %d but local acknowledgement failed: %v", action.ID, err)
+		return
+	}
+	if err := q.db.UpdatePendingActionStatus(action.ID, "posted", "auto"); err != nil {
+		log.Printf("server event sync: could not mark action %d posted: %v", action.ID, err)
+		return
+	}
+	log.Printf("server event sync: accepted %d event(s) from action %d", len(payload.Events), action.ID)
+}
+
+// maybeNotifyAction fires NotifyFn once per new low-confidence action. The
+// full action comes from the server response in PostgreSQL mode.
+func (q *QueueExecutor) maybeNotifyAction(origin string, action db.PendingAction) {
+	if q.NotifyFn == nil {
+		return
+	}
 	q.seenMu.Lock()
-	_, alreadySeen := q.seenIDs[id]
+	seenKey := fmt.Sprintf("%s:%d", origin, action.ID)
+	_, alreadySeen := q.seenIDs[seenKey]
 	if alreadySeen {
 		q.seenMu.Unlock()
 		return
 	}
-	q.seenIDs[id] = struct{}{}
+	q.seenIDs[seenKey] = struct{}{}
 	q.seenMu.Unlock()
-
-	// Look up full action from local SQLite for the notification payload.
-	if q.db == nil {
-		return
-	}
-	action, err := q.db.GetPendingAction(id)
-	if err != nil || action == nil {
-		// If not in local DB yet (Python gateway writes first), skip this tick;
-		// it will be retried next poll when the row propagates.
-		q.seenMu.Lock()
-		delete(q.seenIDs, id)
-		q.seenMu.Unlock()
-		return
-	}
 
 	// Only notify for low-confidence actions (< 0.90). High-confidence ones
 	// auto-approve within 2 minutes and are not worth interrupting the user for.
@@ -259,39 +404,24 @@ func (q *QueueExecutor) maybeNotify(id int64) {
 		return
 	}
 
-	go q.NotifyFn(*action)
+	go q.NotifyFn(action)
 }
 
-// maybeEODReport fires EODReportFn once for a new pending eod_report action when
-// EOD_TELEGRAM_ENABLED=true. It looks up the full PendingAction from local SQLite,
-// extracts the narrative and date from the JSON payload, and calls EODReportFn.
-// If EODReportFn is nil, EOD_TELEGRAM_ENABLED is false, or the DB lookup fails,
-// the method is a no-op — Non-Negotiable #8 (never block on failure).
-func (q *QueueExecutor) maybeEODReport(id int64) {
+// maybeEODReportAction delivers an EOD report from the full server queue row.
+func (q *QueueExecutor) maybeEODReportAction(origin string, action db.PendingAction) {
 	if q.EODReportFn == nil || !config.GetEODTelegramEnabled() {
 		return
 	}
 
 	q.seenMu.Lock()
-	_, alreadySeen := q.seenIDs[id]
+	seenKey := fmt.Sprintf("%s:%d", origin, action.ID)
+	_, alreadySeen := q.seenIDs[seenKey]
 	if alreadySeen {
 		q.seenMu.Unlock()
 		return
 	}
-	q.seenIDs[id] = struct{}{}
+	q.seenIDs[seenKey] = struct{}{}
 	q.seenMu.Unlock()
-
-	if q.db == nil {
-		return
-	}
-	action, err := q.db.GetPendingAction(id)
-	if err != nil || action == nil {
-		// Row not yet propagated to local SQLite — retry next poll.
-		q.seenMu.Lock()
-		delete(q.seenIDs, id)
-		q.seenMu.Unlock()
-		return
-	}
 
 	// Extract narrative and date from the JSON payload.
 	var payload struct {
@@ -299,11 +429,11 @@ func (q *QueueExecutor) maybeEODReport(id int64) {
 		Date      string `json:"date"`
 	}
 	if jsonErr := json.Unmarshal([]byte(action.Payload), &payload); jsonErr != nil {
-		log.Printf("queue executor: eod_report action %d: cannot parse payload: %v", id, jsonErr)
+		log.Printf("queue executor: eod_report action %d: cannot parse payload: %v", action.ID, jsonErr)
 		return
 	}
 	if payload.Narrative == "" {
-		log.Printf("queue executor: eod_report action %d: payload has no narrative — skipping Telegram delivery", id)
+		log.Printf("queue executor: eod_report action %d: payload has no narrative — skipping Telegram delivery", action.ID)
 		return
 	}
 
@@ -314,6 +444,24 @@ func (q *QueueExecutor) maybeEODReport(id int64) {
 			log.Printf("queue executor: EOD report delivered via Telegram for action %d (date=%s)", action.ID, payload.Date)
 		}
 	}()
+}
+
+func pendingActionFromServer(action trigger.QueuePendingAction) db.PendingAction {
+	expiresAt, _ := parseISO8601(action.ExpiresAt)
+	createdAt, _ := parseISO8601(action.CreatedAt)
+	result := db.PendingAction{
+		ID: action.ID, ActionType: action.ActionType, Target: action.Target,
+		Platform: action.Platform, Workspace: action.Workspace, Payload: action.Payload,
+		Confidence: action.Confidence, Status: action.Status,
+		ExpiresAt: expiresAt, CreatedAt: createdAt,
+		ActedBy: action.ActedBy, Error: action.Error,
+	}
+	if action.ActedAt != nil {
+		if actedAt, err := parseISO8601(*action.ActedAt); err == nil {
+			result.ActedAt = &actedAt
+		}
+	}
+	return result
 }
 
 // fireDialecticInfer calls POST /dialectic/infer for a completed queue action

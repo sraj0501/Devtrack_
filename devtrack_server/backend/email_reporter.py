@@ -115,11 +115,31 @@ class EmailReporter:
         activities: List[ActivitySummary] = []
 
         if is_postgres():
-            logger.debug(
-                "email_reporter: get_daily_activities is a no-op in PostgreSQL "
-                "mode — task_updates is a Go-owned SQLite-only table with no "
-                "Postgres equivalent yet"
+            from backend.db.client_event_store import list_client_rows
+
+            rows = sorted(
+                list_client_rows("task_updates"),
+                key=lambda row: str(row.get("timestamp", "")),
             )
+            for row in rows:
+                timestamp_text = str(row.get("timestamp", ""))
+                try:
+                    timestamp = datetime.fromisoformat(timestamp_text)
+                except (TypeError, ValueError):
+                    continue
+                if timestamp.tzinfo is not None:
+                    timestamp = timestamp.astimezone().replace(tzinfo=None)
+                if timestamp < start_of_day or timestamp > end_of_day:
+                    continue
+                activities.append(ActivitySummary(
+                    timestamp=timestamp,
+                    project=row.get("project") or "Unknown",
+                    ticket_id=row.get("ticket_id") or "",
+                    status=row.get("status") or "in_progress",
+                    description=row.get("update_text") or "",
+                    time_spent=float(row.get("time_estimate") or 0),
+                    source=row.get("source") or "manual",
+                ))
             return activities
 
         try:

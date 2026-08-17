@@ -50,6 +50,8 @@ def pg_engine():
     import backend.db.report_store       # noqa: F401
     import backend.db.voice_seed_store   # noqa: F401
     import backend.db.voice_sync_store   # noqa: F401
+    import backend.db.client_event_store # noqa: F401
+    import backend.queue_gateway         # noqa: F401
 
     engine_mod.reset_engine()
     os.environ["POSTGRES_URL"] = POSTGRES_URL
@@ -170,3 +172,116 @@ def test_voice_status_timestamps_roundtrip(pg_engine):
 
     assert latest_seeded_at(pg_engine) == "2026-08-10 10:00:00"
     assert latest_synced_at(pg_engine) == "2026-08-10 11:00:00"
+
+
+def test_client_event_replay_is_idempotent(pg_engine):
+    from backend.db.client_event_store import client_events_table, persist_client_events
+
+    event = {
+        "event_id": "triggers:task-114",
+        "table_name": "triggers",
+        "source_row_id": "114",
+        "revision": 1,
+        "payload": {"processed": False},
+        "updated_at": "2026-08-11 10:00:00",
+    }
+    assert persist_client_events("live-pg-client", [event], pg_engine) == 1
+    event["payload"] = {"processed": True}
+    event["revision"] = 2
+    assert persist_client_events("live-pg-client", [event], pg_engine) == 1
+
+    with pg_engine.connect() as conn:
+        rows = conn.execute(client_events_table.select()).mappings().all()
+    matches = [row for row in rows if row["client_id"] == "live-pg-client"]
+    assert len(matches) == 1
+    assert matches[0]["payload"]["processed"] is True
+
+
+def test_pending_actions_queue_roundtrip(pg_engine):
+    from backend.queue_gateway import QueueGateway
+
+    gateway = QueueGateway()
+    action_id = gateway.stage(
+        action_type="post_comment",
+        target="TASK-114",
+        platform="github",
+        workspace="devtrack",
+        payload={"comment": "PostgreSQL-backed queue"},
+        confidence=0.95,
+    )
+    assert action_id > 0
+    action = gateway.get_action(action_id)
+    assert action is not None
+    assert action["status"] == "pending"
+    assert any(item["id"] == action_id for item in gateway.list_pending())
+
+    gateway.mark_posted(action_id)
+    assert gateway.get_action(action_id)["status"] == "posted"
+
+
+def test_synced_client_events_feed_server_readers(pg_engine):
+    from datetime import datetime
+
+    from backend.daily_report_generator import DailyReportGenerator
+    from backend.db.client_event_store import persist_client_events
+    from backend.email_reporter import EmailReporter
+    from backend.work_tracker.session_store import WorkSessionStore
+
+    events = [
+        {
+            "event_id": "triggers:reader",
+            "table_name": "triggers",
+            "source_row_id": "201",
+            "revision": 1,
+            "payload": {
+                "id": 201,
+                "trigger_type": "commit",
+                "ticket_id": "TASK-114",
+                "commit_message": "feat: sync client events",
+                "commit_hash": "reader-hash",
+                "timestamp": "2026-08-11 09:00:00",
+            },
+            "updated_at": "2026-08-11 09:00:00",
+        },
+        {
+            "event_id": "task_updates:reader",
+            "table_name": "task_updates",
+            "source_row_id": "202",
+            "revision": 1,
+            "payload": {
+                "id": 202,
+                "timestamp": "2026-08-11 10:00:00",
+                "project": "DevTrack",
+                "ticket_id": "TASK-114",
+                "status": "in_progress",
+                "update_text": "Built the PostgreSQL sync path",
+            },
+            "updated_at": "2026-08-11 10:00:00",
+        },
+        {
+            "event_id": "work_sessions:reader",
+            "table_name": "work_sessions",
+            "source_row_id": "203",
+            "revision": 1,
+            "payload": {
+                "id": 203,
+                "started_at": "2026-08-11 08:00:00",
+                "ended_at": None,
+                "ticket_ref": "TASK-114",
+                "commits": "[]",
+            },
+            "updated_at": "2026-08-11 10:00:00",
+        },
+    ]
+    assert persist_client_events("reader-client", events, pg_engine) == 3
+
+    generator = DailyReportGenerator.__new__(DailyReportGenerator)
+    commit_rows = generator._query_commit_rows("2026-08-11")
+    assert any(row["commit_hash"] == "reader-hash" for row in commit_rows)
+
+    activities = EmailReporter().get_daily_activities(datetime(2026, 8, 11))
+    assert any(activity.ticket_id == "TASK-114" for activity in activities)
+
+    sessions = WorkSessionStore().get_sessions_for_date("2026-08-11")
+    assert any(session["id"] == 203 for session in sessions)
+    assert WorkSessionStore().get_active_session()["id"] == 203

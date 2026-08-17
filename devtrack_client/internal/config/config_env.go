@@ -803,6 +803,29 @@ func GetTicketSyncOnStart() bool {
 	return val == "true" || val == "1" || val == "yes"
 }
 
+// GetServerEventSyncEnabled reports whether local Go-owned event rows may be
+// sent to the configured Python server. It is deliberately opt-in because the
+// payload contains developer activity data that otherwise remains local.
+func GetServerEventSyncEnabled() bool {
+	val := strings.TrimSpace(strings.ToLower(os.Getenv("SERVER_EVENT_SYNC_ENABLED")))
+	return val == "true" || val == "1" || val == "yes"
+}
+
+// GetServerEventSyncBatchSize returns the maximum number of latest-state
+// snapshots staged in one pending action. Invalid values fall back safely.
+func GetServerEventSyncBatchSize() int {
+	val := strings.TrimSpace(os.Getenv("SERVER_EVENT_SYNC_BATCH_SIZE"))
+	if val == "" {
+		return 100
+	}
+	size, err := strconv.Atoi(val)
+	if err != nil || size <= 0 || size > 1000 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid SERVER_EVENT_SYNC_BATCH_SIZE %q — using default 100\n", val)
+		return 100
+	}
+	return size
+}
+
 // GetDevTrackServerHTTPPort returns the port the daemon exposes for its internal
 // HTTP control server (e.g. /internal/force-trigger).
 // Reads DEVTRACK_SERVER_HTTP_PORT; default 35894.

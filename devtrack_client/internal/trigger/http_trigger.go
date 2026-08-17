@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 )
 
 // HTTPTriggerClient sends trigger events to the Python backend via HTTPS POST.
@@ -119,6 +120,44 @@ func (c *HTTPTriggerClient) SendHeartbeat(payload HeartbeatPayload) error {
 	return c.post("/trigger/client/heartbeat", payload)
 }
 
+// ClientEvent is one replay-safe latest-state snapshot from a Go-owned SQLite
+// table. The server deduplicates by (client_id, event_id).
+type ClientEvent struct {
+	EventID     string         `json:"event_id"`
+	TableName   string         `json:"table_name"`
+	SourceRowID string         `json:"source_row_id"`
+	Revision    int            `json:"revision"`
+	Payload     map[string]any `json:"payload"`
+	UpdatedAt   string         `json:"updated_at"`
+}
+
+// ClientEventSyncPayload is the authenticated request body for the event-sync
+// boundary. Sending the same payload repeatedly is safe.
+type ClientEventSyncPayload struct {
+	ClientID string        `json:"client_id"`
+	Events   []ClientEvent `json:"events"`
+}
+
+// ClientEventSyncResponse reports how many rows were accepted. Replays count
+// as accepted because they refresh the latest state without adding duplicates.
+type ClientEventSyncResponse struct {
+	Status   string `json:"status"`
+	Accepted int    `json:"accepted"`
+}
+
+// SendClientEvents pushes a staged event batch to PostgreSQL through the
+// Python server. The caller retains its SQLite outbox until this returns nil.
+func (c *HTTPTriggerClient) SendClientEvents(payload ClientEventSyncPayload) (*ClientEventSyncResponse, error) {
+	var response ClientEventSyncResponse
+	if err := c.postWithResult("/trigger/client_events", payload, &response); err != nil {
+		return nil, err
+	}
+	if response.Status != "ok" {
+		return nil, fmt.Errorf("server event sync returned status %q", response.Status)
+	}
+	return &response, nil
+}
+
 // SendWorkSessionStart notifies Python that a work session has started.
 func (c *HTTPTriggerClient) SendWorkSessionStart(sessionID int64, ticketRef string) error {
 	return c.post("/trigger/work_session_start", map[string]any{
@@ -138,23 +177,23 @@ func (c *HTTPTriggerClient) SendWorkSessionStop(sessionID int64) error {
 // for fuzzy/semantic matching. Body/description is truncated to 500 chars to
 // keep payloads small — Python only needs enough text for embedding.
 type SlimTicket struct {
-	ID          string `json:"id"`           // composite: "github:owner/repo#123"
-	ExternalID  string `json:"external_id"`  // raw platform identifier: "123"
-	Source      string `json:"source"`       // "github" | "azure" | "gitlab"
-	Repo        string `json:"repo"`         // "owner/repo" (empty for Azure)
+	ID          string `json:"id"`          // composite: "github:owner/repo#123"
+	ExternalID  string `json:"external_id"` // raw platform identifier: "123"
+	Source      string `json:"source"`      // "github" | "azure" | "gitlab"
+	Repo        string `json:"repo"`        // "owner/repo" (empty for Azure)
 	Title       string `json:"title"`
-	Description string `json:"description"`  // truncated to 500 chars
-	Status      string `json:"status"`       // "open", "In Progress", etc.
+	Description string `json:"description"` // truncated to 500 chars
+	Status      string `json:"status"`      // "open", "In Progress", etc.
 	Assignee    string `json:"assignee"`
 	URL         string `json:"url"`
 }
 
 // TicketSyncPayload is the body of POST /trigger/ticket_sync.
 type TicketSyncPayload struct {
-	Source    string       `json:"source"`     // "github" | "azure" | "gitlab"
-	Workspace string       `json:"workspace"`  // workspace name from workspaces.yaml
-	Force     bool         `json:"force"`      // true → Python drops+reloads, false → upsert
-	SyncedAt  string       `json:"synced_at"`  // RFC3339 timestamp of this sync
+	Source    string       `json:"source"`    // "github" | "azure" | "gitlab"
+	Workspace string       `json:"workspace"` // workspace name from workspaces.yaml
+	Force     bool         `json:"force"`     // true → Python drops+reloads, false → upsert
+	SyncedAt  string       `json:"synced_at"` // RFC3339 timestamp of this sync
 	Tickets   []SlimTicket `json:"tickets"`
 }
 
@@ -234,14 +273,14 @@ type BoardroomRequest struct {
 
 // BoardroomResponse is the response from POST /trigger/boardroom.
 type BoardroomResponse struct {
-	Report        string   `json:"report"`
-	Verdict       string   `json:"verdict"`
-	VerdictSummary string  `json:"verdict_summary"`
-	Approve       int      `json:"approve"`
-	Revise        int      `json:"revise"`
-	Reject        int      `json:"reject"`
-	Pros          []string `json:"pros"`
-	Cons          []string `json:"cons"`
+	Report         string   `json:"report"`
+	Verdict        string   `json:"verdict"`
+	VerdictSummary string   `json:"verdict_summary"`
+	Approve        int      `json:"approve"`
+	Revise         int      `json:"revise"`
+	Reject         int      `json:"reject"`
+	Pros           []string `json:"pros"`
+	Cons           []string `json:"cons"`
 }
 
 // SendBoardroom calls POST /trigger/boardroom and returns the parsed response.
@@ -262,7 +301,7 @@ func (c *HTTPTriggerClient) SendBoardroom(req BoardroomRequest) (*BoardroomRespo
 
 // BoardroomHistoryEntry is one message in the interactive boardroom conversation.
 type BoardroomHistoryEntry struct {
-	Role        string `json:"role"`                   // "user" | "persona" | "system"
+	Role        string `json:"role"` // "user" | "persona" | "system"
 	Content     string `json:"content"`
 	PersonaID   string `json:"persona_id,omitempty"`
 	PersonaName string `json:"persona_name,omitempty"`
@@ -270,11 +309,11 @@ type BoardroomHistoryEntry struct {
 
 // BoardroomChatRequest is the payload for POST /trigger/boardroom/chat.
 type BoardroomChatRequest struct {
-	PlanText    string                   `json:"plan_text"`
-	History     []BoardroomHistoryEntry  `json:"history"`
-	UserMessage string                   `json:"user_message,omitempty"`
-	AddressedTo string                   `json:"addressed_to,omitempty"`
-	FinalSay    string                   `json:"final_say,omitempty"`
+	PlanText    string                  `json:"plan_text"`
+	History     []BoardroomHistoryEntry `json:"history"`
+	UserMessage string                  `json:"user_message,omitempty"`
+	AddressedTo string                  `json:"addressed_to,omitempty"`
+	FinalSay    string                  `json:"final_say,omitempty"`
 }
 
 // BoardroomPersonaResponse is one persona's reply in a chat turn.
@@ -414,7 +453,9 @@ func (c *HTTPTriggerClient) getWithResult(path string, dest any) error {
 		return fmt.Errorf("read response body: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		var errResp struct{ Detail string `json:"detail"` }
+		var errResp struct {
+			Detail string `json:"detail"`
+		}
 		if json.Unmarshal(respBody, &errResp) == nil && errResp.Detail != "" {
 			return fmt.Errorf("server error (HTTP %d): %s", resp.StatusCode, errResp.Detail)
 		}
@@ -469,16 +510,16 @@ type NarrativeStage struct {
 
 // NarrativeStory is one completed request story from narrative.log.
 type NarrativeStory struct {
-	StoryID          string           `json:"story_id"`
-	Name             string           `json:"name"`
-	StartedAt        string           `json:"started_at"`
-	CompletedAt      string           `json:"completed_at"`
-	Success          bool             `json:"success"`
-	DurationMs       *float64         `json:"duration_ms"`
-	TotalStages      int              `json:"total_stages"`
-	CompletedStages  int              `json:"completed_stages"`
-	Stages           []NarrativeStage `json:"stages"`
-	Failure          map[string]any   `json:"failure"`
+	StoryID         string           `json:"story_id"`
+	Name            string           `json:"name"`
+	StartedAt       string           `json:"started_at"`
+	CompletedAt     string           `json:"completed_at"`
+	Success         bool             `json:"success"`
+	DurationMs      *float64         `json:"duration_ms"`
+	TotalStages     int              `json:"total_stages"`
+	CompletedStages int              `json:"completed_stages"`
+	Stages          []NarrativeStage `json:"stages"`
+	Failure         map[string]any   `json:"failure"`
 }
 
 // NarrativeLastFailure is the FailureOccurred event returned by /narrative/last-failure.
@@ -551,11 +592,19 @@ func (c *HTTPTriggerClient) getText(path string) (string, error) {
 // QueuePendingAction is the minimal representation of a pending action returned
 // by GET /queue/pending. Only the fields the queue executor needs are included.
 type QueuePendingAction struct {
-	ID         int64  `json:"id"`
-	ActionType string `json:"action_type"`
-	Target     string `json:"target"`
-	ExpiresAt  string `json:"expires_at"` // ISO 8601 string from Python
-	Status     string `json:"status"`
+	ID         int64   `json:"id"`
+	ActionType string  `json:"action_type"`
+	Target     string  `json:"target"`
+	Platform   string  `json:"platform"`
+	Workspace  string  `json:"workspace"`
+	Payload    string  `json:"payload"`
+	Confidence float64 `json:"confidence"`
+	ExpiresAt  string  `json:"expires_at"` // ISO 8601 string from Python
+	CreatedAt  string  `json:"created_at"`
+	Status     string  `json:"status"`
+	ActedAt    *string `json:"acted_at"`
+	ActedBy    *string `json:"acted_by"`
+	Error      *string `json:"error"`
 }
 
 // QueuePendingResponse is the shape of the GET /queue/pending response.
@@ -574,6 +623,20 @@ type QueueExecuteResponse struct {
 	Error  string `json:"error"`  // non-empty when status == "failed"
 }
 
+// QueueStagedAction is the wire representation of a Go-local pending action.
+// It is sent only after the action's local review decision has allowed
+// dispatch; the Python server executes it but does not pretend it originated
+// in the independent server-side queue.
+type QueueStagedAction struct {
+	ID         int64   `json:"id"`
+	ActionType string  `json:"action_type"`
+	Target     string  `json:"target"`
+	Platform   string  `json:"platform"`
+	Workspace  string  `json:"workspace"`
+	Payload    string  `json:"payload"`
+	Confidence float64 `json:"confidence"`
+}
+
 // GetQueuePending fetches all pending actions from GET /queue/pending.
 // The Python server returns actions with status='pending', ordered by expires_at ASC.
 func (c *HTTPTriggerClient) GetQueuePending() (*QueuePendingResponse, error) {
@@ -590,6 +653,22 @@ func (c *HTTPTriggerClient) GetQueuePending() (*QueuePendingResponse, error) {
 func (c *HTTPTriggerClient) ExecuteQueueAction(actionID int64) (*QueueExecuteResponse, error) {
 	var resp QueueExecuteResponse
 	if err := c.postWithResult("/queue/execute", QueueExecuteRequest{ActionID: actionID}, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ExecuteStagedQueueAction executes a Go-local action that has already passed
+// through the local pending_actions trust queue. This keeps client SQLite as
+// the source of truth without relying on coincident numeric IDs in Postgres.
+func (c *HTTPTriggerClient) ExecuteStagedQueueAction(action db.PendingAction) (*QueueExecuteResponse, error) {
+	request := QueueStagedAction{
+		ID: action.ID, ActionType: action.ActionType, Target: action.Target,
+		Platform: action.Platform, Workspace: action.Workspace,
+		Payload: action.Payload, Confidence: action.Confidence,
+	}
+	var resp QueueExecuteResponse
+	if err := c.postWithResult("/queue/execute_staged", request, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -629,9 +708,9 @@ type EODReportResult struct {
 // so the CLI can print "Queued as action <id>" when staging succeeded.
 func (c *HTTPTriggerClient) ReportEODFull(email, date string) (*EODReportResult, error) {
 	var r struct {
-		Output   string  `json:"output"`
-		Success  bool    `json:"success"`
-		ActionID *int64  `json:"action_id"`
+		Output   string `json:"output"`
+		Success  bool   `json:"success"`
+		ActionID *int64 `json:"action_id"`
 	}
 	if err := c.postWithResult("/reports/eod", map[string]string{"email": email, "date": date}, &r); err != nil {
 		return nil, err
@@ -792,8 +871,8 @@ func (c *HTTPTriggerClient) AuthTelemetry(action string) (string, error) {
 
 // LicenseCheckResponse mirrors the /license/check response.
 type LicenseCheckResponse struct {
-	Accepted bool   `json:"accepted"`
-	Success  bool   `json:"success"`
+	Accepted bool `json:"accepted"`
+	Success  bool `json:"success"`
 }
 
 // LicenseIsAccepted calls GET /license/check and returns whether terms are accepted.
@@ -917,9 +996,9 @@ type VoiceInferenceSummaryEntry struct {
 
 // VoiceInferenceSummary holds the inference block of VoiceStatusResponse.
 type VoiceInferenceSummary struct {
-	Total            int                          `json:"total"`
-	TopByConfidence  []VoiceInferenceSummaryEntry `json:"top_by_confidence"`
-	CorrectionCount  int                          `json:"correction_count"`
+	Total           int                          `json:"total"`
+	TopByConfidence []VoiceInferenceSummaryEntry `json:"top_by_confidence"`
+	CorrectionCount int                          `json:"correction_count"`
 }
 
 // VoiceSkillSummary holds the skills block of VoiceStatusResponse.
@@ -937,18 +1016,18 @@ type VoiceThresholdEntry struct {
 
 // VoiceStatusResponse is the response from GET /voice/status.
 type VoiceStatusResponse struct {
-	TotalEntries     int                            `json:"total_entries"`
-	ByContext        map[string]int                 `json:"by_context"`
-	BySource         map[string]int                 `json:"by_source"`
-	LastSeed         *string                        `json:"last_seed"`
-	LastSync         *string                        `json:"last_sync"`
-	ProfileExists    bool                           `json:"profile_exists"`
-	ProfileWordCount int                            `json:"profile_word_count"`
+	TotalEntries     int            `json:"total_entries"`
+	ByContext        map[string]int `json:"by_context"`
+	BySource         map[string]int `json:"by_source"`
+	LastSeed         *string        `json:"last_seed"`
+	LastSync         *string        `json:"last_sync"`
+	ProfileExists    bool           `json:"profile_exists"`
+	ProfileWordCount int            `json:"profile_word_count"`
 	// Phase 6 dialectic fields — present only on servers running TASK-091+.
 	// Use pointer types so we can detect absence (nil = field not in response).
-	Inferences *VoiceInferenceSummary             `json:"inferences,omitempty"`
-	Skills     *VoiceSkillSummary                 `json:"skills,omitempty"`
-	Thresholds map[string]VoiceThresholdEntry     `json:"thresholds,omitempty"`
+	Inferences *VoiceInferenceSummary         `json:"inferences,omitempty"`
+	Skills     *VoiceSkillSummary             `json:"skills,omitempty"`
+	Thresholds map[string]VoiceThresholdEntry `json:"thresholds,omitempty"`
 }
 
 // VoiceStatus calls GET /voice/status and returns the corpus statistics.

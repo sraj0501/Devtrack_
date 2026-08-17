@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 )
 
 // TestAPIContract validates that the client's HTTP trigger machinery produces
@@ -140,6 +142,75 @@ func TestAPIContractAPIKeyHeader(t *testing.T) {
 
 	if gotKey != wantKey {
 		t.Errorf("X-DevTrack-API-Key: got %q, want %q", gotKey, wantKey)
+	}
+}
+
+func TestAPIContractClientEventSyncIsAuthenticatedAndReplayKeyed(t *testing.T) {
+	const wantKey = "event-sync-key"
+	var received ClientEventSyncPayload
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/trigger/client_events" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		if got := r.Header.Get("X-DevTrack-API-Key"); got != wantKey {
+			t.Errorf("API key = %q, want %q", got, wantKey)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok","accepted":1}`))
+	}))
+	defer srv.Close()
+
+	client := &HTTPTriggerClient{
+		serverURL: srv.URL, apiKey: wantKey, httpClient: &http.Client{},
+	}
+	payload := ClientEventSyncPayload{
+		ClientID: "client-1",
+		Events: []ClientEvent{{
+			EventID: "triggers:42", TableName: "triggers", SourceRowID: "42", Revision: 3,
+			Payload: map[string]any{"ticket_id": "TASK-114"}, UpdatedAt: "2026-08-11 10:00:00",
+		}},
+	}
+	response, err := client.SendClientEvents(payload)
+	if err != nil {
+		t.Fatalf("SendClientEvents: %v", err)
+	}
+	if response.Accepted != 1 || received.ClientID != "client-1" || received.Events[0].EventID != "triggers:42" {
+		t.Fatalf("unexpected response/request: response=%#v received=%#v", response, received)
+	}
+}
+
+func TestAPIContractExecuteStagedQueueActionCarriesFullLocalIdentity(t *testing.T) {
+	const wantKey = "queue-key"
+	var received QueueStagedAction
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/queue/execute_staged" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		if got := r.Header.Get("X-DevTrack-API-Key"); got != wantKey {
+			t.Errorf("API key = %q, want %q", got, wantKey)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"posted","error":""}`))
+	}))
+	defer srv.Close()
+
+	client := &HTTPTriggerClient{serverURL: srv.URL, apiKey: wantKey, httpClient: &http.Client{}}
+	action := db.PendingAction{
+		ID: 42, ActionType: "post_comment", Target: "TASK-114", Platform: "github",
+		Workspace: "devtrack", Payload: `{"comment":"ready"}`, Confidence: 0.95,
+	}
+	response, err := client.ExecuteStagedQueueAction(action)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Status != "posted" || received.ID != 42 || received.Payload != action.Payload {
+		t.Fatalf("unexpected response/request: response=%#v received=%#v", response, received)
 	}
 }
 

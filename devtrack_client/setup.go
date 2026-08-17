@@ -773,6 +773,10 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("PROJECT_SYNC_ENABLED=false\n")
 	b.WriteString("PROJECT_SYNC_INTERVAL_SECS=300\n\n")
 
+	b.WriteString("## SERVER EVENT SYNC (explicit opt-in)\n")
+	b.WriteString("SERVER_EVENT_SYNC_ENABLED=false\n")
+	b.WriteString("SERVER_EVENT_SYNC_BATCH_SIZE=100\n\n")
+
 	b.WriteString("## TELEGRAM\n")
 	b.WriteString("TELEGRAM_ENABLED=false\n")
 	b.WriteString("TELEGRAM_BOT_TOKEN=\n")

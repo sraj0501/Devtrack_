@@ -400,78 +400,19 @@ class TestConfidenceTimeout:
 
 
 # ---------------------------------------------------------------------------
-# PostgreSQL-mode boundary-rule behaviour
+# Dialect-neutral schema behaviour
 # ---------------------------------------------------------------------------
 
-class TestQueueGatewayPostgresMode:
-    """pending_actions has no PostgreSQL-mode implementation yet (TASK-114) —
-    every public method must raise QueueGatewayUnavailableError before ever
-    touching get_engine() (mirrors TestSkillDetectorPostgresMode /
-    TestWorkSessionStorePostgresMode's "mock_get_engine.assert_not_called()"
-    shape). This is a deliberate loud failure, not a silent empty/no-op
-    default — see the boundary-rule docstring at the top of queue_gateway.py
-    for why (a swallowed failure here used to trigger an unreviewed direct
-    PM post fallback in webhook_server.py, removed alongside this change).
-    """
+class TestQueueGatewayDialectNeutral:
+    def test_no_postgres_fail_closed_guard_remains(self):
+        import backend.queue_gateway as module
 
-    def test_stage_raises_in_postgres_mode(self):
-        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
-        with patch("backend.queue_gateway.is_postgres", return_value=True), \
-             patch("backend.queue_gateway.get_engine") as mock_get_engine:
-            gw = QueueGateway()
-            with pytest.raises(QueueGatewayUnavailableError):
-                gw.stage(
-                    action_type="post_comment",
-                    target="T",
-                    platform="github",
-                    workspace="ws",
-                    payload={},
-                    confidence=0.8,
-                )
-        mock_get_engine.assert_not_called()
+        assert not hasattr(module, "is_postgres")
 
-    def test_mark_posted_raises_in_postgres_mode(self):
-        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
-        with patch("backend.queue_gateway.is_postgres", return_value=True), \
-             patch("backend.queue_gateway.get_engine") as mock_get_engine:
-            gw = QueueGateway()
-            with pytest.raises(QueueGatewayUnavailableError):
-                gw.mark_posted(1)
-        mock_get_engine.assert_not_called()
-
-    def test_mark_failed_raises_in_postgres_mode(self):
-        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
-        with patch("backend.queue_gateway.is_postgres", return_value=True), \
-             patch("backend.queue_gateway.get_engine") as mock_get_engine:
-            gw = QueueGateway()
-            with pytest.raises(QueueGatewayUnavailableError):
-                gw.mark_failed(1, "boom")
-        mock_get_engine.assert_not_called()
-
-    def test_list_pending_raises_in_postgres_mode(self):
-        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
-        with patch("backend.queue_gateway.is_postgres", return_value=True), \
-             patch("backend.queue_gateway.get_engine") as mock_get_engine:
-            gw = QueueGateway()
-            with pytest.raises(QueueGatewayUnavailableError):
-                gw.list_pending()
-        mock_get_engine.assert_not_called()
-
-    def test_get_action_raises_in_postgres_mode(self):
-        from backend.queue_gateway import QueueGateway, QueueGatewayUnavailableError
-        with patch("backend.queue_gateway.is_postgres", return_value=True), \
-             patch("backend.queue_gateway.get_engine") as mock_get_engine:
-            gw = QueueGateway()
-            with pytest.raises(QueueGatewayUnavailableError):
-                gw.get_action(1)
-        mock_get_engine.assert_not_called()
-
-    def test_close_is_still_safe_in_postgres_mode(self):
-        """close() is a no-op regardless of backend — must never raise."""
+    def test_close_is_safe(self):
         from backend.queue_gateway import QueueGateway
-        with patch("backend.queue_gateway.is_postgres", return_value=True):
-            gw = QueueGateway()
-            gw.close()  # must not raise
+
+        QueueGateway().close()
 
 
 # ---------------------------------------------------------------------------
