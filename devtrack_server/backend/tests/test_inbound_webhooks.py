@@ -8,7 +8,7 @@ Covers the four /webhooks/* routes that receive external events:
   - /webhooks/jira          — No auth, placeholder handler
 
 Patterns follow backend/tests/test_http_triggers.py:
-  - Module-scoped _patch_slow_startup stubs the lifespan (no spaCy / GitLab calls)
+  - Module-scoped _patch_slow_startup stubs the lifespan (no LLM provider / GitLab calls)
   - Function-scoped fixture resets the cached WebhookEventHandler singleton
   - TestClient NOT used as context manager (avoids asyncio.to_thread hang)
   - WebhookNotifier.notify and _send_ipc_event are patched to AsyncMock
@@ -41,7 +41,7 @@ def _patch_slow_startup():
 
     Starlette TestClient triggers the app lifespan on the first request.
     Two things block in test environments:
-      1. TriggerProcessor._init_components — loads spaCy, Azure SDKs, etc.
+      1. TriggerProcessor._init_components — loads LLM provider, Azure SDKs, etc.
       2. _ensure_gitlab_webhooks        — makes outbound HTTP calls to GitLab.
     Both are patched so any test request returns immediately.
     """

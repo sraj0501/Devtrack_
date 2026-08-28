@@ -137,7 +137,7 @@ func (cli *CLI) handleVersion() error {
 	fmt.Println("  • SQLite database, ticket cache, alert poller")
 	fmt.Println("  • Native Go connectors: GitHub, GitLab, Azure DevOps")
 	fmt.Println("  • Notifications: terminal, Telegram, Slack, OS")
-	fmt.Println("  • AI features (NLP, LLM, reports) via devtrack_server")
+	fmt.Println("  • AI features (LLM enrichment and reports) via devtrack_server")
 	return nil
 }
 
@@ -379,6 +379,8 @@ func (cli *CLI) printUsage() {
 	fmt.Println("  devtrack stop          Stop the daemon")
 	fmt.Println("  devtrack restart       Restart the daemon")
 	fmt.Println("  devtrack status        Show daemon, workspaces, and service status")
+	fmt.Println("  devtrack doctor        Show capability and background install status")
+	fmt.Println("  devtrack doctor --repair  Retry a failed managed server install")
 	fmt.Println("  devtrack logs          Show recent log entries")
 	fmt.Println()
 	fmt.Println("SCHEDULER:")

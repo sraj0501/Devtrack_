@@ -16,51 +16,58 @@ devtrack_client/internal/db/pending_actions.go):
     confidence >= 0.70        → 5  minutes  (moderate confidence)
     confidence < 0.70         → 15 minutes  (low confidence, longer review window)
 
-Boundary rule
--------------
-``pending_actions`` is a Go-owned table (created and migrated by the Go
-daemon — see ``devtrack_client/internal/db/pending_actions.go`` and
-``migrations.go``).  Unlike every other Go-owned table ported so far, this
-one is *written* by Python (``stage()`` is the only Python-side write path
-into the queue), not just read.
-
-  SQLite mode     (POSTGRES_URL unset) — all methods use the shared
-    SQLAlchemy engine (``backend.db.engine.get_engine()``) instead of a
-    bespoke ``sqlite3.connect()``.  The engine is a lazily-built,
-    process-wide singleton with its own pooling, so this class holds no
-    connection of its own — every method opens (and releases) a connection
-    per call.
-  PostgreSQL mode (POSTGRES_URL set)   — there is no Go internal-HTTP
-    endpoint for staging or reading the queue today (confirmed against
-    ``devtrack_client/internal/daemon/http_api.go`` — it exposes
-    ``/internal/force-trigger``, ``/internal/reload-config``,
-    ``/internal/stats``, and ``/internal/sessions/active``, nothing
-    queue-related), and building one is real, unstarted design work
-    (tracked separately as TASK-114, client→server sync path). Every public
-    method below raises :class:`QueueGatewayUnavailableError` immediately in
-    this mode — loudly, not a silent empty/no-op default — because a
-    swallowed failure here used to trigger an unreviewed direct PM post
-    fallback in ``webhook_server.py`` (removed as part of this same change;
-    see ``TriggerProcessor.process_commit``). Callers must catch this
-    themselves if they want graceful degradation.
+The queue is a server-side persistence surface. TASK-114 registers its schema
+on the shared SQLAlchemy metadata, so the same gateway works against mandatory
+PostgreSQL and the isolated SQLite test backend. Client-originated queue rows
+remain local-first and are copied separately through the opt-in client-event
+outbox.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import text
+from sqlalchemy import Column, Float, Integer, Table, Text, select
+from sqlalchemy.engine import Engine
 
-from backend.db.engine import get_engine, is_postgres
+from backend.db.engine import ensure_tables, get_engine, metadata
 
 logger = logging.getLogger(__name__)
 
 
 class QueueGatewayUnavailableError(RuntimeError):
-    """pending_actions queue staging has no PostgreSQL-mode implementation yet (TASK-114)."""
+    """Deprecated compatibility error retained for callers importing it."""
+
+
+pending_actions_table = Table(
+    "pending_actions",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("action_type", Text, nullable=False),
+    Column("target", Text, nullable=False),
+    Column("platform", Text, nullable=False),
+    Column("workspace", Text, nullable=False),
+    Column("payload", Text, nullable=False),
+    Column("confidence", Float, nullable=False),
+    Column("status", Text, nullable=False),
+    Column("expires_at", Text, nullable=False),
+    Column("created_at", Text, nullable=False),
+    Column("acted_at", Text),
+    Column("acted_by", Text),
+    Column("error", Text),
+)
+
+def _init(engine: Optional[Engine] = None) -> Engine:
+    eng = engine or get_engine()
+    ensure_tables(eng, tables=[pending_actions_table])
+    return eng
+
+
+def _now_str() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def _confidence_timeout(confidence: float, is_new_action_type: bool) -> timedelta:
@@ -89,9 +96,7 @@ class QueueGateway:
 
     No connection is held across calls — each method opens
     ``backend.db.engine.get_engine().connect()`` for the duration of that
-    call only.  In PostgreSQL mode every method raises
-    :class:`QueueGatewayUnavailableError` before touching the engine at all
-    (see the boundary-rule note at the top of this module).
+    call only. The schema and operations are dialect-neutral.
 
     Usage::
 
@@ -144,42 +149,24 @@ class QueueGateway:
         :param is_new_action_type: When ``True``, force the 30-minute review
             window regardless of ``confidence``.
         :returns: The ``id`` of the newly inserted row.
-        :raises QueueGatewayUnavailableError: In PostgreSQL mode.
         """
-        if is_postgres():
-            raise QueueGatewayUnavailableError(
-                "QueueGateway.stage: pending_actions has no PostgreSQL-mode "
-                "implementation yet (TASK-114) — the queue cannot be staged to."
-            )
-
         timeout = _confidence_timeout(confidence, is_new_action_type)
-        expires_at = (datetime.utcnow() + timeout).strftime("%Y-%m-%dT%H:%M:%S")
+        expires_at = (datetime.now(timezone.utc) + timeout).strftime("%Y-%m-%dT%H:%M:%S")
         payload_json = json.dumps(payload)
-
-        stmt = text(
-            """
-            INSERT INTO pending_actions
-                (action_type, target, platform, workspace, payload,
-                 confidence, status, expires_at)
-            VALUES (:action_type, :target, :platform, :workspace, :payload,
-                    :confidence, 'pending', :expires_at)
-            """
-        )
-        with get_engine().connect() as conn:
-            result = conn.execute(
-                stmt,
-                {
-                    "action_type": action_type,
-                    "target": target,
-                    "platform": platform,
-                    "workspace": workspace,
-                    "payload": payload_json,
-                    "confidence": confidence,
-                    "expires_at": expires_at,
-                },
-            )
-            conn.commit()
-            return result.lastrowid  # type: ignore[return-value]
+        created_at = _now_str()
+        with _init().begin() as conn:
+            result = conn.execute(pending_actions_table.insert().values(
+                action_type=action_type,
+                target=target,
+                platform=platform,
+                workspace=workspace,
+                payload=payload_json,
+                confidence=confidence,
+                status="pending",
+                expires_at=expires_at,
+                created_at=created_at,
+            ))
+            return int(result.inserted_primary_key[0])
 
     def mark_posted(self, action_id: int) -> None:
         """Mark *action_id* as successfully posted.
@@ -187,27 +174,14 @@ class QueueGateway:
         Sets ``status = 'posted'``, ``acted_at = NOW()``, ``acted_by = 'auto'``.
         Called by the queue executor after a successful PM API call.
 
-        :raises QueueGatewayUnavailableError: In PostgreSQL mode.
         """
-        if is_postgres():
-            raise QueueGatewayUnavailableError(
-                "QueueGateway.mark_posted: pending_actions has no PostgreSQL-mode "
-                "implementation yet (TASK-114)."
+        acted_at = _now_str()
+        with _init().begin() as conn:
+            conn.execute(
+                pending_actions_table.update()
+                .where(pending_actions_table.c.id == action_id)
+                .values(status="posted", acted_at=acted_at, acted_by="auto")
             )
-
-        acted_at = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-        stmt = text(
-            """
-            UPDATE pending_actions
-               SET status    = 'posted',
-                   acted_at  = :acted_at,
-                   acted_by  = 'auto'
-             WHERE id = :id
-            """
-        )
-        with get_engine().connect() as conn:
-            conn.execute(stmt, {"acted_at": acted_at, "id": action_id})
-            conn.commit()
 
     def mark_failed(self, action_id: int, error: str) -> None:
         """Mark *action_id* as failed with an error message.
@@ -215,27 +189,14 @@ class QueueGateway:
         Sets ``status = 'failed'``, ``error = error``, ``acted_at = NOW()``.
         Called by the queue executor when the PM API call raises an exception.
 
-        :raises QueueGatewayUnavailableError: In PostgreSQL mode.
         """
-        if is_postgres():
-            raise QueueGatewayUnavailableError(
-                "QueueGateway.mark_failed: pending_actions has no PostgreSQL-mode "
-                "implementation yet (TASK-114)."
+        acted_at = _now_str()
+        with _init().begin() as conn:
+            conn.execute(
+                pending_actions_table.update()
+                .where(pending_actions_table.c.id == action_id)
+                .values(status="failed", error=error, acted_at=acted_at)
             )
-
-        acted_at = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-        stmt = text(
-            """
-            UPDATE pending_actions
-               SET status   = 'failed',
-                   error    = :error,
-                   acted_at = :acted_at
-             WHERE id = :id
-            """
-        )
-        with get_engine().connect() as conn:
-            conn.execute(stmt, {"error": error, "acted_at": acted_at, "id": action_id})
-            conn.commit()
 
     # ------------------------------------------------------------------
     # Helpers used by /queue/pending endpoint
@@ -246,25 +207,13 @@ class QueueGateway:
 
         Each row is returned as a plain ``dict`` (safe to serialise to JSON).
 
-        :raises QueueGatewayUnavailableError: In PostgreSQL mode.
         """
-        if is_postgres():
-            raise QueueGatewayUnavailableError(
-                "QueueGateway.list_pending: pending_actions has no PostgreSQL-mode "
-                "implementation yet (TASK-114)."
-            )
-
-        stmt = text(
-            """
-            SELECT id, action_type, target, platform, workspace, payload,
-                   confidence, status, expires_at, created_at,
-                   acted_at, acted_by, error
-              FROM pending_actions
-             WHERE status = 'pending'
-             ORDER BY expires_at ASC
-            """
+        stmt = (
+            select(pending_actions_table)
+            .where(pending_actions_table.c.status == "pending")
+            .order_by(pending_actions_table.c.expires_at.asc())
         )
-        with get_engine().connect() as conn:
+        with _init().connect() as conn:
             rows = conn.execute(stmt).mappings().all()
         return [dict(row) for row in rows]
 
@@ -273,25 +222,10 @@ class QueueGateway:
 
         Returns ``None`` when the row does not exist.
 
-        :raises QueueGatewayUnavailableError: In PostgreSQL mode.
         """
-        if is_postgres():
-            raise QueueGatewayUnavailableError(
-                "QueueGateway.get_action: pending_actions has no PostgreSQL-mode "
-                "implementation yet (TASK-114)."
-            )
-
-        stmt = text(
-            """
-            SELECT id, action_type, target, platform, workspace, payload,
-                   confidence, status, expires_at, created_at,
-                   acted_at, acted_by, error
-              FROM pending_actions
-             WHERE id = :id
-            """
-        )
-        with get_engine().connect() as conn:
-            row = conn.execute(stmt, {"id": action_id}).mappings().fetchone()
+        stmt = select(pending_actions_table).where(pending_actions_table.c.id == action_id)
+        with _init().connect() as conn:
+            row = conn.execute(stmt).mappings().fetchone()
         return dict(row) if row else None
 
     def close(self) -> None:

@@ -70,7 +70,15 @@ class WorkSessionStore:
         In SQLite mode reads the shared devtrack.db directly.
         """
         if _is_postgres_mode():
-            return self._get_active_session_via_http()
+            from backend.db.client_event_store import list_client_rows
+
+            sessions = [
+                row for row in list_client_rows("work_sessions")
+                if row.get("ended_at") in (None, "")
+            ]
+            if not sessions:
+                return None
+            return max(sessions, key=lambda row: str(row.get("started_at", "")))
         return self._get_active_session_sqlite()
 
     def _get_active_session_via_http(self) -> Optional[Dict[str, Any]]:
@@ -106,6 +114,36 @@ class WorkSessionStore:
             logger.debug("get_active_session (sqlite): %s", exc)
             return None
 
+    # ------------------------------------------------------------------
+    # Write helpers
+    # ------------------------------------------------------------------
+
+    def start_session(self, ticket_ref: str = "") -> Optional[int]:
+        """Insert a new open session and return its id, or None on failure.
+
+        No-op in PostgreSQL mode — work_sessions is a Go-owned table and
+        cannot be written directly when Python and Go are on separate
+        machines (same limitation as append_commit/end_session/adjust_time).
+        """
+        if _is_postgres_mode():
+            logger.debug("start_session: skipped in PostgreSQL mode (Go-owned table)")
+            return None
+        try:
+            from backend.db.engine import get_engine
+            with get_engine().connect() as conn:
+                result = conn.execute(
+                    text(
+                        "INSERT INTO work_sessions (started_at, ticket_ref, commits) "
+                        "VALUES (datetime('now'), :ticket_ref, '[]')"
+                    ),
+                    {"ticket_ref": ticket_ref},
+                )
+                conn.commit()
+                return result.lastrowid
+        except Exception as e:
+            logger.debug(f"WorkSessionStore.start_session error: {e}")
+            return None
+
     def get_sessions_for_date(self, date: str) -> List[Dict[str, Any]]:
         """Return all sessions whose started_at date matches YYYY-MM-DD.
 
@@ -118,12 +156,14 @@ class WorkSessionStore:
         boundary-rule note at the top of this module.
         """
         if _is_postgres_mode():
-            logger.debug(
-                "get_sessions_for_date: fail-closed in PostgreSQL mode — "
-                "work_sessions is a Go-owned table with no date-range HTTP "
-                "endpoint (only /internal/sessions/active exists)"
-            )
-            return []
+            from backend.db.client_event_store import list_client_rows
+
+            sessions = [
+                row for row in list_client_rows("work_sessions")
+                if str(row.get("started_at", ""))[:10] == date
+            ]
+            sessions.sort(key=lambda row: str(row.get("started_at", "")))
+            return sessions
         try:
             from backend.db.engine import get_engine
             with get_engine().connect() as conn:

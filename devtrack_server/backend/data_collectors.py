@@ -13,10 +13,13 @@ from datetime import datetime, timedelta
 from typing import List, Dict
 import sys
 
-# Add backend to path
-sys.path.insert(0, os.path.dirname(__file__))
+# Repo root on the path for backend.* imports (not backend/ itself -- that
+# used to be inserted here too, but it let `import telegram` resolve to
+# backend/telegram/ instead of the real python-telegram-bot package
+# whenever this module got imported first in the same process).
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from personalized_ai import PersonalizedAI
+from backend.personalized_ai import PersonalizedAI
 
 logger = logging.getLogger(__name__)
 

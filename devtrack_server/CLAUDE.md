@@ -14,11 +14,11 @@ See `docs/ARCHITECTURE.md` for the HTTP/JSON boundary between `devtrack_client` 
 ```bash
 cd devtrack_server
 
-# Install dependencies
-uv sync                                      # core deps (no AI/spaCy)
-uv sync --extra ai                           # include AI/NLP deps
+# Install dependencies (includes required PostgreSQL driver)
+uv sync                                      # core server + configured LLM providers
+uv sync --extra ai                           # include optional RAG personalization deps
 
-# Start the server
+# Start the server (POSTGRES_URL is required; migrations run automatically)
 uv run python -m backend.webhook_server      # FastAPI on port 8089
 
 # Run tests
@@ -41,8 +41,8 @@ devtrack_client (Go)
         |
 devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
         |
-        |-- /trigger/commit  --> NLP parser -> LLM enhancement -> PM APIs
-        |-- /trigger/timer   --> TUI prompt -> work update -> report
+        |-- /trigger/commit  --> LLM task enrichment -> pending actions -> PM APIs
+        |-- /trigger/timer   --> silent context enrichment -> pending action/report
         |-- /webhooks/*      --> webhook_handlers.py -> event routing
         |-- /admin/*         --> admin UI (HTMX, JWT auth)
         |-- /health          --> health check
@@ -59,7 +59,7 @@ devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
 | `backend/webhook_handlers.py` | `WebhookEventHandler` — routes Azure/GitHub/Jira events |
 | `backend/config.py` | All config — use `backend.config.get()`, never `os.getenv()` directly |
 | `backend/ipc_client.py` | Legacy TCP IPC client (Python side) — prefer HTTP triggers for new code |
-| `backend/nlp_parser.py` | spaCy NLP for commit/user text → structured task data |
+| `backend/llm_task_parser.py` | Strict configured-provider enrichment with explicit confidence and raw-text fallback; never selects the ticket target |
 | `backend/description_enhancer.py` | Ollama-based description enhancement |
 | `backend/llm/` | Multi-provider LLM abstraction (Ollama / OpenAI / Anthropic / Groq) |
 | `backend/user_prompt.py` | Terminal TUI for interactive work-update prompts |
@@ -70,7 +70,7 @@ devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
 | `backend/github/` | GitHub API integration |
 | `backend/azure/` | Azure DevOps integration |
 | `backend/msgraph_python/` | Microsoft Graph (Teams, Outlook) |
-| `backend/db/` | Database models and migrations (SQLite + optional MongoDB) |
+| `backend/db/` | PostgreSQL-backed server stores and migrations; client SQLite boundary helpers |
 | `backend/ai/` | Low-level AI utilities (Ollama client, inference helpers) |
 | `backend/admin/` | Admin console routes (FastAPI + HTMX, JWT auth, user/license management) |
 
@@ -83,9 +83,17 @@ devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
 
 All Python modules access config via `backend.config.get()`, `get_int()`, `get_bool()`, `get_path()`. No module calls `os.getenv()` directly — this is enforced by the CS-2 audit.
 
-Server-side env vars are documented in `devtrack_server/.env_sample`. The server requires these at startup; missing vars raise `ConfigError` with the exact variable name.
+Server-side env vars are documented in `devtrack_server/.env_sample`. Non-secret runtime settings
+have visible defaults that `devtrack setup` writes into its generated `.env`; invalid overrides still
+fail validation. Mandatory secrets and `POSTGRES_URL` fail closed with the exact variable name.
 
-Key server vars: `DEVTRACK_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SECRET_KEY`, `LLM_PROVIDER`, `OLLAMA_HOST`, `HTTP_TIMEOUT`, `LLM_REQUEST_TIMEOUT_SECS`.
+Key server vars: `POSTGRES_URL` (required), `DEVTRACK_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SECRET_KEY`, `LLM_PROVIDER`, `OLLAMA_HOST`, `HTTP_TIMEOUT`, `LLM_REQUEST_TIMEOUT_SECS`.
+
+PostgreSQL is mandatory for server persistence and server-side events. SQLite belongs to the Go
+client's offline source-of-truth path; remaining Python SQLite branches are migration compatibility
+debt, not the final server storage mode. Server startup validates PostgreSQL connectivity and applies
+Alembic migrations before accepting requests. TASK-141 removed the final direct `sqlite3` import
+from production server code.
 
 ## Client-Server Boundary
 

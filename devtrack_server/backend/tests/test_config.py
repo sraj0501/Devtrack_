@@ -43,3 +43,83 @@ def test_ipc_host_port_return_values():
     port = ipc_port()
     assert host in ("127.0.0.1", "localhost") or len(host) > 0
     assert port.isdigit() and int(port) > 0
+
+
+@pytest.mark.parametrize(
+    "env_name, getter_name, expected",
+    [
+        ("IPC_CONNECT_TIMEOUT_SECS", "ipc_connect_timeout_secs", 5),
+        ("HTTP_TIMEOUT_SHORT", "http_timeout_short", 10),
+        ("HTTP_TIMEOUT", "http_timeout", 30),
+        ("HTTP_TIMEOUT_LONG", "http_timeout_long", 60),
+        ("IPC_RETRY_DELAY_MS", "ipc_retry_delay_ms", 2000),
+        ("LLM_REQUEST_TIMEOUT_SECS", "llm_request_timeout", 120),
+        ("SENTIMENT_ANALYSIS_WINDOW_MINUTES", "sentiment_analysis_window_minutes", 120),
+        ("LMSTUDIO_HOST", "lmstudio_host", "http://localhost:1234/v1"),
+        ("GIT_SAGE_DEFAULT_MODEL", "git_sage_default_model", "llama3.2"),
+        ("PROMPT_TIMEOUT_SIMPLE_SECS", "prompt_timeout_simple", 30),
+        ("PROMPT_TIMEOUT_WORK_SECS", "prompt_timeout_work", 60),
+        ("PROMPT_TIMEOUT_TASK_SECS", "prompt_timeout_task", 120),
+    ],
+)
+@pytest.mark.parametrize("blank", [False, True], ids=["missing", "blank"])
+def test_non_secret_setup_settings_have_defaults(monkeypatch, env_name, getter_name, expected, blank):
+    import backend.config as config
+
+    if blank:
+        monkeypatch.setenv(env_name, "")
+    else:
+        monkeypatch.delenv(env_name, raising=False)
+    assert getattr(config, getter_name)() == expected
+
+
+@pytest.mark.parametrize(
+    "env_name, getter_name, value",
+    [
+        ("HTTP_TIMEOUT", "http_timeout", "not-a-number"),
+        ("PROMPT_TIMEOUT_SIMPLE_SECS", "prompt_timeout_simple", "0"),
+        ("IPC_RETRY_DELAY_MS", "ipc_retry_delay_ms", "-1"),
+    ],
+)
+def test_non_secret_setup_settings_reject_invalid_overrides(
+    monkeypatch, env_name, getter_name, value
+):
+    import backend.config as config
+
+    monkeypatch.setenv(env_name, value)
+    with pytest.raises(ValueError):
+        getattr(config, getter_name)()
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "postgresql://user:pass@localhost:5432/devtrack",
+        "postgresql+psycopg2://user:pass@db/devtrack",
+        "postgresql:///devtrack",
+    ],
+)
+def test_require_postgres_url_accepts_postgres(monkeypatch, value):
+    from backend.config import require_postgres_url
+
+    monkeypatch.setenv("POSTGRES_URL", value)
+    assert require_postgres_url() == value
+
+
+@pytest.mark.parametrize(
+    "value, message",
+    [
+        (None, "required"),
+        ("sqlite:///devtrack.db", "postgresql"),
+        ("postgresql://user:pass@localhost", "database name"),
+    ],
+)
+def test_require_postgres_url_rejects_invalid(monkeypatch, value, message):
+    from backend.config import ConfigError, require_postgres_url
+
+    if value is None:
+        monkeypatch.delenv("POSTGRES_URL", raising=False)
+    else:
+        monkeypatch.setenv("POSTGRES_URL", value)
+    with pytest.raises(ConfigError, match=message):
+        require_postgres_url()

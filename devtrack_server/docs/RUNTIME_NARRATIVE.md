@@ -49,8 +49,8 @@ running in the same async task — including code dispatched via `asyncio.to_thr
 ```python
 from runtime_narrative import stage as _stage   # imported at module level with fallback
 
-with _stage("NLP parse"):
-    task_data = nlp_parser.parse(commit_msg)
+with _stage("LLM task parse"):
+    task_data = llm_task_parser.parse(commit_msg)
 
 with _stage("PM sync"):
     workspace_router.route(...)
@@ -69,7 +69,7 @@ the server runs normally if `runtime-narrative` is uninstalled.
 
 ## The log file: `narrative.log`
 
-Location: `LOG_DIR/narrative.log` (override with `NARRATIVE_LOG_PATH`).  
+Location: `LOG_DIR/narrative.log` (override with `NARRATIVE_LOG_PATH`).
 Format: one JSON object per line, UTF-8, append mode.
 
 ### Event types
@@ -86,8 +86,8 @@ Format: one JSON object per line, UTF-8, append mode.
 
 #### `StageStarted` / `StageCompleted`
 ```json
-{ "event": "StageStarted",   "story_id": "838d...", "stage_name": "NLP parse",  "timestamp": "..." }
-{ "event": "StageCompleted", "story_id": "838d...", "stage_name": "NLP parse",  "duration_seconds": 0.042, "timestamp": "..." }
+{ "event": "StageStarted",   "story_id": "838d...", "stage_name": "LLM task parse",  "timestamp": "..." }
+{ "event": "StageCompleted", "story_id": "838d...", "stage_name": "LLM task parse",  "duration_seconds": 0.042, "timestamp": "..." }
 ```
 
 #### `StoryCompleted`
@@ -110,12 +110,12 @@ Format: one JSON object per line, UTF-8, append mode.
   "story_name": "POST /trigger/ticket_sync",
   "stage_name": "Upsert 42 github tickets",
   "error_type": "OperationalError",
-  "error_message": "database is locked",
+  "error_message": "connection refused",
   "location": { "filename": "ticket_db.py", "lineno": 125, "function": "upsert_ticket", "source_line": "conn.execute(stmt)" },
   "exception_chain": [...],
-  "exact_cause": "SQLite database locked — concurrent write from another process",
-  "llm_analysis": "The SQLite database at DATA_DIR/db/devtrack.db is locked by another process. This typically happens when the Go daemon is writing trigger records simultaneously. Either switch to PostgreSQL (set POSTGRES_URL) or add WAL mode: run PRAGMA journal_mode=WAL on the database.",
-  "stage_timeline": "Link work session (0.4ms) → NLP parse (0.2ms) → [FAILED] Upsert 42 github tickets",
+  "exact_cause": "PostgreSQL connection refused while writing the ticket store",
+  "llm_analysis": "The PostgreSQL service configured by POSTGRES_URL is unreachable. Confirm the service is running, the host and port are reachable, and the database exists.",
+  "stage_timeline": "Link work session (0.4ms) → LLM task parse (0.2ms) → [FAILED] Upsert 42 github tickets",
   "progress": { "percent": 66, "completed_stages": 2, "total_stages": 3 },
   "timestamp": "..."
 }
@@ -178,7 +178,7 @@ best-effort notification or optional enrichment → graceful.
 
 ### Stage naming conventions
 
-- Use verb + noun: `"NLP parse"`, `"PM sync"`, `"Force clear cache"`
+- Use verb + noun: `"LLM task parse"`, `"PM sync"`, `"Force clear cache"`
 - Include dynamic context when it adds value: `"Upsert 42 github tickets"`,
   `"LLM call [ollama/llama3.2]"`, `"Persona: Architect"`
 - Keep names short enough to be readable in a one-line stage timeline
@@ -249,7 +249,7 @@ These are issues in `runtime-narrative` itself (not DevTrack):
 
 | Endpoint | Stages | Pattern |
 |---|---|---|
-| `POST /trigger/commit` | Link work session · NLP parse · PM sync | Graceful |
+| `POST /trigger/commit` | Link work session · LLM task parse · PM sync | Graceful |
 | `POST /trigger/timer` | Check vacation mode · Check active session · Send Telegram reminder · Send Slack reminder | Graceful |
 | `POST /trigger/ticket_sync` | Force clear cache _(force=true only)_ · Upsert N source tickets | **Critical** |
 
@@ -257,7 +257,7 @@ These are issues in `runtime-narrative` itself (not DevTrack):
 
 | Stage | When |
 |---|---|
-| `LLM [ollama/gemma4:latest]` | Primary provider attempt |
+| `LLM [ollama/llama3.2]` | Primary provider attempt using the configured/default local model |
 | `LLM fallback [openai/gpt-4o-mini]` | First fallback (if primary returns None) |
 | `LLM fallback [ollama/llama3.2]` | Final free fallback |
 

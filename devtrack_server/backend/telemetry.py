@@ -71,7 +71,7 @@ def record(event_type: str, **props: Any) -> None:
     Queue a telemetry event. No-op if telemetry is disabled.
 
     Args:
-        event_type: dot-separated event name (e.g. "command.run", "feature.nlp")
+        event_type: dot-separated event name (e.g. "command.run", "feature.llm")
         **props:    additional safe, non-PII properties
     """
     if not _is_enabled():

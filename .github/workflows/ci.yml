@@ -80,7 +80,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: devtrack_server
-        run: uv sync --extra postgres
+        run: uv sync
 
       - name: Run Postgres-backed tests
         working-directory: devtrack_server

@@ -2,12 +2,12 @@
 # Runs the DevTrack Python server in a container. The Go client stays on the host
 # and talks to it over HTTPS with DEVTRACK_SERVER_MODE=external.
 #
-# The server is the only service you need. MongoDB and PostgreSQL are opt-in extras
-# (Teams voice source; multi-user mode) — DevTrack's own state lives in local SQLite.
+# PostgreSQL is the required persistence target for server-side data. MongoDB is an
+# optional Teams voice-learning source.
 #
 # Usage:
-#   docker compose up -d devtrack_server   # the server
-#   docker compose up -d mongo             # optional extras, by name
+#   docker compose up -d postgres devtrack_server
+#   docker compose up -d mongo             # optional Teams voice source
 #   docker compose down                    # stop
 #   docker compose down -v                 # stop + wipe volumes
 
@@ -22,12 +22,17 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      POSTGRES_URL: ${POSTGRES_URL:?POSTGRES_URL must be set}
     ports:
       - "${DEVTRACK_SERVER_PORT:-8089}:8089"
     volumes:
       - ./Data:/app/Data
     networks:
       - devtrack-network
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8089/health"]
       interval: 30s
@@ -58,14 +63,14 @@ services:
       retries: 5
 
   # ── PostgreSQL ────────────────────────────────────────────────────────────────
-  # Used by: managed cloud mode (user accounts, API keys, team config)
+  # Required persistence target for server-side events and aggregate state.
   postgres:
     image: postgres:16-alpine
     container_name: devtrack-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-devtrack}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devtrack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-devtrack}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"

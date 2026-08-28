@@ -1,773 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - DevTrack</title>
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/devtrack.png" />
-    <link rel="apple-touch-icon" href="assets/devtrack.png" />
-    <link rel="stylesheet" href="assets/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy — DevTrack</title>
+  <meta name="description" content="How DevTrack stores local activity, stages outbound actions, and handles optional integrations and AI providers." />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/devtrack.png" />
+  <link rel="apple-touch-icon" href="assets/devtrack.png" />
+  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
-
 <body>
-    <!-- Sidebar Toggle Button -->
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
-        <i class="fas fa-bars"></i>
-    </button>
-
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <div class="logo-icon"><i class="fas fa-shield-alt"></i></div>
-                <h1>DevTrack</h1>
-                <p class="tagline">Privacy Policy</p>
-            </div>
-
-            <div class="sidebar-controls">
-                <button class="control-btn" id="darkModeToggle" aria-label="Toggle Dark Mode" title="Toggle Dark Mode">
-                    <i class="fas fa-moon"></i>
-                </button>
-                <button class="control-btn sidebar-collapse" id="sidebarCollapse" aria-label="Collapse Sidebar"
-                    title="Collapse Sidebar">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-            </div>
-        </div>
-
-        <nav class="nav-menu">
-            <a href="index.html" class="nav-item">
-                <i class="nav-icon fas fa-arrow-left"></i> <span class="nav-text">Back to Wiki</span>
-            </a>
-
-            <div class="nav-section">
-                <div class="nav-section-title">Privacy Sections</div>
-                <a href="#overview" class="nav-item active" data-tab="overview">
-                    <i class="nav-icon fas fa-eye"></i> <span class="nav-text">Overview</span>
-                </a>
-                <a href="#data-collection" class="nav-item" data-tab="data-collection">
-                    <i class="nav-icon fas fa-database"></i> <span class="nav-text">Data Collection</span>
-                </a>
-                <a href="#consent" class="nav-item" data-tab="consent">
-                    <i class="nav-icon fas fa-check-circle"></i> <span class="nav-text">Consent</span>
-                </a>
-                <a href="#storage" class="nav-item" data-tab="storage">
-                    <i class="nav-icon fas fa-hdd"></i> <span class="nav-text">Storage</span>
-                </a>
-                <a href="#ai-processing" class="nav-item" data-tab="ai-processing">
-                    <i class="nav-icon fas fa-brain"></i> <span class="nav-text">AI Processing</span>
-                </a>
-                <a href="#user-rights" class="nav-item" data-tab="user-rights">
-                    <i class="nav-icon fas fa-user-shield"></i> <span class="nav-text">Your Rights</span>
-                </a>
-                <a href="#security" class="nav-item" data-tab="security">
-                    <i class="nav-icon fas fa-lock"></i> <span class="nav-text">Security</span>
-                </a>
-            </div>
-        </nav>
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"><i class="fas fa-bars"></i></button>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo"><div class="logo-icon"><i class="fas fa-shield-alt"></i></div><h1>DevTrack</h1><p class="tagline">Privacy</p></div>
+      <div class="sidebar-controls">
+        <button class="control-btn" id="darkModeToggle" aria-label="Toggle dark mode"><i class="fas fa-moon"></i></button>
+        <button class="control-btn sidebar-collapse" id="sidebarCollapse" aria-label="Collapse sidebar"><i class="fas fa-chevron-left"></i></button>
+      </div>
     </div>
-
-    <div class="main-content">
-        <div class="content-wrapper">
-
-            <!-- Overview Tab -->
-            <section id="overview" class="tab-content active">
-                <h1>Privacy Policy</h1>
-                <p class="lead">DevTrack is built with privacy as a core principle. By default every piece of processing happens locally on your machine, on a local Ollama model, and nothing is sent anywhere. Cloud AI providers are strictly opt-in — see <em>AI Processing</em> below for exactly what leaves your machine if you configure one.</p>
-
-                <div class="privacy-highlight">
-                    <h2>Privacy-First Design Principles</h2>
-                    <ul class="check-list">
-                        <li>All data stored locally on your machine</li>
-                        <li>Local Ollama by default — no cloud AI unless you explicitly configure a provider</li>
-                        <li>Explicit user consent required before ANY data collection</li>
-                        <li>Complete transparency about what data is collected</li>
-                        <li>Full data deletion option available at any time</li>
-                        <li>You maintain complete control over your data</li>
-                    </ul>
-                </div>
-
-                <h2>What Makes DevTrack Private?</h2>
-                <div class="info-grid">
-                    <div class="info-card">
-                        <h3>Local Storage Only</h3>
-                        <p>All data is stored in <code>~/.devtrack/</code> on your local machine. Nothing is uploaded to
-                            external servers.</p>
-                    </div>
-                    <div class="info-card">
-                        <h3>Local AI Processing</h3>
-                        <p>Uses Ollama running locally on your machine by default — nothing is sent to OpenAI, Anthropic, or any
-                            other cloud service. If you opt in to a cloud provider, only the prompt text is sent; your code, diffs, and repository never are.</p>
-                    </div>
-                    <div class="info-card">
-                        <h3>Consent-Based</h3>
-                        <p>Explicit opt-in required for AI learning features. The system never collects data without
-                            your permission.</p>
-                    </div>
-                    <div class="info-card">
-                        <h3>Transparent</h3>
-                        <p>The source is public, so you can verify exactly what data is collected and how it is used.</p>
-                    </div>
-                </div>
-
-                <h2>Data Flow Diagram</h2>
-                <div class="architecture-diagram">
-                    <pre>
-┌─────────────────────────────────────────────────────────┐
-│                    YOUR LOCAL MACHINE                    │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  DevTrack Application                                   │
-│  ├─ Git Monitoring (local repos)                        │
-│  ├─ Local SQLite Database (~/.devtrack/daemon.db)       │
-│  ├─ AI Learning (local Ollama)                          │
-│  └─ Configuration Files (~/.devtrack/)                  │
-│                                                          │
-│  Data Sources (Only with Consent):                      │
-│  ├─ MS Teams (via Microsoft Graph API)                  │
-│  ├─ Azure DevOps (via REST API)                         │
-│  └─ Outlook (via Microsoft Graph API)                   │
-│                                                          │
-│  All data stays on your machine                         │
-│  No external cloud AI services                          │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
-                    </pre>
-                </div>
-
-                <div class="warning-box">
-                    <h3>Important Note about Microsoft Services</h3>
-                    <p>When you enable integrations with Microsoft Teams, Azure DevOps, or Outlook, DevTrack uses
-                        Microsoft's APIs to access your data. However:</p>
-                    <ul>
-                        <li>You authenticate directly with Microsoft (device code flow)</li>
-                        <li>DevTrack stores access tokens locally</li>
-                        <li>Data retrieved is stored only on your local machine</li>
-                        <li>Microsoft's own privacy policies apply to their services</li>
-                        <li>You can revoke DevTrack's access at any time through Microsoft's consent page</li>
-                    </ul>
-                </div>
-            </section>
-
-            <!-- Data Collection Tab -->
-            <section id="data-collection" class="tab-content">
-                <h1>What Data is Collected</h1>
-
-                <h2>Core Functionality (No Consent Required)</h2>
-                <p>These features run automatically and are essential for DevTrack's operation:</p>
-
-                <h3>Git Activity Monitoring</h3>
-                <ul>
-                    <li><strong>Commit hashes:</strong> To identify unique commits</li>
-                    <li><strong>Commit messages:</strong> To understand what work was done</li>
-                    <li><strong>Author information:</strong> Your Git username and email</li>
-                    <li><strong>Timestamps:</strong> When commits were made</li>
-                    <li><strong>Changed files:</strong> List of files modified in each commit</li>
-                    <li><strong>Branch names:</strong> To track which branch you're working on</li>
-                </ul>
-                <p><em>Storage:</em> <code>~/.devtrack/daemon.db</code> (SQLite database)</p>
-
-                <h3>Task and Time Tracking</h3>
-                <ul>
-                    <li><strong>Task descriptions:</strong> What you tell DevTrack you're working on</li>
-                    <li><strong>Time entries:</strong> When you start/stop work on tasks</li>
-                    <li><strong>Project associations:</strong> Which project each task belongs to</li>
-                    <li><strong>Status updates:</strong> Task progress and completion status</li>
-                </ul>
-                <p><em>Storage:</em> <code>~/.devtrack/daemon.db</code></p>
-
-                <h3>Configuration Data</h3>
-                <ul>
-                    <li><strong>Repository paths:</strong> Where your Git repos are located</li>
-                    <li><strong>Work hours preferences:</strong> Your configured work schedule</li>
-                    <li><strong>Notification settings:</strong> How you want to receive reports</li>
-                    <li><strong>Integration credentials:</strong> API tokens (stored encrypted)</li>
-                </ul>
-                <p><em>Storage:</em> <code>~/.devtrack/config.yaml</code></p>
-
-                <h2>Personalized AI Learning (Explicit Consent Required)</h2>
-                <p>These features are <strong>opt-in only</strong> and require your explicit consent:</p>
-
-                <h3>Communication Samples</h3>
-                <p><strong>Only collected if you run:</strong> <code>devtrack enable-learning</code></p>
-                <ul>
-                    <li><strong>MS Teams Messages:</strong> Chat messages where you responded to someone (last 30 days)
-                    </li>
-                    <li><strong>Azure DevOps Comments:</strong> Your comments on work items and discussions</li>
-                    <li><strong>Outlook Emails:</strong> Your sent emails and replies (extracting only your written
-                        content)</li>
-                </ul>
-                <p><em>Storage:</em> <code>~/.devtrack/learning/samples.json</code></p>
-
-                <h3>Communication Analysis</h3>
-                <p>Derived from your communication samples:</p>
-                <ul>
-                    <li><strong>Writing style metrics:</strong> Average sentence length, formality level, tone</li>
-                    <li><strong>Common phrases:</strong> Words and phrases you frequently use</li>
-                    <li><strong>Response patterns:</strong> How you typically respond to different types of messages
-                    </li>
-                    <li><strong>Greetings and sign-offs:</strong> Your typical email/chat openings and closings</li>
-                </ul>
-                <p><em>Storage:</em> <code>~/.devtrack/learning/profile.json</code></p>
-
-                <h2>What is NOT Collected</h2>
-                <ul class="check-list">
-                    <li>Passwords or sensitive credentials (tokens are encrypted)</li>
-                    <li>File contents from your Git repositories</li>
-                    <li>Screen recordings or keylogging data</li>
-                    <li>Browsing history or application usage outside DevTrack</li>
-                    <li>Personal files unrelated to development work</li>
-                    <li>Any data from apps other than Git, Teams, Azure DevOps, Outlook</li>
-                </ul>
-            </section>
-
-            <!-- Consent Tab -->
-            <section id="consent" class="tab-content">
-                <h1>Consent Management</h1>
-
-                <h2>Consent Workflow</h2>
-                <p>DevTrack implements a clear, transparent consent process for AI learning features.</p>
-
-                <h3>When Consent is Requested</h3>
-                <p>The first time you run:</p>
-                <div class="code-block">
-                    <pre><code>devtrack enable-learning</code></pre>
-                </div>
-                <p>You will see a consent prompt explaining:</p>
-                <ul>
-                    <li>What data will be collected</li>
-                    <li>How it will be used</li>
-                    <li>Where it will be stored</li>
-                    <li>How to revoke consent later</li>
-                </ul>
-
-                <h3>Sample Consent Prompt</h3>
-                <div class="info-box">
-                    <pre>
-╔════════════════════════════════════════════════════════╗
-║        Personalized AI Learning - Consent              ║
-╠════════════════════════════════════════════════════════╣
-║                                                        ║
-║  DevTrack would like to learn your communication      ║
-║  style to generate personalized responses.            ║
-║                                                        ║
-║  Data to be collected:                                ║
-║    • MS Teams chat messages (last 30 days)           ║
-║    • Azure DevOps comments (last 30 days)            ║
-║    • Outlook sent emails (last 30 days)              ║
-║                                                        ║
-║  How it will be used:                                 ║
-║    • Analyze your writing style and patterns         ║
-║    • Generate responses that sound like you          ║
-║    • All processing done locally with Ollama         ║
-║                                                        ║
-║  Storage:                                             ║
-║    • Stored locally in ~/.devtrack/learning/         ║
-║    • No data sent to external cloud services         ║
-║    • You can delete all data anytime                 ║
-║                                                        ║
-╚════════════════════════════════════════════════════════╝
-
-Do you consent to this data collection? (yes/no): 
-                    </pre>
-                </div>
-
-                <h3>Viewing Your Consent Status</h3>
-                <div class="code-block">
-                    <pre><code>devtrack learning-status</code></pre>
-                </div>
-                <p>Shows:</p>
-                <ul>
-                    <li>Whether learning is enabled</li>
-                    <li>When consent was granted</li>
-                    <li>Number of samples collected</li>
-                    <li>Last update timestamp</li>
-                </ul>
-
-                <h3>Revoking Consent</h3>
-                <div class="code-block">
-                    <pre><code>devtrack revoke-consent</code></pre>
-                </div>
-                <p>This will:</p>
-                <ul class="check-list">
-                    <li>Delete all communication samples (<code>samples.json</code>)</li>
-                    <li>Delete your learned profile (<code>profile.json</code>)</li>
-                    <li>Delete consent record (<code>consent.json</code>)</li>
-                    <li>Disable future data collection</li>
-                    <li>Confirm deletion with a summary</li>
-                </ul>
-
-                <h2>Consent Granularity</h2>
-                <p>Currently, consent is all-or-nothing for AI learning features. Future versions may support:</p>
-                <ul>
-                    <li>Selective data sources (Teams only, not Outlook)</li>
-                    <li>Time-limited consent (expires after 90 days)</li>
-                    <li>Purpose-limited consent (specific use cases only)</li>
-                </ul>
-
-                <h2>Re-granting Consent</h2>
-                <p>After revoking consent, you can enable learning again at any time:</p>
-                <div class="code-block">
-                    <pre><code>devtrack enable-learning</code></pre>
-                </div>
-                <p>You will be prompted for consent again, and can choose to grant or deny.</p>
-            </section>
-
-            <!-- Storage Tab -->
-            <section id="storage" class="tab-content">
-                <h1>Data Storage</h1>
-
-                <h2>Storage Locations</h2>
-                <p>All DevTrack data is stored locally in your home directory:</p>
-
-                <div class="code-block">
-                    <pre><code>~/.devtrack/
-├── daemon.pid              # Process ID of running daemon
-├── daemon.log              # Activity logs
-├── daemon.db               # SQLite database (tasks, commits, time entries)
-├── config.yaml             # Configuration settings
-│
-├── learning/               # AI Learning data (only if enabled)
-│   ├── consent.json        # Your consent record
-│   ├── samples.json        # Communication samples
-│   └── profile.json        # Learned communication profile
-│
-└── reports/                # Generated reports
-    └── report-YYYY-MM-DD.txt</code></pre>
-                </div>
-
-                <h2>Database Schema</h2>
-                <p>The SQLite database (<code>daemon.db</code>) contains:</p>
-
-                <h3>Commits Table</h3>
-                <div class="code-block">
-                    <pre><code>CREATE TABLE commits (
-    id INTEGER PRIMARY KEY,
-    repo_path TEXT,
-    commit_hash TEXT,
-    message TEXT,
-    author TEXT,
-    timestamp DATETIME,
-    branch TEXT,
-    files_changed TEXT  -- JSON array
-);</code></pre>
-                </div>
-
-                <h3>Tasks Table</h3>
-                <div class="code-block">
-                    <pre><code>CREATE TABLE tasks (
-    id INTEGER PRIMARY KEY,
-    title TEXT,
-    description TEXT,
-    project TEXT,
-    status TEXT,
-    created_at DATETIME,
-    updated_at DATETIME,
-    external_id TEXT,  -- Azure DevOps/GitHub ID
-    external_platform TEXT  -- "azure", "github", etc.
-);</code></pre>
-                </div>
-
-                <h3>Time Entries Table</h3>
-                <div class="code-block">
-                    <pre><code>CREATE TABLE time_entries (
-    id INTEGER PRIMARY KEY,
-    task_id INTEGER,
-    start_time DATETIME,
-    end_time DATETIME,
-    duration_minutes INTEGER,
-    notes TEXT,
-    FOREIGN KEY (task_id) REFERENCES tasks(id)
-);</code></pre>
-                </div>
-
-                <h2>Learning Data Files</h2>
-
-                <h3>consent.json</h3>
-                <div class="code-block">
-                    <pre><code>{
-  "granted": true,
-  "timestamp": "2025-11-08T10:30:00Z",
-  "version": "1.0",
-  "sources": ["teams", "azure_devops", "outlook"]
-}</code></pre>
-                </div>
-
-                <h3>samples.json</h3>
-                <div class="code-block">
-                    <pre><code>{
-  "samples": [
-    {
-      "trigger": "Can you review this PR?",
-      "response": "Sure! I'll take a look this afternoon...",
-      "source": "teams",
-      "context_type": "request",
-      "timestamp": "2025-11-08T10:00:00Z"
-    },
-    ...
-  ],
-  "total_count": 347
-}</code></pre>
-                </div>
-
-                <h3>profile.json</h3>
-                <div class="code-block">
-                    <pre><code>{
-  "writing_style": {
-    "tone": "casual",
-    "formality": "informal",
-    "avg_sentence_length": 15,
-    "uses_exclamation": true
-  },
-  "response_patterns": {
-    "question": ["Sure!", "Good question..."],
-    "request": ["I can help with that"]
-  },
-  "vocabulary": {
-    "common_words": ["sure", "great", "thanks"],
-    "sign_offs": ["Thanks", "Cheers"],
-    "greetings": ["Hi", "Hey"]
-  }
-}</code></pre>
-                </div>
-
-                <h2>Data Retention</h2>
-                <ul>
-                    <li><strong>Git commits:</strong> Retained indefinitely in database</li>
-                    <li><strong>Task data:</strong> Retained until manually deleted</li>
-                    <li><strong>Logs:</strong> Rotated after 10 MB or 30 days</li>
-                    <li><strong>Learning samples:</strong> Retained until consent revoked</li>
-                    <li><strong>Reports:</strong> Retained until manually deleted</li>
-                </ul>
-
-                <h2>Backup and Export</h2>
-                <p>You can backup your DevTrack data by copying the <code>~/.devtrack/</code> directory:</p>
-                <div class="code-block">
-                    <pre><code>cp -r ~/.devtrack ~/devtrack-backup-$(date +%Y%m%d)</code></pre>
-                </div>
-            </section>
-
-            <!-- AI Processing Tab -->
-            <section id="ai-processing" class="tab-content">
-                <h1>AI Processing</h1>
-
-                <h2>Local AI with Ollama</h2>
-                <p>DevTrack uses <strong>Ollama</strong> for all AI processing, which runs entirely on your local
-                    machine.</p>
-
-                <div class="info-grid">
-                    <div class="info-card">
-                        <h3>No Cloud AI</h3>
-                        <p>Does not use OpenAI, Anthropic, Google, or any other cloud AI service</p>
-                    </div>
-                    <div class="info-card">
-                        <h3>Local Processing</h3>
-                        <p>All AI inference happens on your CPU/GPU</p>
-                    </div>
-                    <div class="info-card">
-                        <h3>Offline Capable</h3>
-                        <p>Works without internet connection after initial setup</p>
-                    </div>
-                    <div class="info-card">
-                        <h3>Open Source Models</h3>
-                        <p>Uses Llama 2 or other open source models</p>
-                    </div>
-                </div>
-
-                <h2>AI Use Cases</h2>
-
-                <h3>1. Task Parsing</h3>
-                <p>When you describe what you worked on, the AI extracts:</p>
-                <ul>
-                    <li>Task titles and descriptions</li>
-                    <li>Project names</li>
-                    <li>Ticket numbers (e.g., #123, PROJ-456)</li>
-                    <li>Status updates (in progress, completed, etc.)</li>
-                    <li>Time estimates</li>
-                </ul>
-                <p><strong>Example:</strong></p>
-                <div class="code-block">
-                    <pre><code>Input: "Fixed login bug in ticket #123 for Project Alpha, took about 2 hours"
-
-Output:
-  - Task: "Fixed login bug"
-  - Project: "Project Alpha"
-  - Ticket: "#123"
-  - Duration: "2 hours"
-  - Status: "completed"</code></pre>
-                </div>
-
-                <h3>2. Personalized Response Generation</h3>
-                <p>Generates responses matching your communication style:</p>
-                <ul>
-                    <li>Analyzes your learned profile</li>
-                    <li>Matches tone, formality, and phrasing</li>
-                    <li>Uses your common words and expressions</li>
-                    <li>Applies your typical greetings and sign-offs</li>
-                </ul>
-
-                <h3>3. Subtask Generation</h3>
-                <p>Breaks down complex tasks into smaller steps:</p>
-                <ul>
-                    <li>Identifies logical subtasks</li>
-                    <li>Suggests implementation order</li>
-                    <li>Estimates effort for each subtask</li>
-                </ul>
-
-                <h2>AI Model Information</h2>
-
-                <h3>Default Model: Llama 2</h3>
-                <ul>
-                    <li><strong>Size:</strong> ~4 GB download</li>
-                    <li><strong>Parameters:</strong> 7B (7 billion)</li>
-                    <li><strong>License:</strong> Open source (Meta)</li>
-                    <li><strong>Performance:</strong> Good balance of speed and quality</li>
-                </ul>
-
-                <h3>System Requirements</h3>
-                <ul>
-                    <li><strong>RAM:</strong> 8 GB minimum, 16 GB recommended</li>
-                    <li><strong>Disk Space:</strong> 5 GB for model storage</li>
-                    <li><strong>CPU:</strong> Multi-core processor (GPU optional but faster)</li>
-                </ul>
-
-                <h2>AI Data Flow</h2>
-                <div class="architecture-diagram">
-                    <pre>
-User Input → DevTrack → Ollama (Local) → Response
-   ↓            ↓            ↓              ↓
- Text        Format      Process         Return
-           + Context    Locally        to User
-           + Profile
-                    </pre>
-                </div>
-
-                <div class="privacy-highlight">
-                    <h3>Privacy Guarantee</h3>
-                    <p>Your data never leaves your machine during AI processing. Ollama runs completely offline after
-                        the initial model download.</p>
-                </div>
-            </section>
-
-            <!-- User Rights Tab -->
-            <section id="user-rights" class="tab-content">
-                <h1>Your Rights</h1>
-
-                <h2>Right to Access</h2>
-                <p>You have complete access to all data DevTrack stores about you.</p>
-                <div class="code-block">
-                    <pre><code># View all stored data
-ls -la ~/.devtrack/
-
-# View database contents
-sqlite3 ~/.devtrack/daemon.db "SELECT * FROM tasks;"
-
-# View learning data
-cat ~/.devtrack/learning/samples.json
-cat ~/.devtrack/learning/profile.json</code></pre>
-                </div>
-
-                <h2>Right to Rectification</h2>
-                <p>You can modify any stored data:</p>
-                <ul>
-                    <li>Edit configuration: <code>~/.devtrack/config.yaml</code></li>
-                    <li>Update database records via CLI commands</li>
-                    <li>Manually edit JSON files in <code>learning/</code> directory</li>
-                </ul>
-
-                <h2>Right to Erasure</h2>
-                <p>You can delete all or specific data at any time:</p>
-
-                <h3>Delete All Learning Data</h3>
-                <div class="code-block">
-                    <pre><code>devtrack revoke-consent</code></pre>
-                </div>
-
-                <h3>Delete All DevTrack Data</h3>
-                <div class="code-block">
-                    <pre><code>devtrack stop  # Stop daemon first
-rm -rf ~/.devtrack/  # Delete all data</code></pre>
-                </div>
-
-                <h3>Delete Specific Data</h3>
-                <div class="code-block">
-                    <pre><code># Delete old commits
-sqlite3 ~/.devtrack/daemon.db "DELETE FROM commits WHERE timestamp < '2025-01-01';"
-
-# Delete specific learning samples
-# Edit ~/.devtrack/learning/samples.json manually</code></pre>
-                </div>
-
-                <h2>Right to Data Portability</h2>
-                <p>Export your data in standard formats:</p>
-                <div class="code-block">
-                    <pre><code># Export database to CSV
-sqlite3 -header -csv ~/.devtrack/daemon.db "SELECT * FROM tasks;" > tasks.csv
-sqlite3 -header -csv ~/.devtrack/daemon.db "SELECT * FROM commits;" > commits.csv
-
-# Learning data is already in JSON format
-cp ~/.devtrack/learning/*.json ~/export/</code></pre>
-                </div>
-
-                <h2>Right to Object</h2>
-                <p>You can disable any feature at any time:</p>
-                <ul>
-                    <li><strong>Disable Git monitoring:</strong> <code>devtrack stop</code></li>
-                    <li><strong>Disable scheduler:</strong> <code>devtrack pause</code></li>
-                    <li><strong>Disable learning:</strong> <code>devtrack revoke-consent</code></li>
-                    <li><strong>Disable integrations:</strong> Edit <code>config.yaml</code> and set
-                        <code>enabled: false</code></li>
-                </ul>
-
-                <h2>Right to Be Informed</h2>
-                <p>This privacy policy and the open source code provide complete transparency about:</p>
-                <ul class="check-list">
-                    <li>What data is collected</li>
-                    <li>How it's processed</li>
-                    <li>Where it's stored</li>
-                    <li>Who has access (only you)</li>
-                    <li>How to delete it</li>
-                </ul>
-
-                <h2>Contact & Questions</h2>
-                <p>DevTrack's source is public — every claim on this page can be checked against it. For questions or concerns about privacy:</p>
-                <ul>
-                    <li><strong>Review the code:</strong> <a href="https://github.com/sraj0501/Devtrack_">github.com/sraj0501/Devtrack_</a></li>
-                    <li><strong>Open an issue:</strong> Report privacy concerns on <a href="https://github.com/sraj0501/Devtrack_/issues">GitHub Issues</a></li>
-                    <li><strong>Read documentation:</strong> All features are documented in the wiki</li>
-                </ul>
-            </section>
-
-            <!-- Security Tab -->
-            <section id="security" class="tab-content">
-                <h1>Security Measures</h1>
-
-                <h2>Credential Storage</h2>
-
-                <h3>Environment Variables</h3>
-                <p>API tokens and credentials should be stored as environment variables, not in config files:</p>
-                <div class="code-block">
-                    <pre><code>export AZURE_DEVOPS_PAT="your-token"
-export GITHUB_TOKEN="your-token"</code></pre>
-                </div>
-
-                <h3>Configuration References</h3>
-                <p>The <code>config.yaml</code> file references environment variables:</p>
-                <div class="code-block">
-                    <pre><code>integrations:
-  azure_devops:
-    pat: ${AZURE_DEVOPS_PAT}  # References env var</code></pre>
-                </div>
-
-                <h2>File Permissions</h2>
-                <p>DevTrack sets restrictive permissions on sensitive files:</p>
-                <div class="code-block">
-                    <pre><code># Configuration files: owner read/write only
-chmod 600 ~/.devtrack/config.yaml
-
-# Database: owner read/write only
-chmod 600 ~/.devtrack/daemon.db
-
-# Learning data: owner read/write only
-chmod 600 ~/.devtrack/learning/*.json</code></pre>
-                </div>
-
-                <h2>Network Security</h2>
-
-                <h3>HTTPS Only</h3>
-                <p>All external API calls use HTTPS:</p>
-                <ul class="check-list">
-                    <li>Microsoft Graph API: <code>https://graph.microsoft.com</code></li>
-                    <li>Azure DevOps API: <code>https://dev.azure.com</code></li>
-                    <li>GitHub API: <code>https://api.github.com</code></li>
-                </ul>
-
-                <h3>Telemetry — opt-in, off by default</h3>
-                <p>DevTrack sends <strong>no</strong> telemetry, analytics, or crash reports unless you explicitly opt in with <code>devtrack telemetry on</code>. Check the current setting at any time with <code>devtrack telemetry status</code>.</p>
-                <p>If you do opt in, a single anonymous ping is sent on install and at most once every 24 hours, containing only: a random install UUID, a hashed hardware fingerprint, the event type, the DevTrack version, your OS, and your CPU architecture. It never includes code, commit messages, diffs, ticket contents, file paths, or any personal data. Opt back out at any time with <code>devtrack telemetry off</code>.</p>
-
-                <h2>Authentication</h2>
-
-                <h3>Microsoft Services</h3>
-                <p>Uses OAuth 2.0 device code flow:</p>
-                <ul>
-                    <li>You authenticate directly with Microsoft</li>
-                    <li>DevTrack never sees your password</li>
-                    <li>Access tokens stored locally with restricted permissions</li>
-                    <li>Tokens can be revoked at <a href="https://myaccount.microsoft.com/permissions">Microsoft Account
-                            Permissions</a></li>
-                </ul>
-
-                <h3>Personal Access Tokens</h3>
-                <p>For Azure DevOps and GitHub:</p>
-                <ul>
-                    <li>Generate tokens with minimal required scopes</li>
-                    <li>Set expiration dates (e.g., 90 days)</li>
-                    <li>Rotate tokens regularly</li>
-                    <li>Revoke immediately if compromised</li>
-                </ul>
-
-                <h2>Process Isolation</h2>
-                <ul>
-                    <li><strong>Daemon runs as your user:</strong> No elevated privileges required</li>
-                    <li><strong>No network listeners:</strong> Daemon doesn't open any ports</li>
-                    <li><strong>IPC via Unix sockets:</strong> Only accessible by your user account</li>
-                </ul>
-
-                <h2>Recommended Practices</h2>
-
-                <h3>System Security</h3>
-                <ul class="check-list">
-                    <li>Keep your OS and software up to date</li>
-                    <li>Use full disk encryption (FileVault on macOS, BitLocker on Windows)</li>
-                    <li>Enable firewall and automatic security updates</li>
-                    <li>Use strong passwords and 2FA for Microsoft/GitHub accounts</li>
-                </ul>
-
-                <h3>DevTrack Security</h3>
-                <ul class="check-list">
-                    <li>Regularly update DevTrack to latest version</li>
-                    <li>Review and audit <code>~/.devtrack/config.yaml</code> periodically</li>
-                    <li>Rotate API tokens every 90 days</li>
-                    <li>Backup <code>~/.devtrack/</code> to encrypted storage</li>
-                    <li>Don't commit <code>config.yaml</code> to Git repositories</li>
-                </ul>
-
-                <h2>Incident Response</h2>
-                <p>If you suspect a security issue:</p>
-                <ol>
-                    <li><strong>Stop the daemon:</strong> <code>devtrack stop</code></li>
-                    <li><strong>Revoke tokens:</strong> Revoke all API tokens for Azure DevOps, GitHub, Microsoft</li>
-                    <li><strong>Check logs:</strong> Review <code>~/.devtrack/daemon.log</code> for suspicious activity
-                    </li>
-                    <li><strong>Reset credentials:</strong> Generate new tokens and update configuration</li>
-                    <li><strong>Report:</strong> Open a <a href="https://github.com/sraj0501/Devtrack_/issues">GitLab issue</a> if the problem is with DevTrack itself</li>
-                </ol>
-
-                <div class="warning-box">
-                    <h3>Security Reminder</h3>
-                    <p>While DevTrack implements security best practices, ultimate security depends on your system's
-                        security. Keep your OS updated, use strong passwords, and follow security guidelines for your
-                        organization.</p>
-                </div>
-
-                <div
-                    style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); color: var(--text-secondary); font-size: 0.875rem; text-align: center;">
-                    <p><strong>Last Updated:</strong> November 8, 2025</p>
-                    <p><a href="index.html">← Back to Main Wiki</a></p>
-                </div>
-            </section>
-
-        </div>
-    </div>
-
-    <script src="assets/script.js"></script>
+    <nav class="nav-menu">
+      <a href="index.html" class="nav-item"><i class="nav-icon fas fa-arrow-left"></i><span class="nav-text">Back to home</span></a>
+      <div class="nav-section">
+        <div class="nav-section-title">Privacy sections</div>
+        <a href="#overview" class="nav-item active" data-tab="overview"><i class="nav-icon fas fa-eye"></i><span class="nav-text">Overview</span></a>
+        <a href="#storage" class="nav-item" data-tab="storage"><i class="nav-icon fas fa-hdd"></i><span class="nav-text">Local storage</span></a>
+        <a href="#outbound" class="nav-item" data-tab="outbound"><i class="nav-icon fas fa-paper-plane"></i><span class="nav-text">Outbound data</span></a>
+        <a href="#ai-processing" class="nav-item" data-tab="ai-processing"><i class="nav-icon fas fa-brain"></i><span class="nav-text">AI processing</span></a>
+        <a href="#control" class="nav-item" data-tab="control"><i class="nav-icon fas fa-user-shield"></i><span class="nav-text">Your control</span></a>
+        <a href="#security" class="nav-item" data-tab="security"><i class="nav-icon fas fa-lock"></i><span class="nav-text">Security</span></a>
+      </div>
+    </nav>
+  </div>
+  <div class="main-content"><div class="content-wrapper">
+    <section id="overview" class="tab-content active">
+      <h1>Privacy</h1>
+      <p class="lead">DevTrack is local-first. Git observation, the pending-actions queue, work history, and MCP context remain on the developer's machine by default. Ollama is the default inference provider.</p>
+      <div class="privacy-highlight"><h2>The short version</h2><ul class="check-list">
+        <li>No DevTrack account is required for local use.</li>
+        <li>Telemetry is off by default and sends nothing until explicitly enabled.</li>
+        <li>Every PM, email, or Git action is staged in <code>pending_actions</code> before execution.</li>
+        <li>Cloud AI, remote-server sync, PM APIs, email, and chat integrations are optional and require configuration or consent.</li>
+        <li>Learning and training data stay local unless the user explicitly opts into a remote source or server.</li>
+      </ul></div>
+      <p>DevTrack is software you run. This page describes the current implementation; it does not claim that configured third-party services have the same privacy policy.</p>
+    </section>
+    <section id="storage" class="tab-content">
+      <h1>Local storage</h1>
+      <p>The Go client keeps its offline source of truth in SQLite. On a standard managed installation, runtime files live below the XDG data home:</p>
+      <pre><code>~/.local/share/devtrack/
+├── data/
+│   ├── db/devtrack.db
+│   ├── learning/
+│   ├── logs/
+│   └── pids/
+├── server/              # managed Python checkout and environment
+├── devtrack.env         # generated runtime configuration
+└── workspaces.yaml</code></pre>
+      <p><code>XDG_DATA_HOME</code> and the generated environment file can change these paths. Use <code>devtrack settings</code> and <code>devtrack status</code> rather than assuming a path.</p>
+      <h2>Client and server storage are different</h2>
+      <ul>
+        <li><strong>Go client:</strong> local SQLite for triggers, work sessions, pending actions, history, MCP context, and offline replay.</li>
+        <li><strong>Python server:</strong> PostgreSQL is required for server persistence and server-side events.</li>
+        <li><strong>Voice retrieval:</strong> ChromaDB is optional and lives with the configured Python server (local in managed mode, server-side in external mode).</li>
+        <li><strong>Teams learning source:</strong> MongoDB is optional and used only when that integration is enabled.</li>
+      </ul>
+      <p>The Go client never connects directly to PostgreSQL.</p>
+    </section>
+    <section id="outbound" class="tab-content">
+      <h1>Outbound data</h1>
+      <h2>Pending-actions boundary</h2>
+      <p>Actions that write to a PM platform, email, or Git remote are staged locally first with an explicit confidence score. They can be approved, edited, rejected, or allowed to expire according to the configured trust policy. DevTrack does not add a direct-send fallback.</p>
+      <h2>Optional connections</h2>
+      <ul>
+        <li><strong>GitHub, GitLab, Azure DevOps, and Jira:</strong> requests contain the identifiers and content needed for the configured operation.</li>
+        <li><strong>Email, Telegram, Slack, and Teams:</strong> messages leave the machine only when the corresponding integration and action are enabled.</li>
+        <li><strong>External Python server:</strong> client-event synchronization is off by default and requires <code>SERVER_EVENT_SYNC_ENABLED=true</code>.</li>
+        <li><strong>Telemetry:</strong> off by default. Check with <code>devtrack telemetry status</code>; enable or disable it locally with <code>devtrack telemetry on|off</code>.</li>
+      </ul>
+      <p>Credentials stay in the registered environment/configuration files and are never meant to be committed to source control.</p>
+    </section>
+    <section id="ai-processing" class="tab-content">
+      <h1>AI processing</h1>
+      <h2>Local default</h2>
+      <p>Ollama is the primary provider. When it is available, prompts and generated text are processed by the configured model at <code>OLLAMA_HOST</code>.</p>
+      <h2>Optional cloud providers</h2>
+      <p>OpenAI, Anthropic, and Groq are optional. They are used only when configured and selected by the provider chain. Prompt text required for generation is sent to the selected provider; do not enable a cloud provider if that is incompatible with your project policy.</p>
+      <p>Setup may offer an already-present OpenAI or Anthropic credential as a temporary fast lane while a local model downloads. It requires explicit acceptance, and Ollama remains primary.</p>
+      <h2>Learning data</h2>
+      <p>Git voice seeding reads local commit history. Additional PM, Teams, or recording sources are opt-in. Local profiles and examples are used to guide generated text and can be reset with <code>devtrack learning-reset</code>.</p>
+    </section>
+    <section id="control" class="tab-content">
+      <h1>Your control</h1>
+      <pre><code>devtrack telemetry status
+devtrack telemetry off
+devtrack learning-status
+devtrack revoke-consent
+devtrack learning-reset
+devtrack queue list
+devtrack queue reject &lt;id&gt;
+devtrack uninstall --keep-data</code></pre>
+      <p>Before deleting data, stop the daemon and back up the path reported by <code>devtrack settings</code>. Database schemas evolve; direct SQL deletion is not a supported privacy workflow.</p>
+      <p>To report a privacy or security issue, open a GitHub issue without including credentials, tokens, private code, or personal data.</p>
+    </section>
+    <section id="security" class="tab-content">
+      <h1>Security</h1>
+      <ul class="check-list">
+        <li>Use least-privilege, expiring tokens for integrations.</li>
+        <li>Keep environment files and the XDG data directory readable only by your user.</li>
+        <li>Use TLS and a strong <code>DEVTRACK_API_KEY</code> when the Python server is reachable over a network.</li>
+        <li>Use a strong PostgreSQL password and do not expose PostgreSQL publicly.</li>
+        <li>Review pending actions before extending auto-approval timeouts.</li>
+        <li>Keep DevTrack, Ollama, PostgreSQL, and the host OS updated.</li>
+      </ul>
+      <div class="warning-box"><h3>If a credential may be compromised</h3><ol>
+        <li>Run <code>devtrack stop</code>.</li><li>Revoke the credential at its provider.</li>
+        <li>Replace it in the registered DevTrack environment file.</li><li>Review local logs and pending actions before restarting.</li>
+      </ol></div>
+      <p><strong>Last updated:</strong> August 28, 2026</p>
+    </section>
+  </div></div>
+  <script src="assets/script.js"></script>
 </body>
-
 </html>

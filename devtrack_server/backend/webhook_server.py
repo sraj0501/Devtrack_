@@ -15,6 +15,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import os
 import signal
@@ -96,8 +97,8 @@ _UVICORN_LOG_CONFIG: dict = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("DevTrack Webhook + Trigger Server starting (CS-1 HTTP mode)")
-    from backend.config import is_ai_available
-    logger.info("feature:ai %s", "enabled" if is_ai_available() else "disabled (run: devtrack-server enable ai)")
+    from backend.db.startup import initialize_server_database
+    await asyncio.to_thread(initialize_server_database)
     await asyncio.to_thread(TriggerProcessor.get)
     await _ensure_gitlab_webhooks()
     yield
@@ -236,10 +237,8 @@ class TriggerProcessor:
         # Queue gateway — holds no connection of its own (backed by the
         # shared engine, opened per-call). Construction is lightweight and
         # only fails on an import error; actual DB/queue-availability
-        # failures surface later, from individual method calls (e.g.
-        # QueueGatewayUnavailableError in PostgreSQL mode, or a "no such
-        # table" error if the Go daemon hasn't migrated the DB yet) — those
-        # are handled at the call site in process_commit(), not here.
+        # failures surface later from individual method calls and are handled
+        # at the call site in process_commit(), not here.
         self._queue_gateway = None
         try:
             from backend.queue_gateway import QueueGateway
@@ -249,14 +248,14 @@ class TriggerProcessor:
             logger.debug("QueueGateway unavailable (non-fatal): %s", e)
 
     def _init_components(self) -> None:
-        # NLP parser
-        self.nlp_parser = None
+        # Optional LLM enrichment; failures degrade to the raw commit message.
+        self.llm_task_parser = None
         try:
-            from backend.nlp_parser import NLPTaskParser
-            self.nlp_parser = NLPTaskParser(use_ollama=True)
-            logger.info("✓ TriggerProcessor: NLP parser ready")
+            from backend.llm_task_parser import LLMTaskParser
+            self.llm_task_parser = LLMTaskParser()
+            logger.info("✓ TriggerProcessor: LLM task parser ready")
         except Exception as e:
-            logger.debug(f"NLP parser unavailable: {e}")
+            logger.debug("LLM task parser unavailable: %s", e)
 
         # Description enhancer
         self.description_enhancer = None
@@ -518,8 +517,7 @@ class TriggerProcessor:
         timeout expires (or the developer approves manually).
 
         If the queue gateway is unavailable (daemon not yet started, DB
-        missing, ``.stage()`` raises for any reason including
-        PostgreSQL-mode's ``QueueGatewayUnavailableError``), PM sync is
+        missing, or ``.stage()`` raises for any reason), PM sync is
         skipped for this commit — logged, not raised. There is no
         direct-post fallback: every outbound PM action must stage in the
         pending-actions queue first (non-negotiable), so a queue failure
@@ -542,9 +540,9 @@ class TriggerProcessor:
         # Phase 2 — Go-resolved ticket ID (branch/message/active-ticket fallback
         # chain, ~100% hit-rate verified). Absent or empty means Go's extractor
         # found no ticket for this commit (logged [UNLINKED] on the client side).
-        # This is the authoritative ticket-resolution signal — NLP's own guess
-        # (task_data.get("ticket_id")) is no longer used to locate the ticket,
-        # only to enrich the description/comment text.
+        # This is the authoritative ticket-resolution signal. Server-side LLM
+        # parsing only enriches descriptive fields and cannot infer or redirect
+        # the PM target.
         resolved_ticket_id = data.get("ticket_id", "")
 
         logger.info(f"[HTTP commit] {commit_hash[:12]} — {commit_msg[:60]}")
@@ -565,14 +563,14 @@ class TriggerProcessor:
                 except Exception as e:
                     logger.debug(f"Work session link failed (non-fatal): {e}")
 
-        # NLP parse
+        # Optional LLM enrichment
         task_data = None
-        with _stage("NLP parse"):
-            if self.nlp_parser and commit_msg:
+        with _stage("LLM task parse"):
+            if self.llm_task_parser and commit_msg:
                 try:
-                    task_data = self.nlp_parser.parse(commit_msg, repo_path=repo_path)
+                    task_data = self.llm_task_parser.parse(commit_msg, repo_path=repo_path)
                 except Exception as e:
-                    logger.warning(f"NLP parse failed: {e}")
+                    logger.warning("LLM task enrichment failed: %s", e)
 
         # PM sync — stage via queue (Phase 1) or fall back to direct post
         with _stage("PM sync"):
@@ -580,7 +578,7 @@ class TriggerProcessor:
                 # Phase 2 found no ticket for this commit (branch/message/
                 # active-ticket fallback chain all came up empty — logged
                 # [UNLINKED] on the Go side). Non-Negotiable #8: never block,
-                # never error. We do not fall back to the old NLP-guess or
+                # never error. We do not fall back to server inference or
                 # truncated-commit-hash target — if Go says unlinked, treat
                 # it as unlinked here too.
                 logger.info(
@@ -589,9 +587,8 @@ class TriggerProcessor:
                     commit_hash[:12] if commit_hash else "?",
                 )
             elif self.workspace_router:
-                # task_data may legitimately be None here (NLP parser
-                # unavailable, e.g. spaCy not installed, or parse() raised —
-                # see "NLP parse" stage above). resolved_ticket_id is the
+                # task_data may legitimately be None here (configured provider
+                # unavailable or parse failed). resolved_ticket_id is the
                 # authoritative signal for *targeting*; task_data is only
                 # optional descriptive enrichment, so every read of it below
                 # must fall back to commit_msg / "" without raising.
@@ -608,7 +605,7 @@ class TriggerProcessor:
                     status = ""
 
                 # Phase 3 (TASK-072): generate a voice-aware ticket comment via
-                # the LLM pipeline, not a raw NLP restatement. Falls back to a
+                # the voice-aware LLM pipeline. Falls back to a
                 # templated string on any LLM failure — never blocks processing.
                 try:
                     from backend.commit_message_enhancer import generate_ticket_comment as _gtc
@@ -624,7 +621,7 @@ class TriggerProcessor:
                         "generate_ticket_comment failed (belt-and-suspenders fallback): %s",
                         _gtc_exc,
                     )
-                    # task_data.get("description") NLP restatement as last resort
+                    # Validated enrichment or raw commit text as last resort.
                     ticket_comment = (
                         task_data.get("description", commit_msg) if task_data else commit_msg
                     )
@@ -1360,8 +1357,7 @@ def _get_queue_gateway():
     Instantiated per-request (lightweight: holds no connection of its own —
     each QueueGateway method opens the shared engine per call). Falls back
     to None on import error so the server degrades gracefully; individual
-    methods may still raise (e.g. QueueGatewayUnavailableError in
-    PostgreSQL mode) and are handled by each endpoint's own try/except.
+    database operations are handled by each endpoint's own try/except.
     """
     try:
         from backend.queue_gateway import QueueGateway
@@ -1456,6 +1452,59 @@ async def http_queue_execute(
                 gw.close()
         except Exception:
             pass
+
+
+@app.post("/queue/execute_staged")
+async def http_queue_execute_staged(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Execute an action that already passed the Go client's local queue.
+
+    Client and server databases have independent numeric IDs in PostgreSQL
+    mode. The full immutable routing payload therefore crosses the HTTP
+    boundary only after local approval/expiry instead of looking up an
+    unrelated server row by ID.
+    """
+    try:
+        action = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
+    if not isinstance(action, dict):
+        raise HTTPException(status_code=400, detail="JSON body must be an object")
+    required = (
+        "id", "action_type", "target", "platform", "workspace", "payload", "confidence"
+    )
+    missing = [field for field in required if field not in action]
+    if missing:
+        raise HTTPException(
+            status_code=400, detail=f"missing required field(s): {', '.join(missing)}"
+        )
+    if (
+        not isinstance(action["id"], int)
+        or isinstance(action["id"], bool)
+        or action["id"] <= 0
+    ):
+        raise HTTPException(status_code=400, detail="id must be a positive integer")
+    string_fields = ("action_type", "target", "platform", "workspace", "payload")
+    if not all(isinstance(action[field], str) for field in string_fields):
+        raise HTTPException(status_code=400, detail="action routing fields must be strings")
+    if not all(action[field].strip() for field in ("action_type", "target", "platform")):
+        raise HTTPException(status_code=400, detail="action routing fields cannot be empty")
+    confidence = action["confidence"]
+    if (
+        not isinstance(confidence, (int, float))
+        or isinstance(confidence, bool)
+        or not 0 <= confidence <= 1
+    ):
+        raise HTTPException(status_code=400, detail="confidence must be between 0 and 1")
+    try:
+        decoded_payload = json.loads(action["payload"])
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="payload must contain valid JSON") from exc
+    if not isinstance(decoded_payload, dict):
+        raise HTTPException(status_code=400, detail="payload JSON must be an object")
+    return await asyncio.to_thread(TriggerProcessor.get()._execute_pm_action, action)
 
 
 # ---------------------------------------------------------------------------
@@ -1656,6 +1705,34 @@ async def http_client_heartbeat(
     except Exception as exc:
         logger.warning(f"client heartbeat failed: {exc}")
     return {"status": "ok"}
+
+
+@app.post("/trigger/client_events")
+async def http_client_events(
+    request: Request,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Persist an opt-in batch of replay-safe Go-client event snapshots."""
+    try:
+        data = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="JSON body must be an object")
+    events = data.get("events")
+    if not isinstance(events, list) or not events:
+        raise HTTPException(status_code=400, detail="'events' must be a non-empty list")
+    if len(events) > 1000:
+        raise HTTPException(status_code=413, detail="event batch exceeds 1000 rows")
+    try:
+        from backend.db.client_event_store import persist_client_events
+
+        accepted = await asyncio.to_thread(
+            persist_client_events, data.get("client_id", ""), events
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "ok", "accepted": accepted}
 
 
 @app.post("/trigger/work_session_start")
@@ -2555,32 +2632,16 @@ async def http_voice_status(
     # ── last_seed from voice_seeded_commits ───────────────────────────────────
     last_seed: str | None = None
     try:
-        import sqlite3 as _sqlite3
-        from backend.config import database_path
-        db_p = database_path()
-        if db_p.exists():
-            with _sqlite3.connect(str(db_p)) as _conn:
-                row = _conn.execute(
-                    "SELECT MAX(seeded_at) FROM voice_seeded_commits"
-                ).fetchone()
-                if row and row[0]:
-                    last_seed = str(row[0])
+        from backend.db.voice_seed_store import latest_seeded_at
+        last_seed = latest_seeded_at()
     except Exception as se:
         logger.debug("/voice/status: last_seed query failed (non-fatal): %s", se)
 
     # ── last_sync from voice_synced_items (TASK-082) ─────────────────────────
     last_sync: str | None = None
     try:
-        import sqlite3 as _sqlite3
-        from backend.config import database_path
-        db_p = database_path()
-        if db_p.exists():
-            with _sqlite3.connect(str(db_p)) as _conn:
-                row = _conn.execute(
-                    "SELECT MAX(synced_at) FROM voice_synced_items"
-                ).fetchone()
-                if row and row[0]:
-                    last_sync = str(row[0])
+        from backend.db.voice_sync_store import latest_synced_at
+        last_sync = latest_synced_at()
     except Exception as sye:
         logger.debug("/voice/status: last_sync query failed (non-fatal): %s", sye)
 

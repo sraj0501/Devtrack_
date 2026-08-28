@@ -13,15 +13,15 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime, timezone
 
-# Add paths
-sys.path.insert(0, os.path.dirname(__file__))
+# Add paths. Deliberately NOT inserting os.path.dirname(__file__) (backend/
+# itself) -- that let `import telegram` resolve to backend/telegram/ instead
+# of the real python-telegram-bot package whenever this module got imported
+# first in the same process (found via test_telegram_handlers.py, TASK-112).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'msgraph_python'))
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # repo root for backend.* imports
 
-from personalized_ai import PersonalizedAI, CommunicationSample
-from data_collectors import (
-    TeamsDataCollector
-)
+from backend.personalized_ai import PersonalizedAI, CommunicationSample
+from backend.data_collectors import TeamsDataCollector
 
 try:
     from backend.db.mongo_learning import get_store as _get_mongo_store
@@ -235,23 +235,22 @@ class AsyncTeamsDataCollector(TeamsDataCollector):
             return samples_collected
 
 
-def _load_last_collected() -> Optional[datetime]:
-    """Load the last successful collection timestamp from SQLite."""
+def _load_last_collected(user_email: str) -> Optional[datetime]:
+    """Load the last successful collection timestamp for a user.
+
+    Delegates to backend.db.learning_store.load_last_collected(), which is
+    already dual-dialect (SQLite/Postgres) via backend.db.engine — no raw
+    sqlite3 needed here. Previously this called a since-removed
+    ``learning_store._db_path()`` helper, so the import always failed and
+    this silently returned None every time (the surrounding try/except
+    swallowed the ImportError) — delta-fetch fallback never actually worked.
+    """
     try:
-        # user_email may not be known at module level; read from DB by scanning all rows
-        # and returning the most recent one — or None if table is empty.
-        from backend.db.learning_store import _db_path
-        import sqlite3
-        con = sqlite3.connect(_db_path())
-        row = con.execute(
-            "SELECT last_collected FROM learning_sync_state ORDER BY last_collected DESC LIMIT 1"
-        ).fetchone()
-        con.close()
-        if row and row[0]:
-            dt = datetime.fromisoformat(row[0])
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt
+        from backend.db.learning_store import load_last_collected
+        dt = load_last_collected(user_email)
+        if dt and dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     except Exception:
         pass
     return None
@@ -404,7 +403,7 @@ class LearningIntegration:
             if self._mongo and self._mongo.is_available():
                 since_datetime = await self._mongo.load_last_collected(self.user_email)
             if since_datetime is None:
-                since_datetime = _load_last_collected()  # file fallback
+                since_datetime = _load_last_collected(self.user_email or "")  # SQLite/Postgres fallback
 
         print()
         print("=" * 70)

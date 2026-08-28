@@ -72,8 +72,11 @@ devtrack_client/ (Go)            devtrack_server/ (Python)         devtrack_wiki
         │   HTTPS POST /trigger/* │                                  Netlify
         │ ───────────────────────▶│
 Git commits / cron / CLI    NLP · LLM · Admin UI · Personalization
-SQLite (Data/db/)           Azure DevOps · GitHub · GitLab · Jira · MS Graph
+SQLite (offline source)     PostgreSQL server events · PM APIs · MS Graph
 ```
+
+PostgreSQL is mandatory for Python server persistence and server-side events. The Go client remains
+SQLite-only so observation, queueing, MCP context, and offline backlog replay do not require a server.
 
 The only client↔server interface is **HTTPS POST to `/trigger/*`** and related endpoints
 (see `docs/ARCHITECTURE.md`). There is no shared compiled artefact. The legacy TCP IPC
@@ -113,11 +116,11 @@ Entry point: `webhook_server.py` (handles inbound webhooks **and** `/trigger/*` 
 |---|---|
 | `webhook_server.py`, `webhook_handlers.py` | FastAPI server + event routing (Azure/GitHub/GitLab/Jira) |
 | `config.py` | Centralized config — all modules use `get()`/`get_int()`/`get_bool()`/`get_path()`, never `os.getenv` |
-| `nlp_parser.py`, `description_enhancer.py`, `task_matcher.py` | spaCy NLP, Ollama enhancement, fuzzy/semantic task matching |
+| `llm_task_parser.py`, `description_enhancer.py`, `task_matcher.py` | Validated LLM task enrichment, description enhancement, and task matching |
 | `llm/` | Multi-provider LLM (`provider_factory.py` builds fallback chain: primary → OpenAI/Anthropic/Groq → Ollama) |
 | `commit_message_enhancer.py`, `git_diff_analyzer.py` | AI commit-message refinement; staged-change analysis |
 | `boardroom/`, `plan_parser.py` | 7-persona plan review (`personas`/`session`/`interactive`/`report`) + plan decomposition |
-| `daily_report_generator.py`, `email_reporter.py`, `user_prompt.py` | Reports (Terminal/HTML/MD/JSON), delivery, TUI prompts |
+| `daily_report_generator.py`, `email_reporter.py`, `user_prompt.py` | Reports (Terminal/HTML/MD/JSON), delivery, and legacy optional prompt helpers; daemon triggers remain silent |
 | `personalization.py`, `personalized_ai.py`, `rag/` | Style injection + RAG few-shot (ChromaDB) — see Personalization below |
 | `jira/`, `github/`, `azure/`, `msgraph_python/` | External API clients (MS Graph = Teams/Outlook) |
 | `admin/` | FastAPI admin UI (users/licenses/health/audit) — see Admin UI below |
@@ -125,9 +128,10 @@ Entry point: `webhook_server.py` (handles inbound webhooks **and** `/trigger/*` 
 
 ## Configuration
 
-Config flows from environment variables + `workspaces.yaml`. **No hardcoded fallback values**
-for paths or credentials — a missing/invalid var produces a clear startup error, never a
-silent default. The daemon reads env from the process at startup and does not reload `.env`.
+Config flows from environment variables + `workspaces.yaml`. `devtrack setup` writes visible,
+editable defaults for non-secret runtime settings; credentials and paths are never silently
+invented. Invalid overrides produce a clear startup error. The daemon reads the registered
+environment file at startup, with process variables taking precedence.
 
 - **Go** reads via `internal/config/config_env.go` (typed accessors; panic with clear error if missing).
 - **Python** reads via `backend/config.py` (`get*()`; raises `ConfigError` with the var name).
@@ -145,8 +149,8 @@ Connector constructors (`pm.NewGitHubClient(ws)` etc.) take an explicit workspac
 only secrets from env. `skip_issues: true` excludes a code-hosting workspace from issue/ticket
 listing (fixes duplicate tickets on dual-platform GitHub+ADO setups).
 
-### Required vars (12)
-Must be set or startup fails:
+### Visible runtime defaults (12)
+Managed setup writes these values; invalid explicit overrides fail clearly:
 - **Timeouts:** `IPC_CONNECT_TIMEOUT_SECS`, `HTTP_TIMEOUT_SHORT`, `HTTP_TIMEOUT`, `HTTP_TIMEOUT_LONG`
 - **Hosts:** `OLLAMA_HOST`, `LMSTUDIO_HOST`
 - **Model:** `GIT_SAGE_DEFAULT_MODEL`
@@ -166,10 +170,9 @@ PM connectors, gitsage, and alerts are Go-native and work in all modes.
 ## Project Status & Direction
 
 - **Direction:** see [`PRODUCT_BIBLE.md`](PRODUCT_BIBLE.md). Build arc **Phase 0→8 COMPLETE** on `dev`.
-  Post-arc queue (active): **EPIC: Managed Install** (TASK-103–108) — `devtrack setup` sparse-clones
-  Python server + runs `uv sync`; daemon fallback fixed; upgrade updates server; Windows autostart
-  bakes env vars; docs/INSTALLATION.md created. After that: headless orchestration (global agent
-  control via MCP), voice/dialectic Tier 4 (local Hermes persona model), GitLab `IsPRApproved`.
+  The PostgreSQL server epic is complete through TASK-116/PR #251. **Phase 9 Adoption Gate is active**:
+  TASK-117–123 and prerequisite TASK-142 are complete on `dev`; TASK-144 fixed the queue and
+  local-model reliability defects found by the live demo. TASK-124 launch drafts remain.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.
 - **Shipped (v3.x):** three-codebase split (EPIC-SPLIT); client-server decoupling (Go-native
   connectors, gitsage, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;
@@ -255,7 +258,8 @@ CLI: `devtrack alerts [--all|--clear]`. Config: `ALERT_ENABLED`, `ALERT_POLL_INT
   failures degrade to the original message.
 - **Git monitor not detecting commits:** confirm daemon is in the right repo (`devtrack status`),
   `DEVTRACK_WORKSPACE` points to it; `tail -f Data/logs/daemon.log | grep -i commit`.
-- **spaCy model missing:** `uv run python -m spacy download en_core_web_sm`.
+- **Structured task parsing unavailable:** check the configured LLM provider and server logs; the
+  request must degrade to raw/template data rather than blocking the Git flow.
 - **Tests "provider not found":** call `reset_provider_cache()` in setup/teardown when changing `LLM_PROVIDER`.
 - **git-sage does nothing then says Done:** LLM returned prose, not JSON — check the `Raw:` snippet;
   for Groq use a native model name (`llama-3.3-70b-versatile`) and ensure `openai` is installed.

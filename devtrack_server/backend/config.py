@@ -8,10 +8,10 @@ EnvironmentVariables, Docker env, etc.) before starting the process.
 All backend modules should use backend.config.get() instead of os.getenv() directly.
 """
 
-import importlib.util
 import os
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 
 def _expand(val: str) -> str:
@@ -166,11 +166,6 @@ def rag_k() -> int:
 def rag_enabled() -> bool:
     """Enable RAG personalization. From .env: PERSONALIZATION_RAG_ENABLED (default true)."""
     return get_bool("PERSONALIZATION_RAG_ENABLED", True)
-
-
-def is_ai_available() -> bool:
-    """Return True if the optional 'ai' extra is installed (spaCy present)."""
-    return importlib.util.find_spec("spacy") is not None
 
 
 def log_dir() -> Path:
@@ -340,13 +335,11 @@ def github_repo() -> str:
     return get("GITHUB_REPO", "")
 
 
-# --- Timeouts & Delays (NO DEFAULTS - REQUIRED ENV VARS) ---
+# --- Timeouts & Delays (visible setup defaults; invalid overrides fail) ---
 
 def ipc_connect_timeout_secs() -> int:
-    """IPC connection timeout in seconds. REQUIRED: IPC_CONNECT_TIMEOUT_SECS."""
-    val = get("IPC_CONNECT_TIMEOUT_SECS")
-    if not val:
-        raise ValueError("IPC_CONNECT_TIMEOUT_SECS environment variable required (e.g., 5)")
+    """IPC connection timeout in seconds. IPC_CONNECT_TIMEOUT_SECS (default: 5)."""
+    val = get("IPC_CONNECT_TIMEOUT_SECS") or "5"
     try:
         secs = int(val)
         if secs <= 0:
@@ -357,10 +350,8 @@ def ipc_connect_timeout_secs() -> int:
 
 
 def http_timeout_short() -> int:
-    """HTTP timeout for quick requests in seconds. REQUIRED: HTTP_TIMEOUT_SHORT."""
-    val = get("HTTP_TIMEOUT_SHORT")
-    if not val:
-        raise ValueError("HTTP_TIMEOUT_SHORT environment variable required (e.g., 10)")
+    """HTTP timeout for quick requests in seconds. HTTP_TIMEOUT_SHORT (default: 10)."""
+    val = get("HTTP_TIMEOUT_SHORT") or "10"
     try:
         secs = int(val)
         if secs <= 0:
@@ -371,10 +362,8 @@ def http_timeout_short() -> int:
 
 
 def http_timeout() -> int:
-    """HTTP timeout for standard requests in seconds. REQUIRED: HTTP_TIMEOUT."""
-    val = get("HTTP_TIMEOUT")
-    if not val:
-        raise ValueError("HTTP_TIMEOUT environment variable required (e.g., 30)")
+    """HTTP timeout for standard requests in seconds. HTTP_TIMEOUT (default: 30)."""
+    val = get("HTTP_TIMEOUT") or "30"
     try:
         secs = int(val)
         if secs <= 0:
@@ -385,10 +374,8 @@ def http_timeout() -> int:
 
 
 def http_timeout_long() -> int:
-    """HTTP timeout for long-running requests in seconds. REQUIRED: HTTP_TIMEOUT_LONG."""
-    val = get("HTTP_TIMEOUT_LONG")
-    if not val:
-        raise ValueError("HTTP_TIMEOUT_LONG environment variable required (e.g., 60)")
+    """HTTP timeout for long-running requests in seconds. HTTP_TIMEOUT_LONG (default: 60)."""
+    val = get("HTTP_TIMEOUT_LONG") or "60"
     try:
         secs = int(val)
         if secs <= 0:
@@ -399,10 +386,8 @@ def http_timeout_long() -> int:
 
 
 def ipc_retry_delay_ms() -> int:
-    """IPC retry delay in milliseconds. REQUIRED: IPC_RETRY_DELAY_MS."""
-    val = get("IPC_RETRY_DELAY_MS")
-    if not val:
-        raise ValueError("IPC_RETRY_DELAY_MS environment variable required (e.g., 2000)")
+    """IPC retry delay in milliseconds. IPC_RETRY_DELAY_MS (default: 2000)."""
+    val = get("IPC_RETRY_DELAY_MS") or "2000"
     try:
         ms = int(val)
         if ms < 0:
@@ -413,10 +398,8 @@ def ipc_retry_delay_ms() -> int:
 
 
 def llm_request_timeout() -> int:
-    """LLM request timeout in seconds. REQUIRED: LLM_REQUEST_TIMEOUT_SECS."""
-    val = get("LLM_REQUEST_TIMEOUT_SECS")
-    if not val:
-        raise ValueError("LLM_REQUEST_TIMEOUT_SECS environment variable required (e.g., 120)")
+    """LLM request timeout in seconds. LLM_REQUEST_TIMEOUT_SECS (default: 120)."""
+    val = get("LLM_REQUEST_TIMEOUT_SECS") or "120"
     try:
         secs = int(val)
         if secs <= 0:
@@ -427,10 +410,8 @@ def llm_request_timeout() -> int:
 
 
 def sentiment_analysis_window_minutes() -> int:
-    """Sentiment analysis time window in minutes. REQUIRED: SENTIMENT_ANALYSIS_WINDOW_MINUTES."""
-    val = get("SENTIMENT_ANALYSIS_WINDOW_MINUTES")
-    if not val:
-        raise ValueError("SENTIMENT_ANALYSIS_WINDOW_MINUTES environment variable required (e.g., 120)")
+    """Sentiment analysis window in minutes. SENTIMENT_ANALYSIS_WINDOW_MINUTES (default: 120)."""
+    val = get("SENTIMENT_ANALYSIS_WINDOW_MINUTES") or "120"
     try:
         mins = int(val)
         if mins <= 0:
@@ -440,14 +421,11 @@ def sentiment_analysis_window_minutes() -> int:
         raise ValueError(f"SENTIMENT_ANALYSIS_WINDOW_MINUTES must be integer: {e}")
 
 
-# --- LM Studio & Ollama Hosts (NO DEFAULTS) ---
+# --- LM Studio & Ollama Hosts ---
 
 def lmstudio_host() -> str:
-    """LM Studio API base URL. REQUIRED: LMSTUDIO_HOST."""
-    val = get("LMSTUDIO_HOST")
-    if not val:
-        raise ValueError("LMSTUDIO_HOST environment variable required (e.g., http://localhost:1234/v1)")
-    return val
+    """LM Studio API base URL. LMSTUDIO_HOST (default: http://localhost:1234/v1)."""
+    return get("LMSTUDIO_HOST") or "http://localhost:1234/v1"
 
 
 # Remove defaults from ollama_host - make it required
@@ -456,21 +434,16 @@ def _orig_ollama_host_with_default() -> str:
     return get("OLLAMA_HOST", "http://localhost:11434")
 
 
-# --- Model Names (NO DEFAULTS) ---
+# --- Model Names ---
 
 def git_sage_default_model() -> str:
-    """Git Sage default model name. REQUIRED: GIT_SAGE_DEFAULT_MODEL."""
-    val = get("GIT_SAGE_DEFAULT_MODEL")
-    if not val:
-        raise ValueError("GIT_SAGE_DEFAULT_MODEL environment variable required (e.g., llama3)")
-    return val
+    """Git Sage default model name. GIT_SAGE_DEFAULT_MODEL (default: llama3.2)."""
+    return get("GIT_SAGE_DEFAULT_MODEL") or "llama3.2"
 
 
 def prompt_timeout_simple() -> int:
-    """Simple prompt timeout in seconds. REQUIRED: PROMPT_TIMEOUT_SIMPLE_SECS."""
-    val = get("PROMPT_TIMEOUT_SIMPLE_SECS")
-    if not val:
-        raise ValueError("PROMPT_TIMEOUT_SIMPLE_SECS environment variable required (e.g., 30)")
+    """Simple prompt timeout in seconds. PROMPT_TIMEOUT_SIMPLE_SECS (default: 30)."""
+    val = get("PROMPT_TIMEOUT_SIMPLE_SECS") or "30"
     try:
         secs = int(val)
         if secs <= 0:
@@ -481,10 +454,8 @@ def prompt_timeout_simple() -> int:
 
 
 def prompt_timeout_work() -> int:
-    """Work update prompt timeout in seconds. REQUIRED: PROMPT_TIMEOUT_WORK_SECS."""
-    val = get("PROMPT_TIMEOUT_WORK_SECS")
-    if not val:
-        raise ValueError("PROMPT_TIMEOUT_WORK_SECS environment variable required (e.g., 60)")
+    """Work update prompt timeout in seconds. PROMPT_TIMEOUT_WORK_SECS (default: 60)."""
+    val = get("PROMPT_TIMEOUT_WORK_SECS") or "60"
     try:
         secs = int(val)
         if secs <= 0:
@@ -495,10 +466,8 @@ def prompt_timeout_work() -> int:
 
 
 def prompt_timeout_task() -> int:
-    """Task description prompt timeout in seconds. REQUIRED: PROMPT_TIMEOUT_TASK_SECS."""
-    val = get("PROMPT_TIMEOUT_TASK_SECS")
-    if not val:
-        raise ValueError("PROMPT_TIMEOUT_TASK_SECS environment variable required (e.g., 120)")
+    """Task description timeout in seconds. PROMPT_TIMEOUT_TASK_SECS (default: 120)."""
+    val = get("PROMPT_TIMEOUT_TASK_SECS") or "120"
     try:
         secs = int(val)
         if secs <= 0:
@@ -1467,14 +1436,30 @@ def get_mongodb_db() -> str:
 
 
 def postgres_url() -> Optional[str]:
-    """PostgreSQL connection URL. POSTGRES_URL — optional.
+    """PostgreSQL connection URL from POSTGRES_URL.
 
-    When set the Python server uses PostgreSQL for all Python-owned tables.
-    When absent (or empty) SQLite at database_path() is used instead.
-    Install the driver: uv sync --extra postgres
+    SQLite remains available only to isolated compatibility tests and the one-shot
+    import path. Server startup must call :func:`require_postgres_url`.
     """
     val = get("POSTGRES_URL", "")
     return val if val else None
+
+
+def require_postgres_url() -> str:
+    """Return a minimally valid PostgreSQL URL or fail with actionable context."""
+    value = postgres_url()
+    if not value:
+        raise ConfigError(
+            "POSTGRES_URL",
+            "POSTGRES_URL is required for devtrack_server. "
+            "Set it to a PostgreSQL connection URL before starting the server."
+        )
+    parsed = urlparse(value)
+    if parsed.scheme != "postgresql" and not parsed.scheme.startswith("postgresql+"):
+        raise ConfigError("POSTGRES_URL", "POSTGRES_URL must use the postgresql:// scheme")
+    if not parsed.path or parsed.path == "/":
+        raise ConfigError("POSTGRES_URL", "POSTGRES_URL must include a database name")
+    return value
 
 
 def get_notification_enabled() -> bool:

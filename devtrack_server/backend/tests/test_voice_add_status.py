@@ -279,7 +279,7 @@ class TestVoiceStatusEmpty:
 # ---------------------------------------------------------------------------
 
 class TestVoiceStatusPopulated:
-    """GET /voice/status reflects ChromaDB counts and SQLite timestamps."""
+    """GET /voice/status reflects ChromaDB counts and database timestamps."""
 
     def test_counts_from_metadata(self, client: TestClient) -> None:
         """Counts in by_context and by_source are derived from ChromaDB metadata."""
@@ -308,38 +308,40 @@ class TestVoiceStatusPopulated:
         assert body["by_source"]["git_history"] == 2
         assert body["by_source"]["manual"] == 1
 
-    def test_last_seed_from_sqlite(self, client: TestClient, tmp_path: Path) -> None:
-        """last_seed is populated from the voice_seeded_commits table."""
-        db_path = tmp_path / "devtrack.db"
-        conn = sqlite3.connect(str(db_path))
-        conn.execute(
-            "CREATE TABLE voice_seeded_commits "
-            "(hash TEXT, repo_path TEXT, seeded_at DATETIME, PRIMARY KEY(hash, repo_path))"
-        )
-        conn.execute(
-            "INSERT INTO voice_seeded_commits VALUES (?, ?, ?)",
-            ("abc123", "/repo", "2026-06-18 10:00:00"),
-        )
-        conn.commit()
-        conn.close()
+    def test_voice_timestamps_from_shared_engine(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """Both timestamps are populated through the shared SQLAlchemy engine."""
+        import asyncio
+
+        from backend.db import engine as engine_mod
+        from backend.db import voice_seed_store, voice_sync_store
+        from backend.webhook_server import http_voice_status
+
+        monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+        monkeypatch.delenv("POSTGRES_URL", raising=False)
+        engine_mod.reset_engine()
+        voice_seed_store._schema_done = False
+        voice_sync_store._schema_done = False
+        voice_seed_store.mark_seeded("abc123", "/repo")
+        voice_sync_store.mark_synced("github", "42", "description")
 
         mock_store = _make_mock_store([])
         mock_store._init.return_value = False
 
-        with (
-            patch("backend.rag.vector_store.VectorStore", return_value=mock_store),
-            patch("backend.config.database_path", return_value=db_path),
-            patch("backend.config.get_path", side_effect=Exception("no data_dir")),
-        ):
-            resp = client.get(
-                "/voice/status",
-                headers={"X-DevTrack-API-Key": ""},
-            )
+        try:
+            with (
+                patch("backend.rag.vector_store.VectorStore", return_value=mock_store),
+                patch("backend.config.get_path", side_effect=Exception("no data_dir")),
+            ):
+                body = asyncio.run(http_voice_status(None))
+        finally:
+            engine_mod.reset_engine()
+            voice_seed_store._schema_done = False
+            voice_sync_store._schema_done = False
 
-        assert resp.status_code == 200, resp.text
-        body = resp.json()
         assert body["last_seed"] is not None
-        assert "2026-06-18" in body["last_seed"]
+        assert body["last_sync"] is not None
 
     def test_profile_exists_and_word_count(self, client: TestClient, tmp_path: Path) -> None:
         """profile_exists is True and profile_word_count is correct when file exists."""

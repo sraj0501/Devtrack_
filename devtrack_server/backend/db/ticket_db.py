@@ -14,7 +14,7 @@ from typing import List, Optional
 from sqlalchemy import Column, Table, Text, select
 from sqlalchemy.engine import Engine
 
-from backend.db.engine import get_engine, metadata, upsert
+from backend.db.engine import ensure_tables, get_engine, metadata, upsert
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ def _init(engine: Optional[Engine] = None) -> Engine:
     eng = engine or get_engine()
     if engine is None and _schema_done:
         return eng
-    metadata.create_all(eng, tables=[ticket_cache_table, pm_update_queue_table])
+    ensure_tables(eng, tables=[ticket_cache_table, pm_update_queue_table])
     if engine is None:
         _schema_done = True
     return eng

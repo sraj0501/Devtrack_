@@ -331,6 +331,50 @@ func GetCLIAppName() string {
 	return config.CLIAppName
 }
 
+// GetProjectRootOptional returns the configured server project root without
+// requiring the complete daemon configuration. Setup/doctor use it before the
+// daemon is necessarily ready.
+func GetProjectRootOptional() string {
+	return expandPath(os.Getenv("PROJECT_ROOT"))
+}
+
+// GetLLMProvider returns the selected provider. Ollama is the offline-first
+// default when setup has not written an explicit value.
+func GetLLMProvider() string {
+	if value := strings.TrimSpace(os.Getenv("LLM_PROVIDER")); value != "" {
+		return strings.ToLower(value)
+	}
+	return "ollama"
+}
+
+// GetOllamaModel returns the configured local model name.
+func GetOllamaModel() string {
+	if value := strings.TrimSpace(os.Getenv("OLLAMA_MODEL")); value != "" {
+		return value
+	}
+	return "llama3.2"
+}
+
+// GetOllamaHost returns the configured local Ollama endpoint. Setup uses this
+// before a complete environment file necessarily exists.
+func GetOllamaHost() string {
+	if value := strings.TrimSpace(os.Getenv("OLLAMA_HOST")); value != "" {
+		return value
+	}
+	return "http://localhost:11434"
+}
+
+// GetOpenAIAPIKeyOptional and GetAnthropicAPIKeyOptional expose pre-existing
+// cloud credentials to the setup wizard without making them daemon
+// requirements. The wizard never prints their values.
+func GetOpenAIAPIKeyOptional() string {
+	return strings.TrimSpace(os.Getenv("OPENAI_API_KEY"))
+}
+
+func GetAnthropicAPIKeyOptional() string {
+	return strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
+}
+
 func mustParseInt(name, raw string) int {
 	value, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil {
@@ -803,6 +847,29 @@ func GetTicketSyncOnStart() bool {
 	return val == "true" || val == "1" || val == "yes"
 }
 
+// GetServerEventSyncEnabled reports whether local Go-owned event rows may be
+// sent to the configured Python server. It is deliberately opt-in because the
+// payload contains developer activity data that otherwise remains local.
+func GetServerEventSyncEnabled() bool {
+	val := strings.TrimSpace(strings.ToLower(os.Getenv("SERVER_EVENT_SYNC_ENABLED")))
+	return val == "true" || val == "1" || val == "yes"
+}
+
+// GetServerEventSyncBatchSize returns the maximum number of latest-state
+// snapshots staged in one pending action. Invalid values fall back safely.
+func GetServerEventSyncBatchSize() int {
+	val := strings.TrimSpace(os.Getenv("SERVER_EVENT_SYNC_BATCH_SIZE"))
+	if val == "" {
+		return 100
+	}
+	size, err := strconv.Atoi(val)
+	if err != nil || size <= 0 || size > 1000 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid SERVER_EVENT_SYNC_BATCH_SIZE %q — using default 100\n", val)
+		return 100
+	}
+	return size
+}
+
 // GetDevTrackServerHTTPPort returns the port the daemon exposes for its internal
 // HTTP control server (e.g. /internal/force-trigger).
 // Reads DEVTRACK_SERVER_HTTP_PORT; default 35894.
@@ -833,6 +900,37 @@ func GetHTTPTimeoutShort() int {
 		return 5
 	}
 	return secs
+}
+
+// GetHTTPTimeout returns the standard HTTP client timeout in seconds.
+// Reads HTTP_TIMEOUT; default 30.
+func GetHTTPTimeout() int {
+	return positiveIntEnv("HTTP_TIMEOUT", 30)
+}
+
+// GetHTTPTimeoutLong returns the timeout in seconds for LLM-backed HTTP calls.
+// Reads HTTP_TIMEOUT_LONG; default 60.
+func GetHTTPTimeoutLong() int {
+	return positiveIntEnv("HTTP_TIMEOUT_LONG", 60)
+}
+
+// GetSQLiteBusyTimeoutMS returns how long SQLite waits for a concurrent writer
+// before returning SQLITE_BUSY. Reads SQLITE_BUSY_TIMEOUT_MS; default 5000.
+func GetSQLiteBusyTimeoutMS() int {
+	return positiveIntEnv("SQLITE_BUSY_TIMEOUT_MS", 5000)
+}
+
+func positiveIntEnv(name string, fallback int) int {
+	val := strings.TrimSpace(os.Getenv(name))
+	if val == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(val)
+	if err != nil || parsed <= 0 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid %s %q — using default %d\n", name, val, fallback)
+		return fallback
+	}
+	return parsed
 }
 
 // --- Alert poller config ---
@@ -1058,12 +1156,12 @@ func GetEODTelegramEnabled() bool {
 }
 
 // GetVoiceSeedMonths returns the number of months of git history to mine for
-// voice corpus seeding (Phase 5 — Tier 0). Reads VOICE_SEED_MONTHS.
-// REQUIRED: panics with a clear message if the variable is not set.
+// voice corpus seeding (Phase 5 — Tier 0). Reads VOICE_SEED_MONTHS and defaults
+// to six months so optional first-run personalization can never crash startup.
 func GetVoiceSeedMonths() int {
 	val := os.Getenv("VOICE_SEED_MONTHS")
 	if val == "" {
-		panic("devtrack: VOICE_SEED_MONTHS not set — add it to .env (recommended value: 6)")
+		return 6
 	}
 	months := mustParseInt("VOICE_SEED_MONTHS", val)
 	if months <= 0 {

@@ -7,11 +7,27 @@ This module generates intelligent daily reports by combining:
 - TUI interactions for user feedback
 
 Used by the trigger processor for end-of-day report generation.
+
+Boundary rule (Postgres backend epic, TASK-112)
+------------------------------------------------
+This module owns TWO different table situations:
+
+  ``reports`` — Python-owned.  This class does its own schema management
+    (``_init_reports_table``) and is the sole reader/writer of this table
+    (confirmed via repo-wide grep). Reads/writes go through
+    ``backend.db.report_store``, which registers a real SQLAlchemy ``Table``
+    on the shared ``backend.db.engine`` metadata — works in both SQLite and
+    PostgreSQL mode, same as ``backend/db/ticket_db.py`` et al.
+
+  ``triggers`` — Go-owned (see ``backend.db.engine``'s module docstring:
+    Go-owned tables are NEVER touched by Python in PostgreSQL mode).
+    ``_query_commit_rows`` reads it via ``get_engine()`` in SQLite mode and
+    fails closed (returns ``[]``, never raises) immediately in PostgreSQL
+    mode — same pattern as ``dialectic_status.py``/``skill_detector.py``.
 """
 
 import os
 import sys
-import sqlite3
 from datetime import datetime, time as dt_time, timedelta
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
@@ -25,10 +41,17 @@ except ImportError:
     def _stage(name):  # type: ignore[misc]
         yield
 
-# Add paths for imports
-sys.path.insert(0, os.path.dirname(__file__))
+# Deliberately NOT sys.path.insert(0, os.path.dirname(__file__)) (backend/
+# itself) here -- that let `import telegram` resolve to backend/telegram/
+# instead of the real python-telegram-bot package whenever this module got
+# imported first in the same process (found via test_telegram_handlers.py,
+# TASK-112).
+from backend.email_reporter import EmailReporter, DailyReport, ActivitySummary
 
-from email_reporter import EmailReporter, DailyReport, ActivitySummary
+from sqlalchemy import text
+
+from backend.db import report_store
+from backend.db.engine import get_engine, is_postgres
 
 try:
     from backend.personalization import inject_style as _inject_style
@@ -638,32 +661,15 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
     # =========================================================================
     
     def _init_reports_table(self) -> None:
-        """Initialize the reports table if it doesn't exist."""
+        """Initialize the reports table if it doesn't exist.
+
+        Schema creation lives in ``backend.db.report_store`` now (a real
+        SQLAlchemy ``Table`` on the shared engine's metadata) — this just
+        triggers that lazy init, kept as its own method since callers below
+        already call it before every DB operation.
+        """
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS reports (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    report_date DATE NOT NULL,
-                    report_type TEXT NOT NULL,
-                    format TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    summary TEXT,
-                    total_hours REAL DEFAULT 0,
-                    task_count INTEGER DEFAULT 0,
-                    completed_count INTEGER DEFAULT 0,
-                    projects_count INTEGER DEFAULT 0,
-                    ai_enhanced BOOLEAN DEFAULT 0,
-                    email_sent BOOLEAN DEFAULT 0,
-                    email_sent_at DATETIME,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_reports_date ON reports(report_date)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(report_type)")
-            conn.commit()
-            conn.close()
+            report_store._init()
         except Exception as e:
             print(f"Warning: Could not initialize reports table: {e}")
     
@@ -701,39 +707,23 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
         """
         try:
             self._init_reports_table()
-            
+
             content = self.format_report(report, output_format)
             summary = self._get_report_summary(report)
             base = report.base_report
-            
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO reports (
-                    report_date, report_type, format, content, summary,
-                    total_hours, task_count, completed_count, projects_count,
-                    ai_enhanced, email_sent
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                base.date.strftime('%Y-%m-%d'),
-                report_type,
-                output_format.value,
-                content,
-                summary,
-                base.total_hours,
-                len(base.activities),
-                base.completed_count,
-                len(base.projects_worked),
-                report.is_ai_enhanced,
-                False
-            ))
-            
-            report_id = cursor.lastrowid
-            conn.commit()
-            conn.close()
-            
-            return report_id
+
+            return report_store.insert_report({
+                "report_date": base.date.strftime('%Y-%m-%d'),
+                "report_type": report_type,
+                "format": output_format.value,
+                "content": content,
+                "summary": summary,
+                "total_hours": base.total_hours,
+                "task_count": len(base.activities),
+                "completed_count": base.completed_count,
+                "projects_count": len(base.projects_worked),
+                "ai_enhanced": report.is_ai_enhanced,
+            })
         except Exception as e:
             print(f"Warning: Could not save report to database: {e}")
             return None
@@ -750,23 +740,7 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
             True if successful
         """
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            if sent:
-                cursor.execute("""
-                    UPDATE reports SET email_sent = 1, email_sent_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                """, (report_id,))
-            else:
-                cursor.execute("""
-                    UPDATE reports SET email_sent = 0, email_sent_at = NULL
-                    WHERE id = ?
-                """, (report_id,))
-            
-            conn.commit()
-            conn.close()
-            return True
+            return report_store.mark_email_sent(report_id, sent)
         except Exception as e:
             print(f"Warning: Could not update email status: {e}")
             return False
@@ -790,35 +764,15 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
         """
         try:
             self._init_reports_table()
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            
+
             cutoff = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-            
-            if report_type:
-                cursor.execute("""
-                    SELECT id, report_date, report_type, format, summary,
-                           total_hours, task_count, completed_count, projects_count,
-                           ai_enhanced, email_sent, email_sent_at, created_at
-                    FROM reports
-                    WHERE report_type = ? AND report_date >= ?
-                    ORDER BY report_date DESC, created_at DESC
-                    LIMIT ?
-                """, (report_type, cutoff, limit))
-            else:
-                cursor.execute("""
-                    SELECT id, report_date, report_type, format, summary,
-                           total_hours, task_count, completed_count, projects_count,
-                           ai_enhanced, email_sent, email_sent_at, created_at
-                    FROM reports
-                    WHERE report_date >= ?
-                    ORDER BY report_date DESC, created_at DESC
-                    LIMIT ?
-                """, (cutoff, limit))
-            
+
+            rows = report_store.get_reports(
+                report_type=report_type, cutoff_date=cutoff, limit=limit
+            )
+
             reports = []
-            for row in cursor.fetchall():
+            for row in rows:
                 reports.append({
                     "id": row["id"],
                     "date": datetime.strptime(row["report_date"], '%Y-%m-%d'),
@@ -835,8 +789,7 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
                     "created_at": row["created_at"],
                     "source": "database"
                 })
-            
-            conn.close()
+
             return reports
         except Exception as e:
             print(f"Warning: Could not query reports from database: {e}")
@@ -853,14 +806,7 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
             Report content string or None
         """
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT content FROM reports WHERE id = ?", (report_id,))
-            row = cursor.fetchone()
-            conn.close()
-            
-            return row[0] if row else None
+            return report_store.get_content(report_id)
         except Exception as e:
             print(f"Warning: Could not get report content: {e}")
             return None
@@ -1475,7 +1421,7 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         """
         try:
             self._init_reports_table()
-            
+
             content = self.format_weekly_report(report, output_format)
             summary = (
                 f"Week: {report.week_start.strftime('%Y-%m-%d')} to {report.week_end.strftime('%Y-%m-%d')} | "
@@ -1483,35 +1429,19 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
                 f"Tasks: {report.total_completed} completed | "
                 f"Projects: {len(report.projects_worked)}"
             )
-            
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO reports (
-                    report_date, report_type, format, content, summary,
-                    total_hours, task_count, completed_count, projects_count,
-                    ai_enhanced, email_sent
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                report.week_end.strftime('%Y-%m-%d'),
-                "weekly",
-                output_format.value,
-                content,
-                summary,
-                report.total_hours,
-                report.total_completed + report.total_in_progress + report.total_blocked,
-                report.total_completed,
-                len(report.projects_worked),
-                report.is_ai_enhanced,
-                False
-            ))
-            
-            report_id = cursor.lastrowid
-            conn.commit()
-            conn.close()
-            
-            return report_id
+
+            return report_store.insert_report({
+                "report_date": report.week_end.strftime('%Y-%m-%d'),
+                "report_type": "weekly",
+                "format": output_format.value,
+                "content": content,
+                "summary": summary,
+                "total_hours": report.total_hours,
+                "task_count": report.total_completed + report.total_in_progress + report.total_blocked,
+                "completed_count": report.total_completed,
+                "projects_count": len(report.projects_worked),
+                "ai_enhanced": report.is_ai_enhanced,
+            })
         except Exception as e:
             print(f"Warning: Could not save weekly report to database: {e}")
             return None
@@ -1721,27 +1651,61 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
 
         Returns a list of dicts with at least ``ticket_id`` and
         ``commit_message`` keys.  Returns empty list on any error.
+
+        Boundary rule
+        -------------
+        ``triggers`` is a Go-owned table (see ``backend.db.engine``'s module
+        docstring: Go-owned tables are NEVER touched by Python in PostgreSQL
+        mode). This never defines a SQLAlchemy ``Table`` for it and never
+        runs DDL against it.
+
+          SQLite mode     (POSTGRES_URL unset) — ``triggers`` lives in the
+            same devtrack.db file the dual-dialect engine already points at,
+            so the read goes through ``backend.db.engine.get_engine()``
+            instead of a bespoke ``sqlite3.connect()``.
+          PostgreSQL mode (POSTGRES_URL set)   — Go never speaks Postgres
+            (decided 2026-07-13), so ``triggers`` does not exist there and
+            there is no Go internal-HTTP endpoint exposing it yet. Fails
+            closed immediately (returns ``[]``) rather than guessing — same
+            pattern as ``dialectic_status.py``/``skill_detector.py``.
         """
+        if is_postgres():
+            from backend.db.client_event_store import list_client_rows
+
+            rows = [
+                row
+                for row in list_client_rows("triggers")
+                if row.get("trigger_type") == "commit"
+                and str(row.get("timestamp", ""))[:10] == target_date
+            ]
+            rows.sort(key=lambda row: str(row.get("timestamp", "")))
+            return [
+                {
+                    "ticket_id": row.get("ticket_id", ""),
+                    "commit_message": row.get("commit_message", ""),
+                    "commit_hash": row.get("commit_hash", ""),
+                    "timestamp": row.get("timestamp", ""),
+                }
+                for row in rows
+            ]
         try:
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT ticket_id,
-                       commit_message,
-                       commit_hash,
-                       timestamp
-                FROM triggers
-                WHERE trigger_type = 'commit'
-                  AND date(timestamp) = ?
-                ORDER BY timestamp ASC
-                """,
-                (target_date,),
-            )
-            rows = [dict(r) for r in cursor.fetchall()]
-            conn.close()
-            return rows
+            with get_engine().connect() as conn:
+                rows = conn.execute(
+                    text(
+                        """
+                        SELECT ticket_id,
+                               commit_message,
+                               commit_hash,
+                               timestamp
+                        FROM triggers
+                        WHERE trigger_type = 'commit'
+                          AND date(timestamp) = :target_date
+                        ORDER BY timestamp ASC
+                        """
+                    ),
+                    {"target_date": target_date},
+                ).mappings().all()
+            return [dict(r) for r in rows]
         except Exception as exc:
             import logging as _logging
             _logging.getLogger(__name__).warning(

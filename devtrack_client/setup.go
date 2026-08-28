@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,18 +35,20 @@ type SetupConfig struct {
 	DataDir       string
 
 	// Mode
-	Mode DevTrackMode
+	Mode        DevTrackMode
+	PostgresURL string
 
 	// LLM
-	LLMProvider    string
-	OllamaHost     string
-	OllamaModel    string
-	OpenAIKey      string
-	OpenAIModel    string
-	AnthropicKey   string
-	AnthropicModel string
-	GroqKey        string
-	GroqModel      string
+	LLMProvider      string
+	OllamaHost       string
+	OllamaModel      string
+	OpenAIKey        string
+	OpenAIModel      string
+	AnthropicKey     string
+	AnthropicModel   string
+	GroqKey          string
+	GroqModel        string
+	OllamaModelReady bool
 
 	// User identity
 	UserEmail string
@@ -73,14 +76,14 @@ func RunSetup() error {
 	fmt.Println("Which mode do you want to run DevTrack in?")
 	fmt.Println("  [1] Managed   (default) — daemon spawns Python server automatically.")
 	fmt.Println("                            Full AI features: reports, commit enhancement, integrations.")
-	fmt.Println("                            Python must be installed on this machine.")
+	fmt.Println("                            Optional dependencies install in the background.")
 	fmt.Println("  [2] External            — daemon connects to a Python server elsewhere.")
 	fmt.Println("                            Same machine (separate process), LAN, or cloud.")
 	fmt.Println("                            Set DEVTRACK_SERVER_URL and DEVTRACK_API_KEY in .env,")
 	fmt.Println("                            or use: devtrack cloud login --url URL --key KEY")
 	fmt.Println()
 	fmt.Println("  Note: git monitoring, scheduling, git-sage, and connector sync work in both modes.")
-	fmt.Println("        AI enrichment (NLP, reports, boardroom) requires the Python server.")
+	fmt.Println("        AI enrichment (LLM tasks, reports, boardroom) requires the Python server.")
 	fmt.Println()
 	fmt.Print("Choice [1]: ")
 	modeChoice := readLine(reader)
@@ -95,31 +98,22 @@ func RunSetup() error {
 	}
 
 	// ── 1. Detect PROJECT_ROOT ────────────────────────────────────────────────
+	xdgHome, err := devtrackDataHome()
+	if err != nil {
+		return fmt.Errorf("could not determine data home: %w", err)
+	}
 	var projectRoot string
 	if selectedMode == ModeManaged {
-		root, err := detectProjectRoot()
-		if err != nil {
-			// Python server not found — offer automatic sparse-checkout clone.
-			xdgHome, xdgErr := devtrackDataHome()
-			if xdgErr != nil {
-				return fmt.Errorf("could not determine DevTrack home directory: %w", xdgErr)
-			}
+		root, detectErr := detectProjectRoot()
+		if detectErr != nil {
+			// The path is deterministic, so configuration can finish before the
+			// optional server checkout exists. A detached worker installs it later.
+			projectRoot = filepath.Join(xdgHome, "server", "devtrack_server")
 			fmt.Println()
-			fmt.Println("Python server not found. DevTrack can clone it automatically (sparse checkout, ~5MB).")
-			fmt.Printf("Install location: %s\n", filepath.Join(xdgHome, "server"))
-			fmt.Print("Clone and install now? [Y/n]: ")
-			cloneAnswer := readLine(reader)
+			fmt.Println("Optional Python server not found; it will install in the background after setup.")
+			fmt.Printf("Install location: %s\n", filepath.Dir(projectRoot))
+			fmt.Println("Git monitoring, SQLite, MCP, and scheduling are available while it installs.")
 			fmt.Println()
-			if cloneAnswer == "" || strings.ToLower(cloneAnswer) == "y" {
-				clonedRoot, cloneErr := cloneAndInstallServer(xdgHome)
-				if cloneErr != nil {
-					return fmt.Errorf("server install failed: %w", cloneErr)
-				}
-				projectRoot = clonedRoot
-			} else {
-				return fmt.Errorf("setup cancelled: managed mode requires the Python server.\n" +
-					"Re-run 'devtrack setup' and choose to clone, or set PROJECT_ROOT to an existing devtrack_server/ path")
-			}
 		} else {
 			projectRoot = root
 		}
@@ -132,11 +126,6 @@ func RunSetup() error {
 		}
 	}
 
-		// ── 1b. XDG data home ────────────────────────────────────────────────────
-	xdgHome, err := devtrackDataHome()
-	if err != nil {
-		return fmt.Errorf("could not determine data home: %w", err)
-	}
 	envPath := filepath.Join(xdgHome, ".env")
 
 	// ── 2. Already configured? ────────────────────────────────────────────────
@@ -162,8 +151,9 @@ func RunSetup() error {
 	fmt.Println("─── Checking prerequisites ───────────────────────────────────────")
 	checkCommonPrereqs()
 	if cfg.Mode == ModeManaged {
-		if err := checkPythonBackend(projectRoot); err != nil {
-			return fmt.Errorf("Python backend check failed: %w", err)
+		fmt.Println("  ~ Python server dependencies will be prepared in the background")
+		if err := collectPostgresURL(reader, cfg); err != nil {
+			return err
 		}
 	} else {
 		fmt.Println("[" + string(cfg.Mode) + " mode] Python backend not required — skipping.")
@@ -173,11 +163,12 @@ func RunSetup() error {
 	// ── 4. Workspace path ─────────────────────────────────────────────────────
 	fmt.Println("─── Git Repository to Monitor ───────────────────────────────────")
 	fmt.Printf("Which git repository should DevTrack monitor?\n")
-	fmt.Printf("Press Enter to use: %s\n", projectRoot)
+	defaultWorkspace := setupDefaultWorkspace(projectRoot)
+	fmt.Printf("Press Enter to use: %s\n", defaultWorkspace)
 	fmt.Print("Workspace path: ")
 	ws := readLine(reader)
 	if ws == "" {
-		ws = projectRoot
+		ws = defaultWorkspace
 	}
 	ws = expandHomePath(ws)
 	if !IsGitRepository(ws) {
@@ -190,11 +181,18 @@ func RunSetup() error {
 	fmt.Println()
 
 	// ── 5. LLM provider ──────────────────────────────────────────────────────
+	detectedHost := GetOllamaHost()
+	detectedModel, _ := detectUsableOllamaModel(detectedHost, setupHTTPClient())
 	fmt.Println("─── AI / LLM Provider ───────────────────────────────────────────")
 	fmt.Println("DevTrack uses an LLM to enhance commit messages, generate reports,")
 	fmt.Println("and parse your work updates.")
 	fmt.Println()
-	fmt.Println("  1) Ollama  (local, free — recommended for privacy)")
+	if detectedModel != "" {
+		fmt.Printf("  ✓ Ollama is ready with local model %s\n", detectedModel)
+		fmt.Println("  1) Ollama  (local, ready — recommended for privacy)")
+	} else {
+		fmt.Println("  1) Ollama  (local, free — recommended for privacy)")
+	}
 	fmt.Println("  2) OpenAI  (cloud, API key required)")
 	fmt.Println("  3) Anthropic / Claude (cloud, API key required)")
 	fmt.Println("  4) Groq    (cloud, free tier available)")
@@ -207,19 +205,7 @@ func RunSetup() error {
 
 	switch choice {
 	case "1":
-		cfg.LLMProvider = "ollama"
-		fmt.Print("Ollama host [http://localhost:11434]: ")
-		host := readLine(reader)
-		if host == "" {
-			host = "http://localhost:11434"
-		}
-		cfg.OllamaHost = host
-		fmt.Print("Ollama model [llama3.2]: ")
-		model := readLine(reader)
-		if model == "" {
-			model = "llama3.2"
-		}
-		cfg.OllamaModel = model
+		configureOllamaSetup(reader, cfg, detectedHost, detectedModel)
 
 	case "2":
 		cfg.LLMProvider = "openai"
@@ -254,10 +240,13 @@ func RunSetup() error {
 		}
 		cfg.GroqModel = model
 
+	case "5":
+		// Leave the provider unset and do not pull a local model. The user can
+		// select a provider later in the generated environment file.
+		cfg.LLMProvider = ""
+
 	default:
-		cfg.LLMProvider = "ollama"
-		cfg.OllamaHost = "http://localhost:11434"
-		cfg.OllamaModel = "llama3.2"
+		configureOllamaSetup(reader, cfg, detectedHost, detectedModel)
 	}
 	fmt.Println()
 
@@ -357,9 +346,30 @@ func RunSetup() error {
 	// ── Done ──────────────────────────────────────────────────────────────────
 	// Record all current migrations as applied — setup already did everything they do.
 	MarkAllMigrationsApplied()
+	if cfg.Mode == ModeManaged {
+		started, bootstrapErr := startServerBootstrap(xdgHome, cfg.ProjectRoot, cfg.LLMProvider, cfg.OllamaModel, cfg.OllamaModelReady)
+		if bootstrapErr != nil {
+			fmt.Printf("  Warning: background server bootstrap could not start: %v\n", bootstrapErr)
+			fmt.Println("  Retry with: devtrack doctor --repair")
+		} else if started {
+			_, _, logPath := bootstrapPaths(xdgHome)
+			fmt.Println("✓ Optional AI server installation started in the background")
+			fmt.Printf("  Progress: devtrack doctor\n  Log: %s\n", logPath)
+		}
+	}
 
 	printSetupComplete(projectRoot, cfg.Mode)
 	return nil
+}
+
+func setupDefaultWorkspace(projectRoot string) string {
+	if IsGitRepository(projectRoot) {
+		return projectRoot
+	}
+	if cwd, err := os.Getwd(); err == nil {
+		return cwd
+	}
+	return "."
 }
 
 // detectProjectRoot finds the DevTrack server installation root (devtrack_server/).
@@ -418,65 +428,6 @@ func detectProjectRoot() (string, error) {
 
 	return "", fmt.Errorf("Python server not found. Run 'devtrack setup' to install it automatically, " +
 		"or set PROJECT_ROOT / DEVTRACK_SERVER_DIR to point at an existing devtrack_server/ directory")
-}
-
-// cloneAndInstallServer sparse-clones only devtrack_server/ from the monorepo
-// into <devtrackHome>/server/ and then runs `uv sync` to install Python deps.
-// It streams all git and uv output to stdout so the user sees progress.
-// Returns the absolute path to the installed devtrack_server/ directory.
-func cloneAndInstallServer(devtrackHome string) (string, error) {
-	targetDir := filepath.Join(devtrackHome, "server")
-
-	fmt.Printf("\nCloning Python server into %s ...\n\n", targetDir)
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return "", fmt.Errorf("create server dir %s: %w", targetDir, err)
-	}
-
-	// runGit runs a git command, streaming its output to stdout/stderr.
-	runGit := func(args ...string) error {
-		cmd := exec.Command("git", args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
-		}
-		return nil
-	}
-
-	// Sparse-checkout: only devtrack_server/ (~5 MB vs full repo).
-	if err := runGit("init", targetDir); err != nil {
-		return "", err
-	}
-	if err := runGit("-C", targetDir, "remote", "add", "origin", devtrackServerRepoURL); err != nil {
-		return "", err
-	}
-	if err := runGit("-C", targetDir, "sparse-checkout", "init", "--cone"); err != nil {
-		return "", err
-	}
-	if err := runGit("-C", targetDir, "sparse-checkout", "set", "devtrack_server"); err != nil {
-		return "", err
-	}
-	if err := runGit("-C", targetDir, "fetch", "--depth", "1", "origin", devtrackServerBranch); err != nil {
-		return "", err
-	}
-	if err := runGit("-C", targetDir, "checkout", devtrackServerBranch); err != nil {
-		return "", err
-	}
-
-	serverPath := filepath.Join(targetDir, "devtrack_server")
-
-	// Install Python dependencies.
-	fmt.Println("\nRunning uv sync...")
-	syncCmd := exec.Command("uv", "sync")
-	syncCmd.Dir = serverPath
-	syncCmd.Stdout = os.Stdout
-	syncCmd.Stderr = os.Stderr
-	if err := syncCmd.Run(); err != nil {
-		return "", fmt.Errorf("uv sync failed in %s: %w", serverPath, err)
-	}
-
-	fmt.Printf("\nPython server installed at: %s\n\n", serverPath)
-	return serverPath, nil
 }
 
 // createDataDirectories creates all required Data/ subdirectories.
@@ -540,6 +491,9 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("PID_DIR=" + filepath.Join(dataDir, "pids") + "\n")
 	b.WriteString("CONFIG_DIR_PATH=" + filepath.Join(dataDir, "configs") + "\n")
 	b.WriteString("LEARNING_DIR_PATH=" + filepath.Join(dataDir, "learning") + "\n\n")
+
+	b.WriteString("## SERVER DATABASE\n")
+	b.WriteString("POSTGRES_URL=" + cfg.PostgresURL + "\n\n")
 
 	b.WriteString("## DAEMON INTERNALS\n")
 	b.WriteString("DEVTRACK_SERVER_MODE=" + string(cfg.Mode) + "\n")
@@ -620,6 +574,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("HTTP_TIMEOUT_SHORT_SECS=10\n") // Go client reads this name
 	b.WriteString("HTTP_TIMEOUT=30\n")
 	b.WriteString("HTTP_TIMEOUT_LONG=60\n")
+	b.WriteString("SQLITE_BUSY_TIMEOUT_MS=5000\n")
 	b.WriteString("LLM_REQUEST_TIMEOUT_SECS=120\n")
 	b.WriteString("PROMPT_TIMEOUT_SIMPLE_SECS=30\n")
 	b.WriteString("PROMPT_TIMEOUT_WORK_SECS=60\n")
@@ -664,10 +619,10 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("## AZURE DEVOPS\n")
 	b.WriteString("# Secrets + identity — org/project/api_url go in workspaces.yaml\n")
 	b.WriteString("AZURE_DEVOPS_PAT=" + cfg.AzurePAT + "\n")
-	b.WriteString("AZURE_API_KEY=\n")                                     // alias for AZURE_DEVOPS_PAT accepted by Python server + cli_info
-	b.WriteString("AZURE_ORGANIZATION=" + cfg.AzureOrganization + "\n")  // Go health check + devtrack settings + Python server
-	b.WriteString("AZURE_PROJECT=" + cfg.AzureProject + "\n")            // Go health check + devtrack settings + Python server
-	b.WriteString("AZURE_EMAIL=" + cfg.UserEmail + "\n")                  // alert poller: skip own comments
+	b.WriteString("AZURE_API_KEY=\n")                                   // alias for AZURE_DEVOPS_PAT accepted by Python server + cli_info
+	b.WriteString("AZURE_ORGANIZATION=" + cfg.AzureOrganization + "\n") // Go health check + devtrack settings + Python server
+	b.WriteString("AZURE_PROJECT=" + cfg.AzureProject + "\n")           // Go health check + devtrack settings + Python server
+	b.WriteString("AZURE_EMAIL=" + cfg.UserEmail + "\n")                // alert poller: skip own comments
 	b.WriteString("AZURE_SYNC_ENABLED=false\n")
 	b.WriteString("AZURE_SYNC_AUTO_COMMENT=true\n")
 	b.WriteString("AZURE_SYNC_AUTO_TRANSITION=false\n")
@@ -773,18 +728,22 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("PROJECT_SYNC_ENABLED=false\n")
 	b.WriteString("PROJECT_SYNC_INTERVAL_SECS=300\n\n")
 
+	b.WriteString("## SERVER EVENT SYNC (explicit opt-in)\n")
+	b.WriteString("SERVER_EVENT_SYNC_ENABLED=false\n")
+	b.WriteString("SERVER_EVENT_SYNC_BATCH_SIZE=100\n\n")
+
 	b.WriteString("## TELEGRAM\n")
 	b.WriteString("TELEGRAM_ENABLED=false\n")
 	b.WriteString("TELEGRAM_BOT_TOKEN=\n")
 	b.WriteString("TELEGRAM_ALLOWED_CHAT_IDS=\n")
 	b.WriteString("TELEGRAM_NOTIFY_COMMITS=false\n")
 	b.WriteString("TELEGRAM_NOTIFY_TRIGGERS=true\n")
-	b.WriteString("TELEGRAM_CHAT_ID=\n")        // Go native notifier: chat to send to
+	b.WriteString("TELEGRAM_CHAT_ID=\n") // Go native notifier: chat to send to
 	b.WriteString("TELEGRAM_NOTIFY_HEALTH=true\n\n")
 
 	b.WriteString("## SLACK\n")
-	b.WriteString("SLACK_WEBHOOK_URL=\n")        // Go native notifier: incoming webhook URL
-	b.WriteString("SLACK_ENABLED=false\n")       // Python bot
+	b.WriteString("SLACK_WEBHOOK_URL=\n")  // Go native notifier: incoming webhook URL
+	b.WriteString("SLACK_ENABLED=false\n") // Python bot
 	b.WriteString("SLACK_BOT_TOKEN=\n")
 	b.WriteString("SLACK_APP_TOKEN=\n")
 	b.WriteString("SLACK_ALLOWED_CHANNEL_IDS=\n\n")
@@ -801,7 +760,6 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("## PROJECT PLANNING\n")
 	b.WriteString("NEWPROJECT_ENABLED=true\n")
 	b.WriteString("SPEC_REVIEW_BASE_URL=http://localhost:8089\n\n")
-
 
 	b.WriteString("## AZURE AD (optional — for MS Graph / Teams / email)\n")
 	b.WriteString("AZURE_CLIENT_ID=\n")
@@ -827,6 +785,42 @@ func checkCommonPrereqs() {
 	}
 }
 
+func collectPostgresURL(reader *bufio.Reader, cfg *SetupConfig) error {
+	fmt.Println("─── PostgreSQL Server Database ───────────────────────────────────")
+	fmt.Println("The managed Python server requires PostgreSQL. Supply a connection URL")
+	fmt.Println("for an existing database. For a local database, the bundled Compose file")
+	fmt.Println("can provision PostgreSQL; see docs/INSTALLATION.md.")
+	for {
+		fmt.Print("POSTGRES_URL: ")
+		value := readLine(reader)
+		if err := validatePostgresURL(value); err != nil {
+			fmt.Printf("  ✗ %v\n", err)
+			continue
+		}
+		cfg.PostgresURL = value
+		fmt.Println("  ✓ PostgreSQL connection configured")
+		fmt.Println()
+		return nil
+	}
+}
+
+func validatePostgresURL(value string) error {
+	if strings.TrimSpace(value) == "" {
+		return fmt.Errorf("POSTGRES_URL is required in managed mode")
+	}
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return fmt.Errorf("invalid POSTGRES_URL: %w", err)
+	}
+	if parsed.Scheme != "postgresql" && !strings.HasPrefix(parsed.Scheme, "postgresql+") {
+		return fmt.Errorf("POSTGRES_URL must use the postgresql:// scheme")
+	}
+	if strings.Trim(parsed.Path, "/") == "" {
+		return fmt.Errorf("POSTGRES_URL must include a database name")
+	}
+	return nil
+}
+
 // generateSecret returns a cryptographically random hex string of n bytes.
 func generateSecret(n int) string {
 	b := make([]byte, n)
@@ -835,54 +829,6 @@ func generateSecret(n int) string {
 		return fmt.Sprintf("%x", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(b)
-}
-
-// checkPythonBackend verifies the Python backend and uv are present, then runs uv sync.
-// Returns an error if backend/ is missing, uv is not in PATH, or uv sync fails.
-func checkPythonBackend(projectRoot string) error {
-	// Check backend directory
-	backendDir := filepath.Join(projectRoot, "backend")
-	if _, err := os.Stat(backendDir); err != nil {
-		fmt.Println("  ✗ backend/ directory not found at " + backendDir)
-		fmt.Println("    Run 'devtrack setup' to clone the Python server automatically.")
-		return fmt.Errorf("backend/ directory not found at %s", backendDir)
-	}
-	fmt.Println("  ✓ backend/ directory found")
-
-	// Check uv
-	if _, err := exec.LookPath("uv"); err != nil {
-		fmt.Println("  ✗ uv not found — Python dependency manager required")
-		fmt.Println("    Install uv: https://docs.astral.sh/uv/getting-started/installation/")
-		fmt.Println("    Or: curl -LsSf https://astral.sh/uv/install.sh | sh")
-		return fmt.Errorf("uv not found in PATH — install from https://docs.astral.sh/uv/getting-started/installation/")
-	}
-	fmt.Println("  ✓ uv found")
-
-	// Check Python (non-fatal — uv can manage its own Python interpreter)
-	pythonBin := "python3"
-	if runtime.GOOS == "windows" {
-		pythonBin = "python"
-	}
-	if _, err := exec.LookPath(pythonBin); err != nil {
-		fmt.Printf("  ~ %s not in PATH (uv will use its managed interpreter)\n", pythonBin)
-	} else {
-		fmt.Printf("  ✓ %s found\n", pythonBin)
-	}
-
-	// Run uv sync to install/update Python dependencies
-	fmt.Println()
-	fmt.Println("  Installing Python dependencies (uv sync)...")
-	syncCmd := exec.Command("uv", "sync")
-	syncCmd.Dir = projectRoot
-	syncCmd.Stdout = os.Stdout
-	syncCmd.Stderr = os.Stderr
-	if err := syncCmd.Run(); err != nil {
-		return fmt.Errorf("uv sync failed: %w", err)
-	}
-	fmt.Println("  ✓ Python dependencies installed")
-
-	fmt.Println()
-	return nil
 }
 
 // installShellIntegration appends the devtrack eval line to the active shell RC file.
@@ -1084,7 +1030,10 @@ func printSetupComplete(projectRoot string, mode DevTrackMode) {
 		fmt.Println("  4. Add workspace: devtrack workspace add <path>")
 		fmt.Println()
 		fmt.Println("Edit .env at any time to add integrations (GitHub, Azure, Jira, etc.)")
-		fmt.Printf("Python server installed at: %s\n", projectRoot)
+		fmt.Printf("Optional Python server location: %s\n", projectRoot)
+		fmt.Println("Run 'devtrack doctor' to follow background installation progress.")
+		fmt.Println()
+		printFirstRunGuidance(os.Stdout)
 	} else {
 		fmt.Println("Next steps:")
 		fmt.Println("  1. Set DEVTRACK_SERVER_URL in .env to point at your Python server.")
@@ -1094,6 +1043,8 @@ func printSetupComplete(projectRoot string, mode DevTrackMode) {
 		fmt.Println()
 		fmt.Println("Note: AI features require the Python server to be reachable at DEVTRACK_SERVER_URL.")
 		fmt.Println("Without a server URL, git monitoring and scheduling still run normally.")
+		fmt.Println()
+		printFirstRunGuidance(os.Stdout)
 	}
 	fmt.Println()
 }

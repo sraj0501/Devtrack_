@@ -1,13 +1,13 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-07-02 by PM — EPIC: Managed Install (TASK-103–108) COMPLETE. All 5 PRs
-(#210–214) merged to dev; TASK-108 audit (three passes: static, static, then a real live end-to-end
-run) found + fixed 10 bugs total. First two passes (6 bugs) were path/doc-consistency issues
-stemming from PROJECT_ROOT's meaning changing from "Go client dir" to "cloned Python server dir"
-without every downstream consumer being updated. Third pass actually ran `devtrack setup` →
-`start` → `stop` against a sandboxed fake home and found 3 more bugs no static read would have
-caught, including one that silently broke the pending-actions queue on every fresh install. See
-TASK-108 audit findings for detail._
+_Last updated: 2026-08-28 by PM — upstream reconciled through TASK-120/PR #256; Phase 9
+documentation and launch-preparation tasks are now active in isolated worktrees._
+
+**[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
+(PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at
+`197c079`. The server now requires PostgreSQL, applies versioned Alembic migrations, and exposes the
+opt-in client-to-server sync boundary; managed setup writes visible runtime defaults and validates
+invalid overrides. All seven CI checks passed for the final deployment and setup changes.
 **[2026-07-13] TASK-109 — Repo cleanup before dev → main promotion.** Branch
 `docs/TASK-109-repo-cleanup`. Deleted 30 stale branches (32 remote → 2: `dev`, `main`; plus 2 stale
 local). Reconciled 5 board statuses that still read IN PROGRESS despite having shipped (TASK-080,
@@ -330,13 +330,196 @@ patterns now confirmed (see `postgres_epic.md` memory for full detail):
   `voice_sync.py`, and `webhook_server.py`'s own remaining direct `sqlite3` usage (outside
   `queue_gateway`'s call sites). TASK-114/115/116 still unstarted.
 
-**QUEUED — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. Packaging and narrative,
-not new capability. Renumbered from TASK-110–117 on 2026-07-13: that table was written before the board
-issued 110–116, so its IDs collided with the wiki/docs work and the Postgres epic. **This board is the
-authoritative ID ledger** — `NEXT_STEPS.md` follows it, not the other way round.
+**[2026-07-31] TASK-133 — Removed dead pre-Go-native alert-polling code (PR #239, merge `c1f6e21`).**
+Found while starting `alert_poller.py`'s TASK-112 port: it and its entire dependency chain were
+orphaned — no import or subprocess wiring anywhere called `run_poll_loop()` or any of these modules.
+`CLAUDE.md` already documented ticket alerts as Go-native (retired from Python in client-server
+decoupling Phase 2), and `docs/CAPABILITIES_OWNERSHIP.md` already said "Python `alert_poller.py`
+retired" — the code just never got deleted. Removed the whole subtree: `alert_poller.py`,
+`db/mongo_alerts.py` (its exclusive MongoDB store), `alert_notifier.py` (its exclusive notification
+delivery), `alerters/{github,azure,jira,gitlab}_alerter.py` (per-source pollers, only ever called
+from `alert_poller.py`), and `test_jira_alerter.py`. `ALERT_*` config vars untouched — confirmed Go's
+`internal/config/config_env.go` reads the same names for the live Go-native poller. Reduces TASK-112's
+real remaining count: of the original 15 raw-`sqlite3` modules, 6 are ported and 1 (`alert_poller.py`)
+was dead code, never actually portable. **8 modules remain:** `daily_report_generator.py`,
+`email_reporter.py`, `learning_integration.py`, `slack/handlers.py`, `telegram/handlers.py`,
+`voice_seeder.py`, `voice_sync.py`, and `webhook_server.py`'s own remaining `sqlite3` usage.
 
-_Next DevTrack task ID: TASK-133_
-_Active branch: `dev`_
+**[2026-07-31] TASK-112 — `daily_report_generator.py` ported (PR #240, merge `278c631`).** 7th module,
+first with a genuinely Python-owned table: `reports` (its own `CREATE TABLE`, no Go involvement,
+confirmed sole-owned via repo-wide grep). New `backend/db/report_store.py` follows the
+`ticket_db.py`/`learning_store.py` convention — a real SQLAlchemy `Table` on the shared engine's
+metadata, works identically in SQLite and Postgres mode, added to `test_postgres_backend.py`'s CI
+fixture. Separately, `triggers` (read for EOD narrative generation) is Go-owned — ported to the usual
+fail-closed pattern. **Found and flagged, not acted on:** `devtrack_client/internal/db/database.go`
+defines an identical `reports` schema and full CRUD surface (`InsertReport`, `GetReportByID`, etc.)
+with zero callers anywhere in the Go codebase — dead code, mirror image of the TASK-133 finding but
+on the Go side. Not deleted (a Go-side decision, out of scope for this Python port) — flagged here in
+case it's ever wired up, which would reproduce the exact split-brain this epic exists to fix (Go never
+speaks Postgres, so Go writing `reports` would diverge from Python's Postgres-mode writes). **7
+modules remain:** `email_reporter.py`, `learning_integration.py`, `slack/handlers.py`,
+`telegram/handlers.py`, `voice_seeder.py`, `voice_sync.py`, `webhook_server.py`'s own remaining
+`sqlite3` usage.
+
+**[2026-07-31] TASK-134 — `email_reporter.py` ported (PR #241, merge `0a92bb6`).** 8th module. Single
+`sqlite3.connect()` call site (`get_daily_activities()`), reading the Go-owned `task_updates` table —
+the simplest shape so far: one method, one table, read-only. Got the standard fail-closed treatment
+(empty list, never raise in Postgres mode) — same as `dialectic_status.py`/`skill_detector.py`, since
+`task_updates` has no Go internal-HTTP endpoint yet. The module had zero dedicated test coverage before
+this port (only a `MagicMock` stand-in in `test_eod_queue_action.py`); added `test_email_reporter.py`
+covering both SQLite-mode reads (with/without the optional `time_estimate`/`source` columns, for
+cross-version Go-client schema compatibility) and Postgres-mode fail-closed behavior. **6 modules
+remain:** `learning_integration.py`, `slack/handlers.py`, `telegram/handlers.py`, `voice_seeder.py`,
+`voice_sync.py`, `webhook_server.py`'s own remaining `sqlite3` usage.
+
+**[2026-07-31] TASK-135 — `learning_integration.py` ported (PR #242, merge `12fcd1d`).** 9th module —
+turned out to be a bug fix, not a normal fail-closed/HTTP-dispatch/hard-raise port. Its only raw
+`sqlite3` call site, `_load_last_collected()`, imported `backend.db.learning_store._db_path()` — a
+helper that no longer exists because `learning_store.py` was already ported onto the engine earlier
+in this epic (it's one of the "7 modules on that engine" in the table below, predating even TASK-112's
+2026-07-31 start). That import has been silently failing ever since (swallowed by the enclosing
+`try/except`), so the function always returned `None` and Teams delta-fetch fallback never actually
+worked — every non-MongoDB sync silently did a full refetch instead of an incremental one. Fixed by
+delegating to `learning_store.load_last_collected(user_email)` (already dual-dialect,
+`learning_sync_state` is Python-owned). Added dedicated test coverage (module had none) — hit the same
+`_schema_done` lazy-init test-isolation gap `report_store.py`'s tests found, fixed the same way (reset
+the flag alongside `reset_engine()`). **Lesson: when a module in the "15 to port" list already imports
+from an *already-ported* module, check that the import still resolves before assuming the shape of the
+fix — a prior port can silently break a caller's raw-sqlite3 helper reference.** **5 modules remain:**
+`slack/handlers.py`, `telegram/handlers.py`, `voice_seeder.py`, `voice_sync.py`, `webhook_server.py`'s
+own remaining `sqlite3` usage.
+
+**[2026-07-31] TASK-136 — `slack/handlers.py` ported (PR #243, merge `f343bc3`).** 10th module — the
+first with more than one distinct table/shape in the same file. Three raw `sqlite3` call sites, three
+different fixes:
+1. `cmd_health` (reads Go-owned `health_snapshots`, no Go HTTP endpoint) — new
+   `backend/health_snapshots_store.py`, fail-closed, written to be shared with `telegram/handlers.py`'s
+   near-identical query (next module).
+2. `cmd_workstart` (writes Go-owned `work_sessions`) — new `WorkSessionStore.start_session()`, matching
+   the no-op-in-Postgres pattern `append_commit`/`end_session`/`adjust_time` already used. This closed a
+   real abstraction gap: `WorkSessionStore` had no session-starting method at all before this, so Slack
+   (and presumably Telegram) hand-rolled the INSERT directly.
+3. `cmd_vacation on/off` (writes Go-owned `vacation_mode`) — new `auto_responder.set_vacation_state()`,
+   the *first* writer for that table (only `get_vacation_state()` existed before, read-only). Returns
+   `False` in Postgres mode; the caller already wraps every command in try/except and shows the user an
+   error message, so surfacing "not available yet" this way carries none of the queue-bypass risk found
+   in `queue_gateway.py` — no caller reacts to the failure by doing something worse.
+
+No raw `sqlite3` remains in `slack/handlers.py`. **4 modules remain:** `telegram/handlers.py` (shares
+all 3 of the above tables/shapes — expect to reuse `health_snapshots_store.py` and the new
+`WorkSessionStore`/`auto_responder` write helpers directly), `voice_seeder.py`, `voice_sync.py`,
+`webhook_server.py`'s own remaining `sqlite3` usage.
+
+**[2026-07-31] TASK-137 — `telegram/handlers.py` ported (PR #244, merge `aca6537`).** 11th module — six
+raw `sqlite3` call sites (plus one now-dead `_get_db_path()` helper, removed). Reused every helper
+`slack/handlers.py`'s port (TASK-136) already built (`WorkSessionStore.start_session()`,
+`auto_responder.set_vacation_state()`) plus two new fail-closed ones for tables only Telegram touches:
+`backend/queue_status_store.py` (`message_queue`, `deferred_commits` — simple status-count aggregates,
+no Go HTTP endpoint for either) and `health_snapshots_store.get_latest_snapshot_per_service()`
+(Telegram's "latest row per service" grouped-subquery variant of Slack's `/health`, kept as a second
+function rather than unifying the two, to preserve each caller's exact prior output). **Also fixed a
+real, previously-dormant bug this module's first-ever test file exposed:** `data_collectors.py`,
+`learning_integration.py`, and `daily_report_generator.py` each did `sys.path.insert(0,
+os.path.dirname(__file__))` to support bare `from personalized_ai import ...`/`from email_reporter
+import ...` — that puts `backend/` itself on `sys.path`, so `import telegram` (the real
+`python-telegram-bot` package) would resolve to `backend/telegram/` instead whenever one of those three
+modules got imported earlier in the same test process. Dormant since nothing exercised
+`backend.telegram.handlers` in the suite until this port added its first test file. Fixed by switching
+the three bare imports to `backend.`-qualified ones and dropping the `backend/`-itself path inserts (the
+`msgraph_python` vendor path insert and the repo-root insert both stay). **Lesson: adding a module's
+first-ever test to the suite can surface latent cross-module sys.path hazards that no amount of running
+that module standalone would ever catch — run the *full* suite, not just the new file, before treating
+any port as done.** **3 modules remain:** `voice_seeder.py`, `voice_sync.py`, `webhook_server.py`'s own
+remaining `sqlite3` usage.
+
+**[2026-07-31] TASK-138 — `voice_seeder.py` ported (PR #245, merge `413bd55`).** 12th module — the second
+"Python fully owns this table" case (after `daily_report_generator.py`'s `reports`). `voice_seeded_commits`
+has zero Go involvement (confirmed via repo-wide grep), so it follows `db/ticket_db.py`'s convention: a
+real SQLAlchemy `Table` in new `backend/db/voice_seed_store.py`, registered on the shared `metadata`,
+works identically in SQLite and Postgres mode — no boundary-rule guard needed, unlike every Go-owned-table
+module ported so far. `voice_seeder.py` itself dropped its own `sqlite3.connect()` +
+`_ensure_seed_table()`/`_is_already_seeded()`/`_mark_seeded()` entirely in favor of the new store's
+`is_already_seeded()`/`mark_seeded()`. Migrated its existing tests off
+`patch("backend.voice_seeder._db_path", ...)` to the `DATABASE_DIR`+`reset_engine()` isolated-engine
+pattern — same recurring gotcha as every other port this epic (a patched path silently stops mattering
+once code switches to `get_engine()`, a process-wide singleton that resolves its own path). Added to
+`test_postgres_backend.py`'s CI fixture. **2 modules remain:** `voice_sync.py`, `webhook_server.py`'s own
+remaining `sqlite3` usage.
+
+**[2026-07-31] TASK-139 — `voice_sync.py` ported (PR #246, merge `f071a56`).** 13th module and the
+last live standalone module in TASK-112's original 15-module inventory. `voice_synced_items` is
+Python-owned, so new `backend/db/voice_sync_store.py` registers it on the shared SQLAlchemy metadata
+with a composite `(platform, item_id, context_type)` primary key and dialect-aware idempotent writes.
+`voice_sync.py` now delegates tracking to that store and its tests use the isolated shared-engine
+pattern. Of the original 15 modules, 13 are ported and one (`alert_poller.py`) was dead code removed
+under TASK-133. **1 real raw-`sqlite3` module remains:** `webhook_server.py`.
+
+### TASK-140 — Make PostgreSQL a core server dependency and restore CI
+**Assigned to**: engineer
+**Phase**: PostgreSQL Backend / TASK-113 test lane
+**Started**: 2026-08-10
+**Branch**: `fix/TASK-140-postgres-ci`
+
+**Spec**:
+Make the PostgreSQL driver part of the normal `devtrack_server` installation, not an optional extra.
+The standard test lane must exercise the real PostgreSQL SQLAlchemy dialect when tests select
+PostgreSQL mode, while the dedicated service-backed lane continues proving live database behavior.
+This is the dependency/CI foundation for the approved architecture: the Go client retains SQLite as
+its offline source of truth; server persistence and server-side events move to mandatory PostgreSQL
+through TASK-141 and TASK-114–116. Reconcile the task ledger and documentation with merged TASK-139
+and this superseding product decision.
+
+**Acceptance criteria**:
+- [x] `psycopg2-binary` is a core server dependency and the `postgres` optional extra is removed.
+- [x] Standard and dedicated PostgreSQL CI lanes both install the normal server dependency set.
+- [x] Email, Slack, and Telegram PostgreSQL-mode tests construct the real PostgreSQL dialect without
+      connecting to the fake URL.
+- [x] Focused and full default Python suites pass with `psycopg2` installed.
+- [x] Board, architecture docs, and shared memory record mandatory server PostgreSQL, client-only
+      SQLite, TASK-139 merged, one raw-`sqlite3` module remaining, and TASK-141 as next unused ID.
+
+**Engineer status**: COMPLETE — `psycopg2-binary==2.9.12` is in the normal locked environment;
+focused tests passed 29/29 and the full suite passed 896 with 3 skips on 2026-08-10. Publication and
+merge to `dev` authorized by the user. Integrated at `f7a95a6`; CI run 31383782274 passed all jobs.
+**Blockers**: none
+
+### TASK-141 — Port webhook voice-status reads off raw SQLite
+**Assigned to**: engineer
+**Phase**: PostgreSQL Backend / completion of TASK-112
+**Started**: 2026-08-10
+**Branch**: `fix/TASK-141-port-webhook-server`
+
+**Spec**:
+Remove the final production `sqlite3` calls from `backend/webhook_server.py`. The `/voice/status`
+endpoint currently opens the local SQLite file directly to calculate the latest voice seed and sync
+timestamps even though both tables are Python-owned and already registered on the shared SQLAlchemy
+metadata. Add fail-closed timestamp readers to `db/voice_seed_store.py` and
+`db/voice_sync_store.py`, delegate the endpoint to them, and prove the path against both isolated
+SQLite and the live PostgreSQL CI lane. Do not add a Go PostgreSQL dependency or move Go-owned event
+tables in this task; client event synchronization remains TASK-114.
+
+**Acceptance criteria**:
+- [x] `webhook_server.py` contains no direct `sqlite3` import, connection, or database-path lookup.
+- [x] Voice seed/sync stores expose dialect-neutral latest-timestamp reads and return `None` on DB
+      errors so `/voice/status` retains its never-raise behavior.
+- [x] `/voice/status` reports both timestamps through the shared SQLAlchemy engine in SQLite mode.
+- [x] The live PostgreSQL lane proves both latest-timestamp readers against PostgreSQL.
+- [x] Focused endpoint/store tests and the full Python suite pass; production server code has no
+      remaining raw `sqlite3` imports.
+
+**Engineer status**: COMPLETE — focused tests passed 15 with 4 live-service skips; the live
+PostgreSQL file passed 4/4; the full Python 3.12 suite passed 900 with 4 skips. Production
+`devtrack_server/backend` contains no raw `sqlite3` import outside tests. Commit, push, and PR to
+`dev` authorized by the user.
+**Blockers**: none
+
+**ACTIVE — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. TASK-117–123 and the
+prerequisite TASK-142 are complete; TASK-124 is the remaining work. This phase is
+packaging and narrative, not a new capability. **This board is the authoritative ID ledger** —
+`NEXT_STEPS.md` follows it, not the other way round.
+
+_Next DevTrack task ID: TASK-145_
+_Active implementation branches: none; TASK-124 remains planned._
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -5828,52 +6011,67 @@ static, static, live end-to-end)
 
 ---
 
-## IN PROGRESS — EPIC: PostgreSQL Backend (TASK-112–116)
+## COMPLETE — EPIC: PostgreSQL Backend (TASK-112–116)
 
-**Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231).
-**6 of 15 raw-`sqlite3` modules ported as of 2026-07-31** (PRs #231–#236, see the dated log entries
-above for full detail on each). TASK-114/115/116 still unstarted.
+**Priority: required before commercial launch.** Scoped 2026-07-13; started 2026-07-31 (PR #231),
+completed on `dev` 2026-08-18 through PR #251.
+**14 of 15 originally-scoped modules ported, 1 found to be dead code and removed instead (TASK-133,
+PR #239) — no production raw-`sqlite3` modules remain** as of TASK-141. TASK-114/115/116 completed
+the opt-in client sync, migration/import, and deployment-enforcement work.
 
-### Why this exists
+### Why this existed
 
-Postgres today is **half-wired, and the half that is missing fails silently.** Setting `POSTGRES_URL`
-does not give you a Postgres deployment — it gives you *two databases*:
+At the start of the epic, Postgres was **half-wired, and the missing half failed silently.** Setting
+`POSTGRES_URL` produced *two databases*:
 
-| Layer | Backend today | Portable? |
+| Layer at epic start | Backend | Portable? |
 |---|---|---|
 | `db/engine.py` (SQLAlchemy factory, dialect-aware `upsert()`, pooling) | Postgres **or** SQLite | ✅ already done |
-| 6 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket}_store` | follows `POSTGRES_URL` | ✅ |
-| 6 of 15 modules ported as of 2026-07-31: `skill_detector`, `dialectic_status`, `server_tui/stats_client`, `work_tracker/session_store`, `queue_gateway`, `vacation/auto_responder` | fail-closed / HTTP-dispatch / hard-raise (see log entries above) | ✅ |
-| 9 modules still opening raw `sqlite3` (`daily_report_generator`, `email_reporter`, `alert_poller`, `telegram/handlers`, `slack/handlers`, `voice_sync`, `voice_seeder`, `learning_integration`, `webhook_server`) | **SQLite always** | ❌ |
+| 7 modules on that engine: `admin/user_manager`, `db/{learning,platform,project,ticket,report}_store` | follows `POSTGRES_URL` | ✅ |
+| 6 of 15 modules ported fail-closed/HTTP-dispatch/hard-raise as of 2026-07-31: `skill_detector`, `dialectic_status`, `server_tui/stats_client`, `work_tracker/session_store`, `queue_gateway`, `vacation/auto_responder` | see log entries above | ✅ |
+| `daily_report_generator` (7th module ported) — mixed: `reports` table is Python-owned (now on the engine like the row above), `triggers` read is Go-owned (fail-closed) | see log entries above | ✅ |
+| `email_reporter` (8th module ported) — fail-closed, single call site reading Go-owned `task_updates` | see log entries above | ✅ |
+| `learning_integration` (9th module ported) — delegates to already-engine-based `learning_store`; fixed a silent broken-import bug along the way | see log entries above | ✅ |
+| `slack/handlers` (10th module ported) — 3 distinct fixes: new `health_snapshots_store` (fail-closed), new `WorkSessionStore.start_session()` (no-op), new `auto_responder.set_vacation_state()` (first writer, returns False) | see log entries above | ✅ |
+| `telegram/handlers` (11th module ported) — reused 2 of slack's helpers directly, added new `queue_status_store` + a second `health_snapshots_store` function; also fixed a dormant sys.path/import-shadowing bug across 3 other modules | see log entries above | ✅ |
+| `voice_seeder` (12th module ported) — 2nd "Python fully owns this table" case, new `db/voice_seed_store` | see log entries above | ✅ |
+| `voice_sync` (13th module ported) — 3rd Python-owned-table case, new `db/voice_sync_store` | see log entries above | ✅ |
+| `webhook_server` (14th module ported, TASK-141) — `/voice/status` reads both Python-owned voice timestamps through their shared-engine stores | local TASK-141 verification | ✅ |
+| ~~`alert_poller`~~ — dead pre-Go-native code, removed entirely (TASK-133, PR #239), not ported | n/a | n/a |
 | Go client — 21 tables via `modernc.org/sqlite`, no Postgres driver in `go.mod` | **SQLite always** | ❌ |
 
-So with `POSTGRES_URL` set, user accounts and licences go to Postgres while `triggers`, `task_updates`,
-`work_sessions` and `pending_actions` stay in a local SQLite file — and the EOD report, which reads
-`triggers`, keeps reading SQLite. **Nothing errors.** It looks like it works. `db/engine.py`'s own
-docstring concedes this ("Go-owned tables are NEVER touched by Python in PostgreSQL mode").
+Before the epic, setting `POSTGRES_URL` sent user accounts and licences to Postgres while `triggers`,
+`task_updates`, `work_sessions`, and `pending_actions` stayed in a local SQLite file. **Nothing
+errored.** The completed sync, migration, and deployment work removed that silent split for server
+operation while preserving client-local SQLite.
 
 For a single-user laptop that is harmless. For a multi-user commercial server it is fatal: every
 developer's triggers live in a SQLite file on their own machine, so the server can aggregate nothing —
 no team EOD, no admin dashboard with real numbers, no cross-device continuity.
 
-### DECIDED (user, 2026-07-13) — Postgres is server-side only
+### DECIDED (user, 2026-08-10) — Postgres is mandatory server-side
 
 **The Go client never speaks Postgres. It keeps tracking to local SQLite, always, in every mode.**
-Postgres is a `devtrack_server` concern. When a developer opts into a server, their local SQLite data
-flows *up* to Postgres on that server.
+Postgres is the required persistent store for `devtrack_server`, including all server-side events.
+When the client connects to a server, its local SQLite data flows *up* to Postgres. There is no
+server-side SQLite fallback in the target architecture and the PostgreSQL driver is a core server
+dependency, not an install extra.
 
-This preserves offline-first Rule 0 exactly (the client needs no database server, no network, nothing),
-keeps the no-shared-artefact boundary intact, and means **no Go work beyond the sync push** — no `pgx`,
-no driver in `go.mod`, no dialect split through `internal/db/`. Local SQLite stays the client's source of
-truth; the server's Postgres is the aggregate.
+This preserves offline-first Rule 0 at the client boundary: local observation, queueing, MCP reads,
+and backlog replay work from the Go client's SQLite without a server connection. It also keeps the
+no-shared-artefact boundary intact and means **no Go Postgres driver** — no `pgx` and no dialect split
+through `internal/db/`. Local SQLite stays the client's source of truth; server Postgres is the
+authoritative aggregate for server-side data.
 
 ```
 devtrack_client (Go)                    devtrack_server (Python)
-  local SQLite  ── HTTPS /trigger/* ──▶   Postgres (opt-in, POSTGRES_URL)
+  local SQLite  ── HTTPS /trigger/* ──▶   Postgres (required on server)
   always, offline, source of truth        aggregate across developers
 ```
 
-SQLite remains the server's default too — Postgres switches on only when `POSTGRES_URL` is set.
+During the migration, remaining SQLite compatibility branches are debt, not a supported final mode.
+TASK-141 removed the last raw server module. TASK-114 moves client events into Postgres; TASK-115
+adds migrations/import; TASK-116 provisions and validates mandatory `POSTGRES_URL` deployment.
 
 ### Tasks
 
@@ -5886,26 +6084,186 @@ SQLite remains the server's default too — Postgres switches on only when `POST
   split-brain went unnoticed. Add a `pytest` fixture running the suite against a real Postgres (the
   compose service, or `testcontainers`) so both backends are proven every run. Do this *alongside*
   TASK-112, not after it.
-- **TASK-114 — Client→server sync path.** The client pushes its local SQLite rows for Go-owned tables
+- **TASK-141 — Final raw-SQLite server port.** `webhook_server.py` now delegates `/voice/status`'s
+  latest seed/sync timestamp reads to the existing Python-owned SQLAlchemy stores. Verified against
+  isolated SQLite, a live PostgreSQL 16 service, and the full Python 3.12 suite.
+- **TASK-114 — Client→server sync path (COMPLETE, PR #249).** The client pushes its local SQLite rows for Go-owned tables
   (`triggers`, `task_updates`, `work_sessions`, `pending_actions`, …) over the existing `/trigger/*` HTTP
   boundary; the server persists them to Postgres. Needs: which tables sync, push cadence (on write vs
   batched), idempotency (server must dedupe replays — a stable row ID per client), a `client_id` column
   so rows are attributable per developer, and offline backlog replay when the server was unreachable.
   Consent still applies: this is developer data leaving the machine, so it stages through the
   pending-actions queue and is opt-in with the server.
-- **TASK-115 — Schema migrations.** `metadata.create_all()` is fine for greenfield SQLite; a commercial
+- **TASK-115 — Schema migrations (COMPLETE, PR #250).** A commercial
   Postgres needs versioned, reversible migrations (Alembic) plus a one-shot SQLite→Postgres import for
   developers who already have local history.
-- **TASK-116 — Deployment surface.** `docker-compose.yml` already ships a healthy `postgres:16-alpine` —
-  wire `devtrack_server` to `depends_on` it, document a Postgres server deploy in `docs/INSTALLATION.md`,
-  and make `POSTGRES_URL` a first-class documented option rather than an undocumented env var.
-  `psycopg2-binary` is already the `postgres` extra in `pyproject.toml`.
+- **TASK-116 — Deployment surface (COMPLETE, PR #251).** `docker-compose.yml` ships a healthy `postgres:16-alpine` —
+  wire `devtrack_server` to `depends_on` it, document local and remote Postgres server deploys in
+  `docs/INSTALLATION.md`, and require/validate `POSTGRES_URL` for server startup. Managed installation
+  must provision or clearly connect to Postgres; there is no server SQLite fallback.
 
 ### Already in place (do not redo)
 
 `db/engine.py` dual-dialect factory · `upsert()` · `is_postgres()` · connection pooling ·
-`config.postgres_url()` · `postgres` extra in `pyproject.toml` · `postgres:16-alpine` in compose with a
+`config.postgres_url()` · core `psycopg2-binary` dependency · `postgres:16-alpine` in compose with a
 `pg_isready` healthcheck.
+
+---
+
+## SHIPPED — TASK-142: Replace the legacy NLP parser with LLM enrichment
+
+Merged to `dev` in PR #253 (`47a2d59`); the obsolete parser/spaCy surface is removed and provider
+failures now degrade to raw commit data without changing authoritative ticket routing.
+
+## SHIPPED — TASK-118–120: Phase 9 first-run path
+
+- **TASK-118 / PR #254 / `1edf303`** — managed server bootstrap is non-blocking and exposes durable
+  progress plus capability status.
+- **TASK-119 / PR #255 / `3dc4162`** — first run seeds the local voice profile and guides the user to
+  the EOD and MCP value moments.
+- **TASK-120 / PR #256 / `a1dd036`** — setup detects usable Ollama models, avoids redundant pulls,
+  and offers already-present cloud credentials as an explicit temporary fast lane while preserving
+  Ollama as the default.
+
+Upstream verification on 2026-08-28: all three `dev` workflows passed at `a1dd036`; no open PRs or
+issues remained. No new release has been cut since v3.0.10.
+
+## COMPLETE — TASK-143: Reconcile Phase 9 status and evidence
+
+**Assigned to:** documentation engineer
+
+**Branch:** `docs/TASK-143-status-reconciliation`
+
+**Depends on:** TASK-118–120
+**Vision check:** PASS — documentation-only reconciliation.
+
+**Spec:** Align the board, feature tracker, engineer evidence, durable memory, and Phase 9 roadmap
+with upstream `dev` at `a1dd036`, without modifying application source or claiming a new release.
+
+**Acceptance criteria:**
+- [x] TASK-118–120 are consistently marked merged with PR and commit evidence.
+- [x] TASK-121–124 have dispatchable scope and acceptance criteria.
+- [x] TASK-144 was the next unused ID at reconciliation time; after its approved allocation, the
+      current next-unused ID is consistently TASK-145.
+- [x] v3.0.10 remains identified as the latest public release while newer work is described as
+      unreleased on `dev`.
+- [x] Launch-copy evidence contains no invented usage, savings, or external-user claims.
+
+**Engineer status:** COMPLETE — reconciliation verified and authorized for integration into `dev`
+on 2026-08-28.
+
+## COMPLETE — TASK-121: Demo path and ten-minute quickstart
+
+**Assigned to:** documentation engineer
+
+**Branch:** `docs/TASK-121-demo-quickstart`
+
+**Depends on:** TASK-120
+**Vision check:** PASS — leads with the silent standup outcome, keeps the CLI terminal-only, and
+shows local-first degradation honestly.
+
+**Spec:** Produce a reproducible demonstration path covering commit detection, a staged action, an
+on-demand EOD preview, and MCP context. Polish the README quickstart so a fresh user can reach the
+Go-native value moment before Python/Ollama bootstrap completes. Reuse existing assets where useful;
+do not fabricate runtime output.
+
+**Acceptance criteria:**
+- [x] A checked-in script/storyboard makes the demo reproducible without credentials or real PM sends.
+- [x] Quickstart commands match the current CLI and distinguish immediate Go-native capabilities
+      from background server/LLM readiness.
+- [x] Demo output shows pending-action staging and explicit confidence; nothing bypasses the queue.
+- [x] Documentation/link checks and any script-level checks pass.
+
+**Engineer status:** COMPLETE — commit `4541cf7`; live five-scene demo, shell syntax, and wiki checks
+passed on 2026-08-28.
+
+## COMPLETE — TASK-122: Wiki homepage and repository metadata package
+
+**Assigned to:** documentation engineer
+
+**Branch:** `docs/TASK-122-wiki-homepage`
+
+**Depends on:** TASK-121 narrative
+**Vision check:** PASS — preserves hook → differentiator → trust ordering.
+
+**Spec:** Bring the wiki homepage and its Phase 9/What's New content in line with the current
+first-run flow. Prepare exact repository-description/topic recommendations, but do not mutate GitHub
+metadata or publish the site without explicit authorization.
+
+**Acceptance criteria:**
+- [x] Homepage leads with the standup outcome, then MCP memory, then the pending-queue/local trust case.
+- [x] Setup text reflects non-blocking bootstrap, `doctor`, voice seeding, and the LLM fast lane.
+- [x] Inline JavaScript and internal-link validation pass.
+- [x] Repository description/topics are supplied as a reviewable local artifact.
+
+**Engineer status:** COMPLETE — commit `efd3445`; inline-script/link validation passed. External
+metadata remains a reviewable draft and was not applied.
+
+## COMPLETE — TASK-123: Registry submission package
+
+**Assigned to:** research/documentation engineer
+
+**Branch:** `docs/TASK-123-registry-launch`
+
+**Depends on:** TASK-121–122 messaging
+**Vision check:** PASS — registry copy positions DevTrack as ambient local memory, not a coding agent.
+
+**Spec:** Verify current submission requirements for relevant MCP and Claude-compatible registries,
+record authoritative links, and prepare submission-ready descriptions/manifests where the repository
+supports them. Do not submit, publish, create accounts, or modify third-party systems.
+
+**Acceptance criteria:**
+- [x] Registry matrix records eligibility, required fields, authoritative submission URL, and blockers.
+- [x] Draft copy is factual and consistent with current MCP transport/tools.
+- [x] No unsupported compatibility, adoption, or security claims are made.
+- [x] Any repository-local validation required by a target format passes.
+
+**Engineer status:** COMPLETE — commit `50b5bca`; package is documentation-only and no registry,
+account, form, or third-party system was modified.
+
+## COMPLETE — TASK-144: Demo runtime reliability
+
+**Assigned to:** engineer
+
+**Branch:** `fix/TASK-144-demo-runtime-reliability`
+
+**Depends on:** TASK-120 and the TASK-121 live-demo environment
+**Vision check:** PASS — restores the local-model commit path and CLI visibility into the staged
+pending-action trust boundary without adding a cloud dependency or interface.
+
+**Spec:** Fix the runtime defects reproduced by the TASK-121 credential-free live demo: bare
+`devtrack queue` panics while parsing arguments, concurrent queue reads can fail with `SQLITE_BUSY`,
+and commit triggers use a hardcoded 30-second HTTP timeout that expires before a healthy local model
+finishes staging. Centralize timeout configuration, preserve offline-first SQLite ownership, and
+make the demo wait for real staging evidence without fabricating output.
+
+**Acceptance criteria:**
+- [x] Bare `devtrack queue`, explicit `queue list`, and queue status/list reads are panic-free and
+      tolerate normal daemon concurrency, with focused regression tests.
+- [x] Commit-trigger HTTP timeouts come from centralized configuration and allow the configured
+      long local-model request window; unrelated health/short operations keep bounded timeouts.
+- [x] The TASK-121 demo uses a configurable staging wait and completes against the local PostgreSQL,
+      Ollama, and daemon setup while displaying a real staged action and explicit confidence.
+- [x] Focused tests, `go test ./...`, `go vet ./...`, shell syntax, and documentation checks pass.
+
+**Engineer status:** COMPLETE — commit `957ecd6`; verified on 2026-08-28 against the local
+PostgreSQL, Ollama, and daemon environment. Full Go tests, vet, and Windows cross-build passed.
+
+## PLANNED — TASK-124: Evidence-backed launch drafts
+
+**Priority:** HIGH
+
+**Depends on:** TASK-121–123 and TASK-143 evidence reconciliation
+**Vision check:** PASS — lived engineering evidence, no generic product marketing.
+
+**Spec:** Use the post-generator workflow to create dev.to, Show HN, and LinkedIn drafts grounded in
+recent engineer-log evidence. Do not publish externally.
+
+**Acceptance criteria:**
+- [ ] Engineer log contains a current seven-day evidence window before generation begins.
+- [ ] Three audience-specific drafts follow the post-generator formats and anti-marketing voice.
+- [ ] Every number and shipped-feature claim traces to repository or CI evidence.
+- [ ] Drafts clearly distinguish v3.0.10 release state from unreleased `dev` work.
 
 ---
 

@@ -1,6 +1,6 @@
 # devtrack-server
 
-Python AI pipeline for DevTrack. Receives triggers from the Go client over HTTPS, runs NLP/LLM processing, syncs work items to Azure DevOps / GitHub / GitLab / Jira, and serves the admin console.
+Python AI pipeline for DevTrack. Receives triggers from the Go client over HTTPS, runs configured-provider LLM enrichment, stages work-item actions for Azure DevOps / GitHub / GitLab / Jira, and serves the admin console.
 
 **Version**: 1.1.0 | **Requires**: Python 3.12–3.13
 
@@ -16,8 +16,8 @@ devtrack_client (Go binary)
         ▼
 devtrack_server/backend/webhook_server.py   ← FastAPI on :8089
         │
-        ├── /trigger/commit   → NLP → LLM → PM sync
-        ├── /trigger/timer    → TUI prompt → work update → report
+        ├── /trigger/commit   → LLM enrichment → pending action → PM sync
+        ├── /trigger/timer    → silent work update → staged report/action
         ├── /webhooks/*       → inbound platform webhooks
         ├── /admin/*          → web admin console (JWT auth)
         ├── /boardroom        → multi-persona AI plan review
@@ -40,8 +40,8 @@ uv sync --extra ai         # + ChromaDB RAG for personalization
 
 # 2. Configure
 cp .env_sample .env
-# Edit .env — at minimum set PROJECT_ROOT, LLM_PROVIDER, DEVTRACK_API_KEY,
-# ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY
+# Edit .env — at minimum set POSTGRES_URL, PROJECT_ROOT, LLM_PROVIDER,
+# DEVTRACK_API_KEY, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY
 
 # 3. Start
 uv run python -m backend.webhook_server
@@ -55,16 +55,57 @@ curl http://localhost:8089/health
 ### Docker
 
 ```bash
+cp .env_sample .env
+# Set POSTGRES_PASSWORD and use postgres as the hostname in POSTGRES_URL.
 docker compose up -d devtrack_server
 docker compose down
 ```
+
+### Database migrations
+
+PostgreSQL schema changes are versioned with Alembic. Set `POSTGRES_URL`, then
+upgrade before starting a new server version:
+
+```bash
+uv run python -m backend.db.migrate upgrade
+uv run python -m backend.db.migrate current
+```
+
+To reverse one revision during a controlled rollback:
+
+```bash
+uv run python -m backend.db.migrate downgrade -1
+```
+
+PostgreSQL store initialization also advances to the migration head; it never
+uses `metadata.create_all()` to invent an unversioned production schema.
+
+For a one-time import from an older local installation, first preview the rows.
+The client ID must identify the developer/device that owns Go activity history:
+
+```bash
+uv run python -m backend.db.sqlite_import \
+  --source /path/to/Data/db/devtrack.db \
+  --admin-source /path/to/Data/db/admin.db \
+  --client-id my-laptop \
+  --dry-run
+
+uv run python -m backend.db.sqlite_import \
+  --source /path/to/Data/db/devtrack.db \
+  --admin-source /path/to/Data/db/admin.db \
+  --client-id my-laptop
+```
+
+The import is transactional and replay-safe. Server-owned rows use their
+existing keys; `triggers`, `task_updates`, `work_sessions`, and local
+`pending_actions` become attributable revision-zero `client_events`, allowing
+later live client sync revisions to supersede them.
 
 ---
 
 ## Running tests
 
 ```bash
-uv run pytest backend/tests/ -x -q               # all tests
 uv run pytest backend/tests/ -x -q
 uv run pytest backend/tests/test_api_contract.py -v   # HTTP contract tests only
 ```
@@ -81,6 +122,7 @@ Copy `.env_sample` to `.env` and fill in your values.
 
 | Variable | Purpose |
 |---|---|
+| `POSTGRES_URL` | Required PostgreSQL URL; startup validates it and applies migrations |
 | `PROJECT_ROOT` | Absolute path to this directory |
 | `DEVTRACK_API_KEY` | Auth token for `/trigger/*` requests from Go client |
 | `ADMIN_USERNAME` | Admin console login username |
@@ -101,7 +143,7 @@ Configured providers with valid credentials are added as automatic fallbacks.
 # Local (default)
 LLM_PROVIDER=ollama
 OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3
+OLLAMA_MODEL=llama3.2
 
 # Cloud fallbacks (optional)
 OPENAI_API_KEY=sk-...
@@ -143,7 +185,7 @@ Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Session is JWT cookie, valid for
 | `backend/webhook_server.py` | FastAPI app, all routes, entry point |
 | `backend/webhook_handlers.py` | Routes inbound platform webhook events |
 | `backend/config.py` | Centralized config — the only place `os.getenv` is called |
-| `backend/nlp_parser.py` | LLM-first NLP: commit/user text → structured task data; pure-regex fallback when LLM unavailable |
+| `backend/llm_task_parser.py` | Strict configured-provider task enrichment with explicit confidence and raw-text fallback; ticket routing remains Go-owned |
 | `backend/description_enhancer.py` | Ollama description enhancement |
 | `backend/llm/` | Multi-provider LLM abstraction with fallback chain |
 | `backend/admin/` | Admin console (FastAPI + HTMX, JWT auth) |
@@ -152,25 +194,23 @@ Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Session is JWT cookie, valid for
 | `backend/github/` | GitHub REST client (async aiohttp) |
 | `backend/gitlab/` | GitLab REST client (async aiohttp) |
 | `backend/jira/` | Jira REST client |
-| `backend/telegram/` | Telegram bot (optional) |
-| `backend/slack/` | Slack bot (optional) |
+| `backend/slack/` | Legacy/server Slack handlers; Go owns notification delivery |
 | `backend/server_tui/` | Terminal UI for monitoring server processes |
 | `backend/work_tracker/` | Work session tracking and EOD report generation |
-| `backend/alert_poller.py` | Background polling for ticket assignments and comments |
 | `backend/rag/` | ChromaDB RAG for personalization (optional, `--extra ai`) |
-| `backend/db/` | Database models (SQLite primary, MongoDB/PostgreSQL optional) |
+| `backend/db/` | PostgreSQL stores, Alembic entry point, and one-shot SQLite importer |
 
 ---
 
 ## Observability
 
-The server uses [runtime-narrative](https://pypi.org/project/runtime-narrative/) for structured JSON logging. Every request stage emits a `StoryStarted` / `StagCompleted` / `FailureOccurred` event to `Data/logs/narrative.log`.
+The server uses [runtime-narrative](https://pypi.org/project/runtime-narrative/) for structured JSON logging. Every request stage emits a `StoryStarted` / `StageCompleted` / `FailureOccurred` event to `Data/logs/narrative.log`.
 
 LLM failures trigger `OllamaFailureAnalyzer` which queries a small local model for a diagnosis and fix suggestion.
 
 ```bash
 # Stream live events
-tail -f Data/logs/narrative.log | python -m json.tool
+tail -f Data/logs/narrative.log | uv run python -m json.tool
 
 # Enable console renderer in dev (add to .env)
 NARRATIVE_RENDERER=console
@@ -181,16 +221,20 @@ See `docs/RUNTIME_NARRATIVE.md` for the full event schema.
 
 ---
 
-## Optional services
+## Backing services
 
-Start infrastructure with Docker Compose when needed:
+PostgreSQL is required for every Python server process. Startup validates connectivity and applies
+Alembic migrations before accepting traffic. Compose waits for its PostgreSQL health check; MongoDB
+remains optional:
 
 ```bash
+docker compose up -d devtrack_server  # starts PostgreSQL first and waits for it
 docker compose up -d mongo      # optional: Teams messages as an extra voice source
-docker compose up -d postgres   # optional: multi-user mode (POSTGRES_URL)
 ```
 
-Both are optional and off by default. DevTrack's own state — triggers, tickets, alerts, learning — lives in local SQLite, and the server runs fine with neither service present.
+The Go client continues storing observation, queue, and replay state in local SQLite. Server-side
+events and aggregate state belong in PostgreSQL; any remaining Python SQLite path is migration debt,
+not a supported final deployment mode.
 
 ---
 
@@ -202,6 +246,5 @@ uv sync --extra openai       # OpenAI provider
 uv sync --extra anthropic    # Anthropic provider
 uv sync --extra cloud        # OpenAI + Anthropic
 uv sync --extra mongodb      # motor async MongoDB driver
-uv sync --extra postgres     # psycopg2 PostgreSQL driver
 uv sync --extra notifications # desktop notifications (plyer)
 ```

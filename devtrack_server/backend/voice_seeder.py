@@ -8,63 +8,17 @@ own writing even before any manual examples are added.
 Non-negotiable patterns:
 - Never calls os.getenv directly — all config via backend.config.
 - Graceful fallback on git or ChromaDB unavailability (return 0, never raise).
-- Idempotent: commits already embedded are skipped (tracked by SQLite hash table).
+- Idempotent: commits already embedded are skipped (tracked via
+  backend.db.voice_seed_store's Python-owned voice_seeded_commits table,
+  dual-dialect through backend.db.engine).
 """
 from __future__ import annotations
 
 import logging
-import sqlite3
 import subprocess
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
-
-# ── database helpers ──────────────────────────────────────────────────────────
-
-
-def _db_path() -> Path:
-    """Resolve the SQLite database path via backend.config."""
-    try:
-        from backend.config import database_path
-        return database_path()
-    except Exception:
-        return Path("Data") / "db" / "devtrack.db"
-
-
-def _ensure_seed_table(conn: sqlite3.Connection) -> None:
-    """Create the voice_seeded_commits tracking table if it does not exist."""
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS voice_seeded_commits (
-            hash       TEXT NOT NULL,
-            repo_path  TEXT NOT NULL,
-            seeded_at  DATETIME NOT NULL DEFAULT (datetime('now')),
-            PRIMARY KEY (hash, repo_path)
-        )
-        """
-    )
-    conn.commit()
-
-
-def _is_already_seeded(conn: sqlite3.Connection, commit_hash: str, repo_path: str) -> bool:
-    """Return True if this (hash, repo_path) pair is already in the tracking table."""
-    row = conn.execute(
-        "SELECT 1 FROM voice_seeded_commits WHERE hash = ? AND repo_path = ?",
-        (commit_hash, repo_path),
-    ).fetchone()
-    return row is not None
-
-
-def _mark_seeded(conn: sqlite3.Connection, commit_hash: str, repo_path: str) -> None:
-    """Insert a row into the tracking table to mark a commit as seeded."""
-    conn.execute(
-        "INSERT OR IGNORE INTO voice_seeded_commits (hash, repo_path, seeded_at) VALUES (?, ?, ?)",
-        (commit_hash, repo_path, datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")),
-    )
-    conn.commit()
-
 
 # ── VoiceSeeder ───────────────────────────────────────────────────────────────
 
@@ -103,13 +57,8 @@ class VoiceSeeder:
         if commits is None:
             return 0  # git unavailable
 
-        # Step 2: Open the SQLite tracking DB.
-        try:
-            conn = sqlite3.connect(str(_db_path()))
-            _ensure_seed_table(conn)
-        except Exception as exc:
-            logger.warning("voice_seeder: cannot open DB for tracking (%s) — skipping idempotency guard", exc)
-            conn = None
+        # Step 2: Import the tracking-table store (Python-owned, dual-dialect).
+        from backend.db.voice_seed_store import is_already_seeded, mark_seeded
 
         # Step 3: Embed each commit message into ChromaDB.
         embedded = 0
@@ -119,18 +68,14 @@ class VoiceSeeder:
                 continue
 
             # Idempotency check.
-            if conn is not None and _is_already_seeded(conn, commit_hash, repo_path):
+            if is_already_seeded(commit_hash, repo_path):
                 continue
 
             # Embed into ChromaDB via the existing RAG pipeline.
             success = self._embed_commit(commit_hash, message, repo_path)
             if success:
-                if conn is not None:
-                    _mark_seeded(conn, commit_hash, repo_path)
+                mark_seeded(commit_hash, repo_path)
                 embedded += 1
-
-        if conn is not None:
-            conn.close()
 
         if embedded:
             logger.info("voice_seeder: embedded %d new commit messages from %s", embedded, repo_path)

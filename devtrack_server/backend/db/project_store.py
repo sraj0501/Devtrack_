@@ -38,7 +38,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import Column, Float, Integer, Index, Table, Text, and_, func, select
 from sqlalchemy.engine import Engine
 
-from backend.db.engine import get_engine, metadata, upsert
+from backend.db.engine import ensure_tables, get_engine, metadata, upsert
 
 logger = logging.getLogger(__name__)
 
@@ -127,10 +127,10 @@ def init_schema(engine: Optional[Engine] = None) -> None:
         if _schema_done:
             return
         eng = get_engine()
-        metadata.create_all(eng, tables=[projects_table, sprints_table, backlog_items_table])
+        ensure_tables(eng, tables=[projects_table, sprints_table, backlog_items_table])
         _schema_done = True
     else:
-        metadata.create_all(engine, tables=[projects_table, sprints_table, backlog_items_table])
+        ensure_tables(engine, tables=[projects_table, sprints_table, backlog_items_table])
     logger.debug("project_store: schema ready")
 
 

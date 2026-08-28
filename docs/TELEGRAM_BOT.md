@@ -1,178 +1,69 @@
-# Telegram Bot
+# Telegram bot
 
-The DevTrack Telegram bot lets you monitor and control the daemon, browse assigned issues, trigger syncs, and plan work — all from your phone.
-
----
+The Telegram bot is Go-native and starts with the daemon. It provides daemon visibility and
+pending-action correction parity; it is not a separate Python process or a full mirror of every CLI
+integration.
 
 ## Setup
 
-### 1. Create a bot with BotFather
-
-Open Telegram, start a chat with **@BotFather**, and run `/newbot`. Copy the token it gives you.
-
-### 2. Get your chat ID
-
-Add the bot token to `.env`, start the bot (see below), then send `/start` to the bot in Telegram. It will reply with your chat ID before any auth is applied.
-
-### 3. Configure `.env`
-
-```env
-TELEGRAM_ENABLED=true
-TELEGRAM_BOT_TOKEN=123456789:AAFxxx...          # from BotFather
-TELEGRAM_ALLOWED_CHAT_IDS=987654321             # comma-separated for multiple users
-
-# Optional notification filters
-TELEGRAM_NOTIFY_COMMITS=true
-TELEGRAM_NOTIFY_TRIGGERS=true
-TELEGRAM_NOTIFY_HEALTH=true
-```
-
-### 4. Start the bot
+1. Create a bot with BotFather and obtain its token.
+2. Send `/start` to the bot to see your numeric chat ID.
+3. Add the following secrets to the registered DevTrack environment file:
 
 ```bash
-# Standalone (from devtrack_server/)
-uv run python -m backend.telegram
-
-# Or — the daemon auto-starts the bot when TELEGRAM_ENABLED=true
-devtrack start
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=<bot-token>
+TELEGRAM_CHAT_ID=<notification-chat-id>
+TELEGRAM_ALLOWED_CHAT_IDS=<authorized-id>[,<authorized-id>...]
 ```
 
----
+4. Restart DevTrack and verify:
+
+```bash
+devtrack restart
+devtrack telegram-status
+```
+
+`/start` and `/help` are available before authorization. Every other command requires the chat ID to
+appear in `TELEGRAM_ALLOWED_CHAT_IDS`.
 
 ## Commands
 
-### Daemon
-
-| Command | What it does |
+| Command | Behavior |
 |---|---|
-| `/status` | Daemon status, workspace list, service health |
-| `/logs [N]` | Last N log lines (default 20, max 50) |
-| `/stop` | Stop the daemon |
-| `/restart` | Restart the daemon |
-| `/pause` | Pause the scheduler (git monitoring continues) |
-| `/resume` | Resume the scheduler |
-| `/skipnext` | Skip the next scheduled trigger |
-| `/trigger` | Fire an immediate work-update trigger |
-| `/reloadconfig` | Reload `.env` + `workspaces.yaml` without restart |
-| `/health` | Detailed per-service health from the DB |
-| `/queue` | Message queue statistics |
+| `/start` | Show the current chat ID and authorization instructions |
+| `/help` | Show the implemented command list |
+| `/status` | Daemon uptime and trigger summary |
+| `/logs` | Last 20 daemon log lines |
+| `/health` | Current daemon health snapshot |
+| `/trigger` | Fire an immediate trigger |
+| `/pause` / `/resume` | Pause or resume the scheduler |
+| `/stop` / `/restart` | Control the daemon |
+| `/reload` | Reload configuration |
+| `/commits` | Show five recent commits |
+| `/queue` | Show the pending-action summary and actions with correction buttons |
 
-### GitHub
+Commands previously documented for issue browsing, PM planning, vacation mode, and work-session
+tracking are not implemented by the current Go bot. Use the corresponding `devtrack` CLI commands.
 
-| Command | What it does |
-|---|---|
-| `/github` | Open issues assigned to you (live query) |
-| `/githubissue <number>` | Full details for a single issue |
-| `/githubcreate [bug\|feature] <title>` | Create a new issue |
-| `/githubsync` | Sync issues to local cache + AI server |
-| `/githubcheck` | Verify GitHub connectivity and token |
+## Pending-action corrections
 
-### GitLab
+Low-confidence actions can produce proactive Telegram messages with **Approve**, **Reject**, and
+**Edit** buttons. Approve dispatches through the Python queue endpoint; reject prevents posting; edit
+prompts for replacement content. These actions update the same local pending-actions state used by
+the CLI and TUI.
 
-| Command | What it does |
-|---|---|
-| `/gitlab` | Issues assigned to you (from local cache) |
-| `/gitlabissue <project_id> <iid>` | Fetch a single issue live |
-| `/gitlabcreate <title>` | Create a new issue (with milestone picker) |
-| `/gitlabsync` | Sync issues to local cache + AI server |
-| `/gitlabcheck` | Verify GitLab connectivity and token |
+## Notifications
 
-### Azure DevOps
-
-| Command | What it does |
-|---|---|
-| `/issues` | Work items assigned to you (from local cache) |
-| `/issue <id>` | Full work item details (live) |
-| `/create [type] <title>` | Create a work item (with sprint picker). Types: `bug`, `task`, `feature`, `epic`, `story`, `pbi` |
-| `/azuresync` | Sync work items to local cache + AI server |
-| `/azurecheck` | Verify Azure DevOps connectivity and PAT |
-
-### Ticket sync (all platforms)
-
-| Command | What it does |
-|---|---|
-| `/ticketsync` | Sync all enabled PM platforms at once |
-| `/ticketsync force` | Force drop-and-reload of the AI server cache |
-
-### Ticket alerts
-
-| Command | What it does |
-|---|---|
-| `/alerts` | Unread notifications from the last 24h |
-| `/alertsall` | All notifications (read + unread) |
-| `/alertsclear` | Mark all notifications as read |
-
-### Work session tracking
-
-| Command | What it does |
-|---|---|
-| `/workstart [ticket-ref]` | Start timing work on a ticket |
-| `/workstop` | Stop the active session (auto-measures duration) |
-| `/workadjust <minutes>` | Override time on the active or last session |
-| `/workstatus` | Active session + today's completed sessions |
-| `/workreport [--email addr]` | Generate EOD report; optionally email it |
-
-### PM Agent
-
-| Command | What it does |
-|---|---|
-| `/plan <problem>` | Decompose into Epic → Stories → Tasks and create them in your PM platform (platform picker inline) |
-| `/newproject` | Full AI project planning wizard: platform → requirements → team picker → workload analysis → spec approval → sprint creation |
-
-### Vacation
-
-| Command | What it does |
-|---|---|
-| `/vacation status` | Show vacation mode state |
-| `/vacation on [--until YYYY-MM-DD]` | Enable vacation auto-responder |
-| `/vacation off` | Disable vacation mode |
-
-### Info
-
-| Command | What it does |
-|---|---|
-| `/commits` | Deferred commit queue by status |
-| `/help` | Show the command list |
-| `/start` | Show your chat ID (no auth required) |
-
----
-
-## Live push notifications
-
-When the daemon fires a trigger or receives a webhook event, the bot pushes a message to all authorized chat IDs automatically. Controlled by `.env` flags:
-
-| Variable | Default | What it gates |
-|---|---|---|
-| `TELEGRAM_NOTIFY_COMMITS` | `true` | Push on every git commit detected |
-| `TELEGRAM_NOTIFY_TRIGGERS` | `true` | Push on timer and report triggers |
-| `TELEGRAM_NOTIFY_HEALTH` | `true` | Push on inbound webhook events |
-
----
-
-## Multi-user
-
-Add multiple chat IDs to `TELEGRAM_ALLOWED_CHAT_IDS` as a comma-separated list:
-
-```env
-TELEGRAM_ALLOWED_CHAT_IDS=111111111,222222222,333333333
-```
-
-Live event notifications are broadcast to **all** authorized chat IDs. Each user's commands are independent.
-
----
+The daemon can deliver alert notifications to `TELEGRAM_CHAT_ID` or the configured allowed IDs.
+Telegram does not change whether the underlying daemon capability runs; it is a visibility and
+correction channel only.
 
 ## Troubleshooting
 
-**Bot doesn't respond**
-- Verify `TELEGRAM_ENABLED=true` and `TELEGRAM_BOT_TOKEN` is set in `.env`.
-- Check the bot is running: `devtrack status` should show `telegram_bot: UP`.
-- Confirm your chat ID is in `TELEGRAM_ALLOWED_CHAT_IDS` (send `/start` to see your ID).
-
-**Sync commands time out**
-- The sync commands shell out to the `devtrack` binary. Ensure `PROJECT_ROOT` in `.env` points to the correct directory and the `devtrack` binary is on `PATH`.
-
-**`/github` shows nothing after `/githubsync`**
-- The `/github` command queries the GitHub API live; it doesn't read the local cache. Confirm `GITHUB_TOKEN` is set and `GITHUB_OWNER`/`GITHUB_REPO` (or `pm_project` in `workspaces.yaml`) are correct.
-
-**`/issues` shows stale data**
-- Run `/azuresync` to refresh the Azure cache, then `/issues` again.
+- Check `devtrack telegram-status` and `devtrack logs -f`.
+- Verify the bot token without printing it into logs or issue reports.
+- Confirm the chat ID is numeric and present in `TELEGRAM_ALLOWED_CHAT_IDS`.
+- Only one process should poll a Telegram bot token at a time.
+- An approved action still needs a reachable configured Python server to execute; failed dispatches
+  remain visible for retry.

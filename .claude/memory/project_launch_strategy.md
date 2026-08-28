@@ -1,17 +1,13 @@
 ---
 name: Launch strategy
-description: Wedge, positioning rules, channel sequence, decision framework — feeds Phase 9 (Adoption Gate)
+description: Wedge, truthful positioning, evidence rule, and Phase 9 channels
 type: project
 ---
 
-_Relevant again: Phase 9 (Adoption Gate, TASK-117–124) is packaging and narrative, so these positioning rules are the input to it._
-
-**Wedge:** "DevTrack writes your standup update when you commit." One feature at launch.
-
-**Positioning (non-negotiable):** No "AI-powered" in the tagline (AI trust was 29% in 2026). Lead with "runs on your machine, no account required." Local-first is the structural moat. Time-to-value under 60 seconds.
-
-**Platform rollout:** GitHub → GitLab (at 100 stars) → Azure DevOps → Jira (at ≥50 requests).
-
-**Channel sequence:** Discord + Twitter → Show HN (Tue/Wed 9–11am ET) → console.dev, r/programming, awesome-cli-apps.
-
-**Decision filter:** serves the wedge? → protects local-first? → reduces time-to-value? → 50+ user requests = build it.
+**Wedge:** “DevTrack writes your standup update when you commit.” Lead with outcome, not platform breadth or “AI-powered.”
+**Positioning:** local-first, no account required, pending queue, and silent daemon. Under 60 seconds is a target; current evidence supports an under-ten-minute quick start.
+**Parity:** Azure DevOps, GitHub, GitLab, and Jira parity is invariant, but current executable docs
+disclose Jira Go-client/alert and GitLab alert gaps. Do not claim parity is achieved or normalize a
+staged rollout without explicit user approval. A demo may still use one connector for clarity.
+**TASK-124:** generate dev.to, Show HN, and LinkedIn drafts only from the preceding seven days of engineer-log evidence. Publishing is a separate explicit external action.
+**Decision filter:** serves the wedge → protects local-first/trust → reduces time-to-value → supported by user evidence.

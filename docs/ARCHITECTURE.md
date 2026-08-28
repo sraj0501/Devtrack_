@@ -27,20 +27,21 @@ DevTrack is explicitly a **client-server tool** with two independently deployabl
 | Component | Source | Technology | Size | Role |
 |---|---|---|---|---|
 | **`devtrack` binary** | `devtrack_client/` | Pure Go | ~5 MB | Client / daemon — git monitoring, scheduling, CLI |
-| **Python server** | `devtrack_server/` | Python + uv | separate | Server — AI, NLP, integrations, reports, admin |
+| **Python server** | `devtrack_server/` | Python + uv | separate | Server — LLM enrichment, integrations, reports, admin |
 
-The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` sparse-clones it) and can run as a local subprocess, a Docker container, or a remote server.
+The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` starts a non-blocking, stateful sparse-checkout/`uv sync` worker) and can run as a local subprocess, a Docker container, or a remote server. Setup, Git monitoring, SQLite, scheduling, and MCP do not wait for that worker; `status` and `doctor` expose its degradation state. Before scheduling a model pull, setup queries Ollama's local inventory and reuses an installed generation model. If none is ready, an explicitly accepted pre-existing OpenAI/Anthropic key joins the server provider chain behind Ollama, providing a temporary generation fallback while keeping Ollama primary. In Managed mode, a one-time daemon onboarding worker waits for the local server without blocking, then seeds enabled local Git workspaces through `/voice/seed`, generates the profile through `/voice/profile/generate`, and stores only a local completion marker. If managed setup finishes after the daemon started, the worker starts the newly available server without requiring a daemon restart. External mode does not run automatic voice mining, so training data is never implicitly sent to a remote host.
 
 ### Server Modes
 
 | Mode | Config | Use case |
 |---|---|---|
 | **managed** (default) | `DEVTRACK_SERVER_MODE=managed` | Local dev — daemon spawns the Python backend as a subprocess |
+| **lightweight** | `DEVTRACK_SERVER_MODE=lightweight` | Go-native monitoring, queue, MCP, scheduling, and connectors without Python |
 | **external** | `DEVTRACK_SERVER_MODE=external` + `DEVTRACK_SERVER_URL=http://...` | Docker container or cloud-hosted Python server |
 
 ```bash
 # managed mode (default — no extra config needed)
-devtrack start         # daemon starts Python bridge automatically
+devtrack start         # managed mode starts the configured Python server automatically
 
 # external mode — Python server runs separately
 DEVTRACK_SERVER_MODE=external
@@ -60,10 +61,19 @@ docker run -p 8089:8089 --env-file .env devtrack-server
 
 The Go binary on the host then connects via `DEVTRACK_SERVER_MODE=external`.
 
-`devtrack_server/docker-compose.yml` is **not** the server — it starts only optional backing
-services: MongoDB (Microsoft Teams as an extra voice-learning source) and PostgreSQL (multi-user
-mode, via `POSTGRES_URL`). The local-first path needs neither: DevTrack's storage is SQLite plus
-ChromaDB, and the default install runs natively (Go binary + `uv`), not in Docker.
+`devtrack_server/docker-compose.yml` provides backing services for the Python server. PostgreSQL is
+required for server persistence and server-side events (`POSTGRES_URL`); MongoDB remains optional
+and is used only as a Microsoft Teams voice-learning source. The Go client does not require either:
+its local-first observation, queue, MCP, and replay path remains SQLite-backed and works offline.
+Server startup validates PostgreSQL connectivity and advances the schema to Alembic head before
+accepting requests. Compose waits for its bundled PostgreSQL health check; managed installs require
+an explicit local or remote `POSTGRES_URL` and do not fall back to server-side SQLite.
+
+Client activity leaves SQLite only when `SERVER_EVENT_SYNC_ENABLED=true`. The daemon captures
+latest-state snapshots for `triggers`, `task_updates`, `work_sessions`, and client-originated
+`pending_actions` in a local outbox. Each batch is itself staged in `pending_actions`, then sent to
+`POST /trigger/client_events`. PostgreSQL deduplicates replays by `(client_id, event_id)` and rejects
+stale revisions; an unreachable server leaves the outbox intact for the next queue poll.
 
 ### `devtrack install`
 
@@ -107,7 +117,7 @@ The Go binary (~5 MB, no Python) is published to **GitHub Releases** (`github.co
          │  FastAPI on port 8089, self-signed ECDSA cert      │
          │                                                   │
          ├─ Trigger Handlers (/trigger/commit, /timer…)      │
-         ├─ NLP Parser (spaCy)                              │
+         ├─ LLM Structured Task Parser                      │
          ├─ LLM Integration (Ollama/OpenAI/Anthropic)       │
          ├─ TUI (Terminal User Interface)                    │
          ├─ Report Generator                                │
@@ -135,7 +145,7 @@ The lightweight background service that monitors and coordinates.
 |-----------|------|---------|
 | **Entry Point** | main.go | Routes CLI args or delegates git subcommand |
 | **CLI Handler** | cli.go | Implements all CLI commands (start, stop, status, etc.) |
-| **Daemon Lifecycle** | daemon.go | Manages lock file, PID file, signals, Python bridge process |
+| **Daemon Lifecycle** | daemon.go | Manages lock file, PID file, signals, and the managed Python server process |
 | **Lock (Unix)** | lock_unix.go | Exclusive `flock(LOCK_EX\|LOCK_NB)` on `devtrack.lock` |
 | **Lock (Windows)** | lock_windows.go | Exclusive `LockFileEx` on `devtrack.lock` |
 | **Process check (Unix)** | process_unix.go | `Signal(0)` liveness probe |
@@ -219,7 +229,9 @@ IntegratedMonitor
         └── GitMonitor → commit_trigger {pm_platform: "gitlab", workspace_name: "internal-tools"}
 ```
 
-Python bridge reads `pm_platform` from the trigger data and calls `_route_pm_sync()`, which dispatches directly to the declared platform without running the priority chain.
+The Python trigger processor reads `pm_platform` from the HTTP trigger data and calls
+`_route_pm_sync()`, which dispatches directly to the declared platform without running the priority
+chain.
 
 #### PM Connector Configuration
 
@@ -253,7 +265,7 @@ SQLite database (`Data/db/devtrack.db`) stores:
 
 ### 2. Python Intelligence Layer (backend/)
 
-The smart processing engine that handles AI, NLP, and integrations.
+The smart processing engine that handles LLM enrichment and integrations.
 
 #### Core Infrastructure
 
@@ -262,13 +274,15 @@ The smart processing engine that handles AI, NLP, and integrations.
 | **webhook_server.py** | FastAPI entry point started by Go daemon; exposes `/trigger/*` HTTP endpoints, inbound webhooks, Admin Console, Slack bot, and Vacation auto-responder |
 | **backend/config.py** | Centralized config; all modules use `get()`, `get_int()`, `get_bool()`, `get_path()` |
 
-#### NLP & AI Processing
+#### LLM & AI Processing
 
-> **Requires the `ai` tier.** The modules below depend on `spacy`, `sentence-transformers`, and `chromadb`, which are not installed by default. Install them with `devtrack-server enable ai`. When the `ai` tier is absent, `backend/config.py:is_ai_available()` returns `False` and the server logs `feature:ai disabled` at startup — all other features continue to work normally.
+> Structured task parsing uses the configured LLM provider and is part of the normal server path.
+> Local Ollama is the default; cloud providers are opt-in. ChromaDB-backed RAG/personalization is
+> optional and degrades gracefully when its extra dependency is absent.
 
 | Module | Purpose |
 |--------|---------|
-| **backend/nlp_parser.py** | spaCy-based NLP for commit/user text → structured task data (`ai` tier) |
+| **backend/llm_task_parser.py** | Configured-provider task enrichment with strict JSON validation and raw-text fallback; never resolves routing targets |
 | **backend/description_enhancer.py** | Ollama-based description enhancement and categorization (`ai` tier) |
 | **backend/llm/provider_factory.py** | Multi-provider LLM abstraction with fallback chain |
 | **backend/llm/ollama_provider.py** | Local Ollama integration |
@@ -350,7 +364,7 @@ Python backend receives commit_trigger
          │
          ├─ Extract commit hash, message, diff
          ├─ Get git context (branch, PR, recent commits)
-         ├─ Parse commit message with NLP (repo_path support)
+         ├─ Enrich commit message through configured LLM (repo_path support)
          ├─ Enhance with AI (Ollama)
          ├─ Extract task numbers
          │
@@ -408,67 +422,37 @@ GIT_SAGE_DEFAULT_MODEL=llama3.2
 Scheduled time reached (cron)
          │
          ▼
-Go daemon POSTs timer_trigger to Python /trigger/timer_trigger
+Go daemon POSTs timer context to Python /trigger/timer
          │
          ▼
-Python backend receives timer_trigger
-         │
-         ├─ [Vacation mode active?] → VacationAutoResponder generates update from commits,
-         │                            scores confidence, posts to PM if above threshold
-         │
-         │
-         ├─ Show TUI prompt to user
-         ├─ Get work update from user input
-         ├─ Enhance with work context (git branch, recent commits)
-         ├─ Parse with NLP (repo_path support for PR detection)
-         ├─ Enhance description with AI
-         ├─ Extract task numbers
-         │
-         ▼
-Check for merge conflicts
-         │
-         ├─ Run git status
-         ├─ Detect conflict markers
-         ├─ Auto-resolve with ConflictAutoResolver
-         │
-         ▼
-Send task_update to project management
-         │
-         ├─ Update task status
-         ├─ Add work log entry
-         ├─ Update time tracking
-         │
-         ▼
-Generate optional report
-         │
-         ├─ Collect recent work items
-         ├─ Summarize with AI
-         ├─ Format (Terminal, HTML, Email)
-         │
-         ▼
-Send acknowledge back to Go daemon
-         │
-         ▼
-Log completion in database
+Python timer processor
+         ├─ Stage the timer-derived proposal in pending_actions
+         ├─ Check vacation mode and score any generated update explicitly
+         ├─ Check the active work session
+         ├─ Send configured best-effort Telegram/Slack reminders
+         └─ Return trigger count, staged-action ID, and delivered channels
+
+No terminal prompt gates this path. PM, email, and Git writes remain pending actions until the
+configured trust policy permits execution; there is no direct-send fallback.
 ```
 
-### 3. User Prompt to Task Update Flow
+### 3. Observed Commit to Task Update Flow
 
 ```
-User triggered (timer or manual)
+Git monitor observes a commit
          │
          ▼
-TUI Prompt: "What are you working on?"
+Go client resolves the ticket from branch/repository context
          │
          ▼
-User types natural language: "Working on PR #123 - fixed auth bug, took 2 hours"
+HTTP/JSON trigger carries authoritative ticket ID + commit text
          │
          ▼
-NLP Parser (spaCy)
-├─ Tokenize and POS tag
-├─ Extract entities (task numbers, time)
-├─ Detect actions (working on, fixed, completed)
-└─ Create structured data: {task: "PR #123", action: "in progress", time: 2h}
+LLM structured task parser
+├─ Validate provider output against the task schema
+├─ Extract optional action/time/description enrichment
+├─ Keep the Go-resolved ticket authoritative
+└─ Degrade without blocking when the provider is unavailable
          │
          ▼
 Work Update Enhancer (Phase 2)
@@ -584,7 +568,7 @@ All configuration flows from a single `.env` file with **no hardcoded defaults**
 | `IPC_HOST` | Both | IPC server host | `127.0.0.1` |
 | `IPC_PORT` | Both | IPC server port | `35893` |
 | `LLM_PROVIDER` | Python | Primary AI provider | `ollama` or `openai` or `anthropic` |
-| `OLLAMA_URL` | Python | Ollama server URL | `http://localhost:11434` |
+| `OLLAMA_HOST` | Go + Python | Ollama server URL | `http://localhost:11434` |
 | `OPENAI_API_KEY` | Python | OpenAI credentials | (secret) |
 | `ANTHROPIC_API_KEY` | Python | Anthropic credentials | (secret) |
 | `AZURE_DEVOPS_PAT` | Go + Python | Azure DevOps PAT (secret only — org/username in workspaces.yaml) | (secret) |
@@ -713,6 +697,7 @@ X-DevTrack-API-Key: <DEVTRACK_API_KEY>   (if configured)
 | `POST /trigger/commit_trigger` | Go → Python | Git commit detected |
 | `POST /trigger/timer_trigger` | Go → Python | Scheduled time reached |
 | `POST /trigger/workspace_reload` | Go → Python | Reload workspaces.yaml |
+| `POST /trigger/client_events` | Go → Python | Persist an opted-in, replay-safe batch of Go-owned event snapshots |
 | `GET  /health` | Go → Python | Liveness check |
 
 ### TLS Configuration
@@ -742,6 +727,36 @@ Trigger → MessageQueue.SendOrQueue()
                           → Send pending messages
                           → Mark completed/retry
 ```
+
+### PostgreSQL Event Outbox
+
+```text
+Go-owned row insert/update
+        ↓
+SQLite server_event_outbox (stable event_id + monotonic revision)
+        ↓
+local pending_actions review entry (explicit opt-in only)
+        ↓
+POST /trigger/client_events
+        ↓
+PostgreSQL client_events upsert
+        ↓
+acknowledge only the exact local revision accepted by the server
+```
+
+The server's own `pending_actions` queue is registered directly on the shared SQLAlchemy metadata,
+so normal server operation persists it in PostgreSQL. `/queue/pending` returns complete queue rows
+to the Go executor, preserving confidence thresholds and non-TUI notifications without sharing a
+database file. Go-originated actions remain authoritative in local SQLite: after their local review
+window expires (or the developer approves them), the client sends the complete staged row to the
+authenticated `POST /queue/execute_staged` endpoint. This avoids treating unrelated SQLite and
+PostgreSQL numeric IDs as the same action. Transport failures leave the local row queued for retry.
+
+| Queue endpoint | Purpose |
+|---|---|
+| `GET /queue/pending` | List server-originated PostgreSQL queue rows |
+| `POST /queue/execute` | Execute a server-originated row by its PostgreSQL ID |
+| `POST /queue/execute_staged` | Execute a complete Go-local row after local approval/expiry |
 
 ### Health Monitoring
 
@@ -790,9 +805,7 @@ Offline-first is a core non-negotiable — see [`PRODUCT_BIBLE.md`](../PRODUCT_B
 - `atlassian-python-api` - Jira API
 - `msgraph-core` - Microsoft Graph SDK
 
-**AI tier** (installed via `devtrack-server enable ai`):
-- `spacy[en_core_web_sm]` - NLP and entity extraction
-- `sentence-transformers` - Semantic matching
+**Personalization/RAG dependency** (installed with the managed Python environment via `uv sync`):
 - `chromadb` - RAG vector store for personalization
 
 ---
@@ -828,14 +841,20 @@ Claude Code answering *"what am I working on?"* in under ten minutes. See
 > — it predated the 2026-06-10 pivot and contradicted its non-negotiables. Do not reintroduce
 > a client-side Postgres driver or a dialect split in `internal/db/`.
 >
-> **Exception, decided 2026-07-13:** PostgreSQL is wanted as a **server-side-only** option
-> before commercial launch, so a multi-user server can aggregate data instead of every
-> developer's triggers living in a SQLite file on their own laptop. Scoped as **EPIC
-> TASK-112–116** on `Data/agent_logs/project_board.md` (started 2026-07-31, PRs #231-236 —
-> `devtrack_server/backend/db/engine.py` is the dual-dialect factory; 6 of 15 raw-`sqlite3`
-> modules ported so far). SQLite stays the default everywhere; Postgres only activates when
-> `POSTGRES_URL` is set on the server, and local client data flows up over the existing
-> `/trigger/*` boundary. Offline-first Rule 0 holds untouched.
+> **Server storage decision, completed 2026-08-18:** PostgreSQL is **mandatory** for
+> `devtrack_server` persistence and server-side events, not an optional multi-user mode.
+> **EPIC TASK-112–116** plus TASK-140/141 is complete on `dev` through PR #251: 14 of 15 scoped
+> raw-`sqlite3` modules were ported and one dead module was removed, so no production raw-`sqlite3`
+> imports remain. Client data flows
+> from local SQLite into server PostgreSQL over the HTTP boundary. Offline-first Rule 0
+> is preserved by the Go client continuing to observe, queue, serve MCP context, and
+> replay locally without a server connection; do not add a Go PostgreSQL driver.
+> Server schema changes are versioned under `devtrack_server/migrations/` and applied
+> through `python -m backend.db.migrate`; PostgreSQL store initialization advances to
+> Alembic head instead of calling `metadata.create_all()`. Existing local history can
+> be copied once with `python -m backend.db.sqlite_import`: server-owned rows retain
+> their keys, while Go-owned activity becomes attributable revision-zero
+> `client_events` that later live sync revisions supersede.
 
 ---
 

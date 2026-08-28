@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const githubRepo    = "sraj0501/Devtrack_"
+const githubRepo = "sraj0501/Devtrack_"
 const githubAPIBase = "https://api.github.com"
 
 type githubRelease struct {
@@ -111,15 +111,21 @@ func RunUpgrade(checkOnly bool) error {
 	RunPendingMigrations()
 
 	fmt.Println()
-	// Server lives under the XDG data home ($XDG_DATA_HOME/devtrack), not
-	// DEVTRACK_HOME (a distinct, unrelated env var) — must match setup.go's
-	// cloneAndInstallServer() and daemon.go's startWebhookServer() fallback.
+	// Keep the optional server update outside the binary-upgrade critical path.
+	// The same durable worker used by setup reports progress through doctor/status.
 	if xdgHome, homeErr := devtrackDataHome(); homeErr != nil {
 		fmt.Printf("Warning: could not determine DevTrack data home: %v\n", homeErr)
-	} else if err := upgradeServer(xdgHome); err != nil {
-		fmt.Printf("Warning: Python server upgrade failed: %v\n", err)
-		fmt.Println("The binary was upgraded successfully. Run 'devtrack setup' to repair the server.")
-		// non-fatal — binary upgrade succeeded; continue to restart
+	} else if GetServerMode() == ServerModeManaged {
+		projectRoot := GetProjectRootOptional()
+		if projectRoot == "" {
+			projectRoot = filepath.Join(xdgHome, "server", "devtrack_server")
+		}
+		if started, startErr := startServerBootstrap(xdgHome, projectRoot, GetLLMProvider(), GetOllamaModel()); startErr != nil {
+			fmt.Printf("Warning: background Python server update could not start: %v\n", startErr)
+			fmt.Println("The binary was upgraded successfully. Run 'devtrack doctor --repair' to retry.")
+		} else if started {
+			fmt.Println("Optional Python server update started in the background (check 'devtrack doctor').")
+		}
 	}
 
 	if isDaemonRunning() {
@@ -368,31 +374,4 @@ func copyFile(src, dst string) error {
 // normaliseTag strips a leading 'v' for comparison.
 func normaliseTag(tag string) string {
 	return strings.TrimPrefix(tag, "v")
-}
-
-// upgradeServer updates the sparse-cloned Python server under devtrackHome/server/.
-// It runs "git pull --ff-only" to fetch the latest commits, then "uv sync" inside
-// devtrack_server/ to bring Python dependencies in line with the new lockfile.
-// If the server directory does not exist (e.g. setup was never run), it prints a
-// skip notice and returns nil — absence is not an error.
-// Called by RunUpgrade() after the binary has been replaced and migrations applied.
-func upgradeServer(devtrackHome string) error {
-	serverDir := filepath.Join(devtrackHome, "server")
-	if _, err := os.Stat(serverDir); os.IsNotExist(err) {
-		fmt.Println("Python server not installed — skipping server upgrade (run 'devtrack setup' to install)")
-		return nil
-	}
-	fmt.Println("Updating Python server...")
-	pull := exec.Command("git", "-C", serverDir, "pull", "--ff-only")
-	pull.Stdout = os.Stdout
-	pull.Stderr = os.Stderr
-	if err := pull.Run(); err != nil {
-		return fmt.Errorf("git pull failed: %w", err)
-	}
-	fmt.Println("Syncing Python dependencies...")
-	sync := exec.Command("uv", "sync")
-	sync.Dir = filepath.Join(serverDir, "devtrack_server")
-	sync.Stdout = os.Stdout
-	sync.Stderr = os.Stderr
-	return sync.Run()
 }
