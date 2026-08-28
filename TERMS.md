@@ -37,9 +37,10 @@ workspace within the last 90 days.
 
 In local / self-hosted mode with telemetry **disabled** (default):
 
-- DevTrack collects **nothing**. All data stays on your machine.
-- Git commits, work updates, and AI interactions are processed locally.
-- No data is sent to any external server.
+- DevTrack sends no product telemetry.
+- Git observation and the client database remain local.
+- Data is sent only to integrations and providers that you configure, such as a PM platform,
+  email service, remote DevTrack server, or cloud LLM. Ollama remains the default AI path.
 
 ---
 
@@ -91,13 +92,16 @@ falls back to local cache for up to 90 days.
 
 ## 6. Data & Privacy
 
-- All work data (tasks, commits, updates) is stored locally in SQLite under `Data/`.
-- The Personalization / "Talk Like You" feature stores communication samples in
-  MongoDB only if you explicitly run `devtrack enable-learning`.
+- Client-owned work state is stored locally in SQLite under the configured data directory. A
+  managed or external Python server uses PostgreSQL for server-owned persistence.
+- Personalization / "Talk Like You" collection begins only after explicit enablement. Server-owned
+  samples use the configured learning store (PostgreSQL fallback or optional MongoDB), and the
+  optional RAG tier stores embeddings in ChromaDB.
 - DevTrack does not access your source code beyond git metadata (branch names,
   commit SHAs, file-change counts) unless you invoke a feature that requires it
   (e.g., `devtrack sage` git agent).
-- You can delete all local data: `devtrack reset --all`
+- Learning data can be removed with `devtrack learning-reset`. Client SQLite and server PostgreSQL
+  data have separate operator-controlled retention and deletion lifecycles.
 
 ---
 

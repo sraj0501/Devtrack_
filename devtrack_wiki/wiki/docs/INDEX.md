@@ -9,7 +9,7 @@ New to DevTrack? Read these in order:
 1. [Getting Started](GETTING_STARTED.md) — what DevTrack is and how it works
 2. [Installation Guide](INSTALLATION.md) — install the binary and (optionally) the server
 3. [Quick Start Guide](QUICK_START.md) — first commands and first workflow
-4. [CLI Quickstart](CLI_QUICKSTART.md) — full command reference
+4. [CLI Quickstart](CLI_QUICKSTART.md) — core command reference
 
 ---
 
@@ -27,7 +27,7 @@ New to DevTrack? Read these in order:
 - [Using git-sage](GIT_SAGE_INTEGRATION.md) — AI git agent: ask, do, interactive modes
 - [Git Commit Workflow](GIT_COMMIT_WORKFLOW.md) — AI-powered iterative commit message refinement
 - [AI Personalization](PERSONALIZATION.md) — "Talk Like You" — teach DevTrack your communication style
-- [Advanced Features](ADVANCED_FEATURES.md) — boardroom, alerts, report generation, admin UI
+- [Advanced Features](ADVANCED_FEATURES.md) — boardroom, supported alert polling, reporting, and server administration
 - [LLM Strategy](LLM_STRATEGY.md) — multi-provider AI architecture and fallback chain
 
 ---
@@ -36,7 +36,7 @@ New to DevTrack? Read these in order:
 
 - [Architecture Overview](ARCHITECTURE.md) — system design, components, data flow
 - [Usage Guide](USAGE_GUIDE.md) — day-to-day usage patterns
-- [TUI Flows](TUI_FLOWS.md) — terminal UI design and interaction flows
+- [TUI Flows](TUI_FLOWS.md) — current client and server terminal interfaces
 
 ---
 

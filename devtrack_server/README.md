@@ -17,7 +17,7 @@ devtrack_client (Go binary)
 devtrack_server/backend/webhook_server.py   ← FastAPI on :8089
         │
         ├── /trigger/commit   → LLM enrichment → pending action → PM sync
-        ├── /trigger/timer    → TUI prompt → work update → report
+        ├── /trigger/timer    → silent work update → staged report/action
         ├── /webhooks/*       → inbound platform webhooks
         ├── /admin/*          → web admin console (JWT auth)
         ├── /boardroom        → multi-persona AI plan review
@@ -106,7 +106,6 @@ later live client sync revisions to supersede them.
 ## Running tests
 
 ```bash
-uv run pytest backend/tests/ -x -q               # all tests
 uv run pytest backend/tests/ -x -q
 uv run pytest backend/tests/test_api_contract.py -v   # HTTP contract tests only
 ```
@@ -123,6 +122,7 @@ Copy `.env_sample` to `.env` and fill in your values.
 
 | Variable | Purpose |
 |---|---|
+| `POSTGRES_URL` | Required PostgreSQL URL; startup validates it and applies migrations |
 | `PROJECT_ROOT` | Absolute path to this directory |
 | `DEVTRACK_API_KEY` | Auth token for `/trigger/*` requests from Go client |
 | `ADMIN_USERNAME` | Admin console login username |
@@ -143,7 +143,7 @@ Configured providers with valid credentials are added as automatic fallbacks.
 # Local (default)
 LLM_PROVIDER=ollama
 OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3
+OLLAMA_MODEL=llama3.2
 
 # Cloud fallbacks (optional)
 OPENAI_API_KEY=sk-...
@@ -194,11 +194,9 @@ Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Session is JWT cookie, valid for
 | `backend/github/` | GitHub REST client (async aiohttp) |
 | `backend/gitlab/` | GitLab REST client (async aiohttp) |
 | `backend/jira/` | Jira REST client |
-| `backend/telegram/` | Telegram bot (optional) |
-| `backend/slack/` | Slack bot (optional) |
+| `backend/slack/` | Legacy/server Slack handlers; Go owns notification delivery |
 | `backend/server_tui/` | Terminal UI for monitoring server processes |
 | `backend/work_tracker/` | Work session tracking and EOD report generation |
-| `backend/alert_poller.py` | Background polling for ticket assignments and comments |
 | `backend/rag/` | ChromaDB RAG for personalization (optional, `--extra ai`) |
 | `backend/db/` | PostgreSQL stores, Alembic entry point, and one-shot SQLite importer |
 
@@ -206,13 +204,13 @@ Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Session is JWT cookie, valid for
 
 ## Observability
 
-The server uses [runtime-narrative](https://pypi.org/project/runtime-narrative/) for structured JSON logging. Every request stage emits a `StoryStarted` / `StagCompleted` / `FailureOccurred` event to `Data/logs/narrative.log`.
+The server uses [runtime-narrative](https://pypi.org/project/runtime-narrative/) for structured JSON logging. Every request stage emits a `StoryStarted` / `StageCompleted` / `FailureOccurred` event to `Data/logs/narrative.log`.
 
 LLM failures trigger `OllamaFailureAnalyzer` which queries a small local model for a diagnosis and fix suggestion.
 
 ```bash
 # Stream live events
-tail -f Data/logs/narrative.log | python -m json.tool
+tail -f Data/logs/narrative.log | uv run python -m json.tool
 
 # Enable console renderer in dev (add to .env)
 NARRATIVE_RENDERER=console

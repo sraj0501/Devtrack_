@@ -43,8 +43,8 @@ transcript.
 ### Scene 1 — immediate local memory
 
 Capture `devtrack mcp status`, followed by `devtrack mcp test`. Keep the
-`get_active_context` response on screen long enough to show that the server is SQLite-backed and
-available on demand.
+`get_active_context` response on screen long enough to show that the Go-native MCP command reads
+the client's local SQLite context and is available on demand.
 
 ### Scene 2 — silent commit detection
 

@@ -1,147 +1,49 @@
-# DevTrack Wiki
+# DevTrack website and wiki
 
-A comprehensive, modern knowledge base for the DevTrack Developer Automation Tools.
+This directory contains the static public site deployed at `devtrack.cloud`.
 
-## Quick Start
+## Surfaces
 
-Open `index.html` in your browser to view the complete wiki:
+- `wiki/index.html` — product homepage
+- `wiki/download.html` — release download and installation entry point
+- `wiki/wiki.html` — current user documentation with stable hash anchors
+- `wiki/privacy.html` — current implementation-level privacy explanation
+- `wiki/docs/` — Markdown references used by contributors and documentation reviews
+- `wiki/install.sh` / `wiki/install.ps1` — release installers
+
+The public narrative follows: standup outcome → local agent memory → pending-queue and local-first
+trust. The latest public release and unreleased `dev` capabilities must always be distinguished.
+
+## Local preview
 
 ```bash
-# From the project root
-open wiki/index.html
-
-# Or using a simple HTTP server
+cd devtrack_wiki
 python3 -m http.server 8000
-# Then visit: http://localhost:8000/wiki/
 ```
 
-## Wiki Structure
+Open `http://localhost:8000/wiki/`.
 
-### Main Wiki (`index.html`)
-Comprehensive documentation with tabbed navigation covering:
+## Validation
 
-- **Overview** - System introduction and architecture
-- **Getting Started** - Installation and quick start guide
-- **Architecture** - Technical architecture and data flow
-- **Features** - Complete feature descriptions
-- **Daemon** - Background daemon documentation
-- **Git Integration** - Git monitoring system
-- **Scheduler** - Time-based triggers
-- **IPC Communication** - Inter-process communication
-- **Personalized AI** - AI learning system
-- **Integrations** - Azure DevOps, GitHub, Microsoft Graph
-- **Notifications** - Email and Teams configuration
-- **Commands Reference** - Complete command list
-- **Configuration** - Configuration guide
-- **Roadmap** - Development roadmap
-
-### Privacy Policy (`privacy.html`)
-Dedicated privacy documentation covering:
-
-- **Privacy Overview** - Core privacy principles
-- **Data Collection** - What data is collected and why
-- **Consent Management** - How consent works
-- **Data Storage** - Where and how data is stored
-- **AI Processing** - Local AI with Ollama
-- **User Rights** - Your rights regarding data
-- **Security Measures** - Security best practices
-
-## Features
-
-### Modern Design
-- Clean, professional interface
-- Responsive layout for all screen sizes
-- Dark sidebar with light content area
-- Smooth animations and transitions
-- Syntax-highlighted code blocks
-
-### Navigation
-- Tabbed interface for easy browsing
-- Persistent sidebar navigation
-- Direct linking to specific sections
-- Browser back/forward support
-- Mobile-friendly menu
-
-### User Experience
-- Copy buttons on code blocks
-- Searchable content
-- Keyboard navigation support
-- Print-friendly layout
-- Accessible design (WCAG compliant)
-
-### Content Organization
-- Logical section grouping
-- Progressive disclosure
-- Visual hierarchy
-- Cross-references between sections
-- Comprehensive examples
-
-## Assets
-
-### `assets/style.css`
-Modern CSS with:
-- CSS custom properties for theming
-- Responsive grid layouts
-- Component styling (cards, boxes, tables)
-- Syntax highlighting
-- Print styles
-
-### `assets/script.js`
-Interactive features:
-- Tab navigation system
-- Code block copy functionality
-- URL hash management
-- Smooth scrolling
-- Mobile menu toggle
-
-## Customization
-
-### Updating Content
-Edit the HTML files directly. Each section is contained in a `<section>` tag with the class `tab-content`.
-
-### Styling
-Modify `assets/style.css`. Key CSS variables in `:root`:
-```css
---primary-color: #2563eb;
---sidebar-bg: #1e293b;
---content-bg: #ffffff;
+```bash
+python3 check_inline_js.py
+sh -n wiki/install.sh
 ```
 
-### Adding New Sections
-1. Add navigation item in sidebar:
-```html
-<a href="#new-section" class="nav-item" data-tab="new-section">New Section</a>
-```
+Also verify:
 
-2. Add content section:
-```html
-<section id="new-section" class="tab-content">
-    <h1>New Section Title</h1>
-    <!-- Content here -->
-</section>
-```
+- every homepage/footer hash exists in `wiki.html`;
+- release asset names match `.github/workflows/release.yml`;
+- client commands match `devtrack help`/`devtrack_client/main.go`;
+- server routes and configuration match `devtrack_server/backend/`;
+- no real credentials, invented usage claims, or unsupported compatibility claims appear.
 
-## Browser Compatibility
+## Source of truth
 
-Tested and working on:
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
-
-## Contributing
-
-When updating documentation:
-1. Maintain consistent formatting
-2. Test on multiple browsers
-3. Verify all links work
-4. Check mobile responsiveness
-5. Update this README if adding new pages
+GitHub `sraj0501/Devtrack_` is the sole repository source. `PRODUCT_BIBLE.md` defines product
+invariants, `docs/ARCHITECTURE.md` defines the client/server boundary, and
+`Data/agent_logs/project_board.md` is the task ledger.
 
 ## License
 
-Same as the main project — the [DevTrack Community License](../LICENSE): free for individuals and teams of up to 10. A commercial licence is required above that, and for any SaaS or hosted-service use.
-
-## Credits
-
-Built with vanilla HTML, CSS, and JavaScript - no frameworks required for fast loading and broad compatibility.
+The site documents the [DevTrack Community License](../LICENSE), not MIT.

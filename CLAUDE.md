@@ -120,7 +120,7 @@ Entry point: `webhook_server.py` (handles inbound webhooks **and** `/trigger/*` 
 | `llm/` | Multi-provider LLM (`provider_factory.py` builds fallback chain: primary → OpenAI/Anthropic/Groq → Ollama) |
 | `commit_message_enhancer.py`, `git_diff_analyzer.py` | AI commit-message refinement; staged-change analysis |
 | `boardroom/`, `plan_parser.py` | 7-persona plan review (`personas`/`session`/`interactive`/`report`) + plan decomposition |
-| `daily_report_generator.py`, `email_reporter.py`, `user_prompt.py` | Reports (Terminal/HTML/MD/JSON), delivery, TUI prompts |
+| `daily_report_generator.py`, `email_reporter.py`, `user_prompt.py` | Reports (Terminal/HTML/MD/JSON), delivery, and legacy optional prompt helpers; daemon triggers remain silent |
 | `personalization.py`, `personalized_ai.py`, `rag/` | Style injection + RAG few-shot (ChromaDB) — see Personalization below |
 | `jira/`, `github/`, `azure/`, `msgraph_python/` | External API clients (MS Graph = Teams/Outlook) |
 | `admin/` | FastAPI admin UI (users/licenses/health/audit) — see Admin UI below |
@@ -171,8 +171,8 @@ PM connectors, gitsage, and alerts are Go-native and work in all modes.
 
 - **Direction:** see [`PRODUCT_BIBLE.md`](PRODUCT_BIBLE.md). Build arc **Phase 0→8 COMPLETE** on `dev`.
   The PostgreSQL server epic is complete through TASK-116/PR #251. **Phase 9 Adoption Gate is active**:
-  TASK-117 shipped visible managed-install defaults in PR #252; TASK-142 removes the legacy NLP-parser
-  surface before TASK-118 continues non-blocking background bootstrap.
+  TASK-117–123 and prerequisite TASK-142 are complete on `dev`; TASK-144 fixed the queue and
+  local-model reliability defects found by the live demo. TASK-124 launch drafts remain.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.
 - **Shipped (v3.x):** three-codebase split (EPIC-SPLIT); client-server decoupling (Go-native
   connectors, gitsage, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;

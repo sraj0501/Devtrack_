@@ -1,36 +1,32 @@
-# DevTrack Advanced Features
+# Advanced features
 
-## AI-Enhanced Daily Reports
+DevTrack's advanced capabilities are daemon or server capabilities exposed through the Go CLI.
+They are not separate interactive product flows.
 
-**Basic reports** (via `devtrack preview-report`, `save-report`, `send-report`):
-- Use `backend/email_reporter.py` – reads from SQLite `task_updates`, formats as text/HTML.
+## Reports and voice
 
-**AI-enhanced reports** (via Python bridge):
-- Use `backend/daily_report_generator.py` – Ollama-powered insights (executive summary, accomplishments, recommendations, productivity score).
-- Triggered when:
-  - End-of-day window (default 6:00 PM ± 15 min) via timer trigger
-  - `REPORT_TRIGGER` IPC message (e.g. from future CLI)
+- `devtrack eod generate` stages an end-of-day report with explicit confidence.
+- `devtrack work report` previews the current work session on demand.
+- `devtrack voice seed|profile|add|sync|status` manages local voice evidence.
+- `devtrack learning-status`, `learning-sync`, and `learning-reset` manage personalization.
 
-To run AI-enhanced report directly:
-```bash
-uv run python -c "
-from backend.daily_report_generator import DailyReportGenerator
-gen = DailyReportGenerator()
-report = gen.generate_report(include_ai=True)
-print(gen.format_report(report, 'terminal'))
-"
-```
+The Python server generates reports and profiles and persists server-owned data in PostgreSQL. The
+Go client retains local activity and the pending queue in SQLite.
 
-## Analytics (devtrack stats / db-stats)
+## Agent context
 
-`devtrack stats` (alias for `db-stats`) shows:
-- Total triggers, responses, task updates
-- Triggers today and this week
-- Top projects by update count (last 30 days)
-- Unsynced updates, log entries
+`devtrack mcp setup` configures the JSON-RPC 2.0 stdio server. Its six read-only tools expose active
+work, recent activity, pending actions, ticket context, work history, and the EOD roll-up from local
+SQLite without requiring Python or a network request.
 
-## Future Work
+## Review automation
 
-- **Dashboard**: Web UI for analytics (planned)
-- **Mobile notifications**: Push on triggers (planned)
-- **Plugin system**: Extensible integrations (planned)
+`devtrack review` and `devtrack review status` expose the PR review loop. Fixes, commits, pushes, and
+external updates still pass through the pending-actions trust boundary and escalate when human
+judgment is required.
+
+## Offline behavior
+
+Git observation, local SQLite, scheduling, the queue, MCP, and backlog replay remain usable when the
+Python server or LLM is unavailable. `devtrack status` and `devtrack doctor` report the resulting
+capability degradation.

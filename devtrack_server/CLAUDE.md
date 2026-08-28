@@ -42,7 +42,7 @@ devtrack_client (Go)
 devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
         |
         |-- /trigger/commit  --> LLM task enrichment -> pending actions -> PM APIs
-        |-- /trigger/timer   --> TUI prompt -> work update -> report
+        |-- /trigger/timer   --> silent context enrichment -> pending action/report
         |-- /webhooks/*      --> webhook_handlers.py -> event routing
         |-- /admin/*         --> admin UI (HTMX, JWT auth)
         |-- /health          --> health check

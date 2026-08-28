@@ -40,7 +40,10 @@ devtrack mcp setup
 
 ### Trust
 
-Local Ollama by default; SQLite on disk. **Your code, commits, and diffs never leave your machine.** Optional cloud LLMs send prompt text only, and only if you configure one. Anonymous usage telemetry is **opt-in** and off unless you run `devtrack telemetry on`.
+Local Ollama by default; SQLite on disk. **The default daily path stays on your machine.** If you
+configure a PM system, email/chat delivery, an external server, or a cloud LLM, DevTrack sends only
+the payload needed for that enabled operation. Anonymous usage telemetry is **opt-in** and off unless
+you run `devtrack telemetry on`.
 
 ---
 
@@ -216,12 +219,12 @@ After that, `git commit` routes through DevTrack for monitored repos. Everything
 |-------------|-------------------|
 | **Azure DevOps** | Post commit comments, transition work item states, create missing items; PR approval detection via ADO Pull Requests API (real `IsPRApproved`, vote ≥ 10) |
 | **GitHub** | Comment on issues/PRs, sync recent activity, alert on review requests |
-| **GitLab** | Comment on issues, list and view issues assigned to you, alert on assignments/notes/MR reviews |
-| **Jira** | Alert on assignments, comments, and status changes |
+| **GitLab** | Comment on issues; list, view, create, and sync issues through the Go connector |
+| **Jira** | Server-side webhook and PM support; Go-client connector parity is part of the staged rollout |
 | **Microsoft Teams** | Learn your communication style for personalized AI output |
 | **Outlook / MS Graph** | Send EOD reports by email |
-| **Telegram** | Remote control from your phone — issue browsing, sync, alerts, work sessions, PM planning |
-| **Slack** | `/devtrack status`, `/devtrack trigger`, and more via Socket Mode |
+| **Telegram** | Go-native daemon control, logs, queue review/corrections, and notifications |
+| **Slack** | Outbound alert notifications through an incoming webhook |
 | **Ollama / OpenAI / Anthropic / Groq** | AI commit messages, reports, conflict resolution, git-sage agent |
 
 ---
@@ -310,8 +313,8 @@ Every `git commit` while a session is active automatically attaches its hash —
 ![git-sage standup demo](devtrack_wiki/wiki/assets/standup-demo.gif)
 
 ```bash
-devtrack git sage do "squash my last 5 commits"
-devtrack git sage ask "how do I rebase onto main?"
+devtrack sage do "squash my last 5 commits"
+devtrack sage ask "how do I rebase onto main?"
 ```
 
 Runs an agentic loop: plans operations, executes them, reads output, handles failures with rollback, only asks when genuinely ambiguous. Session approval dialog (auto / review / suggest-only), step history, and interactive undo built in.
@@ -341,53 +344,24 @@ devtrack alerts --all
 devtrack alerts --clear
 ```
 
-Background poller watches **GitHub**, **Azure DevOps**, **Jira**, and **GitLab** for assigned issues, new comments, review requests, and status changes. Delivers macOS OS notifications and terminal output.
+The Go-native background poller watches **GitHub** and **Azure DevOps** for assigned work, comments,
+review requests, and status changes. It can deliver terminal, OS, Telegram, and Slack-webhook
+notifications.
 
 - **GitHub**: Issue/PR assigned, review requested, comment on involved issue
 - **Azure DevOps**: Work item assigned, comment added, state changed
-- **Jira**: Assigned to you, new comments, status transitions (via REST API)
-- **GitLab**: Issue assigned, new notes (comments), merge request review requested (`ALERT_GITLAB_ENABLED=true`)
-
 The poller is **Go-native** and runs inside the daemon — no Python subprocess, no MongoDB. Alert state (`last_checked` per source) and notifications persist to **SQLite**, so poll continuity survives daemon restarts.
 
 ### Telegram bot — remote control from your phone
 
-Browse issues, trigger syncs, and plan work without opening a terminal:
+Control the daemon and supervise queued work without opening a terminal:
 
 ```
-/github              Open GitHub issues assigned to you
-/githubsync          Sync issues to local cache
-/githubcheck         Verify GitHub connectivity
-
-/gitlab              Open GitLab issues (from cache)
-/gitlabsync          Sync issues to local cache
-/gitlabcheck         Verify GitLab connectivity
-
-/issues              Azure DevOps work items
-/azuresync           Sync work items to local cache
-/azurecheck          Verify Azure connectivity
-
-/ticketsync          Sync all PM platforms at once
-/ticketsync force    Force drop-and-reload of AI server cache
-
-/alerts              Unread ticket notifications
-/alertsall           All notifications
-/alertsclear         Mark all as read
-
-/plan Build a payment processing system
-→ Decomposes into Epic + Stories + Tasks
-→ Creates everything in Azure / GitLab / GitHub
-
-/newproject
-→ Pick platform · Enter requirements + deadline
-→ AI fetches team workload · Generates sprint YAML
-→ PM approves via email link · Sprints created with dependencies
-
-/workstart AUTH-42   Start timing a ticket
-/workstop            Stop session (auto-measures duration)
-/workreport          EOD summary in chat
-
-/stop | /restart | /pause | /resume | /reloadconfig
+/status | /logs | /health | /trigger
+/pause | /resume | /stop | /restart | /reload
+/commits
+/queue
+/approve <id> | /reject <id> | /edit <id> <json>
 ```
 
 See [Telegram Bot setup guide](docs/TELEGRAM_BOT.md) for full configuration.
@@ -449,17 +423,18 @@ You no longer need to manually `source .env` before `devtrack start` for most se
 ### Uninstall (`devtrack uninstall`)
 
 ```bash
-devtrack uninstall           # remove daemon, autostart, data dir, and binary
-devtrack uninstall --dry-run # preview what would be deleted without making changes
+devtrack uninstall             # confirm, then remove DevTrack and its data
+devtrack uninstall --keep-data # remove DevTrack but preserve the data directory
+devtrack uninstall --yes       # skip the confirmation prompt
 ```
 
-The uninstall command is interactive by default and asks for confirmation at each step. It:
+The uninstall command asks once for confirmation unless `--yes` is supplied. It:
 - Stops the running daemon (if active)
 - Removes the autostart entry (launchd on macOS, systemd on Linux, Task Scheduler on Windows)
-- Deletes the `Data/` directory (logs, DB, reports, PIDs)
+- Deletes the configured DevTrack data home, including managed-server files, unless `--keep-data` is supplied
 - Removes the `devtrack` binary from `PATH`
 
-Use `--dry-run` to preview every action before committing.
+The command prints the resolved targets before confirmation. There is no `--dry-run` flag.
 
 ### Self-update (`devtrack upgrade`)
 
@@ -469,7 +444,7 @@ sudo devtrack upgrade     # use when the binary is in a root-owned directory (e.
 ```
 
 What happens on upgrade:
-1. Downloads the latest binary for your OS/arch from **GitHub Releases** (`sraj0501/Devtrack_`) — supports Linux/macOS (`.tar.gz`) and Windows (`.zip`)
+1. Downloads the latest binary for your OS/arch from **GitHub Releases** (`sraj0501/Devtrack_`) — Linux/macOS use `.tar.gz`; Windows uses a direct `.exe`
 2. Applies all versioned migrations that have not yet run (schema changes, config file moves, etc.)
 3. Auto-restarts the daemon so the new binary takes effect immediately
 4. On Unix: falls back to `sudo cp` automatically if the target directory is root-owned and the command wasn't run as root
@@ -492,7 +467,7 @@ The Go daemon spawns `backend.webhook_server` as a subprocess in the default man
 
 ```bash
 # external/Docker mode only — managed mode starts this automatically
-python -m backend.webhook_server
+cd devtrack_server && uv run python -m backend.webhook_server
 ```
 
 All trigger endpoints require the `X-DevTrack-API-Key` header (set `DEVTRACK_API_KEY` in `.env`). Webhook signature verification uses source-specific secrets (`AZURE_WEBHOOK_SECRET`, `GITHUB_WEBHOOK_SECRET`, etc.). GitLab webhooks are registered automatically at startup when `GITLAB_WEBHOOK_URL` is configured.
@@ -555,9 +530,9 @@ The setting is stored locally and read directly by the daemon, so it works in ev
 
 A browser-based admin console built with FastAPI + HTMX. Start it with:
 
-```bash
-devtrack admin-start       # web admin console at localhost:8090/admin/
-```
+The admin console is server-owned. Run it from `devtrack_server/` with
+`uv run python -m backend.admin`, or set `ADMIN_EMBED=true` to mount it on the managed webhook
+server at `/admin`. The Go client intentionally has no `admin-start` command.
 
 Sign in with `ADMIN_USERNAME` / `ADMIN_PASSWORD` (set in `.env`). The dashboard shows live trigger-activity stats (triggers today, commits today, last trigger time, errors in the last 24 h) that refresh every 30 seconds via HTMX without a full page reload.
 
@@ -591,17 +566,22 @@ ADMIN_PORT=8090                  # ignored when ADMIN_EMBED=true
 ADMIN_EMBED=false
 ```
 
-### Server management
+### Runtime visibility
 
 ```bash
-devtrack server-tui    # live process monitor — CPU%, memory, health + trigger throughput stats
-devtrack tui           # full-screen dashboard: overview, activity, workspaces, alerts
-devtrack health        # run all health checks and print a status report
+devtrack status            # daemon, capabilities, and managed-bootstrap progress
+devtrack doctor            # configuration and dependency diagnosis
+devtrack doctor --repair   # retry a failed managed-server bootstrap
+devtrack tui               # full-screen client dashboard
+devtrack logs -f           # follow daemon logs
 ```
 
-The `server-tui` panel includes a **trigger throughput stats** pane that reads directly from the SQLite database and shows triggers fired today, commits today, last trigger time (HH:MM), and unprocessed-trigger error count for the last 24 hours. The pane degrades gracefully — it displays zeroes rather than crashing if the database is unavailable.
+The Python server TUI remains available to server operators with
+`cd devtrack_server && uv run python -m backend.server_tui`; it is not a Go-client command. Its
+trigger-throughput pane reads the Go daemon's internal stats endpoint when PostgreSQL mode is active
+and degrades to zero-valued stats when that endpoint is unavailable.
 
-`devtrack health` runs checks concurrently and reports the status of all monitored subsystems:
+The daemon health subsystem checks these monitored services:
 
 | Check | What is verified |
 |-------|-----------------|
@@ -611,7 +591,7 @@ The `server-tui` panel includes a **trigger throughput stats** pane that reads d
 | Ollama | `/api/tags` reachable; response normalised across Ollama versions |
 | Ports | Bound ports recorded and checked across restarts |
 
-The last-known port list is persisted to disk so that `devtrack health` can report port conflicts even when the daemon is not currently running.
+The last-known port list is persisted so runtime diagnostics can report conflicts across restarts.
 
 ---
 
@@ -657,9 +637,9 @@ See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the full setup walkthrough.
 | AI backend | Python 3.12+, uv, aiohttp, LLM-first structured task parsing |
 | Local LLM | Ollama (default) · OpenAI · Anthropic · Groq · LM Studio |
 | Storage | Client SQLite (offline state), server PostgreSQL (required), ChromaDB (RAG), optional MongoDB |
-| Remote control | Telegram (python-telegram-bot) · Slack (slack-bolt Socket Mode) |
+| Remote control | Go-native Telegram bot · outbound Slack webhook notifier |
 | PM integrations | Azure DevOps · GitLab · GitHub · Jira REST APIs |
-| Admin console | FastAPI + HTMX, JWT auth, bcrypt passwords, SQLite user/audit store |
+| Admin console | FastAPI + HTMX, JWT auth, bcrypt passwords, PostgreSQL-backed user/audit data |
 | Observability | runtime-narrative — structured story/stage traces on every webhook request |
 | Config discipline | All Python modules use `backend.config.get()` — no `os.getenv()` calls in business logic |
 
@@ -691,24 +671,27 @@ Key references in this repo:
 
 ## Releasing
 
-Releases are built and published locally from the developer's machine using a single script. No CI required.
+The canonical release pipeline is [`.github/workflows/release.yml`](.github/workflows/release.yml).
+It runs when an authorized maintainer pushes a semantic-version tag:
 
-```powershell
-.\scripts\release.ps1              # patch bump (default)
-.\scripts\release.ps1 -Bump minor  # minor bump
-.\scripts\release.ps1 -Bump major  # major bump
+```bash
+GIT_NO_DEVTRACK=1 git tag -a vX.Y.Z -m "Release vX.Y.Z"
+GIT_NO_DEVTRACK=1 git push origin vX.Y.Z
 ```
 
-The script: computes the next version, creates a git tag, cross-compiles all 5 targets (Linux amd64/arm64, macOS amd64/arm64, Windows amd64), packages them, creates the GitHub release, updates the website version, and pushes — all in one run.
+GitHub Actions runs the Go tests, cross-compiles Linux amd64/arm64, macOS amd64/arm64, and Windows
+amd64, then publishes the exact assets consumed by the download page. Creating and pushing a release
+tag is an explicit maintainer action; update release-facing website copy in the same release change.
 
-**Requires:** `go`, `gh` (GitHub CLI), `git`, `tar` (Windows 10+).
+The older `scripts/release.ps1` helper is retained for local maintainer workflows, but it is not the
+source of truth for published asset names or CI behavior.
 
 ---
 
 ## Testing
 
 ```bash
-cd devtrack_client && go test ./...                     # Go client — 112 tests
+cd devtrack_client && go test ./...                     # Go client suite
 cd devtrack_client && go vet ./...                      # lint
 
 cd devtrack_server && uv sync                           # uv manages the venv — never pip
@@ -716,18 +699,25 @@ cd devtrack_server && uv run pytest backend/tests/      # Python server suite
 cd devtrack_server && uv run pytest backend/tests/ -k <name>   # filter by name
 ```
 
-The CS-2 config audit enforces that **no Python business-logic module calls `os.getenv()` directly** — all 40+ backend modules were audited (TASK-001 through TASK-007) and now route through `backend.config` typed accessors. Missing required env vars produce a `ConfigError` with the exact variable name rather than a silent `None`.
+Python business logic must use `backend.config` typed accessors rather than adding direct environment
+reads. Missing required variables produce a `ConfigError` with the variable name rather than a
+silent `None`.
 
 ---
 
 ## Privacy
 
-**Your code, commits, and diffs never leave your machine.** Ollama runs locally; state lives in SQLite on disk. DevTrack works fully offline.
+**The default Go + SQLite + Ollama path is local and works without internet.** Configured external
+services receive the minimum context required for the operation you enabled.
 
-- **Cloud LLMs are optional.** OpenAI/Anthropic/Groq are used only if you configure one, and only prompt text is sent — never commit history or repository contents.
+- **Cloud LLMs are optional.** OpenAI/Anthropic/Groq are used only if configured. The prompt may
+  include commit messages, diff context, or work text required by the feature being invoked; do not
+  enable a cloud provider if that conflicts with project policy.
 - **Nothing is posted without review.** All outbound actions are staged in the pending-actions queue until you approve them.
 - **Telemetry is opt-in** and off by default (`devtrack telemetry status`). No pings are sent unless you run `devtrack telemetry on`.
-- **Voice learning is local.** It mines your own git history. Teams is an optional extra signal, requires explicit opt-in, and can be wiped with `devtrack learning-reset`.
+- **Voice learning is local in managed mode by default.** Git-history seeding is local; Teams and
+  external-server learning sources require explicit configuration. Learning data can be wiped with
+  `devtrack learning-reset`.
 
 ---
 

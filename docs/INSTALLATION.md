@@ -41,7 +41,7 @@ curl -fsSL https://github.com/sraj0501/Devtrack_/releases/latest/download/devtra
 sudo mv devtrack /usr/local/bin/
 ```
 
-**Windows**: download `devtrack_windows_amd64.zip` from the [releases page](https://github.com/sraj0501/Devtrack_/releases/latest), extract, and add the folder to your `PATH`.
+**Windows**: download `devtrack_windows_amd64.exe` from the [releases page](https://github.com/sraj0501/Devtrack_/releases/latest), place it in a folder on your `PATH`, and rename it to `devtrack.exe` if desired.
 
 Verify:
 ```sh

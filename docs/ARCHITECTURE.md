@@ -36,11 +36,12 @@ The Go binary contains **no Python whatsoever** — git-sage is Go-native at `de
 | Mode | Config | Use case |
 |---|---|---|
 | **managed** (default) | `DEVTRACK_SERVER_MODE=managed` | Local dev — daemon spawns the Python backend as a subprocess |
+| **lightweight** | `DEVTRACK_SERVER_MODE=lightweight` | Go-native monitoring, queue, MCP, scheduling, and connectors without Python |
 | **external** | `DEVTRACK_SERVER_MODE=external` + `DEVTRACK_SERVER_URL=http://...` | Docker container or cloud-hosted Python server |
 
 ```bash
 # managed mode (default — no extra config needed)
-devtrack start         # daemon starts Python bridge automatically
+devtrack start         # managed mode starts the configured Python server automatically
 
 # external mode — Python server runs separately
 DEVTRACK_SERVER_MODE=external
@@ -144,7 +145,7 @@ The lightweight background service that monitors and coordinates.
 |-----------|------|---------|
 | **Entry Point** | main.go | Routes CLI args or delegates git subcommand |
 | **CLI Handler** | cli.go | Implements all CLI commands (start, stop, status, etc.) |
-| **Daemon Lifecycle** | daemon.go | Manages lock file, PID file, signals, Python bridge process |
+| **Daemon Lifecycle** | daemon.go | Manages lock file, PID file, signals, and the managed Python server process |
 | **Lock (Unix)** | lock_unix.go | Exclusive `flock(LOCK_EX\|LOCK_NB)` on `devtrack.lock` |
 | **Lock (Windows)** | lock_windows.go | Exclusive `LockFileEx` on `devtrack.lock` |
 | **Process check (Unix)** | process_unix.go | `Signal(0)` liveness probe |
@@ -228,7 +229,9 @@ IntegratedMonitor
         └── GitMonitor → commit_trigger {pm_platform: "gitlab", workspace_name: "internal-tools"}
 ```
 
-Python bridge reads `pm_platform` from the trigger data and calls `_route_pm_sync()`, which dispatches directly to the declared platform without running the priority chain.
+The Python trigger processor reads `pm_platform` from the HTTP trigger data and calls
+`_route_pm_sync()`, which dispatches directly to the declared platform without running the priority
+chain.
 
 #### PM Connector Configuration
 
@@ -419,48 +422,18 @@ GIT_SAGE_DEFAULT_MODEL=llama3.2
 Scheduled time reached (cron)
          │
          ▼
-Go daemon POSTs timer_trigger to Python /trigger/timer_trigger
+Go daemon POSTs timer context to Python /trigger/timer
          │
          ▼
-Python backend receives timer_trigger
-         │
-         ├─ [Vacation mode active?] → VacationAutoResponder generates update from commits,
-         │                            scores confidence, posts to PM if above threshold
-         │
-         │
-         ├─ Show TUI prompt to user
-         ├─ Get work update from user input
-         ├─ Enhance with work context (git branch, recent commits)
-         ├─ Enrich through configured LLM (repo_path support for PR context)
-         ├─ Enhance description with AI
-         ├─ Extract task numbers
-         │
-         ▼
-Check for merge conflicts
-         │
-         ├─ Run git status
-         ├─ Detect conflict markers
-         ├─ Auto-resolve with ConflictAutoResolver
-         │
-         ▼
-Send task_update to project management
-         │
-         ├─ Update task status
-         ├─ Add work log entry
-         ├─ Update time tracking
-         │
-         ▼
-Generate optional report
-         │
-         ├─ Collect recent work items
-         ├─ Summarize with AI
-         ├─ Format (Terminal, HTML, Email)
-         │
-         ▼
-Send acknowledge back to Go daemon
-         │
-         ▼
-Log completion in database
+Python timer processor
+         ├─ Stage the timer-derived proposal in pending_actions
+         ├─ Check vacation mode and score any generated update explicitly
+         ├─ Check the active work session
+         ├─ Send configured best-effort Telegram/Slack reminders
+         └─ Return trigger count, staged-action ID, and delivered channels
+
+No terminal prompt gates this path. PM, email, and Git writes remain pending actions until the
+configured trust policy permits execution; there is no direct-send fallback.
 ```
 
 ### 3. Observed Commit to Task Update Flow
@@ -595,7 +568,7 @@ All configuration flows from a single `.env` file with **no hardcoded defaults**
 | `IPC_HOST` | Both | IPC server host | `127.0.0.1` |
 | `IPC_PORT` | Both | IPC server port | `35893` |
 | `LLM_PROVIDER` | Python | Primary AI provider | `ollama` or `openai` or `anthropic` |
-| `OLLAMA_URL` | Python | Ollama server URL | `http://localhost:11434` |
+| `OLLAMA_HOST` | Go + Python | Ollama server URL | `http://localhost:11434` |
 | `OPENAI_API_KEY` | Python | OpenAI credentials | (secret) |
 | `ANTHROPIC_API_KEY` | Python | Anthropic credentials | (secret) |
 | `AZURE_DEVOPS_PAT` | Go + Python | Azure DevOps PAT (secret only — org/username in workspaces.yaml) | (secret) |
@@ -832,7 +805,7 @@ Offline-first is a core non-negotiable — see [`PRODUCT_BIBLE.md`](../PRODUCT_B
 - `atlassian-python-api` - Jira API
 - `msgraph-core` - Microsoft Graph SDK
 
-**Optional AI/RAG tier** (installed via `devtrack-server enable ai`):
+**Personalization/RAG dependency** (installed with the managed Python environment via `uv sync`):
 - `chromadb` - RAG vector store for personalization
 
 ---
