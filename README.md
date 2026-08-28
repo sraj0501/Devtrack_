@@ -28,6 +28,8 @@ A background daemon watches your commits and infers everything around them — w
 
 ### And it's the memory your AI agents lack
 
+> **Dev preview:** MCP is available on upstream `dev`; the latest public release, v3.0.10, does not include it yet.
+
 Coding agents are session-based: they exist while invoked, then forget. DevTrack is always on. One command —
 
 ```bash
@@ -42,29 +44,95 @@ Local Ollama by default; SQLite on disk. **Your code, commits, and diffs never l
 
 ---
 
-## Install
+## Ten-minute quickstart
+
+The latest public release is **v3.0.10**. It predates the MCP command and the Phase 9 onboarding
+work used below, so `releases/latest` cannot run this walkthrough yet. Until a newer release ships,
+build the MCP-capable client from upstream `dev`:
 
 ```bash
-# macOS / Linux — detect OS and architecture, then download the right binary
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-ARCH=$(uname -m)
-[ "$ARCH" = "x86_64" ]  && ARCH="amd64"
-[ "$ARCH" = "aarch64" ] && ARCH="arm64"
-curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_${OS}_${ARCH}.tar.gz" | tar xz
-sudo mv devtrack /usr/local/bin/
-
-# Interactive setup wizard — choose standalone or full mode
-devtrack setup
-
-devtrack start
-devtrack status
+git clone --branch dev --single-branch https://github.com/sraj0501/Devtrack_.git
+cd Devtrack_/devtrack_client
+go build -o devtrack .
+sudo install -m 0755 devtrack /usr/local/bin/devtrack
 ```
 
-The first useful moment does not wait for Python or a model download: run
-`devtrack mcp setup`, reload Claude Code, and ask **“What am I working on?”** The daemon then mines
-enabled local repositories in Managed mode and builds the voice profile once the optional local AI server is reachable.
-`devtrack status` and `devtrack doctor` show the persistent result and suggest
-`devtrack work report` when the profile is ready.
+Verify that this is an MCP-capable build, then run setup from the Git repository you want DevTrack
+to watch. Choose `none` when asked for a PM integration if you only want to try the local path.
+Managed mode requires a PostgreSQL URL for the Python service; Ollama remains the default LLM and
+can finish preparing in the background.
+
+```bash
+devtrack mcp status           # must report six registered tools
+cd /path/to/the/repo/to/watch
+devtrack setup
+```
+
+### Minute 2: local context, no Python or model required
+
+The Go binary and local SQLite database are ready as soon as setup finishes. Wire the current
+repository into Claude Code, then exercise the same MCP server locally:
+
+```bash
+devtrack mcp setup
+devtrack mcp test
+```
+
+Reload Claude Code after `mcp setup`. Its DevTrack tools can now read the active ticket, today's
+commits, pending actions, voice profile, ticket context, and a template EOD summary. The MCP server
+runs on demand over stdio; it does not need a background Python process.
+
+### Minutes 3–10: start the silent worker
+
+```bash
+devtrack start
+devtrack status
+devtrack doctor
+```
+
+`status` and `doctor` report background Python, PostgreSQL, and LLM readiness without blocking Git
+monitoring or MCP. Once the AI server reports ready, create a normal ticket-named branch and commit:
+
+```bash
+git switch -c feature/AUTH-42-refresh-token
+git commit -m "fix auth redirect"
+
+devtrack logs                # confirm the commit and ticket were detected
+devtrack queue               # review local pending actions and confidence
+devtrack eod                 # generate a narrative; stages it before any delivery
+```
+
+Do not run `queue approve` while evaluating the no-send path. With the workspace PM integration set
+to `none` and no `--email` argument, the walkthrough uses no PM credentials and has no external
+destination. For a disposable, recorder-friendly version that verifies actual log output instead of
+using a canned transcript, see the [demo storyboard](docs/DEMO_STORYBOARD.md).
+
+### What is ready when?
+
+| Capability | Available before AI readiness | Needs the managed/external Python service |
+|---|---:|---:|
+| Git monitoring, ticket extraction, local SQLite | Yes | No |
+| MCP setup, self-test, and local context tools | Yes | No |
+| Queue inspection and correction for local actions | Yes | No |
+| Voice-aware ticket-comment generation | No | Yes |
+| `devtrack eod` generated narrative and staging | No | Yes |
+
+The Python service and model preparation are background work. If they are not ready by minute ten,
+keep coding and check `devtrack doctor`; the Go-native path remains usable and commits are not
+blocked.
+
+### Update an existing installation
+
+```bash
+devtrack upgrade
+```
+
+`devtrack upgrade` currently installs the latest public release, v3.0.10. It does not upgrade a
+source-built Phase 9/MCP demo installation until that work is included in a newer public release.
+
+The daemon mines enabled local repositories in Managed mode and builds the voice profile once the
+local AI server is reachable. `devtrack status` and `devtrack doctor` show the persistent result and
+suggest `devtrack work report` when the profile is ready.
 
 Setup also checks Ollama's local model inventory. An existing generation model is used immediately
 without another pull. If no usable local model is ready and an OpenAI or Anthropic key is already in
