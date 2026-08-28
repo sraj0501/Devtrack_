@@ -2,6 +2,118 @@
 
 ---
 
+### [2026-08-28 17:25] TASK-121 — reproducible demo and quickstart
+
+**Original message**: "docs(TASK-121): add reproducible demo quickstart"
+**DevTrack enhanced it to**: "docs(TASK-121): Add reproducible demo quickstart guides"
+**Ticket auto-linked**: NO — TASK-121 was supplied explicitly in the commit message
+**PM system updated**: NO — documentation commit only; no PM connector configured
+**Time**: ~80 seconds for the DevTrack commit wrapper
+**Friction**: MEDIUM
+**Notes**: Commit `4541cf7`. The local-model enhancement path was slow but completed. The five-scene
+demo had already passed against local PostgreSQL, Ollama, and the managed daemon.
+
+### [2026-08-28 17:27] TASK-122 — wiki homepage and metadata draft
+
+**Original message**: "docs(TASK-122): refresh wiki homepage metadata"
+**DevTrack enhanced it to**: "docs(TASK-122): Refresh wiki homepage metadata and improve dev visibility"
+**Ticket auto-linked**: NO — TASK-122 was supplied explicitly in the commit message
+**PM system updated**: NO — local documentation artifact only
+**Time**: ~56 seconds for the DevTrack commit wrapper
+**Friction**: MEDIUM
+**Notes**: Commit `efd3445`. Inline-script validation passed; repository metadata was not applied
+externally.
+
+### [2026-08-28 17:28] TASK-123 — registry submission package
+
+**Original message**: "docs(TASK-123): prepare registry submission package"
+**DevTrack enhanced it to**: "docs(TASK-123): Prepare registry submission package documentation"
+**Ticket auto-linked**: NO — TASK-123 was supplied explicitly in the commit message
+**PM system updated**: NO — no registry or third-party system was modified
+**Time**: ~3 seconds for the DevTrack commit wrapper
+**Friction**: LOW
+**Notes**: Commit `50b5bca`. The package records blockers and held copy rather than publishing
+unsupported manifests or claims.
+
+### [2026-08-28 17:29] TASK-144 — demo runtime reliability
+
+**Original message**: "fix(TASK-144): harden demo runtime reliability"
+**DevTrack enhanced it to**: "fix(TASK-144): Harden demo runtime reliability and robustness"
+**Ticket auto-linked**: NO — TASK-144 was supplied explicitly in the commit message
+**PM system updated**: NO — no PM connector configured
+**Time**: ~12 seconds for the DevTrack commit wrapper
+**Friction**: LOW
+**Notes**: Commit `957ecd6`. Full Go tests, vet, Windows cross-build, shell/wiki checks, and the live
+demo passed. The demo staged action 5 at confidence 0.95 and queued EOD action 6.
+
+## Task Summary — TASK-121: Demo path and ten-minute quickstart — 2026-08-28
+
+- Total commits: 1
+- Acceptance criteria met: 4/4
+- Tickets auto-updated: 0 external PM tickets
+- Estimated daily time saved: not measured
+- Blockers encountered: runtime defects resolved under TASK-144
+- One thing that still feels rough: local model latency makes the commit wrapper variable
+- Ready for PM review: YES
+
+## Task Summary — TASK-122: Wiki homepage and repository metadata package — 2026-08-28
+
+- Total commits: 1
+- Acceptance criteria met: 4/4
+- Tickets auto-updated: 0
+- Estimated daily time saved: not measured
+- Blockers encountered: none
+- One thing that still feels rough: GitHub metadata application remains a separate owner action
+- Ready for PM review: YES
+
+## Task Summary — TASK-123: Registry submission package — 2026-08-28
+
+- Total commits: 1
+- Acceptance criteria met: 4/4
+- Tickets auto-updated: 0
+- Estimated daily time saved: not measured
+- Blockers encountered: MCP-capable release and MCPB packaging are future prerequisites
+- One thing that still feels rough: registry requirements must be rechecked immediately before submission
+- Ready for PM review: YES
+
+## Task Summary — TASK-144: Demo runtime reliability — 2026-08-28
+
+- Total commits: 1
+- Acceptance criteria met: 4/4
+- Tickets auto-updated: 0 external PM tickets
+- Estimated daily time saved: not measured
+- Blockers encountered: none after the SQLite and timeout fixes
+- One thing that still feels rough: the Go queue and server PostgreSQL queue remain separate visibility surfaces
+- Ready for PM review: YES
+
+---
+
+## Evidence Reconciliation — 2026-08-28 — TASK-118–120
+
+This is a documentation audit of upstream delivery evidence, not a new implementation session or
+an external-user report.
+
+- TASK-118 merged to `dev` in PR #254 (`1edf303`): non-blocking managed server bootstrap, durable
+  progress/retry state, and capability reporting through `status`/`doctor`.
+- TASK-119 merged to `dev` in PR #255 (`3dc4162`): dependency-free first-run guidance plus a
+  non-blocking, one-time local Git voice seed/profile worker.
+- TASK-120 merged to `dev` in PR #256 (`a1dd036`): detection of usable installed Ollama generation
+  models, redundant-pull avoidance, and explicit temporary use of already-present OpenAI/Anthropic
+  credentials while Ollama remains the default.
+- GitHub CI, devtrack_client CI, and devtrack_wiki CI all passed at upstream `dev` commit `a1dd036`.
+- v3.0.10 remains the latest public release; TASK-118–120 are merged but unreleased.
+- Upstream had no open PRs or issues when checked on 2026-08-28.
+- No install count, time-saved value, stranger adoption, generated-profile quality, or successful
+  real-world ten-minute onboarding run is evidenced here. Launch drafts must not imply any of them.
+
+**Friction:** the `origin` host alias references a missing GitHub SSH identity file. The alternate
+`shashankraj1987` alias in `~/.ssh/config` authenticated successfully, so `dev` was fetched with a
+one-off URL without changing repository or SSH configuration. Upstream merge commit `a1dd036` and
+local TASK-120 commit `d09524b` have the identical tree `36d886f`; the documentation worktrees use
+that content-equivalent pre-merge baseline.
+
+---
+
 ### [2026-06-30 12:50] TASK-105 -- upgradeServer() -- pull + uv sync Python server on upgrade
 
 **Original message**: "feat(upgrade): add upgradeServer() -- pull + uv sync Python server on upgrade (TASK-105)"

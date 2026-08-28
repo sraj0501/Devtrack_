@@ -115,7 +115,7 @@ finish booting:
   `git monitoring ✓ · MCP ✓ · ticket sync ✓ · voice generation — downloading model (4.1 GB, ~8 min)`.
   Every server failure mode degrades to something the Go client still does (the
   optional-import discipline already enforces this server-side).
-- **TASK-120 in progress — LLM fast lane:** detect an existing Ollama install with a usable model and use
+- **TASK-120 complete (PR #256) — LLM fast lane:** detect an existing Ollama install with a usable model and use
   it immediately (don't force a specific pull). If `ANTHROPIC_API_KEY` /
   `OPENAI_API_KEY` is present, offer it for instant generation while the local model
   downloads, then default back to Ollama once it lands. Offline-first is the steady
@@ -157,10 +157,10 @@ from someone unknown means a real install survived setup.
 | TASK-117 | **DONE** — `devtrack setup` writes complete environment with visible defaults; invalid overrides fail clearly | 9a |
 | TASK-118 | **DONE (PR #254)** — background server bootstrap (`uv sync` / local `ollama pull` non-blocking) + durable progress/retry in `status`/`doctor` | 9b |
 | TASK-119 | **DONE (PR #255)** — automatic Tier 0 mining/profile build + guided `work report` / `mcp setup` prompts | 9b |
-| TASK-120 | **IN PROGRESS** — Ollama detection + BYO-cloud-key fast lane in setup | 9b |
-| TASK-121 | Demo GIF (commit → staged action → EOD preview) + quickstart polish | 9c |
-| TASK-122 | devtrack_wiki homepage rewrite + repo description/topics | 9c |
-| TASK-123 | Registry submissions (MCP lists, plugin directory) | 9d |
+| TASK-120 | **DONE (PR #256)** — Ollama detection + BYO-cloud-key fast lane in setup | 9b |
+| TASK-121 | **DONE** — reproducible commit → staged action → EOD/MCP demo + quickstart polish | 9c |
+| TASK-122 | **DONE** — devtrack_wiki homepage rewrite + reviewable repo description/topics | 9c |
+| TASK-123 | **DONE** — evidence-backed registry matrix and held submission copy | 9d |
 | TASK-124 | Launch content: Show HN + dev.to + LinkedIn via post-generator | 9d |
 | TASK-142 | **DONE (PR #253)** — configured-LLM task enrichment with strict validation and a non-blocking raw/template fallback | 9a prerequisite |
 
@@ -170,12 +170,13 @@ from someone unknown means a real install survived setup.
 > removed under TASK-133, leaving no production raw-`sqlite3` imports).
 > `Data/agent_logs/project_board.md` is the authoritative ID ledger; the
 > adoption gate was renumbered to TASK-117–124 to match it. TASK-117 is complete. TASK-142 is now
-> assigned to the parser cleanup, and the next unused ID is TASK-143.
+> assigned to the parser cleanup. TASK-143 reconciled the Phase 9 status records; TASK-144 fixed
+> live-demo queue and trigger reliability; the next unused ID is TASK-145.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to
 > opt-in so the "nothing leaves your machine" trust claim is actually true. What remains of 9c is
-> the demo GIF and the wiki homepage.
+> the TASK-124 evidence-backed launch drafts.
 
 ---
 
