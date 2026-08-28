@@ -1,275 +1,163 @@
 # Quick Start Guide
 
-Get DevTrack up and running in 15 minutes.
+Reach DevTrack's first local value in about two minutes, then let the optional AI service finish
+preparing in the background.
+
+> **Release note:** the latest public release is v3.0.10. It predates MCP and the Phase 9 onboarding
+> flow below. Until a newer release ships, build the client from upstream `dev` as shown here.
 
 ---
 
-## Prerequisites Checklist
+## 1. Build the current client
 
-Before starting, ensure you have:
-
-- [ ] Go 1.21+ — `go version`
-- [ ] Git — `git --version`
-- [ ] Ollama (optional, for AI) — `ollama serve`
-- [ ] Python 3.12 or 3.13 (only if installing the server) — `python3 --version`
-- [ ] uv (only if installing the server) — `uv --version`
-
-Missing something? See [Installation Guide](INSTALLATION.md) for detailed setup.
-
----
-
-## 5-Minute Setup (Client Only)
-
-This gets the `devtrack` binary running. The server (`devtrack_server`) is optional.
-
-### Step 1: Clone and Build (2 min)
+You need Go and Git. Python, PostgreSQL, and Ollama are not required for the first MCP-backed local
+context check.
 
 ```bash
-# Clone the client repo
-cd ~/Documents  # or your preferred location
-git clone https://github.com/sraj0501/Devtrack_.git
-cd devtrack_client
-
-# Build the binary
+git clone --branch dev --single-branch https://github.com/sraj0501/Devtrack_.git
+cd Devtrack_/devtrack_client
 go build -o devtrack .
+sudo install -m 0755 devtrack /usr/local/bin/devtrack
 
-# Optional: install globally
-mkdir -p ~/.local/bin
-mv devtrack ~/.local/bin/
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
+devtrack mcp status   # should report six registered tools
 ```
 
-**Windows (PowerShell):**
+On Windows PowerShell, build `devtrack.exe` and place it in a directory on `PATH`:
+
 ```powershell
-git clone https://github.com/sraj0501/Devtrack_.git
-cd devtrack_client
+git clone --branch dev --single-branch https://github.com/sraj0501/Devtrack_.git
+Set-Location Devtrack_/devtrack_client
 go build -o devtrack.exe .
-Move-Item devtrack.exe "$env:GOPATH\bin\devtrack.exe"
+devtrack.exe mcp status
 ```
 
-### Step 2: Configure (1 min)
+See the [Installation Guide](INSTALLATION.md) for release binaries, external-server mode, Docker,
+and platform-specific installation details.
+
+---
+
+## 2. Run setup from the repository you want to watch
 
 ```bash
-cp .env_sample .env
-nano .env  # or your preferred editor
+cd /path/to/your/project
+devtrack setup
 ```
 
-**Minimum required variables:**
+The wizard writes and registers a complete environment file; future commands load it automatically.
+You do not need to copy or source `.env` manually.
+
+- Choose **Managed** for the default local AI service.
+- Choose **None** for the PM integration if you want a local-only evaluation with no external target.
+- Managed mode requires a PostgreSQL URL for the Python service.
+- Ollama is the default LLM. If a usable local generation model is installed, setup reuses it.
+- Checkout, `uv sync`, and any required model pull continue in a detached worker after setup returns.
+
+No daemon, PM post, email, or Git push is started by the wizard.
+
+---
+
+## 3. Minute two: give Claude Code local context
+
+The MCP server is Go-native, SQLite-backed, and started on demand over stdio. It does not wait for
+Python, PostgreSQL, or an LLM model.
 
 ```bash
-# Paths
-PROJECT_ROOT=/Users/yourname/Documents/devtrack_client
-DEVTRACK_WORKSPACE=/Users/yourname/Documents/myproject
-DATA_DIR=${PROJECT_ROOT}/Data
-
-# IPC
-IPC_HOST=127.0.0.1
-IPC_PORT=35893
-IPC_CONNECT_TIMEOUT_SECS=5
-IPC_RETRY_DELAY_MS=2000
-
-# HTTP timeouts
-HTTP_TIMEOUT_SHORT=10
-HTTP_TIMEOUT=30
-HTTP_TIMEOUT_LONG=60
-
-# LLM
-LLM_PROVIDER=ollama
-OLLAMA_HOST=http://localhost:11434
-GIT_SAGE_DEFAULT_MODEL=llama3
-
-# Prompts
-PROMPT_TIMEOUT_SIMPLE_SECS=30
-PROMPT_TIMEOUT_WORK_SECS=120
-PROMPT_TIMEOUT_TASK_SECS=60
-LLM_REQUEST_TIMEOUT_SECS=60
-SENTIMENT_ANALYSIS_WINDOW_MINUTES=60
+devtrack mcp setup
+devtrack mcp test
 ```
 
-Leave credential variables empty for now (OPENAI_API_KEY, AZURE_DEVOPS_TOKEN, etc.).
+Reload Claude Code after `mcp setup`, then ask:
 
-### Step 3: Start (1 min)
+> What am I working on?
+
+The six local tools expose the active context, today's commits, pending actions, voice profile,
+ticket context, and an EOD summary. An empty response on a brand-new install is expected; the value
+is that the connection already works and begins filling as you commit.
+
+---
+
+## 4. Start the silent worker
 
 ```bash
-# Source .env so all vars are in the environment
-source .env
-
-# Start background daemon
 devtrack start
-
-# Verify
 devtrack status
+devtrack doctor
 ```
 
-Expected output:
-```
-DevTrack daemon is running (PID: 12345)
-Monitoring: /path/to/your/repo
-IPC Server: 127.0.0.1:35893
-```
+`status` and `doctor` distinguish what works now from what is still preparing. Git monitoring,
+ticket extraction, scheduling, SQLite, and MCP remain available if the optional AI service is still
+installing or unavailable. Use `devtrack doctor --repair` after a failed or interrupted bootstrap.
+
+The daemon is silent during normal work. It observes commits and stages actions; it does not prompt
+or block your Git workflow.
 
 ---
 
-## Adding the Server (Optional)
+## 5. Try the real workflow
 
-If you want LLM task enrichment, the boardroom feature, admin UI, or PM integrations:
-
-```bash
-# Clone the server
-git clone https://github.com/sraj0501/Devtrack_.git
-cd devtrack_server
-
-# Install dependencies with uv (never pip)
-uv sync                    # core deps always required
-uv sync --extra ai         # optional: ChromaDB RAG for personalization
-
-# Start the server
-source .env
-uv run python -m backend.webhook_server
-```
-
-Then add to your client `.env`:
-```bash
-DEVTRACK_SERVER_URL=https://localhost:8089
-DEVTRACK_API_KEY=your-api-key-here
-```
-
-Restart the daemon: `devtrack stop && devtrack start`
-
----
-
-## First Run
-
-### View Logs
+When `devtrack doctor` reports the AI service ready, use a ticket-named branch and commit normally:
 
 ```bash
+git switch -c feature/AUTH-42-refresh-token
+# edit files as usual
+git add path/to/changed-file
+git commit -m "fix auth redirect"
+
 devtrack logs
-
-# Or follow the log file directly
-tail -f Data/logs/daemon.log
+devtrack queue
+devtrack eod
 ```
+
+The expected flow is:
+
+1. DevTrack detects the commit without interrupting it.
+2. The branch name resolves ticket `AUTH-42`.
+3. A ticket comment is staged with explicit confidence before any external action.
+4. `devtrack eod` generates the current narrative and prints `Queued as action <id>` when server
+   staging succeeds.
+
+Do not run `devtrack queue approve` during a no-send evaluation. With `pm_platform: none` and no
+`--email` argument, there is no PM or email destination.
+
+Server-generated actions are stored in PostgreSQL. Depending on whether opt-in client-event sync is
+enabled, `devtrack queue` may not mirror that server row in local SQLite immediately. The daemon log
+and the `Queued as action <id>` response are the authoritative staging evidence; an empty local queue
+does not mean the server bypassed staging.
+
+For a disposable, recorder-friendly run that verifies live output and never manufactures queue
+rows, use the repository's [credential-free demo storyboard](../../../docs/DEMO_STORYBOARD.md).
 
 ---
 
-## Try It Out
+## Readiness map
 
-### Option A: Trigger with a Git Commit
+| Capability | Before AI readiness | Requires the Python service |
+|---|---:|---:|
+| Git monitoring and ticket extraction | Yes | No |
+| Local SQLite history and pending queue | Yes | No |
+| MCP setup, self-test, and context tools | Yes | No |
+| Voice-aware ticket-comment generation | No | Yes |
+| Generated EOD narrative and server staging | No | Yes |
+
+If model preparation takes longer than ten minutes, keep coding. DevTrack records the local signal
+and never blocks the commit; `devtrack doctor` shows the recovery path.
+
+---
+
+## Everyday commands
 
 ```bash
-# Navigate to monitored repository
-cd ${DEVTRACK_WORKSPACE}
-
-# Make a test commit
-git add .
-git commit -m "Test commit for DevTrack (1h)"
-
-# Watch DevTrack process it
-devtrack logs
+devtrack status                 # daemon and capability summary
+devtrack doctor                 # bootstrap readiness and recovery
+devtrack logs -f                # follow daemon activity
+devtrack queue                  # inspect local pending actions
+devtrack queue approve <id>     # explicitly dispatch a reviewed local action
+devtrack queue reject <id>      # discard a local pending action
+devtrack eod                    # generate and stage today's narrative
+devtrack work report            # immediate work-session report
+devtrack mcp test               # verify local MCP context
+devtrack stop                   # stop the daemon
 ```
 
-Expected log entries:
-```
-[INFO] Commit detected: Test commit for DevTrack
-[INFO] AI enhancement: Generated improved description
-[INFO] Task update queued
-```
-
-### Option B: Force a Timer Trigger
-
-```bash
-devtrack force-trigger
-# Interactive prompt: "What are you working on?"
-# Type: "Working on PR #42 - fixing auth bug (2 hours)"
-```
-
----
-
-## Common Commands
-
-```bash
-# Daemon management
-devtrack start          # Start monitoring
-devtrack stop           # Stop daemon
-devtrack status         # Show daemon status
-devtrack logs           # View logs
-devtrack health         # Health check
-
-# Scheduler control
-devtrack pause          # Pause scheduled triggers
-devtrack resume         # Resume scheduler
-devtrack force-trigger  # Trigger immediately
-
-# Git features
-devtrack git commit     # AI-enhanced commit
-git-sage do "squash my last 3 commits"  # git-sage agentic mode
-git-sage ask "how do I rebase onto main?"
-
-# AI / boardroom
-devtrack boardroom "should we rewrite the auth module?"
-devtrack plan "add OAuth2 support"
-
-# Information
-devtrack version        # Show version
-devtrack help           # Show all commands
-```
-
----
-
-## What's Running in the Background
-
-After `devtrack start`:
-
-```
-├─ Go daemon (PID: 12345)
-│  ├─ Git file monitor (fsnotify — watches for commits)
-│  ├─ Cron scheduler (periodic triggers)
-│  ├─ IPC server (127.0.0.1:35893)
-│  └─ SQLite database (trigger history)
-│
-└─ Python webhook server (subprocess, :8089) — only if DEVTRACK_SERVER_URL set
-   ├─ FastAPI HTTP server (receives HTTPS POST from Go daemon)
-   ├─ LLM task enrichment (strict JSON; raw-text fallback)
-   ├─ LLM client (Ollama / OpenAI / Anthropic)
-   ├─ PM integrations (Azure, GitHub, Teams, Jira)
-   └─ Admin UI (if ADMIN_EMBED=true)
-```
-
-All communication is local. No data leaves your machine unless you configure external integrations.
-
----
-
-## Verify Everything Works
-
-```bash
-# 1. Daemon is running
-devtrack status
-
-# 2. Health check
-devtrack health
-
-# 3. Ollama running (if using AI)
-curl http://localhost:11434/api/tags
-```
-
----
-
-## Stopping DevTrack
-
-```bash
-devtrack stop
-
-# Verify stopped
-devtrack status  # Should show: "DevTrack daemon is not running"
-```
-
----
-
-## Next Steps
-
-- [Getting Started](GETTING_STARTED.md) — concepts and architecture
-- [Configuration Reference](CONFIGURATION.md) — all env variables
-- [LLM Guide](LLM_GUIDE.md) — configure AI providers
-- [Git Features](GIT_FEATURES.md) — enhanced commits, git-sage
-- [Troubleshooting](TROUBLESHOOTING.md) — common problems
-- [Full Documentation](INDEX.md) — complete reference
+Next: [Setup Wizard](../wiki.html#SETUP_WIZARD) · [Configuration](CONFIGURATION.md) ·
+[Troubleshooting](TROUBLESHOOTING.md)
