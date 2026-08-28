@@ -1,8 +1,21 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-08-18 by docu-agent (PostgreSQL epic complete; Phase 9 started)_
+_Last updated: 2026-08-28 by docu-agent (upstream reconciled through TASK-120/PR #256)_
 
 ---
+
+## 2026-08-28 — TASK-118–120: Phase 9 first-run path
+**Phase**: Phase 9 (Adoption Gate)
+**Status**: DONE on `dev` (PRs #254, #255, #256; upstream `a1dd036`); UNRELEASED after v3.0.10
+**Files**: Go managed-bootstrap, capability status/doctor, onboarding and voice-seed workers, LLM
+setup detection/selection, tests, README, wiki, architecture, installation, and Phase 9 roadmap
+**Vision check**: PASS
+**Engineer notes**: TASK-118 made Python/LLM bootstrap detached, durable, retriable, and visible while
+Go-native monitoring/MCP remain available. TASK-119 added one-time local Git voice seeding and
+guided EOD/MCP next steps. TASK-120 detects usable installed Ollama generation models, skips
+redundant pulls, and may offer already-present OpenAI/Anthropic credentials only as an explicit
+temporary fast lane; Ollama remains primary. GitHub reported all three `dev` workflows green at
+`a1dd036` on 2026-08-17. This is delivery evidence, not a claim of an external-user install.
 
 ## 2026-08-18 — TASK-141 + TASK-114–116: PostgreSQL backend completion
 **Phase**: Commercial server persistence prerequisite

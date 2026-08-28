@@ -1,7 +1,7 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-08-18 by PM — TASK-142 is merged to `dev` in PR #253; TASK-118 is active on
-`features/TASK-118-background-bootstrap` as the next Phase 9 adoption task._
+_Last updated: 2026-08-28 by PM — upstream reconciled through TASK-120/PR #256; Phase 9
+documentation and launch-preparation tasks are now active in isolated worktrees._
 
 **[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
 (PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at
@@ -513,13 +513,13 @@ PostgreSQL file passed 4/4; the full Python 3.12 suite passed 900 with 4 skips. 
 `dev` authorized by the user.
 **Blockers**: none
 
-**ACTIVE — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. TASK-117 and the
-prerequisite TASK-142 are complete; TASK-118 is in progress. This phase is
+**ACTIVE — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. TASK-117–123 and the
+prerequisite TASK-142 are complete; TASK-124 is the remaining work. This phase is
 packaging and narrative, not a new capability. **This board is the authoritative ID ledger** —
 `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-143_
-_Active branch: `features/TASK-118-background-bootstrap`_
+_Next DevTrack task ID: TASK-145_
+_Active implementation branches: none; TASK-124 remains planned._
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -6115,44 +6115,155 @@ adds migrations/import; TASK-116 provisions and validates mandatory `POSTGRES_UR
 Merged to `dev` in PR #253 (`47a2d59`); the obsolete parser/spaCy surface is removed and provider
 failures now degrade to raw commit data without changing authoritative ticket routing.
 
-## IN PROGRESS — TASK-118: Non-blocking managed server bootstrap and capability status
+## SHIPPED — TASK-118–120: Phase 9 first-run path
 
-**Priority: HIGH. Phase 9 adoption gate.** A first run must make the Go-native product useful before
-the optional Python/LLM layer has finished installing. Managed setup currently waits for sparse
-checkout and `uv sync`, hiding the already-available Git monitoring, SQLite, MCP, and scheduling
-capabilities behind Python setup latency.
+- **TASK-118 / PR #254 / `1edf303`** — managed server bootstrap is non-blocking and exposes durable
+  progress plus capability status.
+- **TASK-119 / PR #255 / `3dc4162`** — first run seeds the local voice profile and guides the user to
+  the EOD and MCP value moments.
+- **TASK-120 / PR #256 / `a1dd036`** — setup detects usable Ollama models, avoids redundant pulls,
+  and offers already-present cloud credentials as an explicit temporary fast lane while preserving
+  Ollama as the default.
 
-**Branch:** `features/TASK-118-background-bootstrap`
+Upstream verification on 2026-08-28: all three `dev` workflows passed at `a1dd036`; no open PRs or
+issues remained. No new release has been cut since v3.0.10.
 
-**Scope:**
-- Let managed setup choose its deterministic server path and finish configuration without waiting
-  for repository checkout, `uv sync`, or the configured local Ollama model pull.
-- Run those steps in a detached, idempotent bootstrap process with durable, atomic progress state and
-  a local log. Avoid duplicate workers and keep failed installs explicitly retriable.
-- Add `devtrack doctor` and extend `devtrack status` with the same honest capability/degradation map:
-  Go-native monitoring and local features remain available while server-backed AI is installing or
-  unavailable; show the active step, last error, log path, and recovery command.
-- Pull a model only for the local Ollama provider. Never select or contact a cloud provider, change
-  credentials, start the daemon, or perform an outbound PM/Git/email action during bootstrap.
-- Preserve external-server and existing developer-checkout behavior; make cross-platform detached
-  execution and status-file handling testable without invoking real installers.
+## COMPLETE — TASK-143: Reconcile Phase 9 status and evidence
+
+**Assigned to:** documentation engineer
+
+**Branch:** `docs/TASK-143-status-reconciliation`
+
+**Depends on:** TASK-118–120
+**Vision check:** PASS — documentation-only reconciliation.
+
+**Spec:** Align the board, feature tracker, engineer evidence, durable memory, and Phase 9 roadmap
+with upstream `dev` at `a1dd036`, without modifying application source or claiming a new release.
 
 **Acceptance criteria:**
-1. Fresh managed setup returns without waiting for Git, `uv`, or Ollama and leaves Go-native daily
-   functionality usable immediately.
-2. Bootstrap state survives CLI exit, exposes each step and failure, is written atomically, and
-   prevents concurrent duplicate installs.
-3. `status` and `doctor` report capability readiness/degradation without treating an optional server
-   failure as a daemon or Git-workflow failure.
-4. Re-running bootstrap is safe after partial success or failure, and the CLI presents a concrete
-   retry command plus log location.
-5. External mode and an already-present managed server do not receive an unnecessary clone; local
-   Ollama remains the default and cloud use remains opt-in.
-6. Focused tests, `go test ./...`, `go vet ./...`, and proportionate cross-platform compilation pass.
+- [x] TASK-118–120 are consistently marked merged with PR and commit evidence.
+- [x] TASK-121–124 have dispatchable scope and acceptance criteria.
+- [x] TASK-144 was the next unused ID at reconciliation time; after its approved allocation, the
+      current next-unused ID is consistently TASK-145.
+- [x] v3.0.10 remains identified as the latest public release while newer work is described as
+      unreleased on `dev`.
+- [x] Launch-copy evidence contains no invented usage, savings, or external-user claims.
 
-**Vision check:** PASS — this exposes the daemon-first, offline-capable product immediately while
-keeping optional AI dependencies observable, non-blocking, local by default, and outside the Git
-critical path.
+**Engineer status:** COMPLETE — reconciliation verified and authorized for integration into `dev`
+on 2026-08-28.
+
+## COMPLETE — TASK-121: Demo path and ten-minute quickstart
+
+**Assigned to:** documentation engineer
+
+**Branch:** `docs/TASK-121-demo-quickstart`
+
+**Depends on:** TASK-120
+**Vision check:** PASS — leads with the silent standup outcome, keeps the CLI terminal-only, and
+shows local-first degradation honestly.
+
+**Spec:** Produce a reproducible demonstration path covering commit detection, a staged action, an
+on-demand EOD preview, and MCP context. Polish the README quickstart so a fresh user can reach the
+Go-native value moment before Python/Ollama bootstrap completes. Reuse existing assets where useful;
+do not fabricate runtime output.
+
+**Acceptance criteria:**
+- [x] A checked-in script/storyboard makes the demo reproducible without credentials or real PM sends.
+- [x] Quickstart commands match the current CLI and distinguish immediate Go-native capabilities
+      from background server/LLM readiness.
+- [x] Demo output shows pending-action staging and explicit confidence; nothing bypasses the queue.
+- [x] Documentation/link checks and any script-level checks pass.
+
+**Engineer status:** COMPLETE — commit `4541cf7`; live five-scene demo, shell syntax, and wiki checks
+passed on 2026-08-28.
+
+## COMPLETE — TASK-122: Wiki homepage and repository metadata package
+
+**Assigned to:** documentation engineer
+
+**Branch:** `docs/TASK-122-wiki-homepage`
+
+**Depends on:** TASK-121 narrative
+**Vision check:** PASS — preserves hook → differentiator → trust ordering.
+
+**Spec:** Bring the wiki homepage and its Phase 9/What's New content in line with the current
+first-run flow. Prepare exact repository-description/topic recommendations, but do not mutate GitHub
+metadata or publish the site without explicit authorization.
+
+**Acceptance criteria:**
+- [x] Homepage leads with the standup outcome, then MCP memory, then the pending-queue/local trust case.
+- [x] Setup text reflects non-blocking bootstrap, `doctor`, voice seeding, and the LLM fast lane.
+- [x] Inline JavaScript and internal-link validation pass.
+- [x] Repository description/topics are supplied as a reviewable local artifact.
+
+**Engineer status:** COMPLETE — commit `efd3445`; inline-script/link validation passed. External
+metadata remains a reviewable draft and was not applied.
+
+## COMPLETE — TASK-123: Registry submission package
+
+**Assigned to:** research/documentation engineer
+
+**Branch:** `docs/TASK-123-registry-launch`
+
+**Depends on:** TASK-121–122 messaging
+**Vision check:** PASS — registry copy positions DevTrack as ambient local memory, not a coding agent.
+
+**Spec:** Verify current submission requirements for relevant MCP and Claude-compatible registries,
+record authoritative links, and prepare submission-ready descriptions/manifests where the repository
+supports them. Do not submit, publish, create accounts, or modify third-party systems.
+
+**Acceptance criteria:**
+- [x] Registry matrix records eligibility, required fields, authoritative submission URL, and blockers.
+- [x] Draft copy is factual and consistent with current MCP transport/tools.
+- [x] No unsupported compatibility, adoption, or security claims are made.
+- [x] Any repository-local validation required by a target format passes.
+
+**Engineer status:** COMPLETE — commit `50b5bca`; package is documentation-only and no registry,
+account, form, or third-party system was modified.
+
+## COMPLETE — TASK-144: Demo runtime reliability
+
+**Assigned to:** engineer
+
+**Branch:** `fix/TASK-144-demo-runtime-reliability`
+
+**Depends on:** TASK-120 and the TASK-121 live-demo environment
+**Vision check:** PASS — restores the local-model commit path and CLI visibility into the staged
+pending-action trust boundary without adding a cloud dependency or interface.
+
+**Spec:** Fix the runtime defects reproduced by the TASK-121 credential-free live demo: bare
+`devtrack queue` panics while parsing arguments, concurrent queue reads can fail with `SQLITE_BUSY`,
+and commit triggers use a hardcoded 30-second HTTP timeout that expires before a healthy local model
+finishes staging. Centralize timeout configuration, preserve offline-first SQLite ownership, and
+make the demo wait for real staging evidence without fabricating output.
+
+**Acceptance criteria:**
+- [x] Bare `devtrack queue`, explicit `queue list`, and queue status/list reads are panic-free and
+      tolerate normal daemon concurrency, with focused regression tests.
+- [x] Commit-trigger HTTP timeouts come from centralized configuration and allow the configured
+      long local-model request window; unrelated health/short operations keep bounded timeouts.
+- [x] The TASK-121 demo uses a configurable staging wait and completes against the local PostgreSQL,
+      Ollama, and daemon setup while displaying a real staged action and explicit confidence.
+- [x] Focused tests, `go test ./...`, `go vet ./...`, shell syntax, and documentation checks pass.
+
+**Engineer status:** COMPLETE — commit `957ecd6`; verified on 2026-08-28 against the local
+PostgreSQL, Ollama, and daemon environment. Full Go tests, vet, and Windows cross-build passed.
+
+## PLANNED — TASK-124: Evidence-backed launch drafts
+
+**Priority:** HIGH
+
+**Depends on:** TASK-121–123 and TASK-143 evidence reconciliation
+**Vision check:** PASS — lived engineering evidence, no generic product marketing.
+
+**Spec:** Use the post-generator workflow to create dev.to, Show HN, and LinkedIn drafts grounded in
+recent engineer-log evidence. Do not publish externally.
+
+**Acceptance criteria:**
+- [ ] Engineer log contains a current seven-day evidence window before generation begins.
+- [ ] Three audience-specific drafts follow the post-generator formats and anti-marketing voice.
+- [ ] Every number and shipped-feature claim traces to repository or CI evidence.
+- [ ] Drafts clearly distinguish v3.0.10 release state from unreleased `dev` work.
 
 ---
 
