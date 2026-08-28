@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
@@ -49,7 +50,7 @@ func NewHTTPTriggerClient() *HTTPTriggerClient {
 		serverURL: config.GetServerURL(),
 		apiKey:    config.GetCloudAPIKey(),
 		httpClient: &http.Client{
-			Timeout:   30 * time.Second,
+			Timeout:   time.Duration(config.GetHTTPTimeout()) * time.Second,
 			Transport: transport,
 		},
 	}
@@ -76,7 +77,38 @@ func (c *HTTPTriggerClient) Ping() bool {
 
 // SendCommitTrigger POSTs a commit trigger payload to POST /trigger/commit.
 func (c *HTTPTriggerClient) SendCommitTrigger(data CommitTriggerData) error {
-	return c.post("/trigger/commit", data)
+	longClient := *c
+	longClient.httpClient = &http.Client{
+		Timeout:   time.Duration(config.GetHTTPTimeoutLong()) * time.Second,
+		Transport: c.httpClient.Transport,
+	}
+	var response struct {
+		Actions []string `json:"actions"`
+	}
+	if err := longClient.postWithResult("/trigger/commit", data, &response); err != nil {
+		return err
+	}
+	logCommitStaging(response.Actions, data.TicketConfidence)
+	return nil
+}
+
+func logCommitStaging(actions []string, ticketConfidence float64) {
+	if ticketConfidence <= 0 {
+		ticketConfidence = 0.85
+	}
+	if ticketConfidence > 1 {
+		ticketConfidence = 1
+	}
+	for _, action := range actions {
+		parts := strings.Split(action, ":")
+		// The current response contract only exposes type and ID. A queued
+		// post_comment uses the trigger's ticket confidence verbatim, so it is
+		// the only action whose confidence can be reported here without guessing.
+		if len(parts) != 3 || parts[0] != "queued" || parts[1] != "post_comment" {
+			continue
+		}
+		log.Printf("%s staged (action_id=%s, confidence=%.2f)", parts[1], parts[2], ticketConfidence)
+	}
 }
 
 // SendTimerTrigger POSTs a timer trigger payload to POST /trigger/timer.

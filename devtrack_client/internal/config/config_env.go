@@ -902,6 +902,37 @@ func GetHTTPTimeoutShort() int {
 	return secs
 }
 
+// GetHTTPTimeout returns the standard HTTP client timeout in seconds.
+// Reads HTTP_TIMEOUT; default 30.
+func GetHTTPTimeout() int {
+	return positiveIntEnv("HTTP_TIMEOUT", 30)
+}
+
+// GetHTTPTimeoutLong returns the timeout in seconds for LLM-backed HTTP calls.
+// Reads HTTP_TIMEOUT_LONG; default 60.
+func GetHTTPTimeoutLong() int {
+	return positiveIntEnv("HTTP_TIMEOUT_LONG", 60)
+}
+
+// GetSQLiteBusyTimeoutMS returns how long SQLite waits for a concurrent writer
+// before returning SQLITE_BUSY. Reads SQLITE_BUSY_TIMEOUT_MS; default 5000.
+func GetSQLiteBusyTimeoutMS() int {
+	return positiveIntEnv("SQLITE_BUSY_TIMEOUT_MS", 5000)
+}
+
+func positiveIntEnv(name string, fallback int) int {
+	val := strings.TrimSpace(os.Getenv(name))
+	if val == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(val)
+	if err != nil || parsed <= 0 {
+		fmt.Fprintf(os.Stderr, "WARNING: invalid %s %q — using default %d\n", name, val, fallback)
+		return fallback
+	}
+	return parsed
+}
+
 // --- Alert poller config ---
 
 // IsAlertEnabled returns true when ALERT_ENABLED=true/1.

@@ -574,6 +574,7 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("HTTP_TIMEOUT_SHORT_SECS=10\n") // Go client reads this name
 	b.WriteString("HTTP_TIMEOUT=30\n")
 	b.WriteString("HTTP_TIMEOUT_LONG=60\n")
+	b.WriteString("SQLITE_BUSY_TIMEOUT_MS=5000\n")
 	b.WriteString("LLM_REQUEST_TIMEOUT_SECS=120\n")
 	b.WriteString("PROMPT_TIMEOUT_SIMPLE_SECS=30\n")
 	b.WriteString("PROMPT_TIMEOUT_WORK_SECS=60\n")
