@@ -38,7 +38,7 @@ lowercase and hyphenated for GitHub compatibility.
 
 ## Review boundary
 
-- Latest public release remains `v3.0.10`; TASK-118–120 are unreleased work on `dev`.
+- Latest public release remains `v3.0.10`; TASK-118–123 and TASK-144 are unreleased work on `dev`.
 - `mcp` and `model-context-protocol` are repository-code topics, not a claim that the
   `v3.0.10` release binary contains `devtrack mcp`; defer MCP description copy until a
   release containing that command is published.

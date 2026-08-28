@@ -13,7 +13,9 @@ DevTrack collects samples of how you write from:
 
 It builds a local profile — formality level, average length, common phrases, sign-offs, emoji usage — and injects this style into every AI prompt.
 
-All data stays on your machine. Nothing is sent to external services.
+Learning data stays local by default. If you explicitly configure a cloud LLM, remote server, Teams,
+Outlook, or another external source, the data required for that selected integration leaves the
+machine under its configured consent and provider policy.
 
 ---
 
@@ -87,7 +89,9 @@ Shows consent status, sample count, and last sync time.
 | `LEARNING_CRON_SCHEDULE` | Cron expression for daily sync (e.g. `0 20 * * *` for 8pm daily) |
 | `MONGODB_URI` | Optional. Only used to pull Microsoft Teams messages as an extra voice source (needs `TEAMS_ENABLED` and `motor`). It is never required, and it does not replace local storage. |
 
-Samples and profiles always live locally under `DATA_DIR/learning/`. DevTrack needs no database server — git history alone is enough to learn your voice.
+Samples and profiles live locally under `DATA_DIR/learning/`. Git history alone is enough to seed
+voice evidence, but profile generation is a Python-server capability and therefore uses the required
+server PostgreSQL deployment. The Go client remains SQLite-only.
 
 ### RAG Enhancement (Optional)
 

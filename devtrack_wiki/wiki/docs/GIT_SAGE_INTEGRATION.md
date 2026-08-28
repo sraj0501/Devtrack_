@@ -1,6 +1,6 @@
 # Using git-sage
 
-git-sage is an AI-powered git agent bundled with the `devtrack` binary. It understands your repository context and can execute git operations autonomously, resolve conflicts, and answer git questions in plain English.
+git-sage is the Go-native AI git agent bundled with the `devtrack` binary. It understands repository context, can execute approved git operations, resolve suitable conflicts, and answer git questions in plain English. Its public entry point is `devtrack sage`.
 
 git-sage is client-owned — it runs on your machine alongside the `devtrack` binary, using your local Ollama instance (or any configured LLM). No server required.
 
@@ -13,9 +13,9 @@ git-sage is client-owned — it runs on your machine alongside the `devtrack` bi
 Get explanations and command suggestions without executing anything:
 
 ```bash
-git-sage ask "how do I undo my last commit but keep the changes"
-git-sage ask "what's the difference between rebase and merge"
-git-sage ask "how do I squash my last 5 commits"
+devtrack sage ask "how do I undo my last commit but keep the changes"
+devtrack sage ask "what's the difference between rebase and merge"
+devtrack sage ask "how do I squash my last 5 commits"
 ```
 
 ### Do Mode (Agentic)
@@ -23,10 +23,10 @@ git-sage ask "how do I squash my last 5 commits"
 Execute git operations autonomously. git-sage plans the steps, runs them, reads the output, and handles failures:
 
 ```bash
-git-sage do "squash my last 5 commits into one with a clean message"
-git-sage do "merge feature-auth into main and resolve any conflicts"
-git-sage do "my last push broke things, revert to the previous state"
-git-sage do "clean up my branch — rebase onto main, fix conflicts"
+devtrack sage do "squash my last 5 commits into one with a clean message"
+devtrack sage do "merge feature-auth into main and resolve any conflicts"
+devtrack sage do "my last push broke things, revert to the previous state"
+devtrack sage do "clean up my branch — rebase onto main, fix conflicts"
 ```
 
 Before the first command executes, you'll see an approval dialog with three options:
@@ -37,7 +37,7 @@ Before the first command executes, you'll see an approval dialog with three opti
 ### Interactive Shell
 
 ```bash
-git-sage
+devtrack sage
 sage> do merge feature-x into main
 sage> ask what is cherry-pick
 sage> context
@@ -51,12 +51,7 @@ Use `undo [N]` to roll back the last N steps. Up to 5 follow-up questions or tas
 
 ## Configuration
 
-```bash
-git-sage --show-config      # show current config
-git-sage --config           # interactive config editor
-```
-
-Key environment variables:
+Key environment variables are read by the embedded agent:
 
 | Variable | Description |
 |---|---|
@@ -93,7 +88,7 @@ devtrack logs | grep -i conflict
 
 ### Work Update Context Enrichment
 
-When the scheduler fires and prompts you for a work update, DevTrack injects the current branch name, recent commits, and linked PR context into the LLM enrichment pipeline — so your update gains repository context without you having to type it.
+When the silent scheduler fires, DevTrack injects current branch, recent commit, and linked PR context into the enrichment pipeline without prompting in the main flow.
 
 ---
 
@@ -114,7 +109,7 @@ It never uses `git rebase -i` (interactive editor blocks the agent loop). Squash
 
 The LLM is returning prose instead of JSON. Check the model:
 ```bash
-git-sage ask "hello"   # test with a simple request
+devtrack sage ask "hello"   # test with a simple request
 ```
 Switch to a model with reliable JSON output: `llama3`, `mistral`, or `llama-3.3-70b-versatile` on Groq.
 
@@ -138,7 +133,7 @@ Some conflicts genuinely require human judgment — git-sage will tell you which
 
 ## Limitations
 
-- git-sage does not push to remotes unless you explicitly ask it to (`git-sage do "push this branch"`)
+- git-sage does not push to remotes unless you explicitly ask it to (`devtrack sage do "push this branch"`)
 - It will not force-push without being told explicitly
 - It will not delete branches on remotes without explicit instruction
-- Interactive rebase (`git rebase -i`) is not supported — use `git-sage do "squash my last N commits"` instead
+- Interactive rebase (`git rebase -i`) is not supported — use `devtrack sage do "squash my last N commits"` instead

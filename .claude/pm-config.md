@@ -18,7 +18,6 @@ paths:
   docs: docs/
   src: [devtrack_client/, devtrack_server/]
   memory_project: .claude/memory/
-  memory_user: "C:\\Users\\sraj\\.claude\\projects\\D--git-apps-Devtrack-\\memory\\"
 
 git:
   default_branch: main

@@ -278,7 +278,7 @@
   <div class="dl-hero">
     <div class="section-label">Download</div>
     <h1 class="dl-title">DevTrack <span class="grad-text">CLI</span></h1>
-    <p class="dl-sub">Single self-contained binary. Works standalone for git tracking, smart commits, and PM sync — add the optional Python server for AI work updates, reporting, and personalization.</p>
+    <p class="dl-sub">Single Go binary for local monitoring, queueing, MCP, scheduling, and connectors. Managed mode brings the PostgreSQL-backed Python intelligence layer online in the background.</p>
     <div id="version-badge">Latest: v3.0.10</div>
   </div>
 
@@ -375,13 +375,13 @@
   <!-- ── First run ── -->
   <div class="server-section">
     <div class="section-label">Getting started</div>
-    <h2>Two modes. <span class="grad-text">One binary.</span></h2>
+    <h2>Three modes. <span class="grad-text">One binary.</span></h2>
     <p class="intro">
-      The binary works standalone — no Docker, no Python server required.
-      Run <code style="font-family:var(--mono);color:var(--blue);">devtrack setup</code> and choose your mode:
-      <strong>Standalone</strong> for git tracking, smart commits, and PM sync;
-      or <strong>Full</strong> to additionally run the Python server locally for AI work updates,
-      reporting, and personalization.
+      The binary works immediately for Go-native capabilities without Python.
+      Run <code style="font-family:var(--mono);color:var(--blue);">devtrack setup</code> and choose
+      <strong>Managed</strong> for the local Python intelligence layer,
+      <strong>Lightweight</strong> for Go-only operation, or <strong>External</strong> for a separately
+      operated server. Managed Python requires PostgreSQL; the Go client remains SQLite-only.
     </p>
 
     <div class="steps">
@@ -393,7 +393,7 @@
           <p>Download the binary for your platform above, or use the one-liner. No other dependencies required for basic use.</p>
           <div class="req-grid">
             <span class="req-chip">macOS · Linux · Windows</span>
-            <span class="req-chip">Python server (optional, for AI features)</span>
+            <span class="req-chip">PostgreSQL (required for managed Python)</span>
             <span class="req-chip">Ollama (optional, for local AI)</span>
           </div>
         </div>
@@ -403,14 +403,14 @@
         <div class="step-num">2</div>
         <div class="step-body">
           <h3>Run the setup wizard</h3>
-          <p>The wizard detects your environment, selects a deployment mode, and writes a <code>.env</code> file. Standalone mode requires no extra services. Full mode optionally starts or connects to a Python AI server.</p>
+          <p>The wizard writes and registers the runtime environment immediately. Managed dependencies and the optional model continue bootstrapping in the background; follow progress with <code>devtrack doctor</code>.</p>
           <div class="code-block">
             <div class="code-topbar"><span>bash / PowerShell</span><button class="copy-btn" onclick="copyBlock('step-setup', this)">copy</button></div>
             <div class="code-body" id="step-setup">
               <div><span class="c-prompt">$</span> <span class="c-cmd">devtrack setup</span></div>
               <div>&nbsp;</div>
               <div><span class="c-comment"># choose mode, LLM provider, and PM integration</span></div>
-              <div><span class="c-comment"># no Docker, no database server — state lives in local SQLite</span></div>
+              <div><span class="c-comment"># Go state is local SQLite; managed Python uses PostgreSQL</span></div>
             </div>
           </div>
         </div>

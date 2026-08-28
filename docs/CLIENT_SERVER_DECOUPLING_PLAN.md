@@ -1,5 +1,9 @@
 # Plan: Decouple `devtrack_client` from the Python backend (client/server split)
 
+> **Completed historical execution plan.** Use `CAPABILITIES_OWNERSHIP.md` and
+> `ARCHITECTURE.md` for current behavior. Unchecked prose below describes the pre-decoupling state
+> that motivated the work and is retained only as implementation history.
+
 > Companion to [CAPABILITIES_OWNERSHIP.md](CAPABILITIES_OWNERSHIP.md), which is
 > the editable source of truth for what each side owns. This file is the
 > execution plan for closing the gaps that doc marks with ⚠.

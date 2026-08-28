@@ -6,8 +6,8 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-07-31 (client-server decoupling Phase 1 + Phase 2 both complete; `logs --follow`
-corrected per TASK-131)._
+_Last updated: 2026-08-28 (client-server decoupling complete; PostgreSQL is mandatory server-side;
+Phase 9 onboarding and reliability work integrated on `dev`)._
 
 ## Ownership model (intended)
 
@@ -51,7 +51,7 @@ corrected per TASK-131)._
 |---|---|---|---|---|
 | AI-enhanced commit (A/E/R/Q/C) | `git commit` | Go-native (gitsage → LLM) | Client | git-sage is client-owned; calls Ollama/OpenAI **directly** from the client. ⚠ If you want LLM calls routed via the server, change Owner→Server. |
 | Stage / history / passthrough | `git add`, `git history`, `git <any>` | Go-native | Client | |
-| git-sage agent | `sage`, `ask`, `do`, `interactive` | Go-native (bundled Python git_sage) | Client | git_sage is **client-owned** Python bundled with the client (not the server). |
+| git-sage agent | `sage ask/do/pr/interactive` | Go-native (`gitsage/`) | Client | No Python dependency; local Ollama or an explicitly configured compatible provider. |
 | Deferred (offline) commits | `commits pending/review/enhance`, `commit-queue` | Go-native | Client | Durable snapshot + 3-way apply |
 
 ## 3. Ticket management (PM connectors) — Owner: **Client**
@@ -109,7 +109,7 @@ corrected per TASK-131)._
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Alert polling (GitHub/Azure/Jira) | (daemon) | Go-native | Client | ✅ Phase 2 complete: `internal/alerts/` — poller + per-source alerters, reuses connectors + SQLite; Python `alert_poller.py` retired |
+| Alert polling (GitHub/Azure) | (daemon) | Go-native | Client | ✅ `internal/alerts/` reuses Go connectors + SQLite; Python `alert_poller.py` retired. Jira alert parity remains staged rollout work. |
 | Read / clear alerts | `alerts` | Go-native | Client | ✅ Reads from SQLite via `internal/db/` |
 
 ## 9. Notifications (delivery) — Owner: **Client**

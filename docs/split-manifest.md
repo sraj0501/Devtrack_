@@ -2,6 +2,11 @@
 
 _Generated: 2026-05-24 | TASK-041 | Branch: features/SPLIT-001-monorepo-restructure_
 
+> **Historical migration record.** Paths, remotes, module names, licences, and build artifacts below
+> describe the pre-split repository as it existed during TASK-041. They are not current setup or
+> architecture instructions. Current code lives in `devtrack_client/`, `devtrack_server/`, and
+> `devtrack_wiki/`; GitHub is the sole source of truth and the DevTrack Community License applies.
+
 This document catalogues every file and directory in the monorepo root and assigns each
 to one of five owners:
 
@@ -37,7 +42,7 @@ Excluded from this audit per spec: `.git/`, `devtrack_wiki/`, `Data/`, `.claude/
 | `docker-compose.yml` | SERVER | Server backing services: PostgreSQL is required for persistence and server-side events; MongoDB remains optional as a Teams voice-learning source. |
 | `Dockerfile` | SERVER | Builds Python backend image |
 | `Dockerfile.server` | SERVER | Alternate/named server Dockerfile |
-| `devtrack-server` | SERVER | `devtrack-server` CLI script (Python server management binary) |
+| `devtrack-server` | SERVER | Repository checkout helper script for Python server management; not a release binary |
 | `LICENSE` | BOTH | MIT licence; copy to both repos unchanged |
 | `TERMS.md` | BOTH | Terms of service; copy to both repos unchanged |
 | `Makefile` | BOTH | Top-level convenience targets; each repo should have its own minimal Makefile |

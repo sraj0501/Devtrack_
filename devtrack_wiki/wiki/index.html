@@ -142,7 +142,7 @@
         <div class="feat-icon" style="background:rgba(59,130,246,.12);">📋</div>
         <div class="feat-title">Your EOD writes itself</div>
         <div class="feat-desc">At 6pm the daemon groups the day's commits by ticket and drafts the end-of-day report — in your writing voice, learned from your own git history. Run <code style="font-family:var(--mono);font-size:.82rem;background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;">devtrack eod show</code> and it's already there. No notes, no recall, no prompt.</div>
-        <span class="feat-tag" style="color:#3b82f6;border-color:rgba(59,130,246,.3);">silent daemon · SQLite · zero config</span>
+        <span class="feat-tag" style="color:#3b82f6;border-color:rgba(59,130,246,.3);">silent daemon · SQLite · local-first</span>
       </div>
 
       <div class="feat-card reveal reveal-delay-1">
@@ -168,9 +168,9 @@
 
       <div class="feat-card reveal reveal-delay-1">
         <div class="feat-icon" style="background:rgba(20,184,166,.15);">🗂️</div>
-        <div class="feat-title">End-to-End PM Agent</div>
-        <div class="feat-desc">Describe a problem in plain English and DevTrack plans the entire workstream — decomposing it into Epics, Stories, and Tasks, then assigning each item to the right person based on current workload. Works across <strong style="color:var(--text)">Azure DevOps, GitLab, and GitHub</strong>. Trigger it from your desk or straight from your phone via Telegram.</div>
-        <span class="feat-tag" style="color:#14b8a6;border-color:rgba(20,184,166,.3);">plan · assign · create · sync · mobile</span>
+        <div class="feat-title">Plan and review from the CLI</div>
+        <div class="feat-desc">Use <code style="font-family:var(--mono);font-size:.82rem;background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;">devtrack plan</code> and <code style="font-family:var(--mono);font-size:.82rem;background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;">devtrack boardroom</code> to decompose and review work through the Python intelligence layer. Creation remains an explicit workflow.</div>
+        <span class="feat-tag" style="color:#14b8a6;border-color:rgba(20,184,166,.3);">plan · review · stage</span>
       </div>
 
       <div class="feat-card reveal">
@@ -191,7 +191,7 @@
       <div class="feat-card reveal reveal-delay-1">
         <div class="feat-icon" style="background:rgba(34,197,94,.12);">📱</div>
         <div class="feat-title">Remote via Telegram</div>
-        <div class="feat-desc">Full remote control from your phone. View work items, create tickets, trigger updates, read logs — all without opening your laptop.</div>
+        <div class="feat-desc">Check daemon status and logs, trigger or pause the scheduler, and approve, edit, or reject pending actions from your phone.</div>
         <span class="feat-tag" style="color:#22c55e;border-color:rgba(34,197,94,.3);">Telegram bot</span>
       </div>
 
@@ -206,7 +206,7 @@
       <div>
         <div class="section-label reveal">How it works</div>
         <h2 class="section-title reveal reveal-delay-1">From commit<br>to PM update<br><span class="grad-text2">in seconds.</span></h2>
-        <p class="section-sub reveal reveal-delay-2" style="margin-bottom:36px;">The entire pipeline runs locally with no cloud in the loop.</p>
+        <p class="section-sub reveal reveal-delay-2" style="margin-bottom:36px;">Observation and inference are local by default; configured PM delivery remains staged for review.</p>
 
         <div class="how-steps" id="howSteps">
           <div class="how-step active" data-step="0">
@@ -246,7 +246,7 @@
             <div class="term-dot term-dot-r"></div>
             <div class="term-dot term-dot-y"></div>
             <div class="term-dot term-dot-g"></div>
-            <span class="term-title">devtrack pipeline</span>
+            <span class="term-title">commit → staged action → EOD</span>
           </div>
           <div class="term-body" id="pipelineBody" style="min-height:280px;">
           </div>
@@ -278,7 +278,7 @@
       <div class="integration-card reveal reveal-delay-1">
         <div class="integration-logo">🦊</div>
         <div class="integration-name">GitLab</div>
-        <div class="integration-desc">Issues, milestones, assignment poller, webhooks</div>
+        <div class="integration-desc">Issues, milestones, comments, sync, webhooks</div>
       </div>
       <div class="integration-card reveal reveal-delay-2">
         <div class="integration-logo">🐙</div>
@@ -288,7 +288,7 @@
       <div class="integration-card reveal reveal-delay-3">
         <div class="integration-logo">📱</div>
         <div class="integration-name">Telegram</div>
-        <div class="integration-desc">Remote control, notifications, /plan command</div>
+        <div class="integration-desc">Daemon control, notifications, queue corrections</div>
       </div>
       <div class="integration-card reveal">
         <div class="integration-logo">🤖</div>
@@ -365,17 +365,16 @@
       <div class="demo-item reveal">
         <div class="demo-item-header">
           <span class="demo-item-icon">🗂️</span>
-          <span class="demo-item-title">PM Agent via Telegram</span>
+          <span class="demo-item-title">Queue review via Telegram</span>
         </div>
         <div class="demo-item-body">
-<span class="hl">You:</span> /plan Build a payment processing system<br><br>
-<span class="hl">Bot:</span> <span class="info">Platform? [Azure] [GitLab] [GitHub]</span><br>
-<span class="hl">You:</span> Azure<br><br>
-<span class="info">✦ Decomposing with LLM...</span><br>
-<span class="ok">✓ 1 Epic · 4 Stories · 12 Tasks</span><br><br>
-<span class="warn">Preview ready. Create all 17 items?</span><br>
-<span class="hl">You:</span> Yes<br>
-<span class="ok">✓ 17/17 items created in Azure DevOps</span>
+<span class="hl">Bot:</span> <span class="info">Pending action #42 · confidence 0.72</span><br>
+<span class="muted">Post update to PROJ-142?</span><br><br>
+<span class="warn">[Approve] [Reject] [Edit]</span><br>
+<span class="hl">You:</span> Edit<br><br>
+<span class="info">Send replacement content.</span><br>
+<span class="hl">You:</span> Auth redirect fixed; tests are green.<br>
+<span class="ok">✓ Action #42 updated locally</span>
         </div>
       </div>
 
@@ -559,10 +558,10 @@
   <div class="container">
     <div class="callout-box reveal">
       <h2>Ready to stop doing<br><span class="grad-text">admin work manually?</span></h2>
-      <p>Set up in 5 minutes. Runs locally. No accounts, no subscriptions, no privacy tradeoffs.</p>
+      <p>Reach the local MCP and queue value in minutes; complete the guided launch path in under ten. No account required.</p>
       <div class="callout-cta">
         <a class="btn-hero btn-hero-primary" href="wiki.html#QUICK_START">
-          Start in 5 minutes →
+          Start the quickstart →
         </a>
         <a class="btn-hero btn-hero-secondary" href="wiki.html#ARCHITECTURE">
           See the architecture

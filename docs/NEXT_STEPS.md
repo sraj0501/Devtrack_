@@ -175,7 +175,8 @@ from someone unknown means a real install survived setup.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to
-> opt-in so the "nothing leaves your machine" trust claim is actually true. What remains of 9c is
+> opt-in so no product telemetry leaves the machine unless the user enables it. Configured PM,
+> email, remote-server, and cloud-LLM integrations still receive the data required for their jobs. What remains of 9c is
 > the TASK-124 evidence-backed launch drafts.
 
 ---

@@ -1,50 +1,32 @@
-# DevTrack TUI Flows
+# TUI flows
 
-DevTrack has two interactive UIs that serve different purposes.
+The Go TUI is a visibility and correction surface. It does not host capabilities that disappear when
+the TUI is closed, and it never prompts from the daemon's normal commit or timer flow.
 
-## 1. Go TUI (Bubble Tea) – Standalone Menu
+## Client TUI
 
-**When**: Run `devtrack` with no arguments (no subcommand).
+```bash
+devtrack tui
+```
 
-**Purpose**: Interactive menu for ad-hoc tasks:
-- Parse daily update from text
-- Update MS Lists
-- Generate Email
-- Create Subtasks
-- Exit
+It shows overview, activity, pending actions, alerts, and workspaces. Queue actions can be approved,
+rejected, or edited. Equivalent correction commands remain available through the CLI and supported
+notification channels.
 
-**Flow**: User selects an option, enters text in a textarea, and the Go process invokes Python scripts (e.g. `backend/ai/create_tasks.py`) directly. No daemon required.
+## Ticket picker
 
-**File**: `devtrack_client/tui.go`
+The ticket picker belongs only to the explicitly invoked interactive `devtrack git commit` wrapper.
+It is not part of silent commit observation and does not gate the daemon.
 
----
+## Python server TUI
 
-## 2. Python TUI (user_prompt.py) – Daemon-Triggered Prompts
+Server operators can run:
 
-**When**: Daemon is running and a **timer trigger** or **commit trigger** fires. The Python bridge receives the trigger via IPC and prompts the user.
+```bash
+cd devtrack_server
+uv run python -m backend.server_tui
+```
 
-**Purpose**: Capture work updates in context:
-- Timer: "What have you been working on?" (scheduled or `devtrack force-trigger`)
-- Commit: Parse commit message, optionally prompt for confirmation
-
-**Flow**:
-1. Go daemon detects event (git commit or scheduler)
-2. Daemon sends IPC message to Python bridge
-3. Python bridge calls `DevTrackTUI.prompt_work_update()` or similar
-4. User input is enriched through the configured LLM and returned as a task update
-5. Go persists to SQLite
-
-**File**: `devtrack_server/backend/user_prompt.py`, used by `webhook_server.py`
-
-**Non-interactive**: When stdin is not a TTY (CI/automation), set `DEVTRACK_INPUT` env var to provide input without prompting.
-
----
-
-## Summary
-
-| Flow        | Trigger        | TUI Location | Daemon Required |
-| ----------- | -------------- | ------------ | ----------------- |
-| Standalone  | `devtrack`     | Go (tui.go)  | No               |
-| Timer/Commit| IPC from daemon| Python       | Yes              |
-
-Both flows support "interactive work updates" as described in the wiki. The Go TUI is for manual, one-off updates; the Python TUI is for automated, context-aware prompts when the daemon is running.
+This Textual process monitor is server-owned and is not exposed as `devtrack server-tui`. In
+PostgreSQL mode, its trigger stats come from the Go daemon's internal HTTP stats endpoint rather than
+from Go-owned SQLite tables.
