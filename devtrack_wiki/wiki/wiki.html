@@ -733,7 +733,8 @@ const CONTENT = {
 <h1>Setup Wizard</h1>
 <p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode, LLM provider, credentials, workspace, project-management platform, and shell integration, then writes a complete environment file under the DevTrack XDG data directory and registers it so every subsequent <code>devtrack</code> invocation auto-loads it. Managed mode also collects and validates the required PostgreSQL URL.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — first-run Ollama detection and optional cloud fast lane</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased dev preview — TASK-118–120 are not in v3.0.10</div>
+<blockquote><p>This page documents the setup wizard currently on the <code>dev</code> branch. The latest public release is <code>v3.0.10</code>; build <code>devtrack_client</code> from <code>dev</code> to evaluate the background bootstrap, <code>doctor</code>, first-run MCP guidance, voice seeding, and LLM fast lane described below.</p></blockquote>
 
 <h2>Running the Wizard</h2>
 <pre><code class="language-bash">devtrack setup</code></pre>
@@ -1695,10 +1696,11 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased — Phase 9 first-run value shipped; LLM fast lane in progress</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased on dev — TASK-118–120 complete · latest public release v3.0.10</div>
 
-<h2>PostgreSQL Backend + Phase 9 Baseline</h2>
-<p>The server persistence migration is complete on <code>dev</code>. PostgreSQL is required for the Python server, while the Go client remains local-SQLite and offline-first.</p>
+<h2>Phase 9 First-Run Path</h2>
+<p>The first-run path is complete on <code>dev</code>, but has not been published as a new release. The Go client becomes useful immediately while managed Python and local-model setup continue visibly in the background. PostgreSQL is required for Python-server persistence; the Go client remains local-SQLite and offline-first.</p>
+<blockquote><p><strong>Preview boundary:</strong> the <code>v3.0.10</code> release binary predates the MCP command and TASK-118–120. Build the client from <code>dev</code> to evaluate these entries; downloading the latest public release will not provide them.</p></blockquote>
 <div class="feature-list" style="margin-bottom:32px;">
   <div class="feature-item"><div class="feature-dot">1</div><div><h4>One explicit storage boundary (TASK-114–116, TASK-141)</h4><p>Opted-in client events sync over HTTP with idempotent replay and developer attribution. Alembic versions the server schema, existing history has a one-shot importer, and server startup validates PostgreSQL before accepting traffic.</p></div></div>
   <div class="feature-item"><div class="feature-dot">2</div><div><h4>Visible managed-install defaults (TASK-117)</h4><p><code>devtrack setup</code> writes editable runtime defaults to its registered XDG environment file, preserves valid external overrides, rejects invalid values, and includes the required PostgreSQL connection surface.</p></div></div>
@@ -3255,7 +3257,7 @@ workspaces:
 <tr><td>SQLite history &amp; task log</td><td>Fully offline — local <code>Data/db/devtrack.db</code></td></tr>
 <tr><td>Local Ollama LLM</td><td>Fully offline — runs on localhost</td></tr>
 <tr><td>Structured task parsing</td><td>Uses local Ollama by default; provider failure degrades without blocking Git activity</td></tr>
-<tr><td>Daily report (terminal/HTML)</td><td>Fully offline — reads from SQLite</td></tr>
+<tr><td>Daily report (terminal/HTML)</td><td>Offline-capable with the local Python service, PostgreSQL, and Ollama; outbound delivery remains staged</td></tr>
 <tr><td><code>devtrack status</code> / <code>logs</code></td><td>Fully offline</td></tr>
 </tbody>
 </table></div>
@@ -3265,9 +3267,9 @@ workspaces:
 <thead><tr><th>Feature</th><th>When unreachable</th></tr></thead>
 <tbody>
 <tr><td>OpenAI / Anthropic / Groq LLM</td><td>Provider factory falls back through the chain; falls back to Ollama or skips AI enhancement</td></tr>
-<tr><td>Azure DevOps sync</td><td>Task update skipped; logged as a warning — no crash, no data loss</td></tr>
-<tr><td>GitHub sync</td><td>Same — skipped with warning</td></tr>
-<tr><td>Jira sync</td><td>Same — skipped with warning</td></tr>
+<tr><td>Azure DevOps sync</td><td>The pending action remains visible and retryable; Git activity continues normally</td></tr>
+<tr><td>GitHub / GitLab sync</td><td>The pending action remains visible and retryable; connector failure does not block Git</td></tr>
+<tr><td>Jira integration</td><td>Read and alert paths degrade gracefully; unsupported write routing never gains a direct-send fallback</td></tr>
 <tr><td>Teams / Graph API</td><td>Skipped; personalization falls back to profile-only (no RAG examples)</td></tr>
 <tr><td>Ticket alerter poller</td><td>Poll cycle fails silently; retries on next interval</td></tr>
 <tr><td>Telemetry ping</td><td>Silently discarded after HTTP timeout</td></tr>
@@ -3275,11 +3277,12 @@ workspaces:
 </table></div>
 
 <h2>Queue &amp; Retry Behaviour</h2>
-<p>DevTrack does <strong>not</strong> queue failed PM updates for later retry — the design principle is that a missed update is less harmful than a complex retry queue that could cause duplicate or out-of-order writes. Instead:</p>
+<p>Every outbound PM, email, or Git action passes through <code>pending_actions</code> before execution. Connectivity loss never creates a direct-send fallback:</p>
 <ul>
-<li>Each trigger attempt is logged in SQLite with its outcome (<code>success</code> / <code>failed</code> / <code>skipped</code>)</li>
-<li>You can re-trigger manually at any time with <code>devtrack force-trigger</code></li>
-<li>The next scheduled timer trigger will resume normal operation automatically once connectivity is restored</li>
+<li>Client-owned actions and the offline outbox remain in local SQLite with status, confidence, retry count, and error detail.</li>
+<li>Server-owned generated actions remain in PostgreSQL and are executed only after their review or auto-approval window.</li>
+<li>Idempotent client-event sync replays opted-in local history after the server becomes reachable.</li>
+<li>Failed execution is logged and retried within the configured queue limits; the developer's Git command is never held open.</li>
 </ul>
 
 <h2>HTTP Timeouts</h2>
@@ -3289,18 +3292,20 @@ HTTP_TIMEOUT=30           # seconds — standard API calls
 HTTP_TIMEOUT_LONG=120     # seconds — LLM requests, report uploads
 LLM_REQUEST_TIMEOUT_SECS=60</code></pre>
 
-<h2>IPC Resilience</h2>
-<p>The TCP IPC channel (<code>127.0.0.1:35893</code>) between Go and Python is local and does not use the network stack for packet routing. If the Python webhook server crashes, the Go daemon detects it via the subprocess exit code and logs a warning. Triggers that arrive while the Python server is restarting are discarded (not queued). The daemon itself stays running.</p>
-<pre><code class="language-bash">IPC_CONNECT_TIMEOUT_SECS=5   # how long Go waits to connect to Python IPC
-IPC_RETRY_DELAY_MS=2000      # delay between IPC reconnect attempts</code></pre>
+<h2>Client–Server Resilience</h2>
+<p>New client/server messages use authenticated HTTP/JSON. If the managed Python service is unavailable, the Go daemon records local activity and remains usable; <code>devtrack status</code> and <code>devtrack doctor</code> expose the degraded capability and recovery path. Opted-in client-event sync replays its local backlog idempotently after recovery. The legacy TCP IPC listener is retained only for older internal message paths and must not be used for new capabilities.</p>
+<pre><code class="language-bash">HTTP_TIMEOUT_SHORT=5      # health and quick status calls
+HTTP_TIMEOUT=30           # normal client/server requests
+QUEUE_MAX_RETRIES=10      # bounded outbound execution retries
+QUEUE_DRAIN_INTERVAL_SECS=10</code></pre>
 
 <h2>Air-Gapped Deployments</h2>
 <p>DevTrack can run in a fully air-gapped environment with zero inbound or outbound network access:</p>
 <ol>
 <li>Set <code>LLM_PROVIDER=ollama</code> and run Ollama locally (<code>OLLAMA_HOST=http://localhost:11434</code>)</li>
 <li>Leave all PM credentials empty (<code>AZURE_DEVOPS_TOKEN</code>, <code>GITHUB_TOKEN</code>, etc.) — integrations are skipped when credentials are absent</li>
-<li>Set <code>TELEMETRY_ENABLED=false</code> to suppress the anonymous telemetry ping</li>
-<li>Leave <code>MONGODB_URI</code> unset — personalization falls back to file-based profiles in <code>Data/learning/</code></li>
+<li>Leave telemetry disabled (the default). It sends nothing unless you explicitly run <code>devtrack telemetry on</code>.</li>
+<li>Leave optional Teams/MongoDB voice sources unconfigured; local Git history, SQLite, and the local learning directory remain the default.</li>
 </ol>
 
 <p>For configuration details, see the <a href="#CONFIGURATION" onclick="navigate('CONFIGURATION');return false;">Configuration Reference</a>. For troubleshooting connectivity, see the <a href="#TROUBLESHOOTING" onclick="navigate('TROUBLESHOOTING');return false;">Troubleshooting Guide</a>.</p>
@@ -3423,7 +3428,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   IMPLEMENTATION_PLAN: `<div class="md-body">
 <h1>Implementation Plan</h1>
 <p>The implementation plan tracks planned features and their status. This detail is consolidated in the <strong>Phases &amp; Roadmap</strong> page.</p>
-<p><a href="#PHASES" onclick="navigate('PHASES');return false;">→ Go to Phases &amp; Roadmap</a></p>
+<p><a href="#VISION" onclick="navigate('VISION');return false;">→ Go to Phases &amp; Roadmap</a></p>
 </div>`,
 
   GIT_SAGE_INTEGRATION_PHASE_1_2: `<div class="md-body">
@@ -3435,13 +3440,13 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   PHASE_3_IMPLEMENTATION: `<div class="md-body">
 <h1>Phase 3 Implementation</h1>
 <p>Phase 3 (event-driven integration: automatic conflict detection, git-context enrichment in work updates) is complete. Details are in the <strong>Phases &amp; Roadmap</strong> page and the <strong>Git Features</strong> guide.</p>
-<p><a href="#PHASES" onclick="navigate('PHASES');return false;">→ Go to Phases &amp; Roadmap</a> &nbsp;|&nbsp; <a href="#GIT_FEATURES" onclick="navigate('GIT_FEATURES');return false;">→ Go to Git Features</a></p>
+<p><a href="#VISION" onclick="navigate('VISION');return false;">→ Go to Phases &amp; Roadmap</a> &nbsp;|&nbsp; <a href="#GIT_FEATURES" onclick="navigate('GIT_FEATURES');return false;">→ Go to Git Features</a></p>
 </div>`,
 
   PHASE_3_VERIFICATION: `<div class="md-body">
 <h1>Phase 3 Verification</h1>
 <p>Phase 3 verification content has been consolidated into the <strong>Phases &amp; Roadmap</strong> and <strong>Troubleshooting</strong> pages.</p>
-<p><a href="#PHASES" onclick="navigate('PHASES');return false;">→ Go to Phases &amp; Roadmap</a> &nbsp;|&nbsp; <a href="#TROUBLESHOOTING" onclick="navigate('TROUBLESHOOTING');return false;">→ Go to Troubleshooting</a></p>
+<p><a href="#VISION" onclick="navigate('VISION');return false;">→ Go to Phases &amp; Roadmap</a> &nbsp;|&nbsp; <a href="#TROUBLESHOOTING" onclick="navigate('TROUBLESHOOTING');return false;">→ Go to Troubleshooting</a></p>
 </div>`,
 
   PHASE_3_QUICK_START: `<div class="md-body">
@@ -3453,13 +3458,28 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   COMPLETION_SUMMARY: `<div class="md-body">
 <h1>Completion Summary</h1>
 <p>The Phase 1–3 completion summary is part of the <strong>Phases &amp; Roadmap</strong> page, which includes status for all completed phases through CS-3, Boardroom/Plan, and tiered dependencies.</p>
-<p><a href="#PHASES" onclick="navigate('PHASES');return false;">→ Go to Phases &amp; Roadmap</a></p>
+<p><a href="#VISION" onclick="navigate('VISION');return false;">→ Go to Phases &amp; Roadmap</a></p>
 </div>`,
 
   PHASES_NAVIGATION_GUIDE: `<div class="md-body">
 <h1>Phases Navigation Guide</h1>
 <p>Phase documentation is consolidated on the <strong>Phases &amp; Roadmap</strong> page. Use the sidebar to navigate between phases or jump directly to any section.</p>
-<p><a href="#PHASES" onclick="navigate('PHASES');return false;">→ Go to Phases &amp; Roadmap</a></p>
+<p><a href="#VISION" onclick="navigate('VISION');return false;">→ Go to Phases &amp; Roadmap</a></p>
+</div>`,
+
+  VISION: `<div class="md-body">
+<h1>Roadmap</h1>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 9 Adoption Gate · unreleased work on dev</div>
+<p>DevTrack's product build arc is complete through Phase 8: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, and read-only MCP context. The latest public release remains <code>v3.0.10</code>.</p>
+<h2>Current focus</h2>
+<p>Phase 9 packages the existing product for adoption rather than adding another capability layer. TASK-118–120 complete the non-blocking first-run path: managed dependencies bootstrap in the background, <code>devtrack doctor</code> exposes progress and recovery, MCP works from local SQLite immediately, voice seeding starts when the optional server is ready, and setup uses the fastest available generation path while keeping Ollama as the default.</p>
+<h2>Next</h2>
+<ol>
+<li>Make the commit → staged action → EOD → MCP demonstration reproducible.</li>
+<li>Finish the wiki, repository metadata, and registry-submission packages.</li>
+<li>Prepare launch material without inventing usage or adoption claims.</li>
+</ol>
+<blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
   VISION_AND_ROADMAP: `<div class="md-body">
@@ -3775,7 +3795,8 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 
   MCP_CLAUDE_CODE: `<div class="md-body">
 <h1>MCP / Claude Code Integration</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 8 — shipped</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available on dev · not in the latest public release v3.0.10</div>
+<blockquote><p>The command examples on this page require a client built from the <code>dev</code> branch. Do not use the <code>v3.0.10</code> release download for this preview; that binary predates <code>devtrack mcp</code>.</p></blockquote>
 <p>DevTrack exposes a <strong>Model Context Protocol (MCP) server</strong> so that Claude Code — or any MCP-compatible AI assistant — can query your live developer context directly. Six read-only tools give Claude access to your active ticket, today's commits, pending actions, voice profile, ticket history, and end-of-day roll-up. All data comes from the local SQLite database; no Python server, no network request.</p>
 
 <h2>Quick Start</h2>
@@ -4009,21 +4030,26 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-First · v3.0.10</div>
-      <h1 class="home-title">Developer automation<br>that handles the <span>overhead</span>.</h1>
-      <p class="home-sub">DevTrack silently observes your Git activity, stages inferred updates for review, and keeps project systems in sync — local-first and in your control.</p>
+      <div class="home-badge">Local-first · latest release v3.0.10 · dev previews labeled below</div>
+      <h1 class="home-title">Never write a<br><span>standup</span> again.</h1>
+      <p class="home-sub">You commit; DevTrack prepares ticket updates and end-of-day reports silently, in your voice, on your machine. Every outbound action stays reviewable before it leaves.</p>
     </div>
 
     <div class="home-grid">
       ${[
+        // ── Product promise: outcome → agent memory → trust ────────────────────
+        { id:'WORK_TRACKER',     icon:'☀️', title:'Your standup, from your commits', desc:'DevTrack groups work by ticket and prepares an end-of-day narrative in your voice. Keep coding; the daemon handles the project-update overhead.' },
+        { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'Unreleased dev preview: agent memory', desc:'Not in <code>v3.0.10</code>. A client built from <code>dev</code> can run <code>devtrack mcp setup</code>, giving MCP-compatible assistants read-only context from local SQLite.' },
+        { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
+        { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git. Local MCP context is available in the unreleased <code>dev</code> build.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'PostgreSQL backend complete: opt-in client sync, Alembic migrations, required server deployment, and visible managed-install defaults. Phase 9 Adoption Gate is now active.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'Unreleased on <code>dev</code>: non-blocking bootstrap, first-run MCP and voice guidance, and Ollama/cloud-key fast-lane detection are complete in TASK-118–120.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Bundled in the <code>devtrack-server-*.tar.gz</code> release tarball. Handles install, setup wizard, and daemon lifecycle without cloning the repo.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the latest binary from GitHub Releases (Windows gets <code>.zip</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
-        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard',       desc:'<code>devtrack setup</code> — writes registered XDG config immediately, then bootstraps Managed Python/LLM dependencies in the background with <code>doctor</code> progress.' },
+        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard (dev preview)', desc:'TASK-118–120 on <code>dev</code>: writes registered XDG config immediately, then bootstraps managed Python/LLM dependencies in the background with <code>doctor</code> progress. Not in <code>v3.0.10</code>.' },
         // ── Reference ─────────────────────────────────────────────────────────
         { id:'CLI_REFERENCE',    icon:'⌨️', title:'CLI Reference',      desc:'All devtrack commands with flags and examples.' },
         { id:'CONFIGURATION',    icon:'🔧', title:'Configuration',      desc:'All .env variables with defaults, required vars, timeout settings, server modes, TLS, LLM providers, and feature flags.' },
@@ -4040,10 +4066,6 @@ function renderHome() {
         { id:'SLACK_BOT',       icon:'💬', title:'Slack Bot',           desc:'Socket Mode slash command <code>/devtrack &lt;cmd&gt;</code> — no public URL required. Supports all work-session and PM commands plus proactive work-reminder nudges.' },
         { id:'PM_AGENT',        icon:'🗂️', title:'PM Agent',            desc:'AI decomposes problems into Epic → Story → Task hierarchies.' },
         { id:'PROJECT_PLANNING',icon:'📋', title:'AI Project Planning', desc:'<code>/newproject</code> in Telegram: describe requirements, pick team from live roster, AI auto-fetches workloads, generates a full YAML spec with sprints/stories/risks, emails it to the PM for review, and creates everything in the PM tool on approval.' },
-        { id:'TICKET_ALERTER',  icon:'🔔', title:'Ticket Alerter',      desc:'Background poller for GitHub, Azure DevOps, and Jira (v1.4-dev) — delivers OS notifications and terminal output when you\'re assigned, mentioned, or a status changes. Delta-synced via MongoDB or SQLite fallback. <code>devtrack alerts</code> to view, <code>devtrack alerts --clear</code> to dismiss.' },
-        { id:'WORK_TRACKER',    icon:'⏱️', title:'Work Tracker',        desc:'Automatic session-based time tracking. <code>devtrack work start AUTH-42</code> begins a session; every commit is auto-attached. <code>devtrack work stop</code> records the duration. At end of day, <code>devtrack work report</code> produces an AI narrative summary and optional email.' },
-        { id:'VACATION_MODE',   icon:'✈️', title:'Vacation Mode',       desc:'Fully autonomous mode while you\'re away. LLM generates work updates from recent commits, scores its own confidence, and posts to the PM tool when confident enough. Enable with <code>devtrack vacation on --until YYYY-MM-DD</code>.' },
-        { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'MCP / Claude Code',   desc:'Phase 8 — expose DevTrack context to Claude Code via the Model Context Protocol. <code>devtrack mcp setup</code> writes <code>.mcp.json</code>; 6 read-only tools give Claude live access to active ticket, today\'s commits, pending actions, voice profile, and EOD summary — all from SQLite, no server needed.' },
         // ── AI & Personalization ──────────────────────────────────────────────
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
         { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'"Talk Like You" — AI that learns your communication style from Teams messages and writes in your voice using RAG-powered few-shot examples.' },
@@ -4053,7 +4075,6 @@ function renderHome() {
         { id:'ADMIN_CONSOLE',   icon:'🛡️', title:'Admin Console',       desc:'Web UI at <code>http://localhost:8090/admin/</code> — manage users, roles, API keys; soft disable/enable users; reset passwords; license status page; HTMX trigger stats panel (30s auto-refresh); LLM config, integration credentials, and a full audit log. Run with <code>devtrack admin-start</code> or set <code>ADMIN_EMBED=true</code> to co-host on port 8089.' },
         { id:'TELEMETRY',       icon:'📊', title:'Telemetry',           desc:'Optional usage tracking: download counts, command frequencies, version adoption. Fully transparent, no PII. Opt-in only: nothing is sent unless you explicitly enable it.' },
         { id:'CLOUD_MODE',      icon:'☁️', title:'Cloud Mode',          desc:'Connect your local daemon to a remote managed backend. <code>devtrack cloud login --url URL --key KEY</code> saves credentials to <code>~/.devtrack/cloud.json</code>. Bypasses cert-pinning for CA-signed remote certs.' },
-        { id:'TUI_DASHBOARD',   icon:'📟', title:'TUI Dashboard',       desc:'Bubble Tea full-screen dashboard. 4 tabs: Overview (uptime, latency, counts), Activity (last 30 triggers), Workspaces (all repos + PM platform), Alerts (last 30 notifications). Tab/1–4 to switch, <code>r</code> refresh, <code>q</code> quit.' },
         // ── Account & Licensing ───────────────────────────────────────────────
         { id:'LICENSE',         icon:'📄', title:'License',             desc:'Community License: free for personal use and teams up to 10 users. Enterprise licence required for 11+ users or hosted/SaaS deployments. First-run T&amp;C acceptance stored locally.' },
         { id:'AUTH',            icon:'👤', title:'Login &amp; Auth',        desc:'Optional identity layer. Run <code>devtrack login</code> to connect an email via magic-link; <code>devtrack whoami</code> to see the active session; <code>devtrack logout</code> to clear it. Fully offline without a login.' },
@@ -4069,27 +4090,40 @@ function renderHome() {
     </div>
 
     <div class="quick-start-box">
-      <h3>5-Minute Setup</h3>
-      <p style="margin:0 0 .75rem;font-size:.9rem;opacity:.8;">Option 1 — Download the binary, run the wizard (recommended)</p>
+      <h3>Latest public release: v3.0.10</h3>
+      <p style="margin:0 0 .75rem;font-size:.9rem;opacity:.8;">Download the published binary and use only its released command surface.</p>
       <pre><code class="language-bash"># macOS / Linux — the lean Go binary. Normalise OS/arch to the release asset names.
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" ] && ARCH="arm64"
 curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_\${OS}_\${ARCH}.tar.gz" | tar xz
 sudo mv devtrack /usr/local/bin/
 
-# The wizard writes .env and creates Data/. In managed mode it starts the
-# Python checkout, \`uv sync\`, and local model pull without waiting.
+# Configure and start the published release.
 devtrack setup
-
-devtrack start       # env auto-loaded from ~/.devtrack/devtrack.conf (no \`source .env\` needed)
+devtrack start
 devtrack status
-devtrack doctor      # optional AI bootstrap progress and recovery guidance</code></pre>
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 2 — Lightweight mode (no Python at all)</p>
+devtrack logs</code></pre>
+
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;"><strong>Unreleased dev preview — contributors and evaluators only.</strong> The commands below require a client built from <code>dev</code>; they are not available in the <code>v3.0.10</code> release binary.</p>
+      <pre><code class="language-bash">git clone --branch dev --single-branch https://github.com/sraj0501/Devtrack_.git
+cd Devtrack_/devtrack_client
+go build -o devtrack .
+
+./devtrack setup
+./devtrack start
+./devtrack mcp setup   # immediate SQLite-backed agent context
+./devtrack status      # daemon and capability readiness
+./devtrack doctor      # background bootstrap progress; use --repair after a failure
+
+# Once voice seeding is ready, preview the generated EOD narrative locally.
+./devtrack work report</code></pre>
+      <p style="margin:.5rem 0 .75rem;font-size:.85rem;opacity:.7;">The unreleased wizard reuses an installed generation-capable Ollama model when available. If none is ready, it can explicitly use an already-present OpenAI or Anthropic key as a temporary fast lane while Ollama remains the local default.</p>
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Lightweight mode (no Python at all)</p>
       <pre><code class="language-bash"># Git monitoring, scheduling, git-sage, PM connectors and alerts are all Go-native.
 # Set this before \`devtrack start\` to skip the Python server entirely.
 DEVTRACK_SERVER_MODE=lightweight
 devtrack start</code></pre>
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Option 3 — Docker (Python server in a container)</p>
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Docker (Python server in a container)</p>
       <pre><code class="language-bash">git clone https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_server
 cp .env_sample .env                      # then fill it in
@@ -4103,20 +4137,13 @@ devtrack start</code></pre>
 
     <div class="feature-list">
       ${[
-        { n:'Zero-Friction Git',   d:'Type <code>git commit</code> as normal — DevTrack intercepts for monitored repos. One-time shell setup: <code>eval "$(devtrack shell-init)"</code>. This installs a <code>git()</code> interceptor and a <code>devtrack()</code> wrapper that auto-reloads the shell functions after <code>devtrack start</code>, <code>restart</code>, or <code>enable-git</code> — no new terminal or manual re-eval needed. With shell integration active, <code>git add</code> with no arguments automatically stages all changes (<code>git add .</code>); paths still work normally.' },
-        { n:'Time Tracking',       d:'After "Log this work?", DevTrack asks: <em>"How long did this take? (e.g. 2h, 30m)"</em>. Time spent is attached to the selected issue comment — no separate time-entry tool needed.' },
-        { n:'Interactive Ticket Picker', d:'A curses split-pane picker opens after the time prompt. Left pane: scrollable list of your open issues (GitHub / GitLab / Azure, per workspace). Right pane: full issue body, auto word-wrapped. Controls: <kbd>↑</kbd><kbd>↓</kbd> navigate · <kbd>Enter</kbd> select · <kbd>/</kbd> real-time filter · <kbd>n</kbd> new issue · <kbd>Esc</kbd>/<kbd>q</kbd> skip.' },
-        { n:'Auto-Push After Commit', d:'After every successful commit + log-work flow, DevTrack prompts: <em>Push to origin/&lt;branch&gt;? (y/n)</em>. One keypress pushes — no need to remember the branch name or run a separate command.' },
-        { n:'Immediate PM Sync',   d:'Selecting a ticket posts a comment with the commit hash, message, and time spent — instantly, with your confirmation. No background daemon guessing required. Auto-comments, transitions states, and creates missing items in Azure/GitLab/GitHub. New issues include commit hash and message in the description and are auto-assigned to the authenticated user.' },
-        { n:'Richer AI Messages',  d:'In the commit refinement loop, pressing <kbd>E</kbd> to enhance gives the AI double the normal token allowance for that call, producing more detailed and thorough commit messages.' },
-        { n:'Personalized AI',     d:'Learns your style from Teams messages and writes in your voice.' },
-        { n:'Ticket Alerter',      d:'Polls GitHub, Azure DevOps, and Jira for events relevant to you — assigned issues/PRs/work items, comments on threads you are in, state changes, and review requests. Delivers macOS OS notifications (via osascript) and terminal output. Delta-synced via MongoDB so you never see the same notification twice. Configure with <code>ALERT_ENABLED=true</code>, <code>ALERT_GITHUB_ENABLED=true</code>, <code>ALERT_AZURE_ENABLED=true</code>, <code>ALERT_JIRA_ENABLED=true</code> and the <code>ALERT_*</code> variables in <code>.env</code>.' },
-        { n:'OS-Aware Auto-Start', d:'Run <code>devtrack autostart-install</code> — DevTrack detects your OS and picks the right mechanism: launchd LaunchAgent on macOS, systemd user service on Linux/WSL with systemd, Windows Task Scheduler task on Windows, or a shell profile block on WSL without systemd. The daemon starts automatically each time you log in — no cron, no manual <code>devtrack start</code> after reboot. All env vars are baked into the plist/unit/task at install time so the daemon gets the right config without a <code>.env</code> file.' },
-        { n:'Offline-First',       d:'Queues everything and syncs when connectivity returns.' },
-        { n:'Remote Control',      d:'Full Telegram bot: status, logs, create items, trigger updates. Plus a Slack bot (<code>/devtrack &lt;cmd&gt;</code>) via Socket Mode — no public URL required.' },
-        { n:'AI Project Planning', d:'<code>/newproject</code> in Telegram — describe a project in plain text, pick developers from the live team roster, and let AI auto-fetch each person\'s workload from the PM tool. Generates a full YAML spec (features, stories, sprints, capacity analysis, skill-gap risks), emails it to the PM with an approve/edit link, and creates everything in Azure/GitHub/GitLab on approval.' },
-        { n:'Work Session Tracking', d:'<code>devtrack work start [ticket]</code> begins a session timer. Every git commit while the session is active is auto-attached — no manual time entry. <code>devtrack work stop</code> records the auto-measured duration; <code>devtrack work adjust 90</code> overrides it (raw time kept for audit). <code>devtrack work report</code> generates an AI EOD summary with achievements, in-progress items, and what\'s pending tomorrow, plus optional email via MS Graph.' },
-        { n:'Vacation Mode',         d:'<code>devtrack vacation on --until 2026-04-07</code> enables fully autonomous operation. While active, timer triggers are handled by the LLM: it reads recent commits, writes a 1-3 sentence work update, scores its own confidence, and posts to the PM tool when above the threshold (default 0.7). Use <code>--no-submit</code> to log updates without posting. Toggle via Telegram <code>/vacation</code> or Slack <code>/devtrack vacation</code>.' },
+        { n:'Silent Background Daemon', d:'Watches Git activity and schedules without prompting in the main flow. If a ticket or service cannot be resolved, DevTrack records the failure and moves on without interrupting normal Git work.' },
+        { n:'Pending Queue + Explicit Confidence', d:'Every outbound PM, email, or Git action is staged in <code>pending_actions</code> first with a confidence score and review window. Approve, edit, reject, or let earned auto-approval rules proceed; there is no direct-send fallback.' },
+        { n:'Go-Native Ticket Connectors', d:'The terminal client provides ticket list, view, create, comment, check, and sync paths for <strong>GitHub, GitLab, and Azure DevOps</strong>. Connector failures degrade without blocking local observation or queueing.' },
+        { n:'Go-Native Alerts', d:'The daemon polls <strong>GitHub and Azure DevOps</strong> for relevant notifications and keeps alert state in local SQLite. Alert delivery can use terminal, OS, Telegram, or Slack notifiers; no MongoDB-backed alert state or Jira poller is claimed.' },
+        { n:'End-of-Day Reports in Your Voice', d:'Commits and work sessions feed an EOD narrative. When a learned local voice profile is available it shapes generated text; missing models or optional services degrade gracefully, and any outbound delivery still passes through the pending queue.' },
+        { n:'Local Context + MCP Dev Preview', d:'The Go client keeps observation, queue, and history data in local SQLite. Read-only MCP access to active work and pending actions is available from a client built from <code>dev</code>, but is <strong>not</strong> part of the latest public <code>v3.0.10</code> binary.' },
+        { n:'Optional Visibility and Corrections', d:'The TUI and Telegram show daemon activity and expose available correction paths; notifications surface status for a quick glance. None gates daemon capabilities: closing every interface leaves the same silent background engine running.' },
       ].map((f, i) => `
         <div class="feature-item">
           <div class="feature-dot">${i+1}</div>
