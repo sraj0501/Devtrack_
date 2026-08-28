@@ -1,10 +1,13 @@
 package trigger
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 // ---------------------------------------------------------------------------
@@ -96,6 +99,43 @@ func TestHTTPTriggerClient_SendCommitTrigger_Success(t *testing.T) {
 	})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestHTTPTriggerClient_SendCommitTrigger_UsesLongTimeout(t *testing.T) {
+	t.Setenv("HTTP_TIMEOUT_LONG", "1")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(25 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok","actions":[]}`))
+	}))
+	defer srv.Close()
+
+	c := clientFor(t, srv.URL, "")
+	c.httpClient.Timeout = time.Millisecond
+	if err := c.SendCommitTrigger(CommitTriggerData{CommitHash: "slow-local-model"}); err != nil {
+		t.Fatalf("commit trigger used the standard client timeout: %v", err)
+	}
+}
+
+func TestHTTPTriggerClient_SendCommitTrigger_LogsStagedActionConfidence(t *testing.T) {
+	srv, _ := newMockServer(t, http.StatusOK, `{"status":"ok","actions":["queued:post_comment:42"]}`)
+	c := clientFor(t, srv.URL, "")
+
+	var output bytes.Buffer
+	previousWriter := log.Writer()
+	log.SetOutput(&output)
+	t.Cleanup(func() { log.SetOutput(previousWriter) })
+
+	err := c.SendCommitTrigger(CommitTriggerData{
+		CommitHash:       "abc123",
+		TicketConfidence: 0.95,
+	})
+	if err != nil {
+		t.Fatalf("SendCommitTrigger() error: %v", err)
+	}
+	if !bytes.Contains(output.Bytes(), []byte("post_comment staged (action_id=42, confidence=0.95)")) {
+		t.Fatalf("staging evidence missing from log: %s", output.String())
 	}
 }
 

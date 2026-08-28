@@ -69,12 +69,7 @@ func (cli *CLI) handleQueue() error {
 // Default: shows only pending actions (last 24h window).
 // --all: shows all recent actions regardless of status.
 func runQueueList() error {
-	showAll := false
-	for _, arg := range os.Args[3:] {
-		if arg == "--all" {
-			showAll = true
-		}
-	}
+	showAll := queueListShowAll(os.Args)
 
 	d, err := NewDatabase()
 	if err != nil {
@@ -104,6 +99,22 @@ func runQueueList() error {
 	tty := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
 	printQueueTable(actions, tty)
 	return nil
+}
+
+func queueListShowAll(args []string) bool {
+	for _, arg := range args[minimum(2, len(args)):] {
+		if arg == "--all" {
+			return true
+		}
+	}
+	return false
+}
+
+func minimum(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // printQueueTable renders pending actions as a fixed-width table.

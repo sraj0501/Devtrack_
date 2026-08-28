@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -149,8 +151,8 @@ type WorkSessionRecord struct {
 // NotificationRecord represents a ticket alert notification
 type NotificationRecord struct {
 	ID        int64
-	Source    string    // "github", "azure", "jira"
-	EventType string    // "assigned", "comment", "status_change", "review_requested"
+	Source    string // "github", "azure", "jira"
+	EventType string // "assigned", "comment", "status_change", "review_requested"
 	TicketID  string
 	Title     string
 	Body      string
@@ -171,7 +173,7 @@ func NewDatabase() (*Database, error) {
 	dbPath := cfg.GetDatabasePath()
 
 	// Open database
-	database, err := sql.Open("sqlite", dbPath)
+	database, err := sql.Open("sqlite", sqliteConnectionString(dbPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -2274,7 +2276,7 @@ func NewDatabaseAtPath(dbPath string) (*Database, error) {
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
-	sqlDB, err := sql.Open("sqlite", dbPath)
+	sqlDB, err := sql.Open("sqlite", sqliteConnectionString(dbPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -2298,6 +2300,19 @@ func NewDatabaseAtPath(dbPath string) (*Database, error) {
 		return nil, fmt.Errorf("failed to initialize server event sync: %w", err)
 	}
 	return d, nil
+}
+
+// sqliteConnectionString applies connection-level concurrency settings before
+// the driver opens the database. WAL permits readers alongside the daemon's
+// writer, while busy_timeout makes short write conflicts wait instead of
+// failing immediately with SQLITE_BUSY.
+func sqliteConnectionString(dbPath string) string {
+	location := &url.URL{Scheme: "file", Path: dbPath}
+	query := location.Query()
+	query.Add("_pragma", "busy_timeout("+strconv.Itoa(cfg.GetSQLiteBusyTimeoutMS())+")")
+	query.Add("_pragma", "journal_mode(WAL)")
+	location.RawQuery = query.Encode()
+	return location.String()
 }
 
 // applyMigrationTables creates the tables that are normally applied by
