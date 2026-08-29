@@ -76,8 +76,10 @@
     }
     .hero-watermark span {
       font-family: var(--sans); font-weight: 900;
-      font-size: clamp(14rem, 48vw, 54rem);
-      line-height: .8; letter-spacing: .04em; white-space: nowrap;
+      width: 100%;
+      font-size: clamp(7rem, 21vw, 23rem);
+      line-height: .8; letter-spacing: -.045em; white-space: nowrap;
+      text-align: center;
       /* very faint silhouette — sits in the background, not attention-grabbing */
       color: rgba(130,200,255,.06);
       -webkit-text-stroke: 2px rgba(150,215,255,.09);
@@ -660,7 +662,11 @@
       nav { padding: 0 20px; }
       .nav-links { display: none; }
       .hero { padding: 120px 20px 80px; }
-      .hero-watermark span { font-size: 40vw; -webkit-text-stroke-width: 1px; }
+      .hero-watermark span {
+        font-size: clamp(4.5rem, 20vw, 11rem);
+        letter-spacing: -.055em;
+        -webkit-text-stroke-width: 1px;
+      }
       .container { padding: 0 20px; }
       .features-grid { grid-template-columns: 1fr; }
       .feat-card.large { grid-column: auto; }
