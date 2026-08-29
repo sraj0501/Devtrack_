@@ -6,7 +6,9 @@ This directory contains the static public site deployed at `devtrack.cloud`.
 
 - `wiki/index.html` — product homepage
 - `wiki/download.html` — release download and installation entry point
-- `wiki/wiki.html` — current user documentation with stable hash anchors
+- `wiki/wiki.html` — guided user documentation with stable hash anchors; its Start here sequence is
+  intentionally written for a first-time user and covers installation, PostgreSQL, Ollama, setup,
+  the first monitored commit, and queue review before the feature reference
 - `wiki/privacy.html` — current implementation-level privacy explanation
 - `wiki/docs/` — Markdown references used by contributors and documentation reviews
 - `wiki/install.sh` / `wiki/install.ps1` — release installers
@@ -33,6 +35,10 @@ sh -n wiki/install.sh
 Also verify:
 
 - every homepage/footer hash exists in `wiki.html`;
+- every sidebar page and in-guide next-step link resolves to an existing section;
+- the Start here sequence remains executable by a user with no prior DevTrack knowledge;
+- every feature page explains the problem and design reason, its place in the architecture and trust
+  model, detailed setup and usage, data ownership, failure behavior, limitations, and troubleshooting;
 - release asset names match `.github/workflows/release.yml`;
 - client commands match `devtrack help`/`devtrack_client/main.go`;
 - server routes and configuration match `devtrack_server/backend/`;
