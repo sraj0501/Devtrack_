@@ -1,5 +1,89 @@
 # DevTrack Engineer Log
 
+### [2026-09-02] TASK-148 — MCPB build readiness
+
+**Notes**:
+- Fetched `origin/dev` and `origin/main`. `dev` is six merge commits behind `main`, has no unique
+  commits, and has no tree delta; the MCP core and six tools were already integrated on `main`.
+- Updated handshake negotiation through MCP 2025-11-25 while retaining earlier finalized versions,
+  ignored notifications without emitting invalid responses, made tool order deterministic, and
+  added titles plus read-only/non-destructive/idempotent/no-open-world annotations to all six tools.
+- Added `devtrack mcp serve --database PATH`, a manifest 0.3 template, standard-library MCPB
+  packager, five release artifacts across Windows/macOS/Linux architectures, and official MCPB CLI
+  validation for all three platform manifest variants in CI.
+- Verification: full Go tests passed; `go vet ./...` and `go build ./...` passed. A Windows MCPB was
+  generated locally and contained exactly its manifest, README, Community License, and executable.
+  The built executable completed initialize, tools/list, and shutdown using an explicit disposable
+  SQLite path; all six tools exposed the new safety metadata. Node.js is not installed locally, so
+  official MCPB CLI validation is enforced in CI but was not executed on this host.
+- External systems changed: fetch only; no commit, push, tag, release, registry submission, or publish.
+
+## Task Summary — TASK-148
+
+- Acceptance criteria met: 4/4
+- Public release changed: no; v3.0.10 remains latest
+- Ready for review: YES
+
+---
+
+## Seven-day launch evidence window — 2026-08-27 through 2026-09-02
+
+This window was assembled before TASK-124 draft generation. It records repository evidence only;
+it is not evidence of external adoption, install success, time saved, or production usage.
+
+- `4541cf7` / TASK-121 added the reproducible five-scene demo and ten-minute quickstart. The
+  2026-08-28 engineer entry records a local run against PostgreSQL, Ollama, and the managed daemon.
+- `efd3445` / TASK-122 refreshed the wiki homepage and prepared repository metadata without applying
+  it externally. Inline-script validation passed in its recorded verification.
+- `50b5bca` / TASK-123 added an evidence-backed registry matrix and held submission copy. Nothing was
+  submitted to a registry or third party.
+- `957ecd6` / TASK-144 fixed the demo's queue parsing, SQLite concurrency, and local-model timeout
+  path. Its recorded verification includes full Go tests, vet, Windows cross-build, wiki/shell
+  checks, and a live local demo that staged action 5 at confidence 0.95 and queued EOD action 6.
+- `6542292` / TASK-145 synchronized repository and wiki documentation to code on 2026-08-28.
+- `5ef4c19` and `c82dc01` / TASK-146 restored the comprehensive beginner wiki and corrected its hero
+  watermark layout on 2026-08-29.
+- Tag inspection on 2026-09-02 still identifies `v3.0.10` as the newest public release. TASK-118
+  through TASK-123 and TASK-142 through TASK-146 are repository work after that release and must be
+  described as unreleased until a new tag is published.
+
+The permitted launch claims are therefore limited to what the repository and recorded local/CI
+verification prove: the features exist in source, the review queue remains the outbound trust
+boundary, Phase 9 onboarding/docs/demo work is integrated on `main`, and v3.0.10 does not yet carry
+that newer work.
+
+### [2026-09-02] TASK-124 — evidence-backed launch drafts
+
+**Notes**: Created held dev.to, Show HN, and LinkedIn drafts under
+`Data/agent_logs/posts/2026-W36/` after recording the evidence window above. Each draft identifies
+v3.0.10 as the latest public release, labels Phase 9/MCP work as unreleased `main`, and avoids usage,
+install-count, savings, and external-adoption claims. Nothing was published or sent externally.
+
+### [2026-09-02] TASK-147 — dependency and cross-platform contract synchronization
+
+**Notes**:
+- Preserved the existing `uv.lock` refresh and adapted the admin template boundary to Starlette's
+  request-first API. Empty login passwords again reach the route's deliberate HTTP 401 path.
+- Fixed Windows SQLite file-URI construction by slash-normalizing native paths and prefixing drive
+  paths before URL encoding. Added a Windows regression assertion and put Windows into the Go CI
+  test matrix.
+- Added Go timer/boardroom contract tests, a Python boardroom server contract test, and
+  `docs/HTTP_API.md`; corrected two stale `/trigger/timer_trigger` architecture references.
+- Updated the wiki checker to report a clear Node.js 22+ prerequisite when Node is unavailable.
+- Verification: full Python suite **954 passed, 10 skipped**; configured live PostgreSQL lane
+  **10 passed**; Go build and vet passed. The serial full Go run passed every executed package but
+  host Application Control blocked two temporary test executables; `internal/mcp` and `internal/tui`
+  were rerun individually and both passed. The Windows SQLite package passed after the URI fix.
+
+## Task Summary — TASK-124 + TASK-147
+
+- Acceptance criteria met: TASK-124 4/4; TASK-147 4/4
+- External systems changed: none
+- Public release changed: no; v3.0.10 remains latest
+- Blockers encountered: Node.js is absent locally, so the unchanged wiki HTML was not re-parsed;
+  CI installs Node 22 before running the checker
+- Ready for review: YES
+
 ---
 
 ### [2026-08-28 17:25] TASK-121 — reproducible demo and quickstart

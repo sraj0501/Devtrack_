@@ -1,6 +1,45 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-08-28 by docu-agent (upstream reconciled through TASK-120/PR #256)_
+_Last updated: 2026-09-02 (Phase 9 and post-Phase-9 synchronization complete through TASK-148)_
+
+---
+
+## 2026-09-02 — TASK-148: MCPB build readiness
+**Phase**: MCP distribution readiness
+**Status**: DONE on the working tree; UNRELEASED after v3.0.10
+**Files**: MCP protocol server/tool declarations, explicit packaged-database CLI path, MCPB manifest
+and packager, client/release workflows, README and registry/roadmap records
+**Vision check**: PASS
+**Engineer notes**: Fetched `origin/dev` and confirmed it has no tree changes beyond `origin/main`;
+the existing MCP implementation was already present on main. The server now negotiates finalized
+handshake revisions through 2025-11-25, ignores JSON-RPC notifications, lists tools
+deterministically, and declares human titles plus read-only/non-destructive/idempotent/local safety
+hints. Release automation builds five platform/architecture MCPBs, while CI packages and validates
+darwin, Linux, and Windows manifests with the official CLI. Local Go tests/vet/build passed, and a
+Windows bundle plus explicit-database stdio exchange were smoke-tested. No release was published.
+
+---
+
+## 2026-09-02 — TASK-124 + TASK-147: Launch drafts and compatibility synchronization
+**Phase**: Phase 9 completion / maintenance
+**Status**: DONE on the working tree; UNRELEASED after v3.0.10
+**Files**: audience-specific launch drafts and evidence log; Python admin template compatibility;
+Windows SQLite DSN handling and CI; Go/Python HTTP contract tests; API and architecture docs
+**Vision check**: PASS
+**Engineer notes**: TASK-124 produced held dev.to, Show HN, and LinkedIn drafts from a dated evidence
+window without publishing or inventing adoption claims. TASK-147 kept the refreshed dependency lock,
+adapted the admin console to Starlette's request-first template API, fixed native Windows SQLite URI
+construction, added Windows Go tests, and synchronized executable HTTP contracts with documentation.
+Verification: Python 954 passed/10 skipped; live PostgreSQL 10 passed; Go build/vet and affected
+packages passed. v3.0.10 remains the newest public tag.
+
+## 2026-08-29 — TASK-145–146: Documentation sync and beginner-wiki restoration
+**Phase**: Documentation maintenance
+**Status**: DONE on `main` (`6542292`, `5ef4c19`, `c82dc01`)
+**Files**: repository documentation/memory, wiki content, homepage styling
+**Vision check**: PASS
+**Engineer notes**: TASK-145 synchronized documentation surfaces with code. TASK-146 restored the
+comprehensive beginner wiki and corrected the homepage version watermark.
 
 ---
 

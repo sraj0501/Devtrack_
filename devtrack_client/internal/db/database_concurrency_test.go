@@ -1,10 +1,31 @@
 package db
 
 import (
+	"net/url"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestSQLiteConnectionStringUsesPortableWindowsPath(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows path encoding regression")
+	}
+
+	dsn := sqliteConnectionString(`C:\Users\dev\DevTrack\Data\devtrack.db`)
+	if strings.Contains(dsn, "%5C") {
+		t.Fatalf("DSN contains encoded Windows separators: %s", dsn)
+	}
+	parsed, err := url.Parse(dsn)
+	if err != nil {
+		t.Fatalf("parse DSN: %v", err)
+	}
+	if parsed.Path != "/C:/Users/dev/DevTrack/Data/devtrack.db" {
+		t.Fatalf("unexpected SQLite path %q in DSN %q", parsed.Path, dsn)
+	}
+}
 
 func TestNewDatabaseAtPathWaitsForConcurrentWriter(t *testing.T) {
 	t.Setenv("SQLITE_BUSY_TIMEOUT_MS", "1000")

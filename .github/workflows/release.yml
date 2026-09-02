@@ -36,6 +36,10 @@ jobs:
           go-version-file: devtrack_client/go.mod
           cache-dependency-path: devtrack_client/go.sum
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Build all platforms
         working-directory: devtrack_client
         env:
@@ -49,12 +53,19 @@ jobs:
           # Windows — uploaded as .exe directly
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
             go build -ldflags "$LDFLAGS" -o dist/devtrack_windows_amd64.exe .
+          python ../scripts/package_mcpb.py \
+            --binary dist/devtrack_windows_amd64.exe \
+            --platform win32 --version "$VERSION" \
+            --output dist/devtrack_mcpb_windows_amd64.mcpb
 
           # macOS + Linux — binary inside archive must be named 'devtrack'
           for GOOS in darwin linux; do
             for GOARCH in amd64 arm64; do
               GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 \
                 go build -ldflags "$LDFLAGS" -o dist/devtrack .
+              python ../scripts/package_mcpb.py \
+                --binary dist/devtrack --platform "$GOOS" --version "$VERSION" \
+                --output "dist/devtrack_mcpb_${GOOS}_${GOARCH}.mcpb"
               tar czf "dist/devtrack_${GOOS}_${GOARCH}.tar.gz" -C dist devtrack
               rm dist/devtrack
             done
@@ -64,6 +75,14 @@ jobs:
           ls -lh dist/
           echo "--- archive contents ---"
           for f in dist/*.tar.gz; do echo "$f: $(tar tzf $f)"; done
+
+      - name: Validate MCPB manifests
+        run: |
+          for bundle in devtrack_client/dist/*.mcpb; do
+            target="mcpb-validation/$(basename "$bundle" .mcpb)"
+            python -m zipfile -e "$bundle" "$target"
+            npx --yes @anthropic-ai/mcpb@2.1.2 validate "$target/manifest.json"
+          done
 
       - name: Create GitHub Release
         env:
@@ -75,6 +94,7 @@ jobs:
             devtrack_client/dist/devtrack_darwin_arm64.tar.gz \
             devtrack_client/dist/devtrack_linux_amd64.tar.gz \
             devtrack_client/dist/devtrack_linux_arm64.tar.gz \
+            devtrack_client/dist/*.mcpb \
             --title "${{ github.ref_name }}" \
             --generate-notes \
             --repo "${{ github.repository }}"

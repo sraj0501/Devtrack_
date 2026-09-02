@@ -5,10 +5,16 @@ on:
     branches: [dev, main]
     paths:
       - "devtrack_client/**"
+      - "mcpb/**"
+      - "scripts/package_mcpb.py"
+      - ".github/workflows/client.yml"
   pull_request:
     branches: [dev, main]
     paths:
       - "devtrack_client/**"
+      - "mcpb/**"
+      - "scripts/package_mcpb.py"
+      - ".github/workflows/client.yml"
 
 jobs:
   build:
@@ -36,9 +42,13 @@ jobs:
         run: go vet ./...
 
   test:
-    name: Test (ubuntu-latest)
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - uses: actions/checkout@v5
@@ -68,3 +78,43 @@ jobs:
       - name: go test (contract)
         working-directory: devtrack_client
         run: go test -run TestAPIContract ./...
+
+  mcpb-package:
+    name: MCPB package validation (${{ matrix.platform }})
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [darwin, linux, win32]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build MCP-capable binary
+        working-directory: devtrack_client
+        run: |
+          mkdir -p dist
+          go build -o dist/devtrack .
+
+      - name: Package MCPB
+        run: >-
+          python scripts/package_mcpb.py
+          --binary devtrack_client/dist/devtrack
+          --platform ${{ matrix.platform }}
+          --version 0.0.0-dev
+          --output devtrack_client/dist/devtrack_${{ matrix.platform }}.mcpb
+
+      - name: Validate manifest with official MCPB CLI
+        run: |
+          python -m zipfile -e devtrack_client/dist/devtrack_${{ matrix.platform }}.mcpb mcpb-validation
+          npx --yes @anthropic-ai/mcpb@2.1.2 validate mcpb-validation/manifest.json

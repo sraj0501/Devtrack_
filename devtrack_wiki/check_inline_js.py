@@ -10,12 +10,22 @@ outage. A parse error is invisible to review, so gate it in CI.
 
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 
 WIKI = pathlib.Path(__file__).parent / "wiki"
 INLINE_SCRIPT = re.compile(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", re.S)
+
+NODE = shutil.which("node")
+if NODE is None:
+    print(
+        "ERROR: Node.js is required to validate inline wiki scripts. "
+        "Install Node.js 22+ or run the devtrack_wiki CI workflow.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
 
 failed = False
 
@@ -28,7 +38,7 @@ for page in sorted(WIKI.glob("*.html")):
             tmp.write(block)
             tmp.flush()
             proc = subprocess.run(
-                ["node", "--check", tmp.name], capture_output=True, text=True
+                [NODE, "--check", tmp.name], capture_output=True, text=True
             )
         if proc.returncode == 0:
             print(f"ok    {page.name} (inline script {i})")

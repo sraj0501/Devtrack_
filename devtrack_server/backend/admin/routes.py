@@ -45,7 +45,28 @@ from backend.admin.user_manager import (
 router = APIRouter()
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
-templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+
+
+class _RequestContextTemplates(Jinja2Templates):
+    """Keep route calls stable across Starlette's request-first API change."""
+
+    def TemplateResponse(
+        self,
+        name: str,
+        context: dict,
+        status_code: int = 200,
+        **kwargs,
+    ):
+        return super().TemplateResponse(
+            request=context["request"],
+            name=name,
+            context=context,
+            status_code=status_code,
+            **kwargs,
+        )
+
+
+templates = _RequestContextTemplates(directory=str(_TEMPLATES_DIR))
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +139,7 @@ async def login(
     request: Request,
     response: Response,
     username: str = Form(...),
-    password: str = Form(...),
+    password: str = Form(""),
 ):
     if not check_credentials(username, password):
         return templates.TemplateResponse(

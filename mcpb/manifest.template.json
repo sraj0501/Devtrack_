@@ -1,0 +1,48 @@
+{
+  "manifest_version": "0.3",
+  "name": "devtrack",
+  "display_name": "DevTrack",
+  "version": "__VERSION__",
+  "description": "Read local DevTrack work context, commits, pending actions, voice profile, tickets, and EOD summaries over MCP.",
+  "long_description": "DevTrack is a local developer-context layer. This bundle exposes six read-only tools backed by an existing DevTrack SQLite database; it does not start the optional Python AI server or send data to a hosted MCP endpoint.",
+  "author": {
+    "name": "Shashank Raj",
+    "url": "https://github.com/sraj0501"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sraj0501/Devtrack_.git"
+  },
+  "homepage": "https://devtrack.cloud",
+  "documentation": "https://devtrack.cloud/wiki.html",
+  "support": "https://github.com/sraj0501/Devtrack_/issues",
+  "license": "LicenseRef-DevTrack-Community-1.0",
+  "keywords": ["developer-tools", "local-first", "mcp", "productivity", "standup"],
+  "compatibility": {
+    "platforms": ["__PLATFORM__"]
+  },
+  "server": {
+    "type": "binary",
+    "entry_point": "server/__BINARY__",
+    "mcp_config": {
+      "command": "${__dirname}/server/__BINARY__",
+      "args": ["mcp", "serve", "--database", "${user_config.database_path}"]
+    }
+  },
+  "user_config": {
+    "database_path": {
+      "type": "file",
+      "title": "DevTrack SQLite database",
+      "description": "Select the devtrack.db created by DevTrack setup.",
+      "required": true
+    }
+  },
+  "tools": [
+    {"name": "get_active_context", "description": "Get the active ticket, repository, commit count, and mapping confidence."},
+    {"name": "get_today_commits", "description": "Get today's commits grouped by ticket."},
+    {"name": "get_pending_actions", "description": "Inspect actions waiting in DevTrack's review queue."},
+    {"name": "get_voice_profile", "description": "Get locally inferred writing-style context."},
+    {"name": "get_ticket_context", "description": "Get commits and pending actions for a ticket."},
+    {"name": "get_eod_summary", "description": "Get a template-based end-of-day summary."}
+  ]
+}

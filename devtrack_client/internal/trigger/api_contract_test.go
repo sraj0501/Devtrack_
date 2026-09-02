@@ -15,10 +15,6 @@ import (
 // These tests use an httptest.NewServer mock — they do NOT import any Python or
 // server code. All assertions are on the Go side of the HTTP boundary only.
 //
-// TODO: extend with /trigger/commit shape test (TASK-045 or later)
-// TODO: extend with /trigger/timer shape test
-// TODO: extend with /trigger/boardroom shape test
-
 // TestAPIContractHealth verifies that the client correctly hits GET /health
 // and accepts a { "status": "ok" } response without error.
 func TestAPIContractHealth(t *testing.T) {
@@ -258,5 +254,57 @@ func TestAPIContractCommitPayloadShape(t *testing.T) {
 
 	if hash, _ := receivedBody["commit_hash"].(string); hash != "abc123def456" {
 		t.Errorf("commit_hash: got %q, want %q", hash, "abc123def456")
+	}
+}
+
+func TestAPIContractTimerPayloadShape(t *testing.T) {
+	var received TimerTriggerData
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/trigger/timer" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"accepted","trigger_count":3}`))
+	}))
+	defer srv.Close()
+
+	c := &HTTPTriggerClient{serverURL: srv.URL, httpClient: &http.Client{}}
+	want := TimerTriggerData{
+		Timestamp: "2026-09-02T12:00:00Z", IntervalMins: 60, TriggerCount: 3,
+		WorkspaceName: "devtrack", PMPlatform: "github", PMProject: "DevTrack_",
+	}
+	if err := c.SendTimerTrigger(want); err != nil {
+		t.Fatalf("SendTimerTrigger: %v", err)
+	}
+	if received != want {
+		t.Fatalf("timer payload: got %#v, want %#v", received, want)
+	}
+}
+
+func TestAPIContractBoardroomPayloadAndResponseShape(t *testing.T) {
+	var received BoardroomRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/trigger/boardroom" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"report":"review","verdict":"PROCEED","verdict_summary":"ready","approve":7,"revise":0,"reject":0,"pros":["local"],"cons":[]}`))
+	}))
+	defer srv.Close()
+
+	c := &HTTPTriggerClient{serverURL: srv.URL, httpClient: &http.Client{}}
+	want := BoardroomRequest{PlanText: "Ship the adoption gate", OutputFormat: "markdown"}
+	response, err := c.SendBoardroom(want)
+	if err != nil {
+		t.Fatalf("SendBoardroom: %v", err)
+	}
+	if received != want || response.Verdict != "PROCEED" || response.Approve != 7 {
+		t.Fatalf("unexpected request/response: request=%#v response=%#v", received, response)
 	}
 }

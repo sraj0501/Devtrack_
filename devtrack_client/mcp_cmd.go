@@ -27,8 +27,10 @@ func handleMCPCommand(args []string) {
 	}
 
 	switch sub {
-	case "", "serve":
-		runMCPServer()
+	case "":
+		runMCPServer(nil)
+	case "serve":
+		runMCPServer(args[1:])
 	case "status":
 		printMCPStatus()
 	case "setup":
@@ -37,18 +39,28 @@ func handleMCPCommand(args []string) {
 		runMCPTest()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown mcp subcommand: %s\n", sub)
-		fmt.Fprintf(os.Stderr, "Usage: devtrack mcp [serve|status|setup|test]\n")
+		fmt.Fprintf(os.Stderr, "Usage: devtrack mcp [serve [--database PATH]|status|setup|test]\n")
 		os.Exit(1)
 	}
 }
 
-func runMCPServer() {
+func runMCPServer(args []string) {
 	// MCP server runs on stdio — all logs go to stderr.
 	// The Python server does NOT need to be running; all tools are SQLite-backed.
 	srv := mcp.New(Version) // Version is the package-level var in version.go
 
 	// Open SQLite database and register all 6 read-only MCP tools (TASK-099).
-	database, err := db.NewDatabase()
+	databasePath, err := mcpDatabasePath(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "mcp: %v\n", err)
+		os.Exit(1)
+	}
+	var database *db.Database
+	if databasePath != "" {
+		database, err = db.NewDatabaseAtPath(databasePath)
+	} else {
+		database, err = db.NewDatabase()
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "mcp: failed to open database: %v\n", err)
 		os.Exit(1)
@@ -60,9 +72,35 @@ func runMCPServer() {
 	srv.Start(context.Background())
 }
 
+func mcpDatabasePath(args []string) (string, error) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--database" {
+			if i+1 >= len(args) || strings.TrimSpace(args[i+1]) == "" {
+				return "", fmt.Errorf("--database requires a path")
+			}
+			if i+2 != len(args) {
+				return "", fmt.Errorf("unexpected argument: %s", args[i+2])
+			}
+			return filepath.Abs(strings.TrimSpace(args[i+1]))
+		}
+		if value, ok := strings.CutPrefix(arg, "--database="); ok {
+			if strings.TrimSpace(value) == "" {
+				return "", fmt.Errorf("--database requires a path")
+			}
+			if i+1 != len(args) {
+				return "", fmt.Errorf("unexpected argument: %s", args[i+1])
+			}
+			return filepath.Abs(strings.TrimSpace(value))
+		}
+		return "", fmt.Errorf("unexpected argument: %s", arg)
+	}
+	return "", nil
+}
+
 func printMCPStatus() {
 	fmt.Println("DevTrack MCP Server")
-	fmt.Println("  Protocol:  MCP 2024-11-05")
+	fmt.Println("  Protocol:  MCP handshake through 2025-11-25 (2026-07-28 not yet supported)")
 	fmt.Println("  Transport: stdio")
 	fmt.Println("  Tools:     6 registered")
 	fmt.Println("             get_active_context, get_today_commits, get_pending_actions,")

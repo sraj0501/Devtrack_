@@ -7,14 +7,12 @@ shapes defined in docs/HTTP_API.md.
 These tests use FastAPI's TestClient (Starlette). They do NOT import any Go code.
 All assertions are on the Python side of the HTTP boundary only.
 
-# TODO: extend with /trigger/commit shape test (TASK-046 or later)
-# TODO: extend with /trigger/timer shape test
-# TODO: extend with /trigger/boardroom shape test
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -254,6 +252,47 @@ class TestTimerTriggerContract:
             resp = client.post("/trigger/timer", json={})
         assert resp.status_code == 200
 
+
+# ---------------------------------------------------------------------------
+# POST /trigger/boardroom
+# Expected: request accepts plan_text/output_format and returns vote details.
+# ---------------------------------------------------------------------------
+
+class TestBoardroomTriggerContract:
+    def test_request_and_response_shape(self, client, monkeypatch):
+        import backend.webhook_server as server
+
+        report = SimpleNamespace(
+            verdict="PROCEED",
+            verdict_summary="Ready to ship",
+            approve_count=7,
+            revise_count=0,
+            reject_count=0,
+            pros=["Local-first"],
+            cons=[],
+        )
+        session = SimpleNamespace(run=AsyncMock(return_value=report))
+        monkeypatch.setattr(server, "_boardroom_available", True)
+        monkeypatch.setattr(server, "BoardroomSession", lambda: session)
+        monkeypatch.setattr(server, "format_markdown", lambda value: "# Review")
+
+        response = client.post(
+            "/trigger/boardroom",
+            json={"plan_text": "Ship the adoption gate", "output_format": "markdown"},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "report": "# Review",
+            "verdict": "PROCEED",
+            "verdict_summary": "Ready to ship",
+            "approve": 7,
+            "revise": 0,
+            "reject": 0,
+            "pros": ["Local-first"],
+            "cons": [],
+        }
+        session.run.assert_awaited_once_with("Ship the adoption gate")
 
 # ---------------------------------------------------------------------------
 # POST /trigger/workspace_reload

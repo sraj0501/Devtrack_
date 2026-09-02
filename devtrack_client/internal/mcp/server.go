@@ -8,22 +8,32 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"sync"
 )
 
+const latestHandshakeProtocolVersion = "2025-11-25"
+
+var supportedHandshakeProtocolVersions = map[string]bool{
+	"2024-11-05": true,
+	"2025-03-26": true,
+	"2025-06-18": true,
+	"2025-11-25": true,
+}
+
 // jsonRPCRequest is an inbound JSON-RPC 2.0 message from the MCP client.
 type jsonRPCRequest struct {
-	JSONRPC string                 `json:"jsonrpc"`
+	JSONRPC string         `json:"jsonrpc"`
 	ID      any            `json:"id"`
-	Method  string                 `json:"method"`
+	Method  string         `json:"method"`
 	Params  map[string]any `json:"params,omitempty"`
 }
 
 // jsonRPCResponse is an outbound JSON-RPC 2.0 message to the MCP client.
 type jsonRPCResponse struct {
 	JSONRPC string        `json:"jsonrpc"`
-	ID      any   `json:"id"`
-	Result  any   `json:"result,omitempty"`
+	ID      any           `json:"id"`
+	Result  any           `json:"result,omitempty"`
 	Error   *jsonRPCError `json:"error,omitempty"`
 }
 
@@ -35,8 +45,10 @@ type jsonRPCError struct {
 // Tool is a registered MCP tool: its declaration and its handler.
 type Tool struct {
 	Name        string
+	Title       string
 	Description string
 	InputSchema map[string]any // JSON Schema for the tool's input object
+	Annotations map[string]any // MCP behavioral hints for clients
 	Handler     func(ctx context.Context, args map[string]any) (any, error)
 }
 
@@ -110,8 +122,15 @@ func (s *Server) run(ctx context.Context, in io.Reader, out io.Writer) {
 			continue
 		}
 
+		// JSON-RPC notifications never receive a response. This covers the MCP
+		// initialized notification and safely ignores future client notifications.
+		if req.ID == nil {
+			continue
+		}
 		if req.Method == "shutdown" {
-			s.writeResponse(out, jsonRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: nil})
+			s.writeResponse(out, jsonRPCResponse{
+				JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage("null"),
+			})
 			return
 		}
 
@@ -140,11 +159,15 @@ func (s *Server) handle(ctx context.Context, req jsonRPCRequest) jsonRPCResponse
 }
 
 func (s *Server) handleInitialize(req jsonRPCRequest) jsonRPCResponse {
+	protocolVersion := latestHandshakeProtocolVersion
+	if requested, _ := req.Params["protocolVersion"].(string); supportedHandshakeProtocolVersions[requested] {
+		protocolVersion = requested
+	}
 	return jsonRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
 		Result: map[string]any{
-			"protocolVersion": "2024-11-05",
+			"protocolVersion": protocolVersion,
 			"serverInfo": map[string]any{
 				"name":    "devtrack",
 				"version": s.version,
@@ -152,7 +175,6 @@ func (s *Server) handleInitialize(req jsonRPCRequest) jsonRPCResponse {
 			"capabilities": map[string]any{
 				"tools": map[string]any{},
 			},
-			"tools": s.toolList(),
 		},
 	}
 }
@@ -170,11 +192,24 @@ func (s *Server) handleToolsList(req jsonRPCRequest) jsonRPCResponse {
 func (s *Server) toolList() []map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	list := make([]map[string]any, 0, len(s.tools))
-	for _, t := range s.tools {
+	names := make([]string, 0, len(s.tools))
+	for name := range s.tools {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	list := make([]map[string]any, 0, len(names))
+	for _, name := range names {
+		t := s.tools[name]
 		entry := map[string]any{
 			"name":        t.Name,
 			"description": t.Description,
+		}
+		if t.Title != "" {
+			entry["title"] = t.Title
+		}
+		if t.Annotations != nil {
+			entry["annotations"] = t.Annotations
 		}
 		if t.InputSchema != nil {
 			entry["inputSchema"] = t.InputSchema

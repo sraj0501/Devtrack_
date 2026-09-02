@@ -124,12 +124,9 @@ func (p *Poller) cycle() {
 		evs := p.github.collectReviewComments(p.database)
 		reviewEvents = append(reviewEvents, evs...)
 	}
-	// Azure DevOps: TODO TASK-093 — review comment polling not yet implemented.
-	if cfg.IsAlertAzureEnabled() {
-		log.Printf("review polling: azure not yet implemented")
-	}
-	// GitLab: TODO TASK-093 — review comment polling not yet implemented.
-	// log.Printf("review polling: gitlab not yet implemented")
+	// Review-comment automation currently supports GitHub. Azure alert polling
+	// still covers work-item notifications; Azure PR threads and a GitLab alert
+	// poller remain explicitly deferred platform expansion.
 
 	if len(reviewEvents) > 0 {
 		p.reviewCommentHook(reviewEvents)

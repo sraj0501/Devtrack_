@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -2307,6 +2308,14 @@ func NewDatabaseAtPath(dbPath string) (*Database, error) {
 // writer, while busy_timeout makes short write conflicts wait instead of
 // failing immediately with SQLITE_BUSY.
 func sqliteConnectionString(dbPath string) string {
+	// url.URL.Path expects slash-separated paths. Leaving a native Windows
+	// path here percent-encodes backslashes, which modernc SQLite cannot open.
+	if runtime.GOOS == "windows" {
+		dbPath = filepath.ToSlash(dbPath)
+		if filepath.VolumeName(dbPath) != "" && !strings.HasPrefix(dbPath, "/") {
+			dbPath = "/" + dbPath
+		}
+	}
 	location := &url.URL{Scheme: "file", Path: dbPath}
 	query := location.Query()
 	query.Add("_pragma", "busy_timeout("+strconv.Itoa(cfg.GetSQLiteBusyTimeoutMS())+")")

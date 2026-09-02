@@ -28,7 +28,7 @@ A background daemon watches your commits and infers everything around them — w
 
 ### And it's the memory your AI agents lack
 
-> **Dev preview:** MCP is available on upstream `dev`; the latest public release, v3.0.10, does not include it yet.
+> **Source preview:** MCP is available on upstream `main`; the latest public release, v3.0.10, does not include it yet.
 
 Coding agents are session-based: they exist while invoked, then forget. DevTrack is always on. One command —
 
@@ -51,10 +51,10 @@ you run `devtrack telemetry on`.
 
 The latest public release is **v3.0.10**. It predates the MCP command and the Phase 9 onboarding
 work used below, so `releases/latest` cannot run this walkthrough yet. Until a newer release ships,
-build the MCP-capable client from upstream `dev`:
+build the MCP-capable client from upstream `main`:
 
 ```bash
-git clone --branch dev --single-branch https://github.com/sraj0501/Devtrack_.git
+git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_client
 go build -o devtrack .
 sudo install -m 0755 devtrack /usr/local/bin/devtrack
@@ -481,6 +481,8 @@ DevTrack exposes a Model Context Protocol (MCP) server so Claude Code automatica
 - **`devtrack mcp status`** — shows the registered tools and server info
 - **`devtrack mcp test`** — runs an in-process smoke test without starting a full server
 - Six read-only tools backed by SQLite: `get_active_context`, `get_today_commits`, `get_pending_actions`, `get_voice_profile`, `get_ticket_context`, `get_eod_summary`
+- MCPB manifests and per-platform bundle packaging are wired for the next release; no MCPB has been
+  published with v3.0.10.
 
 ```bash
 # One-time setup — run from your repo root
@@ -656,6 +658,7 @@ Key references in this repo:
 | Understand where the product is going | [**PRODUCT_BIBLE.md**](PRODUCT_BIBLE.md) — the source of truth |
 | Install it | [Installation](docs/INSTALLATION.md) |
 | Understand the architecture | [Architecture](docs/ARCHITECTURE.md) |
+| Maintain the Go↔Python HTTP boundary | [HTTP API contract](docs/HTTP_API.md) |
 | Review what DevTrack wants to send | [Pending-actions queue](#the-pending-actions-queue--nothing-is-sent-without-review) |
 | See the client↔server split | [Decoupling plan](docs/CLIENT_SERVER_DECOUPLING_PLAN.md) · [Capability ownership](docs/CAPABILITIES_OWNERSHIP.md) |
 | Set up the Telegram bot | [Telegram](docs/TELEGRAM_BOT.md) |

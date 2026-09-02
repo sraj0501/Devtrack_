@@ -13,6 +13,8 @@ import (
 func RegisterDevTrackTools(s *Server, database *db.Database) {
 	s.Register(Tool{
 		Name:        "get_active_context",
+		Title:       "Get active work context",
+		Annotations: readOnlyAnnotations(),
 		Description: "Returns the developer's current active ticket, repo path, today's commit count, and confidence in the ticket mapping. This is the primary context tool — call it first.",
 		InputSchema: map[string]interface{}{
 			"type":       "object",
@@ -23,6 +25,8 @@ func RegisterDevTrackTools(s *Server, database *db.Database) {
 
 	s.Register(Tool{
 		Name:        "get_today_commits",
+		Title:       "Get today's commits",
+		Annotations: readOnlyAnnotations(),
 		Description: "Returns all commits from today, grouped by ticket ID, with message and metadata.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
@@ -38,6 +42,8 @@ func RegisterDevTrackTools(s *Server, database *db.Database) {
 
 	s.Register(Tool{
 		Name:        "get_pending_actions",
+		Title:       "Get pending actions",
+		Annotations: readOnlyAnnotations(),
 		Description: "Returns the current pending actions queue — actions DevTrack wants to take but hasn't yet. Each action has a confidence score and an expiry time.",
 		InputSchema: map[string]interface{}{
 			"type":       "object",
@@ -48,6 +54,8 @@ func RegisterDevTrackTools(s *Server, database *db.Database) {
 
 	s.Register(Tool{
 		Name:        "get_voice_profile",
+		Title:       "Get voice profile",
+		Annotations: readOnlyAnnotations(),
 		Description: "Returns the developer's inferred writing style profile for a given context type. Use this to understand how the developer prefers to communicate before generating text on their behalf.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
@@ -64,6 +72,8 @@ func RegisterDevTrackTools(s *Server, database *db.Database) {
 
 	s.Register(Tool{
 		Name:        "get_ticket_context",
+		Title:       "Get ticket context",
+		Annotations: readOnlyAnnotations(),
 		Description: "Returns full context for a named ticket: recent commits, current pending actions targeting it, and its last activity time.",
 		InputSchema: map[string]interface{}{
 			"type":     "object",
@@ -80,6 +90,8 @@ func RegisterDevTrackTools(s *Server, database *db.Database) {
 
 	s.Register(Tool{
 		Name:        "get_eod_summary",
+		Title:       "Get end-of-day summary",
+		Annotations: readOnlyAnnotations(),
 		Description: "Returns today's EOD narrative draft — a summary of the day's commits grouped by ticket, suitable for a standup or daily report. Template-based (no LLM required).",
 		InputSchema: map[string]interface{}{
 			"type":       "object",
@@ -87,6 +99,15 @@ func RegisterDevTrackTools(s *Server, database *db.Database) {
 		},
 		Handler: makeGetEODSummary(database),
 	})
+}
+
+func readOnlyAnnotations() map[string]any {
+	return map[string]any{
+		"readOnlyHint":    true,
+		"destructiveHint": false,
+		"idempotentHint":  true,
+		"openWorldHint":   false,
+	}
 }
 
 // ---- Tool 1: get_active_context ----

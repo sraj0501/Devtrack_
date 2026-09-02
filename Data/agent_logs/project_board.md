@@ -1,7 +1,7 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-08-28 by PM — upstream reconciled through TASK-120/PR #256; Phase 9
-documentation and launch-preparation tasks are now active in isolated worktrees._
+_Last updated: 2026-09-02 — Phase 9 is complete through TASK-124; TASK-145–147 documentation,
+wiki-restoration, dependency-compatibility, Windows SQLite, and contract-sync work is reconciled._
 
 **[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
 (PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at
@@ -513,13 +513,13 @@ PostgreSQL file passed 4/4; the full Python 3.12 suite passed 900 with 4 skips. 
 `dev` authorized by the user.
 **Blockers**: none
 
-**ACTIVE — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. TASK-117–123 and the
-prerequisite TASK-142 are complete; TASK-124 is the remaining work. This phase is
-packaging and narrative, not a new capability. **This board is the authoritative ID ledger** —
+**COMPLETE — Phase 9: Adoption Gate (TASK-117–124).** See `docs/NEXT_STEPS.md`. TASK-117–124 and the
+prerequisite TASK-142 are complete. This phase was packaging and narrative, not a new capability.
+**This board is the authoritative ID ledger** —
 `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-145_
-_Active implementation branches: none; TASK-124 remains planned._
+_Next DevTrack task ID: TASK-149_
+_Active implementation branches: none._
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -3939,7 +3939,11 @@ four mechanics being present.
 **Started**: 2026-06-22
 **Depends on**: TASK-092 (Phase 6 COMPLETE — dev tip a44077c)
 **Branch**: `feat/TASK-093-pr-review-detection`
-**Engineer status**: 13/13 criteria done — last commit: 22bc788 "feat(phase7): Implement review comment classification logic" — 2026-06-22 16:25
+**Engineer status**: GitHub path and Phase 7 exit criterion complete — last commit: 22bc788
+"feat(phase7): Implement review comment classification logic" — 2026-06-22 16:25. A 2026-09-02
+audit corrected the earlier 13/13 claim: Azure PR-thread and GitLab review-comment polling were not
+implemented. They remain deferred platform expansion and are not required for the GitHub-verified
+Phase 7 exit criterion.
 
 **Spec**:
 
@@ -6144,7 +6148,7 @@ with upstream `dev` at `a1dd036`, without modifying application source or claimi
 - [x] TASK-118–120 are consistently marked merged with PR and commit evidence.
 - [x] TASK-121–124 have dispatchable scope and acceptance criteria.
 - [x] TASK-144 was the next unused ID at reconciliation time; after its approved allocation, the
-      current next-unused ID is consistently TASK-145.
+      next-unused ID at that reconciliation point was TASK-145; TASK-145–147 were subsequently used.
 - [x] v3.0.10 remains identified as the latest public release while newer work is described as
       unreleased on `dev`.
 - [x] Launch-copy evidence contains no invented usage, savings, or external-user claims.
@@ -6249,7 +6253,50 @@ make the demo wait for real staging evidence without fabricating output.
 **Engineer status:** COMPLETE — commit `957ecd6`; verified on 2026-08-28 against the local
 PostgreSQL, Ollama, and daemon environment. Full Go tests, vet, and Windows cross-build passed.
 
-## PLANNED — TASK-124: Evidence-backed launch drafts
+## COMPLETE — TASK-145: Full documentation synchronization
+
+**Engineer status:** COMPLETE — commit `6542292` synchronized repository memory, public docs, wiki
+content, installation/configuration guidance, and ownership records with the code on 2026-08-28.
+
+## COMPLETE — TASK-146: Restore comprehensive beginner wiki
+
+**Engineer status:** COMPLETE — commits `5ef4c19` and `c82dc01` restored the full beginner wiki and
+corrected the homepage version-watermark layout on 2026-08-29.
+
+## COMPLETE — TASK-147: Dependency, Windows SQLite, and API-contract synchronization
+
+**Vision check:** PASS — compatibility and documentation work preserves the local-first queue and
+does not add a service dependency.
+
+**Acceptance criteria:**
+- [x] The refreshed Python lock works with the admin console and the full server suite.
+- [x] Native Windows SQLite paths open correctly and Windows runs the Go test job in CI.
+- [x] Commit, timer, boardroom, queue, and client-event HTTP contracts have executable coverage and
+      a checked-in contract document; the architecture uses the real `/trigger/timer` route.
+- [x] The Go build/vet and affected tests pass; PostgreSQL's live lane remains green.
+
+**Engineer status:** COMPLETE — Python: 954 passed, 10 skipped; live PostgreSQL: 10 passed. Go build
+and vet passed; all packages passed, with two Application-Control-blocked package launches rerun
+individually and passing. The wiki checker now reports a clear Node.js prerequisite instead of a
+Python traceback.
+
+## COMPLETE — TASK-148: MCPB build readiness
+
+**Vision check:** PASS — this packages the existing local, read-only MCP value without adding a
+hosted service or broadening tool permissions.
+
+**Acceptance criteria:**
+- [x] Fetch and compare upstream `dev` with `main`; identify whether any MCP work is missing.
+- [x] Synchronize the stdio server with finalized handshake negotiation and current tool metadata.
+- [x] Build reproducible platform-specific MCPBs from release binaries with an explicit database picker.
+- [x] Add automated MCPB manifest validation and locally smoke-test the Go server and Windows bundle.
+
+**Engineer status:** COMPLETE on the working tree — `origin/dev` is an ancestor of `origin/main`
+with no tree delta. Go tests, vet, and build passed; the generated Windows MCPB had the expected
+manifest/docs/license/binary contents, and its bundled executable completed initialize, tools/list,
+and shutdown over stdio. No tag, release, registry submission, or external publication occurred.
+
+## COMPLETE — TASK-124: Evidence-backed launch drafts
 
 **Priority:** HIGH
 
@@ -6260,10 +6307,14 @@ PostgreSQL, Ollama, and daemon environment. Full Go tests, vet, and Windows cros
 recent engineer-log evidence. Do not publish externally.
 
 **Acceptance criteria:**
-- [ ] Engineer log contains a current seven-day evidence window before generation begins.
-- [ ] Three audience-specific drafts follow the post-generator formats and anti-marketing voice.
-- [ ] Every number and shipped-feature claim traces to repository or CI evidence.
-- [ ] Drafts clearly distinguish v3.0.10 release state from unreleased `dev` work.
+- [x] Engineer log contains a current seven-day evidence window before generation begins.
+- [x] Three audience-specific drafts follow the post-generator formats and anti-marketing voice.
+- [x] Every number and shipped-feature claim traces to repository or CI evidence.
+- [x] Drafts clearly distinguish v3.0.10 release state from unreleased `main` work.
+
+**Engineer status:** COMPLETE — review-only dev.to, Show HN, and LinkedIn drafts are stored under
+`Data/agent_logs/posts/2026-W36/`. Nothing was published or sent externally; each draft retains a
+release gate because v3.0.10 predates the Phase 9 onboarding and MCP work.
 
 ---
 

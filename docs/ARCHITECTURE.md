@@ -204,8 +204,8 @@ The OS releases the lock automatically when the process exits for any reason, so
 Go daemon sends all triggers to the Python backend via HTTPS POST. The Python backend (`webhook_server.py`) exposes `/trigger/*` endpoints:
 
 ```
-POST /trigger/commit_trigger   → Git commit detected (includes workspace_name, pm_platform, pm_project)
-POST /trigger/timer_trigger    → Scheduled time reached (includes workspace context in multi-repo mode)
+POST /trigger/commit           → Git commit detected (includes workspace_name, pm_platform, pm_project)
+POST /trigger/timer            → Scheduled time reached (includes workspace context in multi-repo mode)
 POST /trigger/workspace_reload → Reload workspaces.yaml and restart monitors
 GET  /health                   → Python backend health check
 ```
@@ -357,7 +357,7 @@ amend commit message in-place (skipped if commit is already pushed)
 Go daemon logs to database
          │
          ▼
-Go daemon POSTs commit_trigger to Python /trigger/commit_trigger
+Go daemon POSTs the commit trigger to Python `/trigger/commit`
          │
          ▼
 Python backend receives commit_trigger
@@ -694,8 +694,8 @@ X-DevTrack-API-Key: <DEVTRACK_API_KEY>   (if configured)
 
 | Endpoint | Direction | Purpose |
 |----------|-----------|---------|
-| `POST /trigger/commit_trigger` | Go → Python | Git commit detected |
-| `POST /trigger/timer_trigger` | Go → Python | Scheduled time reached |
+| `POST /trigger/commit` | Go → Python | Git commit detected |
+| `POST /trigger/timer` | Go → Python | Scheduled time reached |
 | `POST /trigger/workspace_reload` | Go → Python | Reload workspaces.yaml |
 | `POST /trigger/client_events` | Go → Python | Persist an opted-in, replay-safe batch of Go-owned event snapshots |
 | `GET  /health` | Go → Python | Liveness check |
