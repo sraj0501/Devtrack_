@@ -1,16 +1,16 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-09-03_ | public v3.0.10 | source synchronized through TASK-148; TASK-149 docs awaiting review | GitHub is canonical
+_Last updated: 2026-09-03_ | public v3.0.10 | source/docs through TASK-149 on dev | TASK-150 active | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 
 ## Read first
 - `PRODUCT_BIBLE.md` is definitive product direction; `CLAUDE.md` is the build guide.
 - `Data/agent_logs/project_board.md` is the task/status/ID authority; dated notes are historical.
-- Phases 0–9 and PostgreSQL are complete. TASK-150 is the next unused task ID; no implementation task is active.
+- Phases 0–9 and PostgreSQL are complete. TASK-150 is active for v3.1.0 qualification, release, registry distribution, and launch publication.
 
 ## Completed — 2026-09-03
-- TASK-149 synchronized README, wiki, durable project memory, registry evidence, and release gates after TASK-147/148. Commit `f2c7fb5` is on `docs/TASK-149-documentation-sync` (PR #257 targeting `dev`); it is not yet part of `dev` or `main` in the checked-out repository state.
+- TASK-149 synchronized README, wiki, durable project memory, registry evidence, and release gates after TASK-147/148. PR #257 merged to `dev` at `e22f709`.
 
 ## Completed — 2026-09-02
 - TASK-124 produced held, evidence-backed dev.to, Show HN, and LinkedIn drafts; nothing was published.

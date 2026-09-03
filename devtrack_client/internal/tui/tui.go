@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
@@ -266,7 +267,7 @@ func (m tuiModel) View() string {
 // renderHeader renders the top bar with branding and mode/version right-aligned.
 func (m tuiModel) renderHeader() string {
 	brand := StyleHeader.Render("  ◆ DevTrack")
-	right := StyleMuted.Render("managed  v3.0.10  ")
+	right := StyleMuted.Render(fmt.Sprintf("%s  %s  ", config.GetServerMode(), config.GetDevTrackVersion()))
 	spacer := m.width - lipgloss.Width(brand) - lipgloss.Width(right)
 	spacer = max(spacer, 0)
 	return brand + strings.Repeat(" ", spacer) + right
