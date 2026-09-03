@@ -163,7 +163,8 @@ from someone unknown means a real install survived setup.
 | TASK-123 | **DONE** — evidence-backed registry matrix and held submission copy | 9d |
 | TASK-124 | **DONE** — evidence-backed Show HN, dev.to, and LinkedIn drafts; held until a post-v3.0.10 release | 9d |
 | TASK-142 | **DONE (PR #253)** — configured-LLM task enrichment with strict validation and a non-blocking raw/template fallback | 9a prerequisite |
-| TASK-148 | **DONE on working tree** — MCP handshake/tool metadata hardening plus reproducible, validated per-platform MCPB release packaging | MCP distribution |
+| TASK-148 | **DONE (`c1329f7`)** — MCP handshake/tool metadata hardening plus reproducible, validated per-platform MCPB release packaging | MCP distribution |
+| TASK-149 | **DONE on docs branch** — synchronize README, wiki, durable memory, registry evidence, and post-TASK-148 release gates | Documentation |
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL
@@ -175,7 +176,8 @@ from someone unknown means a real install survived setup.
 > live-demo queue and trigger reliability. TASK-145 synchronized the full documentation set,
 > TASK-146 restored the comprehensive beginner wiki, and TASK-147 reconciled refreshed dependencies,
 > Windows SQLite behavior, and the HTTP contract. TASK-148 added MCPB build readiness without
-> publishing a release or registry entry. The next unused ID is TASK-149.
+> publishing a release or registry entry. TASK-149 synchronized the documentation surfaces after
+> that work. The next unused ID is TASK-150.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to

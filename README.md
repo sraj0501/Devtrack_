@@ -472,17 +472,27 @@ cd devtrack_server && uv run python -m backend.webhook_server
 
 All trigger endpoints require the `X-DevTrack-API-Key` header (set `DEVTRACK_API_KEY` in `.env`). Webhook signature verification uses source-specific secrets (`AZURE_WEBHOOK_SECRET`, `GITHUB_WEBHOOK_SECRET`, etc.). GitLab webhooks are registered automatically at startup when `GITLAB_WEBHOOK_URL` is configured.
 
+The stable request and response shapes, authentication rules, and matching Go/Python contract tests
+are documented in [the HTTP API contract](docs/HTTP_API.md).
+
 ### Claude Code / MCP Integration (Phase 8)
 
 DevTrack exposes a Model Context Protocol (MCP) server so Claude Code automatically knows your active ticket, commit voice, and pending queue — no manual context-setting needed.
 
 - **`devtrack mcp`** — starts the MCP server in stdio mode (the transport Claude Code uses)
+- **`devtrack mcp serve --database PATH`** — starts it against an explicitly selected `devtrack.db`
+  (used by packaged MCPB installs)
 - **`devtrack mcp setup`** — writes `.mcp.json` in the current directory so Claude Code discovers the server automatically on next launch
 - **`devtrack mcp status`** — shows the registered tools and server info
 - **`devtrack mcp test`** — runs an in-process smoke test without starting a full server
-- Six read-only tools backed by SQLite: `get_active_context`, `get_today_commits`, `get_pending_actions`, `get_voice_profile`, `get_ticket_context`, `get_eod_summary`
-- MCPB manifests and per-platform bundle packaging are wired for the next release; no MCPB has been
-  published with v3.0.10.
+- Six SQLite-backed tools: `get_active_context`, `get_today_commits`, `get_pending_actions`,
+  `get_voice_profile`, `get_ticket_context`, `get_eod_summary`. Each declares a title and read-only,
+  non-destructive, idempotent safety annotations.
+- The stdio handshake negotiates finalized MCP versions through `2025-11-25`, retaining older-client
+  compatibility. The newer `2026-07-28` per-request protocol is not supported yet.
+- Reproducible MCPB 0.3 packaging and manifest validation are wired for Windows, macOS, and Linux in
+  the next release pipeline. During bundle installation, select the `devtrack.db` created by
+  `devtrack setup`; no MCPB was published with v3.0.10.
 
 ```bash
 # One-time setup — run from your repo root
@@ -683,8 +693,10 @@ GIT_NO_DEVTRACK=1 git push origin vX.Y.Z
 ```
 
 GitHub Actions runs the Go tests, cross-compiles Linux amd64/arm64, macOS amd64/arm64, and Windows
-amd64, then publishes the exact assets consumed by the download page. Creating and pushing a release
-tag is an explicit maintainer action; update release-facing website copy in the same release change.
+amd64, validates the generated MCPB manifests, then publishes the platform binaries/tarballs and
+five matching `.mcpb` bundles. These artifacts remain source-pipeline capability until a maintainer
+creates and pushes a new release tag; v3.0.10 contains neither MCP nor MCPB assets. Update
+release-facing website copy in the same release change.
 
 The older `scripts/release.ps1` helper is retained for local maintainer workflows, but it is not the
 source of truth for published asset names or CI behavior.

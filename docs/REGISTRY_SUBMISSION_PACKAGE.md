@@ -112,23 +112,14 @@ Do not claim any of the following without new evidence:
 - public adoption, user counts, download counts, time savings, or accuracy rates;
 - OSI-approved/open-source licensing.
 
-## TASK-124 evidence audit
+## TASK-124 evidence outcome
 
-The post-generator prerequisite is **not met** as of 2026-08-28:
+TASK-124 completed on 2026-09-02 after the engineer log captured a current seven-day evidence
+window covering TASK-121–123 and TASK-143–147. Review-only dev.to, Show HN, and LinkedIn drafts
+are stored under `Data/agent_logs/posts/2026-W36/`.
 
-- TASK-143 has prepared one same-day `Evidence Reconciliation` entry for TASK-118–120. It records
-  three upstream merges, green CI, unreleased status, and the SSH fetch friction, and it explicitly
-  rules out unsupported install/adoption/time-saved/onboarding claims.
-- That entry describes a documentation audit, not a lived implementation or user session. It has
-  no measured time saved, ticket-update result, standup-generation result, onboarding run, user
-  reaction, or task-level timing from the current seven-day window.
-- The prior dated engineering sessions in the log are from June. One reconciliation snapshot is
-  not the seven-day commit/friction/daily-summary source record required by the post-generator, and
-  TASK-124 also depends on completion of TASK-121–123.
-- The TASK-124 board criterion requires a current seven-day evidence window before generation.
-
-Therefore no dev.to, Show HN, or LinkedIn drafts were generated. Before TASK-124 starts, append
-task-level evidence for the recent Phase 9 work (commands/results, CI links, measured timing and
-friction, and explicit release-vs-`dev` state) across the current seven-day window, complete its
-TASK-121–123 dependencies, then run the post-generator workflow over only that window. The TASK-143
-entry remains a useful claim boundary and upstream-status source, but is insufficient by itself.
+The drafts remain deliberately unpublished. They distinguish public v3.0.10 from newer source
+work, avoid adoption and time-saved claims that the repository cannot prove, and retain a release
+gate until an MCP-capable version has been install-tested and published. TASK-148 subsequently
+prepared MCPB build automation, but it did not create a public release or supply external-usage
+evidence. Registry copy and launch drafts must keep those boundaries until new evidence exists.

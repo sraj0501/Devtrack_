@@ -14,7 +14,7 @@ calls `devtrack queue approve`, never supplies `--email`, and never inserts a ca
 
 ## Preconditions
 
-- Use a build from upstream `dev` that passes `devtrack mcp status`. The latest public release is
+- Use a build from upstream `main` that passes `devtrack mcp status`. The latest public release is
   **v3.0.10** and predates MCP, so it cannot run this Phase 9 storyboard. See the README source-build
   commands; a future public release containing MCP will also be suitable.
 - Run `devtrack setup` once with that build and choose Managed mode.
