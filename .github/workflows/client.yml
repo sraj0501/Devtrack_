@@ -93,22 +93,27 @@ jobs:
         include:
           - runner: windows-2025
             platform: win32
+            asset_os: windows
             arch: amd64
             binary: devtrack.exe
           - runner: macos-15-intel
             platform: darwin
+            asset_os: darwin
             arch: amd64
             binary: devtrack
           - runner: macos-15
             platform: darwin
+            asset_os: darwin
             arch: arm64
             binary: devtrack
           - runner: ubuntu-24.04
             platform: linux
+            asset_os: linux
             arch: amd64
             binary: devtrack
           - runner: ubuntu-24.04-arm
             platform: linux
+            asset_os: linux
             arch: arm64
             binary: devtrack
 
@@ -136,17 +141,17 @@ jobs:
           --binary devtrack_client/dist/${{ matrix.binary }}
           --platform ${{ matrix.platform }}
           --version 3.1.0-rc.1
-          --output devtrack_client/dist/devtrack_mcpb_${{ matrix.platform }}_${{ matrix.arch }}.mcpb
+          --output devtrack_client/dist/devtrack_mcpb_${{ matrix.asset_os }}_${{ matrix.arch }}.mcpb
 
       - name: Validate manifest with official MCPB CLI
         run: |
-          python -m zipfile -e devtrack_client/dist/devtrack_mcpb_${{ matrix.platform }}_${{ matrix.arch }}.mcpb mcpb-validation
+          python -m zipfile -e devtrack_client/dist/devtrack_mcpb_${{ matrix.asset_os }}_${{ matrix.arch }}.mcpb mcpb-validation
           npx --yes @anthropic-ai/mcpb@2.1.2 validate mcpb-validation/manifest.json
 
       - name: Execute extracted MCPB on native runner
         run: >-
           python scripts/smoke_mcpb.py
-          devtrack_client/dist/devtrack_mcpb_${{ matrix.platform }}_${{ matrix.arch }}.mcpb
+          devtrack_client/dist/devtrack_mcpb_${{ matrix.asset_os }}_${{ matrix.arch }}.mcpb
           --platform ${{ matrix.platform }}
           --arch ${{ matrix.arch }}
 
