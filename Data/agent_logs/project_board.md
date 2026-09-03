@@ -518,8 +518,8 @@ prerequisite TASK-142 are complete. This phase was packaging and narrative, not 
 **This board is the authoritative ID ledger** —
 `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-149_
-_Active implementation branches: none._
+_Next DevTrack task ID: TASK-150_
+_Active implementation branches: `docs/TASK-149-documentation-sync`._
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -6291,10 +6291,27 @@ hosted service or broadening tool permissions.
 - [x] Build reproducible platform-specific MCPBs from release binaries with an explicit database picker.
 - [x] Add automated MCPB manifest validation and locally smoke-test the Go server and Windows bundle.
 
-**Engineer status:** COMPLETE on the working tree — `origin/dev` is an ancestor of `origin/main`
-with no tree delta. Go tests, vet, and build passed; the generated Windows MCPB had the expected
+**Engineer status:** COMPLETE in `c1329f7`, synchronized to `origin/main` and `origin/dev`. Go tests,
+vet, and build passed; the generated Windows MCPB had the expected
 manifest/docs/license/binary contents, and its bundled executable completed initialize, tools/list,
 and shutdown over stdio. No tag, release, registry submission, or external publication occurred.
+
+## COMPLETE — TASK-149: Post-MCPB documentation synchronization
+
+**Vision check:** PASS — documentation preserves the local-first/read-only boundaries and clearly
+separates source readiness from public v3.0.10 behavior.
+
+**Acceptance criteria:**
+- [x] README documents the current HTTP contract, MCP handshake, safety annotations, packaged DB
+      selection, five MCPB artifacts, and unreleased boundary.
+- [x] Wiki What's New, MCP, roadmap, homepage, Windows compatibility, and HTTP API reference match
+      TASK-147/148 behavior.
+- [x] Checked-in project memory reflects completed Phase 9, TASK-124/147/148, and remaining release gates.
+- [x] Registry evidence no longer claims TASK-124 is blocked; stale working-tree and branch claims
+      are reconciled, local structural checks pass, and CI retains the Node-based wiki syntax gate.
+
+**Engineer status:** COMPLETE on `docs/TASK-149-documentation-sync`; ready for review into `dev`.
+No release, registry submission, launch-post publication, or source-code change is included.
 
 ## COMPLETE — TASK-124: Evidence-backed launch drafts
 

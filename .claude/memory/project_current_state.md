@@ -1,12 +1,14 @@
 ---
 name: Project current state
-description: v3.0.10 public; Phases 0–8 and PostgreSQL complete; Phase 9 launch work active
+description: v3.0.10 public; source through TASK-148; TASK-149 docs awaiting review; Phases 0–9 complete
 type: project
 ---
 
-**Release:** v3.0.10 is latest public. `dev` contains unreleased TASK-117–123, TASK-142, and TASK-144. A pushed `v*.*.*` tag runs the canonical GitHub Actions release workflow.
-**Completed:** Phases 0–8; Managed Install; Silent Worker Correctness; PostgreSQL TASK-112–116 plus TASK-140/141; onboarding/parser/demo work through TASK-144.
+**Release:** v3.0.10 is latest public. Commit `c1329f7` is synchronized on local `main` and remote `origin/main`/`origin/dev`; its Phase 9, compatibility, and MCPB work remains unreleased. A pushed `v*.*.*` tag runs the canonical GitHub Actions release workflow.
+**Completed:** Phases 0–9; Managed Install; Silent Worker Correctness; PostgreSQL TASK-112–116 plus TASK-140/141; launch drafts TASK-124; documentation/wiki TASK-145/146; compatibility and contract sync TASK-147; MCPB build readiness TASK-148.
 **Storage:** Go remains SQLite-only and never connects to PostgreSQL. Python requires `POSTGRES_URL`, validates it, and applies Alembic before serving; client-event sync is opt-in and idempotent.
-**Active next:** TASK-124 evidence-backed dev.to, Show HN, and LinkedIn drafts. The current uncommitted docs sync uses `docs/TASK-145-full-documentation-sync`; board state is unchanged.
+**MCP:** Source exposes six local, read-only stdio tools. MCPB 0.3 bundles are reproducibly generated for five OS/architecture targets; CI validates the three platform manifest variants. v3.0.10 contains neither MCP nor MCPB artifacts.
+**Documentation:** TASK-149 synchronized README, wiki, checked-in memory, registry evidence, and release gates in commit `f2c7fb5` on `docs/TASK-149-documentation-sync`; PR #257 targets `dev`. Treat these docs as awaiting integration until that branch is merged.
+**Active next:** No implementation task is active; TASK-150 is the next unused ID. Before registry work, tag an MCP-capable release only after CI and Windows/macOS/Linux bundle install tests, privacy-policy review, release notes, and explicit authorization for publication.
 **Authority:** `Data/agent_logs/project_board.md` owns task history/IDs; GitHub `sraj0501/Devtrack_` owns source/releases.
 **Do not revive:** NATS/Redis/external brokers, Kubernetes, multi-tenancy, DDD layers, or deleted pre-pivot architecture documents.

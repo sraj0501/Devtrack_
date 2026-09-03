@@ -1,12 +1,27 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-02 (Phase 9 and post-Phase-9 synchronization complete through TASK-148)_
+_Last updated: 2026-09-03 (Phase 9 and post-Phase-9 synchronization complete through TASK-149)_
+
+---
+
+## 2026-09-03 — TASK-149: Post-MCPB documentation synchronization
+**Phase**: Documentation maintenance
+**Status**: DONE on `docs/TASK-149-documentation-sync`; ready for review into `dev`
+**Files**: README, comprehensive wiki, checked-in project memory, registry evidence, roadmap, and
+project status records
+**Vision check**: PASS
+**Engineer notes**: The docu-agent's parallel README, wiki, and memory passes reconciled the project
+after TASK-147/148. Documentation now covers the stable HTTP boundary, Windows SQLite behavior,
+MCP handshake and safety metadata, explicit packaged-database selection, deterministic MCPB 0.3
+packaging, five planned release artifacts, and the remaining install/privacy/release/registry gates.
+Stale `dev`-only, working-tree, active-Phase-9, and blocked-TASK-124 claims were removed. No source
+code, release, registry entry, or launch post was changed or published.
 
 ---
 
 ## 2026-09-02 — TASK-148: MCPB build readiness
 **Phase**: MCP distribution readiness
-**Status**: DONE on the working tree; UNRELEASED after v3.0.10
+**Status**: DONE in `c1329f7` on `main` and `dev`; UNRELEASED after v3.0.10
 **Files**: MCP protocol server/tool declarations, explicit packaged-database CLI path, MCPB manifest
 and packager, client/release workflows, README and registry/roadmap records
 **Vision check**: PASS
@@ -22,7 +37,7 @@ Windows bundle plus explicit-database stdio exchange were smoke-tested. No relea
 
 ## 2026-09-02 — TASK-124 + TASK-147: Launch drafts and compatibility synchronization
 **Phase**: Phase 9 completion / maintenance
-**Status**: DONE on the working tree; UNRELEASED after v3.0.10
+**Status**: DONE in `c1329f7` on `main` and `dev`; UNRELEASED after v3.0.10
 **Files**: audience-specific launch drafts and evidence log; Python admin template compatibility;
 Windows SQLite DSN handling and CI; Go/Python HTTP contract tests; API and architecture docs
 **Vision check**: PASS

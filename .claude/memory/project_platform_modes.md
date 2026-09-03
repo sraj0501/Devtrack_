@@ -1,13 +1,12 @@
 ---
-name: Platform modes and host assumptions
-description: Non-obvious managed/lightweight/external rules and current Linux development host
+name: Platform modes and host portability
+description: Actual managed/lightweight/external resolution and cross-platform working rules
 type: project
 ---
 
-The three modes (`managed` / `lightweight` / `external`) are documented in CLAUDE.md — only the non-obvious parts are recorded here:
+The three documented configuration values are `managed`, `lightweight`, and `external`. The implementation has only `ServerModeManaged` and `ServerModeExternal`: `GetServerMode()` maps both the `lightweight` and `external` strings to `ServerModeExternal`. Preserve that distinction between the documented user-facing value and the current Go type.
 
-- **Never read `DEVTRACK_SERVER_MODE` directly** — use `GetServerMode()` (`internal/config/config.go`). `IsLightweightMode()` guards `requiresManagedMode()` in `cli.go`; **any new command that needs Python must be added to that guard list**, or it fails obscurely in lightweight mode.
-- PM connectors, gitsage, and alerts are Go-native and work in **all** modes — only AI/server commands are mode-gated.
-- **Development host:** Zorin OS (Ubuntu-based Linux) with `zsh`. Use Linux paths and commands for
-  repository work. Windows remains a supported release target with platform-specific locking,
-  autostart, and process handling; do not treat WSL or an old Windows memory path as the local host.
+- **Centralize mode checks:** use `GetServerMode()`/`IsExternalServer()` from `internal/config/server_config.go`; do not duplicate direct `DEVTRACK_SERVER_MODE` parsing in new code. There is currently no `IsLightweightMode()` helper.
+- **Current guard behavior:** `requiresManagedMode()` is used by selected AI/server commands, but it only errors for external/lightweight mode when `GetServerURL()` is empty. `GetServerURL()` currently falls back to loopback, so do not claim that every Python-dependent command is categorically blocked in lightweight mode without changing and testing the implementation.
+- PM connectors, gitsage, alerts, local SQLite, queueing, scheduling, and MCP are Go-native. Managed mode spawns the Python server; external/lightweight mode does not.
+- **Host portability:** do not record one contributor machine as the permanent development host. This repository is currently being audited from native Windows, while Linux and macOS remain supported. Prefer cross-platform commands and paths; isolate unavoidable Windows/Unix differences behind the existing platform-specific files and tests.

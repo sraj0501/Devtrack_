@@ -1,5 +1,29 @@
 # DevTrack Engineer Log
 
+### [2026-09-03] TASK-149 — post-MCPB documentation synchronization
+
+**Notes**:
+- Ran the repository's docu-agent workflow as three parallel passes over README, wiki, and durable
+  checked-in project memory, then reviewed their combined changes against `c1329f7` and the HTTP API.
+- Added concise README coverage for the HTTP contract, packaged database selection, MCP handshake
+  boundary, tool annotations, MCPB validation, and five future release artifacts.
+- Added a wiki HTTP API reference and synchronized What's New, Windows compatibility, MCP, roadmap,
+  homepage cards, and source-vs-v3.0.10 wording. Reconciled durable memory and replaced the stale
+  registry claim that TASK-124 had not generated launch drafts.
+- Verification: `git diff --check` passed; all changed paths are documentation/status records; the
+  wiki has one HTTP API nav/page mapping and balanced opening/closing div tags (145/145). The local
+  inline-JavaScript checker reports its documented Node.js 22+ prerequisite because Node is absent;
+  the wiki CI workflow supplies Node and remains the executable syntax gate.
+- No source code changed. No release, registry submission, or held launch draft was published.
+
+## Task Summary — TASK-149
+
+- Acceptance criteria met: 4/4
+- Public release changed: no; v3.0.10 remains latest
+- Ready for review into `dev`: YES
+
+---
+
 ### [2026-09-02] TASK-148 — MCPB build readiness
 
 **Notes**:
@@ -16,7 +40,9 @@
   The built executable completed initialize, tools/list, and shutdown using an explicit disposable
   SQLite path; all six tools exposed the new safety metadata. Node.js is not installed locally, so
   official MCPB CLI validation is enforced in CI but was not executed on this host.
-- External systems changed: fetch only; no commit, push, tag, release, registry submission, or publish.
+- External systems changed during TASK-148 implementation: fetch only. The completed work was later
+  committed as `c1329f7` and pushed to both `dev` and `main`; no tag, release, registry submission,
+  or publication occurred.
 
 ## Task Summary — TASK-148
 

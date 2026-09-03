@@ -6,8 +6,8 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-08-28 (client-server decoupling complete; PostgreSQL is mandatory server-side;
-Phase 9 onboarding and reliability work integrated on `dev`)._
+_Last updated: 2026-09-03 (client-server decoupling complete; PostgreSQL is mandatory server-side;
+Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through TASK-148)._
 
 ## Ownership model (intended)
 
