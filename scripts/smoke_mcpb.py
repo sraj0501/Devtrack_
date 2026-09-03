@@ -70,6 +70,22 @@ def main() -> None:
         if "Version:    dev" in version:
             raise SystemExit("bundle contains an unversioned development binary")
 
+        project = root / "clean-project"
+        project.mkdir()
+        setup = subprocess.run(
+            [str(executable), "mcp", "setup", "--dir", str(project)],
+            check=True,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "DEVTRACK_ENV_FILE": str(root / "devtrack.env")},
+        )
+        mcp_config = json.loads((project / ".mcp.json").read_text(encoding="utf-8"))
+        configured = mcp_config["mcpServers"]["devtrack"]
+        if Path(configured["command"]).resolve() != executable.resolve():
+            raise SystemExit("mcp setup did not register the extracted bundle executable")
+        if configured["args"] != ["mcp"] or "Written:" not in setup.stdout:
+            raise SystemExit("mcp setup produced an unexpected project configuration")
+
         database = root / "smoke" / "devtrack.db"
         database.parent.mkdir()
         requests = [
@@ -114,8 +130,8 @@ def main() -> None:
                 raise SystemExit(f"incorrect destructive metadata for {tool.get('name')}")
 
         print(
-            f"PASS {args.platform}/{args.arch}: extracted bundle, versioned binary, "
-            "initialize, tools/list, tool call, and shutdown"
+            f"PASS {args.platform}/{args.arch}: extracted bundle, versioned binary, clean-project "
+            "setup, initialize, tools/list, tool call, and shutdown"
         )
 
 
