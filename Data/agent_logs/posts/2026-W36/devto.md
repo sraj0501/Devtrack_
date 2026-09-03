@@ -1,8 +1,5 @@
 # I Spent 18 Months Building the Tool That Writes My Standups
 
-> Draft only — do not publish until the Phase 9 work has a public release. The newest public tag is
-> v3.0.10; commands marked “on main” below are newer and unreleased.
-
 I did not start DevTrack because I wanted another developer dashboard. I started it because the same
 work kept happening twice: once in Git, then again in a ticket, then a third time when somebody asked
 for a standup update.
@@ -37,7 +34,7 @@ The Go-native path can monitor Git, retain local context, and expose MCP without
 The richer server path needs Python, dependencies, PostgreSQL, and potentially a multi-gigabyte local
 model. Pretending that chain is instant would make for a cleaner landing page and a worse product.
 
-The unreleased Phase 9 work on `main` changes the sequence instead:
+The Phase 9 work released in v3.1.0 changes the sequence instead:
 
 1. Deliver the Go-native value first.
 2. Bootstrap the optional server in the background.
@@ -51,20 +48,12 @@ is still the first issue or pull request from somebody I do not know.
 
 ## What you can use today
 
-The latest public release is v3.0.10. It contains the established Git and git-sage workflows and
-significant Windows fixes. MCP setup and the Phase 9 onboarding path described above are newer work
-on `main`; they are not in v3.0.10, and `devtrack upgrade` will not install them yet.
+DevTrack v3.1.0 is the first public release containing MCP, the progressive Phase 9 onboarding
+path, and five native MCPB bundles. Existing users can run `devtrack upgrade`; new users can install
+the matching release asset, run `devtrack setup`, and then use `devtrack mcp setup` in a project.
 
-If you build from source, the quickstart in the repository labels that distinction directly. If you
-prefer release binaries, wait for the next tagged release rather than assuming the preview commands
-exist.
-
-That is less exciting than saying “install it and everything is automatic.” It is also true.
+The richer Python/PostgreSQL path still has real dependencies and setup time. The Go-native path is
+useful while those components bootstrap, and `devtrack doctor` reports the distinction instead of
+pretending everything is ready.
 
 DevTrack is here: https://github.com/sraj0501/Devtrack_
-
----
-
-Draft evidence: `README.md` release warning and quickstart; `docs/NEXT_STEPS.md` Phase 9 sequencing;
-`Data/agent_logs/engineer_log.md` seven-day window; TASK-121–123 and TASK-144 commits listed there;
-`git tag --sort=-version:refname` showing v3.0.10 as the newest tag on 2026-09-02.

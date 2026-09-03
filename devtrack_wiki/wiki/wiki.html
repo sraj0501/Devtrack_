@@ -634,6 +634,7 @@ const NAV = [
       { id: 'WORKSPACES',      label: 'Workspaces',         icon: git_icon() },
       { id: 'MULTI_REPO',      label: 'Multi-Repo Setup',   icon: git_icon() },
       { id: 'ARCHITECTURE',    label: 'Architecture',       icon: arch_icon() },
+      { id: 'HTTP_API',        label: 'HTTP API Contract',  icon: arch_icon() },
     ]
   },
   {
@@ -947,8 +948,8 @@ devtrack voice status</code></pre>
 <h1>Setup Wizard</h1>
 <p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode, LLM provider, credentials, workspace, project-management platform, and shell integration, then writes a complete environment file under the DevTrack XDG data directory and registers it so every subsequent <code>devtrack</code> invocation auto-loads it. Managed mode also collects and validates the required PostgreSQL URL.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased dev preview — TASK-118–120 are not in v3.0.10</div>
-<blockquote><p>This page documents the setup wizard currently on the <code>dev</code> branch. The latest public release is <code>v3.0.10</code>; build <code>devtrack_client</code> from <code>dev</code> to evaluate the background bootstrap, <code>doctor</code>, first-run MCP guidance, voice seeding, and LLM fast lane described below.</p></blockquote>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Unreleased source preview — TASK-118–120 are not in v3.0.10</div>
+<blockquote><p>This page documents the setup wizard currently on the <code>main</code> branch. The latest public release is <code>v3.0.10</code>; build <code>devtrack_client</code> from <code>main</code> to evaluate the background bootstrap, <code>doctor</code>, first-run MCP guidance, voice seeding, and LLM fast lane described below.</p></blockquote>
 
 <h2>Running the Wizard</h2>
 <pre><code class="language-bash">devtrack setup</code></pre>
@@ -1125,7 +1126,7 @@ ADMIN_EMBED=true devtrack start   # or set in .env</code></pre>
 <tr><td><strong>Errors (24 h)</strong></td><td>Failed trigger dispatches in the last 24 hours — displayed in red when non-zero</td></tr>
 </tbody>
 </table></div>
-<p>Stats are read from <code>Data/devtrack.db</code> via <code>backend/server_tui/stats_client.py</code>. All counters degrade to zero gracefully when the database is absent.</p>
+<p><code>backend/server_tui/stats_client.py</code> obtains these Go-owned counters from the daemon's <code>GET /internal/stats</code> endpoint when the PostgreSQL-backed Python server is configured. Its legacy/local path reads <code>devtrack.db</code> from the configured <code>DATABASE_DIR</code>. A stopped daemon, missing database, or unavailable data source degrades the counters to zero instead of crashing the console.</p>
 
 <h3>Users</h3>
 <p>Full user lifecycle management without touching <code>.env</code>:</p>
@@ -1295,7 +1296,7 @@ VACATION_AUTO_SUBMIT=true</code></pre>
 <p>If <code>--until</code> is set, vacation mode is treated as <strong>expired</strong> on the day after the end date. The daemon resumes its normal silent timer processing automatically. Run <code>devtrack vacation off</code> to clear the record explicitly.</p>
 
 <h2>Database Storage</h2>
-<p>Vacation state is stored as a single row in the <code>vacation_mode</code> table in <code>Data/devtrack.db</code>. All fields (<code>enabled</code>, <code>enabled_at</code>, <code>until</code>, <code>confidence_threshold</code>, <code>auto_submit</code>) are updated atomically on every <code>on</code> / <code>off</code> call — no config file is written.</p>
+<p>Vacation state is stored as a single row in the <code>vacation_mode</code> table in the configured local SQLite database. Setup places <code>devtrack.db</code> under the DevTrack data home's <code>data/db</code> directory (by default <code>~/.local/share/devtrack/data/db</code>, or beneath <code>XDG_DATA_HOME</code> when set). All fields (<code>enabled</code>, <code>enabled_at</code>, <code>until</code>, <code>confidence_threshold</code>, <code>auto_submit</code>) are updated atomically on every <code>on</code> / <code>off</code> call — no config file is written.</p>
 </div>`,
 
   CLOUD_MODE: `<div class="md-body">
@@ -1317,7 +1318,7 @@ devtrack cloud logout</code></pre>
 <thead><tr><th>Mode</th><th>Config</th><th>Use case</th></tr></thead>
 <tbody>
 <tr><td><code>managed</code> (default)</td><td><code>DEVTRACK_SERVER_MODE=managed</code></td><td>Local dev — daemon spawns Python subprocess automatically</td></tr>
-<tr><td><code>lightweight</code></td><td><code>DEVTRACK_SERVER_MODE=lightweight</code></td><td>Git monitoring + SQLite only — no Python; 28 backend commands guarded (v2.1.0-dev)</td></tr>
+<tr><td><code>lightweight</code></td><td><code>DEVTRACK_SERVER_MODE=lightweight</code></td><td>Manual non-managed compatibility value: the daemon does not spawn Python; Go-native features continue, while server-backed calls degrade if no backend is reachable</td></tr>
 <tr><td><code>external</code></td><td><code>DEVTRACK_SERVER_MODE=external</code> + <code>DEVTRACK_SERVER_URL=http://host:port</code></td><td>Docker or self-hosted Python backend; uses cert-pinning for TLS</td></tr>
 <tr><td><code>cloud</code></td><td>Set via <code>devtrack cloud login</code></td><td>Hosted DevTrack backend; CA-signed cert; API key auth</td></tr>
 </tbody>
@@ -1405,7 +1406,7 @@ devtrack cloud logout</code></pre>
 <p>All tabs refresh automatically every <strong>30 seconds</strong> via an internal <code>tea.Tick</code> timer. Press <code>r</code> to force an immediate refresh at any time.</p>
 
 <h2>Offline Support</h2>
-<p>The TUI reads all data from the local SQLite database (<code>Data/devtrack.db</code>) — no Python backend or network connection is needed. The only tab that requires a reachable backend is the server latency shown on the Overview tab; if the backend is unreachable, the latency field shows "unavailable" and the rest of the dashboard continues to function.</p>
+<p>The TUI reads all data from the configured local SQLite database (setup places <code>devtrack.db</code> under the DevTrack data home's <code>data/db</code> directory) — no Python backend or network connection is needed. The only tab that requires a reachable backend is the server latency shown on the Overview tab; if the backend is unreachable, the latency field shows "unavailable" and the rest of the dashboard continues to function.</p>
 
 <h2>Requirements</h2>
 <ul>
@@ -1610,14 +1611,22 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<p>This page distinguishes the latest public release from work available only on <code>dev</code>. Obsolete command and deployment instructions have been removed; GitHub Releases remains the version-history archive.</p>
+<p>This page distinguishes the latest public release from newer source work. TASK-147 and TASK-148 are synchronized on <code>main</code> and <code>dev</code>; TASK-149 is the follow-up documentation synchronization branch. GitHub Releases remains the version-history archive.</p>
+<h2>Unreleased source work — TASK-147–149 readiness and documentation</h2>
+<ul>
+<li><strong>Stable HTTP boundary:</strong> executable Go and Python contract tests now protect health, timer, boardroom, work-session, queue, and client-event request/response shapes.</li>
+<li><strong>Windows compatibility:</strong> native SQLite paths are normalized into valid file URIs, and Windows participates in the Go CI test matrix.</li>
+<li><strong>MCP protocol metadata:</strong> the server negotiates finalized handshake versions through <code>2025-11-25</code>; all six tools have deterministic ordering, human titles, and read-only/non-destructive/idempotent/local annotations.</li>
+<li><strong>MCPB build readiness:</strong> manifest 0.3 bundles are prepared for five OS/architecture release artifacts, with official CLI validation in CI. No MCPB has been published yet.</li>
+<li><strong>Documentation synchronization:</strong> TASK-149 reconciles the README, durable project memory, HTTP/MCP references, release gates, and this wiki without presenting unreleased source features as part of v3.0.10.</li>
+</ul>
 <h2>Latest Public Release — v3.0.10</h2>
 <ul>
 <li>Standalone Go client with managed, lightweight and external modes.</li>
 <li>Cross-platform daemon, autostart, workspace routing and Go-native PM connectors.</li>
 <li>Git-sage improvements, Windows fixes, local SQLite observation and alerts.</li>
 </ul>
-<h2>Unreleased on dev — First-Run Path</h2>
+<h2>Unreleased on main — First-Run Path</h2>
 <ul>
 <li><strong>Background bootstrap:</strong> setup returns while Python and model preparation continue; <code>doctor</code> reports and repairs readiness.</li>
 <li><strong>Voice seed:</strong> local Git history begins the writing profile without blocking setup.</li>
@@ -1636,6 +1645,47 @@ devtrack start</code></pre>
 </tbody></table></div>
 <h2>PostgreSQL Boundary</h2>
 <p>The Python server requires PostgreSQL and applies Alembic migrations at startup. The Go client remains SQLite-only and never receives PostgreSQL credentials.</p>
+</div>`,
+
+  HTTP_API: `<div class="md-body">
+<h1>HTTP API Contract</h1>
+<p>This is the stable boundary between the Go client and the optional Python server. New cross-boundary behavior must update the Go contract tests, Python contract tests, and <code>docs/HTTP_API.md</code> together.</p>
+
+<h2>Authentication and JSON</h2>
+<p>When <code>DEVTRACK_API_KEY</code> is configured, clients send it as <code>X-DevTrack-API-Key</code>. Health and version probes remain available for local capability detection. JSON requests use <code>Content-Type: application/json</code>.</p>
+
+<h2>Health and Lifecycle</h2>
+<div class="table-wrap"><table><thead><tr><th>Method and path</th><th>Purpose</th><th>Successful response</th></tr></thead><tbody>
+<tr><td><code>GET /health</code></td><td>Capability probe</td><td><code>{"status":"ok","service":"devtrack-webhooks"}</code></td></tr>
+<tr><td><code>GET /version</code></td><td>Version probe</td><td>Version and service metadata</td></tr>
+<tr><td><code>GET /status</code></td><td>Server readiness</td><td>Capability/status object</td></tr>
+<tr><td><code>POST /trigger/ping</code></td><td>Authenticated liveness</td><td><code>{"status":"ok","pong":true}</code></td></tr>
+<tr><td><code>POST /trigger/workspace_reload</code></td><td>Reload workspace routing</td><td>Status and message</td></tr>
+</tbody></table></div>
+
+<h2>Core Triggers</h2>
+<div class="table-wrap"><table><thead><tr><th>Method and path</th><th>Contract summary</th></tr></thead><tbody>
+<tr><td><code>POST /trigger/commit</code></td><td>Requires commit hash, message, author, and branch; returns status, actions, and commit hash.</td></tr>
+<tr><td><code>POST /trigger/timer</code></td><td>Accepts timestamp, interval, and trigger count; an empty object remains valid for compatibility.</td></tr>
+<tr><td><code>POST /trigger/work_session_start</code></td><td>Starts a session from its numeric ID and optional ticket reference.</td></tr>
+<tr><td><code>POST /trigger/work_session_stop</code></td><td>Stops the identified work session.</td></tr>
+<tr><td><code>POST /trigger/boardroom</code></td><td>Accepts <code>plan_text</code> or <code>markdown</code> and returns the report, verdict, votes, pros, and cons.</td></tr>
+<tr><td><code>POST /trigger/boardroom/chat</code></td><td>Accepts plan text, history, and optional user direction; returns persona responses and updated session state.</td></tr>
+</tbody></table></div>
+
+<h2>Synchronization and Failure Behavior</h2>
+<p><code>POST /trigger/client_events</code> replays client events with stable replay keys. <code>POST /queue/execute_staged</code> carries the complete pending-action identity and returns either <code>posted</code> or an error state. Authentication applies to both when enabled.</p>
+<p>The Go client keeps observing Git and recording local SQLite state when the Python server is unavailable. Timeouts and retry queues bound network failures; normal Git commands are never held open by this boundary.</p>
+
+<h2>Cross-Platform Contract</h2>
+<p>The HTTP shapes are platform-neutral. Local SQLite paths are not URLs: DevTrack normalizes Windows drive letters and backslashes before constructing a SQLite file URI. CI tests the Go client on Linux, macOS, and Windows so path handling cannot silently diverge.</p>
+
+<h2>Maintainer References</h2>
+<ul>
+<li><code>docs/HTTP_API.md</code> — canonical route and payload summary.</li>
+<li><code>devtrack_client/internal/trigger/api_contract_test.go</code> — Go-client contract assertions.</li>
+<li><code>devtrack_server/backend/tests/test_api_contract.py</code> — Python-server contract assertions.</li>
+</ul>
 </div>`,
 
   CLI_REFERENCE: `<div class="md-body">
@@ -2392,7 +2442,7 @@ workspaces:
 <tr><td>Git commit monitoring</td><td>Fully offline — uses <code>fsnotify</code> to watch the local repo</td></tr>
 <tr><td>Cron / timer triggers</td><td>Fully offline — pure Go scheduler</td></tr>
 <tr><td>Queue and correction views (TUI)</td><td>Fully offline — terminal visibility, no network calls</td></tr>
-<tr><td>SQLite history &amp; task log</td><td>Fully offline — local <code>Data/db/devtrack.db</code></td></tr>
+<tr><td>SQLite history &amp; task log</td><td>Fully offline — the configured local <code>devtrack.db</code></td></tr>
 <tr><td>Local Ollama LLM</td><td>Fully offline — runs on localhost</td></tr>
 <tr><td>Structured task parsing</td><td>Uses local Ollama by default; provider failure degrades without blocking Git activity</td></tr>
 <tr><td>Daily report (terminal/HTML)</td><td>Offline-capable with the local Python service, PostgreSQL, and Ollama; outbound delivery remains staged</td></tr>
@@ -2558,15 +2608,15 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   // ── Redirect stubs: broken internal links point here; we route to the correct page ──
   VISION: `<div class="md-body">
 <h1>Roadmap</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 9 Adoption Gate · unreleased work on dev</div>
-<p>DevTrack's product build arc is complete through Phase 8: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, and read-only MCP context. The latest public release remains <code>v3.0.10</code>.</p>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 9 complete · release and distribution gates remain</div>
+<p>DevTrack's product build arc and Phase 9 adoption work are complete through TASK-124: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, read-only MCP context, first-run onboarding, the public narrative, registry evidence, and held launch drafts. The latest public release remains <code>v3.0.10</code>.</p>
 <h2>Current focus</h2>
-<p>Phase 9 packages the existing product for adoption rather than adding another capability layer. TASK-118–120 complete the non-blocking first-run path: managed dependencies bootstrap in the background, <code>devtrack doctor</code> exposes progress and recovery, MCP works from local SQLite immediately, voice seeding starts when the optional server is ready, and setup uses the fastest available generation path while keeping Ollama as the default.</p>
+<p>Post-Phase-9 readiness is complete through TASK-149 in the current documentation work. TASK-147 synchronized dependency, HTTP-contract, and Windows behavior; TASK-148 prepared versioned MCPB bundles and safety metadata; TASK-149 reconciles the documentation and durable project memory. These source milestones do not by themselves create a public MCP release.</p>
 <h2>Next</h2>
 <ol>
-<li>Make the commit → staged action → EOD → MCP demonstration reproducible.</li>
-<li>Finish the wiki, repository metadata, and registry-submission packages.</li>
-<li>Prepare launch material without inventing usage or adoption claims.</li>
+<li>Confirm the official MCPB validation jobs and install-test the generated bundles on Windows, macOS, and Linux.</li>
+<li>Publish an MCP-capable release before submitting registry metadata; <code>v3.0.10</code> does not contain MCP.</li>
+<li>Validate privacy, release, checksum, and registry materials without inventing usage or adoption claims.</li>
 </ol>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
@@ -2871,7 +2921,7 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 
 <h2>How It Works</h2>
 <ul>
-<li>Sessions are stored in SQLite (<code>Data/devtrack.db</code>, <code>work_sessions</code> table)</li>
+<li>Sessions are stored in the configured local SQLite database (<code>work_sessions</code> table); setup places <code>devtrack.db</code> under the DevTrack data home's <code>data/db</code> directory</li>
 <li>Every git commit made while a session is active is recorded against that session</li>
 <li>The AI report uses commit messages, session duration, and ticket context to generate a narrative summary</li>
 <li>Reports can be output as Terminal text, Markdown, HTML, or JSON</li>
@@ -2880,8 +2930,8 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 
   MCP_CLAUDE_CODE: `<div class="md-body">
 <h1>MCP and Agent Memory</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available on dev · not in the latest public release v3.0.10</div>
-<blockquote><p>The commands on this page require a client built from <code>dev</code>. The public <code>v3.0.10</code> binary predates <code>devtrack mcp</code>.</p></blockquote>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available in main source · not in the latest public release v3.0.10</div>
+<blockquote><p>The commands on this page require a client built from <code>main</code>. The public <code>v3.0.10</code> binary predates <code>devtrack mcp</code>, and no MCPB has been published yet.</p></blockquote>
 
 <h2>Why DevTrack Added MCP</h2>
 <p>AI coding assistants usually know the files in the current conversation but not the developer's working history. They do not automatically know which ticket is active, what was committed earlier today, what DevTrack is waiting to send, or how the developer normally writes a project update. That missing context forces the developer to repeat information and allows different assistants to build inconsistent versions of the same story.</p>
@@ -2899,7 +2949,7 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 </tbody></table></div>
 
 <h2>Important Safety Boundary</h2>
-<p>All six MCP tools are <strong>read-only</strong>. They expose selected local context but cannot approve a queue item, post a comment, change a ticket, push Git, edit the database, or start and stop the daemon. Outbound work still uses DevTrack's pending-actions queue and normal CLI review commands.</p>
+<p>All six MCP tools are <strong>read-only</strong>. Their declarations include human-readable titles plus read-only, non-destructive, idempotent, and no-open-world safety hints. They expose selected local context but cannot approve a queue item, post a comment, change a ticket, push Git, edit the database, or start and stop the daemon. Outbound work still uses DevTrack's pending-actions queue and normal CLI review commands.</p>
 <p>The MCP process reads the same local SQLite database as the Go client. It does not contact the Python server, PostgreSQL, Ollama, a PM platform or a cloud API. However, the MCP host can see the tool response, so only configure DevTrack in assistants you trust with the displayed ticket metadata, commit messages and action previews.</p>
 
 <h2>How the Connection Works</h2>
@@ -2907,7 +2957,7 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 <li>You run <code>devtrack mcp setup</code> in a project.</li>
 <li>DevTrack adds a <code>devtrack</code> server entry to that project's <code>.mcp.json</code>. Existing server entries are preserved.</li>
 <li>When the AI host needs a tool, it launches the installed DevTrack binary with the <code>mcp</code> argument.</li>
-<li>The host and DevTrack exchange MCP 2024-11-05 JSON-RPC messages through standard input and output.</li>
+<li>The host and DevTrack negotiate a finalized MCP handshake version through <code>2025-11-25</code>, retaining compatibility with the earlier <code>2024-11-05</code>, <code>2025-03-26</code>, and <code>2025-06-18</code> revisions.</li>
 <li>The selected tool reads local SQLite through DevTrack's database layer and returns structured JSON.</li>
 <li>The subprocess exits when the host session shuts down. There is no MCP port or permanent MCP daemon.</li>
 </ol>
@@ -2922,10 +2972,10 @@ devtrack mcp  ---- read only ----> local DevTrack SQLite
   no Ollama                     learned inferences</code></pre>
 
 <h2>Set It Up Step by Step</h2>
-<h3>1. Confirm the Current Dev Build</h3>
+<h3>1. Confirm the Current Source Build</h3>
 <pre><code class="language-bash">devtrack version
 devtrack mcp status</code></pre>
-<p><code>status</code> should report MCP protocol <code>2024-11-05</code>, stdio transport, and six registered tools.</p>
+<p><code>status</code> should report handshake support through <code>2025-11-25</code>, stdio transport, and six registered tools. The per-request protocol introduced in <code>2026-07-28</code> is not yet supported.</p>
 
 <h3>2. Create the Project Configuration</h3>
 <pre><code class="language-bash">cd /path/to/the/project
@@ -2948,11 +2998,16 @@ devtrack mcp setup</code></pre>
 }</code></pre>
 <p><code>command</code> is the absolute path to the DevTrack binary used during setup. <code>DEVTRACK_ENV_FILE</code> points to the configuration registered by <code>devtrack setup</code>, which lets the MCP subprocess locate the same data directory as the daemon.</p>
 
-<h3>4. Run the Built-In Self-Test</h3>
+<h3>4. Understand MCPB Packaging</h3>
+<p>The release workflow is prepared to build manifest 0.3 MCPB bundles for Windows x64, macOS x64/arm64, and Linux x64/arm64. A packaged host asks the user to select an existing <code>devtrack.db</code>, then starts the bundled binary as:</p>
+<pre><code class="language-bash">devtrack mcp serve --database /path/to/devtrack.db</code></pre>
+<p>CI creates Windows, macOS, and Linux manifest variants and validates them with the official MCPB CLI. This is build readiness only: install testing, a tagged MCP-capable release, checksums, privacy material, and registry submission remain pending.</p>
+
+<h3>5. Run the Built-In Self-Test</h3>
 <pre><code class="language-bash">devtrack mcp test</code></pre>
 <p>The test opens the real local database when available, starts an in-process MCP server, sends <code>initialize</code>, <code>tools/list</code>, <code>get_active_context</code> and <code>shutdown</code>, then prints each response. <code>=== PASS ===</code> proves the protocol loop completed; inspect warnings separately if the database could not be opened.</p>
 
-<h3>5. Reload the AI Host</h3>
+<h3>6. Reload the AI Host</h3>
 <p>Close and reopen, or reload, the MCP-capable assistant in that project so it notices <code>.mcp.json</code>. The server should appear under the name <code>devtrack</code>. No background MCP process should be visible before the assistant invokes it.</p>
 
 <h2>The Six Tools in Detail</h2>
@@ -3005,6 +3060,8 @@ devtrack mcp setup</code></pre>
 <tr><td>Protocol core</td><td><code>devtrack_client/internal/mcp/server.go</code></td><td>MCP initialization, tool listing/calls, JSON-RPC errors and stdio lifecycle.</td></tr>
 <tr><td>Tool handlers</td><td><code>devtrack_client/internal/mcp/tools.go</code></td><td>Six read-only queries through <code>internal/db</code>.</td></tr>
 <tr><td>CLI and setup</td><td><code>devtrack_client/mcp_cmd.go</code></td><td>Serve, status, setup, configuration merge and self-test.</td></tr>
+<tr><td>Bundle manifest</td><td><code>mcpb/manifest.template.json</code></td><td>Manifest 0.3 metadata, platform compatibility, database selection and packaged launch command.</td></tr>
+<tr><td>Bundle packager</td><td><code>scripts/package_mcpb.py</code></td><td>Creates deterministic per-platform MCPB archives for CI and release workflows.</td></tr>
 </tbody></table></div>
 </div>`,
 
@@ -3151,7 +3208,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-first · latest release v3.0.10 · dev previews labeled below</div>
+      <div class="home-badge">Local-first · latest release v3.0.10 · source previews labeled below</div>
       <h1 class="home-title">Never write a<br><span>standup</span> again.</h1>
       <p class="home-sub">You commit; DevTrack prepares ticket updates and end-of-day reports silently, in your voice, on your machine. Every outbound action stays reviewable before it leaves.</p>
     </div>
@@ -3160,22 +3217,23 @@ function renderHome() {
       ${[
         // ── Product promise: outcome → agent memory → trust ────────────────────
         { id:'WORK_TRACKER',     icon:'☀️', title:'Your standup, from your commits', desc:'DevTrack groups work by ticket and prepares an end-of-day narrative in your voice. Keep coding; the daemon handles the project-update overhead.' },
-        { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'Unreleased dev preview: agent memory', desc:'Not in <code>v3.0.10</code>. A client built from <code>dev</code> can run <code>devtrack mcp setup</code>, giving MCP-compatible assistants read-only context from local SQLite.' },
+        { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'Unreleased source preview: agent memory', desc:'Not in <code>v3.0.10</code>. A client built from <code>main</code> exposes six annotated read-only tools, while release automation prepares validated MCPB bundles for the next release.' },
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
-        { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git. Local MCP context is available in the unreleased <code>dev</code> build.' },
+        { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git. Local MCP context is available in the unreleased <code>main</code> source.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'Unreleased on <code>dev</code>: non-blocking bootstrap, first-run MCP and voice guidance, and Ollama/cloud-key fast-lane detection are complete in TASK-118–120.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'Unreleased source work: Windows and HTTP contract hardening, MCP protocol metadata, MCPB build readiness, and documentation synchronization are complete through TASK-149.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the platform asset from GitHub Releases (Windows uses the published <code>.exe</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
-        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard (dev preview)', desc:'TASK-118–120 on <code>dev</code>: writes registered XDG config immediately, then bootstraps managed Python/LLM dependencies in the background with <code>doctor</code> progress. Not in <code>v3.0.10</code>.' },
+        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard (source preview)', desc:'TASK-118–120 on <code>main</code>: writes registered XDG config immediately, then bootstraps managed Python/LLM dependencies in the background with <code>doctor</code> progress. Not in <code>v3.0.10</code>.' },
         // ── Reference ─────────────────────────────────────────────────────────
         { id:'CLI_REFERENCE',    icon:'⌨️', title:'CLI Reference',      desc:'All devtrack commands with flags and examples.' },
         { id:'CONFIGURATION',    icon:'🔧', title:'Configuration',      desc:'All .env variables with defaults, required vars, timeout settings, server modes, TLS, LLM providers, and feature flags.' },
         { id:'WORKSPACES',       icon:'🗂️', title:'Workspaces',          desc:'Complete per-platform setup guide for <code>workspaces.yaml</code>. Covers every field for GitHub, GitLab, and Azure DevOps — what to set, where to find each value, and which <code>.env</code> secrets are required.' },
         { id:'MULTI_REPO',       icon:'🗃️', title:'Multi-Repo Setup',   desc:'Monitor multiple git repos simultaneously, each routing to its own PM platform. Configure in <code>workspaces.yaml</code> with <code>pm_platform</code>, <code>pm_project</code>, and <code>pm_milestone</code> per workspace. Hot-reloads on save.' },
+        { id:'HTTP_API',         icon:'🔌', title:'HTTP API Contract',   desc:'Stable Go-to-Python routes, authentication, payload boundaries, retries, and cross-platform compatibility checks.' },
         // ── Git & Shell ────────────────────────────────────────────────────────
         { id:'GIT_FEATURES',    icon:'🔀', title:'Git Features',        desc:'Shell integration, AI commits, and conflict resolution. Add <code>eval "$(devtrack shell-init)"</code> to <code>~/.zshrc</code> once. Use <code>git commit</code> normally — DevTrack observes completed commits silently; explicit <code>devtrack git</code>/<code>sage</code> commands provide optional assisted workflows. <code>devtrack start</code> auto-enables git for all workspaces.' },
         { id:'GIT_SAGE',        icon:'🤖', title:'git-sage Agent',      desc:'Autonomous local LLM agent for complex git operations.' },
@@ -3225,8 +3283,8 @@ devtrack start
 devtrack status
 devtrack logs</code></pre>
 
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;"><strong>Unreleased dev preview — contributors and evaluators only.</strong> The commands below require a client built from <code>dev</code>; they are not available in the <code>v3.0.10</code> release binary.</p>
-      <pre><code class="language-bash">git clone --branch dev --single-branch https://github.com/sraj0501/Devtrack_.git
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;"><strong>Unreleased source preview — contributors and evaluators only.</strong> The commands below require a client built from <code>main</code>; they are not available in the <code>v3.0.10</code> release binary.</p>
+      <pre><code class="language-bash">git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_client
 go build -o devtrack .
 
@@ -3263,7 +3321,7 @@ devtrack start</code></pre>
         { n:'Go-Native Ticket Connectors', d:'The terminal client provides ticket list, view, create, comment, check, and sync paths for <strong>GitHub, GitLab, and Azure DevOps</strong>. Connector failures degrade without blocking local observation or queueing.' },
         { n:'Go-Native Alerts', d:'The daemon polls <strong>GitHub and Azure DevOps</strong> for relevant notifications and keeps alert state in local SQLite. Alert delivery can use terminal, OS, Telegram, or Slack notifiers; no MongoDB-backed alert state or Jira poller is claimed.' },
         { n:'End-of-Day Reports in Your Voice', d:'Commits and work sessions feed an EOD narrative. When a learned local voice profile is available it shapes generated text; missing models or optional services degrade gracefully, and any outbound delivery still passes through the pending queue.' },
-        { n:'Local Context + MCP Dev Preview', d:'The Go client keeps observation, queue, and history data in local SQLite. Read-only MCP access to active work and pending actions is available from a client built from <code>dev</code>, but is <strong>not</strong> part of the latest public <code>v3.0.10</code> binary.' },
+        { n:'Local Context + MCP Source Preview', d:'The Go client keeps observation, queue, and history data in local SQLite. Read-only MCP access to active work and pending actions is available from a client built from <code>main</code>, but is <strong>not</strong> part of the latest public <code>v3.0.10</code> binary.' },
         { n:'Optional Visibility and Corrections', d:'The TUI and Telegram show daemon activity and expose available correction paths; notifications surface status for a quick glance. None gates daemon capabilities: closing every interface leaves the same silent background engine running.' },
       ].map((f, i) => `
         <div class="feature-item">

@@ -162,17 +162,19 @@ Managed setup writes these values; invalid explicit overrides fail clearly:
 | Mode | Behaviour |
 |---|---|
 | `managed` (default) | Spawns `webhook_server.py` subprocess for AI features |
-| `lightweight` | Git monitoring + scheduling + Go-native commands only; AI/server commands blocked |
+| `lightweight` | Manual alias for non-managed execution; the daemon does not spawn Python |
 | `external` | Daemon only; Python on a separate host via `DEVTRACK_SERVER_URL` |
 
-PM connectors, gitsage, and alerts are Go-native and work in all modes.
+Internally, `lightweight` and `external` both resolve to `ServerModeExternal`. PM connectors,
+gitsage, alerts, local SQLite, queueing, scheduling, and MCP are Go-native. Server-backed calls use
+the configured or loopback-fallback server URL and degrade when no backend is reachable.
 
 ## Project Status & Direction
 
-- **Direction:** see [`PRODUCT_BIBLE.md`](PRODUCT_BIBLE.md). Build arc **Phase 0→8 COMPLETE** on `dev`.
-  The PostgreSQL server epic is complete through TASK-116/PR #251. **Phase 9 Adoption Gate is active**:
-  TASK-117–123 and prerequisite TASK-142 are complete on `dev`; TASK-144 fixed the queue and
-  local-model reliability defects found by the live demo. TASK-124 launch drafts remain.
+- **Direction:** see [`PRODUCT_BIBLE.md`](PRODUCT_BIBLE.md). Build arc **Phase 0→9 COMPLETE** on
+  `dev`. PostgreSQL, first-run onboarding, MCP, MCPB packaging, registry evidence, and held launch
+  drafts are complete through TASK-149. TASK-150 qualifies and publishes the first MCP-capable
+  release; registry and launch publication follow only after its release gates pass.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.
 - **Shipped (v3.x):** three-codebase split (EPIC-SPLIT); client-server decoupling (Go-native
   connectors, gitsage, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;

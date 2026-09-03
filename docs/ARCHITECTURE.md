@@ -843,7 +843,7 @@ Claude Code answering *"what am I working on?"* in under ten minutes. See
 >
 > **Server storage decision, completed 2026-08-18:** PostgreSQL is **mandatory** for
 > `devtrack_server` persistence and server-side events, not an optional multi-user mode.
-> **EPIC TASK-112–116** plus TASK-140/141 is complete on `dev` through PR #251: 14 of 15 scoped
+> **EPIC TASK-112–116** plus TASK-140/141 is integrated on `main` and `dev` through PR #251: 14 of 15 scoped
 > raw-`sqlite3` modules were ported and one dead module was removed, so no production raw-`sqlite3`
 > imports remain. Client data flows
 > from local SQLite into server PostgreSQL over the HTTP boundary. Offline-first Rule 0

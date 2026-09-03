@@ -1,7 +1,7 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-09-02 — Phase 9 is complete through TASK-124; TASK-145–147 documentation,
-wiki-restoration, dependency-compatibility, Windows SQLite, and contract-sync work is reconciled._
+_Last updated: 2026-09-03 — Phase 9 and post-MCPB documentation are complete through TASK-149;
+TASK-150 is active for v3.1.0 release qualification and publication._
 
 **[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
 (PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at
@@ -518,8 +518,8 @@ prerequisite TASK-142 are complete. This phase was packaging and narrative, not 
 **This board is the authoritative ID ledger** —
 `NEXT_STEPS.md` follows it, not the other way round.
 
-_Next DevTrack task ID: TASK-149_
-_Active implementation branches: none._
+_Next DevTrack task ID: TASK-151_
+_Active implementation branches: `features/TASK-150-release-qualification`._
 _Shipped: v3.0.10 (2026-06-14) — significant Windows fixes + gitsage improvements._
 _Direction: **PRODUCT_BIBLE.md** (pivot 2026-06-10) — `../../PRODUCT_BIBLE.md`_
 
@@ -6291,10 +6291,27 @@ hosted service or broadening tool permissions.
 - [x] Build reproducible platform-specific MCPBs from release binaries with an explicit database picker.
 - [x] Add automated MCPB manifest validation and locally smoke-test the Go server and Windows bundle.
 
-**Engineer status:** COMPLETE on the working tree — `origin/dev` is an ancestor of `origin/main`
-with no tree delta. Go tests, vet, and build passed; the generated Windows MCPB had the expected
+**Engineer status:** COMPLETE in `c1329f7`, synchronized to `origin/main` and `origin/dev`. Go tests,
+vet, and build passed; the generated Windows MCPB had the expected
 manifest/docs/license/binary contents, and its bundled executable completed initialize, tools/list,
 and shutdown over stdio. No tag, release, registry submission, or external publication occurred.
+
+## COMPLETE — TASK-149: Post-MCPB documentation synchronization
+
+**Vision check:** PASS — documentation preserves the local-first/read-only boundaries and clearly
+separates source readiness from public v3.0.10 behavior.
+
+**Acceptance criteria:**
+- [x] README documents the current HTTP contract, MCP handshake, safety annotations, packaged DB
+      selection, five MCPB artifacts, and unreleased boundary.
+- [x] Wiki What's New, MCP, roadmap, homepage, Windows compatibility, and HTTP API reference match
+      TASK-147/148 behavior.
+- [x] Checked-in project memory reflects completed Phase 9, TASK-124/147/148, and remaining release gates.
+- [x] Registry evidence no longer claims TASK-124 is blocked; stale working-tree and branch claims
+      are reconciled, local structural checks pass, and CI retains the Node-based wiki syntax gate.
+
+**Engineer status:** COMPLETE on `docs/TASK-149-documentation-sync`; ready for review into `dev`.
+No release, registry submission, launch-post publication, or source-code change is included.
 
 ## COMPLETE — TASK-124: Evidence-backed launch drafts
 
@@ -6315,6 +6332,39 @@ recent engineer-log evidence. Do not publish externally.
 **Engineer status:** COMPLETE — review-only dev.to, Show HN, and LinkedIn drafts are stored under
 `Data/agent_logs/posts/2026-W36/`. Nothing was published or sent externally; each draft retains a
 release gate because v3.0.10 predates the Phase 9 onboarding and MCP work.
+
+## ACTIVE — TASK-150: Qualify and publish the first MCP-capable release
+
+**Priority:** HIGH
+
+**Branch:** `features/TASK-150-release-qualification`
+
+**Vision check:** PASS — distribution work exposes the completed local, read-only MCP value without
+adding hosted dependencies or broadening tool permissions.
+
+**Target:** `v3.1.0` (minor release: backward-compatible Phase 9 onboarding and MCP/MCPB capability)
+
+**Acceptance criteria:**
+- [ ] Reconcile TASK-149's merged state and remove stale Phase 9/lightweight/version guidance.
+- [ ] Execute each packaged MCPB on a native Windows amd64, macOS amd64/arm64, and Linux
+      amd64/arm64 GitHub-hosted runner; verify initialize, all six annotated tools, one tool call,
+      and shutdown against an isolated SQLite database.
+- [ ] Validate all MCPB manifests with the pinned official CLI and validate generated
+      `server.json` with the pinned official MCP Registry publisher.
+- [ ] Preserve the v3.0.10 binary asset set, add five MCPBs, SHA-256 checksums, `server.json`, and
+      curated v3.1.0 release notes.
+- [ ] Review and update the privacy policy for local MCP database access.
+- [ ] Merge qualified work through `dev` and `main`, tag `v3.1.0`, and verify the GitHub release.
+- [ ] Publish `io.github.sraj0501/devtrack` to the official MCP Registry using GitHub OIDC and
+      verify the public registry record.
+- [ ] Submit eligible third-party directory/listing targets and publish the held launch posts;
+      record any account/form/platform blocker without fabricating completion.
+
+**Authorization:** On 2026-09-03 the owner explicitly requested the complete sequence, including
+release, registry submissions, and launch-post publication. Never expose repository or provider
+credentials in logs or committed files.
+
+**Engineer status:** IN PROGRESS.
 
 ---
 
