@@ -28,7 +28,9 @@ A background daemon watches your commits and infers everything around them — w
 
 ### And it's the memory your AI agents lack
 
-> **Source preview:** MCP is available on upstream `main`; the latest public release, v3.0.10, does not include it yet.
+> **Source preview:** Phase 9 onboarding and MCP are synchronized on upstream `main` and `dev`;
+> the latest public release, v3.0.10, predates both. MCPB release packaging is prepared in source,
+> but no MCPB has been published yet.
 
 Coding agents are session-based: they exist while invoked, then forget. DevTrack is always on. One command —
 
@@ -378,7 +380,9 @@ devtrack autostart-status     # show current auto-start status
 devtrack autostart-uninstall  # remove auto-start
 ```
 
-All current `.env` variables are baked into the service file at install time so the daemon starts with the correct environment even in a login session without a shell profile. Re-run `autostart-install` after changing `.env`.
+Relevant DevTrack runtime variables from the current environment are baked into the service definition
+at install time so the daemon starts correctly even in a login session without a shell profile.
+Re-run `autostart-install` after changing the environment file.
 
 The daemon enforces a single running instance using an OS-level file lock (`Data/devtrack.lock`). On Windows this is a mandatory lock; on Unix a cooperative flock. Attempting to start a second instance prints a clear error and exits immediately rather than running in parallel and corrupting shared state.
 
@@ -400,9 +404,10 @@ What it does:
   pull in a detached worker; setup does not wait for them
 - Generates the registered XDG environment file with visible runtime defaults and an auto-generated `ADMIN_SECRET_KEY`
 - In Managed mode, writes and validates the required PostgreSQL connection configuration
-- Creates `~/.devtrack/` (XDG home dir) and writes `workspaces.yaml` there
+- Creates the `~/.devtrack/` configuration directory and writes `workspaces.yaml` there
 - Writes `WORKSPACES_FILE` into the generated environment file, pointing at the workspace file
-- Appends `eval "$(devtrack shell-init)"` to `.bashrc` / `.zshrc` automatically
+- Registers shell integration automatically in `.bashrc` or `.zshrc` on Unix and the PowerShell
+  profile on Windows
 - Writes `~/.devtrack/devtrack.conf` pointing at the generated environment file
 
 After `devtrack setup` completes, run `devtrack start` — no manual `source .env` needed. Git
@@ -504,25 +509,30 @@ devtrack mcp test     # smoke-test the server in-process
 
 Source: `devtrack_client/internal/mcp/` (server core) and `devtrack_client/mcp_cmd.go` (CLI).
 
-### AI development agents (Claude Code)
+### Development-agent playbooks
 
-DevTrack ships three Claude Code sub-agents that automate the project's own development workflow. They are invoked inside Claude Code sessions, not from the terminal.
+The repository retains five historical Claude role definitions under
+[`.claude/agents/_archive/`](.claude/agents/_archive/) and keeps the current role, memory, and
+authorization contract in
+[`.claude/memory/project_local_agents.md`](.claude/memory/project_local_agents.md). These are
+project-maintenance assets, not `devtrack` CLI commands, and the archived files are not advertised
+as automatically installed Claude slash commands. A contributor's Codex or agent environment may
+install adapters for the same roles separately.
 
-| Agent | Role |
-|-------|------|
-| **project-vision** | PM agent — breaks plans into tasks, writes the project board (`Data/agent_logs/project_board.md`), dispatches the engineer, enforces no-push-to-main and vision alignment, fires docu-agent after major features |
-| **devtrack-engineer** | Engineer agent — always works on a task branch, commits exclusively through `devtrack git commit`, logs every commit to `Data/agent_logs/engineer_log.md`, opens a PR on completion, never pushes directly to `main` |
-| **post-generator** | Turns the weekly engineer log into draft dev.to, Hacker News, and LinkedIn posts saved under `Data/agent_logs/posts/` |
+| Role | Responsibility |
+|------|----------------|
+| **project-vision** | Break plans into board tasks and enforce vision and authorization boundaries |
+| **devtrack-engineer** | Implement an approved `TASK-NNN` on a task branch and record engineering evidence |
+| **git-agent** | Perform explicitly authorized Git plumbing without expanding the requested scope |
+| **memory-compactor** | Reconcile durable project memory without discarding still-relevant decisions |
+| **post-generator** | Turn engineer-log evidence into held dev.to, Hacker News, and LinkedIn drafts under `Data/agent_logs/posts/` |
 
-Invoke from a Claude Code session:
-
-```
-/project-vision   # plan a new phase or ask for status
-/devtrack-engineer  # dispatch the engineer on the current board task
-/post-generator   # generate this week's posts from the engineer log
-```
-
-The PM and engineer agents share `Data/agent_logs/project_board.md` as a contract — PM writes tasks, engineer reads and updates status. All agent activity is captured in `Data/agent_logs/engineer_log.md`.
+The documentation-maintenance workflow is checked in at
+[`.claude/commands/docu-agent.md`](.claude/commands/docu-agent.md); how a contributor invokes it
+depends on their local agent environment. The planning and
+engineering roles use `Data/agent_logs/project_board.md` as their durable contract, while verified
+implementation history is recorded in `Data/agent_logs/engineer_log.md`. Role names alone do not
+authorize commits, pushes, PR operations, releases, publication, or deployment.
 
 ### Anonymous telemetry — opt-in, off by default
 
@@ -616,7 +626,11 @@ The last-known port list is persisted so runtime diagnostics can report conflict
 | **External** | `external` | Python runs on a separate server; set `DEVTRACK_SERVER_URL` | Docker / self-hosted backend |
 | **Cloud** | — | `devtrack cloud login --url URL --key KEY` | Remote managed backend |
 
-`devtrack setup` prompts for the mode on first run and writes it to the generated environment file. In **Lightweight** mode, commands that depend on the Python backend show a clear error rather than crashing.
+`devtrack setup` prompts for Managed or External mode on first run and writes the choice to the
+generated environment file. `lightweight` remains a supported manual configuration value: it maps
+to the same internal non-managed mode as `external`, so the daemon does not spawn Python. Go-native
+features continue; server-backed calls use the configured (or loopback fallback) URL and degrade if
+no backend is reachable.
 
 > DevTrack runs **natively** — a Go binary plus a `uv`-managed Python server. The Go client keeps its
 > offline source of truth in local SQLite and does not connect to a database server. PostgreSQL is
@@ -677,7 +691,7 @@ Key references in this repo:
 | Deploy only the Python backend on a server | [Python AI server](#python-ai-server) |
 | Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
-| Use AI agents for development workflow | [`.claude/agents/`](.claude/agents/) |
+| Understand the development-agent roles and authorization boundaries | [Agent role contract](.claude/memory/project_local_agents.md) · [archived Claude definitions](.claude/agents/_archive/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
 
 ---

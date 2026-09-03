@@ -1126,7 +1126,7 @@ ADMIN_EMBED=true devtrack start   # or set in .env</code></pre>
 <tr><td><strong>Errors (24 h)</strong></td><td>Failed trigger dispatches in the last 24 hours — displayed in red when non-zero</td></tr>
 </tbody>
 </table></div>
-<p>Stats are read from <code>Data/devtrack.db</code> via <code>backend/server_tui/stats_client.py</code>. All counters degrade to zero gracefully when the database is absent.</p>
+<p><code>backend/server_tui/stats_client.py</code> obtains these Go-owned counters from the daemon's <code>GET /internal/stats</code> endpoint when the PostgreSQL-backed Python server is configured. Its legacy/local path reads <code>devtrack.db</code> from the configured <code>DATABASE_DIR</code>. A stopped daemon, missing database, or unavailable data source degrades the counters to zero instead of crashing the console.</p>
 
 <h3>Users</h3>
 <p>Full user lifecycle management without touching <code>.env</code>:</p>
@@ -1296,7 +1296,7 @@ VACATION_AUTO_SUBMIT=true</code></pre>
 <p>If <code>--until</code> is set, vacation mode is treated as <strong>expired</strong> on the day after the end date. The daemon resumes its normal silent timer processing automatically. Run <code>devtrack vacation off</code> to clear the record explicitly.</p>
 
 <h2>Database Storage</h2>
-<p>Vacation state is stored as a single row in the <code>vacation_mode</code> table in <code>Data/devtrack.db</code>. All fields (<code>enabled</code>, <code>enabled_at</code>, <code>until</code>, <code>confidence_threshold</code>, <code>auto_submit</code>) are updated atomically on every <code>on</code> / <code>off</code> call — no config file is written.</p>
+<p>Vacation state is stored as a single row in the <code>vacation_mode</code> table in the configured local SQLite database. Setup places <code>devtrack.db</code> under the DevTrack data home's <code>data/db</code> directory (by default <code>~/.local/share/devtrack/data/db</code>, or beneath <code>XDG_DATA_HOME</code> when set). All fields (<code>enabled</code>, <code>enabled_at</code>, <code>until</code>, <code>confidence_threshold</code>, <code>auto_submit</code>) are updated atomically on every <code>on</code> / <code>off</code> call — no config file is written.</p>
 </div>`,
 
   CLOUD_MODE: `<div class="md-body">
@@ -1318,7 +1318,7 @@ devtrack cloud logout</code></pre>
 <thead><tr><th>Mode</th><th>Config</th><th>Use case</th></tr></thead>
 <tbody>
 <tr><td><code>managed</code> (default)</td><td><code>DEVTRACK_SERVER_MODE=managed</code></td><td>Local dev — daemon spawns Python subprocess automatically</td></tr>
-<tr><td><code>lightweight</code></td><td><code>DEVTRACK_SERVER_MODE=lightweight</code></td><td>Git monitoring + SQLite only — no Python; 28 backend commands guarded (v2.1.0-dev)</td></tr>
+<tr><td><code>lightweight</code></td><td><code>DEVTRACK_SERVER_MODE=lightweight</code></td><td>Manual non-managed compatibility value: the daemon does not spawn Python; Go-native features continue, while server-backed calls degrade if no backend is reachable</td></tr>
 <tr><td><code>external</code></td><td><code>DEVTRACK_SERVER_MODE=external</code> + <code>DEVTRACK_SERVER_URL=http://host:port</code></td><td>Docker or self-hosted Python backend; uses cert-pinning for TLS</td></tr>
 <tr><td><code>cloud</code></td><td>Set via <code>devtrack cloud login</code></td><td>Hosted DevTrack backend; CA-signed cert; API key auth</td></tr>
 </tbody>
@@ -1406,7 +1406,7 @@ devtrack cloud logout</code></pre>
 <p>All tabs refresh automatically every <strong>30 seconds</strong> via an internal <code>tea.Tick</code> timer. Press <code>r</code> to force an immediate refresh at any time.</p>
 
 <h2>Offline Support</h2>
-<p>The TUI reads all data from the local SQLite database (<code>Data/devtrack.db</code>) — no Python backend or network connection is needed. The only tab that requires a reachable backend is the server latency shown on the Overview tab; if the backend is unreachable, the latency field shows "unavailable" and the rest of the dashboard continues to function.</p>
+<p>The TUI reads all data from the configured local SQLite database (setup places <code>devtrack.db</code> under the DevTrack data home's <code>data/db</code> directory) — no Python backend or network connection is needed. The only tab that requires a reachable backend is the server latency shown on the Overview tab; if the backend is unreachable, the latency field shows "unavailable" and the rest of the dashboard continues to function.</p>
 
 <h2>Requirements</h2>
 <ul>
@@ -1611,13 +1611,14 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<p>This page distinguishes the latest public release from newer source work on <code>main</code>. Obsolete command and deployment instructions have been removed; GitHub Releases remains the version-history archive.</p>
-<h2>Unreleased on main — TASK-147/148 readiness work</h2>
+<p>This page distinguishes the latest public release from newer source work. TASK-147 and TASK-148 are synchronized on <code>main</code> and <code>dev</code>; TASK-149 is the follow-up documentation synchronization branch. GitHub Releases remains the version-history archive.</p>
+<h2>Unreleased source work — TASK-147–149 readiness and documentation</h2>
 <ul>
 <li><strong>Stable HTTP boundary:</strong> executable Go and Python contract tests now protect health, timer, boardroom, work-session, queue, and client-event request/response shapes.</li>
 <li><strong>Windows compatibility:</strong> native SQLite paths are normalized into valid file URIs, and Windows participates in the Go CI test matrix.</li>
 <li><strong>MCP protocol metadata:</strong> the server negotiates finalized handshake versions through <code>2025-11-25</code>; all six tools have deterministic ordering, human titles, and read-only/non-destructive/idempotent/local annotations.</li>
 <li><strong>MCPB build readiness:</strong> manifest 0.3 bundles are prepared for five OS/architecture release artifacts, with official CLI validation in CI. No MCPB has been published yet.</li>
+<li><strong>Documentation synchronization:</strong> TASK-149 reconciles the README, durable project memory, HTTP/MCP references, release gates, and this wiki without presenting unreleased source features as part of v3.0.10.</li>
 </ul>
 <h2>Latest Public Release — v3.0.10</h2>
 <ul>
@@ -2441,7 +2442,7 @@ workspaces:
 <tr><td>Git commit monitoring</td><td>Fully offline — uses <code>fsnotify</code> to watch the local repo</td></tr>
 <tr><td>Cron / timer triggers</td><td>Fully offline — pure Go scheduler</td></tr>
 <tr><td>Queue and correction views (TUI)</td><td>Fully offline — terminal visibility, no network calls</td></tr>
-<tr><td>SQLite history &amp; task log</td><td>Fully offline — local <code>Data/db/devtrack.db</code></td></tr>
+<tr><td>SQLite history &amp; task log</td><td>Fully offline — the configured local <code>devtrack.db</code></td></tr>
 <tr><td>Local Ollama LLM</td><td>Fully offline — runs on localhost</td></tr>
 <tr><td>Structured task parsing</td><td>Uses local Ollama by default; provider failure degrades without blocking Git activity</td></tr>
 <tr><td>Daily report (terminal/HTML)</td><td>Offline-capable with the local Python service, PostgreSQL, and Ollama; outbound delivery remains staged</td></tr>
@@ -2607,13 +2608,13 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   // ── Redirect stubs: broken internal links point here; we route to the correct page ──
   VISION: `<div class="md-body">
 <h1>Roadmap</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 9 Adoption Gate · unreleased work on main</div>
-<p>DevTrack's product build arc is complete through Phase 8: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, and read-only MCP context. The latest public release remains <code>v3.0.10</code>.</p>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 9 complete · release and distribution gates remain</div>
+<p>DevTrack's product build arc and Phase 9 adoption work are complete through TASK-124: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, read-only MCP context, first-run onboarding, the public narrative, registry evidence, and held launch drafts. The latest public release remains <code>v3.0.10</code>.</p>
 <h2>Current focus</h2>
-<p>Phase 9 packages the existing product for adoption rather than adding another capability layer. TASK-118–120 complete the non-blocking first-run path. TASK-147 synchronizes dependency, HTTP-contract, and Windows behavior, while TASK-148 prepares versioned MCPB bundles and safety metadata for a future MCP-capable release.</p>
+<p>Post-Phase-9 readiness is complete through TASK-149 in the current documentation work. TASK-147 synchronized dependency, HTTP-contract, and Windows behavior; TASK-148 prepared versioned MCPB bundles and safety metadata; TASK-149 reconciles the documentation and durable project memory. These source milestones do not by themselves create a public MCP release.</p>
 <h2>Next</h2>
 <ol>
-<li>Run official MCPB validation in CI and install-test the generated bundles on Windows, macOS, and Linux.</li>
+<li>Confirm the official MCPB validation jobs and install-test the generated bundles on Windows, macOS, and Linux.</li>
 <li>Publish an MCP-capable release before submitting registry metadata; <code>v3.0.10</code> does not contain MCP.</li>
 <li>Validate privacy, release, checksum, and registry materials without inventing usage or adoption claims.</li>
 </ol>
@@ -2920,7 +2921,7 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 
 <h2>How It Works</h2>
 <ul>
-<li>Sessions are stored in SQLite (<code>Data/devtrack.db</code>, <code>work_sessions</code> table)</li>
+<li>Sessions are stored in the configured local SQLite database (<code>work_sessions</code> table); setup places <code>devtrack.db</code> under the DevTrack data home's <code>data/db</code> directory</li>
 <li>Every git commit made while a session is active is recorded against that session</li>
 <li>The AI report uses commit messages, session duration, and ticket context to generate a narrative summary</li>
 <li>Reports can be output as Terminal text, Markdown, HTML, or JSON</li>
@@ -3220,7 +3221,7 @@ function renderHome() {
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git. Local MCP context is available in the unreleased <code>main</code> source.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'Unreleased on <code>main</code>: Windows and HTTP contract hardening plus MCP protocol metadata and MCPB build readiness are complete through TASK-148.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'Unreleased source work: Windows and HTTP contract hardening, MCP protocol metadata, MCPB build readiness, and documentation synchronization are complete through TASK-149.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the platform asset from GitHub Releases (Windows uses the published <code>.exe</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
