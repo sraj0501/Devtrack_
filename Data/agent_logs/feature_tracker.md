@@ -1,12 +1,23 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-03 (Phase 9 and post-Phase-9 synchronization complete through TASK-149)_
+_Last updated: 2026-09-03 (TASK-150 v3.1.0 release qualification active)_
+
+---
+
+## 2026-09-03 — TASK-150: v3.1.0 release qualification and publication
+**Phase**: MCP distribution / release
+**Status**: IN PROGRESS on `features/TASK-150-release-qualification`
+**Target**: Native execution of all five MCPB variants, curated release/privacy metadata, v3.1.0
+publication, official MCP Registry publication, and authorized directory/launch submissions
+**Vision check**: PASS
+**Engineer notes**: TASK-150 closes the gap between source/package readiness and an installable
+public release. It does not add MCP write tools, a hosted transport, or new product capability.
 
 ---
 
 ## 2026-09-03 — TASK-149: Post-MCPB documentation synchronization
 **Phase**: Documentation maintenance
-**Status**: DONE on `docs/TASK-149-documentation-sync`; ready for review into `dev`
+**Status**: DONE in PR #257, merged to `dev` at `e22f709`
 **Files**: README, comprehensive wiki, checked-in project memory, registry evidence, roadmap, and
 project status records
 **Vision check**: PASS

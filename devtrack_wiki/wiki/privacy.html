@@ -46,6 +46,7 @@
         <li>Every PM, email, or Git action is staged in <code>pending_actions</code> before execution.</li>
         <li>Cloud AI, remote-server sync, PM APIs, email, and chat integrations are optional and require configuration or consent.</li>
         <li>Learning and training data stay local unless the user explicitly opts into a remote source or server.</li>
+        <li>The bundled MCP server reads the SQLite database selected during installation and does not contact the optional Python server.</li>
       </ul></div>
       <p>DevTrack is software you run. This page describes the current implementation; it does not claim that configured third-party services have the same privacy policy.</p>
     </section>
@@ -121,7 +122,7 @@ devtrack uninstall --keep-data</code></pre>
         <li>Run <code>devtrack stop</code>.</li><li>Revoke the credential at its provider.</li>
         <li>Replace it in the registered DevTrack environment file.</li><li>Review local logs and pending actions before restarting.</li>
       </ol></div>
-      <p><strong>Last updated:</strong> August 28, 2026</p>
+      <p><strong>Last updated:</strong> September 3, 2026</p>
     </section>
   </div></div>
   <script src="assets/script.js"></script>

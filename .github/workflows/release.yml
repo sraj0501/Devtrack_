@@ -27,6 +27,7 @@ jobs:
     needs: test
     permissions:
       contents: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v5
@@ -84,10 +85,33 @@ jobs:
             npx --yes @anthropic-ai/mcpb@2.1.2 validate "$target/manifest.json"
           done
 
+      - name: Generate checksums and MCP Registry metadata
+        run: |
+          (cd devtrack_client/dist && sha256sum * > checksums.txt)
+          python scripts/generate_server_json.py \
+            --version "${{ github.ref_name }}" \
+            --dist devtrack_client/dist
+
+      - name: Install pinned MCP Registry publisher
+        run: |
+          curl -LO https://github.com/modelcontextprotocol/registry/releases/download/v1.7.9/mcp-publisher_linux_amd64.tar.gz
+          curl -LO https://github.com/modelcontextprotocol/registry/releases/download/v1.7.9/registry_1.7.9_checksums.txt
+          grep ' mcp-publisher_linux_amd64.tar.gz$' registry_1.7.9_checksums.txt | sha256sum -c -
+          tar xzf mcp-publisher_linux_amd64.tar.gz mcp-publisher
+
+      - name: Validate MCP Registry metadata
+        run: ./mcp-publisher validate devtrack_client/dist/server.json
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          NOTES="docs/releases/${{ github.ref_name }}.md"
+          if [ -f "$NOTES" ]; then
+            NOTES_ARGS=(--notes-file "$NOTES")
+          else
+            NOTES_ARGS=(--generate-notes)
+          fi
           gh release create "${{ github.ref_name }}" \
             devtrack_client/dist/devtrack_windows_amd64.exe \
             devtrack_client/dist/devtrack_darwin_amd64.tar.gz \
@@ -95,6 +119,13 @@ jobs:
             devtrack_client/dist/devtrack_linux_amd64.tar.gz \
             devtrack_client/dist/devtrack_linux_arm64.tar.gz \
             devtrack_client/dist/*.mcpb \
+            devtrack_client/dist/checksums.txt \
+            devtrack_client/dist/server.json \
             --title "${{ github.ref_name }}" \
-            --generate-notes \
+            "${NOTES_ARGS[@]}" \
             --repo "${{ github.repository }}"
+
+      - name: Publish to the official MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish devtrack_client/dist/server.json
