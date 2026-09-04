@@ -1,5 +1,26 @@
 # DevTrack Engineer Log
 
+### [2026-09-04] TASK-151 — Glama container and awesome-list follow-up
+
+**Notes**:
+- `punkpeye/awesome-mcp-servers` added a Glama listing and score-badge requirement to PR #13608.
+- Added `Dockerfile.mcp`, separate from the Python backend image, to build and start the Go stdio MCP
+  server against a disposable SQLite database without PostgreSQL, credentials, or a hosted endpoint.
+- Added Linux CI that builds the image and verifies initialize, discovery of all six read-only tools,
+  and shutdown through the container's stdin/stdout boundary.
+- Local preflight cross-compiled the Linux binary and exercised the same protocol sequence with a
+  native build; initialization, six-tool discovery, read-only annotations, and shutdown passed.
+- Glama submission remains an authenticated owner action. After its checks pass, PR #13608 must use
+  the exact path Glama assigns rather than a guessed badge URL.
+
+## Task Summary — TASK-151
+
+- Container/build readiness: complete
+- Glama listing and PR badge: pending owner-authenticated Glama submission
+- Public release changed: no; v3.1.1 remains latest
+
+---
+
 ### [2026-09-04] TASK-150 — v3.1.0/v3.1.1 release and official MCP Registry publication
 
 **Notes**:
