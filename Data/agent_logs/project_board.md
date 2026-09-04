@@ -1,7 +1,7 @@
 ﻿# DevTrack Project Board
 
 _Last updated: 2026-09-04 — privacy-compliant v3.1.1 and the official MCP Registry record are published;
-TASK-150's third-party account/form actions remain pending authentication._
+community-list PR #13608 is submitted; TASK-150's other third-party actions remain pending authentication._
 
 **[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
 (PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at
@@ -6369,10 +6369,11 @@ credentials in logs or committed files.
 release checksums. Directory preflight found a missing manifest privacy declaration, so v3.1.1 at
 `17bc86f` added/enforced `privacy_policies` plus a bundled Privacy Policy section and republished all
 12 assets. All 10 payload hashes and the five official-registry hashes match; registry 3.1.1 is
-active/latest. The final third-party criterion is PARTIAL: release authorization is recorded, but
-GitHub CLI credentials expired and no authenticated Anthropic, Smithery, mcpservers.org, dev.to,
-Hacker News, or LinkedIn session is available. Anthropic also needs interactive MCP Inspector and
-Claude Desktop evidence. Those submissions/posts remain pending and must not be reported as published.
+active/latest. The final third-party criterion is PARTIAL: refreshed GitHub authentication enabled
+`punkpeye/awesome-mcp-servers` PR #13608, whose submission check passed. No authenticated Anthropic,
+Smithery, mcpservers.org, dev.to, Hacker News, or LinkedIn session is available; mcpservers.org also
+needs an owner-approved contact email. Anthropic additionally needs interactive MCP Inspector and
+Claude Desktop evidence. Those remaining submissions/posts must not be reported as published.
 
 ---
 

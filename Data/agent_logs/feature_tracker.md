@@ -15,8 +15,10 @@ initialize, six-tool discovery, a tool call, and shutdown. PR #258 merged qualif
 `dev`; PR #259 merged it to `main` at `186036f`. The v3.1.0 workflow published 12 assets and the
 active `io.github.sraj0501/devtrack` 3.1.0 official-registry record. All 10 executable/MCPB payload
 hashes independently matched `checksums.txt`. Anthropic, Smithery, mcpservers.org,
-`punkpeye/awesome-mcp-servers`, dev.to, Show HN, and LinkedIn remain unpublished because their
-owner-authenticated account/form sessions are unavailable in this environment.
+dev.to, Show HN, and LinkedIn remain unpublished because their owner-authenticated account/form
+sessions are unavailable in this environment. After GitHub authentication was refreshed,
+`punkpeye/awesome-mcp-servers` PR #13608 was opened under Developer Tools and its submission check
+passed; maintainer review remains external.
 Directory preflight then found that Anthropic requires `privacy_policies` in local MCPB manifests
 and a Privacy Policy section in the bundled README. v3.1.1 at `17bc86f` adds and enforces both,
 republishes all 12 assets, passes the five native CI jobs, and is active/latest in the official
