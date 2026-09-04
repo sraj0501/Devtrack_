@@ -1,6 +1,6 @@
 # DevTrack MCP registry submission package
 
-_Research re-verified: 2026-09-04. v3.1.0 and the official MCP Registry record are public;
+_Research re-verified: 2026-09-04. v3.1.1 and the official MCP Registry record are public;
 third-party directory submissions and launch posts remain unpublished._
 
 ## Release and capability facts
@@ -12,10 +12,10 @@ third-party directory submissions and launch posts remain unpublished._
   `get_pending_actions`, `get_voice_profile`, `get_ticket_context`, and `get_eod_summary`.
 - The MCP path does not require the Python server or a network request. It does require an
   installed DevTrack binary and the user's local DevTrack data/configuration.
-- The latest public release is `v3.1.0`. It contains the MCP command plus five native MCPB bundles
+- The latest public release is `v3.1.1`. It contains the MCP command plus five native MCPB bundles
   for Windows amd64, macOS amd64/arm64, and Linux amd64/arm64. All bundles passed native CI smoke
   tests; the release's 10 executable/MCPB payloads independently matched `checksums.txt`.
-- `io.github.sraj0501/devtrack` version 3.1.0 is active and latest in the official MCP Registry.
+- `io.github.sraj0501/devtrack` version 3.1.1 is active and latest in the official MCP Registry.
 - DevTrack is distributed under its Community License/EULA in `TERMS.md`, not an OSI license.
   Directory forms and manifests must use that exact description and must not label it MIT,
   Apache-2.0, or generally "open source."
@@ -24,9 +24,9 @@ third-party directory submissions and launch posts remain unpublished._
 
 | Target | Eligibility now | Required fields or artifact | Authoritative submission URL | Blocker / next action |
 |---|---|---|---|---|
-| Official MCP Registry | **Published** | Publicly downloadable supported packages plus validated `server.json`; MCPB release URLs include SHA-256 values and `stdio` transport. | [Official publishing quickstart](https://modelcontextprotocol.io/registry/quickstart), [supported package types](https://modelcontextprotocol.io/registry/package-types), and [public record](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.sraj0501%2Fdevtrack&version=latest) | Published through GitHub OIDC on 2026-09-03. The active latest record is `io.github.sraj0501/devtrack` 3.1.0 with all five MCPB packages. |
-| Anthropic Connectors Directory (desktop extension) | **Artifact-ready; owner login/form required** | Installable `.mcpb` with a valid `manifest.json`, privacy policy, clear documentation, working examples, and required `title` plus `readOnlyHint`/`destructiveHint` annotations on every tool, followed by Anthropic's desktop-extension submission form and review. | [Build an MCPB](https://claude.com/docs/connectors/building/mcpb), [directory submission requirements](https://claude.com/docs/connectors/building/submission), and [MCPB manifest specification](https://github.com/modelcontextprotocol/mcpb/blob/main/MANIFEST.md) | v3.1.0 supplies the bundles; official CLI validation, native execution, privacy review, examples, and tool annotations passed. Submission remains blocked only by the absence of an authenticated interactive owner session in this environment. |
-| Smithery | **Artifact-ready; account required** | For local stdio servers, a prebuilt `.mcpb` bundle and listing metadata; hosted URL submissions instead require Streamable HTTP. | [Smithery publishing documentation](https://smithery.ai/docs/build/publish) | v3.1.0 supplies local stdio MCPBs. Do not present the Python HTTP API as MCP. Upload/publication remains blocked by the absence of Smithery account credentials in this environment. |
+| Official MCP Registry | **Published** | Publicly downloadable supported packages plus validated `server.json`; MCPB release URLs include SHA-256 values and `stdio` transport. | [Official publishing quickstart](https://modelcontextprotocol.io/registry/quickstart), [supported package types](https://modelcontextprotocol.io/registry/package-types), and [public record](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.sraj0501%2Fdevtrack&version=latest) | Published through GitHub OIDC. The active latest record is `io.github.sraj0501/devtrack` 3.1.1 with all five MCPB packages; registry hashes match the release checksums. |
+| Anthropic Connectors Directory (desktop extension) | **Packaging-compliant; desktop review and owner form required** | Installable `.mcpb` with a valid `manifest.json`, privacy policy, clear documentation, working examples, and required `title` plus `readOnlyHint`/`destructiveHint` annotations on every tool, followed by Anthropic's desktop-extension submission form and review. | [Build an MCPB](https://claude.com/docs/connectors/building/mcpb), [directory submission requirements](https://claude.com/docs/connectors/building/submission), [pre-submission checklist](https://claude.com/docs/connectors/building/review-criteria), and [MCPB manifest specification](https://github.com/modelcontextprotocol/mcpb/blob/main/MANIFEST.md) | v3.1.1 declares `privacy_policies`, includes a bundled Privacy Policy section, and passes official CLI plus native execution checks. Anthropic also requires every tool to be exercised with MCP Inspector and as a Claude custom connector; that interactive desktop evidence and the authenticated owner form are unavailable in this environment. |
+| Smithery | **Artifact-ready; account required** | For local stdio servers, a prebuilt `.mcpb` bundle and listing metadata; hosted URL submissions instead require Streamable HTTP. | [Smithery publishing documentation](https://smithery.ai/docs/build/publish) | v3.1.1 supplies local stdio MCPBs. Do not present the Python HTTP API as MCP. Upload/publication remains blocked by the absence of Smithery account credentials in this environment. |
 | Glama | **Blocked pending eligibility and build proof** | GitHub OAuth by a maintainer with write/admin access; for its open-source-server path, Glama clones, builds, runs, and introspects the repository using a provided or inferred Dockerfile in an ephemeral microVM. | [Glama registry](https://glama.ai/mcp/servers) and [indexing methodology](https://glama.ai/mcp/methodology) | DevTrack uses a source-available Community License rather than an OSI license, so confirm eligibility for Glama's "open-source MCP servers" path first. The monorepo also lacks a Glama-specific build/launch definition for the local Go MCP command, and a disposable scan has no user's SQLite context. Repository verification and submission are external account actions; do not offer the server as hosted/remote. |
 | mcpservers.org / `wong2/awesome-mcp-servers` | **Form-ready; contact/login required** | Server name, one-sentence description, GitHub/docs link, category, and contact email. The associated awesome list no longer accepts PRs. | [Submission form](https://mcpservers.org/submit) and [list repository](https://github.com/wong2/awesome-mcp-servers) | The release gate is clear. Submission still needs an owner-approved contact email and an authenticated interactive form session. Premium review is optional and must not be purchased implicitly. |
 | `punkpeye/awesome-mcp-servers` | **PR-ready; GitHub authentication required** | A repository-linked server name, concise accurate description, appropriate category, alphabetical placement, one server per line, and a contributor PR. | [Contribution guide](https://github.com/punkpeye/awesome-mcp-servers/blob/main/CONTRIBUTING.md) | The release gate and external-publication authorization are clear. The GitHub CLI owner token expired before the fork/PR step, so submission remains pending authentication and a fresh check of the live contribution rules. |
@@ -87,7 +87,7 @@ Before using the entry, confirm the list's current emoji legend and exact alphab
 An MCPB `manifest.json` template and reproducible packager live under `mcpb/` and `scripts/`.
 Release automation creates platform-specific bundles containing the matching Go executable; CI
 extracts and runs each native target and validates its manifest with the official MCPB CLI.
-`scripts/generate_server_json.py` creates the v3.1.0 release metadata from the published bundle
+`scripts/generate_server_json.py` creates release metadata from the published bundle
 hashes; the release workflow validates it and publishes it to the official registry through OIDC.
 
 For future releases, preserve this sequence: privacy/examples review, five native bundle smokes,
@@ -112,6 +112,6 @@ window covering TASK-121–123 and TASK-143–147. Review-only dev.to, Show HN, 
 are stored under `Data/agent_logs/posts/2026-W36/`.
 
 The drafts remain deliberately unpublished because no authenticated channel sessions are available
-in this environment. They now describe public v3.1.0, avoid adoption and time-saved claims that the
+in this environment. They now describe public v3.1.1, avoid adoption and time-saved claims that the
 repository cannot prove, and link to the released artifacts. TASK-150 cleared the technical release
 gate but did not create external-usage evidence; launch copy must keep that boundary.

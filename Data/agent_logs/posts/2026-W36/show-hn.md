@@ -14,13 +14,14 @@ DevTrack is not trying to be another coding agent; it sits underneath them as am
 The trust model matters more to me than the generation. Ticket comments, state changes, and reports
 are staged with visible confidence before anything is sent.
 
-The installation path in v3.1.0 is deliberately progressive: Git monitoring and MCP can work before
+The installation path introduced in v3.1.0 and current in v3.1.1 is deliberately progressive: Git monitoring and MCP can work before
 Python or a model is ready, while the optional server bootstraps in the background and `doctor`
 reports what is available or degraded. The repository includes a reproducible demo covering commit
 detection, a staged action, EOD preview, and MCP context.
 
-v3.1.0 is the first release with that MCP and Phase 9 path. It includes native binaries and MCPB
-bundles for Windows amd64, macOS Intel/Apple Silicon, and Linux amd64/arm64.
+v3.1.0 was the first release with that MCP and Phase 9 path. The current v3.1.1 release includes
+privacy-declaring native binaries and MCPB bundles for Windows amd64, macOS Intel/Apple Silicon,
+and Linux amd64/arm64.
 
 Repository: https://github.com/sraj0501/Devtrack_
 

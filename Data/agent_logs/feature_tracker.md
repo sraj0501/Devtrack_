@@ -1,12 +1,12 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-04 (v3.1.0 and official MCP Registry record published)_
+_Last updated: 2026-09-04 (privacy-compliant v3.1.1 and official MCP Registry record published)_
 
 ---
 
-## 2026-09-04 — TASK-150: v3.1.0 release qualification and publication
+## 2026-09-04 — TASK-150: v3.1.0 launch and v3.1.1 privacy-compliance patch
 **Phase**: MCP distribution / release
-**Status**: RELEASE COMPLETE in PRs #258/#259 and tag `v3.1.0`; external account actions pending
+**Status**: RELEASE COMPLETE through tags `v3.1.0`/`v3.1.1`; external account actions pending
 **Target**: Native execution of all five MCPB variants, curated release/privacy metadata, v3.1.0
 publication, official MCP Registry publication, and authorized directory/launch submissions
 **Vision check**: PASS
@@ -17,6 +17,12 @@ active `io.github.sraj0501/devtrack` 3.1.0 official-registry record. All 10 exec
 hashes independently matched `checksums.txt`. Anthropic, Smithery, mcpservers.org,
 `punkpeye/awesome-mcp-servers`, dev.to, Show HN, and LinkedIn remain unpublished because their
 owner-authenticated account/form sessions are unavailable in this environment.
+Directory preflight then found that Anthropic requires `privacy_policies` in local MCPB manifests
+and a Privacy Policy section in the bundled README. v3.1.1 at `17bc86f` adds and enforces both,
+republishes all 12 assets, passes the five native CI jobs, and is active/latest in the official
+registry. All 10 v3.1.1 payload hashes and all five registry package hashes were independently
+verified. Anthropic submission additionally awaits MCP Inspector/Claude Desktop tool-exercise
+evidence plus its authenticated form.
 
 ---
 

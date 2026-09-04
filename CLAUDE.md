@@ -172,7 +172,7 @@ the configured or loopback-fallback server URL and degrade when no backend is re
 ## Project Status & Direction
 
 - **Direction:** see [`PRODUCT_BIBLE.md`](PRODUCT_BIBLE.md). Build arc **Phase 0→9 COMPLETE** on
-  `dev`. v3.1.0 ships PostgreSQL-backed managed services, first-run onboarding, local MCP, and five
+  `dev`. v3.1.1 ships PostgreSQL-backed managed services, first-run onboarding, local MCP, and five
   native MCPB bundles. The official MCP Registry record is active; third-party directory forms and
   held launch posts remain owner-account actions.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.

@@ -556,7 +556,7 @@
         </div>
       </a>
       <div class="sidebar-version">
-        <span class="sidebar-version-tag">v3.1.0</span>
+        <span class="sidebar-version-tag">v3.1.1</span>
         <span class="sidebar-version-status">
           <span class="sidebar-version-dot"></span>
           live
@@ -587,7 +587,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v3.1.0</span>
+        <span class="version-chip">v3.1.1</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -948,8 +948,8 @@ devtrack voice status</code></pre>
 <h1>Setup Wizard</h1>
 <p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode, LLM provider, credentials, workspace, project-management platform, and shell integration, then writes a complete environment file under the DevTrack XDG data directory and registers it so every subsequent <code>devtrack</code> invocation auto-loads it. Managed mode also collects and validates the required PostgreSQL URL.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available in the latest public release — v3.1.0</div>
-<blockquote><p>v3.1.0 includes the background bootstrap, <code>doctor</code>, first-run MCP guidance, voice seeding, and LLM fast lane described below.</p></blockquote>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available in the latest public release — v3.1.1</div>
+<blockquote><p>v3.1.1 includes the background bootstrap, <code>doctor</code>, first-run MCP guidance, voice seeding, and LLM fast lane described below.</p></blockquote>
 
 <h2>Running the Wizard</h2>
 <pre><code class="language-bash">devtrack setup</code></pre>
@@ -1612,15 +1612,15 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer source work. TASK-147 and TASK-148 are synchronized on <code>main</code> and <code>dev</code>; TASK-149 is the follow-up documentation synchronization branch. GitHub Releases remains the version-history archive.</p>
-<h2>v3.1.0 — TASK-147–150 readiness, distribution, and documentation</h2>
+<h2>v3.1.1 — TASK-147–150 readiness, distribution, and documentation</h2>
 <ul>
 <li><strong>Stable HTTP boundary:</strong> executable Go and Python contract tests now protect health, timer, boardroom, work-session, queue, and client-event request/response shapes.</li>
 <li><strong>Windows compatibility:</strong> native SQLite paths are normalized into valid file URIs, and Windows participates in the Go CI test matrix.</li>
 <li><strong>MCP protocol metadata:</strong> the server negotiates finalized handshake versions through <code>2025-11-25</code>; all six tools have deterministic ordering, human titles, and read-only/non-destructive/idempotent/local annotations.</li>
 <li><strong>MCPB distribution:</strong> manifest 0.3 bundles ship for five OS/architecture targets, with official CLI validation and native execution in CI.</li>
-<li><strong>Documentation synchronization:</strong> TASK-149 reconciled the README, durable project memory, HTTP/MCP references, release gates, and this wiki; TASK-150 records the public v3.1.0 release.</li>
+<li><strong>Documentation synchronization:</strong> TASK-149 reconciled the README, durable project memory, HTTP/MCP references, release gates, and this wiki; TASK-150 records v3.1.0 and the privacy-compliance v3.1.1 patch.</li>
 </ul>
-<h2>Latest Public Release — v3.1.0</h2>
+<h2>Latest Public Release — v3.1.1</h2>
 <ul>
 <li>Standalone Go client with managed, lightweight and external modes.</li>
 <li>Cross-platform daemon, autostart, workspace routing and Go-native PM connectors.</li>
@@ -2608,10 +2608,10 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   // ── Redirect stubs: broken internal links point here; we route to the correct page ──
   VISION: `<div class="md-body">
 <h1>Roadmap</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 9 and v3.1.0 distribution complete</div>
-<p>DevTrack's product build arc and Phase 9 adoption work are complete: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, read-only MCP context, first-run onboarding, and native MCPB distribution. The latest public release is <code>v3.1.0</code>.</p>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 9 and v3.1.1 distribution complete</div>
+<p>DevTrack's product build arc and Phase 9 adoption work are complete: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, read-only MCP context, first-run onboarding, and native MCPB distribution. The latest public release is <code>v3.1.1</code>.</p>
 <h2>Current focus</h2>
-<p>TASK-147 synchronized dependency, HTTP-contract, and Windows behavior; TASK-148 prepared versioned MCPB bundles and safety metadata; TASK-149 reconciled documentation and memory; TASK-150 qualified five native targets and published v3.1.0 plus the active official MCP Registry record.</p>
+<p>TASK-147 synchronized dependency, HTTP-contract, and Windows behavior; TASK-148 prepared versioned MCPB bundles and safety metadata; TASK-149 reconciled documentation and memory; TASK-150 qualified five native targets, published v3.1.0, then added required privacy declarations in v3.1.1. The official MCP Registry record is active/latest.</p>
 <h2>Next</h2>
 <ol>
 <li>Use authenticated owner sessions to submit eligible third-party directories and publish the held launch posts.</li>
@@ -2930,8 +2930,8 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 
   MCP_CLAUDE_CODE: `<div class="md-body">
 <h1>MCP and Agent Memory</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available in v3.1.0 · official MCP Registry record active</div>
-<blockquote><p>The commands on this page ship in v3.1.0. Five native MCPB bundles are published for Windows, macOS, and Linux.</p></blockquote>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available in v3.1.1 · official MCP Registry record active/latest</div>
+<blockquote><p>The commands on this page ship in v3.1.1. Five privacy-declaring native MCPB bundles are published for Windows, macOS, and Linux.</p></blockquote>
 
 <h2>Why DevTrack Added MCP</h2>
 <p>AI coding assistants usually know the files in the current conversation but not the developer's working history. They do not automatically know which ticket is active, what was committed earlier today, what DevTrack is waiting to send, or how the developer normally writes a project update. That missing context forces the developer to repeat information and allows different assistants to build inconsistent versions of the same story.</p>
@@ -2999,9 +2999,9 @@ devtrack mcp setup</code></pre>
 <p><code>command</code> is the absolute path to the DevTrack binary used during setup. <code>DEVTRACK_ENV_FILE</code> points to the configuration registered by <code>devtrack setup</code>, which lets the MCP subprocess locate the same data directory as the daemon.</p>
 
 <h3>4. Understand MCPB Packaging</h3>
-<p>v3.1.0 publishes manifest 0.3 MCPB bundles for Windows x64, macOS x64/arm64, and Linux x64/arm64. A packaged host asks the user to select an existing <code>devtrack.db</code>, then starts the bundled binary as:</p>
+<p>v3.1.1 publishes manifest 0.3 MCPB bundles for Windows x64, macOS x64/arm64, and Linux x64/arm64. Each manifest declares the public privacy policy, and each bundled README contains a Privacy Policy section. A packaged host asks the user to select an existing <code>devtrack.db</code>, then starts the bundled binary as:</p>
 <pre><code class="language-bash">devtrack mcp serve --database /path/to/devtrack.db</code></pre>
-<p>CI creates and executes each native bundle, validates manifests with the official MCPB CLI, and checks clean-project setup plus protocol behavior. The release publishes checksums and <code>server.json</code>; version 3.1.0 is active in the official MCP Registry.</p>
+<p>CI creates and executes each native bundle, validates manifests with the official MCPB CLI, and checks clean-project setup plus protocol behavior. The release publishes checksums and <code>server.json</code>; version 3.1.1 is active/latest in the official MCP Registry.</p>
 
 <h3>5. Run the Built-In Self-Test</h3>
 <pre><code class="language-bash">devtrack mcp test</code></pre>
@@ -3208,7 +3208,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-first · latest release v3.1.0 · official MCP Registry</div>
+      <div class="home-badge">Local-first · latest release v3.1.1 · official MCP Registry</div>
       <h1 class="home-title">Never write a<br><span>standup</span> again.</h1>
       <p class="home-sub">You commit; DevTrack prepares ticket updates and end-of-day reports silently, in your voice, on your machine. Every outbound action stays reviewable before it leaves.</p>
     </div>
@@ -3217,17 +3217,17 @@ function renderHome() {
       ${[
         // ── Product promise: outcome → agent memory → trust ────────────────────
         { id:'WORK_TRACKER',     icon:'☀️', title:'Your standup, from your commits', desc:'DevTrack groups work by ticket and prepares an end-of-day narrative in your voice. Keep coding; the daemon handles the project-update overhead.' },
-        { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'Agent memory over MCP', desc:'v3.1.0 exposes six annotated read-only tools and ships validated native MCPB bundles for Windows, macOS, and Linux.' },
+        { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'Agent memory over MCP', desc:'v3.1.1 exposes six annotated read-only tools and ships privacy-declaring native MCPB bundles for Windows, macOS, and Linux.' },
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation, MCP context, and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.0: Windows and HTTP contract hardening, Phase 9 onboarding, MCP protocol metadata, five native MCPBs, and official MCP Registry publication.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1: Phase 9 onboarding, MCP protocol metadata, five native MCPBs with required privacy declarations, and official MCP Registry publication.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the platform asset from GitHub Releases (Windows uses the published <code>.exe</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
-        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard', desc:'v3.1.0 writes registered XDG config immediately, then bootstraps managed Python/LLM dependencies in the background with <code>doctor</code> progress.' },
+        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard', desc:'v3.1.1 writes registered XDG config immediately, then bootstraps managed Python/LLM dependencies in the background with <code>doctor</code> progress.' },
         // ── Reference ─────────────────────────────────────────────────────────
         { id:'CLI_REFERENCE',    icon:'⌨️', title:'CLI Reference',      desc:'All devtrack commands with flags and examples.' },
         { id:'CONFIGURATION',    icon:'🔧', title:'Configuration',      desc:'All .env variables with defaults, required vars, timeout settings, server modes, TLS, LLM providers, and feature flags.' },
@@ -3269,7 +3269,7 @@ function renderHome() {
     </div>
 
     <div class="quick-start-box">
-      <h3>Latest public release: v3.1.0</h3>
+      <h3>Latest public release: v3.1.1</h3>
       <p style="margin:0 0 .75rem;font-size:.9rem;opacity:.8;">Download the published binary and use only its released command surface.</p>
       <pre><code class="language-bash"># macOS / Linux — the lean Go binary. Normalise OS/arch to the release asset names.
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -3283,7 +3283,7 @@ devtrack start
 devtrack status
 devtrack logs</code></pre>
 
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;"><strong>Optional source build for contributors.</strong> The same commands are available in the v3.1.0 release binary.</p>
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;"><strong>Optional source build for contributors.</strong> The same commands are available in the v3.1.1 release binary.</p>
       <pre><code class="language-bash">git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_client
 go build -o devtrack .
@@ -3321,7 +3321,7 @@ devtrack start</code></pre>
         { n:'Go-Native Ticket Connectors', d:'The terminal client provides ticket list, view, create, comment, check, and sync paths for <strong>GitHub, GitLab, and Azure DevOps</strong>. Connector failures degrade without blocking local observation or queueing.' },
         { n:'Go-Native Alerts', d:'The daemon polls <strong>GitHub and Azure DevOps</strong> for relevant notifications and keeps alert state in local SQLite. Alert delivery can use terminal, OS, Telegram, or Slack notifiers; no MongoDB-backed alert state or Jira poller is claimed.' },
         { n:'End-of-Day Reports in Your Voice', d:'Commits and work sessions feed an EOD narrative. When a learned local voice profile is available it shapes generated text; missing models or optional services degrade gracefully, and any outbound delivery still passes through the pending queue.' },
-        { n:'Local Context + MCP', d:'The Go client keeps observation, queue, and history data in local SQLite. v3.1.0 provides read-only MCP access to active work and pending actions, including native MCPB bundles.' },
+        { n:'Local Context + MCP', d:'The Go client keeps observation, queue, and history data in local SQLite. v3.1.1 provides read-only MCP access to active work and pending actions, including privacy-declaring native MCPB bundles.' },
         { n:'Optional Visibility and Corrections', d:'The TUI and Telegram show daemon activity and expose available correction paths; notifications surface status for a quick glance. None gates daemon capabilities: closing every interface leaves the same silent background engine running.' },
       ].map((f, i) => `
         <div class="feature-item">

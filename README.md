@@ -28,8 +28,8 @@ A background daemon watches your commits and infers everything around them — w
 
 ### And it's the memory your AI agents lack
 
-> **Available in v3.1.0:** Phase 9 onboarding and the local, read-only MCP server ship in the
-> latest public release. Five native MCPB bundles are available for Windows, macOS, and Linux.
+> **Available since v3.1.0:** Phase 9 onboarding and the local, read-only MCP server ship in the
+> latest public release, v3.1.1. Five native MCPB bundles are available for Windows, macOS, and Linux.
 
 Coding agents are session-based: they exist while invoked, then forget. DevTrack is always on. One command —
 
@@ -50,8 +50,8 @@ you run `devtrack telemetry on`.
 
 ## Ten-minute quickstart
 
-The latest public release is **v3.1.0**. Download the matching platform asset from
-[GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.0), or build from source:
+The latest public release is **v3.1.1**. Download the matching platform asset from
+[GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.1), or build from source:
 
 ```bash
 git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git

@@ -1,6 +1,6 @@
 # DevTrack Engineer Log
 
-### [2026-09-04] TASK-150 — v3.1.0 release and official MCP Registry publication
+### [2026-09-04] TASK-150 — v3.1.0/v3.1.1 release and official MCP Registry publication
 
 **Notes**:
 - PR #258 merged the qualification work to `dev`; PR #259 merged `dev` to `main` at `186036f` after
@@ -12,6 +12,12 @@
   values match `checksums.txt`.
 - Verified the public official MCP Registry API: `io.github.sraj0501/devtrack` version 3.1.0 is
   active/latest and records all five MCPB URLs with the published hashes.
+- Anthropic's current directory checklist exposed a packaging omission after v3.1.0: the MCPB
+  manifest lacked `privacy_policies`, and the bundled README lacked a named Privacy Policy section.
+  v3.1.1 at `17bc86f` adds both and makes packaging/native smoke tests enforce them. All three `dev`
+  workflows passed, release run `33840101130` completed successfully, 12 assets were published, all
+  10 payload hashes matched, the inspected bundle contained both privacy declarations, and the five
+  official-registry hashes matched its active/latest 3.1.1 record.
 - Updated README, checked-in memory, board/tracker, registry evidence, and the public wiki to replace
   the obsolete v3.0.10/unreleased boundary without rewriting dated historical evidence.
 - Third-party directory forms and the prepared dev.to, Show HN, and LinkedIn posts were not
@@ -22,8 +28,8 @@
 
 - Technical release acceptance criteria met: 7/7
 - Third-party publication criterion: PARTIAL, blocked on owner-authenticated external sessions
-- Public release changed: yes; v3.1.0 is latest
-- Official MCP Registry changed: yes; 3.1.0 active/latest
+- Public release changed: yes; v3.1.1 is latest
+- Official MCP Registry changed: yes; 3.1.1 active/latest
 
 ---
 
