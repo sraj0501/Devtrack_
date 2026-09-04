@@ -20,14 +20,16 @@
   official-registry hashes matched its active/latest 3.1.1 record.
 - Updated README, checked-in memory, board/tracker, registry evidence, and the public wiki to replace
   the obsolete v3.0.10/unreleased boundary without rewriting dated historical evidence.
-- Third-party directory forms and the prepared dev.to, Show HN, and LinkedIn posts were not
-  published: GitHub CLI authentication expired, and no authenticated Anthropic, Smithery,
-  mcpservers.org, dev.to, Hacker News, or LinkedIn owner session is available in this environment.
+- After GitHub authentication was refreshed, forked `punkpeye/awesome-mcp-servers`, added DevTrack
+  under Developer Tools in the current one-line/alphabetical format, and opened PR #13608 with the
+  repository's automated-agent marker. Its `check-submission` job passed. Other directory forms and
+  the prepared dev.to, Show HN, and LinkedIn posts remain unpublished because no authenticated
+  Anthropic, Smithery, mcpservers.org, dev.to, Hacker News, or LinkedIn owner session is available.
 
 ## Task Summary — TASK-150
 
 - Technical release acceptance criteria met: 7/7
-- Third-party publication criterion: PARTIAL, blocked on owner-authenticated external sessions
+- Third-party publication criterion: PARTIAL; community-list PR submitted, remaining channels blocked on owner-authenticated sessions/contact details
 - Public release changed: yes; v3.1.1 is latest
 - Official MCP Registry changed: yes; 3.1.1 active/latest
 

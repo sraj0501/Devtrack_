@@ -165,7 +165,7 @@ from someone unknown means a real install survived setup.
 | TASK-142 | **DONE (PR #253)** — configured-LLM task enrichment with strict validation and a non-blocking raw/template fallback | 9a prerequisite |
 | TASK-148 | **DONE (`c1329f7`)** — MCP handshake/tool metadata hardening plus reproducible, validated per-platform MCPB release packaging | MCP distribution |
 | TASK-149 | **DONE (PR #257)** — synchronize README, wiki, durable memory, registry evidence, and post-TASK-148 release gates | Documentation |
-| TASK-150 | **RELEASE DONE; EXTERNAL FOLLOW-UP** — v3.1.1, five privacy-compliant native MCPBs, checksums, and official MCP Registry record published; third-party forms/posts need authenticated owner sessions | Release |
+| TASK-150 | **RELEASE DONE; EXTERNAL FOLLOW-UP** — v3.1.1 and official registry published; awesome-mcp-servers PR #13608 checks pass; remaining forms/posts need authenticated owner sessions/contact details | Release |
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL
