@@ -1,7 +1,7 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-09-03 — Phase 9 and post-MCPB documentation are complete through TASK-149;
-TASK-150 is active for v3.1.0 release qualification and publication._
+_Last updated: 2026-09-04 — v3.1.0 and the official MCP Registry record are published;
+TASK-150's third-party account/form actions remain pending authentication._
 
 **[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
 (PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at
@@ -6333,7 +6333,7 @@ recent engineer-log evidence. Do not publish externally.
 `Data/agent_logs/posts/2026-W36/`. Nothing was published or sent externally; each draft retains a
 release gate because v3.0.10 predates the Phase 9 onboarding and MCP work.
 
-## ACTIVE — TASK-150: Qualify and publish the first MCP-capable release
+## SHIPPED / EXTERNAL FOLLOW-UP — TASK-150: Qualify and publish the first MCP-capable release
 
 **Priority:** HIGH
 
@@ -6345,17 +6345,17 @@ adding hosted dependencies or broadening tool permissions.
 **Target:** `v3.1.0` (minor release: backward-compatible Phase 9 onboarding and MCP/MCPB capability)
 
 **Acceptance criteria:**
-- [ ] Reconcile TASK-149's merged state and remove stale Phase 9/lightweight/version guidance.
-- [ ] Execute each packaged MCPB on a native Windows amd64, macOS amd64/arm64, and Linux
+- [x] Reconcile TASK-149's merged state and remove stale Phase 9/lightweight/version guidance.
+- [x] Execute each packaged MCPB on a native Windows amd64, macOS amd64/arm64, and Linux
       amd64/arm64 GitHub-hosted runner; verify initialize, all six annotated tools, one tool call,
       and shutdown against an isolated SQLite database.
-- [ ] Validate all MCPB manifests with the pinned official CLI and validate generated
+- [x] Validate all MCPB manifests with the pinned official CLI and validate generated
       `server.json` with the pinned official MCP Registry publisher.
-- [ ] Preserve the v3.0.10 binary asset set, add five MCPBs, SHA-256 checksums, `server.json`, and
+- [x] Preserve the v3.0.10 binary asset set, add five MCPBs, SHA-256 checksums, `server.json`, and
       curated v3.1.0 release notes.
-- [ ] Review and update the privacy policy for local MCP database access.
-- [ ] Merge qualified work through `dev` and `main`, tag `v3.1.0`, and verify the GitHub release.
-- [ ] Publish `io.github.sraj0501/devtrack` to the official MCP Registry using GitHub OIDC and
+- [x] Review and update the privacy policy for local MCP database access.
+- [x] Merge qualified work through `dev` and `main`, tag `v3.1.0`, and verify the GitHub release.
+- [x] Publish `io.github.sraj0501/devtrack` to the official MCP Registry using GitHub OIDC and
       verify the public registry record.
 - [ ] Submit eligible third-party directory/listing targets and publish the held launch posts;
       record any account/form/platform blocker without fabricating completion.
@@ -6364,7 +6364,12 @@ adding hosted dependencies or broadening tool permissions.
 release, registry submissions, and launch-post publication. Never expose repository or provider
 credentials in logs or committed files.
 
-**Engineer status:** IN PROGRESS.
+**Engineer status:** RELEASE COMPLETE — PR #258 merged to `dev`; PR #259 merged to `main` at
+`186036f`; v3.1.0 published with 12 assets; all 10 executable/MCPB payload hashes matched the
+release checksums; official registry version 3.1.0 is active/latest. The final third-party criterion
+is PARTIAL: release authorization is recorded, but GitHub CLI credentials expired and no authenticated
+Anthropic, Smithery, mcpservers.org, dev.to, Hacker News, or LinkedIn session is available. Those
+submissions/posts remain pending and must not be reported as published.
 
 ---
 

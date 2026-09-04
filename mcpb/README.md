@@ -10,3 +10,10 @@ or contact the optional Python server.
 
 The bundled executable is governed by the DevTrack Community License included in the archive.
 Support: https://github.com/sraj0501/Devtrack_/issues
+
+## Privacy Policy
+
+The bundle reads only the local SQLite database selected during installation. Its MCP tools do not
+contact the optional Python server or any hosted MCP endpoint. The DevTrack privacy policy explains
+local storage, optional integrations, sharing, retention, deletion, and how to report a privacy or
+security concern: https://devtrack.cloud/privacy.html

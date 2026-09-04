@@ -161,10 +161,11 @@ from someone unknown means a real install survived setup.
 | TASK-121 | **DONE** — reproducible commit → staged action → EOD/MCP demo + quickstart polish | 9c |
 | TASK-122 | **DONE** — devtrack_wiki homepage rewrite + reviewable repo description/topics | 9c |
 | TASK-123 | **DONE** — evidence-backed registry matrix and held submission copy | 9d |
-| TASK-124 | **DONE** — evidence-backed Show HN, dev.to, and LinkedIn drafts; held until a post-v3.0.10 release | 9d |
+| TASK-124 | **DONE** — evidence-backed Show HN, dev.to, and LinkedIn drafts; updated for v3.1.0 and held pending authenticated channel sessions | 9d |
 | TASK-142 | **DONE (PR #253)** — configured-LLM task enrichment with strict validation and a non-blocking raw/template fallback | 9a prerequisite |
 | TASK-148 | **DONE (`c1329f7`)** — MCP handshake/tool metadata hardening plus reproducible, validated per-platform MCPB release packaging | MCP distribution |
-| TASK-149 | **DONE on docs branch** — synchronize README, wiki, durable memory, registry evidence, and post-TASK-148 release gates | Documentation |
+| TASK-149 | **DONE (PR #257)** — synchronize README, wiki, durable memory, registry evidence, and post-TASK-148 release gates | Documentation |
+| TASK-150 | **RELEASE DONE; EXTERNAL FOLLOW-UP** — v3.1.0, five native MCPBs, checksums, and official MCP Registry record published; third-party forms/posts need authenticated owner sessions | Release |
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL
@@ -177,14 +178,16 @@ from someone unknown means a real install survived setup.
 > TASK-146 restored the comprehensive beginner wiki, and TASK-147 reconciled refreshed dependencies,
 > Windows SQLite behavior, and the HTTP contract. TASK-148 added MCPB build readiness without
 > publishing a release or registry entry. TASK-149 synchronized the documentation surfaces after
-> that work. The next unused ID is TASK-150.
+> that work. TASK-150 subsequently shipped v3.1.0 and the official registry record. The next unused
+> ID is TASK-151.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to
 > opt-in so no product telemetry leaves the machine unless the user enables it. Configured PM,
 > email, remote-server, and cloud-LLM integrations still receive the data required for their jobs.
 > TASK-124 completed the evidence-backed launch drafts; publishing remains intentionally gated on a
-> public release that contains the Phase 9/MCP work.
+> public release that contains the Phase 9/MCP work. v3.1.0 cleared that technical gate; publishing
+> now depends on authenticated owner sessions for each external channel.
 
 ---
 

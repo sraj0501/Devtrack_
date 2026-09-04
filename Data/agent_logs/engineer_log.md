@@ -1,5 +1,32 @@
 # DevTrack Engineer Log
 
+### [2026-09-04] TASK-150 — v3.1.0 release and official MCP Registry publication
+
+**Notes**:
+- PR #258 merged the qualification work to `dev`; PR #259 merged `dev` to `main` at `186036f` after
+  all Linux, Windows, macOS, PostgreSQL, API, wiki, MCPB, and registry-metadata checks passed. One
+  Windows SQLite test exceeded the global timeout once; its rerun and the independent PR run passed.
+- Tag `v3.1.0` triggered release run `33769882369`. It published the five existing platform binary
+  assets, five native MCPB bundles, `checksums.txt`, and `server.json` with curated release notes.
+- Downloaded the release and independently verified that all 10 executable/MCPB payload SHA-256
+  values match `checksums.txt`.
+- Verified the public official MCP Registry API: `io.github.sraj0501/devtrack` version 3.1.0 is
+  active/latest and records all five MCPB URLs with the published hashes.
+- Updated README, checked-in memory, board/tracker, registry evidence, and the public wiki to replace
+  the obsolete v3.0.10/unreleased boundary without rewriting dated historical evidence.
+- Third-party directory forms and the prepared dev.to, Show HN, and LinkedIn posts were not
+  published: GitHub CLI authentication expired, and no authenticated Anthropic, Smithery,
+  mcpservers.org, dev.to, Hacker News, or LinkedIn owner session is available in this environment.
+
+## Task Summary — TASK-150
+
+- Technical release acceptance criteria met: 7/7
+- Third-party publication criterion: PARTIAL, blocked on owner-authenticated external sessions
+- Public release changed: yes; v3.1.0 is latest
+- Official MCP Registry changed: yes; 3.1.0 active/latest
+
+---
+
 ### [2026-09-03] TASK-149 — post-MCPB documentation synchronization
 
 **Notes**:

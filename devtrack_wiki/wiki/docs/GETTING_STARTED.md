@@ -1,7 +1,7 @@
 # Getting started
 
-The latest public release is **v3.0.10**. The Phase 9 onboarding, MCP, demo, and runtime-reliability
-changes currently live on `dev` and remain unreleased until a newer tag is published.
+The latest public release is **v3.1.0**. It includes the Phase 9 onboarding, local MCP server,
+native MCPB bundles, demo path, and runtime-reliability work.
 
 ## Install and configure
 
@@ -9,6 +9,7 @@ Download the correct asset from [GitHub Releases](https://github.com/sraj0501/De
 
 - Linux/macOS: `devtrack_<os>_<arch>.tar.gz`
 - Windows: `devtrack_windows_amd64.exe`
+- MCP clients: the matching `devtrack_mcpb_<os>_<arch>.mcpb`
 
 Then run:
 

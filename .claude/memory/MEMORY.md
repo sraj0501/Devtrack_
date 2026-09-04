@@ -1,13 +1,17 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-09-03_ | public v3.0.10 | source/docs through TASK-149 on dev | TASK-150 active | GitHub is canonical
+_Last updated: 2026-09-04_ | public v3.1.0 | official MCP Registry active | TASK-150 release work complete; external account actions pending | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 
 ## Read first
 - `PRODUCT_BIBLE.md` is definitive product direction; `CLAUDE.md` is the build guide.
 - `Data/agent_logs/project_board.md` is the task/status/ID authority; dated notes are historical.
-- Phases 0–9 and PostgreSQL are complete. TASK-150 is active for v3.1.0 qualification, release, registry distribution, and launch publication.
+- Phases 0–9 and PostgreSQL are complete. v3.1.0 is public with five native MCPB bundles and an active official MCP Registry record.
+
+## Completed — 2026-09-04
+- TASK-150 qualified five native MCPB targets, merged PR #259 to `main` at `186036f`, published v3.1.0 with 12 release assets, independently verified all 10 payload hashes, and published `io.github.sraj0501/devtrack` to the official MCP Registry.
+- Third-party forms, directory submissions, and held dev.to/Show HN/LinkedIn posts remain unpublished because this environment has no authenticated owner sessions; do not claim those actions are complete.
 
 ## Completed — 2026-09-03
 - TASK-149 synchronized README, wiki, durable project memory, registry evidence, and release gates after TASK-147/148. PR #257 merged to `dev` at `e22f709`.
@@ -16,7 +20,7 @@ DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 - TASK-124 produced held, evidence-backed dev.to, Show HN, and LinkedIn drafts; nothing was published.
 - TASK-147 synchronized dependency compatibility, Windows SQLite handling, HTTP contracts, and CI coverage.
 - TASK-148 completed MCPB build readiness: current handshake negotiation, six annotated read-only tools, explicit packaged-database selection, reproducible platform bundles, and CI manifest validation.
-- Commit `c1329f7` is synchronized on local `main` and remote `origin/main`/`origin/dev`; no local `dev` branch is currently checked out or recorded. All work after v3.0.10 remains unreleased.
+- TASK-148's MCP distribution work shipped in v3.1.0. Commit `186036f` is the release merge on `main`; post-release documentation is being synchronized through `dev`.
 
 ## Rules
 - [feedback_rules.md](feedback_rules.md) — authorization, Git, privacy, architecture, and dependency rules

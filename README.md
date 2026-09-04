@@ -28,9 +28,8 @@ A background daemon watches your commits and infers everything around them — w
 
 ### And it's the memory your AI agents lack
 
-> **Source preview:** Phase 9 onboarding and MCP are synchronized on upstream `main` and `dev`;
-> the latest public release, v3.0.10, predates both. MCPB release packaging is prepared in source,
-> but no MCPB has been published yet.
+> **Available in v3.1.0:** Phase 9 onboarding and the local, read-only MCP server ship in the
+> latest public release. Five native MCPB bundles are available for Windows, macOS, and Linux.
 
 Coding agents are session-based: they exist while invoked, then forget. DevTrack is always on. One command —
 
@@ -51,9 +50,8 @@ you run `devtrack telemetry on`.
 
 ## Ten-minute quickstart
 
-The latest public release is **v3.0.10**. It predates the MCP command and the Phase 9 onboarding
-work used below, so `releases/latest` cannot run this walkthrough yet. Until a newer release ships,
-build the MCP-capable client from upstream `main`:
+The latest public release is **v3.1.0**. Download the matching platform asset from
+[GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.0), or build from source:
 
 ```bash
 git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
@@ -132,8 +130,8 @@ blocked.
 devtrack upgrade
 ```
 
-`devtrack upgrade` currently installs the latest public release, v3.0.10. It does not upgrade a
-source-built Phase 9/MCP demo installation until that work is included in a newer public release.
+`devtrack upgrade` installs the latest public release, including the Phase 9 onboarding and MCP
+commands introduced in v3.1.0.
 
 The daemon mines enabled local repositories in Managed mode and builds the voice profile once the
 local AI server is reachable. `devtrack status` and `devtrack doctor` show the persistent result and
@@ -495,9 +493,9 @@ DevTrack exposes a Model Context Protocol (MCP) server so Claude Code automatica
   non-destructive, idempotent safety annotations.
 - The stdio handshake negotiates finalized MCP versions through `2025-11-25`, retaining older-client
   compatibility. The newer `2026-07-28` per-request protocol is not supported yet.
-- Reproducible MCPB 0.3 packaging and manifest validation are wired for Windows, macOS, and Linux in
-  the next release pipeline. During bundle installation, select the `devtrack.db` created by
-  `devtrack setup`; no MCPB was published with v3.0.10.
+- Reproducible MCPB 0.3 bundles ship for Windows amd64, macOS amd64/arm64, and Linux amd64/arm64.
+  During bundle installation, select the `devtrack.db` created by `devtrack setup`. Published
+  bundle hashes are recorded in the release's `checksums.txt` and official MCP Registry metadata.
 
 ```bash
 # One-time setup — run from your repo root
@@ -708,9 +706,9 @@ GIT_NO_DEVTRACK=1 git push origin vX.Y.Z
 
 GitHub Actions runs the Go tests, cross-compiles Linux amd64/arm64, macOS amd64/arm64, and Windows
 amd64, validates the generated MCPB manifests, then publishes the platform binaries/tarballs and
-five matching `.mcpb` bundles. These artifacts remain source-pipeline capability until a maintainer
-creates and pushes a new release tag; v3.0.10 contains neither MCP nor MCPB assets. Update
-release-facing website copy in the same release change.
+five matching `.mcpb` bundles. It also publishes SHA-256 checksums, `server.json`, and the official
+MCP Registry record through GitHub OIDC. v3.1.0 is the first release produced by this complete path.
+Update release-facing website copy in the same release change.
 
 The older `scripts/release.ps1` helper is retained for local maintainer workflows, but it is not the
 source of truth for published asset names or CI behavior.

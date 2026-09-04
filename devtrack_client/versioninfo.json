@@ -3,13 +3,13 @@
     "FileVersion": {
       "Major": 3,
       "Minor": 1,
-      "Patch": 0,
+      "Patch": 1,
       "Build": 0
     },
     "ProductVersion": {
       "Major": 3,
       "Minor": 1,
-      "Patch": 0,
+      "Patch": 1,
       "Build": 0
     },
     "FileFlagsMask": "3f",
@@ -22,14 +22,14 @@
     "Comments": "",
     "CompanyName": "DevTrack",
     "FileDescription": "DevTrack — Developer automation and standup generator",
-    "FileVersion": "3.1.0",
+    "FileVersion": "3.1.1",
     "InternalName": "devtrack",
     "LegalCopyright": "Copyright (C) 2026 DevTrack",
     "LegalTrademarks": "",
     "OriginalFilename": "devtrack.exe",
     "PrivateBuild": "",
     "ProductName": "DevTrack",
-    "ProductVersion": "3.1.0",
+    "ProductVersion": "3.1.1",
     "SpecialBuild": ""
   },
   "VarFileInfo": {
