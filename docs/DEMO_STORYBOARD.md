@@ -15,8 +15,8 @@ calls `devtrack queue approve`, never supplies `--email`, and never inserts a ca
 ## Preconditions
 
 - Use a build from upstream `main` that passes `devtrack mcp status`. The latest public release is
-  **v3.0.10** and predates MCP, so it cannot run this Phase 9 storyboard. See the README source-build
-  commands; a future public release containing MCP will also be suitable.
+  **v3.1.0** and includes MCP plus Phase 9 onboarding, so it can run this storyboard. See the README
+  for platform installation and source-build commands.
 - Run `devtrack setup` once with that build and choose Managed mode.
 - Start DevTrack with `devtrack start`.
 - Wait until `devtrack doctor` reports the Python service ready. MCP itself does not need it, but the

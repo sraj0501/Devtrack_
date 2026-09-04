@@ -60,6 +60,10 @@ def main() -> None:
         manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
         if manifest["compatibility"]["platforms"] != [args.platform]:
             raise SystemExit("manifest platform does not match the native runner")
+        if manifest.get("privacy_policies") != ["https://devtrack.cloud/privacy.html"]:
+            raise SystemExit("manifest does not declare the DevTrack privacy policy")
+        if "## Privacy Policy" not in (root / "README.md").read_text(encoding="utf-8"):
+            raise SystemExit("bundle README does not contain a Privacy Policy section")
 
         executable = root / manifest["server"]["entry_point"]
         executable.chmod(executable.stat().st_mode | stat.S_IXUSR)

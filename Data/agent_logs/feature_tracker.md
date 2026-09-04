@@ -1,17 +1,22 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-03 (TASK-150 v3.1.0 release qualification active)_
+_Last updated: 2026-09-04 (v3.1.0 and official MCP Registry record published)_
 
 ---
 
-## 2026-09-03 — TASK-150: v3.1.0 release qualification and publication
+## 2026-09-04 — TASK-150: v3.1.0 release qualification and publication
 **Phase**: MCP distribution / release
-**Status**: IN PROGRESS on `features/TASK-150-release-qualification`
+**Status**: RELEASE COMPLETE in PRs #258/#259 and tag `v3.1.0`; external account actions pending
 **Target**: Native execution of all five MCPB variants, curated release/privacy metadata, v3.1.0
 publication, official MCP Registry publication, and authorized directory/launch submissions
 **Vision check**: PASS
-**Engineer notes**: TASK-150 closes the gap between source/package readiness and an installable
-public release. It does not add MCP write tools, a hosted transport, or new product capability.
+**Engineer notes**: Five native MCPB targets passed manifest validation, clean-project setup,
+initialize, six-tool discovery, a tool call, and shutdown. PR #258 merged qualification work to
+`dev`; PR #259 merged it to `main` at `186036f`. The v3.1.0 workflow published 12 assets and the
+active `io.github.sraj0501/devtrack` 3.1.0 official-registry record. All 10 executable/MCPB payload
+hashes independently matched `checksums.txt`. Anthropic, Smithery, mcpservers.org,
+`punkpeye/awesome-mcp-servers`, dev.to, Show HN, and LinkedIn remain unpublished because their
+owner-authenticated account/form sessions are unavailable in this environment.
 
 ---
 
@@ -32,7 +37,7 @@ code, release, registry entry, or launch post was changed or published.
 
 ## 2026-09-02 — TASK-148: MCPB build readiness
 **Phase**: MCP distribution readiness
-**Status**: DONE in `c1329f7` on `main` and `dev`; UNRELEASED after v3.0.10
+**Status**: DONE in `c1329f7`; RELEASED in v3.1.0
 **Files**: MCP protocol server/tool declarations, explicit packaged-database CLI path, MCPB manifest
 and packager, client/release workflows, README and registry/roadmap records
 **Vision check**: PASS
@@ -48,7 +53,7 @@ Windows bundle plus explicit-database stdio exchange were smoke-tested. No relea
 
 ## 2026-09-02 — TASK-124 + TASK-147: Launch drafts and compatibility synchronization
 **Phase**: Phase 9 completion / maintenance
-**Status**: DONE in `c1329f7` on `main` and `dev`; UNRELEASED after v3.0.10
+**Status**: DONE in `c1329f7`; RELEASED in v3.1.0
 **Files**: audience-specific launch drafts and evidence log; Python admin template compatibility;
 Windows SQLite DSN handling and CI; Go/Python HTTP contract tests; API and architecture docs
 **Vision check**: PASS
@@ -57,7 +62,7 @@ window without publishing or inventing adoption claims. TASK-147 kept the refres
 adapted the admin console to Starlette's request-first template API, fixed native Windows SQLite URI
 construction, added Windows Go tests, and synchronized executable HTTP contracts with documentation.
 Verification: Python 954 passed/10 skipped; live PostgreSQL 10 passed; Go build/vet and affected
-packages passed. v3.0.10 remains the newest public tag.
+packages passed. This work subsequently shipped in v3.1.0.
 
 ## 2026-08-29 — TASK-145–146: Documentation sync and beginner-wiki restoration
 **Phase**: Documentation maintenance
@@ -71,7 +76,7 @@ comprehensive beginner wiki and corrected the homepage version watermark.
 
 ## 2026-08-28 — TASK-118–120: Phase 9 first-run path
 **Phase**: Phase 9 (Adoption Gate)
-**Status**: DONE on `dev` (PRs #254, #255, #256; upstream `a1dd036`); UNRELEASED after v3.0.10
+**Status**: DONE on `dev` (PRs #254, #255, #256; upstream `a1dd036`); RELEASED in v3.1.0
 **Files**: Go managed-bootstrap, capability status/doctor, onboarding and voice-seed workers, LLM
 setup detection/selection, tests, README, wiki, architecture, installation, and Phase 9 roadmap
 **Vision check**: PASS

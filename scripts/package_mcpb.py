@@ -72,6 +72,10 @@ def main() -> None:
         packed = json.loads(bundle.read("manifest.json"))
         if packed["version"] != version or packed["compatibility"]["platforms"] != [args.platform]:
             raise SystemExit("packed manifest does not match requested version/platform")
+        if packed.get("privacy_policies") != ["https://devtrack.cloud/privacy.html"]:
+            raise SystemExit("packed manifest does not declare the DevTrack privacy policy")
+        if b"## Privacy Policy" not in bundle.read("README.md"):
+            raise SystemExit("packed README does not contain a Privacy Policy section")
 
     print(args.output)
 

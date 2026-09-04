@@ -17,6 +17,7 @@
   "documentation": "https://devtrack.cloud/wiki.html",
   "support": "https://github.com/sraj0501/Devtrack_/issues",
   "license": "LicenseRef-DevTrack-Community-1.0",
+  "privacy_policies": ["https://devtrack.cloud/privacy.html"],
   "keywords": ["developer-tools", "local-first", "mcp", "productivity", "standup"],
   "compatibility": {
     "platforms": ["__PLATFORM__"]
