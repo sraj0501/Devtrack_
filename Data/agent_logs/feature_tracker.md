@@ -1,6 +1,18 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-04 (privacy-compliant v3.1.1 and official MCP Registry record published)_
+_Last updated: 2026-09-04 (Glama container ready; authenticated listing and PR badge pending)_
+
+---
+
+## 2026-09-04 — TASK-151: Glama listing readiness
+**Phase**: MCP distribution / community listing
+**Status**: CONTAINER READY; OWNER SUBMISSION PENDING
+**Target**: Pass Glama startup/introspection checks and satisfy PR #13608's score-badge requirement
+**Vision check**: PASS
+**Engineer notes**: `Dockerfile.mcp` packages the Go stdio MCP server independently of the Python
+HTTP backend and initializes a disposable SQLite database without secrets. CI builds the image and
+checks initialization, all six read-only tools, and shutdown. Glama OAuth submission and the final
+PR badge update remain external; use the exact Glama listing path only after all checks pass.
 
 ---
 

@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-09-04_ | public v3.1.1 | official MCP Registry active/latest | community-list PR #13608 submitted; other external accounts pending | GitHub is canonical
+_Last updated: 2026-09-04_ | public v3.1.1 | official MCP Registry active/latest | PR #13608 awaits a passing Glama listing/badge | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 
@@ -13,6 +13,7 @@ DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 - TASK-150 qualified five native MCPB targets, merged PR #259 to `main` at `186036f`, published v3.1.0 with 12 release assets, independently verified all 10 payload hashes, and published `io.github.sraj0501/devtrack` to the official MCP Registry.
 - Directory preflight found that v3.1.0 lacked Anthropic's required manifest `privacy_policies` declaration. Patch v3.1.1 at `17bc86f` added that field, a bundled Privacy Policy section, enforcement in packaging/native smoke tests, 12 replacement release assets, independently verified payload hashes, and an active/latest official-registry 3.1.1 record.
 - `punkpeye/awesome-mcp-servers` PR #13608 adds DevTrack under Developer Tools and its submission check passed. Other third-party forms and held dev.to/Show HN/LinkedIn posts remain unpublished because their authenticated owner sessions/contact details are unavailable; do not claim those actions are complete.
+- PR #13608 subsequently gained a Glama listing/score-badge requirement. `Dockerfile.mcp` is the paste-ready Glama build definition and CI validates its intended initialize/tools-list/shutdown exchange. The owner must submit it through Glama, wait for all checks, and then add the badge using the exact resulting Glama path.
 
 ## Completed — 2026-09-03
 - TASK-149 synchronized README, wiki, durable project memory, registry evidence, and release gates after TASK-147/148. PR #257 merged to `dev` at `e22f709`.

@@ -496,6 +496,10 @@ DevTrack exposes a Model Context Protocol (MCP) server so Claude Code automatica
 - Reproducible MCPB 0.3 bundles ship for Windows amd64, macOS amd64/arm64, and Linux amd64/arm64.
   During bundle installation, select the `devtrack.db` created by `devtrack setup`. Published
   bundle hashes are recorded in the release's `checksums.txt` and official MCP Registry metadata.
+- `Dockerfile.mcp` is the minimal Linux stdio image used for directory build/introspection checks.
+  It creates disposable SQLite state and is separate from `devtrack_server/Dockerfile`, which runs
+  the optional Python HTTP backend. The root `.dockerignore` keeps local credentials and runtime
+  data out of that build context.
 
 ```bash
 # One-time setup — run from your repo root

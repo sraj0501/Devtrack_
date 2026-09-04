@@ -1,0 +1,15 @@
+# The root Docker context exists only for Dockerfile.mcp. Keep credentials,
+# runtime databases, Git history, documentation, and unrelated Python sources
+# out of remote builders such as Glama.
+**
+!Dockerfile.mcp
+!devtrack_client/
+!devtrack_client/*.go
+!devtrack_client/go.mod
+!devtrack_client/go.sum
+!devtrack_client/connectors/
+!devtrack_client/connectors/**
+!devtrack_client/gitsage/
+!devtrack_client/gitsage/**
+!devtrack_client/internal/
+!devtrack_client/internal/**
