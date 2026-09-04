@@ -26,9 +26,12 @@ parity.
 
 ## Registry distribution
 
-`io.github.sraj0501/devtrack` 3.1.1 is active/latest in the official MCP Registry. Third-party directory
-forms remain pending authenticated owner sessions; an official-registry listing does not imply
-Anthropic, Smithery, Glama, or community-list acceptance.
+`io.github.sraj0501/devtrack` 3.1.1 is active/latest in the official MCP Registry. The DevTrack entry
+in `punkpeye/awesome-mcp-servers` is awaiting maintainer review in
+[PR #13608](https://github.com/punkpeye/awesome-mcp-servers/pull/13608), whose automated submission
+check passed. Anthropic, Smithery, Glama, and other directory forms still require owner-authenticated
+sessions, eligibility evidence, or contact details; neither registry publication nor an open PR
+implies acceptance by those directories.
 
 ## Reporting a problem
 
