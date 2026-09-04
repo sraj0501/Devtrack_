@@ -48,12 +48,13 @@ func TestGetActiveContext_NoCommits(t *testing.T) {
 func TestGetActiveContext_WithTicket(t *testing.T) {
 	database, cleanup := openTestDB(t)
 	defer cleanup()
+	repoPath := t.TempDir()
 
 	// Insert a commit trigger directly via SQL
 	_, err := database.ExecRaw(`
 		INSERT INTO triggers (trigger_type, commit_hash, commit_message, ticket_id, repo_path, timestamp, source)
-		VALUES ('commit', 'abc12345', 'fix auth flow', 'PROJ-123', '/repos/devtrack', datetime('now'), 'git')
-	`)
+		VALUES ('commit', 'abc12345', 'fix auth flow', 'PROJ-123', ?, datetime('now'), 'git')
+	`, repoPath)
 	if err != nil {
 		t.Fatalf("insert test commit: %v", err)
 	}
@@ -69,6 +70,31 @@ func TestGetActiveContext_WithTicket(t *testing.T) {
 	}
 	if m["confidence"] != "high" {
 		t.Errorf("expected confidence=high, got %v", m["confidence"])
+	}
+}
+
+func TestGetActiveContext_IgnoresDeletedRepository(t *testing.T) {
+	database, cleanup := openTestDB(t)
+	defer cleanup()
+
+	_, err := database.ExecRaw(`
+		INSERT INTO triggers (trigger_type, commit_hash, commit_message, ticket_id, repo_path, timestamp, source)
+		VALUES ('commit', 'abc12345', 'old demo', 'DEMO-101', ?, datetime('now'), 'git')
+	`, filepath.Join(t.TempDir(), "removed"))
+	if err != nil {
+		t.Fatalf("insert test commit: %v", err)
+	}
+
+	result, err := makeGetActiveContext(database)(context.Background(), map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := result.(map[string]interface{})
+	if m["active_ticket"] != "" || m["confidence"] != "none" || m["repo_path"] != "" {
+		t.Fatalf("deleted repository remained active: %#v", m)
+	}
+	if m["today_commits"] != 1 {
+		t.Fatalf("historical daily count was lost: %#v", m)
 	}
 }
 

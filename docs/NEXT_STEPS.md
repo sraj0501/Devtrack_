@@ -1,5 +1,10 @@
 # Next Steps — Repositioning & Phase 9 (Adoption Gate)
 
+> **Development hold (2026-09-04):** roadmap feature work is paused for real end-to-end product
+> validation, screenshot capture, and launch-video recording. During this hold, make only changes
+> that fix reproduced installation, runtime, safety, or demo blockers. The live checklist and exit
+> criteria are in [END_TO_END_VALIDATION.md](END_TO_END_VALIDATION.md).
+>
 > Current external gate (2026-09-04): submit `Dockerfile.mcp` with the repository through Glama,
 > wait for its startup/introspection checks, then add the resulting score badge to
 > `punkpeye/awesome-mcp-servers` PR #13608. The container and CI preflight are complete; Glama OAuth

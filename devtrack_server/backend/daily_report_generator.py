@@ -1585,7 +1585,11 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
     # EOD NARRATIVE (Phase 4)
     # =========================================================================
 
-    def generate_eod_narrative(self, target_date: Optional[str] = None) -> str:
+    def generate_eod_narrative(
+        self,
+        target_date: Optional[str] = None,
+        commit_rows: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:
         """Generate an EOD report narrative by querying today's commits from the
         triggers table, grouping by ticket_id, and producing a per-ticket
         paragraph via the existing LLM provider chain.
@@ -1608,7 +1612,7 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
             if target_date is None:
                 target_date = _date.today().isoformat()
 
-            rows = self._query_commit_rows(target_date)
+            rows = commit_rows if commit_rows is not None else self._query_commit_rows(target_date)
 
             if not rows:
                 return "No commits recorded today."

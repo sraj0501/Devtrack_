@@ -153,6 +153,33 @@ class TestEODEndpointStagesAction:
         # action_id is None when gateway is unavailable
         assert data.get("action_id") is None
 
+    def test_explicit_commit_rows_are_used_without_continuous_sync(self, client):
+        """An explicit EOD request can carry today's local-only commit summary."""
+        rows = [{
+            "ticket_id": "DEMO-101",
+            "commit_message": "feat: finish the demo flow",
+            "commit_hash": "abc123",
+            "timestamp": "2026-09-04T18:00:00+05:30",
+        }]
+        with (
+            patch("backend.webhook_server._get_queue_gateway", return_value=None),
+            patch("backend.webhook_server._daily_report_generator_available", True),
+            patch("backend.webhook_server._DailyReportGenerator") as mock_gen_cls,
+        ):
+            mock_gen = MagicMock()
+            mock_gen.generate_eod_narrative.return_value = "EOD Report"
+            mock_gen_cls.return_value = mock_gen
+
+            resp = client.post(
+                "/reports/eod",
+                json={"date": "2026-09-04", "commits": rows},
+            )
+
+        assert resp.status_code == 200
+        mock_gen.generate_eod_narrative.assert_called_once_with(
+            "2026-09-04", rows
+        )
+
     def test_confidence_comes_from_config_accessor(self, client, monkeypatch):
         """Confidence passed to stage() comes from get_eod_report_confidence(), not a literal."""
         monkeypatch.setenv("EOD_REPORT_CONFIDENCE", "0.75")

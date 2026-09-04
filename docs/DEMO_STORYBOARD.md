@@ -36,6 +36,12 @@ From the repository root:
 ./scripts/demo.sh --record
 ```
 
+On Windows PowerShell:
+
+```powershell
+.\scripts\demo.ps1 -Mode Record
+```
+
 The script pauses at each scene so the recorder controls the pacing. It prints live output only; if
 commit staging cannot be observed in the daemon log, it stops instead of manufacturing a successful
 transcript.
@@ -118,4 +124,10 @@ configuration:
 
 ```bash
 ./scripts/demo.sh --check
+```
+
+On Windows PowerShell:
+
+```powershell
+.\scripts\demo.ps1 -Mode Check
 ```

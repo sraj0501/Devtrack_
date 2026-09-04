@@ -723,9 +723,32 @@ func (c *HTTPTriggerClient) ReportSave(date string) (string, error) {
 	return c.postText("/reports/save", map[string]string{"date": date})
 }
 
-// ReportEOD calls POST /reports/eod (used by the daemon scheduler).
-func (c *HTTPTriggerClient) ReportEOD(email, date string) (string, error) {
-	return c.postText("/reports/eod", map[string]string{"email": email, "date": date})
+// EODCommit is the minimal local commit summary sent only when a user or the
+// configured scheduler explicitly requests an EOD report.
+type EODCommit struct {
+	TicketID      string `json:"ticket_id"`
+	CommitMessage string `json:"commit_message"`
+	CommitHash    string `json:"commit_hash"`
+	Timestamp     string `json:"timestamp"`
+}
+
+func eodRequest(email, date string, commits []EODCommit) map[string]any {
+	request := map[string]any{"email": email, "date": date}
+	if commits != nil {
+		request["commits"] = commits
+	}
+	return request
+}
+
+// ReportEOD calls POST /reports/eod (used by the daemon scheduler). When
+// commits is non-nil, the explicit report request includes those local rows;
+// this keeps continuous server-event sync opt-in.
+func (c *HTTPTriggerClient) ReportEOD(email, date string, commits ...[]EODCommit) (string, error) {
+	var rows []EODCommit
+	if len(commits) > 0 {
+		rows = commits[0]
+	}
+	return c.postText("/reports/eod", eodRequest(email, date, rows))
 }
 
 // EODReportResult carries the narrative text and the optional action_id returned
@@ -738,13 +761,17 @@ type EODReportResult struct {
 // ReportEODFull calls POST /reports/eod and returns both the narrative and the
 // optional action_id from the queue staging step. Used by `devtrack eod generate`
 // so the CLI can print "Queued as action <id>" when staging succeeded.
-func (c *HTTPTriggerClient) ReportEODFull(email, date string) (*EODReportResult, error) {
+func (c *HTTPTriggerClient) ReportEODFull(email, date string, commits ...[]EODCommit) (*EODReportResult, error) {
 	var r struct {
 		Output   string `json:"output"`
 		Success  bool   `json:"success"`
 		ActionID *int64 `json:"action_id"`
 	}
-	if err := c.postWithResult("/reports/eod", map[string]string{"email": email, "date": date}, &r); err != nil {
+	var rows []EODCommit
+	if len(commits) > 0 {
+		rows = commits[0]
+	}
+	if err := c.postWithResult("/reports/eod", eodRequest(email, date, rows), &r); err != nil {
 		return nil, err
 	}
 	if !r.Success {

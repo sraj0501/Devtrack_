@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
 // handleWork dispatches devtrack work <subcommand>
@@ -290,8 +292,25 @@ func (cli *CLI) handleWorkReport() error {
 		}
 	}
 
+	database, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("work report: open database: %w", err)
+	}
+	defer database.Close()
+	localCommits, err := database.ListTodayCommits("")
+	if err != nil {
+		return fmt.Errorf("work report: read today's commits: %w", err)
+	}
+	commits := make([]trigger.EODCommit, 0, len(localCommits))
+	for _, commit := range localCommits {
+		commits = append(commits, trigger.EODCommit{
+			TicketID: commit.TicketID, CommitMessage: commit.Message,
+			CommitHash: commit.Hash, Timestamp: commit.Timestamp,
+		})
+	}
+
 	client := NewHTTPTriggerClient()
-	output, err := client.ReportEOD(email, "")
+	output, err := client.ReportEOD(email, "", commits)
 	if err != nil {
 		return fmt.Errorf("work report: %w (is the server running?)", err)
 	}

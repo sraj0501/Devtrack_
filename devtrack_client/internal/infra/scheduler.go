@@ -372,7 +372,9 @@ func (s *Scheduler) scheduleEODReport() {
 
 		// Auto-stop active session
 		database, dbErr := db.NewDatabase()
+		var eodCommits []trigger.EODCommit
 		if dbErr == nil {
+			defer database.Close()
 			active, _ := database.GetActiveWorkSession()
 			if active != nil {
 				endedAt := time.Now().UTC().Format("2006-01-02 15:04:05")
@@ -388,12 +390,21 @@ func (s *Scheduler) scheduleEODReport() {
 					log.Printf("✅ Auto-stopped work session #%d for EOD report", active.ID)
 				}
 			}
+			if localCommits, commitsErr := database.ListTodayCommits(""); commitsErr == nil {
+				eodCommits = make([]trigger.EODCommit, 0, len(localCommits))
+				for _, commit := range localCommits {
+					eodCommits = append(eodCommits, trigger.EODCommit{
+						TicketID: commit.TicketID, CommitMessage: commit.Message,
+						CommitHash: commit.Hash, Timestamp: commit.Timestamp,
+					})
+				}
+			}
 		}
 
 		// Send EOD report via server HTTP API.
 		recipient := config.GetEODReportEmail()
 		trig := trigger.NewHTTPTriggerClient()
-		out, reportErr := trig.ReportEOD(recipient, "")
+		out, reportErr := trig.ReportEOD(recipient, "", eodCommits)
 		if reportErr != nil {
 			log.Printf("⚠️  EOD report error: %v", reportErr)
 		} else {

@@ -60,5 +60,14 @@ reports the number accepted. `POST /queue/execute_staged` carries the full local
 identity and returns `posted` or an error state. Both routes require the API-key header when server
 authentication is enabled.
 
+## End-of-day report
+
+`POST /reports/eod` accepts `email`, `date`, `workspace`, and an optional `commits` array. Each
+explicit commit row contains `ticket_id`, `commit_message`, `commit_hash`, and `timestamp`. The Go
+client includes only the selected day's local commit summaries when the user runs an EOD command or
+enables the EOD scheduler. This makes reports work in PostgreSQL-backed Managed mode without
+silently enabling continuous client-event synchronization. The response contains `output`,
+`success`, and the staged `action_id` when queue staging is available.
+
 Changes to a request or response shape must update both contract-test suites and this document in
 the same change.

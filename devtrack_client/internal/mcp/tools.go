@@ -3,8 +3,10 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
+	cfg "github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 )
 
@@ -114,9 +116,33 @@ func readOnlyAnnotations() map[string]any {
 
 func makeGetActiveContext(database *db.Database) func(context.Context, map[string]interface{}) (interface{}, error) {
 	return func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-		recent, err := database.MostRecentCommit()
+		recentCommits, err := database.ListRecentCommits(100)
 		if err != nil {
 			return nil, fmt.Errorf("get_active_context: %w", err)
+		}
+		var recent db.TriggerCommit
+		var workspaces *cfg.WorkspacesConfig
+		var workspaceErr error
+		if os.Getenv("WORKSPACES_FILE") != "" {
+			workspaces, workspaceErr = cfg.LoadWorkspacesConfig()
+		}
+		requireConfiguredWorkspace := workspaceErr == nil && workspaces != nil && len(workspaces.Workspaces) > 0
+		for _, candidate := range recentCommits {
+			if candidate.RepoPath == "" {
+				continue
+			}
+			info, statErr := os.Stat(candidate.RepoPath)
+			if statErr != nil || !info.IsDir() {
+				continue
+			}
+			if requireConfiguredWorkspace {
+				workspace, resolveErr := cfg.ResolveWorkspaceForPath(candidate.RepoPath)
+				if resolveErr != nil || workspace == nil {
+					continue
+				}
+			}
+			recent = candidate
+			break
 		}
 
 		confidence := "none"

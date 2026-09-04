@@ -398,7 +398,7 @@ What it does:
 - Reuses an installed generation-capable Ollama model without downloading a prescribed model
 - When Ollama still needs a model, can retain an already-present OpenAI/Anthropic key as an explicit
   temporary fallback; key values are never displayed and declining keeps setup local-only
-- In Managed mode, starts the optional Python checkout, `uv sync`, and any needed local Ollama model
+- In Managed mode, starts the optional Python checkout, `uv sync --extra ai`, and the needed local Ollama generation and embedding model
   pull in a detached worker; setup does not wait for them
 - Generates the registered XDG environment file with visible runtime defaults and an auto-generated `ADMIN_SECRET_KEY`
 - In Managed mode, writes and validates the required PostgreSQL connection configuration
@@ -643,8 +643,8 @@ no backend is reachable.
 ### Python AI server
 
 **Managed mode** (default): `devtrack setup` configures the deterministic server location and starts
-a background sparse checkout into `~/.local/share/devtrack/server/`, followed by `uv sync` and, for
-the local Ollama provider only, a model pull when no usable generation model is already installed.
+a background sparse checkout into `~/.local/share/devtrack/server/`, followed by `uv sync --extra ai`
+and, for the local Ollama provider, preparation of the generation model and `nomic-embed-text`.
 An opted-in cloud-key fast lane remains a fallback behind Ollama, so local inference takes over as
 soon as the model is ready. The wizard does not wait for these steps;
 `devtrack doctor` shows durable progress and failures. No manual dependency setup is needed.

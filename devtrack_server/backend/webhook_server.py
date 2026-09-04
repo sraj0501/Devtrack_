@@ -2272,12 +2272,21 @@ async def http_report_eod(
     date_str = data.get("date") or None
     email = data.get("email", "")
     workspace = data.get("workspace", "all")
+    supplied_commits = data.get("commits")
+    if not isinstance(supplied_commits, list) or not all(
+        isinstance(row, dict) for row in supplied_commits
+    ):
+        supplied_commits = None
+    elif len(supplied_commits) > 1000:
+        supplied_commits = supplied_commits[:1000]
     try:
         if not _daily_report_generator_available:
             narrative = "No commits recorded today."
         else:
             gen = _DailyReportGenerator()
-            narrative = await asyncio.to_thread(gen.generate_eod_narrative, date_str)
+            narrative = await asyncio.to_thread(
+                gen.generate_eod_narrative, date_str, supplied_commits
+            )
 
         # Phase 4 — Non-Negotiable #2: every outbound action stages through
         # pending_actions before touching any external system.

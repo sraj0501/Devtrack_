@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	bootstrapStateFile = "server-bootstrap.json"
-	bootstrapLockFile  = "server-bootstrap.lock"
-	bootstrapLogFile   = "server-bootstrap.log"
+	bootstrapStateFile  = "server-bootstrap.json"
+	bootstrapLockFile   = "server-bootstrap.lock"
+	bootstrapLogFile    = "server-bootstrap.log"
+	bootstrapEmbedModel = "nomic-embed-text"
 )
 
 type serverBootstrapState struct {
@@ -194,8 +195,8 @@ func runServerBootstrap(home, projectRoot, provider, model string, runner bootst
 	if err := update("syncing", "Installing Python dependencies with uv"); err != nil {
 		return err
 	}
-	if err := runner(projectRoot, "uv", "sync"); err != nil {
-		return fail("syncing", fmt.Errorf("uv sync: %w", err))
+	if err := runner(projectRoot, "uv", "sync", "--extra", "ai"); err != nil {
+		return fail("syncing", fmt.Errorf("uv sync --extra ai: %w", err))
 	}
 
 	if provider == "ollama" && model != "" && !state.SkipModelPull {
@@ -204,6 +205,14 @@ func runServerBootstrap(home, projectRoot, provider, model string, runner bootst
 		}
 		if err := runner("", "ollama", "pull", model); err != nil {
 			return fail("pulling_model", fmt.Errorf("ollama pull %s: %w", model, err))
+		}
+	}
+	if provider == "ollama" {
+		if err := update("pulling_embedding_model", "Pulling local embedding model "+bootstrapEmbedModel); err != nil {
+			return err
+		}
+		if err := runner("", "ollama", "pull", bootstrapEmbedModel); err != nil {
+			return fail("pulling_embedding_model", fmt.Errorf("ollama pull %s: %w", bootstrapEmbedModel, err))
 		}
 	}
 
