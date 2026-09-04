@@ -2,8 +2,9 @@
 
 ## Release boundary
 
-The latest public release is v3.0.10. MCP and the Phase 9 onboarding/demo reliability work currently
-exist on `dev`; a newer release must be published before public-release instructions can assume them.
+The latest public release is v3.1.0. MCP, five native MCPB bundles, and the Phase 9
+onboarding/demo reliability work are included. Older installations must upgrade before following
+the MCP and Phase 9 guides.
 
 ## Local model latency
 
@@ -25,9 +26,9 @@ parity.
 
 ## Registry distribution
 
-Registry copy is prepared, but official MCP publication remains blocked until a supported,
-versioned MCP-capable package (such as MCPB where required) is released and submission is explicitly
-authorized. No registry listing has been published by the repository work.
+`io.github.sraj0501/devtrack` 3.1.0 is active in the official MCP Registry. Third-party directory
+forms remain pending authenticated owner sessions; an official-registry listing does not imply
+Anthropic, Smithery, Glama, or community-list acceptance.
 
 ## Reporting a problem
 

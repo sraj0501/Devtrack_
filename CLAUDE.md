@@ -172,15 +172,16 @@ the configured or loopback-fallback server URL and degrade when no backend is re
 ## Project Status & Direction
 
 - **Direction:** see [`PRODUCT_BIBLE.md`](PRODUCT_BIBLE.md). Build arc **Phase 0→9 COMPLETE** on
-  `dev`. PostgreSQL, first-run onboarding, MCP, MCPB packaging, registry evidence, and held launch
-  drafts are complete through TASK-149. TASK-150 qualifies and publishes the first MCP-capable
-  release; registry and launch publication follow only after its release gates pass.
+  `dev`. v3.1.0 ships PostgreSQL-backed managed services, first-run onboarding, local MCP, and five
+  native MCPB bundles. The official MCP Registry record is active; third-party directory forms and
+  held launch posts remain owner-account actions.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.
 - **Shipped (v3.x):** three-codebase split (EPIC-SPLIT); client-server decoupling (Go-native
   connectors, gitsage, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;
   automated release pipeline; v3.0.9 `skip_issues`; v3.0.10 Windows fixes (isatty, editor hooks,
   auto-enhance); Phases 0–8 (silent daemon, pending-actions queue, ticket extractor, silent commit,
   EOD pipeline, voice training, dialectic self-improvement, PR puppet master, MCP server);
+  v3.1.0 Phase 9 onboarding plus native MCPB distribution and official MCP Registry publication;
   TASK-102 Azure `IsPRApproved` via ADO Pull Requests API (`connectors/azure/pr.go`).
 - **Docs:** `docs/ARCHITECTURE.md`, `docs/CAPABILITIES_OWNERSHIP.md`,
   `docs/CLIENT_SERVER_DECOUPLING_PLAN.md`, `docs/TELEGRAM_BOT.md`, `docs/split-manifest.md`.

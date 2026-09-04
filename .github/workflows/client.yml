@@ -133,14 +133,14 @@ jobs:
         working-directory: devtrack_client
         run: |
           python -c "from pathlib import Path; Path('dist').mkdir(exist_ok=True)"
-          go build -ldflags "-X main.Version=v3.1.0-rc.1" -o dist/${{ matrix.binary }} .
+          go build -ldflags "-X main.Version=v3.1.1-rc.1" -o dist/${{ matrix.binary }} .
 
       - name: Package MCPB
         run: >-
           python scripts/package_mcpb.py
           --binary devtrack_client/dist/${{ matrix.binary }}
           --platform ${{ matrix.platform }}
-          --version 3.1.0-rc.1
+          --version 3.1.1-rc.1
           --output devtrack_client/dist/devtrack_mcpb_${{ matrix.asset_os }}_${{ matrix.arch }}.mcpb
 
       - name: Validate manifest with official MCPB CLI
@@ -174,7 +174,7 @@ jobs:
           merge-multiple: true
 
       - name: Generate server.json from qualified bundles
-        run: python scripts/generate_server_json.py --version v3.1.0-rc.1 --dist dist
+        run: python scripts/generate_server_json.py --version v3.1.1-rc.1 --dist dist
 
       - name: Install pinned MCP Registry publisher
         run: |
