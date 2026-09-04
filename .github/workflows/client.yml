@@ -9,6 +9,8 @@ on:
       - "scripts/package_mcpb.py"
       - "scripts/smoke_mcpb.py"
       - "scripts/generate_server_json.py"
+      - "Dockerfile.mcp"
+      - ".dockerignore"
       - ".github/workflows/client.yml"
   pull_request:
     branches: [dev, main]
@@ -18,6 +20,8 @@ on:
       - "scripts/package_mcpb.py"
       - "scripts/smoke_mcpb.py"
       - "scripts/generate_server_json.py"
+      - "Dockerfile.mcp"
+      - ".dockerignore"
       - ".github/workflows/client.yml"
 
 jobs:
@@ -82,6 +86,37 @@ jobs:
       - name: go test (contract)
         working-directory: devtrack_client
         run: go test -run TestAPIContract ./...
+
+  glama-container:
+    name: Glama container introspection
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build Glama MCP image
+        run: docker build --file Dockerfile.mcp --tag devtrack-mcp:ci .
+
+      - name: Verify MCP initialization and tool discovery
+        shell: bash
+        run: |
+          responses="$({
+            printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"glama-ci","version":"1.0"}}}'
+            printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}'
+            printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+            printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"shutdown"}'
+          } | docker run --rm --interactive devtrack-mcp:ci)"
+          RESPONSES="$responses" python - <<'PY'
+          import json
+          import os
+
+          messages = [json.loads(line) for line in os.environ["RESPONSES"].splitlines()]
+          assert messages[0]["result"]["serverInfo"]["name"] == "devtrack"
+          tools = messages[1]["result"]["tools"]
+          assert len(tools) == 6, f"expected 6 tools, got {len(tools)}"
+          assert all(tool["annotations"]["readOnlyHint"] for tool in tools)
+          assert messages[2]["result"] is None
+          PY
 
   mcpb-package:
     name: MCPB native smoke (${{ matrix.platform }}/${{ matrix.arch }})

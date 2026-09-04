@@ -1,5 +1,10 @@
 # Next Steps — Repositioning & Phase 9 (Adoption Gate)
 
+> Current external gate (2026-09-04): submit `Dockerfile.mcp` with the repository through Glama,
+> wait for its startup/introspection checks, then add the resulting score badge to
+> `punkpeye/awesome-mcp-servers` PR #13608. The container and CI preflight are complete; Glama OAuth
+> remains an owner action.
+
 _Drafted 2026-07-02 from strategy discussion. Companion to `PRODUCT_BIBLE.md` — this
 document does not change direction; it changes emphasis and sequencing. The Bible
 defines the product; this defines how it earns users._

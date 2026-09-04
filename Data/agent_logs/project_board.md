@@ -1,7 +1,15 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-09-04 — privacy-compliant v3.1.1 and the official MCP Registry record are published;
-community-list PR #13608 is submitted; TASK-150's other third-party actions remain pending authentication._
+_Last updated: 2026-09-04 — v3.1.1 and the official MCP Registry record are published; TASK-151's
+Glama container is ready; authenticated Glama submission and PR #13608's badge remain pending._
+
+**[2026-09-04] TASK-151 — Glama listing readiness.** PR #13608's automated follow-up now requires a
+working Glama listing and score badge. Added a dedicated root `Dockerfile.mcp` that builds the Go
+client and starts `devtrack mcp serve` over stdio with a disposable SQLite database; it neither
+starts the unrelated Python HTTP backend nor requires PostgreSQL or secrets. Client CI builds the
+container and verifies initialization, discovery of all six read-only tools, and shutdown. Local
+protocol preflight passed. Glama submission requires the owner's OAuth session; after all Glama
+checks pass, update PR #13608 with the exact listing path's badge.
 
 **[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
 (PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at

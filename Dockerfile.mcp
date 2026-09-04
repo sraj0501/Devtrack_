@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1.7
+
+# Minimal local-stdio MCP image. This is intentionally separate from
+# devtrack_server/Dockerfile, which packages the optional Python HTTP backend.
+FROM golang:1.24.4-alpine AS build
+
+WORKDIR /src/devtrack_client
+COPY devtrack_client/go.mod devtrack_client/go.sum ./
+RUN go mod download
+COPY devtrack_client/ ./
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/devtrack .
+
+FROM alpine:3.22
+
+RUN addgroup -S devtrack \
+    && adduser -S -G devtrack -h /home/devtrack devtrack \
+    && mkdir -p /data \
+    && chown devtrack:devtrack /data
+
+COPY --from=build /out/devtrack /usr/local/bin/devtrack
+
+USER devtrack
+WORKDIR /data
+
+# Glama communicates with the process over stdin/stdout and only needs a
+# disposable SQLite database to initialize and introspect the six tools.
+ENTRYPOINT ["/usr/local/bin/devtrack"]
+CMD ["mcp", "serve", "--database", "/data/devtrack.db"]
