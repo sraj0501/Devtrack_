@@ -3,20 +3,20 @@
 Reach DevTrack's first local value in about two minutes, then let the optional AI service finish
 preparing in the background.
 
-> **Release note:** the latest public release is v3.1.0 and includes the MCP and Phase 9 onboarding
+> **Release note:** the latest public release is v3.1.1 and includes the MCP and Phase 9 onboarding
 > flow below. Use the matching release binary, or build the same version from source.
 
 ---
 
 ## 1. Install or build the current client
 
-Download the v3.1.0 asset for your platform from
-[GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.0). Python, PostgreSQL,
+Download the v3.1.1 asset for your platform from
+[GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.1). Python, PostgreSQL,
 and Ollama are not required for the first MCP-backed local context check. Contributors can instead
 build the tagged source with Go and Git:
 
 ```bash
-git clone --branch v3.1.0 --single-branch https://github.com/sraj0501/Devtrack_.git
+git clone --branch v3.1.1 --single-branch https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_client
 go build -o devtrack .
 sudo install -m 0755 devtrack /usr/local/bin/devtrack
@@ -27,7 +27,7 @@ devtrack mcp status   # should report six registered tools
 On Windows PowerShell, build `devtrack.exe` and place it in a directory on `PATH`:
 
 ```powershell
-git clone --branch v3.1.0 --single-branch https://github.com/sraj0501/Devtrack_.git
+git clone --branch v3.1.1 --single-branch https://github.com/sraj0501/Devtrack_.git
 Set-Location Devtrack_/devtrack_client
 go build -o devtrack.exe .
 devtrack.exe mcp status

@@ -34,7 +34,7 @@ The Go-native path can monitor Git, retain local context, and expose MCP without
 The richer server path needs Python, dependencies, PostgreSQL, and potentially a multi-gigabyte local
 model. Pretending that chain is instant would make for a cleaner landing page and a worse product.
 
-The Phase 9 work released in v3.1.0 changes the sequence instead:
+The Phase 9 work introduced in v3.1.0 and current in v3.1.1 changes the sequence instead:
 
 1. Deliver the Go-native value first.
 2. Bootstrap the optional server in the background.
@@ -48,8 +48,9 @@ is still the first issue or pull request from somebody I do not know.
 
 ## What you can use today
 
-DevTrack v3.1.0 is the first public release containing MCP, the progressive Phase 9 onboarding
-path, and five native MCPB bundles. Existing users can run `devtrack upgrade`; new users can install
+DevTrack v3.1.0 was the first public release containing MCP and progressive Phase 9 onboarding.
+The current v3.1.1 release adds the privacy declarations required for directory-ready MCPB
+packaging. Existing users can run `devtrack upgrade`; new users can install
 the matching release asset, run `devtrack setup`, and then use `devtrack mcp setup` in a project.
 
 The richer Python/PostgreSQL path still has real dependencies and setup time. The Go-native path is

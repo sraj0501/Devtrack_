@@ -17,8 +17,9 @@ The trust boundary is intentional. Outbound actions show their confidence and wa
 Ollama remains the default model path. The Go-native monitoring and MCP path can work before the
 optional Python server finishes bootstrapping.
 
-DevTrack v3.1.0 is the first public release with the new onboarding, MCP, demo, and background
-bootstrap work. Its five MCPB variants are executed on native Windows, macOS, and Linux runners
+DevTrack v3.1.0 was the first public release with the new onboarding, MCP, demo, and background
+bootstrap work. The current v3.1.1 patch adds the required MCPB privacy declarations. Its five MCPB
+variants are executed on native Windows, macOS, and Linux runners
 before release because “the code exists” and “a stranger can install the release successfully” are
 different claims.
 

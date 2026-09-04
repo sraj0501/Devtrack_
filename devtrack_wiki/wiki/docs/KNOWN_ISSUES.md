@@ -2,7 +2,7 @@
 
 ## Release boundary
 
-The latest public release is v3.1.0. MCP, five native MCPB bundles, and the Phase 9
+The latest public release is v3.1.1. MCP, five native MCPB bundles, and the Phase 9
 onboarding/demo reliability work are included. Older installations must upgrade before following
 the MCP and Phase 9 guides.
 
@@ -26,7 +26,7 @@ parity.
 
 ## Registry distribution
 
-`io.github.sraj0501/devtrack` 3.1.0 is active in the official MCP Registry. Third-party directory
+`io.github.sraj0501/devtrack` 3.1.1 is active/latest in the official MCP Registry. Third-party directory
 forms remain pending authenticated owner sessions; an official-registry listing does not imply
 Anthropic, Smithery, Glama, or community-list acceptance.
 

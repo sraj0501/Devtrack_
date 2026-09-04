@@ -1,7 +1,7 @@
 # Getting started
 
-The latest public release is **v3.1.0**. It includes the Phase 9 onboarding, local MCP server,
-native MCPB bundles, demo path, and runtime-reliability work.
+The latest public release is **v3.1.1**. It includes the Phase 9 onboarding, local MCP server,
+privacy-declaring native MCPB bundles, demo path, and runtime-reliability work.
 
 ## Install and configure
 
