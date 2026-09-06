@@ -15,6 +15,9 @@ connectors, alerts, TUI  ------------> webhook_server.py
 - The Go daemon is the product and remains useful without Python.
 - The Go client never connects to PostgreSQL.
 - The Python server does not read Go-owned SQLite tables in PostgreSQL mode.
+- Explicit manual and scheduled EOD requests send only the selected local day's minimal commit
+  summaries to the Python server; this keeps PostgreSQL-backed reports complete without enabling
+  continuous client-event synchronization.
 - New client/server messages use authenticated HTTP/JSON, not legacy TCP IPC.
 - Go owns PM connectors, alerts, Telegram, MCP, and `gitsage/`.
 - Python owns LLM enrichment, report generation, personalization, boardroom, and the admin UI.
@@ -29,4 +32,5 @@ connectors, alerts, TUI  ------------> webhook_server.py
 | `external` | The Go client connects to a separately operated Python server. |
 
 PostgreSQL is mandatory for the Python server. Local SQLite remains the client's offline source of
-truth in every mode.
+truth in every mode. "Today" in client history and MCP output follows the user's local calendar
+date, including timestamps retained from older installations.

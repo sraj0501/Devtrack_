@@ -810,6 +810,7 @@ devtrack eod status</code></pre>
 <li>Any external update appears in the pending queue before dispatch.</li>
 <li>Git still works normally if PostgreSQL, Ollama or a PM API is temporarily unavailable.</li>
 </ul>
+<p>For a repeatable no-send verification from a source checkout, run <code>.\scripts\demo.ps1 -Mode Check</code> on Windows PowerShell or <code>./scripts/demo.sh --check</code> on Linux/macOS. The script uses a disposable repository, requires real observed output, and removes the test workspace afterward. Use the corresponding <code>Record</code>/<code>--record</code> mode only after the check passes.</p>
 <p>Next, configure additional repositories in <a href="#WORKSPACES" onclick="navigate('WORKSPACES');return false;">Workspaces</a>, then install login-time startup from <a href="#AUTOSTART" onclick="navigate('AUTOSTART');return false;">Auto-Start</a>.</p>
 </div>`,
 
@@ -921,6 +922,7 @@ devtrack queue flag &lt;id&gt;</code></pre>
 devtrack eod show
 devtrack eod status</code></pre>
 <p><code>generate</code> prints the narrative and reports the staged action ID when queueing succeeds. <code>show</code> prints the most recent saved narrative. <code>status</code> shows its date, action ID and state.</p>
+<p>In Managed mode, an explicit manual or scheduled EOD request includes only that local calendar day's minimal commit summaries from the Go-owned SQLite database. The Python server uses those summaries to build the PostgreSQL-backed report without silently enabling continuous client-event synchronization.</p>
 
 <h2>Teach DevTrack How You Write</h2>
 <p>Voice learning stays local. Seed from existing Git commit messages, generate a profile, then inspect its status:</p>
@@ -973,8 +975,8 @@ devtrack voice status</code></pre>
 <tr><td><strong>11. Register .env</strong></td><td>Writes the <code>.env</code> path to <code>~/.devtrack/devtrack.conf</code>. All future <code>devtrack</code> commands pick this up automatically via <code>AutoLoadEnv()</code>.</td></tr>
 <tr><td><strong>12. Shell integration</strong></td><td><strong>(v2.1.0-dev)</strong> Writes <code>eval "$(devtrack shell-init)"</code> directly to the detected shell profile (<code>~/.zshrc</code> or <code>~/.bashrc</code>) — no manual copy-paste. No <code>source .env</code> needed.</td></tr>
 <tr><td><strong>13. Autostart</strong></td><td>Prompts to install OS-native autostart via <code>devtrack autostart-install</code>.</td></tr>
-<tr><td><strong>14. Background bootstrap</strong></td><td>Managed mode starts a detached, idempotent sparse checkout, <code>uv sync</code>, and a local Ollama model pull only when setup found no usable installed generation model. Atomic state and a local log make every step visible in <code>devtrack doctor</code> and <code>devtrack status</code>.</td></tr>
-<tr><td><strong>15. First-run quick win</strong></td><td>Setup immediately suggests <code>devtrack mcp setup</code> and the question “What am I working on?” — both SQLite-backed and available without Python. In Managed mode, when the optional local AI server becomes ready, the daemon mines enabled local Git workspaces once, builds the voice profile, and suggests <code>devtrack work report</code>. External mode never sends local learning data automatically.</td></tr>
+<tr><td><strong>14. Background bootstrap</strong></td><td>Managed mode starts a detached, idempotent sparse checkout, <code>uv sync --extra ai</code>, and local Ollama preparation. It reuses or pulls a generation model as needed and prepares <code>nomic-embed-text</code> for personalization. Atomic state and a local log make every step visible in <code>devtrack doctor</code> and <code>devtrack status</code>.</td></tr>
+<tr><td><strong>15. First-run quick win</strong></td><td>Setup immediately suggests <code>devtrack mcp setup</code> and the question “What am I working on?” — both SQLite-backed and available without Python. In Managed mode, when the optional local AI server becomes ready, the daemon mines at most 25 recent commits from enabled local Git workspaces, batches their embeddings, builds the voice profile, and suggests <code>devtrack work report</code>. External mode never sends local learning data automatically.</td></tr>
 </tbody>
 </table></div>
 
@@ -1049,7 +1051,7 @@ docker run --env-file .env devtrack start</code></pre>
 <p>Managed mode normally starts the server automatically. Use this tool when diagnosing a headless or external server, watching resource use, reviewing server logs, or restarting the webhook process without a browser.</p>
 <h2>Launch</h2>
 <pre><code class="language-bash">cd Devtrack_/devtrack_server
-uv sync
+uv sync --extra ai
 uv run python -m backend.server_tui</code></pre>
 <blockquote><p><code>devtrack server-tui</code> is not a Go client command. Server operator tools run from the Python environment with <code>uv</code>.</p></blockquote>
 <h2>What It Shows</h2>
@@ -1994,7 +1996,7 @@ GOCACHE=/tmp/devtrack-go-cache GOMODCACHE=/tmp/devtrack-go-mod go test ./...
 GOCACHE=/tmp/devtrack-go-cache GOMODCACHE=/tmp/devtrack-go-mod go vet ./...</code></pre>
 <h2>Run Python Verification</h2>
 <pre><code class="language-bash">cd devtrack_server
-UV_CACHE_DIR=/tmp/devtrack-uv-cache uv sync
+UV_CACHE_DIR=/tmp/devtrack-uv-cache uv sync --extra ai
 UV_CACHE_DIR=/tmp/devtrack-uv-cache uv run pytest backend/tests/ -q</code></pre>
 <p>Python dependencies are managed with <code>uv</code>, never <code>pip</code>.</p>
 <h2>Run Wiki Verification</h2>
@@ -2608,15 +2610,16 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   // ── Redirect stubs: broken internal links point here; we route to the correct page ──
   VISION: `<div class="md-body">
 <h1>Roadmap</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Phase 9 and v3.1.1 distribution complete</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.1.1 public; end-to-end validation hold active</div>
 <p>DevTrack's product build arc and Phase 9 adoption work are complete: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, read-only MCP context, first-run onboarding, and native MCPB distribution. The latest public release is <code>v3.1.1</code>.</p>
 <h2>Current focus</h2>
-<p>TASK-147 synchronized dependency, HTTP-contract, and Windows behavior; TASK-148 prepared versioned MCPB bundles and safety metadata; TASK-149 reconciled documentation and memory; TASK-150 qualified five native targets, published v3.1.0, then added required privacy declarations in v3.1.1. The official MCP Registry record is active/latest, and <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> passed its automated submission check and awaits maintainer review.</p>
+<p>Roadmap feature work is paused while the product is exercised through the real no-send workflow. The Windows local-user path passed twice with Managed readiness, PostgreSQL migration, first-run voice profiling, real commit and ticket detection, confidence-bearing staging, EOD generation, all six MCP tools, and disposable-workspace cleanup. The official MCP Registry record remains active/latest. The owner has sent the Glama request required by <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a>, but passing/listing confirmation and the exact badge path remain pending.</p>
 <h2>Next</h2>
 <ol>
-<li>Monitor awesome-mcp-servers PR #13608, and use authenticated owner sessions and approved contact details for the remaining eligible directories and held launch posts.</li>
-<li>Collect real installation feedback across Windows, macOS, and Linux.</li>
-<li>Prioritize Phase 10 from evidence without inventing usage or adoption claims.</li>
+<li>Repeat setup on a clean Windows account or machine and pass the POSIX demo on Linux or CI.</li>
+<li>Review PostgreSQL-backed actions in the admin UI, then capture privacy-reviewed screenshots and video from real behavior.</li>
+<li>When Glama confirms the live listing, add the exact-path score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
+<li>Resume Phase 10 prioritization only after the validation exit criteria pass, using evidence rather than invented usage or adoption claims.</li>
 </ol>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,

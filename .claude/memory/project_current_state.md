@@ -1,6 +1,6 @@
 ---
 name: Project current state
-description: v3.1.1 public with privacy-compliant native MCPB assets and an active official MCP Registry record
+description: v3.1.1 public; Windows E2E passed twice and release validation remains on hold
 type: project
 ---
 
@@ -8,7 +8,10 @@ type: project
 **Completed:** Phases 0–9; Managed Install; Silent Worker Correctness; PostgreSQL TASK-112–116 plus TASK-140/141; launch drafts TASK-124; documentation/wiki TASK-145/146; compatibility and contract sync TASK-147; MCPB distribution TASK-148; v3.1.0 qualification and official-registry publication TASK-150.
 **Storage:** Go remains SQLite-only and never connects to PostgreSQL. Python requires `POSTGRES_URL`, validates it, and applies Alembic before serving; client-event sync is opt-in and idempotent.
 **MCP:** Six local, read-only stdio tools ship in v3.1.1. MCPB 0.3 bundles declare the public privacy policy and include a Privacy Policy README section. They were executed on native Windows amd64, macOS amd64/arm64, and Linux amd64/arm64 CI runners; clean-project setup, handshake, tool listing/call, and shutdown passed. `io.github.sraj0501/devtrack` version 3.1.1 is active/latest in the official MCP Registry.
-**Documentation:** TASK-150 post-release synchronization records the public release, verified checksums, registry status, and remaining external-account actions.
-**Active next:** Submit the repo to Glama using `Dockerfile.mcp`, wait for its build/introspection checks, then append the exact Glama score badge to `punkpeye/awesome-mcp-servers` PR #13608. Obtain owner-authenticated sessions/contact details for the remaining eligible directories and held dev.to, Show HN, and LinkedIn posts. Then collect real install feedback and prioritize Phase 10 from evidence rather than assumptions.
+**Documentation:** README, checked-in project memory, and the static wiki now point to the current no-send validation workflow and preserve the v3.1.1 release, checksum, registry, and external-account evidence.
+**Validation state (2026-09-04):** Feature development is paused for end-to-end product validation. The Windows local-user no-send flow passed twice: Managed setup and readiness, PostgreSQL migration, first-run voice profile (23 commits/286 words), real commit detection and `DEMO-101` mapping, `post_comment` staging at 0.95 confidence, EOD narrative/staging, all six MCP tools with advancing `today_commits`, and safe disposable-workspace cleanup. Go passed `go test ./...`; Python passed 959 tests with 10 skipped.
+**Validation fixes:** `fdda30a` added a fresh-checkout MCP database fallback; RFC 3339 trigger timestamps compatible with SQLite date queries; minimal explicit commit summaries across the SQLite/PostgreSQL boundary for manual and scheduled EOD; Managed installation of the AI dependency group plus `nomic-embed-text`; bounded batch embeddings for first-run voice; and active-context filtering to existing enabled workspaces. `scripts/demo.ps1` is the native Windows check/record path.
+**Active next:** Keep the development hold in place. Repeat the supported install on a clean Windows account or machine, pass `scripts/demo.sh --check` and `--record` on Linux or CI, review PostgreSQL-backed actions in the admin UI, and capture privacy-reviewed real screenshots/video. The owner has sent the Glama request, but passing/listing confirmation is not in repository evidence; once confirmed, add the exact-path score badge to `punkpeye/awesome-mcp-servers` PR #13608. Remaining directory submissions and held launch posts still require owner-authenticated sessions/contact details. Resume Phase 10 prioritization only after the validation exit criteria pass.
+**Validation authority:** `docs/END_TO_END_VALIDATION.md` owns the current hold, evidence, capture rules, and exit criteria; `docs/DEMO_STORYBOARD.md` owns the recording sequence.
 **Authority:** `Data/agent_logs/project_board.md` owns task history/IDs; GitHub `sraj0501/Devtrack_` owns source/releases.
 **Do not revive:** NATS/Redis/external brokers, Kubernetes, multi-tenancy, DDD layers, or deleted pre-pivot architecture documents.

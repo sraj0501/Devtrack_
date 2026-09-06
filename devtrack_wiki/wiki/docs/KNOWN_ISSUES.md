@@ -14,9 +14,18 @@ increase `HTTP_TIMEOUT_LONG` or `LLM_REQUEST_TIMEOUT_SECS` for their hardware/mo
 
 ## Optional server readiness
 
-Managed sparse checkout, `uv sync`, PostgreSQL migration, and model download happen in the background.
-They may be temporarily degraded after setup. `devtrack status`, `devtrack doctor`, and
-`devtrack doctor --repair` expose progress and recovery; Go-native features remain usable.
+Managed sparse checkout, `uv sync --extra ai`, PostgreSQL migration, and generation/embedding model
+downloads happen in the background. They may be temporarily degraded after setup. `devtrack status`,
+`devtrack doctor`, and `devtrack doctor --repair` expose progress and recovery; Go-native features
+remain usable.
+
+## End-to-end validation hold
+
+Roadmap feature work is paused while clean-machine installation, Linux demo parity, admin-queue
+review, and privacy-reviewed screenshot/video capture are completed. The Windows local-user workflow
+has passed twice with real commit detection, `DEMO-101` mapping, confidence-bearing staging, EOD
+generation, six-tool MCP introspection, and disposable-workspace cleanup. This is validation evidence,
+not a claim that the remaining release gates are complete.
 
 ## Platform rollout
 
@@ -29,9 +38,10 @@ parity.
 `io.github.sraj0501/devtrack` 3.1.1 is active/latest in the official MCP Registry. The DevTrack entry
 in `punkpeye/awesome-mcp-servers` is awaiting maintainer review in
 [PR #13608](https://github.com/punkpeye/awesome-mcp-servers/pull/13608), whose automated submission
-check passed. Anthropic, Smithery, Glama, and other directory forms still require owner-authenticated
-sessions, eligibility evidence, or contact details; neither registry publication nor an open PR
-implies acceptance by those directories.
+check passed. The owner has sent the Glama request, but a passing/live listing and its exact Glama
+path are not yet recorded, so the required score badge remains pending. Anthropic, Smithery, and
+other directory forms still require owner-authenticated sessions, eligibility evidence, or contact
+details; neither registry publication nor an open PR implies acceptance by those directories.
 
 ## Reporting a problem
 

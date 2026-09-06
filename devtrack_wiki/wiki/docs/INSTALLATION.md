@@ -30,8 +30,10 @@ Choose one deployment mode:
 - **Lightweight:** Go-native monitoring, queue, MCP, scheduling, and connectors without Python.
 - **External:** connect to an independently operated Python server with `DEVTRACK_SERVER_URL`.
 
-Managed setup returns before sparse checkout, `uv sync`, or model download finishes. Follow progress
-with `devtrack status`; retry failures with `devtrack doctor --repair`.
+Managed setup returns before sparse checkout, `uv sync --extra ai`, or model downloads finish. The
+AI dependency group installs ChromaDB, and local Ollama setup prepares both the selected generation
+model and `nomic-embed-text` for first-run voice seeding. Follow progress with `devtrack status`;
+retry failures with `devtrack doctor --repair`.
 
 ## PostgreSQL
 
@@ -45,7 +47,7 @@ Contributors build and test with:
 
 ```bash
 cd devtrack_client && go build -o devtrack .
-cd ../devtrack_server && uv sync
+cd ../devtrack_server && uv sync --extra ai
 ```
 
 Python dependencies use `uv`, never `pip`.

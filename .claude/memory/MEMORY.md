@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-09-04_ | public v3.1.1 | official MCP Registry active/latest | PR #13608 awaits a passing Glama listing/badge | GitHub is canonical
+_Last updated: 2026-09-06_ | public v3.1.1 | official MCP Registry active/latest | Windows E2E passed twice | validation hold active | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 
@@ -13,7 +13,10 @@ DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 - TASK-150 qualified five native MCPB targets, merged PR #259 to `main` at `186036f`, published v3.1.0 with 12 release assets, independently verified all 10 payload hashes, and published `io.github.sraj0501/devtrack` to the official MCP Registry.
 - Directory preflight found that v3.1.0 lacked Anthropic's required manifest `privacy_policies` declaration. Patch v3.1.1 at `17bc86f` added that field, a bundled Privacy Policy section, enforcement in packaging/native smoke tests, 12 replacement release assets, independently verified payload hashes, and an active/latest official-registry 3.1.1 record.
 - `punkpeye/awesome-mcp-servers` PR #13608 adds DevTrack under Developer Tools and its submission check passed. Other third-party forms and held dev.to/Show HN/LinkedIn posts remain unpublished because their authenticated owner sessions/contact details are unavailable; do not claim those actions are complete.
-- PR #13608 subsequently gained a Glama listing/score-badge requirement. `Dockerfile.mcp` is the paste-ready Glama build definition and CI validates its intended initialize/tools-list/shutdown exchange. The owner must submit it through Glama, wait for all checks, and then add the badge using the exact resulting Glama path.
+- PR #13608 subsequently gained a Glama listing/score-badge requirement. `Dockerfile.mcp` is the submitted build definition and CI validates its intended initialize/tools-list/shutdown exchange. The owner sent the Glama request, but passing/listing confirmation and the exact Glama path are not yet recorded in the repository, so the score badge and PR #13608 update remain pending; do not claim that Glama is live until there is evidence.
+- Local-product validation is now the active work boundary. On Windows, Managed setup, daemon/server readiness, PostgreSQL migrations, admin-login routing, first-run voice profiling, commit/ticket detection, confidence-bearing staging, EOD generation, MCP context, and disposable-workspace cleanup passed. The full no-send PowerShell demo passed twice with real commits.
+- Reproduced validation blockers were fixed at `fdda30a`: fresh-checkout `mcp test` database fallback, SQLite-compatible RFC 3339 trigger timestamps, explicit minimal commit summaries for manual/scheduled EOD, bounded batch voice embeddings with Managed AI/model preparation, and active MCP context restricted to existing enabled workspaces. Go passed `go test ./...`; Python passed 959 tests with 10 skipped.
+- Feature development remains paused. Before roadmap work resumes, repeat setup on a clean Windows account/machine, pass the POSIX demo on Linux or CI, inspect PostgreSQL-backed actions through the admin UI, and capture privacy-reviewed screenshots/video from actual behavior.
 
 ## Completed — 2026-09-03
 - TASK-149 synchronized README, wiki, durable project memory, registry evidence, and release gates after TASK-147/148. PR #257 merged to `dev` at `e22f709`.

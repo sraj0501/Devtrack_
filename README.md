@@ -110,6 +110,16 @@ to `none` and no `--email` argument, the walkthrough uses no PM credentials and 
 destination. For a disposable, recorder-friendly version that verifies actual log output instead of
 using a canned transcript, see the [demo storyboard](docs/DEMO_STORYBOARD.md).
 
+```bash
+./scripts/demo.sh --check          # Linux/macOS preflight
+./scripts/demo.sh --record         # Linux/macOS end-to-end run
+```
+
+```powershell
+.\scripts\demo.ps1 -Mode Check    # Windows preflight
+.\scripts\demo.ps1 -Mode Record   # Windows end-to-end run
+```
+
 ### What is ready when?
 
 | Capability | Available before AI readiness | Needs the managed/external Python service |
@@ -123,6 +133,11 @@ using a canned transcript, see the [demo storyboard](docs/DEMO_STORYBOARD.md).
 The Python service and model preparation are background work. If they are not ready by minute ten,
 keep coding and check `devtrack doctor`; the Go-native path remains usable and commits are not
 blocked.
+
+> **Current validation status:** roadmap development is paused while the documented no-send path is
+> tested end to end. The Windows workflow has passed twice. A clean Windows installation, the POSIX
+> demo, admin-queue review, and privacy-reviewed media capture remain release gates. See the
+> [end-to-end validation record](docs/END_TO_END_VALIDATION.md) for current evidence and exit criteria.
 
 ### Update an existing installation
 
@@ -255,6 +270,10 @@ devtrack eod status         # is one staged?
 ```
 
 Groups the day's commits by ticket and writes the narrative in your voice. It is staged in the queue like anything else — review it, then send.
+
+An explicit `devtrack eod` run sends only that day's minimal commit summaries from the local SQLite
+client to the configured Python service. Continuous client-event synchronization remains disabled by
+default; invoking EOD does not enable it.
 
 ### Multi-repo monitoring
 
@@ -650,7 +669,7 @@ soon as the model is ready. The wizard does not wait for these steps;
 `devtrack doctor` shows durable progress and failures. No manual dependency setup is needed.
 
 **External mode** (server on a separate host): clone the repo on that host,
-`cd devtrack_server && uv sync && uv run python -m backend.webhook_server`.
+`cd devtrack_server && uv sync --extra ai && uv run python -m backend.webhook_server`.
 Set `DEVTRACK_SERVER_URL` on the client machine.
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the full setup walkthrough.
@@ -683,6 +702,7 @@ Key references in this repo:
 |-----------|-------|
 | Understand where the product is going | [**PRODUCT_BIBLE.md**](PRODUCT_BIBLE.md) — the source of truth |
 | Install it | [Installation](docs/INSTALLATION.md) |
+| Verify the real local workflow | [End-to-end validation](docs/END_TO_END_VALIDATION.md) · [Demo storyboard](docs/DEMO_STORYBOARD.md) |
 | Understand the architecture | [Architecture](docs/ARCHITECTURE.md) |
 | Maintain the Go↔Python HTTP boundary | [HTTP API contract](docs/HTTP_API.md) |
 | Review what DevTrack wants to send | [Pending-actions queue](#the-pending-actions-queue--nothing-is-sent-without-review) |
@@ -725,7 +745,7 @@ source of truth for published asset names or CI behavior.
 cd devtrack_client && go test ./...                     # Go client suite
 cd devtrack_client && go vet ./...                      # lint
 
-cd devtrack_server && uv sync                           # uv manages the venv — never pip
+cd devtrack_server && uv sync --extra ai                # full managed feature/test dependencies
 cd devtrack_server && uv run pytest backend/tests/      # Python server suite
 cd devtrack_server && uv run pytest backend/tests/ -k <name>   # filter by name
 ```

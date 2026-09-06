@@ -52,7 +52,9 @@ You do not need to copy or source `.env` manually.
 - Choose **None** for the PM integration if you want a local-only evaluation with no external target.
 - Managed mode requires a PostgreSQL URL for the Python service.
 - Ollama is the default LLM. If a usable local generation model is installed, setup reuses it.
-- Checkout, `uv sync`, and any required model pull continue in a detached worker after setup returns.
+- Checkout, `uv sync --extra ai`, and required model pulls continue in a detached worker after setup
+  returns. Managed Ollama setup prepares the generation model plus `nomic-embed-text`; initial voice
+  mining is bounded to 25 recent commits and uses batched embeddings.
 
 No daemon, PM post, email, or Git push is started by the wizard.
 
@@ -73,8 +75,10 @@ Reload Claude Code after `mcp setup`, then ask:
 > What am I working on?
 
 The six local tools expose the active context, today's commits, pending actions, voice profile,
-ticket context, and an EOD summary. An empty response on a brand-new install is expected; the value
-is that the connection already works and begins filling as you commit.
+ticket context, and an EOD summary. The self-test uses the configured SQLite database when available
+and a disposable database when setup has not run, so a fresh checkout can still complete protocol
+introspection. An empty result on that new database is expected. Daily counts use the user's local
+calendar date.
 
 ---
 
@@ -127,7 +131,9 @@ and the `Queued as action <id>` response are the authoritative staging evidence;
 does not mean the server bypassed staging.
 
 For a disposable, recorder-friendly run that verifies live output and never manufactures queue
-rows, use the repository's [credential-free demo storyboard](../../../docs/DEMO_STORYBOARD.md).
+rows, use the repository's [credential-free demo storyboard](../../../docs/DEMO_STORYBOARD.md). On
+Windows PowerShell run `./scripts/demo.ps1 -Mode Check` first, then use `-Mode Record` for a paced
+capture. Linux and macOS use `./scripts/demo.sh --check` and `./scripts/demo.sh --record`.
 
 ---
 
