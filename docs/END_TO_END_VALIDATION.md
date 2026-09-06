@@ -46,6 +46,63 @@ Credentials and full connection URLs are intentionally not recorded here.
 | EOD narrative | Pass twice after PostgreSQL/local-data boundary fix | Real local commits were grouped under `DEMO-101`; reports staged as actions 10 and 12 |
 | MCP active context | Pass twice after timestamp fix | Six tools introspected; `today_commits` advanced from 4 to 5 on the second pass |
 | Disposable workspace cleanup | Pass twice | Only the real `Devtrack_` workspace remains after each run |
+| Isolated native Windows core lane | Pass locally | Real `DEMO-201` commit observed by the daemon and exposed through MCP; isolated state cleaned |
+| Isolated Linux core lane | Pass locally in Docker | Same script passed in disposable `golang:1.24-bookworm`; the local WSL distribution did not require modification |
+
+## Automated cross-platform lane
+
+The repository includes an isolated, credential-free E2E test for the Go-native product boundary.
+It builds the current client, creates temporary configuration and a disposable Git repository,
+starts the daemon in lightweight mode, makes a real ticket-linked commit, waits for observation,
+and verifies that MCP exposes the commit and a non-zero local-day count. PM delivery, telemetry,
+email, continuous server-event sync, and automatic approvals remain disabled.
+
+Run both local lanes from Windows 11 with WSL:
+
+```powershell
+.\scripts\e2e-local.ps1
+```
+
+On a machine that blocks local scripts by policy, run the same test with a process-only bypass:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\e2e-local.ps1
+```
+
+The launcher uses the WSL distribution when it has Go installed. If WSL has no Go toolchain, it
+runs the identical Linux script in the disposable `golang:1.24-bookworm` Docker container instead.
+It does not install packages or modify the WSL distribution.
+
+Or run one platform directly:
+
+```powershell
+.\scripts\e2e.ps1
+```
+
+```bash
+sh ./scripts/e2e.sh
+```
+
+The included GitHub Actions workflow runs the same scripts on native `windows-latest` and
+`ubuntu-latest` runners once merged. This
+lane covers the cross-platform client/daemon/SQLite/MCP path. It does not replace the Managed-mode
+acceptance gate below: PostgreSQL migrations, the real Python server, LLM generation, embedded admin
+review, and media capture still require the full no-send demo and their existing focused tests.
+
+Once a platform has a configured Managed environment, its full no-send acceptance flow can also run
+without scene prompts:
+
+```powershell
+.\scripts\demo.ps1 -Mode Record -Automated
+```
+
+```bash
+./scripts/demo.sh --record --automated
+```
+
+That acceptance lane intentionally remains environment-dependent: it uses the real PostgreSQL and
+Python services and the configured local LLM, but still uses a disposable PM-`none` workspace and
+never approves or delivers the staged actions.
 
 ### Reproduced blockers
 
@@ -77,7 +134,9 @@ The Windows local-user gate passed twice on 2026-09-04. Remaining release-level 
 
 1. Repeat the supported installation path on a clean Windows account or machine without manual
    dependency preparation.
-2. Repeat `scripts/demo.sh --check` and `scripts/demo.sh --record` on Linux or CI.
+2. Repeat the full Managed `scripts/demo.sh --check` and `scripts/demo.sh --record` flow on Linux or
+   CI. The isolated Linux core lane has passed, but it intentionally excludes PostgreSQL, Python,
+   LLM generation, and server-backed staging.
 3. Review server-backed queue actions in the admin UI; the local `devtrack queue list` intentionally
    does not mirror PostgreSQL actions when continuous event sync is disabled.
 4. Capture the approved screenshot/video set from a privacy-reviewed terminal and browser session.

@@ -827,10 +827,12 @@ task state is tracked in `Data/agent_logs/project_board.md`.
 | **7 — PR puppet master** | Fix-commit-push review loop with escalation and completion notifications |
 | **8 — MCP server** | JSON-RPC 2.0 stdio server exposing six read-only SQLite-backed tools to Claude Code |
 
-### Next: Phase 9 — Adoption Gate
-Packaging and narrative, not new capability: a stranger goes from README to a staged action and
-Claude Code answering *"what am I working on?"* in under ten minutes. See
-[`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
+### Phase 9 — Adoption Gate (complete)
+Phase 9 delivered the first-run path, background Managed bootstrap, guided voice/MCP onboarding,
+shopfront refresh, and release/distribution packaging. The current development hold is for
+clean-machine and cross-platform end-to-end validation, admin review, and privacy-reviewed media—not
+another capability phase. See [`docs/NEXT_STEPS.md`](NEXT_STEPS.md) and
+[`docs/END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md).
 
 **Deferred (Phase 10+):** headless orchestration, Tier 4 Hermes persona model, GitLab `IsPRApproved`.
 

@@ -21,11 +21,14 @@ remain usable.
 
 ## End-to-end validation hold
 
-Roadmap feature work is paused while clean-machine installation, Linux demo parity, admin-queue
-review, and privacy-reviewed screenshot/video capture are completed. The Windows local-user workflow
-has passed twice with real commit detection, `DEMO-101` mapping, confidence-bearing staging, EOD
-generation, six-tool MCP introspection, and disposable-workspace cleanup. This is validation evidence,
-not a claim that the remaining release gates are complete.
+Roadmap feature work is paused while clean-machine installation, full Linux Managed-demo parity,
+admin-queue review, and privacy-reviewed screenshot/video capture are completed. The Windows
+local-user Managed workflow has passed twice with real commit detection, `DEMO-101` mapping,
+confidence-bearing staging, EOD generation, six-tool MCP introspection, and disposable-workspace
+cleanup. A separate credential-free core lane has passed locally on native Windows and in a Linux
+Go container, covering a real `DEMO-201` commit through the daemon, SQLite, and MCP. The associated
+Windows/Ubuntu CI workflow is unreleased source work and has not yet been claimed as a hosted-runner
+pass. This evidence does not mean the remaining full Managed release gates are complete.
 
 ## Platform rollout
 
@@ -38,8 +41,8 @@ parity.
 `io.github.sraj0501/devtrack` 3.1.1 is active/latest in the official MCP Registry. The DevTrack entry
 in `punkpeye/awesome-mcp-servers` is awaiting maintainer review in
 [PR #13608](https://github.com/punkpeye/awesome-mcp-servers/pull/13608), whose automated submission
-check passed. The owner has sent the Glama request, but a passing/live listing and its exact Glama
-path are not yet recorded, so the required score badge remains pending. Anthropic, Smithery, and
+check passed. Glama's admins approved the submitted server on 2026-09-06, but its exact approved
+path is not yet recorded, so the required PR score-badge update remains pending. Anthropic, Smithery, and
 other directory forms still require owner-authenticated sessions, eligibility evidence, or contact
 details; neither registry publication nor an open PR implies acceptance by those directories.
 

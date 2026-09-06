@@ -810,7 +810,8 @@ devtrack eod status</code></pre>
 <li>Any external update appears in the pending queue before dispatch.</li>
 <li>Git still works normally if PostgreSQL, Ollama or a PM API is temporarily unavailable.</li>
 </ul>
-<p>For a repeatable no-send verification from a source checkout, run <code>.\scripts\demo.ps1 -Mode Check</code> on Windows PowerShell or <code>./scripts/demo.sh --check</code> on Linux/macOS. The script uses a disposable repository, requires real observed output, and removes the test workspace afterward. Use the corresponding <code>Record</code>/<code>--record</code> mode only after the check passes.</p>
+<p>For an isolated, credential-free source-checkout verification, run <code>.\scripts\e2e-local.ps1</code> on Windows 11. It exercises native Windows first, then uses WSL when Go is available there or a disposable Linux Go container through Docker Desktop when it is not. Run <code>.\scripts\e2e.ps1</code> or <code>sh ./scripts/e2e.sh</code> to test one platform directly.</p>
+<p>The automated lane verifies a real ticket-linked commit flowing through the daemon, local SQLite, and MCP without contacting a PM, telemetry, email, or the Python server. For the separate full Managed acceptance workflow, run <code>.\scripts\demo.ps1 -Mode Check</code> on Windows PowerShell or <code>./scripts/demo.sh --check</code> on Linux/macOS. Add <code>-Automated</code> or <code>--automated</code> to suppress scene pauses after the environment is configured.</p>
 <p>Next, configure additional repositories in <a href="#WORKSPACES" onclick="navigate('WORKSPACES');return false;">Workspaces</a>, then install login-time startup from <a href="#AUTOSTART" onclick="navigate('AUTOSTART');return false;">Auto-Start</a>.</p>
 </div>`,
 
@@ -1614,6 +1615,13 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer source work. TASK-147 and TASK-148 are synchronized on <code>main</code> and <code>dev</code>; TASK-149 is the follow-up documentation synchronization branch. GitHub Releases remains the version-history archive.</p>
+<h2>Unreleased Source Work — Automated Windows and Linux E2E</h2>
+<ul>
+<li><strong>Credential-free client lane:</strong> new PowerShell and POSIX scripts build the current Go client in isolation, start the lightweight daemon, create a real <code>DEMO-201</code> commit, wait for SQLite observation, and assert that MCP exposes the ticket and a non-zero local-day commit count.</li>
+<li><strong>Windows 11 launcher:</strong> <code>.\scripts\e2e-local.ps1</code> runs native Windows plus WSL Linux; when the WSL distribution has no Go toolchain, it uses a disposable <code>golang:1.24-bookworm</code> Docker container without modifying WSL.</li>
+<li><strong>CI definition:</strong> the repository now defines the same no-send test for native <code>windows-latest</code> and <code>ubuntu-latest</code> runners. Local Windows and Linux-container executions have passed; the workflow itself remains unreleased until these source changes are committed and exercised remotely.</li>
+<li><strong>Managed acceptance automation:</strong> the existing demo scripts accept <code>-Automated</code> on Windows and <code>--automated</code> on Linux/macOS to skip recording pauses. PostgreSQL migration, the Python server, LLM output, admin review, and media capture remain separate environment-dependent gates.</li>
+</ul>
 <h2>v3.1.1 — TASK-147–150 readiness, distribution, and documentation</h2>
 <ul>
 <li><strong>Stable HTTP boundary:</strong> executable Go and Python contract tests now protect health, timer, boardroom, work-session, queue, and client-event request/response shapes.</li>
@@ -1990,6 +1998,21 @@ SQLITE_BUSY_TIMEOUT_MS=5000</code></pre>
   TEST_SUITE: `<div class="md-body">
 <h1>Test Suite</h1>
 <p>The test suite protects DevTrack's trust and architecture boundaries, not just individual functions. It is especially important because the product spans a Go daemon, local SQLite, a Python server, PostgreSQL, external connectors and static documentation.</p>
+<h2>Run the Automated No-Send E2E</h2>
+<p>From a Windows 11 source checkout, run both native Windows and Linux compatibility lanes:</p>
+<pre><code class="language-powershell">.\scripts\e2e-local.ps1
+
+# If local script execution is blocked, use a process-only policy bypass:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\e2e-local.ps1</code></pre>
+<p>The launcher uses WSL when that distribution has Go installed. Otherwise it runs the same Linux script in a disposable Go container through Docker Desktop; it does not install anything into WSL. To run one lane directly:</p>
+<pre><code class="language-powershell">.\scripts\e2e.ps1</code></pre>
+<pre><code class="language-bash">sh ./scripts/e2e.sh</code></pre>
+<p>These scripts use temporary configuration, state, cache, and Git workspace paths. They disable PM delivery, telemetry, email, continuous server-event sync, and automatic approvals, then verify the real commit → daemon → SQLite → MCP path. GitHub Actions is configured to run the same scripts on native Windows and Ubuntu.</p>
+<h3>Full Managed Acceptance</h3>
+<p>The automated client lane does not start or validate PostgreSQL, the Python server, an LLM, the embedded admin UI, or media capture. On an already configured Managed installation, run the full no-send demo without scene pauses:</p>
+<pre><code class="language-powershell">.\scripts\demo.ps1 -Mode Record -Automated</code></pre>
+<pre><code class="language-bash">./scripts/demo.sh --record --automated</code></pre>
+<p>This environment-dependent lane uses real local services but keeps the disposable workspace on PM <code>none</code> and does not approve or deliver staged actions.</p>
 <h2>Run Go Verification</h2>
 <pre><code class="language-bash">cd devtrack_client
 GOCACHE=/tmp/devtrack-go-cache GOMODCACHE=/tmp/devtrack-go-mod go test ./...
@@ -2613,12 +2636,12 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.1.1 public; end-to-end validation hold active</div>
 <p>DevTrack's product build arc and Phase 9 adoption work are complete: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, read-only MCP context, first-run onboarding, and native MCPB distribution. The latest public release is <code>v3.1.1</code>.</p>
 <h2>Current focus</h2>
-<p>Roadmap feature work is paused while the product is exercised through the real no-send workflow. The Windows local-user path passed twice with Managed readiness, PostgreSQL migration, first-run voice profiling, real commit and ticket detection, confidence-bearing staging, EOD generation, all six MCP tools, and disposable-workspace cleanup. The official MCP Registry record remains active/latest. The owner has sent the Glama request required by <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a>, but passing/listing confirmation and the exact badge path remain pending.</p>
+<p>Roadmap feature work is paused while the product is exercised through the real no-send workflow. The Windows local-user Managed path passed twice with PostgreSQL migration, first-run voice profiling, real commit and ticket detection, confidence-bearing staging, EOD generation, all six MCP tools, and disposable-workspace cleanup. An unreleased, credential-free core E2E lane has also passed locally on native Windows and in a Linux Go container; it protects the commit-to-daemon-to-SQLite-to-MCP boundary and is configured for Windows and Ubuntu CI. It does not replace the remaining full Managed acceptance gates. The official MCP Registry record remains active/latest. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
 <h2>Next</h2>
 <ol>
-<li>Repeat setup on a clean Windows account or machine and pass the POSIX demo on Linux or CI.</li>
+<li>Commit and exercise the new Windows/Ubuntu E2E workflow remotely, then repeat the full Managed setup on a clean Windows account or machine and pass the full POSIX Managed demo.</li>
 <li>Review PostgreSQL-backed actions in the admin UI, then capture privacy-reviewed screenshots and video from real behavior.</li>
-<li>When Glama confirms the live listing, add the exact-path score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
+<li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 <li>Resume Phase 10 prioritization only after the validation exit criteria pass, using evidence rather than invented usage or adoption claims.</li>
 </ol>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>

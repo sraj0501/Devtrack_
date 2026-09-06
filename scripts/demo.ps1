@@ -4,7 +4,9 @@ param(
     [string]$Mode = 'Check',
 
     [ValidateRange(1, 3600)]
-    [int]$StageTimeoutSeconds = 120
+    [int]$StageTimeoutSeconds = 120,
+
+    [switch]$Automated
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,7 +59,9 @@ function Wait-ForScene {
     param([Parameter(Mandatory)][string]$Title)
 
     Write-Host "`n$Title"
-    [void](Read-Host 'Press Enter to continue')
+    if (-not $Automated) {
+        [void](Read-Host 'Press Enter to continue')
+    }
 }
 
 foreach ($commandName in @('devtrack', 'git')) {

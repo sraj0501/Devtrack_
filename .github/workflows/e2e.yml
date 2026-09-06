@@ -1,0 +1,49 @@
+name: End-to-end
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "devtrack_client/**"
+      - "scripts/e2e.ps1"
+      - "scripts/e2e.sh"
+      - ".github/workflows/e2e.yml"
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "devtrack_client/**"
+      - "scripts/e2e.ps1"
+      - "scripts/e2e.sh"
+      - ".github/workflows/e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  no-send-client:
+    name: No-send client E2E (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
+
+      - name: Run Linux E2E
+        if: runner.os == 'Linux'
+        shell: bash
+        run: sh ./scripts/e2e.sh
+
+      - name: Run Windows E2E
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/e2e.ps1

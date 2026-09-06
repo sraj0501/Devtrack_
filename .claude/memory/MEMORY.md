@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-09-06_ | public v3.1.1 | official MCP Registry active/latest | Windows E2E passed twice | validation hold active | GitHub is canonical
+_Last updated: 2026-09-06_ | public v3.1.1 | official MCP Registry active/latest | Windows and Linux core E2E passed locally | validation hold active | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 
@@ -9,11 +9,16 @@ DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 - `Data/agent_logs/project_board.md` is the task/status/ID authority; dated notes are historical.
 - Phases 0–9 and PostgreSQL are complete. v3.1.1 is public with five native MCPB bundles and an active official MCP Registry record.
 
+## Completed — 2026-09-06
+- A deterministic, credential-free no-send E2E lane was prepared for the Go-native boundary. Native Windows and Linux in a disposable `golang:1.24-bookworm` container both built the current client, observed a real `DEMO-201` commit, exposed it through `mcp test`, and cleaned their isolated state successfully.
+- `scripts/e2e-local.ps1` runs Windows and then WSL Linux, falling back to Docker when the WSL distribution has no Go toolchain. `.github/workflows/e2e.yml` applies the same core test to Windows and Ubuntu. These working-tree changes are locally validated but are not release evidence until committed and green in CI.
+- The full environment-dependent demo can now skip recording pauses with `scripts/demo.ps1 -Automated` or `scripts/demo.sh --automated`. This does not close the clean-Windows, full Managed Linux, PostgreSQL admin-review, or privacy-reviewed media gates; the development hold remains active.
+
 ## Completed — 2026-09-04
 - TASK-150 qualified five native MCPB targets, merged PR #259 to `main` at `186036f`, published v3.1.0 with 12 release assets, independently verified all 10 payload hashes, and published `io.github.sraj0501/devtrack` to the official MCP Registry.
 - Directory preflight found that v3.1.0 lacked Anthropic's required manifest `privacy_policies` declaration. Patch v3.1.1 at `17bc86f` added that field, a bundled Privacy Policy section, enforcement in packaging/native smoke tests, 12 replacement release assets, independently verified payload hashes, and an active/latest official-registry 3.1.1 record.
 - `punkpeye/awesome-mcp-servers` PR #13608 adds DevTrack under Developer Tools and its submission check passed. Other third-party forms and held dev.to/Show HN/LinkedIn posts remain unpublished because their authenticated owner sessions/contact details are unavailable; do not claim those actions are complete.
-- PR #13608 subsequently gained a Glama listing/score-badge requirement. `Dockerfile.mcp` is the submitted build definition and CI validates its intended initialize/tools-list/shutdown exchange. The owner sent the Glama request, but passing/listing confirmation and the exact Glama path are not yet recorded in the repository, so the score badge and PR #13608 update remain pending; do not claim that Glama is live until there is evidence.
+- PR #13608 subsequently gained a Glama listing/score-badge requirement. `Dockerfile.mcp` is the submitted build definition and CI validates its intended initialize/tools-list/shutdown exchange. Glama's admins approved the request on 2026-09-06. The exact approved path and PR #13608 badge update are not yet recorded; copy the path from Glama rather than guessing its normalized slug.
 - Local-product validation is now the active work boundary. On Windows, Managed setup, daemon/server readiness, PostgreSQL migrations, admin-login routing, first-run voice profiling, commit/ticket detection, confidence-bearing staging, EOD generation, MCP context, and disposable-workspace cleanup passed. The full no-send PowerShell demo passed twice with real commits.
 - Reproduced validation blockers were fixed at `fdda30a`: fresh-checkout `mcp test` database fallback, SQLite-compatible RFC 3339 trigger timestamps, explicit minimal commit summaries for manual/scheduled EOD, bounded batch voice embeddings with Managed AI/model preparation, and active MCP context restricted to existing enabled workspaces. Go passed `go test ./...`; Python passed 959 tests with 10 skipped.
 - Feature development remains paused. Before roadmap work resumes, repeat setup on a clean Windows account/machine, pass the POSIX demo on Linux or CI, inspect PostgreSQL-backed actions through the admin UI, and capture privacy-reviewed screenshots/video from actual behavior.

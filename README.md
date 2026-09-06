@@ -120,6 +120,29 @@ using a canned transcript, see the [demo storyboard](docs/DEMO_STORYBOARD.md).
 .\scripts\demo.ps1 -Mode Record   # Windows end-to-end run
 ```
 
+For the automated, isolated no-send client lane on native Windows plus WSL Linux:
+
+```powershell
+.\scripts\e2e-local.ps1
+```
+
+If local PowerShell policy blocks repository scripts, use a process-scoped invocation without
+changing the machine policy:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\e2e-local.ps1
+```
+
+The launcher uses WSL when Go is installed there and otherwise falls back to a disposable Linux Go
+container through Docker Desktop; it does not alter the WSL distribution.
+
+CI runs the same temporary-workspace test on native Windows and Ubuntu. It verifies the real
+commit-to-daemon-to-SQLite-to-MCP path without credentials or outbound delivery; the Managed
+PostgreSQL/Python/LLM path remains a separate acceptance gate.
+
+On an already configured Managed installation, add `-Automated` on Windows or `--automated` on
+Linux/macOS to run the full demo without recording pauses.
+
 ### What is ready when?
 
 | Capability | Available before AI readiness | Needs the managed/external Python service |
@@ -135,8 +158,9 @@ keep coding and check `devtrack doctor`; the Go-native path remains usable and c
 blocked.
 
 > **Current validation status:** roadmap development is paused while the documented no-send path is
-> tested end to end. The Windows workflow has passed twice. A clean Windows installation, the POSIX
-> demo, admin-queue review, and privacy-reviewed media capture remain release gates. See the
+> tested end to end. The isolated Go-native flow now passes on Windows and Linux; the full Managed
+> Windows workflow has passed twice. A clean Windows installation, the full Managed Linux demo,
+> admin-queue review, and privacy-reviewed media capture remain release gates. See the
 > [end-to-end validation record](docs/END_TO_END_VALIDATION.md) for current evidence and exit criteria.
 
 ### Update an existing installation
@@ -749,6 +773,22 @@ cd devtrack_server && uv sync --extra ai                # full managed feature/t
 cd devtrack_server && uv run pytest backend/tests/      # Python server suite
 cd devtrack_server && uv run pytest backend/tests/ -k <name>   # filter by name
 ```
+
+Run the credential-free, no-send product path from the repository root:
+
+```powershell
+.\scripts\e2e.ps1                 # native Windows
+.\scripts\e2e-local.ps1           # Windows, then WSL or Docker-hosted Linux
+```
+
+```bash
+sh ./scripts/e2e.sh               # native Linux
+```
+
+These scripts build the current client in temporary storage, observe a real disposable commit, and
+verify its SQLite-backed MCP context. GitHub Actions runs the Windows and Linux scripts through the
+[`End-to-end` workflow](.github/workflows/e2e.yml). Managed PostgreSQL, Python, LLM, and admin-console
+validation remains covered by the separate no-send demo described above.
 
 Python business logic must use `backend.config` typed accessors rather than adding direct environment
 reads. Missing required variables produce a `ConfigError` with the variable name rather than a

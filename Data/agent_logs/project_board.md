@@ -1,15 +1,24 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-09-04 — v3.1.1 and the official MCP Registry record are published; TASK-151's
-Glama container is ready; authenticated Glama submission and PR #13608's badge remain pending._
+_Last updated: 2026-09-06 — TASK-152 cross-platform core E2E passes locally; Glama is approved;
+hosted E2E evidence, full Managed gates, exact Glama path, and PR #13608's badge remain pending._
+
+**[2026-09-06] TASK-152 — Automated Windows/Linux no-send E2E.** Added isolated native Windows and
+POSIX scripts that build the current Go client, start a lightweight daemon with outbound delivery
+disabled, create a real `DEMO-201` commit, wait for SQLite observation, assert MCP context, and clean
+temporary state. A Windows launcher runs native Windows plus WSL, falling back to a disposable Go
+Docker image when WSL lacks Go. Native Windows and Linux-container executions passed locally; the
+new Windows/Ubuntu workflow remains working-tree source until committed and run in CI. The full
+Managed PostgreSQL/Python/LLM/admin/media acceptance gates remain separate and the development hold
+stays active.
 
 **[2026-09-04] TASK-151 — Glama listing readiness.** PR #13608's automated follow-up now requires a
 working Glama listing and score badge. Added a dedicated root `Dockerfile.mcp` that builds the Go
 client and starts `devtrack mcp serve` over stdio with a disposable SQLite database; it neither
 starts the unrelated Python HTTP backend nor requires PostgreSQL or secrets. Client CI builds the
 container and verifies initialization, discovery of all six read-only tools, and shutdown. Local
-protocol preflight passed. Glama submission requires the owner's OAuth session; after all Glama
-checks pass, update PR #13608 with the exact listing path's badge.
+protocol preflight passed. Glama's admins approved the submitted server on 2026-09-06. Record the
+exact approved listing path and update PR #13608 with that path's badge.
 
 **[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
 (PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at

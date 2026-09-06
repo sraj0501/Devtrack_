@@ -4,11 +4,14 @@
 > validation, screenshot capture, and launch-video recording. During this hold, make only changes
 > that fix reproduced installation, runtime, safety, or demo blockers. The live checklist and exit
 > criteria are in [END_TO_END_VALIDATION.md](END_TO_END_VALIDATION.md).
+> The credential-free client/daemon/SQLite/MCP lane now passes locally on native Windows and Linux
+> through Docker. This portability evidence does not close the clean-install, full Managed Linux,
+> PostgreSQL admin-review, or media gates.
 >
-> Current external gate (2026-09-04): submit `Dockerfile.mcp` with the repository through Glama,
-> wait for its startup/introspection checks, then add the resulting score badge to
-> `punkpeye/awesome-mcp-servers` PR #13608. The container and CI preflight are complete; Glama OAuth
-> remains an owner action.
+> Current external gate (updated 2026-09-06): Glama's admins approved the submitted server. Record
+> the exact approved listing path, then add that path's score badge to
+> `punkpeye/awesome-mcp-servers` PR #13608. The badge update remains pending until the path is
+> captured; the Glama approval itself is complete.
 
 _Drafted 2026-07-02 from strategy discussion. Companion to `PRODUCT_BIBLE.md` — this
 document does not change direction; it changes emphasis and sequencing. The Bible
@@ -176,6 +179,8 @@ from someone unknown means a real install survived setup.
 | TASK-148 | **DONE (`c1329f7`)** — MCP handshake/tool metadata hardening plus reproducible, validated per-platform MCPB release packaging | MCP distribution |
 | TASK-149 | **DONE (PR #257)** — synchronize README, wiki, durable memory, registry evidence, and post-TASK-148 release gates | Documentation |
 | TASK-150 | **RELEASE DONE; EXTERNAL FOLLOW-UP** — v3.1.1 and official registry published; awesome-mcp-servers PR #13608 checks pass; remaining forms/posts need authenticated owner sessions/contact details | Release |
+| TASK-151 | **GLAMA APPROVED; PR FOLLOW-UP** — Glama-compatible stdio image and introspection CI complete; admin approval received, exact listing path and PR #13608 badge update pending | MCP distribution |
+| TASK-152 | **LOCAL VALIDATION DONE; CI PENDING** — isolated no-send Windows/Linux client E2E scripts plus noninteractive full-demo flags; commit and hosted workflow evidence pending | Validation |
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL
@@ -189,7 +194,7 @@ from someone unknown means a real install survived setup.
 > Windows SQLite behavior, and the HTTP contract. TASK-148 added MCPB build readiness without
 > publishing a release or registry entry. TASK-149 synchronized the documentation surfaces after
 > that work. TASK-150 subsequently shipped v3.1.0, the privacy-compliance v3.1.1 patch, and the official registry record. The next unused
-> ID is TASK-151.
+> ID is TASK-153.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to

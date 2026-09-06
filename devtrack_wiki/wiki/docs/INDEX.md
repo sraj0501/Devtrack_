@@ -17,7 +17,7 @@ New to DevTrack? Read these in order:
 
 - [Configuration Reference](CONFIGURATION.md) — all `.env` variables explained
 - [LLM Guide](LLM_GUIDE.md) — configure Ollama, OpenAI, Anthropic, Groq
-- [Verification Guide](VERIFICATION.md) — confirm everything is set up correctly
+- [Verification Guide](VERIFICATION.md) — run isolated Windows/Linux E2E checks and the full Managed acceptance workflow
 
 ---
 

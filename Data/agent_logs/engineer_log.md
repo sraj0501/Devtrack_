@@ -1,5 +1,26 @@
 # DevTrack Engineer Log
 
+### [2026-09-06] TASK-152 — automated Windows/Linux no-send E2E
+
+**Notes**:
+- Added isolated PowerShell and POSIX lanes for a real commit → daemon → SQLite → MCP flow with
+  outbound integrations disabled and temporary state cleaned after the run.
+- Added a Windows launcher that uses WSL when Go is present and otherwise runs the Linux lane in a
+  disposable `golang:1.24-bookworm` container without modifying the WSL distribution.
+- Native Windows and Linux-container runs passed locally. PowerShell parsing, POSIX shell syntax,
+  workflow YAML parsing, whitespace checks, and credential scans passed.
+- Added noninteractive flags to the full no-send demo, but did not run its Managed
+  PostgreSQL/Python/LLM path during this task. Clean Windows, full Managed Linux, admin review, and
+  privacy-reviewed media remain release gates.
+
+## Task Summary — TASK-152
+
+- Local cross-platform core lane: complete
+- Hosted Windows/Ubuntu workflow: pending commit and CI evidence
+- Full Managed release gates: still pending
+
+---
+
 ### [2026-09-04] TASK-151 — Glama container and awesome-list follow-up
 
 **Notes**:
@@ -10,13 +31,14 @@
   and shutdown through the container's stdin/stdout boundary.
 - Local preflight cross-compiled the Linux binary and exercised the same protocol sequence with a
   native build; initialization, six-tool discovery, read-only annotations, and shutdown passed.
-- Glama submission remains an authenticated owner action. After its checks pass, PR #13608 must use
-  the exact path Glama assigns rather than a guessed badge URL.
+- Glama's admins approved the submitted server on 2026-09-06. PR #13608 must use the exact path
+  Glama assigns rather than a guessed badge URL.
 
 ## Task Summary — TASK-151
 
 - Container/build readiness: complete
-- Glama listing and PR badge: pending owner-authenticated Glama submission
+- Glama approval: complete
+- Exact listing path and PR badge: pending follow-up
 - Public release changed: no; v3.1.1 remains latest
 
 ---
