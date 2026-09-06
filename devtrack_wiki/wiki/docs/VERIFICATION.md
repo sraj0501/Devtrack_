@@ -52,9 +52,10 @@ sh ./scripts/e2e.sh
 The test builds the current client into isolated temporary paths, starts the lightweight daemon,
 creates a real `DEMO-201` commit, waits for local SQLite observation, and verifies that MCP exposes
 the ticket and a non-zero local-day commit count. PM delivery, telemetry, email, server-event sync,
-and automatic approvals stay disabled. GitHub Actions is configured to run the same scripts on
-native Windows and Ubuntu. Local native-Windows and Linux-container runs passed on 2026-09-06; that
-evidence does not imply the uncommitted workflow has already passed on GitHub-hosted runners.
+and automatic approvals stay disabled. GitHub Actions runs the same scripts on native Windows and
+Ubuntu. Local native-Windows and Linux-container runs passed on 2026-09-06. End-to-end run
+`34045590767` then passed on both GitHub-hosted platforms for `dev` commit `ed0f571`; the general CI
+run `34045590760` and wiki CI run `34045590730` passed for the same commit.
 
 ## Full Managed acceptance workflow
 

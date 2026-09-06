@@ -25,10 +25,11 @@ Roadmap feature work is paused while clean-machine installation, full Linux Mana
 admin-queue review, and privacy-reviewed screenshot/video capture are completed. The Windows
 local-user Managed workflow has passed twice with real commit detection, `DEMO-101` mapping,
 confidence-bearing staging, EOD generation, six-tool MCP introspection, and disposable-workspace
-cleanup. A separate credential-free core lane has passed locally on native Windows and in a Linux
-Go container, covering a real `DEMO-201` commit through the daemon, SQLite, and MCP. The associated
-Windows/Ubuntu CI workflow is unreleased source work and has not yet been claimed as a hosted-runner
-pass. This evidence does not mean the remaining full Managed release gates are complete.
+cleanup. A separate credential-free core lane has passed locally on native Windows, in a Linux Go
+container, and on GitHub-hosted Windows and Ubuntu runners, covering a real `DEMO-201` commit through
+the daemon, SQLite, and MCP. The workflow is committed on `dev`; End-to-end run `34045590767` passed
+for commit `ed0f571`. This evidence does not mean the remaining full Managed release gates are
+complete.
 
 ## Platform rollout
 

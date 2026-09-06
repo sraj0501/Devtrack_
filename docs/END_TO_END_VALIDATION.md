@@ -48,6 +48,7 @@ Credentials and full connection URLs are intentionally not recorded here.
 | Disposable workspace cleanup | Pass twice | Only the real `Devtrack_` workspace remains after each run |
 | Isolated native Windows core lane | Pass locally | Real `DEMO-201` commit observed by the daemon and exposed through MCP; isolated state cleaned |
 | Isolated Linux core lane | Pass locally in Docker | Same script passed in disposable `golang:1.24-bookworm`; the local WSL distribution did not require modification |
+| Hosted Windows/Ubuntu core lane | Pass | GitHub Actions End-to-end run `34045590767` passed both OS jobs at `ed0f571`; CI `34045590760` and wiki CI `34045590730` also passed for the commit |
 
 ## Automated cross-platform lane
 
@@ -84,7 +85,7 @@ sh ./scripts/e2e.sh
 ```
 
 The included GitHub Actions workflow runs the same scripts on native `windows-latest` and
-`ubuntu-latest` runners once merged. This
+`ubuntu-latest` runners. Both jobs passed in End-to-end run `34045590767` at `ed0f571`. This
 lane covers the cross-platform client/daemon/SQLite/MCP path. It does not replace the Managed-mode
 acceptance gate below: PostgreSQL migrations, the real Python server, LLM generation, embedded admin
 review, and media capture still require the full no-send demo and their existing focused tests.

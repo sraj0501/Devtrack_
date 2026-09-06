@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-09-06_ | public v3.1.1 | official MCP Registry active/latest | Windows and Linux core E2E passed locally | validation hold active | GitHub is canonical
+_Last updated: 2026-09-06_ | public v3.1.1 | official MCP Registry active/latest | Windows and Linux core E2E passed locally and in hosted CI | validation hold active | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 
@@ -11,7 +11,7 @@ DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 
 ## Completed — 2026-09-06
 - A deterministic, credential-free no-send E2E lane was prepared for the Go-native boundary. Native Windows and Linux in a disposable `golang:1.24-bookworm` container both built the current client, observed a real `DEMO-201` commit, exposed it through `mcp test`, and cleaned their isolated state successfully.
-- `scripts/e2e-local.ps1` runs Windows and then WSL Linux, falling back to Docker when the WSL distribution has no Go toolchain. `.github/workflows/e2e.yml` applies the same core test to Windows and Ubuntu. These working-tree changes are locally validated but are not release evidence until committed and green in CI.
+- `scripts/e2e-local.ps1` runs Windows and then WSL Linux, falling back to Docker when the WSL distribution has no Go toolchain. `.github/workflows/e2e.yml` applies the same core test to Windows and Ubuntu. The scripts and workflow are committed on `origin/dev` at `ed0f571`; GitHub Actions run `34045590767` passed both hosted operating-system lanes. CI run `34045590760` and wiki CI run `34045590730` also passed for the same commit.
 - The full environment-dependent demo can now skip recording pauses with `scripts/demo.ps1 -Automated` or `scripts/demo.sh --automated`. This does not close the clean-Windows, full Managed Linux, PostgreSQL admin-review, or privacy-reviewed media gates; the development hold remains active.
 
 ## Completed — 2026-09-04

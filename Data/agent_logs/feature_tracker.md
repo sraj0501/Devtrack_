@@ -1,12 +1,12 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-06 (cross-platform core E2E passes locally; Glama approved; full gates pending)_
+_Last updated: 2026-09-06 (cross-platform core E2E passes locally and in hosted CI; Glama approved; full gates pending)_
 
 ---
 
 ## 2026-09-06 — TASK-152: Automated Windows/Linux no-send E2E
 **Phase**: Validation hold / cross-platform reliability
-**Status**: LOCAL WINDOWS + LINUX PASS; HOSTED CI PENDING
+**Status**: COMPLETE — LOCAL WINDOWS + LINUX PASS; HOSTED WINDOWS + UBUNTU PASS
 **Files**: Windows/POSIX E2E scripts, local WSL/Docker launcher, Windows/Ubuntu workflow, demo
 automation flags, README, validation docs, wiki, and durable memory
 **Vision check**: PASS
@@ -14,8 +14,9 @@ automation flags, README, validation docs, wiki, and durable memory
 lightweight daemon, SQLite, and MCP with PM delivery, telemetry, email, server-event sync, and
 automatic approval disabled. Native Windows and disposable Linux-container runs passed and cleaned
 their state. This does not exercise the Managed PostgreSQL/Python/LLM/admin boundary; those gates
-remain on hold. The workflow and scripts are locally validated working-tree changes until committed
-and exercised by hosted runners.
+remain on hold. The workflow and scripts are committed on `origin/dev` at `ed0f571`. End-to-end
+run `34045590767` passed on hosted Windows and Ubuntu; CI `34045590760` and wiki CI `34045590730`
+also passed for that commit.
 
 ---
 

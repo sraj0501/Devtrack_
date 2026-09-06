@@ -1,16 +1,17 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-09-06 — TASK-152 cross-platform core E2E passes locally; Glama is approved;
-hosted E2E evidence, full Managed gates, exact Glama path, and PR #13608's badge remain pending._
+_Last updated: 2026-09-06 — TASK-152 cross-platform core E2E passes locally and in hosted CI;
+Glama is approved; full Managed gates, exact Glama path, and PR #13608's badge remain pending._
 
 **[2026-09-06] TASK-152 — Automated Windows/Linux no-send E2E.** Added isolated native Windows and
 POSIX scripts that build the current Go client, start a lightweight daemon with outbound delivery
 disabled, create a real `DEMO-201` commit, wait for SQLite observation, assert MCP context, and clean
 temporary state. A Windows launcher runs native Windows plus WSL, falling back to a disposable Go
-Docker image when WSL lacks Go. Native Windows and Linux-container executions passed locally; the
-new Windows/Ubuntu workflow remains working-tree source until committed and run in CI. The full
-Managed PostgreSQL/Python/LLM/admin/media acceptance gates remain separate and the development hold
-stays active.
+Docker image when WSL lacks Go. Native Windows and Linux-container executions passed locally. The
+full Managed PostgreSQL/Python/LLM/admin/media acceptance gates remain separate and the development
+hold stays active. The automation is committed on `origin/dev` at `ed0f571`; End-to-end run
+`34045590767` passed its Windows and Ubuntu jobs, and CI `34045590760` plus wiki CI `34045590730`
+passed for the same commit.
 
 **[2026-09-04] TASK-151 — Glama listing readiness.** PR #13608's automated follow-up now requires a
 working Glama listing and score badge. Added a dedicated root `Dockerfile.mcp` that builds the Go

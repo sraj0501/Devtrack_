@@ -5,7 +5,8 @@
 > that fix reproduced installation, runtime, safety, or demo blockers. The live checklist and exit
 > criteria are in [END_TO_END_VALIDATION.md](END_TO_END_VALIDATION.md).
 > The credential-free client/daemon/SQLite/MCP lane now passes locally on native Windows and Linux
-> through Docker. This portability evidence does not close the clean-install, full Managed Linux,
+> through Docker and in hosted Windows/Ubuntu CI. This portability evidence does not close the
+> clean-install, full Managed Linux,
 > PostgreSQL admin-review, or media gates.
 >
 > Current external gate (updated 2026-09-06): Glama's admins approved the submitted server. Record
@@ -180,7 +181,7 @@ from someone unknown means a real install survived setup.
 | TASK-149 | **DONE (PR #257)** — synchronize README, wiki, durable memory, registry evidence, and post-TASK-148 release gates | Documentation |
 | TASK-150 | **RELEASE DONE; EXTERNAL FOLLOW-UP** — v3.1.1 and official registry published; awesome-mcp-servers PR #13608 checks pass; remaining forms/posts need authenticated owner sessions/contact details | Release |
 | TASK-151 | **GLAMA APPROVED; PR FOLLOW-UP** — Glama-compatible stdio image and introspection CI complete; admin approval received, exact listing path and PR #13608 badge update pending | MCP distribution |
-| TASK-152 | **LOCAL VALIDATION DONE; CI PENDING** — isolated no-send Windows/Linux client E2E scripts plus noninteractive full-demo flags; commit and hosted workflow evidence pending | Validation |
+| TASK-152 | **COMPLETE** — isolated no-send Windows/Linux client E2E scripts plus noninteractive full-demo flags are committed at `ed0f571`; hosted End-to-end run `34045590767` passed both Windows and Ubuntu | Validation |
 
 > **Numbering:** this table originally proposed TASK-110–117, but the project board has since
 > issued TASK-110/111 (wiki + docs reconciliation, shipped) and TASK-112–116 (the PostgreSQL

@@ -9,6 +9,9 @@
   disposable `golang:1.24-bookworm` container without modifying the WSL distribution.
 - Native Windows and Linux-container runs passed locally. PowerShell parsing, POSIX shell syntax,
   workflow YAML parsing, whitespace checks, and credential scans passed.
+- The automation was committed on `origin/dev` at `ed0f571`. End-to-end run `34045590767` passed
+  on hosted Windows and Ubuntu; CI `34045590760` and wiki CI `34045590730` passed for the same
+  commit.
 - Added noninteractive flags to the full no-send demo, but did not run its Managed
   PostgreSQL/Python/LLM path during this task. Clean Windows, full Managed Linux, admin review, and
   privacy-reviewed media remain release gates.
@@ -16,7 +19,7 @@
 ## Task Summary — TASK-152
 
 - Local cross-platform core lane: complete
-- Hosted Windows/Ubuntu workflow: pending commit and CI evidence
+- Hosted Windows/Ubuntu workflow: complete; run `34045590767` passed both jobs
 - Full Managed release gates: still pending
 
 ---

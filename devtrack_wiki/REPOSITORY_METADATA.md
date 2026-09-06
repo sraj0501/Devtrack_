@@ -8,7 +8,7 @@ change the repository or publish anything.
 > Never write a standup again. DevTrack turns Git commits into staged ticket updates and end-of-day reports, local-first and in your voice.
 
 Length: 137 characters. The copy leads with the released user outcome and names the trust
-boundary (`staged`) without advertising the unreleased MCP command.
+boundary (`staged`) without overloading the short description with protocol details.
 
 ## Topics
 
@@ -38,9 +38,10 @@ lowercase and hyphenated for GitHub compatibility.
 
 ## Review boundary
 
-- Latest public release remains `v3.0.10`; TASK-118–123 and TASK-144 are unreleased work on `dev`.
-- `mcp` and `model-context-protocol` are repository-code topics, not a claim that the
-  `v3.0.10` release binary contains `devtrack mcp`; defer MCP description copy until a
-  release containing that command is published.
+- Latest public release is `v3.1.1`; it includes `devtrack mcp`, the six read-only tools, and five
+  native MCPB bundles with privacy declarations.
+- `mcp` and `model-context-protocol` describe released repository capabilities. Current `dev` also
+  carries the credential-free Windows/Linux E2E lane; that source-only addition does not imply a
+  newer public release.
 - No usage, time-saved, customer-count, or adoption claim is included.
 - Applying the description or topics requires separate explicit authorization.
