@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-09-06_ | public v3.1.1 | official MCP Registry active/latest | Windows and Linux core E2E passed locally and in hosted CI | validation hold active | GitHub is canonical
+_Last updated: 2026-09-07_ | public v3.1.1 | official MCP Registry active/latest | Windows and Linux core E2E passed locally and in hosted CI | full Managed E2E automation planned | validation hold active | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 
@@ -13,6 +13,10 @@ DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 - A deterministic, credential-free no-send E2E lane was prepared for the Go-native boundary. Native Windows and Linux in a disposable `golang:1.24-bookworm` container both built the current client, observed a real `DEMO-201` commit, exposed it through `mcp test`, and cleaned their isolated state successfully.
 - `scripts/e2e-local.ps1` runs Windows and then WSL Linux, falling back to Docker when the WSL distribution has no Go toolchain. `.github/workflows/e2e.yml` applies the same core test to Windows and Ubuntu. The scripts and workflow are committed on `origin/dev` at `ed0f571`; GitHub Actions run `34045590767` passed both hosted operating-system lanes. CI run `34045590760` and wiki CI run `34045590730` also passed for the same commit.
 - The full environment-dependent demo can now skip recording pauses with `scripts/demo.ps1 -Automated` or `scripts/demo.sh --automated`. This does not close the clean-Windows, full Managed Linux, PostgreSQL admin-review, or privacy-reviewed media gates; the development hold remains active.
+
+## Planned — 2026-09-07
+- `docs/MANAGED_E2E_AUTOMATION_PLAN.md` is the approved next-step design for full product automation beyond the existing client/daemon/SQLite/MCP lane. The canonical journey covers isolated Managed setup, PostgreSQL, Python and Go readiness, local Ollama, a real ticket-linked commit, server-backed staging, admin-browser review, voice/EOD generation, MCP consistency, evidence capture, and guarded cleanup.
+- Implementation order is non-interactive setup, native Windows Safe runner, Playwright admin coverage, local mock approval/delivery, WSL/POSIX reuse, then validation on dedicated Linux and macOS machines. The default Safe profile must reject rather than deliver actions; a separate LocalIntegration profile may approve only to disposable local receivers. No implementation has been made yet.
 
 ## Completed — 2026-09-04
 - TASK-150 qualified five native MCPB targets, merged PR #259 to `main` at `186036f`, published v3.1.0 with 12 release assets, independently verified all 10 payload hashes, and published `io.github.sraj0501/devtrack` to the official MCP Registry.
@@ -37,6 +41,7 @@ DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
 
 ## Project State
 - [project_current_state.md](project_current_state.md) — release boundary, completed arcs, and next release gates
+- [project_managed_e2e_automation.md](project_managed_e2e_automation.md) — approved full Managed automation scope, safety profiles, platform sequence, and completion boundary
 - [project_postgres_backend.md](project_postgres_backend.md) — required server storage and opt-in client sync
 - [project_mcp_distribution.md](project_mcp_distribution.md) — local MCP boundary, MCPB packaging, and remaining release gates
 
