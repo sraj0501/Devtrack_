@@ -44,6 +44,56 @@ from backend.admin.user_manager import (
 
 router = APIRouter()
 
+
+def _queue_csrf(request: Request, action_id: int) -> str:
+    import hashlib
+    import hmac
+    session = request.cookies.get(COOKIE_NAME, "")
+    return hmac.new(session.encode(), f"queue-reject:{action_id}".encode(), hashlib.sha256).hexdigest()
+
+
+@router.get("/queue", response_class=HTMLResponse)
+def queue_page(request: Request, current_user: str = Depends(require_auth)):
+    from backend.queue_gateway import QueueGateway
+    return templates.TemplateResponse("queue.html", _ctx(
+        request, current_user, "queue", actions=QueueGateway().list_pending(),
+    ))
+
+
+@router.get("/queue/{action_id}", response_class=HTMLResponse)
+def queue_detail(request: Request, action_id: int, current_user: str = Depends(require_auth)):
+    import json
+    from backend.queue_gateway import QueueGateway
+    action = QueueGateway().get_action(action_id)
+    if action is None:
+        raise HTTPException(404, "Action not found")
+    try:
+        payload = json.loads(action["payload"])
+    except (ValueError, TypeError):
+        payload = action["payload"]
+    summary = ""
+    if isinstance(payload, dict):
+        summary = payload.get("comment") or payload.get("description") or payload.get("narrative") or ""
+    return templates.TemplateResponse("queue_detail.html", _ctx(
+        request, current_user, "queue", action=action, csrf=_queue_csrf(request, action_id),
+        payload_display=json.dumps(payload, indent=2, ensure_ascii=False), summary=summary,
+    ))
+
+
+@router.post("/queue/{action_id}/reject")
+def queue_reject(request: Request, action_id: int, csrf: str = Form(""),
+                 current_user: str = Depends(require_auth)):
+    import hmac
+    from backend.queue_gateway import QueueGateway
+    if not hmac.compare_digest(csrf, _queue_csrf(request, action_id)):
+        raise HTTPException(403, "Invalid review token; reload the action page")
+    gateway = QueueGateway()
+    if gateway.get_action(action_id) is None:
+        raise HTTPException(404, "Action not found")
+    if not gateway.reject(action_id, current_user, request.client.host if request.client else ""):
+        raise HTTPException(409, "Action is no longer pending")
+    return RedirectResponse(f"/admin/queue/{action_id}", status_code=303)
+
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 

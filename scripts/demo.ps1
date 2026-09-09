@@ -6,7 +6,10 @@ param(
     [ValidateRange(1, 3600)]
     [int]$StageTimeoutSeconds = 120,
 
-    [switch]$Automated
+    [switch]$Automated,
+
+    # Private machine-readable evidence for the admin browser acceptance runner.
+    [string]$EvidencePath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,7 +87,7 @@ if ($Mode -eq 'Check') {
 
 $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $demoRoot = Join-Path $tempBase ("devtrack-demo-{0}" -f [guid]::NewGuid().ToString('N'))
-$demoName = "devtrack-demo-$PID"
+$demoName = "devtrack-demo-$([guid]::NewGuid().ToString('N'))"
 $workspaceAdded = $false
 $previousBypass = $env:GIT_NO_DEVTRACK
 
@@ -134,10 +137,21 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw 'Could not resolve the demo commit hash.'
     }
+    if ($EvidencePath) {
+        @{
+            workspace = $demoName
+            ticket = 'DEMO-101'
+            commit = $demoHash
+        } | ConvertTo-Json | Set-Content -LiteralPath $EvidencePath -Encoding utf8
+    }
 
     Wait-ForScene 'Scene 3/5 - real detection and queue-staging evidence from daemon logs'
     $matched = $false
-    for ($attempt = 0; $attempt -lt $StageTimeoutSeconds; $attempt++) {
+    $stageDeadline = [DateTime]::UtcNow.AddSeconds($StageTimeoutSeconds)
+    while ([DateTime]::UtcNow -lt $stageDeadline) {
+        if ($EvidencePath -and (Test-Path -LiteralPath "$EvidencePath.cancel")) {
+            throw 'Admin browser review failed; cancelling the demo.'
+        }
         $logOutput = @(Invoke-Captured devtrack @('logs'))
         $current = @($logOutput | Where-Object { $_ -match $stagingPattern } | Sort-Object -Unique)
         $newStaging = @($current | Where-Object { $_ -notin $baseline })
@@ -154,15 +168,28 @@ try {
     }
     Invoke-Checked devtrack queue list
 
+    if ($EvidencePath -and (Test-Path -LiteralPath "$EvidencePath.cancel")) {
+        throw 'Admin browser review failed; cancelling the demo.'
+    }
+
     Wait-ForScene 'Scene 4/5 - on-demand EOD narrative; no email and no approval'
     $eodOutput = (Invoke-Captured devtrack @('eod') | Out-String)
     Write-Host $eodOutput.TrimEnd()
     if ($eodOutput -notmatch 'Queued as action [0-9]+') {
         throw 'EOD generation returned without proof that the report was staged.'
     }
+    $eodActionId = [int]([regex]::Match($eodOutput, 'Queued as action ([0-9]+)').Groups[1].Value)
 
     Wait-ForScene "Scene 5/5 - MCP context after today's real commit"
     Invoke-Checked devtrack mcp test
+    if ($EvidencePath) {
+        @{
+            workspace = $demoName
+            ticket = 'DEMO-101'
+            commit = $demoHash
+            eod_action_id = $eodActionId
+        } | ConvertTo-Json | Set-Content -LiteralPath $EvidencePath -Encoding utf8
+    }
     Write-Host "`nDemo complete. The disposable PM-none workspace will now be removed."
 }
 finally {

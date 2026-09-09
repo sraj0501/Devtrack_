@@ -126,6 +126,10 @@ For the automated, isolated no-send client lane on native Windows plus WSL Linux
 .\scripts\e2e-local.ps1
 ```
 
+For Windows browser acceptance of real server-backed action review, rejection, audit,
+and EOD visibility, see [Windows admin acceptance](docs/WINDOWS_ADMIN_ACCEPTANCE.md).
+It uses an existing Managed environment and keeps screenshots/traces private.
+
 If local PowerShell policy blocks repository scripts, use a process-scoped invocation without
 changing the machine policy:
 

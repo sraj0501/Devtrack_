@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Pending actions — DevTrack Admin{% endblock %}
+{% block page_title %}Pending actions{% endblock %}
+{% block content %}
+<div class="card">
+  <p>Review actions staged on this server before delivery.</p>
+  <table>
+    <thead><tr><th>Action</th><th>Type</th><th>Target</th><th>Workspace</th><th>Confidence</th></tr></thead>
+    <tbody>
+    {% for action in actions %}
+      <tr data-action-id="{{ action.id }}">
+        <td><a href="/admin/queue/{{ action.id }}">Review #{{ action.id }}</a></td>
+        <td>{{ action.action_type }}</td><td>{{ action.target }}</td>
+        <td>{{ action.workspace }}</td><td>{{ action.confidence }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5">No pending actions.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

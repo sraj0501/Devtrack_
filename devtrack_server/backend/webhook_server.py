@@ -1427,6 +1427,9 @@ async def http_queue_execute(
         if action is None:
             raise HTTPException(status_code=404, detail=f"Action {action_id} not found")
 
+        if not gw.claim(int(action_id)):
+            raise HTTPException(status_code=409, detail="Action is no longer pending")
+
         processor = TriggerProcessor.get()
         result = await asyncio.to_thread(processor._execute_pm_action, action)
 

@@ -49,6 +49,7 @@ Credentials and full connection URLs are intentionally not recorded here.
 | Isolated native Windows core lane | Pass locally | Real `DEMO-201` commit observed by the daemon and exposed through MCP; isolated state cleaned |
 | Isolated Linux core lane | Pass locally in Docker | Same script passed in disposable `golang:1.24-bookworm`; the local WSL distribution did not require modification |
 | Hosted Windows/Ubuntu core lane | Pass | GitHub Actions End-to-end run `34045590767` passed both OS jobs at `ed0f571`; CI `34045590760` and wiki CI `34045590730` also passed for the commit |
+| Windows admin browser review | Pass on 2026-09-09 | `scripts/e2e-admin.ps1`: real commit `5947fc5c7986`, action 17 rejected/audited at confidence 0.95, real EOD action 18 visible; MCP passed and disposable workspace cleaned. Source admin UI against existing Managed PostgreSQL; private artifacts retained locally. |
 
 ## Automated cross-platform lane
 
@@ -107,6 +108,12 @@ never approves or delivers the staged actions.
 
 ### Reproduced blockers
 
+Windows admin review work on 2026-09-09 found that the admin console had no queue list,
+detail, or rejection route. The validation plan had assumed that surface existed. The
+source now includes authenticated PostgreSQL queue review and audited rejection, plus a
+[Windows browser acceptance runner](WINDOWS_ADMIN_ACCEPTANCE.md). This runner uses the
+existing Managed installation; it does not close the clean-install or Linux gates.
+
 `devtrack mcp test` panicked on a fresh checkout because opening the default database read mandatory
 daemon configuration before its advertised fallback could run. The validation fix makes the command
 use an explicitly selected database, the configured database, or a disposable SQLite database when
@@ -138,8 +145,9 @@ The Windows local-user gate passed twice on 2026-09-04. Remaining release-level 
 2. Repeat the full Managed `scripts/demo.sh --check` and `scripts/demo.sh --record` flow on Linux or
    CI. The isolated Linux core lane has passed, but it intentionally excludes PostgreSQL, Python,
    LLM generation, and server-backed staging.
-3. Review server-backed queue actions in the admin UI; the local `devtrack queue list` intentionally
-   does not mirror PostgreSQL actions when continuous event sync is disabled.
+3. **Windows review passed on 2026-09-09** through the source admin UI, including rejection and audit.
+   Repeat against packaged builds during release qualification. The local `devtrack queue list`
+   intentionally does not mirror PostgreSQL actions when continuous event sync is disabled.
 4. Capture the approved screenshot/video set from a privacy-reviewed terminal and browser session.
 
 ## Capture list

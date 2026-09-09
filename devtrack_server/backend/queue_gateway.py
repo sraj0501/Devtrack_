@@ -183,6 +183,35 @@ class QueueGateway:
                 .values(status="posted", acted_at=acted_at, acted_by="auto")
             )
 
+    def claim(self, action_id: int) -> bool:
+        """Atomically reserve a pending action so rejection cannot race dispatch."""
+        with _init().begin() as conn:
+            result = conn.execute(pending_actions_table.update().where(
+                pending_actions_table.c.id == action_id,
+                pending_actions_table.c.status == "pending",
+            ).values(status="executing"))
+            return result.rowcount == 1
+
+    def reject(self, action_id: int, username: str, ip: str = "") -> bool:
+        """Reject only pending rows and write the audit record in one transaction."""
+        from backend.admin.schema import audit_log_table
+
+        engine = _init()
+        ensure_tables(engine, tables=[audit_log_table])
+        now = _now_str()
+        with engine.begin() as conn:
+            result = conn.execute(pending_actions_table.update().where(
+                pending_actions_table.c.id == action_id,
+                pending_actions_table.c.status == "pending",
+            ).values(status="rejected", acted_at=now, acted_by=username))
+            if result.rowcount != 1:
+                return False
+            conn.execute(audit_log_table.insert().values(
+                username=username, action="queue_reject", detail=f"action_id={action_id}",
+                ip=ip, ts=now,
+            ))
+            return True
+
     def mark_failed(self, action_id: int, error: str) -> None:
         """Mark *action_id* as failed with an error message.
 

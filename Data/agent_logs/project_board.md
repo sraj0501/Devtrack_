@@ -1,7 +1,21 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-09-06 — TASK-152 cross-platform core E2E passes locally and in hosted CI;
-Glama is approved; full Managed gates, exact Glama path, and PR #13608's badge remain pending._
+_Last updated: 2026-09-09 — TASK-153 Windows admin browser acceptance passes locally;
+clean-install, Linux Managed, packaged qualification, media, and listing follow-ups remain._
+
+**[2026-09-09] TASK-153 — Windows admin browser acceptance (complete).**
+Added the missing authenticated server queue list/detail/rejection UI, transactional audit,
+and an atomic execution claim that prevents dispatch after rejection. Added Playwright via
+an optional development group and `scripts/e2e-admin.ps1`, using the existing Managed
+environment and a temporary source admin server. The real Windows flow passed: commit
+`5947fc5c7986`, action 17 rejected at confidence 0.95, EOD action 18 visible, MCP passing,
+and disposable workspace cleanup. 134 focused tests passed. Private browser artifacts stay
+ignored. Linux, clean installation, mock receiver approval, packaged qualification, and
+public media are deferred. Details: `docs/WINDOWS_ADMIN_ACCEPTANCE.md`. Next unused ID: TASK-154.
+Visible showcase and saved-result inspection modes now leave the real prototype open
+for the owner. The browser follows the window size; responsive admin layout checks pass
+across four pages at five widths (375–1920px). The local Managed webhook service was
+restarted after inspection exposed that it was stopped; webhook and Ollama health return 200.
 
 **[2026-09-06] TASK-152 — Automated Windows/Linux no-send E2E.** Added isolated native Windows and
 POSIX scripts that build the current Go client, start a lightweight daemon with outbound delivery

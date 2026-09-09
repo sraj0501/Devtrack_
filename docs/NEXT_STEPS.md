@@ -195,7 +195,9 @@ from someone unknown means a real install survived setup.
 > Windows SQLite behavior, and the HTTP contract. TASK-148 added MCPB build readiness without
 > publishing a release or registry entry. TASK-149 synchronized the documentation surfaces after
 > that work. TASK-150 subsequently shipped v3.1.0, the privacy-compliance v3.1.1 patch, and the official registry record. The next unused
-> ID is TASK-153.
+> ID is TASK-154. TASK-153 added Windows admin browser acceptance and the missing server-backed
+> review/rejection UI; its real Managed-environment run passed on 2026-09-09. Clean-install,
+> Linux, packaged-build, and public-media gates remain open.
 
 > **TASK-109 (repo cleanup) is done** — it took the 9c README overhaul early: the three-layer
 > message (hook / differentiator / trust) now leads the README, and telemetry was flipped to
