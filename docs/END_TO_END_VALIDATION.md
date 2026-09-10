@@ -1,8 +1,8 @@
-# End-to-end validation hold
+# End-to-end validation record
 
-DevTrack feature development is paused while the product is exercised as a real user would use it.
-Only changes that fix a reproduced installation, runtime, safety, or demo blocker belong in this
-period. Do not resume roadmap feature work until the validation exit criteria below are met.
+The clean Windows installation and full Managed Linux journeys were confirmed complete by the
+owner on 2026-09-10. DevTrack Sage planning may proceed. This record remains open only for packaged
+release qualification and privacy-reviewed media capture.
 
 ## Rules
 
@@ -50,6 +50,8 @@ Credentials and full connection URLs are intentionally not recorded here.
 | Isolated Linux core lane | Pass locally in Docker | Same script passed in disposable `golang:1.24-bookworm`; the local WSL distribution did not require modification |
 | Hosted Windows/Ubuntu core lane | Pass | GitHub Actions End-to-end run `34045590767` passed both OS jobs at `ed0f571`; CI `34045590760` and wiki CI `34045590730` also passed for the commit |
 | Windows admin browser review | Pass on 2026-09-09 | `scripts/e2e-admin.ps1`: real commit `5947fc5c7986`, action 17 rejected/audited at confidence 0.95, real EOD action 18 visible; MCP passed and disposable workspace cleaned. Source admin UI against existing Managed PostgreSQL; private artifacts retained locally. |
+| Clean Windows installation | Complete — owner-confirmed 2026-09-10 | Completed outside GitHub Actions; no run ID was supplied. Do not re-list as pending. |
+| Full Managed Linux validation | Complete — owner-confirmed 2026-09-10 | Completed outside GitHub Actions; no run ID was supplied. Do not confuse this with the earlier isolated core lane. |
 
 ## Automated cross-platform lane
 
@@ -136,19 +138,14 @@ After a disposable demo workspace was removed, MCP could still present its newes
 as active. Active-context selection now requires an existing, enabled configured workspace while
 preserving those commits in the daily history.
 
-## Remaining end-to-end gate
+## Remaining release qualification
 
-The Windows local-user gate passed twice on 2026-09-04. Remaining release-level checks are:
+The environment-validation gates are complete. Remaining release-level checks are:
 
-1. Repeat the supported installation path on a clean Windows account or machine without manual
-   dependency preparation.
-2. Repeat the full Managed `scripts/demo.sh --check` and `scripts/demo.sh --record` flow on Linux or
-   CI. The isolated Linux core lane has passed, but it intentionally excludes PostgreSQL, Python,
-   LLM generation, and server-backed staging.
-3. **Windows review passed on 2026-09-09** through the source admin UI, including rejection and audit.
+1. **Windows review passed on 2026-09-09** through the source admin UI, including rejection and audit.
    Repeat against packaged builds during release qualification. The local `devtrack queue list`
    intentionally does not mirror PostgreSQL actions when continuous event sync is disabled.
-4. Capture the approved screenshot/video set from a privacy-reviewed terminal and browser session.
+2. Capture the approved screenshot/video set from a privacy-reviewed terminal and browser session.
 
 ## Capture list
 
@@ -167,7 +164,7 @@ detection, reviewable staging, EOD preview, then MCP reading the resulting conte
 
 ## Exit criteria
 
-The hold ends only when a clean-machine user can complete the documented quickstart without help,
-the full no-send demo passes twice from a clean local state, captured media matches actual behavior,
-and all reproduced blockers have regression coverage. At that point, update this document with the
-date and evidence before resuming feature development.
+Release qualification closes when packaged acceptance passes, captured media matches actual
+behavior, and reproduced blockers have regression coverage. Update this document with the date and
+evidence when those two remaining checks close. Completed environment validation must not be
+reintroduced as future work.

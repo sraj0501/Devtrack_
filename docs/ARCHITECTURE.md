@@ -828,13 +828,11 @@ task state is tracked in `Data/agent_logs/project_board.md`.
 | **8 — MCP server** | JSON-RPC 2.0 stdio server exposing six read-only SQLite-backed tools to Claude Code |
 
 ### Phase 9 — Adoption Gate (complete)
-Phase 9 delivered the first-run path, background Managed bootstrap, guided voice/MCP onboarding,
-shopfront refresh, and release/distribution packaging. The current development hold is for
-clean-machine and cross-platform end-to-end validation, admin review, and privacy-reviewed media—not
-another capability phase. See [`docs/NEXT_STEPS.md`](NEXT_STEPS.md) and
+Current product planning focuses on **DevTrack Sage**, the broader local cross-harness capture and
+personal command-knowledge layer described in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md). The existing
+Git-oriented Sage commands remain a compatibility surface during planning. Packaged-build acceptance
+and privacy-reviewed media remain release follow-ups tracked in
 [`docs/END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md).
-
-**Deferred (Phase 10+):** headless orchestration, Tier 4 Hermes persona model, GitLab `IsPRApproved`.
 
 > **Not planned, ever:** NATS/Redis/external message queues, Kubernetes, or multi-tenancy.
 > DevTrack is local-first, offline-first, single-machine, and not a SaaS. The Go client's

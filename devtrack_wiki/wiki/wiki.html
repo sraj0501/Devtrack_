@@ -642,7 +642,7 @@ const NAV = [
     items: [
       { id: 'GIT_FEATURES',       label: 'Git Features',      icon: git_icon() },
       { id: 'GIT_COMMIT_WORKFLOW', label: 'Commit Workflow',   icon: commit_icon() },
-      { id: 'GIT_SAGE',            label: 'git-sage Agent',    icon: agent_icon() },
+      { id: 'GIT_SAGE',            label: 'DevTrack Sage',      icon: agent_icon() },
     ]
   },
   {
@@ -1621,7 +1621,8 @@ devtrack start</code></pre>
 <li><strong>Windows 11 launcher:</strong> <code>.\scripts\e2e-local.ps1</code> runs native Windows plus WSL Linux; when the WSL distribution has no Go toolchain, it uses a disposable <code>golang:1.24-bookworm</code> Docker container without modifying WSL.</li>
 <li><strong>CI definition:</strong> the repository now runs the same no-send test on native <code>windows-latest</code> and <code>ubuntu-latest</code> runners. Local Windows and Linux-container executions passed, and GitHub Actions run <code>34045590767</code> passed for <code>dev</code> commit <code>ed0f571</code>. The general CI and wiki CI runs for that commit passed as well.</li>
 <li><strong>Source-based Windows admin acceptance:</strong> on 2026-09-09, <code>scripts/e2e-admin.ps1</code> used the source admin UI with an existing Managed PostgreSQL installation to log in, inspect the real confidence-0.95 commit action, reject it, and verify its reviewer, timestamp, and audit event. The real EOD action was also visible, MCP passed, and the disposable workspace was cleaned.</li>
-<li><strong>Remaining release gates:</strong> clean Windows installation, full Managed Linux acceptance with PostgreSQL/Python/Ollama, packaged-build Windows admin acceptance, and privacy-reviewed launch media remain open. The exact Glama listing path and score-badge update also remain open distribution follow-ups.</li>
+<li><strong>Owner-confirmed validation:</strong> clean Windows installation and full Managed Linux acceptance with PostgreSQL/Python/Ollama were completed outside GitHub Actions on 2026-09-10.</li>
+<li><strong>Remaining release follow-ups:</strong> packaged-build Windows admin acceptance and privacy-reviewed launch media remain open. The exact Glama listing path and score-badge update also remain open distribution follow-ups.</li>
 </ul>
 <h2>v3.1.1 — TASK-147–150 readiness, distribution, and documentation</h2>
 <ul>
@@ -2013,7 +2014,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\e2e-local.ps1<
 <p>The automated client lane does not start or validate PostgreSQL, the Python server, an LLM, the embedded admin UI, or media capture. On an already configured Managed installation, run the full no-send demo without scene pauses:</p>
 <pre><code class="language-powershell">.\scripts\demo.ps1 -Mode Record -Automated</code></pre>
 <pre><code class="language-bash">./scripts/demo.sh --record --automated</code></pre>
-<p>This environment-dependent lane uses real local services but keeps the disposable workspace on PM <code>none</code> and does not approve or deliver staged actions. A source-based Windows browser run passed on 2026-09-09 against an existing Managed PostgreSQL installation, including login, exact-action inspection, transactional rejection, reviewer/timestamp/audit verification, EOD visibility, MCP, and cleanup. That result does not cover a clean Windows install, the full Managed Linux lane, packaged-build admin acceptance, or privacy-reviewed media.</p>
+<p>This environment-dependent lane uses real local services but keeps the disposable workspace on PM <code>none</code> and does not approve or deliver staged actions. A source-based Windows browser run passed on 2026-09-09 against an existing Managed PostgreSQL installation, including login, exact-action inspection, transactional rejection, reviewer/timestamp/audit verification, EOD visibility, MCP, and cleanup. The owner confirmed clean Windows installation and the full Managed Linux lane complete on 2026-09-10 outside GitHub Actions. Packaged-build admin acceptance and privacy-reviewed media remain separate follow-ups.</p>
 <h2>Run Go Verification</h2>
 <pre><code class="language-bash">cd devtrack_client
 GOCACHE=/tmp/devtrack-go-cache GOMODCACHE=/tmp/devtrack-go-mod go test ./...
@@ -2634,20 +2635,17 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   // ── Redirect stubs: broken internal links point here; we route to the correct page ──
   VISION: `<div class="md-body">
 <h1>Roadmap</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.1.1 public; end-to-end validation hold active</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.1.1 public; core validation complete</div>
 <p>DevTrack's product build arc and Phase 9 adoption work are complete: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, read-only MCP context, first-run onboarding, and native MCPB distribution. The latest public release is <code>v3.1.1</code>.</p>
 <h2>Current focus</h2>
-<p>Roadmap feature work is paused while the product is exercised through the real no-send workflow. The Windows local-user Managed path passed twice with PostgreSQL migration, first-run voice profiling, real commit and ticket detection, confidence-bearing staging, EOD generation, all six MCP tools, and disposable-workspace cleanup. The credential-free core E2E lane is committed on <code>dev</code> and has passed locally on native Windows, in a Linux Go container, and on GitHub-hosted Windows and Ubuntu runners; it protects the commit-to-daemon-to-SQLite-to-MCP boundary. On 2026-09-09, a separate source-based Windows browser run against the existing Managed PostgreSQL installation passed admin login, exact-action inspection, rejection, reviewer/timestamp/audit verification, EOD visibility, MCP, and cleanup. These results do not replace the remaining clean-install, full Managed Linux, packaged-build, or media gates. The official MCP Registry record remains active/latest. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
+<p>The core no-send workflow is validated. The owner confirmed clean Windows installation and full Managed Linux acceptance with PostgreSQL, Python, Ollama, staging, EOD, and MCP complete on 2026-09-10 outside GitHub Actions. Earlier Windows Managed, credential-free cross-platform E2E, and source-based admin acceptance runs also passed. Packaged-build Windows admin acceptance and privacy-reviewed launch media remain release follow-ups. The official MCP Registry record remains active/latest. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
 <h2>Next</h2>
 <ol>
-<li>Repeat the supported installation path on a clean Windows account or machine without manual dependency preparation.</li>
-<li>Pass the full Managed Linux check and no-send demo with PostgreSQL, Python, Ollama, staging, EOD, and MCP; the passing isolated Linux core lane does not exercise those services.</li>
 <li>Repeat the Windows admin login, action inspection, rejection, and audit journey against packaged release artifacts rather than the source checkout.</li>
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
-<li>Resume Phase 10 prioritization only after the validation exit criteria pass, using evidence rather than invented usage or adoption claims.</li>
 </ol>
-<p><strong>Planned, not released:</strong> a future Sage initiative would evolve the existing Git assistant into a local cross-harness capture and searchable command-knowledge layer. Capture, distillation, playback, MCP access, and migration work remain design-stage plans; none should be described as shipped.</p>
+<p><strong>Planned, not released:</strong> DevTrack Sage will evolve the existing Git-oriented assistant into DevTrack's broader local cross-harness memory product. Silent event capture, asynchronous distillation into searchable command knowledge, later playback, read-only MCP access, and migration work remain design-stage plans; none should be described as shipped. The current Git-oriented Sage commands remain shipped legacy behavior during that transition.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2658,9 +2656,9 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 </div>`,
 
   GIT_SAGE: `<div class="md-body">
-<h1>git-sage Agent</h1>
-<p><strong>git-sage</strong> is an autonomous, locally-running LLM agent for complex git operations. It understands your repository state, plans a sequence of git commands, executes them, reads the output, handles failures with rollback, and only asks for input when there is genuine ambiguity.</p>
-<blockquote><p><strong>Current versus planned:</strong> the Git-oriented commands documented below are the shipped interface. A proposed cross-harness Sage memory layer—silent event capture, asynchronous distillation into searchable command knowledge, later playback, and read-only MCP access—is planned only and has not been released.</p></blockquote>
+<h1>DevTrack Sage</h1>
+<p><strong>DevTrack Sage</strong> is the planned local cross-harness memory product for capturing developer activity and turning it into searchable command knowledge. The broader product is not yet released.</p>
+<blockquote><p><strong>Current versus planned:</strong> the Git-oriented commands documented below are shipped legacy behavior from the earlier Git Sage scope. DevTrack Sage expands beyond Git with silent event capture, asynchronous distillation into searchable command knowledge, later playback, and read-only MCP access; those broader capabilities remain planned.</p></blockquote>
 
 <h2>Modes</h2>
 <ul>
@@ -3267,7 +3265,7 @@ function renderHome() {
         { id:'HTTP_API',         icon:'🔌', title:'HTTP API Contract',   desc:'Stable Go-to-Python routes, authentication, payload boundaries, retries, and cross-platform compatibility checks.' },
         // ── Git & Shell ────────────────────────────────────────────────────────
         { id:'GIT_FEATURES',    icon:'🔀', title:'Git Features',        desc:'Shell integration, AI commits, and conflict resolution. Add <code>eval "$(devtrack shell-init)"</code> to <code>~/.zshrc</code> once. Use <code>git commit</code> normally — DevTrack observes completed commits silently; explicit <code>devtrack git</code>/<code>sage</code> commands provide optional assisted workflows. <code>devtrack start</code> auto-enables git for all workspaces.' },
-        { id:'GIT_SAGE',        icon:'🤖', title:'git-sage Agent',      desc:'Autonomous local LLM agent for complex git operations.' },
+        { id:'GIT_SAGE',        icon:'🤖', title:'DevTrack Sage',       desc:'Planned local cross-harness memory product; current Git-oriented Sage commands remain shipped legacy behavior.' },
         // ── Integrations ──────────────────────────────────────────────────────
         { id:'AZURE_DEVOPS',    icon:'🔷', title:'Azure DevOps',        desc:'Sync work items, auto-comment, and transition states. <code>IsPRApproved</code> uses the real ADO Pull Requests API (TASK-102).' },
         { id:'GITLAB',          icon:'🦊', title:'GitLab',              desc:'Full CLI and Telegram access; inbound webhooks; issue enrichment on create.' },

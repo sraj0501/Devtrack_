@@ -20,22 +20,26 @@ Run the following three sub-agents **in parallel** (launch all three in a single
 
 ---
 
-## Agent 2 — Memory (`/home/sraj/.claude/projects/-home-sraj-git-apps-Devtrack-/memory/`)
+## Agent 2 — Project memory (`.claude/memory/`)
 
-This is a user-level auto-memory directory outside the git repo — never `git add` it.
+This repository directory is the canonical DevTrack project memory. Do not read or modify
+user-level or environment-owned memory as if it were project state.
 
 1. See what changed recently:
    ```bash
    GIT_NO_DEVTRACK=1 git log --oneline -20
    ```
-2. Read `MEMORY.md` (in that directory) to understand what's already recorded.
-3. Update `MEMORY.md`:
-   - Add a new "Completed" subsection for the session date with bullet points for each shipped feature
-   - Move any items from "Planned" to "Completed" if they are now shipped
-   - Update the **Project Status** line at the top
-   - Update Key CLI Files list if new files were added
-4. Create or update individual memory files (e.g. `project_*.md`) for significant new features that need detailed notes. Follow the frontmatter format: `name`, `description`, `type`, `---`, then content with **Why:** and **How to apply:** lines.
-5. Add pointer lines to `MEMORY.md` index for any new memory files.
+2. Read `.claude/memory/MEMORY.md` and the linked files needed for the change.
+3. Keep memory **active-only**:
+   - Record current decisions, active work, unresolved risks, and durable operational rules.
+   - Remove completed tasks, dated completion summaries, old test/run evidence, closed gates, and
+     superseded plans. Their history belongs in `Data/agent_logs/project_board.md`, release notes,
+     and Git history.
+   - Never create a `Completed` section or move finished work into another memory file.
+   - Remove index links and delete memory files that exist only to describe completed work.
+4. Create or update `project_*.md` files only for active initiatives or durable rules that will
+   affect future decisions. Use frontmatter fields `name`, `description`, and `type`.
+5. Update the `MEMORY.md` index and verify closed work cannot be rediscovered as pending work.
 
 ---
 
@@ -60,14 +64,13 @@ This is a user-level auto-memory directory outside the git repo — never `git a
    ```bash
    GIT_NO_DEVTRACK=1 git status --short
    ```
-2. Stage and commit only the in-repo documentation files (never the memory directory — it lives
-   outside the repo, at `/home/sraj/.claude/projects/-home-sraj-git-apps-Devtrack-/memory/`, and
-   is never `git add`ed):
+2. If the caller explicitly authorized a commit, stage only the in-repo documentation and project
+   memory files changed by this run:
    ```bash
-   GIT_NO_DEVTRACK=1 git add devtrack_wiki/wiki/wiki.html README.md docs/
+   GIT_NO_DEVTRACK=1 git add devtrack_wiki/wiki/wiki.html README.md docs/ .claude/memory/ .claude/commands/docu-agent.md
    GIT_NO_DEVTRACK=1 git commit -m "docs: <brief summary of what was documented>"
    ```
-3. Push to `dev`, never `main`:
+3. Push only when the caller explicitly authorized it. Push to `dev`, never `main`:
    ```bash
    GIT_NO_DEVTRACK=1 git push origin dev
    ```

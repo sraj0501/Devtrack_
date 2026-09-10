@@ -1,7 +1,13 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-09-09 — TASK-153 Windows admin browser acceptance passes locally;
-clean-install, Linux Managed, packaged qualification, media, and listing follow-ups remain._
+_Last updated: 2026-09-10 — clean Windows installation and full Managed Linux validation are
+owner-confirmed complete; packaged qualification, media, and listing follow-ups remain._
+
+**[2026-09-10] Environment validation closure.** The owner confirmed that the supported clean
+Windows installation and the full Managed Linux validation journey are complete. These runs were
+performed outside GitHub Actions and no run IDs were supplied, so the record distinguishes owner
+confirmation from hosted-CI evidence. Neither item remains in the active queue. Packaged-build
+acceptance, privacy-reviewed media, and the Glama path/badge are still separate follow-ups.
 
 **[2026-09-09] TASK-153 — Windows admin browser acceptance (complete).**
 Added the missing authenticated server queue list/detail/rejection UI, transactional audit,
@@ -10,8 +16,9 @@ an optional development group and `scripts/e2e-admin.ps1`, using the existing Ma
 environment and a temporary source admin server. The real Windows flow passed: commit
 `5947fc5c7986`, action 17 rejected at confidence 0.95, EOD action 18 visible, MCP passing,
 and disposable workspace cleanup. 134 focused tests passed. Private browser artifacts stay
-ignored. Linux, clean installation, mock receiver approval, packaged qualification, and
-public media are deferred. Details: `docs/WINDOWS_ADMIN_ACCEPTANCE.md`. Next unused ID: TASK-154.
+ignored. Clean Windows installation and full Managed Linux validation were subsequently confirmed
+complete by the owner on 2026-09-10; mock receiver approval, packaged qualification, and public
+media remain separate. Details: `docs/WINDOWS_ADMIN_ACCEPTANCE.md`. Next unused ID: TASK-154.
 Visible showcase and saved-result inspection modes now leave the real prototype open
 for the owner. The browser follows the window size; responsive admin layout checks pass
 across four pages at five widths (375–1920px). The local Managed webhook service was

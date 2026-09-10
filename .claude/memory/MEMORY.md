@@ -1,57 +1,34 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-09-07_ | public v3.1.1 | official MCP Registry active/latest | Windows and Linux core E2E passed locally and in hosted CI | full Managed E2E automation planned | validation hold active | GitHub is canonical
+_Last updated: 2026-09-10_ | active work only | GitHub is canonical
 
-DevTrack is an offline-first silent Go daemon with a Python AI/server layer.
+DevTrack is an offline-first silent Go daemon with an optional Python AI/server layer.
 
 ## Read first
+
 - `PRODUCT_BIBLE.md` is definitive product direction; `CLAUDE.md` is the build guide.
 - `Data/agent_logs/project_board.md` is the task/status/ID authority; dated notes are historical.
-- Phases 0–9 and PostgreSQL are complete. v3.1.1 is public with five native MCPB bundles and an active official MCP Registry record.
+- This memory contains only durable rules, active work, and unresolved follow-ups. Do not reconstruct closed work from old plans or validation evidence.
 
-## Completed — 2026-09-06
-- A deterministic, credential-free no-send E2E lane was prepared for the Go-native boundary. Native Windows and Linux in a disposable `golang:1.24-bookworm` container both built the current client, observed a real `DEMO-201` commit, exposed it through `mcp test`, and cleaned their isolated state successfully.
-- `scripts/e2e-local.ps1` runs Windows and then WSL Linux, falling back to Docker when the WSL distribution has no Go toolchain. `.github/workflows/e2e.yml` applies the same core test to Windows and Ubuntu. The scripts and workflow are committed on `origin/dev` at `ed0f571`; GitHub Actions run `34045590767` passed both hosted operating-system lanes. CI run `34045590760` and wiki CI run `34045590730` also passed for the same commit.
-- The full environment-dependent demo can now skip recording pauses with `scripts/demo.ps1 -Automated` or `scripts/demo.sh --automated`. This does not close the clean-Windows, full Managed Linux, PostgreSQL admin-review, or privacy-reviewed media gates; the development hold remains active.
+## Active work
 
-## Planned — 2026-09-07
-- `docs/MANAGED_E2E_AUTOMATION_PLAN.md` is the approved next-step design for full product automation beyond the existing client/daemon/SQLite/MCP lane. The canonical journey covers isolated Managed setup, PostgreSQL, Python and Go readiness, local Ollama, a real ticket-linked commit, server-backed staging, admin-browser review, voice/EOD generation, MCP consistency, evidence capture, and guarded cleanup.
-- Implementation order is non-interactive setup, native Windows Safe runner, Playwright admin coverage, local mock approval/delivery, WSL/POSIX reuse, then validation on dedicated Linux and macOS machines. The default Safe profile must reject rather than deliver actions; a separate LocalIntegration profile may approve only to disposable local receivers. No implementation has been made yet.
+- [project_sage_session_memory.md](project_sage_session_memory.md) — DevTrack Sage implementation planning for cross-harness capture, searchable personal command knowledge, and later playback.
+- [project_server_ui_refresh.md](project_server_ui_refresh.md) — current uncommitted admin-console visual work that must be stabilized or isolated before packaged qualification and media capture.
 
-## Completed — 2026-09-04
-- TASK-150 qualified five native MCPB targets, merged PR #259 to `main` at `186036f`, published v3.1.0 with 12 release assets, independently verified all 10 payload hashes, and published `io.github.sraj0501/devtrack` to the official MCP Registry.
-- Directory preflight found that v3.1.0 lacked Anthropic's required manifest `privacy_policies` declaration. Patch v3.1.1 at `17bc86f` added that field, a bundled Privacy Policy section, enforcement in packaging/native smoke tests, 12 replacement release assets, independently verified payload hashes, and an active/latest official-registry 3.1.1 record.
-- `punkpeye/awesome-mcp-servers` PR #13608 adds DevTrack under Developer Tools and its submission check passed. Other third-party forms and held dev.to/Show HN/LinkedIn posts remain unpublished because their authenticated owner sessions/contact details are unavailable; do not claim those actions are complete.
-- PR #13608 subsequently gained a Glama listing/score-badge requirement. `Dockerfile.mcp` is the submitted build definition and CI validates its intended initialize/tools-list/shutdown exchange. Glama's admins approved the request on 2026-09-06. The exact approved path and PR #13608 badge update are not yet recorded; copy the path from Glama rather than guessing its normalized slug.
-- Local-product validation is now the active work boundary. On Windows, Managed setup, daemon/server readiness, PostgreSQL migrations, admin-login routing, first-run voice profiling, commit/ticket detection, confidence-bearing staging, EOD generation, MCP context, and disposable-workspace cleanup passed. The full no-send PowerShell demo passed twice with real commits.
-- Reproduced validation blockers were fixed at `fdda30a`: fresh-checkout `mcp test` database fallback, SQLite-compatible RFC 3339 trigger timestamps, explicit minimal commit summaries for manual/scheduled EOD, bounded batch voice embeddings with Managed AI/model preparation, and active MCP context restricted to existing enabled workspaces. Go passed `go test ./...`; Python passed 959 tests with 10 skipped.
-- Feature development remains paused. Before roadmap work resumes, repeat setup on a clean Windows account/machine, pass the POSIX demo on Linux or CI, inspect PostgreSQL-backed actions through the admin UI, and capture privacy-reviewed screenshots/video from actual behavior.
+## Unresolved release follow-ups
 
-## Completed — 2026-09-03
-- TASK-149 synchronized README, wiki, durable project memory, registry evidence, and release gates after TASK-147/148. PR #257 merged to `dev` at `e22f709`.
+- Qualify the packaged build rather than a source checkout.
+- Capture and approve privacy-reviewed media from real behavior.
+- Record the exact Glama listing path and update the score badge on awesome-mcp-servers PR #13608; do not guess the normalized slug.
 
-## Completed — 2026-09-02
-- TASK-124 produced held, evidence-backed dev.to, Show HN, and LinkedIn drafts; nothing was published.
-- TASK-147 synchronized dependency compatibility, Windows SQLite handling, HTTP contracts, and CI coverage.
-- TASK-148 completed MCPB build readiness: current handshake negotiation, six annotated read-only tools, explicit packaged-database selection, reproducible platform bundles, and CI manifest validation.
-- TASK-148's MCP distribution work shipped in v3.1.0 and its privacy-compliant bundles shipped in v3.1.1. Commit `17bc86f` is the latest release merge on `main`; post-release documentation is being synchronized through `dev`.
+## Rules and durable context
 
-## Rules
-- [feedback_rules.md](feedback_rules.md) — authorization, Git, privacy, architecture, and dependency rules
-
-## Project State
-- [project_current_state.md](project_current_state.md) — release boundary, completed arcs, and next release gates
-- [project_managed_e2e_automation.md](project_managed_e2e_automation.md) — approved full Managed automation scope, safety profiles, platform sequence, and completion boundary
-- [project_postgres_backend.md](project_postgres_backend.md) — required server storage and opt-in client sync
-- [project_mcp_distribution.md](project_mcp_distribution.md) — local MCP boundary, MCPB packaging, and remaining release gates
-
-## Project Context
-- [project_platform_modes.md](project_platform_modes.md) — actual mode resolution and cross-platform host guidance
-- [project_autoload_env.md](project_autoload_env.md) — AutoLoadEnv() resolution order; DATABASE_DIR test isolation
-- [project_documentation.md](project_documentation.md) — docs/site sources, release boundary, and stale-claim rules
-- [project_local_agents.md](project_local_agents.md) — checked-in role sources, external-agent boundary, memory, and authorization
-- [project_saas_license.md](project_saas_license.md) — local license/auth; hosted SaaS remains unbuilt
-- [project_launch_strategy.md](project_launch_strategy.md) — wedge, positioning rules, channels — the input to Phase 9
-
-## References
-- [reference_subsystems.md](reference_subsystems.md) — Telegram, RAG, and Azure DevOps config not covered by CLAUDE.md
+- [feedback_rules.md](feedback_rules.md) — authorization, Git, privacy, architecture, and dependency rules.
+- [project_platform_modes.md](project_platform_modes.md) — mode resolution and cross-platform host guidance.
+- [project_autoload_env.md](project_autoload_env.md) — environment resolution and test isolation.
+- [project_documentation.md](project_documentation.md) — documentation sources and stale-claim rules.
+- [project_local_agents.md](project_local_agents.md) — checked-in role sources, memory, and authorization.
+- [project_saas_license.md](project_saas_license.md) — local license/auth and hosted-product boundary.
+- [project_mcp_distribution.md](project_mcp_distribution.md) — durable MCP packaging rules and unresolved Glama action.
+- [project_launch_strategy.md](project_launch_strategy.md) — positioning and explicit publication boundary.
+- [reference_subsystems.md](reference_subsystems.md) — Telegram, RAG, and Azure DevOps configuration.

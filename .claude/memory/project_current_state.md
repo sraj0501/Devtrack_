@@ -1,17 +1,19 @@
 ---
 name: Project current state
-description: v3.1.1 public; Windows and Linux core E2E pass locally and in hosted CI while full validation remains on hold
+description: Active implementation planning and unresolved release follow-ups
 type: project
 ---
 
-**Release:** v3.1.1 is latest public at merge `17bc86f`. Its GitHub release contains the five legacy platform binary assets, five native MCPBs, `checksums.txt`, and `server.json`. A pushed `v*.*.*` tag runs the canonical GitHub Actions release workflow.
-**Completed:** Phases 0–9; Managed Install; Silent Worker Correctness; PostgreSQL TASK-112–116 plus TASK-140/141; launch drafts TASK-124; documentation/wiki TASK-145/146; compatibility and contract sync TASK-147; MCPB distribution TASK-148; v3.1.0 qualification and official-registry publication TASK-150.
-**Storage:** Go remains SQLite-only and never connects to PostgreSQL. Python requires `POSTGRES_URL`, validates it, and applies Alembic before serving; client-event sync is opt-in and idempotent.
-**MCP:** Six local, read-only stdio tools ship in v3.1.1. MCPB 0.3 bundles declare the public privacy policy and include a Privacy Policy README section. They were executed on native Windows amd64, macOS amd64/arm64, and Linux amd64/arm64 CI runners; clean-project setup, handshake, tool listing/call, and shutdown passed. `io.github.sraj0501/devtrack` version 3.1.1 is active/latest in the official MCP Registry.
-**Documentation:** README, checked-in project memory, and the static wiki now point to the current no-send validation workflow and preserve the v3.1.1 release, checksum, registry, and external-account evidence.
-**Validation state (2026-09-06):** Feature development is paused for end-to-end product validation. The Windows local-user no-send Managed flow passed twice: setup and readiness, PostgreSQL migration, first-run voice profile (23 commits/286 words), real commit detection and `DEMO-101` mapping, `post_comment` staging at 0.95 confidence, EOD narrative/staging, all six MCP tools with advancing `today_commits`, and safe disposable-workspace cleanup. Go passed `go test ./...`; Python passed 959 tests with 10 skipped. A new isolated core lane also passed natively on Windows and in Linux through the disposable Go Docker image: it observed a real `DEMO-201` commit and exposed it through MCP without credentials or outbound delivery.
-**Validation fixes and automation:** `fdda30a` added a fresh-checkout MCP database fallback; RFC 3339 trigger timestamps compatible with SQLite date queries; minimal explicit commit summaries across the SQLite/PostgreSQL boundary for manual and scheduled EOD; Managed installation of the AI dependency group plus `nomic-embed-text`; bounded batch embeddings for first-run voice; and active-context filtering to existing enabled workspaces. Commit `ed0f571` on `origin/dev` includes `scripts/e2e.ps1`, `scripts/e2e.sh`, the Windows/WSL/Docker launcher `scripts/e2e-local.ps1`, the Windows/Ubuntu Actions workflow, and noninteractive demo flags. End-to-end run `34045590767` passed both hosted OS lanes; CI `34045590760` and wiki CI `34045590730` also passed for the commit.
-**Active next:** Keep the development hold in place. Repeat the supported install on a clean Windows account or machine, run the full Managed `scripts/demo.sh --check` and `--record` flow on Linux or CI, review PostgreSQL-backed actions in the admin UI, and capture privacy-reviewed real screenshots/video. The isolated Linux core lane is evidence for client portability, not a substitute for those Managed gates. Glama's admins approved the submitted server; record the exact listing path and add its score badge to `punkpeye/awesome-mcp-servers` PR #13608. Remaining directory submissions and held launch posts still require owner-authenticated sessions/contact details. Resume Phase 10 prioritization only after the validation exit criteria pass.
-**Validation authority:** `docs/END_TO_END_VALIDATION.md` owns the current hold, evidence, capture rules, and exit criteria; `docs/DEMO_STORYBOARD.md` owns the recording sequence.
-**Authority:** `Data/agent_logs/project_board.md` owns task history/IDs; GitHub `sraj0501/Devtrack_` owns source/releases.
+**Active product initiative:** Plan DevTrack Sage as the local cross-harness memory layer. The first delivery slice is capture plus searchable personal command knowledge; playback follows as a separate milestone. `project_sage_session_memory.md` owns this planning record.
+
+**Active UI work:** Uncommitted server-admin visual changes remain work in progress. Stabilize or isolate them before packaged-build qualification and media capture. `project_server_ui_refresh.md` owns the design scope.
+
+**Unresolved release follow-ups:** packaged-build acceptance; privacy-reviewed media; exact Glama listing path and the score-badge update on awesome-mcp-servers PR #13608.
+
+**Storage boundary:** Go remains SQLite-only and never connects to PostgreSQL. Python requires `POSTGRES_URL`, validates it, and applies Alembic before serving; client-event sync is opt-in and idempotent.
+
+**MCP boundary:** `devtrack mcp` is a local, read-only stdio server backed by the Go client's SQLite database. The Python HTTP server is not an MCP transport.
+
+**Authority:** `Data/agent_logs/project_board.md` owns task status and IDs; GitHub `sraj0501/Devtrack_` owns source and releases. Do not use closed task history or superseded validation plans to infer current work.
+
 **Do not revive:** NATS/Redis/external brokers, Kubernetes, multi-tenancy, DDD layers, or deleted pre-pivot architecture documents.
