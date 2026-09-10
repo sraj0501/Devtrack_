@@ -7,6 +7,12 @@ larger than Git: it captures useful command and tool activity from supported cod
 turns that activity into searchable personal knowledge, and later supports deliberate session
 playback.
 
+DevTrack Sage is implemented entirely in Go. The Python implementation in
+`D:\git_apps\ai_sessions_skills` is the behavioral reference for the port, not a runtime
+dependency. The functional `tool/` baseline is pinned to commit
+`94a2544f8c85a630fa8b5d9a94d9938121aef11b`. Later knowledge-only commits and the reference
+worktree's generated knowledge changes are not part of the port baseline.
+
 The existing `devtrack sage ask`, `do`, `pr`, and interactive commands remain shipped Git-oriented
 behavior. They are a compatibility surface, not the architecture for the new capture pipeline.
 During migration they will remain available and gain explicit `devtrack sage git ...` aliases.
@@ -19,6 +25,26 @@ raw activity off the machine.
 
 Playback, visible-reasoning capture, automatic cloud synchronization, and autonomous command
 execution are not part of this first outcome.
+
+## Go port contract
+
+The port targets behavioral parity, not a line-for-line translation. Every required Python
+capability, invariant, and regression scenario must have an owned Go destination and a Go test
+before the corresponding Python component is considered replaced. Production DevTrack Sage must
+never spawn Python or require a Python environment.
+
+| Python reference | Go destination | Ported behavior |
+|---|---|---|
+| `capture.py`, `ide_capture.py` | `internal/sage/capture` and harness adapters | Payload normalization, command signatures, filtering, deduplication, bounded enqueue, success/failure capture |
+| `cfg.py` | `internal/sage/config` | Cross-platform roots, harness layouts, pause state, limits, backend selection |
+| `json_merge.py`, installers and launchers | `internal/sage/hooks` | Idempotent additive install, pure removal, foreign-setting preservation, Windows/POSIX launch behavior |
+| `watcher.py`, `session.py`, `procs.py` | existing DevTrack daemon plus `internal/sage/importer` | Lifecycle, liveness, locking, bounded batches, retry, restart recovery; no detached Python watcher |
+| `distill.py` and prompts | `internal/sage/distill` plus shared Go LLM transport | Classification, structured response validation, retry semantics, deterministic fallback |
+| `kb.py`, `search.py`, `sync_seen.py` | `internal/sage/knowledge` and `internal/db` | Routing, entry matching, deterministic rendering, merge/refile, search, durable processed state |
+| `doctor.py`, `log.py` | Sage CLI diagnostics and structured Go logging | Truthful health, sanitized errors, bounded local diagnostic history |
+
+Port tracking must use this matrix and the Python test inventory. A module is not done merely
+because an equivalent Go file exists.
 
 ## Product contract
 
@@ -88,13 +114,16 @@ by default.
 
 ### SAGE-001 — Contract and compatibility seam
 
-Define versioned normalized event fixtures, the CLI namespace, data/config/spool roots, redaction
+Inventory the pinned Python behaviors and tests, assign each one to a Go package and test, then
+define versioned normalized event fixtures, the CLI namespace, data/config/spool roots, redaction
 rules, exit behavior, and the legacy alias policy. Add parser and compatibility tests before wiring
 a real harness.
 
 Acceptance:
 
 - Malformed, oversized, duplicated, and secret-bearing fixture inputs have deterministic results.
+- Every in-scope Python test scenario is present in a checked-in port-parity matrix with a Go test
+  name or an explicit later-milestone assignment.
 - Existing Git-oriented Sage tests and commands continue to pass.
 - `status`, `pause`, `resume`, and `doctor` have stable machine-readable exit behavior.
 
@@ -153,14 +182,23 @@ normal capture contract implicitly.
 
 ## Test and release strategy
 
+- Translate the pinned Python regression scenarios into Go table-driven tests before deleting or
+  replacing behavior. Preserve sanitized input/output fixtures in this repository so CI does not
+  depend on the external Python checkout.
 - Unit tests: payload normalization, redaction, signatures, limits, state transitions, renderer.
 - Golden fixtures: one sanitized fixture set per harness and hook-contract version.
+- Fuzz tests: untrusted hook JSON, command tokenization/signatures, redaction, and configuration
+  merge/removal boundaries.
+- Concurrency tests: importer ownership, retry transitions, spool races, shutdown, and recovery;
+  run the relevant packages with `go test -race`.
 - Fault injection: unwritable spool, truncated input, locked database, daemon restart, model outage,
   duplicate delivery, and migration replay.
 - Integration: disposable config/data roots; no mutation of the developer's real installation.
 - Performance: record hook wall time and enforce a small bounded payload; no synchronous dependency.
 - Privacy: canary secrets and private paths must be absent from stored normalized data, knowledge,
   logs, and MCP responses.
+- Platform CI: run the shared Go suite and hook golden fixtures on Windows and Linux. The release
+  cannot retain Python as a fallback for a failed Go path.
 
 Each milestone ships behind an explicit Sage enablement setting until its vertical acceptance suite
 passes twice from a clean isolated state. Rollback disables hook capture while retaining local data
@@ -178,9 +216,13 @@ for inspection or export.
    rendered knowledge deterministic and rebuildable.
 5. Decide which harness is the first supported vertical slice after comparing event completeness,
    installer safety, and the team's actual daily usage.
+6. “Port everything” means parity for the product behavior and tests in the pinned baseline. It
+   does not require preserving Python-specific process boundaries, subprocess mechanics, or file
+   layouts when DevTrack already has a safer Go-native owner.
 
 ## Immediate next step
 
-Start SAGE-001 with a short contract spike: collect sanitized fixtures from the candidate harnesses,
-score their available lifecycle/tool events, and check in the normalized v1 event schema plus tests.
-Do not build playback or all adapters before one complete capture-to-search slice works.
+Start SAGE-001 with a port inventory: convert the pinned Python test list into a checked-in parity
+matrix, collect sanitized fixtures from the candidate harnesses, score their available
+lifecycle/tool events, and check in the normalized v1 Go event schema plus tests. Do not build
+playback or all adapters before one complete capture-to-search slice works.

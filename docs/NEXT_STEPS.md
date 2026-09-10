@@ -38,3 +38,8 @@ on 2026-09-10 and must not be reintroduced as pending work.
 DevTrack Sage remains local-first and Go-client-owned. Hooks must be silent, bounded, model-free,
 and failure-isolated. Raw capture and playback data stay local by default and never enter
 PostgreSQL, telemetry, or remote synchronization implicitly.
+
+The implementation is a complete Go port of the required behavior and tests from the pinned Python
+reference. Python is development evidence only: shipped Sage code must not invoke it or depend on
+its environment. Port completion is tracked by behavioral parity, including edge cases, rather
+than by translating files line-for-line.

@@ -12,6 +12,12 @@ DevTrack Sage is the local memory layer shared by coding-agent harnesses. Its sc
 beyond Git. Existing `gitsage` package names and legacy `devtrack sage` commands matter
 only as migration constraints.
 
+DevTrack Sage is entirely Go-native. Port the required behavior and regression coverage from
+`D:\git_apps\ai_sessions_skills`; production Sage must not spawn Python or require a Python
+environment. The pinned functional reference for `tool/` is
+`94a2544f8c85a630fa8b5d9a94d9938121aef11b`. Port for behavioral parity rather than copying
+Python-specific process or file structure.
+
 The reference implementation is the working tree at `D:\git_apps\ai_sessions_skills`.
 Use it to inform the command/tool capture and self-writing knowledge pipeline. Treat LLM
 output capture and session playback as designs to implement later, not proven reference
@@ -123,9 +129,10 @@ session.
 
 ## Planning sequence
 
-1. Inspect and pin the exact reference revision before deriving fixtures or behavior.
+1. Build a port-parity matrix from every in-scope Python module and regression test at the pinned
+   reference revision; assign a Go package, Go test, and milestone to each behavior.
 2. Audit current `devtrack sage` commands and all consumers of the `gitsage` package.
-3. Define the first milestone's versioned Go event/spool contract and fixture matrix.
+3. Define the first milestone's versioned Go event/spool contract and sanitized fixture matrix.
 4. Design migration and compatibility boundaries for legacy Sage commands.
 5. Break capture foundation and searchable knowledge into board-ready implementation tasks.
 6. Keep playback outside the first release milestone.
