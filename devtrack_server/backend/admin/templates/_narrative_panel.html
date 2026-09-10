@@ -1,12 +1,12 @@
 {% if stories %}
-<table style="width:100%;border-collapse:collapse;font-size:12px">
+<div class="table-scroll"><table>
   <thead>
     <tr style="border-bottom:1px solid var(--border)">
-      <th style="text-align:left;padding:6px 8px;color:var(--text-muted)">Endpoint</th>
-      <th style="text-align:left;padding:6px 8px;color:var(--text-muted)">Stages</th>
-      <th style="text-align:right;padding:6px 8px;color:var(--text-muted)">Total</th>
-      <th style="text-align:center;padding:6px 8px;color:var(--text-muted)">Result</th>
-      <th style="text-align:right;padding:6px 8px;color:var(--text-muted)">Time</th>
+      <th>Endpoint</th>
+      <th>Stages</th>
+      <th style="text-align:right">Total</th>
+      <th style="text-align:center">Result</th>
+      <th style="text-align:right">Time</th>
     </tr>
   </thead>
   <tbody>
@@ -59,9 +59,9 @@
     {% endif %}
     {% endfor %}
   </tbody>
-</table>
+</table></div>
 {% else %}
-<div class="text-muted" style="padding:12px 0;font-size:13px">
+<div class="empty-state">
   No request stories yet — make a trigger call to populate the narrative log.
 </div>
 {% endif %}

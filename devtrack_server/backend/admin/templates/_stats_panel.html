@@ -1,26 +1,26 @@
 {% if stats %}
 <div class="grid-4">
   <div class="stat-card">
-    <div class="stat-label">Triggers Today</div>
+    <div class="stat-top"><div class="stat-label">Triggers Today</div><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m13 2-9 12h8l-1 8 9-12h-8z"/></svg></span></div>
     <div class="stat-value">{{ stats.triggers_today }}</div>
     <div class="stat-sub">all types</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Commits Today</div>
+    <div class="stat-top"><div class="stat-label">Commits Today</div><span class="stat-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v3a6 6 0 0 0 6 6h3M18 15V9a6 6 0 0 0-6-6H9"/></svg></span></div>
     <div class="stat-value">{{ stats.commits_today }}</div>
     <div class="stat-sub">commit triggers</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Last Trigger</div>
-    <div class="stat-value" style="font-size:20px">{{ stats.last_trigger }}</div>
+    <div class="stat-top"><div class="stat-label">Last Trigger</div><span class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span></div>
+    <div class="stat-value compact">{{ stats.last_trigger }}</div>
     <div class="stat-sub">most recent</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Errors (24h)</div>
+    <div class="stat-top"><div class="stat-label">Errors (24h)</div><span class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 2.5 20h19z"/><path d="M12 9v5M12 17h.01"/></svg></span></div>
     <div class="stat-value {{ 'text-red' if stats.errors_24h > 0 else '' }}">{{ stats.errors_24h }}</div>
     <div class="stat-sub">unprocessed &gt;5 min</div>
   </div>
 </div>
 {% else %}
-<div class="text-muted" style="padding:12px 0;font-size:13px">Trigger stats unavailable — database not accessible.</div>
+<div class="empty-state">Trigger stats unavailable — database not accessible.</div>
 {% endif %}

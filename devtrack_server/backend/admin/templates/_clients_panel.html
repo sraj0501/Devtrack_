@@ -8,9 +8,9 @@
       </span>
       <span class="client-tls">
         {% if c.tls_enabled %}
-        <span title="TLS enabled" style="color:var(--green)">🔒 TLS</span>
+        <span title="TLS enabled" style="color:var(--green)">● TLS</span>
         {% else %}
-        <span title="Plain HTTP" style="color:var(--muted)">🔓 HTTP</span>
+        <span title="Plain HTTP" style="color:var(--muted)">○ HTTP</span>
         {% endif %}
       </span>
     </div>
@@ -28,7 +28,7 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="text-muted" style="padding:24px;text-align:center;font-size:13px">
+<div class="empty-state">
   No clients connected yet. Start a <code>devtrack</code> daemon to see it here.
 </div>
 {% endif %}
