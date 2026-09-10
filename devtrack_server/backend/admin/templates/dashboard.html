@@ -45,7 +45,7 @@
             hx-target="#clients-panel"
             hx-swap="innerHTML">↻ Refresh</button>
   </div>
-  <div id="clients-panel"
+  <div id="clients-panel" aria-live="polite"
        hx-get="/admin/_partials/clients"
        hx-trigger="every 30s"
        hx-swap="innerHTML">
@@ -59,7 +59,7 @@
     <div><div class="card-title">Trigger Activity</div><div class="section-kicker">Today’s automated workflow volume</div></div>
     <span class="text-muted" style="font-size:12px">auto-refreshes every {{ stats_refresh_secs }}s</span>
   </div>
-  <div id="stats-panel"
+  <div id="stats-panel" aria-live="polite"
        hx-get="/admin/_partials/stats"
        hx-trigger="every {{ stats_refresh_secs }}s"
        hx-swap="innerHTML">
@@ -79,7 +79,7 @@
               hx-swap="innerHTML">↻ Refresh</button>
     </div>
   </div>
-  <div id="narrative-panel"
+  <div id="narrative-panel" aria-live="polite"
        hx-get="/admin/_partials/narrative"
        hx-trigger="load, every 30s"
        hx-swap="innerHTML">

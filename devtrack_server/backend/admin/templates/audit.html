@@ -3,12 +3,16 @@
 {% block page_title %}Audit Log{% endblock %}
 
 {% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">Governance</div><h1>Audit history</h1><p>Trace authentication, account changes, and review decisions made through this console.</p></div>
+  <div class="page-heading-actions"><span class="badge badge-blue">{{ entries|length }} recent event{{ 's' if entries|length != 1 }}</span></div>
+</div>
 <div class="card">
   <div class="section-header">
-    <div class="card-title" style="margin-bottom:0">Recent Activity</div>
+    <div><div class="card-title">Recent activity</div><div class="section-kicker">Newest recorded events appear first.</div></div>
     <span class="text-muted" style="font-size:12px">Last {{ entries|length }} events</span>
   </div>
-  <table>
+  <div class="table-scroll"><table>
     <thead>
       <tr><th>Time</th><th>User</th><th>Action</th><th>Detail</th><th>IP</th></tr>
     </thead>
@@ -20,13 +24,13 @@
         <td>
           <span class="badge badge-blue">{{ e.action }}</span>
         </td>
-        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.detail or '—' }}</td>
+        <td><span title="{{ e.detail or '' }}">{{ e.detail or '—' }}</span></td>
         <td class="mono">{{ e.ip or '—' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="text-muted" style="text-align:center;padding:24px">No audit events yet.</td></tr>
+      <tr><td colspan="5" class="table-empty"><div class="empty-state"><span class="empty-icon" aria-hidden="true">⌁</span><strong>No audit events yet</strong><span>Security and operator events will be recorded here.</span></div></td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endblock %}

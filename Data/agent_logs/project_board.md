@@ -3,6 +3,16 @@
 _Last updated: 2026-09-10 — clean Windows installation and full Managed Linux validation are
 owner-confirmed complete; packaged qualification, media, and listing follow-ups remain._
 
+**[2026-09-10] TASK-154 — Server admin UI redesign (complete).** Finished the visual system begun
+in `fdcb16c` across the full server-rendered admin surface: login, navigation shell, dashboard,
+pending-action list/detail, users, API keys, server/process health, audit, licence, and HTMX
+partials. Shared hierarchy, responsive table/detail containment, explicit empty/loading/error/
+disconnected/destructive states, keyboard focus, current-page semantics, reduced-motion support,
+and a no-JavaScript fallback now apply consistently without changing server workflows. Added
+route/template regression coverage; 91 focused admin tests and the complete Python suite
+(972 passed, 10 skipped) pass. Fresh public screenshots remain part of the existing privacy-reviewed
+media follow-up, not redesign implementation. Next unused ID: TASK-155.
+
 **[2026-09-10] Environment validation closure.** The owner confirmed that the supported clean
 Windows installation and the full Managed Linux validation journey are complete. These runs were
 performed outside GitHub Actions and no run IDs were supplied, so the record distinguishes owner
@@ -18,7 +28,8 @@ environment and a temporary source admin server. The real Windows flow passed: c
 and disposable workspace cleanup. 134 focused tests passed. Private browser artifacts stay
 ignored. Clean Windows installation and full Managed Linux validation were subsequently confirmed
 complete by the owner on 2026-09-10; mock receiver approval, packaged qualification, and public
-media remain separate. Details: `docs/WINDOWS_ADMIN_ACCEPTANCE.md`. Next unused ID: TASK-154.
+media remain separate. Details: `docs/WINDOWS_ADMIN_ACCEPTANCE.md`. TASK-154 was subsequently used
+for the server admin UI redesign; next unused ID: TASK-155.
 Visible showcase and saved-result inspection modes now leave the real prototype open
 for the owner. The browser follows the window size; responsive admin layout checks pass
 across four pages at five widths (375–1920px). The local Managed webhook service was

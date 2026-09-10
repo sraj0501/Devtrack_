@@ -34,9 +34,15 @@ def review(tmp_path, monkeypatch):
 def test_review_reject_and_audit(review):
     from backend.admin.schema import audit_log_table
     client, gateway, action_id, engine = review
-    assert f'Review #{action_id}' in client.get('/admin/queue').text
+    queue_page = client.get('/admin/queue')
+    assert f'Review #{action_id}' in queue_page.text
+    assert 'class="page-heading"' in queue_page.text
+    queue_page = client.get('/admin/queue')
+    assert 'class="page-heading"' in queue_page.text
     detail = client.get(f'/admin/queue/{action_id}')
     assert '&lt;script&gt;' in detail.text
+    assert 'Destructive action.' in detail.text
+    assert 'Destructive action.' in detail.text
     token = re.search(r'name="csrf" value="([^"]+)"', detail.text)[1]
     url = f'/admin/queue/{action_id}/reject'
     assert client.post(url).status_code == 403

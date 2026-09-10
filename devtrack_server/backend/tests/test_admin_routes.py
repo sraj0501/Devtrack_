@@ -536,6 +536,48 @@ class TestPartials:
 
 
 # ---------------------------------------------------------------------------
+# TestAdminDesignSystem — shared shell and progressive-enhancement contracts
+# ---------------------------------------------------------------------------
+
+class TestAdminDesignSystem:
+    def test_shell_has_keyboard_and_connection_status_contract(self, client, auth_cookies):
+        with patch("backend.admin.routes.get_snapshot", return_value=_make_snapshot()):
+            response = client.get("/admin/", cookies=auth_cookies)
+
+        assert response.status_code == 200
+        assert b'href="#main-content"' in response.content
+        assert b'id="main-content"' in response.content
+        assert b'aria-current="page"' in response.content
+        assert b'id="connection-status"' in response.content
+        assert b"Refresh disconnected" in response.content
+        assert b"All pages and form actions remain available" in response.content
+
+    @pytest.mark.parametrize(
+        "path, heading",
+        [
+            ("/admin/users", b"Admin users"),
+            ("/admin/users/admin/keys", b"API keys"),
+            ("/admin/license", b"License &amp; terms"),
+            ("/admin/audit", b"Audit history"),
+        ],
+    )
+    def test_secondary_pages_use_shared_hierarchy(self, client, auth_cookies, path, heading):
+        response = client.get(path, cookies=auth_cookies)
+
+        assert response.status_code == 200
+        assert b'class="page-heading"' in response.content
+        assert heading in response.content
+
+    def test_server_page_uses_shared_hierarchy(self, client, auth_cookies):
+        with patch("backend.admin.routes.get_snapshot", return_value=_make_snapshot()):
+            response = client.get("/admin/server", cookies=auth_cookies)
+
+        assert response.status_code == 200
+        assert b'class="page-heading"' in response.content
+        assert b"Server control" in response.content
+
+
+# ---------------------------------------------------------------------------
 # TestAuditLogLimitConfig — config accessor validation
 # ---------------------------------------------------------------------------
 

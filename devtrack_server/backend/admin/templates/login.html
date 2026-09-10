@@ -9,9 +9,12 @@
 <body>
 <div class="login-wrap">
   <div class="login-box">
-    <div class="login-title">Dev<span>Track</span><br><small style="font-size:14px;color:var(--muted);font-weight:400">Admin Console</small></div>
+    <div class="login-brand">
+      <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6.5 12 2l8 4.5v9L12 20l-8-4.5z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg></div>
+      <div class="login-copy">Dev<span>Track</span><small>Admin console</small></div>
+    </div>
     {% if error %}
-    <div class="error-msg">{{ error }}</div>
+    <div class="error-msg" role="alert">{{ error }}</div>
     {% endif %}
     <form method="post" action="/admin/login">
       <div class="form-row">

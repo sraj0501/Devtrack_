@@ -3,22 +3,25 @@
 {% block page_title %}API Keys — {{ target_user }}{% endblock %}
 
 {% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">Credentials</div><h1>API keys</h1><p>Issue and revoke scoped credentials for <strong>{{ target_user }}</strong>.</p></div>
+  <div class="page-heading-actions"><a href="/admin/users" class="btn btn-ghost">← Back to users</a></div>
+</div>
 <div class="card">
   <div class="section-header">
     <div>
-      <a href="/admin/users" class="text-muted" style="font-size:13px">← Back to Users</a>
-      <div class="card-title" style="margin:8px 0 0">API Keys for <strong>{{ target_user }}</strong></div>
+      <div class="card-title">Issued credentials</div><div class="section-kicker">Secret values are shown only once at creation.</div>
     </div>
     <form method="post" action="/admin/users/{{ target_user }}/keys/create">
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" name="label" placeholder="Key label (optional)" style="width:180px">
+      <div class="inline-form">
+        <label class="sr-only" for="key-label">Key label</label><input id="key-label" type="text" name="label" placeholder="Key label (optional)" style="width:190px">
         <button type="submit" class="btn btn-primary btn-sm">+ Create Key</button>
       </div>
     </form>
   </div>
 
   {% if new_key %}
-  <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:16px;margin-bottom:20px">
+  <div class="notice notice-success" role="status">
     <div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px">
       ✓ New API key created — copy it now, it won't be shown again
     </div>
@@ -28,7 +31,7 @@
   </div>
   {% endif %}
 
-  <table>
+  <div class="table-scroll"><table>
     <thead>
       <tr><th>Prefix</th><th>Label</th><th>Created</th><th>Last Used</th><th></th></tr>
     </thead>
@@ -47,9 +50,9 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="text-muted" style="text-align:center;padding:24px">No API keys.</td></tr>
+      <tr><td colspan="5" class="table-empty"><div class="empty-state"><span class="empty-icon" aria-hidden="true">◇</span><strong>No API keys</strong><span>Create one when a client needs authenticated server access.</span></div></td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endblock %}

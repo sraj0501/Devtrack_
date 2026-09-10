@@ -8,6 +8,7 @@
   <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2uodhrgzmieviBW7GkHxV3xNFr1EFPaFvEY" crossorigin="anonymous"></script>
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 <div class="layout">
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
@@ -22,23 +23,23 @@
     </div>
     <nav class="nav">
       <div class="nav-label">Workspace</div>
-      <a href="/admin/" class="{{ 'active' if active == 'dashboard' }}">
+      <a href="/admin/" class="{{ 'active' if active == 'dashboard' }}" {% if active == 'dashboard' %}aria-current="page"{% endif %}>
         <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></span> Dashboard
       </a>
-      <a href="/admin/queue" class="{{ 'active' if active == 'queue' }}">
+      <a href="/admin/queue" class="{{ 'active' if active == 'queue' }}" {% if active == 'queue' %}aria-current="page"{% endif %}>
         <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span> Pending actions
       </a>
-      <a href="/admin/users" class="{{ 'active' if active == 'users' }}">
+      <a href="/admin/users" class="{{ 'active' if active == 'users' }}" {% if active == 'users' %}aria-current="page"{% endif %}>
         <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-4 2-6 6-6s6 2 6 6M16 6.5a3 3 0 0 1 0 5.5M16 15c3.3.2 5 1.9 5 5"/></svg></span> Users
       </a>
-      <a href="/admin/server" class="{{ 'active' if active == 'server' }}">
+      <a href="/admin/server" class="{{ 'active' if active == 'server' }}" {% if active == 'server' %}aria-current="page"{% endif %}>
         <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01M17 7h1M17 17h1"/></svg></span> Server
       </a>
       <div class="nav-label" style="margin-top:20px">Governance</div>
-      <a href="/admin/audit" class="{{ 'active' if active == 'audit' }}">
+      <a href="/admin/audit" class="{{ 'active' if active == 'audit' }}" {% if active == 'audit' %}aria-current="page"{% endif %}>
         <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H6a2 2 0 0 0-2 2v12h16V7a2 2 0 0 0-2-2h-3"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M8 11h8M8 15h6"/></svg></span> Audit Log
       </a>
-      <a href="/admin/license" class="{{ 'active' if active == 'license' }}">
+      <a href="/admin/license" class="{{ 'active' if active == 'license' }}" {% if active == 'license' %}aria-current="page"{% endif %}>
         <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M5 6h14M7 6l-4 7h8zM17 6l-4 7h8zM8 21h8"/></svg></span> License
       </a>
     </nav>
@@ -58,11 +59,12 @@
         <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
       </div>
       <div class="topbar-right">
-        <span class="live-status">System live</span>
+        <span class="live-status" id="connection-status" aria-live="polite">Console ready</span>
         <span class="clock-wrap"><span id="clock" class="mono"></span></span>
       </div>
     </header>
-    <main class="content">
+    <main class="content" id="main-content" tabindex="-1">
+      <noscript><div class="notice notice-warning" role="status">Live panels require JavaScript to refresh automatically. All pages and form actions remain available.</div></noscript>
       {% block content %}{% endblock %}
     </main>
   </div>
@@ -87,6 +89,19 @@
     if (document.body.classList.contains('nav-open') && !sidebar.contains(event.target) && !menu.contains(event.target)) setNavigation(false);
   });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setNavigation(false); });
+
+  // HTMX is optional. When present, expose refresh progress and failures instead of
+  // leaving a stale panel looking current.
+  const connectionStatus = document.getElementById('connection-status');
+  function setConnectionState(label, state) {
+    if (!connectionStatus) return;
+    connectionStatus.textContent = label;
+    connectionStatus.dataset.state = state;
+  }
+  document.body.addEventListener('htmx:beforeRequest', () => setConnectionState('Updating…', 'loading'));
+  document.body.addEventListener('htmx:afterSettle', () => setConnectionState('Console ready', 'ready'));
+  document.body.addEventListener('htmx:sendError', () => setConnectionState('Refresh disconnected', 'error'));
+  document.body.addEventListener('htmx:responseError', () => setConnectionState('Refresh failed', 'error'));
 </script>
 </body>
 </html>

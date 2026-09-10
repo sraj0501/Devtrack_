@@ -9,7 +9,7 @@
   <td class="mono">{{ p.pid or '—' }}</td>
   <td>{{ '%.1f' % p.cpu_percent if p.running else '—' }}</td>
   <td>{{ '%.1f' % p.mem_mb if p.running else '—' }}</td>
-  <td style="text-align:right">
+  <td class="cell-actions">
     {% if p.running %}
     <button class="btn btn-ghost btn-sm"
             hx-post="/admin/process/{{ p.name }}/restart"
@@ -30,5 +30,5 @@
   </td>
 </tr>
 {% else %}
-<tr><td colspan="6" class="text-muted" style="text-align:center;padding:24px">No processes discovered.</td></tr>
+<tr><td colspan="6" class="table-empty"><div class="empty-state"><span class="empty-icon" aria-hidden="true">○</span><strong>No processes discovered</strong><span>Managed processes will appear after the server starts them.</span></div></td></tr>
 {% endfor %}

@@ -2,24 +2,31 @@
 {% block title %}Review #{{ action.id }} — DevTrack Admin{% endblock %}
 {% block page_title %}Review action #{{ action.id }}{% endblock %}
 {% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">Action review</div><h1>Review #{{ action.id }}</h1><p>Confirm the target and generated content before changing this action’s state.</p></div>
+  <div class="page-heading-actions"><span class="badge {{ 'badge-yellow' if action.status == 'pending' else ('badge-red' if action.status == 'rejected' else 'badge-green') }}"><span class="dot"></span>{{ action.status }}</span><a class="btn btn-ghost" href="/admin/queue">Back to queue</a></div>
+</div>
 <div class="card" data-action-id="{{ action.id }}">
-  <dl style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px 20px;margin-bottom:24px">
+  <div class="card-heading"><div class="card-title">Action context</div><div class="section-kicker">Routing and lifecycle metadata recorded by the server.</div></div>
+  <dl class="detail-grid">
     {% for field in ['action_type', 'target', 'workspace', 'platform', 'confidence', 'status', 'created_at', 'acted_at', 'acted_by'] %}
-    <dt class="text-muted">{{ field | replace('_', ' ') | title }}</dt><dd data-field="{{ field }}" style="margin:0;overflow-wrap:anywhere">{{ action[field] if action[field] is not none else '—' }}</dd>
+    <dt>{{ field | replace('_', ' ') | title }}</dt><dd data-field="{{ field }}">{{ action[field] if action[field] is not none else '—' }}</dd>
     {% endfor %}
   </dl>
   {% if summary %}
   <h2 class="card-title">Draft</h2>
-  <p data-field="summary" style="white-space:pre-wrap;margin-bottom:24px">{{ summary }}</p>
+  <div class="code-panel" data-field="summary">{{ summary }}</div>
   {% endif %}
   <h2 class="card-title">Payload</h2>
-  <pre data-field="payload" style="white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:24px">{{ payload_display }}</pre>
+  <pre class="code-panel" data-field="payload">{{ payload_display }}</pre>
   {% if action.status == 'pending' %}
-  <form method="post" action="/admin/queue/{{ action.id }}/reject">
+  <div class="notice notice-warning"><strong>Destructive action.</strong> Rejection is final and prevents this item from being delivered.</div>
+  <form method="post" action="/admin/queue/{{ action.id }}/reject" onsubmit="return confirm('Reject action #{{ action.id }}? This cannot be undone.')">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <button type="submit" class="btn btn-danger">Reject action</button>
   </form>
+  {% else %}
+  <div class="notice" role="status">This action is no longer pending. Its recorded state is shown above.</div>
   {% endif %}
-  <p><a href="/admin/queue">Back to pending actions</a></p>
 </div>
 {% endblock %}

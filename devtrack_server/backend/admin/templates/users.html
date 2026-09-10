@@ -3,39 +3,39 @@
 {% block page_title %}Users{% endblock %}
 
 {% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">Access control</div><h1>Admin users</h1><p>Manage console access, roles, account status, and API credentials.</p></div>
+  <div class="page-heading-actions"><button class="btn btn-primary" aria-controls="add-user-form" aria-expanded="false" onclick="const f=document.getElementById('add-user-form');f.hidden=false;this.hidden=true;this.setAttribute('aria-expanded','true');f.querySelector('input').focus()">+ Add user</button></div>
+</div>
 <div class="card">
   <div class="section-header">
-    <div class="card-title" style="margin-bottom:0">Admin Users</div>
-    <button class="btn btn-primary btn-sm"
-            onclick="document.getElementById('add-user-form').style.display='block';this.style.display='none'">
-      + Add user
-    </button>
+    <div><div class="card-title">Directory</div><div class="section-kicker">{{ users|length }} configured account{{ 's' if users|length != 1 }}</div></div>
   </div>
 
   <!-- Add user form (hidden by default) -->
-  <div id="add-user-form" style="display:none;margin-bottom:20px;padding:16px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+  <div id="add-user-form" class="form-panel" hidden>
     <form method="post" action="/admin/users/create">
       <div class="grid-3" style="gap:12px;align-items:end">
         <div class="form-row" style="margin-bottom:0">
-          <label>Username</label>
-          <input type="text" name="username" required>
+          <label for="new-username">Username</label>
+          <input id="new-username" type="text" name="username" autocomplete="username" required>
         </div>
         <div class="form-row" style="margin-bottom:0">
-          <label>Password</label>
-          <input type="password" name="password" required>
+          <label for="new-password">Temporary password</label>
+          <input id="new-password" type="password" name="password" autocomplete="new-password" required>
         </div>
         <div class="form-row" style="margin-bottom:0">
-          <label>Role</label>
-          <select name="role">
+          <label for="new-role">Role</label>
+          <select id="new-role" name="role">
             <option value="viewer">Viewer</option>
             <option value="admin">Admin</option>
           </select>
         </div>
       </div>
-      <div style="margin-top:12px;display:flex;gap:8px">
+      <div class="actions" style="margin-top:12px">
         <button type="submit" class="btn btn-primary btn-sm">Create</button>
         <button type="button" class="btn btn-ghost btn-sm"
-                onclick="document.getElementById('add-user-form').style.display='none';document.querySelector('[onclick*=add-user-form]').style.display=''">
+                onclick="const f=document.getElementById('add-user-form');f.hidden=true;const b=document.querySelector('[aria-controls=add-user-form]');b.hidden=false;b.setAttribute('aria-expanded','false');b.focus()">
           Cancel
         </button>
       </div>
@@ -43,13 +43,12 @@
   </div>
 
   {% if flash %}
-  <div class="{{ 'error-msg' if flash_type == 'error' else '' }}"
-       style="{% if flash_type != 'error' %}background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green);padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px{% endif %}">
+  <div class="{{ 'notice notice-danger' if flash_type == 'error' else 'notice notice-success' }}" role="status">
     {{ flash }}
   </div>
   {% endif %}
 
-  <table>
+  <div class="table-scroll"><table>
     <thead>
       <tr><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th>Last Login</th><th>API Keys</th><th></th></tr>
     </thead>
@@ -61,7 +60,8 @@
           <!-- Inline role-change form -->
           {% if user.username != current_user %}
           <form method="post" action="/admin/users/{{ user.username }}/role" style="display:inline-flex;gap:4px;align-items:center">
-            <select name="role" style="padding:2px 6px;font-size:12px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            <label class="sr-only" for="role-{{ user.username }}">Role for {{ user.username }}</label>
+            <select id="role-{{ user.username }}" name="role" style="min-height:31px;padding:2px 6px;font-size:12px">
               <option value="viewer" {{ 'selected' if user.role == 'viewer' }}>viewer</option>
               <option value="admin" {{ 'selected' if user.role == 'admin' }}>admin</option>
             </select>
@@ -105,9 +105,9 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="text-muted" style="text-align:center;padding:24px">No users yet.</td></tr>
+      <tr><td colspan="7" class="table-empty"><div class="empty-state"><span class="empty-icon" aria-hidden="true">＋</span><strong>No users yet</strong><span>Create an account to grant console access.</span></div></td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endblock %}

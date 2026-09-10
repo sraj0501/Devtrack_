@@ -1,10 +1,12 @@
 ---
 name: Server UI refresh
-description: Active uncommitted admin-console visual work
+description: Completed server-rendered admin-console redesign
 type: project
 ---
 
-Current uncommitted admin template and CSS changes are active work in progress. Test them and either include them in or isolate them from the release-candidate baseline before packaged qualification and privacy-reviewed media capture.
+TASK-154 finished the existing admin template and CSS redesign across
+the full console without changing workflow or authorization semantics. The implementation remains
+server-rendered Jinja/HTML with HTMX as optional progressive enhancement.
 
 The admin console is a server-rendered Jinja/HTML and HTMX application under `devtrack_server/backend/admin`, with shared styling in `static/admin.css`. Keep this lightweight architecture for the first redesign. Do not introduce a SPA framework or frontend build pipeline unless audited interaction requirements justify the maintenance cost.
 
@@ -23,13 +25,13 @@ The pass covers login, navigation shell, dashboard, pending-action queue/detail,
 
 This is a visual and interaction redesign. It does not authorize changes to approval rules, delivery safety, authentication semantics, retention behavior, or server business logic. Document and review any workflow change separately.
 
-## Next steps
+## Completed implementation
 
-1. Inventory routes, templates, partials, states, actions, and viewports; capture a safe fixture baseline.
-2. Define information architecture and primary operator action per page.
-3. Build shared design tokens and components in the existing CSS.
-4. Apply the system to the shell/dashboard, then review flows, tables, forms, and secondary pages.
-5. Verify HTMX focus/state behavior, accessibility, zoom, reduced motion, overflow, long values, and responsiveness.
-6. Add route/template coverage and lightweight visual regression for key desktop and mobile states.
+1. Inventoried and aligned the login, shell, dashboard, queue, user, credential, server, audit, and licence surfaces.
+2. Extended the shared CSS tokens/components to secondary pages, tables, forms, status notices, detail grids, and empty states.
+3. Added skip navigation, visible keyboard focus, active-page semantics, reduced-motion behavior, responsive containment, and mobile detail layouts.
+4. Added explicit HTMX loading/disconnected/failure feedback while keeping links and forms usable without HTMX or JavaScript.
+5. Added route/template regression coverage. Verification: 91 focused admin tests; full suite 972 passed, 10 skipped.
 
-The refresh is ready only when the design is consistent across admin routes, non-happy states are explicit, accessibility and responsive checks pass, and current captures reflect tested behavior.
+Fresh privacy-reviewed screenshots and video remain an existing release-media follow-up. They are
+not part of the redesign implementation and must be captured from the packaged build before publication.

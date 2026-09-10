@@ -3,19 +3,23 @@
 {% block page_title %}Server Configuration{% endblock %}
 
 {% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">Runtime</div><h1>Server control</h1><p>Inspect non-secret configuration, process health, and local service connectivity.</p></div>
+  <div class="page-heading-actions"><span class="badge {{ 'badge-green' if snapshot.processes|selectattr('running')|list|length else 'badge-yellow' }}"><span class="dot"></span>{{ snapshot.processes|selectattr('running')|list|length }} process{{ 'es' if snapshot.processes|selectattr('running')|list|length != 1 }} running</span></div>
+</div>
 <!-- LLM Config -->
 <div class="card">
-  <div class="card-title">LLM Provider</div>
-  <table>
+  <div class="card-heading"><div class="card-title">Runtime configuration</div><div class="section-kicker">Read-only values exposed by this server instance.</div></div>
+  <div class="table-scroll"><table>
     <tbody>
       {% for key, val in config.items() %}
       <tr>
-        <td class="mono" style="color:var(--muted);width:40%">{{ key }}</td>
+        <td class="mono config-key">{{ key }}</td>
         <td style="word-break:break-all">{{ val }}</td>
       </tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
   <p class="text-muted mt-4" style="font-size:12px">
     Edit these values in your <code>.env</code> file, then restart the server.
   </p>
@@ -24,28 +28,28 @@
 <!-- Process control -->
 <div class="card">
   <div class="section-header">
-    <div class="card-title" style="margin-bottom:0">Process Control</div>
+    <div><div class="card-title">Process control</div><div class="section-kicker">Actions apply immediately to the selected managed process.</div></div>
     <button class="btn btn-ghost btn-sm"
             hx-get="/admin/_partials/processes"
             hx-target="#proc-table-body"
             hx-swap="innerHTML">↻ Refresh</button>
   </div>
-  <table>
+  <div class="table-scroll"><table>
     <thead>
       <tr><th>Process</th><th>Status</th><th>PID</th><th>CPU%</th><th>MEM (MB)</th><th></th></tr>
     </thead>
-    <tbody id="proc-table-body">
+    <tbody id="proc-table-body" aria-live="polite">
       {% include "_proc_rows.html" %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 
 <!-- Service health -->
 <div class="card">
-  <div class="card-title">Service Health</div>
-  <div class="grid-2">
+  <div class="card-heading"><div class="card-title">Service health</div><div class="section-kicker">Configured dependencies checked from the server.</div></div>
+  <div class="service-list">
     {% for svc in snapshot.services %}
-    <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+    <div class="service-item">
       <span class="badge {{ 'badge-green' if svc.ok else 'badge-red' }}">
         <span class="dot"></span>{{ 'up' if svc.ok else 'down' }}
       </span>
@@ -55,7 +59,7 @@
       </div>
     </div>
     {% else %}
-    <div class="text-muted">No services configured.</div>
+    <div class="empty-state"><span class="empty-icon" aria-hidden="true">○</span><strong>No services configured</strong><span>Add a service endpoint to expose its health here.</span></div>
     {% endfor %}
   </div>
 </div>

@@ -2,21 +2,25 @@
 {% block title %}Pending actions — DevTrack Admin{% endblock %}
 {% block page_title %}Pending actions{% endblock %}
 {% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">Review queue</div><h1>Pending actions</h1><p>Inspect server-staged work before it reaches an external system.</p></div>
+  <div class="page-heading-actions"><span class="badge {{ 'badge-yellow' if actions else 'badge-green' }}"><span class="dot"></span>{{ actions|length }} awaiting review</span></div>
+</div>
 <div class="card">
-  <p>Review actions staged on this server before delivery.</p>
-  <table>
+  <div class="card-heading"><div class="card-title">Action inbox</div><div class="section-kicker">Highest-confidence actions may have a limited review window.</div></div>
+  <div class="table-scroll"><table>
     <thead><tr><th>Action</th><th>Type</th><th>Target</th><th>Workspace</th><th>Confidence</th></tr></thead>
     <tbody>
     {% for action in actions %}
       <tr data-action-id="{{ action.id }}">
-        <td><a href="/admin/queue/{{ action.id }}">Review #{{ action.id }}</a></td>
-        <td>{{ action.action_type }}</td><td>{{ action.target }}</td>
-        <td>{{ action.workspace }}</td><td>{{ action.confidence }}</td>
+        <td><a class="row-link" href="/admin/queue/{{ action.id }}">Review #{{ action.id }} <span aria-hidden="true">→</span></a></td>
+        <td><span class="badge badge-purple">{{ action.action_type | replace('_', ' ') }}</span></td><td class="mono">{{ action.target }}</td>
+        <td>{{ action.workspace or '—' }}</td><td><span class="badge {{ 'badge-green' if action.confidence >= 0.9 else 'badge-yellow' }}">{{ '%.0f%%'|format(action.confidence * 100) }}</span></td>
       </tr>
     {% else %}
-      <tr><td colspan="5">No pending actions.</td></tr>
+      <tr><td colspan="5" class="table-empty"><div class="empty-state"><span class="empty-icon" aria-hidden="true">✓</span><strong>You’re all caught up</strong><span>No server actions are waiting for review.</span></div></td></tr>
     {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endblock %}

@@ -3,10 +3,14 @@
 {% block page_title %}License{% endblock %}
 
 {% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">Governance</div><h1>License &amp; terms</h1><p>Review acceptance evidence, current usage tier, and seat limits for this deployment.</p></div>
+  <div class="page-heading-actions"><span class="badge {{ 'badge-green' if accepted and seat_ok else 'badge-red' }}"><span class="dot"></span>{{ 'Compliant' if accepted and seat_ok else 'Attention required' }}</span></div>
+</div>
 <!-- Acceptance status -->
 <div class="grid-2" style="margin-bottom:20px">
   <div class="card">
-    <div class="card-title">Terms Acceptance</div>
+    <div class="card-heading"><div class="card-title">Terms acceptance</div><div class="section-kicker">Acceptance recorded for this installation.</div></div>
     {% if accepted %}
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
       <span class="badge badge-green"><span class="dot"></span>Accepted</span>
@@ -29,7 +33,7 @@
       </tbody>
     </table>
     {% else %}
-    <div class="error-msg" style="margin-bottom:12px">
+    <div class="notice notice-danger" role="alert">
       Terms of Service have not been accepted. DevTrack may refuse to start.
     </div>
     <p class="text-muted" style="font-size:13px">
@@ -41,22 +45,22 @@
 
   <!-- Tier / seat status -->
   <div class="card">
-    <div class="card-title">Current Tier</div>
+    <div class="card-heading"><div class="card-title">Current tier</div><div class="section-kicker">Calculated from active admin seats.</div></div>
     <div style="font-size:28px;font-weight:700;margin-bottom:4px">{{ tier_label }}</div>
     <div class="text-muted" style="margin-bottom:16px;font-size:13px">{{ user_count }} admin user{{ 's' if user_count != 1 }}</div>
 
     {% if seat_ok %}
     <span class="badge badge-green"><span class="dot"></span>{{ seat_msg }}</span>
     {% else %}
-    <div class="error-msg">{{ seat_msg }}</div>
+    <div class="notice notice-danger" role="alert">{{ seat_msg }}</div>
     {% endif %}
   </div>
 </div>
 
 <!-- Tier comparison table -->
 <div class="card">
-  <div class="card-title">Tier Overview</div>
-  <table>
+  <div class="card-heading"><div class="card-title">Tier overview</div><div class="section-kicker">Community and commercial deployment boundaries.</div></div>
+  <div class="table-scroll"><table>
     <thead>
       <tr>
         <th>Tier</th>
@@ -89,7 +93,7 @@
         <td>{% if tier == 'enterprise' %}<span class="badge badge-red">current</span>{% endif %}</td>
       </tr>
     </tbody>
-  </table>
+  </table></div>
   <p class="text-muted" style="font-size:12px;margin-top:12px">
     Enterprise licences: <a href="mailto:{{ license_email }}">{{ license_email }}</a>
   </p>
