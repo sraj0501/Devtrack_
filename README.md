@@ -162,11 +162,13 @@ The Python service and model preparation are background work. If they are not re
 keep coding and check `devtrack doctor`; the Go-native path remains usable and commits are not
 blocked.
 
-> **Current validation status:** roadmap development is paused while the documented no-send path is
-> tested end to end. The isolated Go-native flow now passes locally on Windows and Linux, and its
-> hosted Windows/Ubuntu workflow passes on `dev`; the full Managed Windows workflow has passed
-> twice. A clean Windows installation, the full Managed Linux demo, admin-queue review, and
-> privacy-reviewed media capture remain release gates. See the
+> **Current validation status:** Phase 9 shipped in v3.1.1. The isolated Go-native client flow
+> passes on Windows and Linux, and its hosted Windows/Ubuntu workflow passes on `dev`; the full
+> Managed Windows workflow has passed twice. Source-based Windows acceptance against an existing
+> Managed PostgreSQL installation also passed on 2026-09-09, covering authenticated admin queue
+> review, rejection, audit, EOD visibility, and MCP. A clean Windows installation, the full Managed
+> Linux demo, packaged-build acceptance, privacy-reviewed media capture, and the Glama score badge
+> remain open. See the
 > [end-to-end validation record](docs/END_TO_END_VALIDATION.md) for current evidence and exit criteria.
 
 ### Update an existing installation
@@ -793,9 +795,10 @@ sh ./scripts/e2e.sh               # native Linux
 
 These scripts build the current client in temporary storage, observe a real disposable commit, and
 verify its SQLite-backed MCP context. The [`End-to-end` workflow](.github/workflows/e2e.yml) runs the
-Windows and Linux scripts in GitHub Actions; both hosted lanes pass on `dev`. Managed PostgreSQL,
-Python, LLM, and admin-console validation remains covered by the separate no-send demo described
-above.
+Windows and Linux scripts in GitHub Actions; both hosted lanes pass on `dev`. Source-based Windows
+admin acceptance against an existing Managed PostgreSQL environment passed on 2026-09-09. Clean
+Windows installation, full Managed Linux, packaged-build, and privacy-reviewed media qualification
+remain separate release gates.
 
 Python business logic must use `backend.config` typed accessors rather than adding direct environment
 reads. Missing required variables produce a `ConfigError` with the variable name rather than a

@@ -6,8 +6,8 @@
 > criteria are in [END_TO_END_VALIDATION.md](END_TO_END_VALIDATION.md).
 > The credential-free client/daemon/SQLite/MCP lane now passes locally on native Windows and Linux
 > through Docker and in hosted Windows/Ubuntu CI. This portability evidence does not close the
-> clean-install, full Managed Linux,
-> PostgreSQL admin-review, or media gates.
+> clean-install, full Managed Linux, packaged-build admin-review, or media gates. Source-based
+> Windows PostgreSQL admin review passed on 2026-09-09, but it does not qualify a release artifact.
 >
 > Current external gate (updated 2026-09-06): Glama's admins approved the submitted server. Record
 > the exact approved listing path, then add that path's score badge to
