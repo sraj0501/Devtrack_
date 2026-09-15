@@ -1,6 +1,26 @@
 ﻿# DevTrack Project Board
 
-**[2026-09-14] TASK-155 / SAGE-001 — DevTrack Sage contract (in progress).** Started the
+**[2026-09-15] TASK-156 / SAGE-002 — DevTrack Sage vertical capture slice (complete).**
+Added the Go-native atomic immutable spool, bounded importer, corrupt-file quarantine, append-only
+`sage_events` SQLite migration, and durable delivery-key deduplication. The importer is now owned
+by `IntegratedMonitor.Start(ctx)` and is failure-isolated from existing monitoring. Added an
+explicitly opt-in (`DEVTRACK_SAGE_CODEX_HISTORY=true`) read-only Codex SQLite poller matching the
+supplemental compatibility logic: only active `vscode` and `cli` threads are queried, first use
+starts from now, in-progress items are revisited, output is not retained, and pause/resume advances
+the capture cutoff rather than backfilling paused activity. Targeted Sage, database, and infra
+tests, the full Go suite, and `go vet ./...` pass. Idempotent Codex install/remove now preserves
+unrelated hooks and settings, fails closed on malformed configuration, accepts Windows UTF-8 BOM
+files, and selects read-only history mode on Windows to avoid the Warp/console-host compatibility
+path. `scripts/e2e-sage-capture.ps1` passes against a freshly built executable: install, preservation
+of an unrelated hook, silent capture, privacy canary, backlog status, and uninstall. Sanitized
+observation from a trusted live Codex hook remains an external gate. Next: TASK-157 / SAGE-003.
+Added a selective `sage harness list|install|uninstall <name>` registry and retained the Codex
+`install-hooks` forms as compatibility aliases. The extension contract rejects non-portable Go
+dynamic plugins: future external adapters use explicit, versioned declarative packages (and later
+sandboxed WASI where required), while MCP is reserved for discovery, diagnostics, and approved
+management rather than capture transport. Only the selected harness is mutated or enabled.
+
+**[2026-09-14] TASK-155 / SAGE-001 — DevTrack Sage contract (complete; observed-fixture gate deferred).** Started the
 Go-native Sage foundation on `feat/SAGE-001-contract`, separate from the TASK-154 UI branch.
 Inventoried all 135 pinned Python regression scenarios into `docs/SAGE_PORT_PARITY_MATRIX.md`,
 added the normalized event v1 fixture/parser and local pause/status seam, and preserved the
@@ -12,9 +32,9 @@ compatibility fix at `b85a1ab` was reviewed: its `vscode` + `cli` read-only hist
 Windows no-popup hook selection are now recorded as a supplemental baseline, with a pure Go
 history-item normalizer and synthetic fixture. Warp is not named upstream; its relationship is
 inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
-verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-156.
+verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-157.
 
-_Last updated: 2026-09-14 — SAGE-001 contract in progress; UI redesign remains on its separate
+_Last updated: 2026-09-15 — SAGE-002 capture slice in progress; UI redesign remains on its separate
 branch. Clean Windows installation and full Managed Linux validation are
 owner-confirmed complete; packaged qualification, media, and listing follow-ups remain._
 

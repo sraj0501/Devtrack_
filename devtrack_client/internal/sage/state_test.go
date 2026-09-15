@@ -24,4 +24,7 @@ func TestPauseResumeStateIsPersistentAndIdempotent(t *testing.T) {
 			t.Fatalf("resume %d: %+v, %v", i, state, err)
 		}
 	}
+	if cutoff, err := CaptureCutoff(root); err != nil || cutoff <= 0 {
+		t.Fatalf("capture cutoff: %d, %v", cutoff, err)
+	}
 }

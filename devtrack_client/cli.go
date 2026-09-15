@@ -301,7 +301,15 @@ func (cli *CLI) handleSage() error {
 	switch sub {
 	case "status", "pause", "resume", "doctor":
 		return runSageState(sub, args)
-	case "search", "topics", "install-hooks":
+	case "install-hooks":
+		return runSageHookInstall(true, args)
+	case "uninstall-hooks":
+		return runSageHookInstall(false, args)
+	case "hook":
+		return runSageHook(args, os.Stdin)
+	case "harness":
+		return runSageHarness(args, os.Stdout)
+	case "search", "topics":
 		return fmt.Errorf("sage %s is planned but unavailable until the capture/search milestones", sub)
 	case "ask":
 		if len(args) == 0 {

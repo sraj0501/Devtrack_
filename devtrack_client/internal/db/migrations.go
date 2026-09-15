@@ -344,6 +344,18 @@ var allMigrations = []Migration{
 			return err
 		},
 	},
+	{
+		ID:          "014-create-sage-events",
+		Description: "Create append-only normalized Sage event store",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+			return database.createSageEventsTable()
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded

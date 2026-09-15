@@ -71,6 +71,12 @@ session.
 
 ### 1. Capture foundation
 
+Current state (2026-09-15): SAGE-001 and SAGE-002 are implemented. Capture has the atomic spool, bounded
+importer/quarantine, append-only SQLite event store, daemon ownership, and feature-flagged read-only
+Codex `vscode`/`cli` history poller. Idempotent install/remove preserves unrelated configuration;
+Windows selects history mode for Warp compatibility. The packaged capture journey passes. Start
+SAGE-003 searchable command knowledge next.
+
 - Define versioned harness-event and spool schemas.
 - Port payload duck-typing for shell, search, edit, success/failure, cwd, project, and
   harness session identifiers.

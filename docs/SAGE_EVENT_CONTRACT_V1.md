@@ -1,9 +1,15 @@
 # DevTrack Sage normalized event contract v1
 
-Status: SAGE-001 foundation. No harness adapter is installed and there is no spool writer,
-importer, or search index. Pure Codex hook and history-item normalizers exist in
-`internal/sage/hooks/`, but neither is connected to Codex or the daemon. The checked-in v1
-fixtures are synthetic contract data, **not** observed harness payloads.
+Status: SAGE-002 capture slice. Normalized events are atomically published under
+`<config.DevtrackDataHome()>/sage/spool/pending/<delivery-key>.json`. The daemon imports at most
+500 files per pass into the append-only `sage_events` table, acknowledges inserts and durable
+duplicates, and moves invalid input to `spool/quarantine`. Capture and import are no-ops while
+paused. On Windows, `sage install-hooks` enables the Codex history adapter without installing a
+per-command hook; this covers terminal-launched `cli` sessions such as Warp-hosted Codex without
+console-host compatibility problems. On other platforms it atomically merges one marked Codex
+PostToolUse entry. `sage uninstall-hooks` removes only DevTrack-owned state and entries. Search is
+not yet shipped. Checked-in fixtures remain synthetic contract data,
+**not** observed harness payloads.
 
 ## Local ownership and roots
 
@@ -51,12 +57,12 @@ Codex sessions generally. The repository contains no Warp-specific branch or ide
 ## CLI compatibility and exit behavior
 
 `devtrack sage status`, `pause`, `resume`, and `doctor` return a single JSON state object on
-stdout. `capture: "not_installed"` and `ready: false` explicitly distinguish this foundation from
-a working capture pipeline. Pause/resume are idempotent and persist locally. Success exits 0;
+stdout. The object reports capture readiness, pause state, Codex history mode, backlog, and
+quarantine count. Pause/resume are idempotent and persist locally. Success exits 0;
 invalid arguments and state I/O errors exit nonzero. The old `sage ask|do|pr|interactive` forms
 continue to work and emit a migration notice on stderr. `sage git ask|do|pr|interactive` are
-the explicit aliases. `search`, `topics`, and `install-hooks` currently fail clearly rather than
-silently launching the old Git agent. Their actual implementations belong to SAGE-002/003.
+the explicit aliases. `install-hooks` and `uninstall-hooks` return a machine-readable installation
+result; `search` and `topics` still fail clearly rather than silently launching the old Git agent.
 
 ## Open SAGE-001 work
 

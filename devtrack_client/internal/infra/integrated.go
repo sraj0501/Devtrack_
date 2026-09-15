@@ -14,6 +14,8 @@ import (
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/codexhistory"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
@@ -164,7 +166,54 @@ func (im *IntegratedMonitor) Start(ctx context.Context) error {
 	go executor.Start(ctx)
 	log.Println("✓ Queue executor started")
 
+	// Sage capture is deliberately failure-isolated from the existing monitor.
+	// The spool importer always runs; Codex history polling is explicit opt-in.
+	im.startSageCapture(ctx)
+
 	return nil
+}
+
+func (im *IntegratedMonitor) startSageCapture(ctx context.Context) {
+	dataHome, err := config.DevtrackDataHome()
+	if err != nil {
+		log.Printf("Sage disabled: data directory unavailable")
+		return
+	}
+	root := filepath.Join(dataHome, "sage")
+	if err := sage.EnsureSpool(root); err != nil {
+		log.Printf("Sage disabled: %v", err)
+		return
+	}
+	poller := codexhistory.Poller{Root: root}
+	run := func() {
+		if codexhistory.Enabled(root) {
+			if count, err := poller.Poll(ctx); err != nil {
+				log.Printf("Sage Codex history poll skipped: %v", err)
+			} else if count > 0 {
+				log.Printf("Sage captured %d normalized command event(s)", count)
+			}
+		}
+		result, err := sage.ImportSpool(root, sage.DefaultImportLimit, im.database.InsertSageEvent)
+		if err != nil {
+			log.Printf("Sage spool import skipped: %v", err)
+		} else if result.Imported+result.Duplicates+result.Quarantined > 0 {
+			log.Printf("Sage spool: imported=%d duplicate=%d quarantined=%d remaining=%d", result.Imported, result.Duplicates, result.Quarantined, result.Remaining)
+		}
+	}
+	go func() {
+		run()
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				run()
+			}
+		}
+	}()
+	log.Printf("✓ Sage spool importer started (Codex history=%t)", codexhistory.Enabled(root))
 }
 
 // SetQueueNotifyFn registers a callback on the queue executor that is invoked

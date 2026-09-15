@@ -58,7 +58,9 @@ devtrack sage status
 devtrack sage pause
 devtrack sage resume
 devtrack sage doctor
-devtrack sage install-hooks [--harness <name>]
+devtrack sage harness list
+devtrack sage harness install <name>
+devtrack sage harness uninstall <name>
 devtrack sage search <query>
 devtrack sage topics
 devtrack sage git ask|do|pr|interactive
@@ -66,6 +68,7 @@ devtrack sage git ask|do|pr|interactive
 
 The old `devtrack sage ask|do|pr|interactive` forms remain temporary aliases and emit a migration
 notice. The legacy `gitsage` Go package is not renamed or removed during the first milestone.
+`install-hooks --harness codex` and its uninstall counterpart remain compatibility aliases.
 
 ## Architecture
 
@@ -93,11 +96,17 @@ break the host harness. The daemon owns retries, processing state, and model wor
 Recommended code boundaries:
 
 - `internal/sage`: event contracts, normalization, redaction, spool writer, importer, and service.
+- `internal/sage/harness`: adapter registry and selective lifecycle; no adapter is enabled globally.
 - `internal/sage/hooks`: fixture-driven harness adapters and idempotent installers.
 - `internal/db`: append-only Sage migrations and query methods using the existing database owner.
 - `devtrack_client`: CLI routing and daemon lifecycle integration.
 - `internal/llmclient` (later): shared provider transport extracted from `gitsage/llm.go` without
   changing legacy behavior.
+
+External adapter evolution follows `SAGE_HARNESS_PLUGIN_CONTRACT.md`: versioned declarative
+packages first, with an optional sandboxed WASI normalizer for payloads that need code. MCP is a
+discovery/management surface, never a dependency of the hook hot path. Dynamic Go plugins are not
+used because they do not provide a portable Windows extension mechanism.
 
 ## Storage contract
 
@@ -142,6 +151,18 @@ Acceptance:
 - The harness continues normally when DevTrack is stopped, storage is unavailable, or input is bad.
 - Two repeated clean runs capture the fixture journey once, with no model or network work in-hook.
 - Pause/resume is immediate and status/doctor explain backlog and sanitized failures.
+
+Implementation status (2026-09-15): the Go client now has an atomic immutable event spool, a
+bounded failure-isolated importer, quarantine handling, durable delivery-key deduplication, and
+the append-only `sage_events` SQLite migration. `IntegratedMonitor.Start(ctx)` owns the importer.
+The supplemental Codex compatibility path reads `state_5.sqlite` and
+`thread_history_1.sqlite` with SQLite `mode=ro`, accepts only active `vscode` and `cli` sources,
+starts from the time it is enabled, and is gated by either installation state or
+`DEVTRACK_SAGE_CODEX_HISTORY=true`. It never reads user messages or persists command output.
+Idempotent install/remove preserves unrelated Codex settings; Windows selects history mode and
+removes only obsolete DevTrack-owned per-command hooks. The isolated packaged executable journey
+passes install, silent capture, privacy-canary, status/backlog, and uninstall checks. SAGE-002 is
+complete; sanitized observation from a trusted live Codex hook remains a separate external gate.
 
 ### SAGE-003 — Searchable personal command knowledge
 

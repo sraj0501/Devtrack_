@@ -37,3 +37,13 @@ Codex hook when the read-only history poller is active. A synthetic Go contract 
 that item shape and both allowed sources. The reported Warp compatibility relationship is a
 reasonable inference—Warp launches the Codex CLI path—but neither the commit nor code names Warp,
 so Sage does not introduce a fake `warp` source.
+
+## Packaged SAGE-002 acceptance (2026-09-15)
+
+`scripts/e2e-sage-capture.ps1` builds a fresh Windows executable and uses disposable data and Codex
+homes. It verifies history-mode installation, preservation of an unrelated hook, a silent bounded
+hook invocation, privacy-canary exclusion, backlog visibility, and removal. The run passes. The
+installer also has Go coverage for repeated install/remove, malformed JSON, UTF-8 BOM input, and
+the non-Windows `PostToolUse` merge. This does not replace Codex's trust review: official Codex
+documentation says changed non-managed hooks are skipped until reviewed with `/hooks`. A sanitized
+event from a user-trusted live hook therefore remains an explicit external validation gate.

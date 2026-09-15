@@ -1,6 +1,6 @@
 # Next Steps — DevTrack Sage
 
-_Updated 2026-09-10. This file lists active work only. Completed delivery and validation history
+_Updated 2026-09-15. This file lists active work only. Completed delivery and validation history
 lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
 ## Current product initiative
@@ -19,9 +19,15 @@ into the capture foundation.
 
 The executable milestones, architecture, acceptance criteria, and risk register are in
 [DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md](DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md). Supporting active
-context is maintained in `.claude/memory/project_sage_session_memory.md`. SAGE-001 is underway as
-TASK-155; published hook contracts have been compared, and the remaining gate is sanitized
-observed fixtures plus first-adapter validation.
+context is maintained in `.claude/memory/project_sage_session_memory.md`. SAGE-001 established the
+contract and compatibility seam as TASK-155. SAGE-002 is complete as TASK-156: the atomic bounded
+spool, append-only SQLite event store, daemon importer, and opt-in read-only Codex history adapter
+are implemented, hook installation/removal is reversible, and the isolated packaged capture
+journey passes. Start SAGE-003 searchable command knowledge next. Sanitized observed hook fixtures
+remain an external harness-validation gate.
+The selective harness registry and external plugin boundary are now fixed in
+`SAGE_HARNESS_PLUGIN_CONTRACT.md`; new adapters must plug into that boundary rather than adding
+global installer switches or harness-specific storage.
 `Data/agent_logs/project_board.md` remains the task-ID authority.
 
 ## Open release follow-ups
