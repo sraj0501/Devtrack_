@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -51,40 +50,13 @@ func NewCLI() (*CLI, error) {
 
 func resolveRepoPath() (string, error) {
 	wsCfg, err := LoadWorkspacesConfig()
-	if err == nil && wsCfg != nil && len(wsCfg.GetEnabledWorkspaces()) > 0 {
+	if err != nil {
+		return "", fmt.Errorf("load workspaces.yaml: %w", err)
+	}
+	if wsCfg != nil && len(wsCfg.GetEnabledWorkspaces()) > 0 {
 		return "", nil
 	}
-
-	workspacePath := strings.TrimSpace(os.Getenv("DEVTRACK_WORKSPACE"))
-	if workspacePath != "" {
-		workspacePath = filepath.Clean(workspacePath)
-		if IsGitRepository(workspacePath) {
-			return workspacePath, nil
-		}
-
-		parentPath := filepath.Dir(workspacePath)
-		if IsGitRepository(parentPath) {
-			return parentPath, nil
-		}
-
-		return "", fmt.Errorf("DEVTRACK_WORKSPACE is not a git repository: %s", workspacePath)
-	}
-
-	repoPath, err := os.Getwd()
-	if err != nil {
-		repoPath = "."
-	}
-
-	if IsGitRepository(repoPath) {
-		return repoPath, nil
-	}
-
-	parentPath := filepath.Dir(repoPath)
-	if IsGitRepository(parentPath) {
-		return parentPath, nil
-	}
-
-	return "", fmt.Errorf("not in a git repository and DEVTRACK_WORKSPACE is not set")
+	return "", fmt.Errorf("no enabled workspaces configured; add one with: devtrack workspace add <name> <path>")
 }
 
 // Execute runs the CLI command

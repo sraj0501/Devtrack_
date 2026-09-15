@@ -43,7 +43,7 @@ type WorkspaceMonitor struct {
 
 // IntegratedMonitor combines Git monitoring and time-based scheduling
 type IntegratedMonitor struct {
-	workspaceMonitors     []*WorkspaceMonitor // one per repo (single-repo has exactly one)
+	workspaceMonitors     []*WorkspaceMonitor // one per enabled workspaces.yaml entry
 	scheduler             *Scheduler
 	config                *config.Config
 	database              *db.Database
@@ -59,8 +59,8 @@ type IntegratedMonitor struct {
 }
 
 // NewIntegratedMonitor creates a new integrated monitoring system.
-// repoPath is used as the single workspace when workspaces.yaml is absent.
-func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
+// Repository paths are loaded exclusively from workspaces.yaml.
+func NewIntegratedMonitor(_ string) (*IntegratedMonitor, error) {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -73,15 +73,16 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 		return nil, fmt.Errorf("failed to create database: %w", err)
 	}
 
-	// Build workspace monitors: prefer workspaces.yaml when present
+	// Build workspace monitors from the sole repository source: workspaces.yaml.
 	var workspaceMonitors []*WorkspaceMonitor
 	wsCfg, err := config.LoadWorkspacesConfig()
 	if err != nil {
-		log.Printf("Warning: failed to load workspaces.yaml: %v (falling back to single-repo mode)", err)
+		database.Close()
+		return nil, fmt.Errorf("failed to load workspaces.yaml: %w", err)
 	}
 
 	if wsCfg != nil && len(wsCfg.GetEnabledWorkspaces()) > 0 {
-		log.Printf("Multi-repo mode: loading %d workspace(s) from workspaces.yaml", len(wsCfg.GetEnabledWorkspaces()))
+		log.Printf("Loading %d workspace(s) from workspaces.yaml", len(wsCfg.GetEnabledWorkspaces()))
 		for _, ws := range wsCfg.GetEnabledWorkspaces() {
 			gm, err := NewGitMonitor(ws.Path)
 			if err != nil {
@@ -107,13 +108,8 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 			return nil, fmt.Errorf("workspaces.yaml found but no valid workspaces could be loaded")
 		}
 	} else {
-		// Single-repo backward-compat mode
-		log.Printf("Single-repo mode: monitoring %s", repoPath)
-		gm, err := NewGitMonitor(repoPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create git monitor: %w", err)
-		}
-		workspaceMonitors = []*WorkspaceMonitor{{gitMonitor: gm}}
+		database.Close()
+		return nil, fmt.Errorf("no enabled workspaces configured; add one with: devtrack workspace add <name> <path>")
 	}
 
 	// Create integrated monitor
@@ -294,7 +290,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 		return
 	}
 	if newCfg == nil {
-		log.Println("workspaces.yaml removed — single-repo mode active on restart")
+		log.Println("workspaces.yaml removed — no repositories will be monitored until an entry is added")
 		return
 	}
 

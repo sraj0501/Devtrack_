@@ -563,7 +563,7 @@ All configuration flows from a single `.env` file with **no hardcoded defaults**
 | Variable | Layer | Purpose | Example |
 |----------|-------|---------|---------|
 | `PROJECT_ROOT` | Both | Path to repository | `/home/user/automation_tools` |
-| `DEVTRACK_WORKSPACE` | Both | Git repo to monitor | Same as PROJECT_ROOT or custom repo |
+| `WORKSPACES_FILE` | Client | Path to the authoritative repository list | `$PROJECT_ROOT/workspaces.yaml` |
 | `DATA_DIR` | Both | Runtime data location | `${PROJECT_ROOT}/Data` |
 | `IPC_HOST` | Both | IPC server host | `127.0.0.1` |
 | `IPC_PORT` | Both | IPC server port | `35893` |

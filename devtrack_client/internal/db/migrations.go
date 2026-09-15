@@ -49,15 +49,7 @@ var allMigrations = []Migration{
 				return err
 			}
 			wsPath := filepath.Join(home, "workspaces.yaml")
-			ws := os.Getenv("DEVTRACK_WORKSPACE")
-			if ws == "" {
-				ws = "."
-			}
-			pm := os.Getenv("PM_AGENT_DEFAULT_PLATFORM")
-			if pm == "" {
-				pm = "none"
-			}
-			return createWorkspacesFile(wsPath, ws, pm)
+			return createEmptyWorkspacesFile(wsPath)
 		},
 	},
 	{
@@ -513,35 +505,16 @@ func createDataDirectories(dataDir string) error {
 	return nil
 }
 
-// createWorkspacesFile writes an initial workspaces.yaml with the workspace
-// collected during setup. Skips if the file already exists.
-func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
+// createEmptyWorkspacesFile writes an empty authoritative workspace list.
+// Repositories must be added explicitly; .env is never used as a source.
+func createEmptyWorkspacesFile(path string) error {
 	if _, err := os.Stat(path); err == nil {
 		return nil // already exists — don't overwrite
 	}
-	if pmPlatform == "" || pmPlatform == "none" {
-		pmPlatform = "none"
-	}
-	// Derive a short name from the last path component.
-	name := filepath.Base(workspacePath)
-	if name == "" || name == "." {
-		name = "default"
-	}
 	content := "# workspaces.yaml — managed by DevTrack\n" +
-		"# Add more workspaces with: devtrack workspace add <name> <path> [platform]\n" +
+		"# Add a workspace with: devtrack workspace add <name> <path> [--pm platform]\n" +
 		"# pm_platform options: azure | github | gitlab | jira | none\n\n" +
-		"version: \"1\"\nworkspaces:\n" +
-		"  - name: \"" + name + "\"\n" +
-		"    path: \"" + filepath.ToSlash(workspacePath) + "\"\n" +
-		"    pm_platform: \"" + pmPlatform + "\"\n" +
-		"    pm_project: \"\"\n" +
-		"    enabled: true\n" +
-		"    ignore_branches: []\n" +
-		"    tags: []\n" +
-		"    pm_assignee: \"\"\n" +
-		"    pm_iteration_path: \"\"\n" +
-		"    pm_area_path: \"\"\n" +
-		"    pm_milestone: 0\n"
+		"version: \"1\"\nworkspaces: []\n"
 	return os.WriteFile(path, []byte(content), 0644)
 }
 

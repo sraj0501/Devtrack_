@@ -174,7 +174,7 @@ func RunSetup() error {
 	if !IsGitRepository(ws) {
 		if err := offerGitInit(ws, reader); err != nil {
 			// User declined or init failed — warn and continue; they can fix it later.
-			fmt.Printf("  Note: %s is not a git repository. Update DEVTRACK_WORKSPACE in .env when ready.\n", ws)
+			fmt.Printf("  Note: %s is not a git repository. Update its path in workspaces.yaml when ready.\n", ws)
 		}
 	}
 	cfg.WorkspacePath = ws
@@ -483,7 +483,6 @@ func generateEnvContent(cfg *SetupConfig) string {
 	// derived from PROJECT_ROOT — in managed mode PROJECT_ROOT points at the
 	// cloned devtrack_server/ directory, which has no devtrack_client/ sibling.
 	b.WriteString("DEVTRACK_HOME=" + filepath.Dir(dataDir) + "\n")
-	b.WriteString("DEVTRACK_WORKSPACE=" + cfg.WorkspacePath + "\n")
 	b.WriteString("WORKSPACES_FILE=" + filepath.Join(filepath.Dir(dataDir), "workspaces.yaml") + "\n")
 	b.WriteString("DATA_DIR=" + dataDir + "\n")
 	b.WriteString("DATABASE_DIR=" + filepath.Join(dataDir, "db") + "\n")
