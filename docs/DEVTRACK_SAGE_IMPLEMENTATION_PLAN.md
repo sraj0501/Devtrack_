@@ -11,7 +11,10 @@ DevTrack Sage is implemented entirely in Go. The Python implementation in
 `D:\git_apps\ai_sessions_skills` is the behavioral reference for the port, not a runtime
 dependency. The functional `tool/` baseline is pinned to commit
 `94a2544f8c85a630fa8b5d9a94d9938121aef11b`. Later knowledge-only commits and the reference
-worktree's generated knowledge changes are not part of the port baseline.
+worktree's generated knowledge changes are not part of the port baseline. The Windows Codex
+compatibility fix at `b85a1ab` is an explicit supplemental reference: it enables both `vscode`
+and `cli` thread sources for read-only history capture and avoids per-command Codex hooks on
+Windows when that poller is enabled. It does not move the 135-scenario baseline.
 
 The existing `devtrack sage ask`, `do`, `pr`, and interactive commands remain shipped Git-oriented
 behavior. They are a compatibility surface, not the architecture for the new capture pipeline.
@@ -222,7 +225,9 @@ for inspection or export.
 
 ## Immediate next step
 
-Start SAGE-001 with a port inventory: convert the pinned Python test list into a checked-in parity
-matrix, collect sanitized fixtures from the candidate harnesses, score their available
-lifecycle/tool events, and check in the normalized v1 Go event schema plus tests. Do not build
-playback or all adapters before one complete capture-to-search slice works.
+SAGE-001 is in progress. The pinned Python test inventory is in
+[SAGE_PORT_PARITY_MATRIX.md](SAGE_PORT_PARITY_MATRIX.md), and the initial Go event/CLI seam is in
+[SAGE_EVENT_CONTRACT_V1.md](SAGE_EVENT_CONTRACT_V1.md). Next, validate current official hook
+contracts, collect sanitized candidate fixtures, and score event completeness, installer safety,
+and daily usage. Do not build playback or all adapters before one complete capture-to-search
+slice works.

@@ -279,7 +279,8 @@ func requiresManagedMode(command string) error {
 	return nil
 }
 
-// handleSage dispatches git-sage subcommands.
+// handleSage keeps the shipped Git agent working while the local memory
+// commands are introduced one explicit step at a time.
 //
 // Usage:
 //
@@ -293,31 +294,32 @@ func (cli *CLI) handleSage() error {
 	if err != nil {
 		repoPath = "."
 	}
-
-	args := os.Args
-	if len(args) < 3 {
-		return gitsage.RunInteractive(repoPath)
+	sub, args, legacy := routeSage(os.Args[2:])
+	if legacy {
+		fmt.Fprintln(os.Stderr, "sage: Git-agent commands are moving to 'devtrack sage git ...'; this alias remains available.")
 	}
-
-	sub := args[2]
 	switch sub {
+	case "status", "pause", "resume", "doctor":
+		return runSageState(sub, args)
+	case "search", "topics", "install-hooks":
+		return fmt.Errorf("sage %s is planned but unavailable until the capture/search milestones", sub)
 	case "ask":
-		if len(args) < 4 {
+		if len(args) == 0 {
 			fmt.Println("Usage: devtrack sage ask \"<question>\"")
 			return fmt.Errorf("missing question")
 		}
-		question := strings.Join(args[3:], " ")
+		question := strings.Join(args, " ")
 		return gitsage.RunAsk(repoPath, question)
 
 	case "do":
-		if len(args) < 4 {
+		if len(args) == 0 {
 			fmt.Println("Usage: devtrack sage do \"<task>\"")
 			return fmt.Errorf("missing task")
 		}
 		// Strip --verbose flag; pass remaining tokens as task
 		verbose := false
 		var taskParts []string
-		for _, a := range args[3:] {
+		for _, a := range args {
 			if a == "--verbose" || a == "-v" {
 				verbose = true
 			} else {
@@ -339,8 +341,8 @@ func (cli *CLI) handleSage() error {
 		return gitsage.RunInteractive(repoPath)
 
 	default:
-		// Treat anything else as a question
-		question := strings.Join(args[2:], " ")
+		// Preserve the historical free-form question shorthand.
+		question := strings.Join(append([]string{sub}, args...), " ")
 		return gitsage.RunAsk(repoPath, question)
 	}
 }

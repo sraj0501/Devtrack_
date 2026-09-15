@@ -1,6 +1,21 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-09-10 — clean Windows installation and full Managed Linux validation are
+**[2026-09-14] TASK-155 / SAGE-001 — DevTrack Sage contract (in progress).** Started the
+Go-native Sage foundation on `feat/SAGE-001-contract`, separate from the TASK-154 UI branch.
+Inventoried all 135 pinned Python regression scenarios into `docs/SAGE_PORT_PARITY_MATRIX.md`,
+added the normalized event v1 fixture/parser and local pause/status seam, and preserved the
+legacy Git agent behind explicit `sage git` aliases. Capture, hooks, and search are not yet
+installed. Published Codex, Claude Code, and Gemini CLI hook contracts were compared, with Codex
+as the provisional first choice. A pure Codex `PostToolUse`/Bash normalizer and synthetic
+privacy/dedup fixtures were added without changing live Codex settings. The later Python
+compatibility fix at `b85a1ab` was reviewed: its `vscode` + `cli` read-only history sources and
+Windows no-popup hook selection are now recorded as a supplemental baseline, with a pure Go
+history-item normalizer and synthetic fixture. Warp is not named upstream; its relationship is
+inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
+verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-156.
+
+_Last updated: 2026-09-14 — SAGE-001 contract in progress; UI redesign remains on its separate
+branch. Clean Windows installation and full Managed Linux validation are
 owner-confirmed complete; packaged qualification, media, and listing follow-ups remain._
 
 **[2026-09-10] Environment validation closure.** The owner confirmed that the supported clean

@@ -18,6 +18,11 @@ environment. The pinned functional reference for `tool/` is
 `94a2544f8c85a630fa8b5d9a94d9938121aef11b`. Port for behavioral parity rather than copying
 Python-specific process or file structure.
 
+Treat `b85a1ab` as a supplemental Windows Codex compatibility reference without moving the
+pinned baseline: read-only history capture explicitly supports `vscode` and `cli` thread sources,
+and Windows avoids per-command Codex hooks when that poller is enabled. The reference has no
+Warp-specific source; Warp compatibility is inferred through terminal-launched Codex CLI.
+
 The reference implementation is the working tree at `D:\git_apps\ai_sessions_skills`.
 Use it to inform the command/tool capture and self-writing knowledge pipeline. Treat LLM
 output capture and session playback as designs to implement later, not proven reference
