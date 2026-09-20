@@ -1,13 +1,13 @@
 # DevTrack Sage reference parity matrix
 
-Pinned Python baseline: `D:\git_apps\ai_sessions_skills` commit `94a2544f8c85a630fa8b5d9a94d9938121aef11b`. This is an inventory and assignment, not a claim that later Go behavior is implemented. All 135 `test_*` methods in the two pinned regression files are listed below. Go-only v1 contract coverage is in `internal/sage/event_test.go`.
+Authoritative Python baseline: `D:\git_apps\ai_sessions_skills` commit `b85a1ab`. This is an
+inventory and assignment, not a claim that the corresponding Go behavior is implemented. All 136
+`test_*` methods in the two regression files must have a Go destination and test before parity is
+complete. Go-only event-contract coverage is in `internal/sage/event_test.go`.
 
-Supplemental compatibility reference: commit `b85a1ab`. Its configurable Codex `cli` history
-source and Windows no-popup installer behavior are tracked separately and do not change the
-135-scenario baseline. `TestNormalizeCodexHistoryItemSupportsIDEAndCLI` covers the pure Go
-normalization seam; SQLite polling and installer selection remain SAGE-002 work.
-
-`Excluded` means the Python behavior conflicts with the local SQLite, no-implicit-Git-write Sage contract; the exclusion is deliberate and must be revisited if that product contract changes. Python-specific watcher subprocess mechanics are assigned to SAGE-002 as daemon-lifecycle behavior rather than copied literally.
+Python-specific watcher subprocess mechanics are assigned to SAGE-002 as daemon-lifecycle behavior
+rather than copied literally. Reference behavior is not excluded merely because DevTrack uses Go,
+SQLite, or different internal process boundaries.
 
 | Python regression scenario | Go destination | Assignment | Port note |
 |---|---|---|---|
@@ -61,16 +61,16 @@ normalization seam; SQLite polling and installer selection remain SAGE-002 work.
 | `tool/tests/test_portable.py:402` `test_dead_pid_is_not_alive` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
 | `tool/tests/test_portable.py:408` `test_missing_pidfile_is_not_alive` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
 | `tool/tests/test_portable.py:412` `test_own_pid_with_fresh_touch_is_alive` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:457` `test_gitignored_runtime_is_never_dirty` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:461` `test_nested_knowledge_folder_commits_with_root_relative_paths` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:471` `test_preexisting_work_is_left_uncommitted` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:479` `test_entangled_file_is_skipped_not_guessed` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:489` `test_user_staged_work_stays_staged` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:499` `test_paths_with_spaces_survive` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:505` `test_deletion_by_writer_is_committed` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:512` `test_nothing_of_ours_makes_no_commit` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:518` `test_auto_commit_off_is_respected` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:526` `test_non_repo_is_a_no_op` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
+| `tool/tests/test_portable.py:457` `test_gitignored_runtime_is_never_dirty` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Port runtime-ignore isolation |
+| `tool/tests/test_portable.py:461` `test_nested_knowledge_folder_commits_with_root_relative_paths` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Port root-relative Sage-owned commits |
+| `tool/tests/test_portable.py:471` `test_preexisting_work_is_left_uncommitted` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Preserve unrelated work |
+| `tool/tests/test_portable.py:479` `test_entangled_file_is_skipped_not_guessed` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Skip ownership-ambiguous files |
+| `tool/tests/test_portable.py:489` `test_user_staged_work_stays_staged` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Preserve the user's index |
+| `tool/tests/test_portable.py:499` `test_paths_with_spaces_survive` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Port path-safe commits |
+| `tool/tests/test_portable.py:505` `test_deletion_by_writer_is_committed` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Track Sage-owned deletions |
+| `tool/tests/test_portable.py:512` `test_nothing_of_ours_makes_no_commit` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Avoid empty commits |
+| `tool/tests/test_portable.py:518` `test_auto_commit_off_is_respected` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Respect the configured local-commit switch |
+| `tool/tests/test_portable.py:526` `test_non_repo_is_a_no_op` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Never require a Git repository |
 | `tool/tests/test_portable.py:547` `test_an_existing_entry_routes_its_whole_binary` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
 | `tool/tests/test_portable.py:553` `test_a_binary_the_list_never_knew_still_routes` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
 | `tool/tests/test_portable.py:559` `test_unknown_binary_has_no_route_yet` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
