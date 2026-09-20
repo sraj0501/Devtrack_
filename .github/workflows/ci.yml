@@ -7,6 +7,15 @@ on:
     branches: [main, dev]
 
 jobs:
+  agent-memory-check:
+    name: Shared agent memory boundary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Reject agent-specific project memory
+        run: python3 scripts/check_agent_memory.py
+
   go-test:
     name: Go build & test
     runs-on: ubuntu-latest

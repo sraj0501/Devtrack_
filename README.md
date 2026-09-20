@@ -203,16 +203,10 @@ primary and automatically takes over when the local model becomes available.
 
 #### Moving to a new machine?
 
-Project memory and agent logs are committed to the repo (`.claude/memory/`, `Data/agent_logs/`). After cloning, wire up Claude Code's memory system with one command:
-
-```bash
-# Replace <path-key> with the absolute repo path, slashes replaced by hyphens
-# e.g. repo at /home/sraj/devtrack → -home-sraj-devtrack
-mkdir -p ~/.claude/projects/<path-key>/
-ln -s $(pwd)/.claude/memory ~/.claude/projects/<path-key>/memory
-```
-
-Claude Code will then read and write memory directly to the repo, keeping it in sync with git.
+Shared project memory and agent logs are committed to the repository under `agent-memory/` and
+`Data/agent_logs/`. Claude, Codex, and Copilot discovery adapters are checked in, so no symlink or
+tool-specific memory copy is required after cloning. All agents read `agent-memory/INDEX.md`; no
+durable project memory belongs in an agent-specific directory.
 
 ---
 
@@ -571,7 +565,7 @@ Source: `devtrack_client/internal/mcp/` (server core) and `devtrack_client/mcp_c
 The repository retains five historical Claude role definitions under
 [`.claude/agents/_archive/`](.claude/agents/_archive/) and keeps the current role, memory, and
 authorization contract in
-[`.claude/memory/project_local_agents.md`](.claude/memory/project_local_agents.md). These are
+[`agent-memory/operations/agent-system.md`](agent-memory/operations/agent-system.md). These are
 project-maintenance assets, not `devtrack` CLI commands, and the archived files are not advertised
 as automatically installed Claude slash commands. A contributor's Codex or agent environment may
 install adapters for the same roles separately.
@@ -749,7 +743,7 @@ Key references in this repo:
 | Deploy only the Python backend on a server | [Python AI server](#python-ai-server) |
 | Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
-| Understand the development-agent roles and authorization boundaries | [Agent role contract](.claude/memory/project_local_agents.md) · [archived Claude definitions](.claude/agents/_archive/) |
+| Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [archived Claude definitions](.claude/agents/_archive/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
 
 ---

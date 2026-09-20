@@ -17,7 +17,7 @@ paths:
   posts_dir: Data/agent_logs/posts
   docs: docs/
   src: [devtrack_client/, devtrack_server/]
-  memory_project: .claude/memory/
+  memory_project: agent-memory/
 
 git:
   default_branch: main

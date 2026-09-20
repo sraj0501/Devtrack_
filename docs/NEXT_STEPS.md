@@ -19,7 +19,7 @@ into the capture foundation.
 
 The executable milestones, architecture, acceptance criteria, and risk register are in
 [DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md](DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md). Supporting active
-context is maintained in `.claude/memory/project_sage_session_memory.md`. No DevTrack Sage
+context is maintained in `agent-memory/initiatives/sage.md`. No DevTrack Sage
 implementation task has been approved or assigned yet; `Data/agent_logs/project_board.md` remains
 the task-ID authority.
 

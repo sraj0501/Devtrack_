@@ -4,9 +4,9 @@ description: Active implementation planning and unresolved release follow-ups
 type: project
 ---
 
-**Active product initiative:** Plan DevTrack Sage as the local cross-harness memory layer. The first delivery slice is capture plus searchable personal command knowledge; playback follows as a separate milestone. `project_sage_session_memory.md` owns this planning record.
+**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. The work on `feat/SAGE-003-knowledge` is not contained in the current `dev` branch and must be integrated first. Then remove the legacy Git Sage CLI/agent surface and finish SAGE-003 structured distillation, deterministic Markdown, routing, merge/refile, safe local commits, retries, diagnostics, and parity coverage. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
 
-**Active UI work:** Uncommitted server-admin visual changes remain work in progress. Stabilize or isolate them before packaged-build qualification and media capture. `project_server_ui_refresh.md` owns the design scope.
+**Active UI work:** Uncommitted server-admin visual changes remain work in progress. Stabilize or isolate them before packaged-build qualification and media capture. `initiatives/server-ui.md` owns the design scope.
 
 **Unresolved release follow-ups:** packaged-build acceptance; privacy-reviewed media; exact Glama listing path and the score-badge update on awesome-mcp-servers PR #13608.
 

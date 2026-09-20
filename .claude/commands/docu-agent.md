@@ -20,16 +20,18 @@ Run the following three sub-agents **in parallel** (launch all three in a single
 
 ---
 
-## Agent 2 — Project memory (`.claude/memory/`)
+## Agent 2 — Shared project memory (`agent-memory/`)
 
-This repository directory is the canonical DevTrack project memory. Do not read or modify
-user-level or environment-owned memory as if it were project state.
+This tool-neutral repository directory is the only canonical DevTrack project memory. Do not write
+durable memory into `.claude/`, `.codex/`, `.agents/`, `.cursor/`, `.github/`, `.gemini/`, or any
+other harness-specific directory. Do not read or modify user-level or environment-owned memory as
+if it were project state.
 
 1. See what changed recently:
    ```bash
    GIT_NO_DEVTRACK=1 git log --oneline -20
    ```
-2. Read `.claude/memory/MEMORY.md` and the linked files needed for the change.
+2. Read `agent-memory/INDEX.md` and the linked files needed for the change.
 3. Keep memory **active-only**:
    - Record current decisions, active work, unresolved risks, and durable operational rules.
    - Remove completed tasks, dated completion summaries, old test/run evidence, closed gates, and
@@ -37,9 +39,10 @@ user-level or environment-owned memory as if it were project state.
      and Git history.
    - Never create a `Completed` section or move finished work into another memory file.
    - Remove index links and delete memory files that exist only to describe completed work.
-4. Create or update `project_*.md` files only for active initiatives or durable rules that will
-   affect future decisions. Use frontmatter fields `name`, `description`, and `type`.
-5. Update the `MEMORY.md` index and verify closed work cannot be rediscovered as pending work.
+4. Create or update files only under `agent-memory/`, and only for active initiatives or durable
+   rules that will affect future decisions. Use frontmatter fields `name`, `description`, and
+   `type` for linked memory records.
+5. Update `agent-memory/INDEX.md` and verify closed work cannot be rediscovered as pending work.
 
 ---
 
@@ -67,7 +70,7 @@ user-level or environment-owned memory as if it were project state.
 2. If the caller explicitly authorized a commit, stage only the in-repo documentation and project
    memory files changed by this run:
    ```bash
-   GIT_NO_DEVTRACK=1 git add devtrack_wiki/wiki/wiki.html README.md docs/ .claude/memory/ .claude/commands/docu-agent.md
+   GIT_NO_DEVTRACK=1 git add devtrack_wiki/wiki/wiki.html README.md docs/ agent-memory/ .claude/commands/docu-agent.md
    GIT_NO_DEVTRACK=1 git commit -m "docs: <brief summary of what was documented>"
    ```
 3. Push only when the caller explicitly authorized it. Push to `dev`, never `main`:

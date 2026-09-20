@@ -4,7 +4,7 @@ description: Canonical documentation sources and stale-claim rules
 type: project
 ---
 
-**Sources:** `PRODUCT_BIBLE.md` owns product direction; `docs/ARCHITECTURE.md` owns runtime boundaries; `CLAUDE.md` owns build guidance; `Data/agent_logs/project_board.md` owns task status and IDs; `devtrack_wiki/wiki/` is the public site.
+**Sources:** `PRODUCT_BIBLE.md` owns product direction; `docs/ARCHITECTURE.md` owns runtime boundaries; `agent-memory/operations/build-guide.md` owns shared build guidance; `Data/agent_logs/project_board.md` owns task status and IDs; `devtrack_wiki/wiki/` is the public site.
 
 **Runtime claims:** the client uses SQLite and the server uses PostgreSQL. Use `OLLAMA_HOST` and `LMSTUDIO_HOST`; `health`, `server-tui`, and `admin-start` are not Go commands.
 
