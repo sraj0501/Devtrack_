@@ -42,7 +42,7 @@ workspaces.yaml
 devtrack_client/devtrack_test_bin
 devtrack_client/*.zip
 
-# Claude Code — exclude machine-specific settings, keep shared agents
+# Claude Code — exclude machine-specific state; shared agent assets live in agent-memory/
 .claude/settings.local.json
 .claude/worktrees/
 

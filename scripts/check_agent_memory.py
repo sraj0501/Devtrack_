@@ -26,6 +26,27 @@ ADAPTERS = (
     ROOT / "devtrack_server" / "CLAUDE.md",
     ROOT / ".github" / "copilot-instructions.md",
 )
+REQUIRED_SHARED_FILES = (
+    CANONICAL / "project-config.md",
+    CANONICAL / "roles" / "project-vision.md",
+    CANONICAL / "roles" / "devtrack-engineer.md",
+    CANONICAL / "roles" / "git-agent.md",
+    CANONICAL / "roles" / "docu-agent.md",
+    CANONICAL / "roles" / "memory-compactor.md",
+    CANONICAL / "roles" / "post-generator.md",
+)
+LEGACY_CLAUDE_SHARED_FILES = (
+    ROOT / ".claude" / "pm-config.md",
+    ROOT / ".claude" / "project_board.md",
+    ROOT / ".claude" / "engineer_log.md",
+    ROOT / ".claude" / "feature_tracker.md",
+    ROOT / ".claude" / "commands" / "docu-agent.md",
+    ROOT / ".claude" / "agents" / "_archive" / "project-vision.md",
+    ROOT / ".claude" / "agents" / "_archive" / "devtrack-engineer.md",
+    ROOT / ".claude" / "agents" / "_archive" / "git-agent.md",
+    ROOT / ".claude" / "agents" / "_archive" / "memory-compactor.md",
+    ROOT / ".claude" / "agents" / "_archive" / "post-generator.md",
+)
 SKIP_DIRS = {".git", ".pytest_cache", "__pycache__", ".venv", "node_modules"}
 MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
@@ -48,6 +69,14 @@ def main() -> int:
     for path in PROHIBITED_MEMORY_DIRS:
         if path.exists():
             errors.append(f"agent-specific memory directory is prohibited: {path.relative_to(ROOT)}")
+
+    for path in REQUIRED_SHARED_FILES:
+        if not path.is_file():
+            errors.append(f"required shared agent file is missing: {path.relative_to(ROOT)}")
+
+    for path in LEGACY_CLAUDE_SHARED_FILES:
+        if path.exists():
+            errors.append(f"legacy Claude-only shared file is prohibited: {path.relative_to(ROOT)}")
 
     for adapter in ADAPTERS:
         if not adapter.is_file():

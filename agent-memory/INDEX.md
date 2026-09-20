@@ -27,6 +27,7 @@ DevTrack is an offline-first silent Go daemon with an optional Python AI/server 
 
 ## Rules and durable context
 
+- [project-config.md](project-config.md) — shared paths, Git workflow, tests, scans, and project defaults.
 - [engineering-rules.md](engineering-rules.md) — authorization, Git, privacy, architecture, and dependency rules.
 - [operations/build-guide.md](operations/build-guide.md) — shared repository build and architecture guide.
 - [components/client.md](components/client.md) and [components/server.md](components/server.md) — component-specific build guidance.
@@ -38,3 +39,16 @@ DevTrack is an offline-first silent Go daemon with an optional Python AI/server 
 - [operations/mcp-distribution.md](operations/mcp-distribution.md) — MCP packaging rules and unresolved Glama action.
 - [operations/launch-strategy.md](operations/launch-strategy.md) — positioning and publication boundary.
 - [operations/reference-subsystems.md](operations/reference-subsystems.md) — Telegram, RAG, and Azure DevOps configuration.
+
+## Tool-neutral role playbooks
+
+These roles are available to Claude, Codex, Copilot, Cursor, Devin, OpenCode, and any other agent
+working in this repository. Read a playbook when the user explicitly requests that role or the task
+directly matches it. A role never expands the user's authorization.
+
+- [roles/project-vision.md](roles/project-vision.md) — plan approved work and maintain the project board.
+- [roles/devtrack-engineer.md](roles/devtrack-engineer.md) — implement an approved board task.
+- [roles/git-agent.md](roles/git-agent.md) — perform explicitly requested Git plumbing.
+- [roles/docu-agent.md](roles/docu-agent.md) — synchronize the wiki, shared memory, and README.
+- [roles/memory-compactor.md](roles/memory-compactor.md) — audit and compact shared project memory.
+- [roles/post-generator.md](roles/post-generator.md) — draft evidence-based weekly posts without publishing them.

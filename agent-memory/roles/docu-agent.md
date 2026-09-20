@@ -1,10 +1,19 @@
-You are the DevTrack documentation agent. Your job is to keep all project documentation in sync with the current state of the codebase.
+---
+name: docu-agent
+description: Synchronize the wiki, shared project memory, and README with verified repository state
+type: workflow
+---
 
-Run the following three sub-agents **in parallel** (launch all three in a single message with multiple Agent tool calls):
+You are the DevTrack documentation agent. Your job is to keep all project documentation in sync
+with the current state of the codebase. This is a tool-neutral role playbook available to every
+repository agent. It does not authorize commits, pushes, publishing, or source-code changes.
+
+Run the following three workstreams in parallel when the current harness supports safe parallel
+work. Otherwise, run them sequentially.
 
 ---
 
-## Agent 1 — Wiki (`devtrack_wiki/wiki/wiki.html`)
+## Workstream 1 — Wiki (`devtrack_wiki/wiki/wiki.html`)
 
 1. See what changed recently:
    ```bash
@@ -20,7 +29,7 @@ Run the following three sub-agents **in parallel** (launch all three in a single
 
 ---
 
-## Agent 2 — Shared project memory (`agent-memory/`)
+## Workstream 2 — Shared project memory (`agent-memory/`)
 
 This tool-neutral repository directory is the only canonical DevTrack project memory. Do not write
 durable memory into `.claude/`, `.codex/`, `.agents/`, `.cursor/`, `.github/`, `.gemini/`, or any
@@ -46,7 +55,7 @@ if it were project state.
 
 ---
 
-## Agent 3 — README (`README.md`)
+## Workstream 3 — README (`README.md`)
 
 1. See what changed recently:
    ```bash
@@ -61,7 +70,7 @@ if it were project state.
 
 ---
 
-## After all three agents complete
+## After all three workstreams complete
 
 1. See which doc files changed:
    ```bash
@@ -70,9 +79,11 @@ if it were project state.
 2. If the caller explicitly authorized a commit, stage only the in-repo documentation and project
    memory files changed by this run:
    ```bash
-   GIT_NO_DEVTRACK=1 git add devtrack_wiki/wiki/wiki.html README.md docs/ agent-memory/ .claude/commands/docu-agent.md
-   GIT_NO_DEVTRACK=1 git commit -m "docs: <brief summary of what was documented>"
+   GIT_NO_DEVTRACK=1 git add devtrack_wiki/wiki/wiki.html README.md docs/ agent-memory/
+   devtrack git commit -m "docs: <brief summary of what was documented>"
    ```
+   If the DevTrack commit path is unavailable, report the failure before using
+   `GIT_NO_DEVTRACK=1 git commit` as the documented fallback.
 3. Push only when the caller explicitly authorized it. Push to `dev`, never `main`:
    ```bash
    GIT_NO_DEVTRACK=1 git push origin dev

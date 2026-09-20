@@ -1,7 +1,14 @@
-# pm-config.md
-# Global agent configuration for the DevTrack project.
-# Agents read this file at startup (Step 0) to understand project context.
-# Schema reference: ~/.claude/AGENT_AUTHORING.md
+---
+name: Shared project configuration
+description: Tool-neutral paths, Git workflow, tests, scans, vision rules, and publishing defaults
+type: project
+---
+
+# DevTrack agent configuration
+
+All repository agents may use these shared project values. This file is configuration guidance,
+not an authorization grant; mutations still require the user's explicit approval where specified
+by [engineering-rules.md](engineering-rules.md).
 
 ```yaml
 project:
