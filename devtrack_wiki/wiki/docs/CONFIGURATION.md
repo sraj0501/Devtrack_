@@ -27,8 +27,7 @@ Do not copy old configuration blocks from the wiki. The maintained exhaustive sa
 |---|---|
 | `LLM_PROVIDER` | Server primary provider: `ollama`, `openai`, `anthropic`, `groq`, or `lmstudio` |
 | `OLLAMA_HOST` | Ollama base URL; default `http://localhost:11434` |
-| `OLLAMA_MODEL` | Server generation model |
-| `GIT_SAGE_PROVIDER` / `GIT_SAGE_DEFAULT_MODEL` | Go-native git-sage provider and model |
+| `OLLAMA_MODEL` | Local generation model used by server tasks and Go-native commit enhancement |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` | Optional cloud credentials |
 | `LMSTUDIO_HOST` | Local OpenAI-compatible endpoint |
 

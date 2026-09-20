@@ -161,9 +161,9 @@
 
       <div class="feat-card reveal">
         <div class="feat-icon" style="background:rgba(139,92,246,.12);">🤖</div>
-        <div class="feat-title">git-sage Agent</div>
-        <div class="feat-desc">A local LLM-powered git agent that plans and executes complex operations autonomously — squash, rebase, resolve conflicts — with full undo support.</div>
-        <span class="feat-tag" style="color:#8b5cf6;border-color:rgba(139,92,246,.3);">Ollama · local LLM</span>
+        <div class="feat-title">DevTrack Sage</div>
+        <div class="feat-desc">Silent, privacy-minimized command capture from coding harnesses, grouped and indexed locally as searchable personal knowledge.</div>
+        <span class="feat-tag" style="color:#8b5cf6;border-color:rgba(139,92,246,.3);">Go · SQLite · local</span>
       </div>
 
       <div class="feat-card reveal reveal-delay-1">
@@ -349,16 +349,14 @@
       <div class="demo-item reveal reveal-delay-1">
         <div class="demo-item-header">
           <span class="demo-item-icon">🤖</span>
-          <span class="demo-item-title">git-sage Agent</span>
+          <span class="demo-item-title">DevTrack Sage</span>
         </div>
         <div class="demo-item-body">
-<span class="cmd">$ devtrack sage do "squash last 5 commits"</span><br>
-<span class="warn">Mode: auto / review / suggest-only?</span> <span class="hl">auto</span><br><br>
-<span class="info">→ Plan: git reset --soft HEAD~5</span><br>
-<span class="info">         git commit -m "..."</span><br><br>
-<span class="ok">✓ Step 1/2: reset complete (HEAD~5 saved)</span><br>
-<span class="ok">✓ Step 2/2: new commit created</span><br><br>
-<span class="hl">Done. Any follow-up questions? (5 remaining)</span>
+<span class="cmd">$ devtrack sage search "undo commit"</span><br><br>
+<span class="info">## Keep changes while undoing a commit</span><br>
+<span class="muted">Topic: git · seen 4 times · codex</span><br><br>
+<span class="ok">git reset --soft HEAD~1</span><br><br>
+<span class="hl">Private command knowledge, indexed locally.</span>
         </div>
       </div>
 

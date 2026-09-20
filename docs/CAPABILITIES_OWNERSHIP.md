@@ -49,9 +49,9 @@ Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through T
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| AI-enhanced commit (A/E/R/Q/C) | `git commit` | Go-native (gitsage → LLM) | Client | git-sage is client-owned; calls Ollama/OpenAI **directly** from the client. ⚠ If you want LLM calls routed via the server, change Owner→Server. |
+| AI-enhanced commit (A/E/R/Q/C) | `git commit` | Go-native (`internal/gitcmd` → LLM) | Client | Calls the explicitly configured Ollama/OpenAI-compatible provider directly from the client. |
 | Stage / history / passthrough | `git add`, `git history`, `git <any>` | Go-native | Client | |
-| git-sage agent | `sage ask/do/pr/interactive` | Go-native (`gitsage/`) | Client | No Python dependency; local Ollama or an explicitly configured compatible provider. |
+| DevTrack Sage | `sage status/pause/resume/search/topics/doctor/harness` | Go-native (`internal/sage/`) | Client | Local command capture and searchable knowledge; legacy repository chat/autonomous Git commands are removed. |
 | Deferred (offline) commits | `commits pending/review/enhance`, `commit-queue` | Go-native | Client | Durable snapshot + 3-way apply |
 
 ## 3. Ticket management (PM connectors) — Owner: **Client**

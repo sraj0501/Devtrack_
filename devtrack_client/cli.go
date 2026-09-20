@@ -5,8 +5,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	gitsage "github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
 )
 
 // CLI provides command-line interface for daemon management
@@ -251,24 +249,12 @@ func requiresManagedMode(command string) error {
 	return nil
 }
 
-// handleSage keeps the shipped Git agent working while the local memory
-// commands are introduced one explicit step at a time.
-//
-// Usage:
-//
-//	devtrack sage ask "<question>"       — one-shot Q&A about the repository
-//	devtrack sage do "<task>" [--verbose] — agentic task execution with approval dialog
-//	devtrack sage pr                     — show current branch PR info
-//	devtrack sage interactive            — explicit interactive multi-turn chat
-//	devtrack sage                        — interactive multi-turn chat
+// handleSage dispatches only the local command-knowledge product. Legacy
+// repository chat and autonomous Git commands are intentionally rejected.
 func (cli *CLI) handleSage() error {
-	repoPath, err := os.Getwd()
+	sub, args, err := routeSage(os.Args[2:])
 	if err != nil {
-		repoPath = "."
-	}
-	sub, args, legacy := routeSage(os.Args[2:])
-	if legacy {
-		fmt.Fprintln(os.Stderr, "sage: Git-agent commands are moving to 'devtrack sage git ...'; this alias remains available.")
+		return err
 	}
 	switch sub {
 	case "status", "pause", "resume", "doctor":
@@ -285,47 +271,8 @@ func (cli *CLI) handleSage() error {
 		return runSageSearch(args, os.Stdout)
 	case "topics":
 		return runSageTopics(args, os.Stdout)
-	case "ask":
-		if len(args) == 0 {
-			fmt.Println("Usage: devtrack sage ask \"<question>\"")
-			return fmt.Errorf("missing question")
-		}
-		question := strings.Join(args, " ")
-		return gitsage.RunAsk(repoPath, question)
-
-	case "do":
-		if len(args) == 0 {
-			fmt.Println("Usage: devtrack sage do \"<task>\"")
-			return fmt.Errorf("missing task")
-		}
-		// Strip --verbose flag; pass remaining tokens as task
-		verbose := false
-		var taskParts []string
-		for _, a := range args {
-			if a == "--verbose" || a == "-v" {
-				verbose = true
-			} else {
-				taskParts = append(taskParts, a)
-			}
-		}
-		task := strings.Join(taskParts, " ")
-		return gitsage.RunDoVerbose(repoPath, task, verbose)
-
-	case "pr":
-		info, err := gitsage.FindPR(repoPath)
-		if err != nil {
-			return fmt.Errorf("sage pr: %w", err)
-		}
-		fmt.Println(info.Format())
-		return nil
-
-	case "interactive":
-		return gitsage.RunInteractive(repoPath)
-
 	default:
-		// Preserve the historical free-form question shorthand.
-		question := strings.Join(append([]string{sub}, args...), " ")
-		return gitsage.RunAsk(repoPath, question)
+		return fmt.Errorf("unknown Sage command %q", sub)
 	}
 }
 

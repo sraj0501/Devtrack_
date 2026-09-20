@@ -59,10 +59,10 @@ Codex sessions generally. The repository contains no Warp-specific branch or ide
 `devtrack sage status`, `pause`, `resume`, and `doctor` return a single JSON state object on
 stdout. The object reports capture readiness, pause state, Codex history mode, backlog, and
 quarantine count. Pause/resume are idempotent and persist locally. Success exits 0;
-invalid arguments and state I/O errors exit nonzero. The old `sage ask|do|pr|interactive` forms
-continue to work and emit a migration notice on stderr. `sage git ask|do|pr|interactive` are
-the explicit aliases. `install-hooks` and `uninstall-hooks` return a machine-readable installation
-result; `search` and `topics` still fail clearly rather than silently launching the old Git agent.
+invalid arguments and state I/O errors exit nonzero. Removed repository-agent forms
+(`sage ask|do|pr|interactive`, `sage git`, and free-form questions) fail clearly and never start a
+model, network request, or Git operation. `install-hooks` and `uninstall-hooks` remain compatibility
+aliases for the selective harness installer. `search` and `topics` query the local SQLite index.
 
 ## Open SAGE-001 work
 

@@ -4,7 +4,7 @@ description: Active implementation planning and unresolved release follow-ups
 type: project
 ---
 
-**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. The SAGE-001/SAGE-002 foundation and model-free SAGE-003 search slice from `feat/SAGE-003-knowledge` are being integrated into `dev`. Next remove the legacy Git Sage CLI/agent surface, then finish structured distillation, deterministic Markdown, routing, merge/refile, safe local commits, retries, diagnostics, and parity coverage. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
+**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. Branch `feat/SAGE-003-port` integrates the SAGE-001/SAGE-002 foundation and model-free SAGE-003 search slice, removes the legacy Git Sage CLI/agent surface, and relocates the independently used Git/commit-enhancement helpers. Next finish structured distillation, deterministic Markdown, routing, merge/refile, safe local commits, retries, diagnostics, and parity coverage. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
 
 **Active UI work:** Uncommitted server-admin visual changes remain work in progress. Stabilize or isolate them before packaged-build qualification and media capture. `initiatives/server-ui.md` owns the design scope.
 

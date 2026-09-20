@@ -12,7 +12,7 @@ Complete overview of DevTrack's system design, components, and data flow.
 
 | Directory | Language | Role |
 |---|---|---|
-| `devtrack_client/` | Go | Binary, git monitor, scheduler, CLI, PM connectors, git-sage — canonical Go source |
+| `devtrack_client/` | Go | Binary, git monitor, scheduler, CLI, PM connectors, DevTrack Sage — canonical Go source |
 | `devtrack_server/` | Python | AI pipeline, webhook server, admin UI — canonical Python source |
 | `devtrack_wiki/` | HTML/Markdown | Website (Netlify → devtrack.cloud) |
 
@@ -29,7 +29,7 @@ DevTrack is explicitly a **client-server tool** with two independently deployabl
 | **`devtrack` binary** | `devtrack_client/` | Pure Go | ~5 MB | Client / daemon — git monitoring, scheduling, CLI |
 | **Python server** | `devtrack_server/` | Python + uv | separate | Server — LLM enrichment, integrations, reports, admin |
 
-The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` starts a non-blocking, stateful sparse-checkout/`uv sync --extra ai` worker) and can run as a local subprocess, a Docker container, or a remote server. Setup, Git monitoring, SQLite, scheduling, and MCP do not wait for that worker; `status` and `doctor` expose its degradation state. Before scheduling a generation-model pull, setup queries Ollama's local inventory and reuses an installed generation model. Managed Ollama setup also prepares `nomic-embed-text` for first-run personalization. If no generation model is ready, an explicitly accepted pre-existing OpenAI/Anthropic key joins the server provider chain behind Ollama, providing a temporary generation fallback while keeping Ollama primary. In Managed mode, a one-time daemon onboarding worker waits for the local server without blocking, then seeds enabled local Git workspaces through `/voice/seed`, generates the profile through `/voice/profile/generate`, and stores only a local completion marker. If managed setup finishes after the daemon started, the worker starts the newly available server without requiring a daemon restart. External mode does not run automatic voice mining, so training data is never implicitly sent to a remote host.
+The Go binary contains **no Python whatsoever**. DevTrack Sage capture/search and the `devtrack git` workflow are Go-native under `internal/sage/` and `internal/gitcmd/`; the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` starts a non-blocking, stateful sparse-checkout/`uv sync --extra ai` worker) and can run as a local subprocess, a Docker container, or a remote server. Setup, Git monitoring, SQLite, scheduling, Sage capture, and MCP do not wait for that worker; `status` and `doctor` expose its degradation state. Before scheduling a generation-model pull, setup queries Ollama's local inventory and reuses an installed generation model. Managed Ollama setup also prepares `nomic-embed-text` for first-run personalization. If no generation model is ready, an explicitly accepted pre-existing OpenAI/Anthropic key joins the server provider chain behind Ollama, providing a temporary generation fallback while keeping Ollama primary. In Managed mode, a one-time daemon onboarding worker waits for the local server without blocking, then seeds enabled local Git workspaces through `/voice/seed`, generates the profile through `/voice/profile/generate`, and stores only a local completion marker. If managed setup finishes after the daemon started, the worker starts the newly available server without requiring a daemon restart. External mode does not run automatic voice mining, so training data is never implicitly sent to a remote host.
 
 ### Server Modes
 
@@ -308,20 +308,14 @@ The smart processing engine that handles LLM enrichment and integrations.
 | **backend/commit_message_enhancer.py** | AI-powered iterative commit message refinement |
 | **backend/git_diff_analyzer.py** | Analyzes staged changes for context |
 
-> **git-sage is client-side and Go-native.** The Python `backend/git_sage/` package was removed
-> during the client-server decoupling; it does not exist in `devtrack_server/`. The only git-sage
-> is `devtrack_client/gitsage/` and it runs without the Python server in every operating mode.
+> The retired Git Sage repository agent and its Python predecessor no longer exist. Git workflow
+> helpers that remain independently useful are isolated from DevTrack Sage.
 
-| Go module (`devtrack_client/gitsage/`) | Purpose |
+| Go module | Purpose |
 |--------|---------|
-| **agent.go** | Agentic loop for autonomous git operations (plan → execute → observe → rollback) |
-| **llm.go** | Ollama and OpenAI-compatible LLM backends (JSON mode) |
-| **context.go** | Git repository state collection |
-| **config.go** | git-sage configuration management |
-| **git_ops.go** | Advanced git operations (branches, commits, merges, blame, stash) |
-| **conflict.go** | Intelligent conflict analysis and resolution |
-| **pr_finder.go** | PR/MR utilities and analysis |
-| **commit.go**, **cli.go** | `devtrack git` entry point — AI-enhanced commit/add/history + pass-through |
+| **`internal/gitcmd/`** | `devtrack git` add/commit/history/pass-through and commit-message enhancement |
+| **`internal/sage/`** | Silent harness capture, spool/import state, and local command knowledge |
+| **`sage_cli.go`** | Sage lifecycle, harness, search, and topics commands |
 
 #### External Integrations
 
@@ -410,10 +404,10 @@ When `DEVTRACK_AUTO_ENHANCE=true`, the daemon enhances every detected commit's m
 ```env
 DEVTRACK_AUTO_ENHANCE=true   # opt-in (default: false)
 
-# The LLM used is whichever SAGE_PROVIDER points to (default: ollama)
-GIT_SAGE_PROVIDER=ollama
+# Commit enhancement uses the shared provider configuration (default: ollama)
+LLM_PROVIDER=ollama
 OLLAMA_HOST=http://localhost:11434
-GIT_SAGE_DEFAULT_MODEL=llama3.2
+OLLAMA_MODEL=llama3.2
 ```
 
 ### 2. Timer Trigger Flow

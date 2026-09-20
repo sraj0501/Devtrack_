@@ -12,33 +12,41 @@ import (
 	sageknowledge "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
-func TestRouteSageCompatibility(t *testing.T) {
-	tests := []struct {
-		name   string
-		args   []string
-		sub    string
-		rest   string
-		legacy bool
+func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		sub  string
+		rest []string
 	}{
-		{"bare legacy chat", nil, "interactive", "", true},
-		{"old ask", []string{"ask", "why"}, "ask", "why", true},
-		{"old do", []string{"do", "task"}, "do", "task", true},
-		{"old pr", []string{"pr"}, "pr", "", true},
-		{"old interactive", []string{"interactive"}, "interactive", "", true},
-		{"explicit git", []string{"git", "ask", "why"}, "ask", "why", false},
-		{"explicit git chat", []string{"git"}, "interactive", "", false},
-		{"new status", []string{"status"}, "status", "", false},
-		{"new search", []string{"search", "git"}, "search", "git", false},
-		{"install hooks", []string{"install-hooks"}, "install-hooks", "", false},
-		{"remove hooks", []string{"uninstall-hooks"}, "uninstall-hooks", "", false},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			sub, rest, legacy := routeSage(tc.args)
-			if sub != tc.sub || legacy != tc.legacy || len(rest) > 1 || (len(rest) == 1 && rest[0] != tc.rest) || (len(rest) == 0 && tc.rest != "") {
-				t.Fatalf("routeSage(%q) = %q, %q, %t", tc.args, sub, rest, legacy)
+		{[]string{"status"}, "status", nil},
+		{[]string{"search", "git"}, "search", []string{"git"}},
+		{[]string{"harness", "list"}, "harness", []string{"list"}},
+		{[]string{"hook", "codex"}, "hook", []string{"codex"}},
+	} {
+		sub, rest, err := routeSage(tc.args)
+		if err != nil || sub != tc.sub || len(rest) != len(tc.rest) {
+			t.Fatalf("routeSage(%q) = %q, %q, %v", tc.args, sub, rest, err)
+		}
+		for i := range rest {
+			if rest[i] != tc.rest[i] {
+				t.Fatalf("routeSage(%q) rest = %q", tc.args, rest)
 			}
-		})
+		}
+	}
+
+	for _, args := range [][]string{
+		nil,
+		{"ask", "why"},
+		{"do", "task"},
+		{"pr"},
+		{"interactive"},
+		{"git", "ask", "why"},
+		{"what", "changed"},
+		{"statsu"},
+	} {
+		if _, _, err := routeSage(args); err == nil {
+			t.Fatalf("routeSage(%q) accepted a removed or unknown command", args)
+		}
 	}
 }
 

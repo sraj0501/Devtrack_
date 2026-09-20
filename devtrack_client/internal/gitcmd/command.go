@@ -1,4 +1,4 @@
-package gitsage
+package gitcmd
 
 import (
 	"bufio"
@@ -23,7 +23,7 @@ type ExitCodeError struct{ Code int }
 func (e *ExitCodeError) Error() string { return fmt.Sprintf("git exited with code %d", e.Code) }
 
 // CommitHooks lets the host (package main) inject PM/push behaviour around the
-// commit without coupling gitsage to connectors. Both fields are optional.
+// commit without coupling gitcmd to connectors. Both fields are optional.
 type CommitHooks struct {
 	// BeforeCommit runs after the user accepts a message but before `git commit`.
 	// It may return a modified message (e.g. with a "Refs:" trailer) and an

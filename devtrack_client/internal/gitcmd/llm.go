@@ -1,4 +1,4 @@
-package gitsage
+package gitcmd
 
 import (
 	"bytes"
@@ -38,7 +38,7 @@ type chatResponseChunk struct {
 	Done bool `json:"done"`
 }
 
-// LLMConfig holds the provider configuration for git-sage.
+// LLMConfig holds the provider configuration for commit enhancement.
 type LLMConfig struct {
 	Host     string // base URL: Ollama or OpenAI-compatible endpoint
 	Model    string // model name (provider/ prefix already stripped)
@@ -54,10 +54,7 @@ func LoadLLMConfig() LLMConfig {
 	}
 	host = normaliseOllamaHost(host)
 
-	model := os.Getenv("GIT_SAGE_DEFAULT_MODEL")
-	if model == "" {
-		model = os.Getenv("OLLAMA_MODEL")
-	}
+	model := os.Getenv("OLLAMA_MODEL")
 	if model == "" {
 		model = "llama3.2"
 	}

@@ -17,23 +17,17 @@ import (
 	sageknowledge "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
-// routeSage is intentionally pure so legacy and explicit Git aliases can be
-// checked without starting the LLM, daemon, or a live Git repository.
-func routeSage(args []string) (sub string, rest []string, legacy bool) {
+// routeSage is intentionally pure so invalid commands fail before starting a
+// model, daemon, network request, or Git operation.
+func routeSage(args []string) (sub string, rest []string, err error) {
 	if len(args) == 0 {
-		return "interactive", nil, true
-	}
-	if args[0] == "git" {
-		if len(args) == 1 {
-			return "interactive", nil, false
-		}
-		return args[1], args[2:], false
+		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|doctor|harness")
 	}
 	switch args[0] {
 	case "status", "pause", "resume", "doctor", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics":
-		return args[0], args[1:], false
+		return args[0], args[1:], nil
 	default:
-		return args[0], args[1:], true
+		return "", nil, fmt.Errorf("unknown Sage command %q", args[0])
 	}
 }
 

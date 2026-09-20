@@ -24,7 +24,7 @@ New to DevTrack? Read these in order:
 ## Features
 
 - [Git Features Guide](GIT_FEATURES.md) — enhanced commits, conflict resolution, git context enrichment
-- [Using git-sage](GIT_SAGE_INTEGRATION.md) — AI git agent: ask, do, interactive modes
+- [Using DevTrack Sage](GIT_SAGE_INTEGRATION.md) — local command capture, search, and harness lifecycle
 - [Git Commit Workflow](GIT_COMMIT_WORKFLOW.md) — AI-powered iterative commit message refinement
 - [AI Personalization](PERSONALIZATION.md) — "Talk Like You" — teach DevTrack your communication style
 - [Advanced Features](ADVANCED_FEATURES.md) — boardroom, supported alert polling, reporting, and server administration
