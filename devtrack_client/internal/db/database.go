@@ -2432,6 +2432,9 @@ func (d *Database) applyMigrationTables() error {
 			return fmt.Errorf("applyMigrationTables: %w", err)
 		}
 	}
+	if err := d.createSageKnowledgeTables(); err != nil {
+		return fmt.Errorf("applyMigrationTables sage knowledge: %w", err)
+	}
 	return nil
 }
 
@@ -2454,7 +2457,12 @@ func (d *Database) createSageEventsTable() error {
 // InsertSageEvent appends a privacy-minimized event exactly once. It returns
 // false for an already-imported delivery.
 func (d *Database) InsertSageEvent(event sage.Event) (bool, error) {
-	result, err := d.db.Exec(`
+	tx, err := d.db.Begin()
+	if err != nil {
+		return false, fmt.Errorf("begin sage event insert: %w", err)
+	}
+	defer tx.Rollback()
+	result, err := tx.Exec(`
 		INSERT OR IGNORE INTO sage_events (
 			delivery_key, schema_version, event_id, harness, session_id, event_type,
 			tool, occurred_at, project_id, command, signature, success, exit_code
@@ -2466,7 +2474,19 @@ func (d *Database) InsertSageEvent(event sage.Event) (bool, error) {
 		return false, fmt.Errorf("insert sage event: %w", err)
 	}
 	rows, err := result.RowsAffected()
-	return rows == 1, err
+	if err != nil {
+		return false, fmt.Errorf("inspect sage event insert: %w", err)
+	}
+	if rows == 0 {
+		return false, nil
+	}
+	if err := upsertSageKnowledgeTx(tx, event, event.DeliveryKey()); err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("commit sage event insert: %w", err)
+	}
+	return true, nil
 }
 
 // ---------------------------------------------------------------------------

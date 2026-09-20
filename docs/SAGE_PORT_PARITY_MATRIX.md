@@ -1,13 +1,13 @@
 # DevTrack Sage reference parity matrix
 
-Pinned Python baseline: `D:\git_apps\ai_sessions_skills` commit `94a2544f8c85a630fa8b5d9a94d9938121aef11b`. This is an inventory and assignment, not a claim that later Go behavior is implemented. All 135 `test_*` methods in the two pinned regression files are listed below. Go-only v1 contract coverage is in `internal/sage/event_test.go`.
+Authoritative Python baseline: `D:\git_apps\ai_sessions_skills` commit `b85a1ab`. This is an
+inventory and assignment, not a claim that the corresponding Go behavior is implemented. All 136
+`test_*` methods in the two regression files must have a Go destination and test before parity is
+complete. Go-only event-contract coverage is in `internal/sage/event_test.go`.
 
-Supplemental compatibility reference: commit `b85a1ab`. Its configurable Codex `cli` history
-source and Windows no-popup installer behavior are tracked separately and do not change the
-135-scenario baseline. `TestNormalizeCodexHistoryItemSupportsIDEAndCLI` covers the pure Go
-normalization seam; SQLite polling and installer selection remain SAGE-002 work.
-
-`Excluded` means the Python behavior conflicts with the local SQLite, no-implicit-Git-write Sage contract; the exclusion is deliberate and must be revisited if that product contract changes. Python-specific watcher subprocess mechanics are assigned to SAGE-002 as daemon-lifecycle behavior rather than copied literally.
+Python-specific watcher subprocess mechanics are assigned to SAGE-002 as daemon-lifecycle behavior
+rather than copied literally. Reference behavior is not excluded merely because DevTrack uses Go,
+SQLite, or different internal process boundaries.
 
 | Python regression scenario | Go destination | Assignment | Port note |
 |---|---|---|---|
@@ -33,7 +33,7 @@ normalization seam; SQLite polling and installer selection remain SAGE-002 work.
 | `tool/tests/test_portable.py:129` `test_placeholders_are_rendered_and_empty_model_dropped` | `internal/sage/distill` | SAGE-003 | Port backend selection without Python |
 | `tool/tests/test_portable.py:148` `test_no_backend_when_binary_missing` | `internal/sage/distill` | SAGE-003 | Port backend selection without Python |
 | `tool/tests/test_portable.py:158` `test_shipped_backends_declare_a_prompt_mode` | `internal/sage/distill` | SAGE-003 | Port backend selection without Python |
-| `tool/tests/test_portable.py:171` `test_same_action_different_values_collapses` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
+| `tool/tests/test_portable.py:171` `test_same_action_different_values_collapses` | `internal/sage/knowledge` | SAGE-003 | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` covers deterministic grouping after normalization |
 | `tool/tests/test_portable.py:177` `test_names_do_not_leak_into_signatures` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
 | `tool/tests/test_portable.py:184` `test_real_subcommands_still_split` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
 | `tool/tests/test_portable.py:190` `test_distinct_actions_stay_distinct` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
@@ -61,16 +61,16 @@ normalization seam; SQLite polling and installer selection remain SAGE-002 work.
 | `tool/tests/test_portable.py:402` `test_dead_pid_is_not_alive` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
 | `tool/tests/test_portable.py:408` `test_missing_pidfile_is_not_alive` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
 | `tool/tests/test_portable.py:412` `test_own_pid_with_fresh_touch_is_alive` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:457` `test_gitignored_runtime_is_never_dirty` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:461` `test_nested_knowledge_folder_commits_with_root_relative_paths` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:471` `test_preexisting_work_is_left_uncommitted` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:479` `test_entangled_file_is_skipped_not_guessed` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:489` `test_user_staged_work_stays_staged` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:499` `test_paths_with_spaces_survive` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:505` `test_deletion_by_writer_is_committed` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:512` `test_nothing_of_ours_makes_no_commit` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:518` `test_auto_commit_off_is_respected` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
-| `tool/tests/test_portable.py:526` `test_non_repo_is_a_no_op` | `none` | Excluded | Python writer's implicit Git auto-commit is intentionally not a Sage behavior; durable storage is local SQLite |
+| `tool/tests/test_portable.py:457` `test_gitignored_runtime_is_never_dirty` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Port runtime-ignore isolation |
+| `tool/tests/test_portable.py:461` `test_nested_knowledge_folder_commits_with_root_relative_paths` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Port root-relative Sage-owned commits |
+| `tool/tests/test_portable.py:471` `test_preexisting_work_is_left_uncommitted` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Preserve unrelated work |
+| `tool/tests/test_portable.py:479` `test_entangled_file_is_skipped_not_guessed` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Skip ownership-ambiguous files |
+| `tool/tests/test_portable.py:489` `test_user_staged_work_stays_staged` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Preserve the user's index |
+| `tool/tests/test_portable.py:499` `test_paths_with_spaces_survive` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Port path-safe commits |
+| `tool/tests/test_portable.py:505` `test_deletion_by_writer_is_committed` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Track Sage-owned deletions |
+| `tool/tests/test_portable.py:512` `test_nothing_of_ours_makes_no_commit` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Avoid empty commits |
+| `tool/tests/test_portable.py:518` `test_auto_commit_off_is_respected` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Respect the configured local-commit switch |
+| `tool/tests/test_portable.py:526` `test_non_repo_is_a_no_op` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Never require a Git repository |
 | `tool/tests/test_portable.py:547` `test_an_existing_entry_routes_its_whole_binary` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
 | `tool/tests/test_portable.py:553` `test_a_binary_the_list_never_knew_still_routes` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
 | `tool/tests/test_portable.py:559` `test_unknown_binary_has_no_route_yet` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
@@ -131,7 +131,7 @@ normalization seam; SQLite polling and installer selection remain SAGE-002 work.
 | `tool/tests/test_portable.py:1011` `test_token_limit_with_no_output_is_a_failure_not_a_verdict` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
 | `tool/tests/test_portable.py:1017` `test_shipped_ollama_backend_has_no_output_cap` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
 | `tool/tests/test_portable.py:1023` `test_text_backend_defers_prompt_file_substitution` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
-| `tool/tests/test_portable.py:1074` `test_documents_and_routes` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1074` `test_documents_and_routes` | `internal/sage/knowledge + distill` | SAGE-003 | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` covers model-free routing, persistence, and search; distillation remains |
 | `tool/tests/test_portable.py:1081` `test_second_variant_merges_without_calling_the_model` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1093` `test_already_documented_sig_is_untouched` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1101` `test_model_outage_is_not_recorded_as_skipped` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
@@ -145,4 +145,4 @@ normalization seam; SQLite polling and installer selection remain SAGE-002 work.
 | `tool/tests/test_portable.py:1215` `test_agent_prompt_uses_separate_runtime_folder` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1225` `test_runtime_setting_is_relative_to_config` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1230` `test_explicit_kb_override_keeps_runtime_isolated` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1234` `test_keyword_search_matches_whole_entries_and_filters_topics` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1234` `test_keyword_search_matches_whole_entries_and_filters_topics` | `internal/sage/knowledge + distill` | SAGE-003 | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` and `TestSageKnowledgeSearchTreatsFTSSyntaxAsLiteralTerms` |

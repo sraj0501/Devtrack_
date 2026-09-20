@@ -281,8 +281,10 @@ func (cli *CLI) handleSage() error {
 		return runSageHook(args, os.Stdin)
 	case "harness":
 		return runSageHarness(args, os.Stdout)
-	case "search", "topics":
-		return fmt.Errorf("sage %s is planned but unavailable until the capture/search milestones", sub)
+	case "search":
+		return runSageSearch(args, os.Stdout)
+	case "topics":
+		return runSageTopics(args, os.Stdout)
 	case "ask":
 		if len(args) == 0 {
 			fmt.Println("Usage: devtrack sage ask \"<question>\"")

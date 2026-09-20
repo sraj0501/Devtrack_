@@ -4,7 +4,7 @@ description: Active implementation planning and unresolved release follow-ups
 type: project
 ---
 
-**Active product initiative:** Plan DevTrack Sage as the local cross-harness memory layer. The first delivery slice is capture plus searchable personal command knowledge; playback follows as a separate milestone. `project_sage_session_memory.md` owns this planning record.
+**Active product initiative:** Implement DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. The current searchable SQLite slice is infrastructure; SAGE-003 remains incomplete. `project_sage_session_memory.md` owns the active scope and completion boundary.
 
 **Active UI work:** Uncommitted server-admin visual changes remain work in progress. Stabilize or isolate them before packaged-build qualification and media capture. `project_server_ui_refresh.md` owns the design scope.
 
