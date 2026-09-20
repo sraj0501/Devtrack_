@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
+	sageknowledge "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
 func TestRouteSageCompatibility(t *testing.T) {
@@ -114,5 +116,39 @@ func TestSageStateCommandsEmitJSONWithoutStartingCapture(t *testing.T) {
 	}
 	if err := writeSageState("status", []string{"unexpected"}, &bytes.Buffer{}); err == nil {
 		t.Fatal("invalid arguments must fail")
+	}
+}
+
+type fakeSageKnowledgeStore struct {
+	query string
+	topic string
+}
+
+func (f *fakeSageKnowledgeStore) SearchSageKnowledge(query, topic string, _ int) ([]sageknowledge.Entry, error) {
+	f.query, f.topic = query, topic
+	return []sageknowledge.Entry{{
+		Signature: "git status", Topic: "git", Command: "git status --short",
+		UseCount: 1, SuccessCount: 1, LastSeen: time.Unix(10, 0),
+	}}, nil
+}
+
+func (f *fakeSageKnowledgeStore) ListSageTopics() ([]sageknowledge.Topic, error) {
+	return nil, nil
+}
+
+func TestSageSearchParsesTopicAndRendersKnowledge(t *testing.T) {
+	store := &fakeSageKnowledgeStore{}
+	var output bytes.Buffer
+	if err := writeSageSearch(store, []string{"status", "command", "--topic", "git"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	if store.query != "status command" || store.topic != "git" {
+		t.Fatalf("query=%q topic=%q", store.query, store.topic)
+	}
+	if !bytes.Contains(output.Bytes(), []byte("## git status")) {
+		t.Fatalf("output=%q", output.String())
+	}
+	if err := writeSageSearch(store, nil, &bytes.Buffer{}); err == nil {
+		t.Fatal("missing query must fail")
 	}
 }

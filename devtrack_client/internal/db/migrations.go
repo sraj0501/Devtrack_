@@ -348,6 +348,18 @@ var allMigrations = []Migration{
 			return database.createSageEventsTable()
 		},
 	},
+	{
+		ID:          "015-create-sage-knowledge",
+		Description: "Create deterministic Sage knowledge records and search index",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+			return database.createSageKnowledgeTables()
+		},
+	},
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded

@@ -177,6 +177,13 @@ Acceptance:
 - Model outage, timeout, and invalid output retry within bounds and never lose source events.
 - Secrets and absolute private paths do not appear in knowledge output or diagnostics.
 
+Implementation status (2026-09-20): the first model-free slice is implemented. Imported events
+are grouped transactionally by normalized signature into deterministic knowledge records with
+source attribution, command-family topics, occurrence/outcome counts, and an FTS5 index.
+`devtrack sage search <query> [--topic <topic>]` and `devtrack sage topics` render stable Markdown.
+Duplicate deliveries do not inflate knowledge counts. Optional model distillation, retry state,
+and the remaining parity scenarios are still in progress, so SAGE-003 is not yet complete.
+
 ### SAGE-004 — Cross-harness expansion
 
 Add adapters one at a time using recorded, sanitized fixtures for each current hook contract.

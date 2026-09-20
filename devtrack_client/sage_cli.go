@@ -7,12 +7,14 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	sageharness "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/harness"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/hooks"
+	sageknowledge "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
 // routeSage is intentionally pure so legacy and explicit Git aliases can be
@@ -162,4 +164,60 @@ func runSageHook(args []string, input io.Reader) error {
 	}
 	_ = sage.WriteEvent(root, event)
 	return nil
+}
+
+type sageKnowledgeStore interface {
+	SearchSageKnowledge(query, topic string, limit int) ([]sageknowledge.Entry, error)
+	ListSageTopics() ([]sageknowledge.Topic, error)
+}
+
+func runSageSearch(args []string, output io.Writer) error {
+	database, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("sage knowledge unavailable: %w", err)
+	}
+	defer database.Close()
+	return writeSageSearch(database, args, output)
+}
+
+func writeSageSearch(store sageKnowledgeStore, args []string, output io.Writer) error {
+	var queryParts []string
+	topic := ""
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--topic" {
+			if topic != "" || i+1 >= len(args) {
+				return fmt.Errorf("usage: devtrack sage search <query> [--topic <topic>]")
+			}
+			topic = args[i+1]
+			i++
+			continue
+		}
+		queryParts = append(queryParts, args[i])
+	}
+	if len(queryParts) == 0 {
+		return fmt.Errorf("usage: devtrack sage search <query> [--topic <topic>]")
+	}
+	entries, err := store.SearchSageKnowledge(strings.Join(queryParts, " "), topic, 20)
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(output, sageknowledge.RenderEntries(entries))
+	return err
+}
+
+func runSageTopics(args []string, output io.Writer) error {
+	if len(args) != 0 {
+		return fmt.Errorf("usage: devtrack sage topics")
+	}
+	database, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("sage knowledge unavailable: %w", err)
+	}
+	defer database.Close()
+	topics, err := database.ListSageTopics()
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(output, sageknowledge.RenderTopics(topics))
+	return err
 }

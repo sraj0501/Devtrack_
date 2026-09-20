@@ -23,7 +23,8 @@ context is maintained in `.claude/memory/project_sage_session_memory.md`. SAGE-0
 contract and compatibility seam as TASK-155. SAGE-002 is complete as TASK-156: the atomic bounded
 spool, append-only SQLite event store, daemon importer, and opt-in read-only Codex history adapter
 are implemented, hook installation/removal is reversible, and the isolated packaged capture
-journey passes. Start SAGE-003 searchable command knowledge next. Sanitized observed hook fixtures
+journey passes. Continue SAGE-003 with optional distillation and retry semantics now that the
+model-free searchable knowledge slice is implemented. Sanitized observed hook fixtures
 remain an external harness-validation gate.
 The selective harness registry and external plugin boundary are now fixed in
 `SAGE_HARNESS_PLUGIN_CONTRACT.md`; new adapters must plug into that boundary rather than adding

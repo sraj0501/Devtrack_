@@ -33,7 +33,7 @@ normalization seam; SQLite polling and installer selection remain SAGE-002 work.
 | `tool/tests/test_portable.py:129` `test_placeholders_are_rendered_and_empty_model_dropped` | `internal/sage/distill` | SAGE-003 | Port backend selection without Python |
 | `tool/tests/test_portable.py:148` `test_no_backend_when_binary_missing` | `internal/sage/distill` | SAGE-003 | Port backend selection without Python |
 | `tool/tests/test_portable.py:158` `test_shipped_backends_declare_a_prompt_mode` | `internal/sage/distill` | SAGE-003 | Port backend selection without Python |
-| `tool/tests/test_portable.py:171` `test_same_action_different_values_collapses` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
+| `tool/tests/test_portable.py:171` `test_same_action_different_values_collapses` | `internal/sage/knowledge` | SAGE-003 | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` covers deterministic grouping after normalization |
 | `tool/tests/test_portable.py:177` `test_names_do_not_leak_into_signatures` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
 | `tool/tests/test_portable.py:184` `test_real_subcommands_still_split` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
 | `tool/tests/test_portable.py:190` `test_distinct_actions_stay_distinct` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
@@ -131,7 +131,7 @@ normalization seam; SQLite polling and installer selection remain SAGE-002 work.
 | `tool/tests/test_portable.py:1011` `test_token_limit_with_no_output_is_a_failure_not_a_verdict` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
 | `tool/tests/test_portable.py:1017` `test_shipped_ollama_backend_has_no_output_cap` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
 | `tool/tests/test_portable.py:1023` `test_text_backend_defers_prompt_file_substitution` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
-| `tool/tests/test_portable.py:1074` `test_documents_and_routes` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1074` `test_documents_and_routes` | `internal/sage/knowledge + distill` | SAGE-003 | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` covers model-free routing, persistence, and search; distillation remains |
 | `tool/tests/test_portable.py:1081` `test_second_variant_merges_without_calling_the_model` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1093` `test_already_documented_sig_is_untouched` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1101` `test_model_outage_is_not_recorded_as_skipped` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
@@ -145,4 +145,4 @@ normalization seam; SQLite polling and installer selection remain SAGE-002 work.
 | `tool/tests/test_portable.py:1215` `test_agent_prompt_uses_separate_runtime_folder` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1225` `test_runtime_setting_is_relative_to_config` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1230` `test_explicit_kb_override_keeps_runtime_isolated` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1234` `test_keyword_search_matches_whole_entries_and_filters_topics` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1234` `test_keyword_search_matches_whole_entries_and_filters_topics` | `internal/sage/knowledge + distill` | SAGE-003 | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` and `TestSageKnowledgeSearchTreatsFTSSyntaxAsLiteralTerms` |
