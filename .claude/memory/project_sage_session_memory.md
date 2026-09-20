@@ -8,9 +8,8 @@ The durable implementation plan is `docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md`.
 
 ## Direction
 
-DevTrack Sage is the local memory layer shared by coding-agent harnesses. Its scope extends
-beyond Git. The `devtrack sage` namespace belongs exclusively to the cross-harness command
-knowledge product.
+DevTrack Sage is the local memory layer shared by coding-agent harnesses. The `devtrack sage`
+namespace belongs exclusively to the cross-harness, self-writing command-knowledge product.
 
 DevTrack Sage is entirely Go-native. Port the required behavior and regression coverage from
 `D:\git_apps\ai_sessions_skills`; production Sage must not spawn Python or require a Python
@@ -54,8 +53,7 @@ session.
   them asynchronously; do not port a detached Python watcher literally.
 - SQLite owns queues, processing state, and the searchable index. Deterministically rendered
   Markdown topic files and their index are the durable, user-visible knowledge artifacts.
-- Implement reusable local/OpenAI-compatible transport in `internal/llmclient`; Sage must not
-  depend on an unrelated repository-assistant package.
+- Implement reusable local/OpenAI-compatible transport in `internal/llmclient`.
 - Expose read-only knowledge retrieval through DevTrack MCP after the local
   CLI is stable.
 - A DevTrack work session may be linked as business context, but a harness recording has
@@ -63,58 +61,31 @@ session.
 - Raw harness payloads must not enter `client_events`, PostgreSQL, telemetry, or a configured
   remote server.
 
-## Implementation phases
+## Active implementation boundary
 
-### 1. Capture foundation
+The capture foundation and initial searchable SQLite grouping/index exist. They are supporting
+infrastructure, not completion of SAGE-003. SAGE-003 remains active until all of the following are
+implemented and covered by the refreshed reference-parity matrix:
 
-Current state (2026-09-20): SAGE-001 and SAGE-002 are implemented. Capture has the atomic spool, bounded
-importer/quarantine, append-only SQLite event store, daemon ownership, and feature-flagged read-only
-Codex `vscode`/`cli` history poller. Idempotent install/remove preserves unrelated configuration;
-Windows selects history mode for terminal-host compatibility. The packaged capture journey passes.
-SAGE-003 has an initial searchable SQLite grouping/index slice; it is not complete until it writes
-the reference-compatible structured Markdown knowledge, routes topics, retries model failures, and
-passes the refreshed parity matrix.
+- asynchronous local-model distillation into validated `what`, `why`, `example`, and `notes`
+  fields;
+- deterministic topic Markdown files and topic-index maintenance;
+- deterministic routing, correction-stable routes, and merge/refile operations;
+- safe local knowledge commits that never disturb unrelated staged or unstaged work and never
+  push;
+- bounded retries for model and processing failures, with no permanent skip caused by model
+  unavailability;
+- truthful status, activity logs, skipped-action reasons, and doctor diagnostics; and
+- all applicable regression scenarios from the authoritative reference.
 
-- Define versioned harness-event and spool schemas.
-- Port payload duck-typing for shell, search, edit, success/failure, cwd, project, and
-  harness session identifiers.
-- Port signature normalization, deduplication, bounded queues, activity decisions,
-  pause/resume, status, logs, and doctor diagnostics.
-- Implement idempotent hook installation/removal without overwriting unrelated harness
-  configuration.
-- Port cross-platform payload fixtures and concurrency/failure tests before expanding
-  behavior.
+Keep routing, deduplication, file mutation, and Markdown rendering deterministic in Go. The model
+returns structured fields and never edits the knowledge base. Default to local Ollama and retain
+captures for retry when no model is available.
 
-### 2. Personal command knowledge
-
-- Add daemon-side asynchronous batching and local-model distillation.
-- Keep routing, dedupe, file mutation, and Markdown formatting deterministic in Go; the
-  model returns validated structured fields and never directly edits the knowledge base.
-- Add topic routing, correction-stable routes, merge/refile operations, skipped-action
-  reasons, search, and Markdown export.
-- Default to local Ollama and degrade safely when no model is available. Captures remain
-  queued for retry; model failure is never a verdict that an event is useless.
-
-### 3. Cross-harness parity
-
-- Port adapters and fixtures for Devin CLI, Claude Code, Codex CLI, Copilot CLI, OpenCode,
-  Cursor, and the supported IDE-history path.
-- Apply one silence, latency, privacy, deduplication, install, removal, and failure-isolation
-  contract to every advertised harness.
-- Preserve unrelated harness configuration during install, reinstall, and uninstall.
-
-### 4. Knowledge operations and diagnostics
-
-- Port activity logs, decision states, truthful doctor output, route inspection/correction,
-  merge/refile, skipped-action records, and deterministic topic-index maintenance.
-- Port safe local knowledge commits without touching unrelated staged or unstaged work and
-  without ever pushing.
-- Add bounded retry state so model outages never become permanent skip decisions.
-
-### 5. Read-only integration
-
-- Add read-only MCP tools to search personal command knowledge.
-- Add a TUI browser only after CLI contracts are stable.
+After SAGE-003, complete adapter parity for Devin CLI, Claude Code, Codex CLI, Copilot CLI,
+OpenCode, Cursor, and the supported IDE-history path. Every advertised harness must share the same
+silence, latency, privacy, deduplication, install/removal, and failure-isolation contract. Read-only
+MCP knowledge retrieval follows only after the local CLI contract is stable.
 
 ## Privacy and fidelity invariants
 
@@ -124,14 +95,12 @@ passes the refreshed parity matrix.
   only through the reference-compatible safe commit path; Sage never pushes them.
 - No Ollama, llama.cpp, cloud model, or Python call occurs on the hook hot path.
 
-## Planning sequence
+## Active execution sequence
 
-1. Build a port-parity matrix from every in-scope Python module and regression test at the pinned
-   reference revision; assign a Go package, Go test, and milestone to each behavior.
-2. Define the versioned Go event/spool contract and sanitized fixture matrix.
-3. Port searchable, self-writing Markdown knowledge behavior before adding unrelated features.
-4. Add harnesses one at a time against the shared adapter acceptance suite.
-5. Treat the parity matrix as the completion authority; file presence is not completion.
+1. Keep the port-parity matrix mapped to every in-scope module and regression test at `b85a1ab`.
+2. Finish the active SAGE-003 boundary before adding unrelated features.
+3. Add harnesses one at a time against the shared adapter acceptance suite.
+4. Treat parity behavior and tests as the completion authority; file presence is not completion.
 
 ## First milestone boundary
 

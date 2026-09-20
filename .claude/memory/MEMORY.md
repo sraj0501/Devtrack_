@@ -1,6 +1,6 @@
 # DevTrack Project Memory
 
-_Last updated: 2026-09-10_ | active work only | GitHub is canonical
+_Last updated: 2026-09-20_ | active work only | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with an optional Python AI/server layer.
 
@@ -12,7 +12,7 @@ DevTrack is an offline-first silent Go daemon with an optional Python AI/server 
 
 ## Active work
 
-- [project_sage_session_memory.md](project_sage_session_memory.md) — DevTrack Sage implementation planning for cross-harness capture, searchable personal command knowledge, and later playback.
+- [project_sage_session_memory.md](project_sage_session_memory.md) — active DevTrack Sage port of the cross-harness, self-writing command-knowledge product.
 - [project_server_ui_refresh.md](project_server_ui_refresh.md) — current uncommitted admin-console visual work that must be stabilized or isolated before packaged qualification and media capture.
 
 ## Unresolved release follow-ups

@@ -169,11 +169,17 @@ blocked.
 
 ### Current product focus: DevTrack Sage
 
-Planning has begun for **DevTrack Sage**, a broader local knowledge and session-memory layer that is
-not restricted to Git workflows. This is a planning direction, not a claim that the broader
-capability is implemented. The currently shipped `devtrack sage ask` and `devtrack sage do`
-commands remain Git-focused. See the
-[implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md).
+**DevTrack Sage** is the planned local, cross-harness command-knowledge product. It captures useful
+command activity from supported coding harnesses, groups and indexes it locally, and will turn it
+into searchable, self-writing personal documentation. The Go-native port follows the behavior of
+the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
+
+On the current development branch, the capture pipeline and a model-free SQLite search/index slice
+are implemented. SAGE-003 is not complete or part of the v3.1.1 release: structured local-model
+distillation, deterministic topic Markdown, routing corrections, merge/refile, retry handling, and
+the remaining parity tests are still pending. See the
+[implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
+[port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md).
 
 ### Update an existing installation
 
@@ -276,7 +282,7 @@ After that, `git commit` routes through DevTrack for monitored repos. Everything
 | **Outlook / MS Graph** | Send EOD reports by email |
 | **Telegram** | Go-native daemon control, logs, queue review/corrections, and notifications |
 | **Slack** | Outbound alert notifications through an incoming webhook |
-| **Ollama / OpenAI / Anthropic / Groq** | AI commit messages, reports, conflict resolution, git-sage agent |
+| **Ollama / OpenAI / Anthropic / Groq** | AI commit messages, reports, and conflict resolution |
 
 ---
 
@@ -363,16 +369,23 @@ devtrack work report --email me@org.com
 
 Every `git commit` while a session is active automatically attaches its hash — no manual logging.
 
-### Sage commands — current Git-focused agent
+### DevTrack Sage — self-writing command knowledge
 
-![git-sage standup demo](devtrack_wiki/wiki/assets/standup-demo.gif)
+The development branch currently supports the capture foundation and model-free retrieval:
 
 ```bash
-devtrack sage do "squash my last 5 commits"
-devtrack sage ask "how do I rebase onto main?"
+devtrack sage harness list
+devtrack sage harness install codex
+devtrack sage status
+devtrack sage search "rebase"
+devtrack sage topics
 ```
 
-Runs an agentic loop: plans operations, executes them, reads output, handles failures with rollback, only asks when genuinely ambiguous. Session approval dialog (auto / review / suggest-only), step history, and interactive undo built in.
+Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
+service in the hook path, and it does not block the host coding agent. The daemon imports normalized
+events into SQLite, groups repeated command signatures, and provides FTS-backed search with source
+attribution. This is an infrastructure preview, not a complete Sage release; self-written
+structured entries and durable Markdown knowledge remain SAGE-003 work.
 
 ### Personalized AI ("Talk Like You")
 
@@ -751,6 +764,7 @@ Key references in this repo:
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Understand the development-agent roles and authorization boundaries | [Agent role contract](.claude/memory/project_local_agents.md) · [archived Claude definitions](.claude/agents/_archive/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
+| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) |
 
 ---
 
