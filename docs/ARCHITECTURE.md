@@ -29,7 +29,7 @@ DevTrack is explicitly a **client-server tool** with two independently deployabl
 | **`devtrack` binary** | `devtrack_client/` | Pure Go | ~5 MB | Client / daemon — git monitoring, scheduling, CLI |
 | **Python server** | `devtrack_server/` | Python + uv | separate | Server — LLM enrichment, integrations, reports, admin |
 
-The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` starts a non-blocking, stateful sparse-checkout/`uv sync` worker) and can run as a local subprocess, a Docker container, or a remote server. Setup, Git monitoring, SQLite, scheduling, and MCP do not wait for that worker; `status` and `doctor` expose its degradation state. Before scheduling a model pull, setup queries Ollama's local inventory and reuses an installed generation model. If none is ready, an explicitly accepted pre-existing OpenAI/Anthropic key joins the server provider chain behind Ollama, providing a temporary generation fallback while keeping Ollama primary. In Managed mode, a one-time daemon onboarding worker waits for the local server without blocking, then seeds enabled local Git workspaces through `/voice/seed`, generates the profile through `/voice/profile/generate`, and stores only a local completion marker. If managed setup finishes after the daemon started, the worker starts the newly available server without requiring a daemon restart. External mode does not run automatic voice mining, so training data is never implicitly sent to a remote host.
+The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` starts a non-blocking, stateful sparse-checkout/`uv sync --extra ai` worker) and can run as a local subprocess, a Docker container, or a remote server. Setup, Git monitoring, SQLite, scheduling, and MCP do not wait for that worker; `status` and `doctor` expose its degradation state. Before scheduling a generation-model pull, setup queries Ollama's local inventory and reuses an installed generation model. Managed Ollama setup also prepares `nomic-embed-text` for first-run personalization. If no generation model is ready, an explicitly accepted pre-existing OpenAI/Anthropic key joins the server provider chain behind Ollama, providing a temporary generation fallback while keeping Ollama primary. In Managed mode, a one-time daemon onboarding worker waits for the local server without blocking, then seeds enabled local Git workspaces through `/voice/seed`, generates the profile through `/voice/profile/generate`, and stores only a local completion marker. If managed setup finishes after the daemon started, the worker starts the newly available server without requiring a daemon restart. External mode does not run automatic voice mining, so training data is never implicitly sent to a remote host.
 
 ### Server Modes
 
@@ -563,7 +563,7 @@ All configuration flows from a single `.env` file with **no hardcoded defaults**
 | Variable | Layer | Purpose | Example |
 |----------|-------|---------|---------|
 | `PROJECT_ROOT` | Both | Path to repository | `/home/user/automation_tools` |
-| `DEVTRACK_WORKSPACE` | Both | Git repo to monitor | Same as PROJECT_ROOT or custom repo |
+| `WORKSPACES_FILE` | Client | Path to the authoritative repository list | `$PROJECT_ROOT/workspaces.yaml` |
 | `DATA_DIR` | Both | Runtime data location | `${PROJECT_ROOT}/Data` |
 | `IPC_HOST` | Both | IPC server host | `127.0.0.1` |
 | `IPC_PORT` | Both | IPC server port | `35893` |
@@ -805,7 +805,7 @@ Offline-first is a core non-negotiable — see [`PRODUCT_BIBLE.md`](../PRODUCT_B
 - `atlassian-python-api` - Jira API
 - `msgraph-core` - Microsoft Graph SDK
 
-**Personalization/RAG dependency** (installed with the managed Python environment via `uv sync`):
+**Personalization/RAG dependency** (installed with the managed Python environment via `uv sync --extra ai`):
 - `chromadb` - RAG vector store for personalization
 
 ---
@@ -827,12 +827,12 @@ task state is tracked in `Data/agent_logs/project_board.md`.
 | **7 — PR puppet master** | Fix-commit-push review loop with escalation and completion notifications |
 | **8 — MCP server** | JSON-RPC 2.0 stdio server exposing six read-only SQLite-backed tools to Claude Code |
 
-### Next: Phase 9 — Adoption Gate
-Packaging and narrative, not new capability: a stranger goes from README to a staged action and
-Claude Code answering *"what am I working on?"* in under ten minutes. See
-[`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
-
-**Deferred (Phase 10+):** headless orchestration, Tier 4 Hermes persona model, GitLab `IsPRApproved`.
+### Phase 9 — Adoption Gate (complete)
+Current product planning focuses on **DevTrack Sage**, the broader local cross-harness capture and
+personal command-knowledge layer described in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md). The existing
+Git-oriented Sage commands remain a compatibility surface during planning. Packaged-build acceptance
+and privacy-reviewed media remain release follow-ups tracked in
+[`docs/END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md).
 
 > **Not planned, ever:** NATS/Redis/external message queues, Kubernetes, or multi-tenancy.
 > DevTrack is local-first, offline-first, single-machine, and not a SaaS. The Go client's

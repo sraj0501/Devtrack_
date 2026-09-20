@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -51,40 +50,13 @@ func NewCLI() (*CLI, error) {
 
 func resolveRepoPath() (string, error) {
 	wsCfg, err := LoadWorkspacesConfig()
-	if err == nil && wsCfg != nil && len(wsCfg.GetEnabledWorkspaces()) > 0 {
+	if err != nil {
+		return "", fmt.Errorf("load workspaces.yaml: %w", err)
+	}
+	if wsCfg != nil && len(wsCfg.GetEnabledWorkspaces()) > 0 {
 		return "", nil
 	}
-
-	workspacePath := strings.TrimSpace(os.Getenv("DEVTRACK_WORKSPACE"))
-	if workspacePath != "" {
-		workspacePath = filepath.Clean(workspacePath)
-		if IsGitRepository(workspacePath) {
-			return workspacePath, nil
-		}
-
-		parentPath := filepath.Dir(workspacePath)
-		if IsGitRepository(parentPath) {
-			return parentPath, nil
-		}
-
-		return "", fmt.Errorf("DEVTRACK_WORKSPACE is not a git repository: %s", workspacePath)
-	}
-
-	repoPath, err := os.Getwd()
-	if err != nil {
-		repoPath = "."
-	}
-
-	if IsGitRepository(repoPath) {
-		return repoPath, nil
-	}
-
-	parentPath := filepath.Dir(repoPath)
-	if IsGitRepository(parentPath) {
-		return parentPath, nil
-	}
-
-	return "", fmt.Errorf("not in a git repository and DEVTRACK_WORKSPACE is not set")
+	return "", fmt.Errorf("no enabled workspaces configured; add one with: devtrack workspace add <name> <path>")
 }
 
 // Execute runs the CLI command
@@ -279,7 +251,8 @@ func requiresManagedMode(command string) error {
 	return nil
 }
 
-// handleSage dispatches git-sage subcommands.
+// handleSage keeps the shipped Git agent working while the local memory
+// commands are introduced one explicit step at a time.
 //
 // Usage:
 //
@@ -293,31 +266,40 @@ func (cli *CLI) handleSage() error {
 	if err != nil {
 		repoPath = "."
 	}
-
-	args := os.Args
-	if len(args) < 3 {
-		return gitsage.RunInteractive(repoPath)
+	sub, args, legacy := routeSage(os.Args[2:])
+	if legacy {
+		fmt.Fprintln(os.Stderr, "sage: Git-agent commands are moving to 'devtrack sage git ...'; this alias remains available.")
 	}
-
-	sub := args[2]
 	switch sub {
+	case "status", "pause", "resume", "doctor":
+		return runSageState(sub, args)
+	case "install-hooks":
+		return runSageHookInstall(true, args)
+	case "uninstall-hooks":
+		return runSageHookInstall(false, args)
+	case "hook":
+		return runSageHook(args, os.Stdin)
+	case "harness":
+		return runSageHarness(args, os.Stdout)
+	case "search", "topics":
+		return fmt.Errorf("sage %s is planned but unavailable until the capture/search milestones", sub)
 	case "ask":
-		if len(args) < 4 {
+		if len(args) == 0 {
 			fmt.Println("Usage: devtrack sage ask \"<question>\"")
 			return fmt.Errorf("missing question")
 		}
-		question := strings.Join(args[3:], " ")
+		question := strings.Join(args, " ")
 		return gitsage.RunAsk(repoPath, question)
 
 	case "do":
-		if len(args) < 4 {
+		if len(args) == 0 {
 			fmt.Println("Usage: devtrack sage do \"<task>\"")
 			return fmt.Errorf("missing task")
 		}
 		// Strip --verbose flag; pass remaining tokens as task
 		verbose := false
 		var taskParts []string
-		for _, a := range args[3:] {
+		for _, a := range args {
 			if a == "--verbose" || a == "-v" {
 				verbose = true
 			} else {
@@ -339,8 +321,8 @@ func (cli *CLI) handleSage() error {
 		return gitsage.RunInteractive(repoPath)
 
 	default:
-		// Treat anything else as a question
-		question := strings.Join(args[2:], " ")
+		// Preserve the historical free-form question shorthand.
+		question := strings.Join(append([]string{sub}, args...), " ")
 		return gitsage.RunAsk(repoPath, question)
 	}
 }

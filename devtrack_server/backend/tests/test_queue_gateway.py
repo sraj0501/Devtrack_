@@ -536,6 +536,18 @@ class TestGetQueuePendingEndpoint:
 
 
 class TestPostQueueExecuteEndpoint:
+    def test_rejected_action_cannot_execute(self, api_client_with_queue):
+        from backend.queue_gateway import QueueGateway
+        gw = QueueGateway()
+        action_id = gw.stage('post_comment', 'DEMO-301', 'none', 'review-test',
+                             {'comment': 'reject me'}, 0.95)
+        assert gw.reject(action_id, 'admin')
+        with patch('backend.webhook_server.TriggerProcessor.get') as processor:
+            response = api_client_with_queue.post('/queue/execute', json={'action_id': action_id})
+        assert response.status_code == 409
+        processor.assert_not_called()
+        assert gw.get_action(action_id)['status'] == 'rejected'
+
     def test_returns_400_without_action_id(self, api_client):
         resp = api_client.post("/queue/execute", json={})
         assert resp.status_code == 400

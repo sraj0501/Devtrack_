@@ -88,8 +88,30 @@ def embed(text: str) -> Optional[list[float]]:
 
 
 def embed_batch(texts: list[str]) -> list[Optional[list[float]]]:
-    """Embed multiple texts.  Returns a list aligned with *texts*."""
-    return [embed(t) for t in texts]
+    """Embed multiple texts in one Ollama request.
+
+    A missing model or failed request returns ``None`` for every input instead
+    of issuing one failing request per item during first-run history seeding.
+    """
+    if not texts:
+        return []
+    if not model_available():
+        return [None] * len(texts)
+
+    try:
+        resp = requests.post(
+            f"{_ollama_host()}/api/embed",
+            json={"model": _embed_model(), "input": texts},
+            timeout=max(_http_timeout(), 30),
+        )
+        if resp.status_code == 200:
+            embeddings = resp.json().get("embeddings") or []
+            if len(embeddings) == len(texts):
+                return embeddings
+    except requests.RequestException as exc:
+        logger.debug("RAG batch embedder: Ollama unavailable (%s)", exc)
+
+    return [None] * len(texts)
 
 
 def model_available() -> bool:

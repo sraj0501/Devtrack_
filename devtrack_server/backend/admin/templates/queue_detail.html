@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Review #{{ action.id }} — DevTrack Admin{% endblock %}
+{% block page_title %}Review action #{{ action.id }}{% endblock %}
+{% block content %}
+<div class="card" data-action-id="{{ action.id }}">
+  <dl style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px 20px;margin-bottom:24px">
+    {% for field in ['action_type', 'target', 'workspace', 'platform', 'confidence', 'status', 'created_at', 'acted_at', 'acted_by'] %}
+    <dt class="text-muted">{{ field | replace('_', ' ') | title }}</dt><dd data-field="{{ field }}" style="margin:0;overflow-wrap:anywhere">{{ action[field] if action[field] is not none else '—' }}</dd>
+    {% endfor %}
+  </dl>
+  {% if summary %}
+  <h2 class="card-title">Draft</h2>
+  <p data-field="summary" style="white-space:pre-wrap;margin-bottom:24px">{{ summary }}</p>
+  {% endif %}
+  <h2 class="card-title">Payload</h2>
+  <pre data-field="payload" style="white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:24px">{{ payload_display }}</pre>
+  {% if action.status == 'pending' %}
+  <form method="post" action="/admin/queue/{{ action.id }}/reject">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit" class="btn btn-danger">Reject action</button>
+  </form>
+  {% endif %}
+  <p><a href="/admin/queue">Back to pending actions</a></p>
+</div>
+{% endblock %}

@@ -38,6 +38,7 @@ workspaces.yaml
 
 # Test temp dirs
 .test_commit_enhancer_tmp
+.codex-cache/
 devtrack_client/devtrack_test_bin
 devtrack_client/*.zip
 

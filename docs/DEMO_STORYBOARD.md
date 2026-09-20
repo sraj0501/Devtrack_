@@ -36,7 +36,26 @@ From the repository root:
 ./scripts/demo.sh --record
 ```
 
-The script pauses at each scene so the recorder controls the pacing. It prints live output only; if
+For an unattended validation run that keeps the same real-output checks but skips scene pauses:
+
+```bash
+./scripts/demo.sh --record --automated
+```
+
+On Windows PowerShell:
+
+```powershell
+.\scripts\demo.ps1 -Mode Record
+```
+
+Use `-Automated` to skip scene pauses during an unattended validation run:
+
+```powershell
+.\scripts\demo.ps1 -Mode Record -Automated
+```
+
+By default, the script pauses at each scene so the recorder controls the pacing; automation mode
+skips only those pauses. It prints live output only; if
 commit staging cannot be observed in the daemon log, it stops instead of manufacturing a successful
 transcript.
 
@@ -118,4 +137,10 @@ configuration:
 
 ```bash
 ./scripts/demo.sh --check
+```
+
+On Windows PowerShell:
+
+```powershell
+.\scripts\demo.ps1 -Mode Check
 ```

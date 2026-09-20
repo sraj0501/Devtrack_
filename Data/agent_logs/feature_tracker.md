@@ -1,18 +1,35 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-04 (Glama container ready; authenticated listing and PR badge pending)_
+_Last updated: 2026-09-06 (cross-platform core E2E passes locally and in hosted CI; Glama approved; full gates pending)_
+
+---
+
+## 2026-09-06 — TASK-152: Automated Windows/Linux no-send E2E
+**Phase**: Validation hold / cross-platform reliability
+**Status**: COMPLETE — LOCAL WINDOWS + LINUX PASS; HOSTED WINDOWS + UBUNTU PASS
+**Files**: Windows/POSIX E2E scripts, local WSL/Docker launcher, Windows/Ubuntu workflow, demo
+automation flags, README, validation docs, wiki, and durable memory
+**Vision check**: PASS
+**Engineer notes**: The credential-free lane observes a real `DEMO-201` commit through the
+lightweight daemon, SQLite, and MCP with PM delivery, telemetry, email, server-event sync, and
+automatic approval disabled. Native Windows and disposable Linux-container runs passed and cleaned
+their state. This does not exercise the Managed PostgreSQL/Python/LLM/admin boundary; those gates
+remain on hold. The workflow and scripts are committed on `origin/dev` at `ed0f571`. End-to-end
+run `34045590767` passed on hosted Windows and Ubuntu; CI `34045590760` and wiki CI `34045590730`
+also passed for that commit.
 
 ---
 
 ## 2026-09-04 — TASK-151: Glama listing readiness
 **Phase**: MCP distribution / community listing
-**Status**: CONTAINER READY; OWNER SUBMISSION PENDING
+**Status**: GLAMA APPROVED; EXACT PATH AND PR BADGE PENDING
 **Target**: Pass Glama startup/introspection checks and satisfy PR #13608's score-badge requirement
 **Vision check**: PASS
 **Engineer notes**: `Dockerfile.mcp` packages the Go stdio MCP server independently of the Python
 HTTP backend and initializes a disposable SQLite database without secrets. CI builds the image and
-checks initialization, all six read-only tools, and shutdown. Glama OAuth submission and the final
-PR badge update remain external; use the exact Glama listing path only after all checks pass.
+checks initialization, all six read-only tools, and shutdown. Glama's admins approved the submitted
+server on 2026-09-06. Recording the exact approved path and adding its badge to PR #13608 remain;
+use the listing's actual path rather than guessing slug normalization.
 
 ---
 

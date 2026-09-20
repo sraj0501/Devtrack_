@@ -841,7 +841,7 @@ func prURLFromCommentURL(commentURL string) string {
 func (d *Daemon) startWorkspacesFileWatcher() {
 	wsFile := config.GetWorkspacesFilePath()
 	if _, err := os.Stat(wsFile); os.IsNotExist(err) {
-		log.Println("workspaces.yaml not found — file watcher skipped (single-repo mode)")
+		log.Println("workspaces.yaml not found — file watcher skipped; add a workspace entry before starting")
 		return
 	}
 

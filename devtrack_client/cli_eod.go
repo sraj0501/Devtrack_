@@ -54,8 +54,25 @@ func (cli *CLI) handleEOD() error {
 // It calls POST /reports/eod, prints the narrative, and prints the action_id
 // when the server staged the report in pending_actions.
 func runEODGenerate() error {
+	database, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("eod generate: open database: %w", err)
+	}
+	defer database.Close()
+	localCommits, err := database.ListTodayCommits("")
+	if err != nil {
+		return fmt.Errorf("eod generate: read today's commits: %w", err)
+	}
+	commits := make([]trigger.EODCommit, 0, len(localCommits))
+	for _, commit := range localCommits {
+		commits = append(commits, trigger.EODCommit{
+			TicketID: commit.TicketID, CommitMessage: commit.Message,
+			CommitHash: commit.Hash, Timestamp: commit.Timestamp,
+		})
+	}
+
 	tc := trigger.NewHTTPTriggerClient()
-	result, err := tc.ReportEODFull("", "")
+	result, err := tc.ReportEODFull("", "", commits)
 	if err != nil {
 		return fmt.Errorf("eod generate: %w", err)
 	}

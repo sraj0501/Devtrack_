@@ -110,6 +110,44 @@ to `none` and no `--email` argument, the walkthrough uses no PM credentials and 
 destination. For a disposable, recorder-friendly version that verifies actual log output instead of
 using a canned transcript, see the [demo storyboard](docs/DEMO_STORYBOARD.md).
 
+```bash
+./scripts/demo.sh --check          # Linux/macOS preflight
+./scripts/demo.sh --record         # Linux/macOS end-to-end run
+```
+
+```powershell
+.\scripts\demo.ps1 -Mode Check    # Windows preflight
+.\scripts\demo.ps1 -Mode Record   # Windows end-to-end run
+```
+
+For the automated, isolated no-send client lane on native Windows plus WSL Linux:
+
+```powershell
+.\scripts\e2e-local.ps1
+```
+
+For Windows browser acceptance of real server-backed action review, rejection, audit,
+and EOD visibility, see [Windows admin acceptance](docs/WINDOWS_ADMIN_ACCEPTANCE.md).
+It uses an existing Managed environment and keeps screenshots/traces private.
+
+If local PowerShell policy blocks repository scripts, use a process-scoped invocation without
+changing the machine policy:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\e2e-local.ps1
+```
+
+The launcher uses WSL when Go is installed there and otherwise falls back to a disposable Linux Go
+container through Docker Desktop; it does not alter the WSL distribution.
+
+The included CI workflow runs the same temporary-workspace test on native Windows and Ubuntu. The
+test verifies the real commit-to-daemon-to-SQLite-to-MCP path without credentials or outbound
+delivery; both hosted lanes have passed on `dev`. The Managed PostgreSQL/Python/LLM path is
+qualified separately from those hosted lanes.
+
+On an already configured Managed installation, add `-Automated` on Windows or `--automated` on
+Linux/macOS to run the full demo without recording pauses.
+
 ### What is ready when?
 
 | Capability | Available before AI readiness | Needs the managed/external Python service |
@@ -123,6 +161,19 @@ using a canned transcript, see the [demo storyboard](docs/DEMO_STORYBOARD.md).
 The Python service and model preparation are background work. If they are not ready by minute ten,
 keep coding and check `devtrack doctor`; the Go-native path remains usable and commits are not
 blocked.
+
+> **Current validation status:** The remaining release follow-ups are packaged-build acceptance,
+> privacy-reviewed media capture, and confirmation of the exact Glama listing path and score badge.
+> See the
+> [end-to-end validation record](docs/END_TO_END_VALIDATION.md) for current evidence and exit criteria.
+
+### Current product focus: DevTrack Sage
+
+Planning has begun for **DevTrack Sage**, a broader local knowledge and session-memory layer that is
+not restricted to Git workflows. This is a planning direction, not a claim that the broader
+capability is implemented. The currently shipped `devtrack sage ask` and `devtrack sage do`
+commands remain Git-focused. See the
+[implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md).
 
 ### Update an existing installation
 
@@ -256,6 +307,10 @@ devtrack eod status         # is one staged?
 
 Groups the day's commits by ticket and writes the narrative in your voice. It is staged in the queue like anything else — review it, then send.
 
+An explicit `devtrack eod` run sends only that day's minimal commit summaries from the local SQLite
+client to the configured Python service. Continuous client-event synchronization remains disabled by
+default; invoking EOD does not enable it.
+
 ### Multi-repo monitoring
 
 ```yaml
@@ -308,7 +363,7 @@ devtrack work report --email me@org.com
 
 Every `git commit` while a session is active automatically attaches its hash — no manual logging.
 
-### git-sage — local LLM git agent
+### Sage commands — current Git-focused agent
 
 ![git-sage standup demo](devtrack_wiki/wiki/assets/standup-demo.gif)
 
@@ -398,7 +453,7 @@ What it does:
 - Reuses an installed generation-capable Ollama model without downloading a prescribed model
 - When Ollama still needs a model, can retain an already-present OpenAI/Anthropic key as an explicit
   temporary fallback; key values are never displayed and declining keeps setup local-only
-- In Managed mode, starts the optional Python checkout, `uv sync`, and any needed local Ollama model
+- In Managed mode, starts the optional Python checkout, `uv sync --extra ai`, and the needed local Ollama generation and embedding model
   pull in a detached worker; setup does not wait for them
 - Generates the registered XDG environment file with visible runtime defaults and an auto-generated `ADMIN_SECRET_KEY`
 - In Managed mode, writes and validates the required PostgreSQL connection configuration
@@ -643,14 +698,14 @@ no backend is reachable.
 ### Python AI server
 
 **Managed mode** (default): `devtrack setup` configures the deterministic server location and starts
-a background sparse checkout into `~/.local/share/devtrack/server/`, followed by `uv sync` and, for
-the local Ollama provider only, a model pull when no usable generation model is already installed.
+a background sparse checkout into `~/.local/share/devtrack/server/`, followed by `uv sync --extra ai`
+and, for the local Ollama provider, preparation of the generation model and `nomic-embed-text`.
 An opted-in cloud-key fast lane remains a fallback behind Ollama, so local inference takes over as
 soon as the model is ready. The wizard does not wait for these steps;
 `devtrack doctor` shows durable progress and failures. No manual dependency setup is needed.
 
 **External mode** (server on a separate host): clone the repo on that host,
-`cd devtrack_server && uv sync && uv run python -m backend.webhook_server`.
+`cd devtrack_server && uv sync --extra ai && uv run python -m backend.webhook_server`.
 Set `DEVTRACK_SERVER_URL` on the client machine.
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the full setup walkthrough.
@@ -683,6 +738,7 @@ Key references in this repo:
 |-----------|-------|
 | Understand where the product is going | [**PRODUCT_BIBLE.md**](PRODUCT_BIBLE.md) — the source of truth |
 | Install it | [Installation](docs/INSTALLATION.md) |
+| Verify the real local workflow | [End-to-end validation](docs/END_TO_END_VALIDATION.md) · [Demo storyboard](docs/DEMO_STORYBOARD.md) |
 | Understand the architecture | [Architecture](docs/ARCHITECTURE.md) |
 | Maintain the Go↔Python HTTP boundary | [HTTP API contract](docs/HTTP_API.md) |
 | Review what DevTrack wants to send | [Pending-actions queue](#the-pending-actions-queue--nothing-is-sent-without-review) |
@@ -725,10 +781,26 @@ source of truth for published asset names or CI behavior.
 cd devtrack_client && go test ./...                     # Go client suite
 cd devtrack_client && go vet ./...                      # lint
 
-cd devtrack_server && uv sync                           # uv manages the venv — never pip
+cd devtrack_server && uv sync --extra ai                # full managed feature/test dependencies
 cd devtrack_server && uv run pytest backend/tests/      # Python server suite
 cd devtrack_server && uv run pytest backend/tests/ -k <name>   # filter by name
 ```
+
+Run the credential-free, no-send product path from the repository root:
+
+```powershell
+.\scripts\e2e.ps1                 # native Windows
+.\scripts\e2e-local.ps1           # Windows, then WSL or Docker-hosted Linux
+```
+
+```bash
+sh ./scripts/e2e.sh               # native Linux
+```
+
+These scripts build the current client in temporary storage, observe a real disposable commit, and
+verify its SQLite-backed MCP context. The [`End-to-end` workflow](.github/workflows/e2e.yml) runs the
+Windows and Linux scripts in GitHub Actions; both hosted lanes pass on `dev`. Packaged-build
+acceptance and privacy-reviewed media qualification remain separate release follow-ups.
 
 Python business logic must use `backend.config` typed accessors rather than adding direct environment
 reads. Missing required variables produce a `ConfigError` with the variable name rather than a

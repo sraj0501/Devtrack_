@@ -36,10 +36,10 @@ func handleMCPCommand(args []string) {
 	case "setup":
 		runMCPSetup(args[1:])
 	case "test":
-		runMCPTest()
+		runMCPTest(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown mcp subcommand: %s\n", sub)
-		fmt.Fprintf(os.Stderr, "Usage: devtrack mcp [serve [--database PATH]|status|setup|test]\n")
+		fmt.Fprintf(os.Stderr, "Usage: devtrack mcp [serve [--database PATH]|status|setup|test [--database PATH]]\n")
 		os.Exit(1)
 	}
 }
@@ -199,21 +199,42 @@ func runMCPSetup(args []string) {
 // runMCPTest runs an in-process smoke test of the MCP server.
 // It creates an in-memory pipe, starts the MCP server on that pipe,
 // sends three JSON-RPC messages, and prints the responses.
-func runMCPTest() {
-	// Build a server with all tools registered against a real (or fallback) database.
+func runMCPTest(args []string) {
+	// Use the requested/configured database, or a disposable database when
+	// setup has not run yet. This keeps the protocol smoke test self-contained.
 	srv := mcp.New(Version)
 
-	database, err := db.NewDatabase()
+	databasePath, err := mcpDatabasePath(args)
 	if err != nil {
-		// Print the error but continue — test can still verify protocol layer.
-		fmt.Fprintf(os.Stderr, "mcp test: warning — cannot open database: %v\n", err)
-		fmt.Fprintf(os.Stderr, "          Some tools will fail; protocol test will still run.\n")
-		database = nil
+		fmt.Fprintf(os.Stderr, "mcp test: %v\n", err)
+		return
 	}
-	if database != nil {
-		defer database.Close()
-		mcp.RegisterDevTrackTools(srv, database)
+
+	var cleanup func()
+	var database *db.Database
+	if databasePath != "" {
+		database, err = db.NewDatabaseAtPath(databasePath)
+	} else if _, configErr := cfg.LoadEnvConfig(); configErr == nil {
+		database, err = db.NewDatabase()
+	} else {
+		var tempDir string
+		tempDir, err = os.MkdirTemp("", "devtrack-mcp-test-")
+		if err == nil {
+			cleanup = func() { _ = os.RemoveAll(tempDir) }
+			databasePath = filepath.Join(tempDir, "devtrack.db")
+			database, err = db.NewDatabaseAtPath(databasePath)
+			fmt.Fprintln(os.Stderr, "mcp test: no configured database; using a disposable SQLite database")
+		}
 	}
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "mcp test: cannot open database: %v\n", err)
+		return
+	}
+	defer database.Close()
+	mcp.RegisterDevTrackTools(srv, database)
 
 	// Build the three test messages
 	messages := []string{

@@ -15,7 +15,6 @@ type EnvConfig struct {
 	// Paths
 	ProjectRoot     string
 	DevTrackHome    string
-	Workspace       string
 	DatabaseDir     string
 	LogDir          string
 	PIDDir          string
@@ -165,7 +164,6 @@ func LoadEnvConfig() (*EnvConfig, error) {
 		ConfigDirName:       os.Getenv("CONFIG_DIR_NAME"),
 		CLIAppName:          os.Getenv("CLI_APP_NAME"),
 		CLIDaemonName:       os.Getenv("CLI_DAEMON_NAME"),
-		Workspace:           expandPath(os.Getenv("DEVTRACK_WORKSPACE")),
 		OllamaHost:          os.Getenv("OLLAMA_HOST"),
 		PromptInterval:      os.Getenv("PROMPT_INTERVAL"),
 		WorkHoursOnly:       os.Getenv("WORK_HOURS_ONLY"),
@@ -635,7 +633,7 @@ func GetIPCConnectTimeoutSecs() int {
 
 // GetWorkspacesFilePath returns the path to workspaces.yaml.
 // Reads WORKSPACES_FILE env var; defaults to $PROJECT_ROOT/workspaces.yaml.
-// The file is optional — absence means single-repo mode (backward compat).
+// A missing file is created as an empty workspace list by LoadWorkspacesConfig.
 func GetWorkspacesFilePath() string {
 	if val := os.Getenv("WORKSPACES_FILE"); val != "" {
 		return expandPath(val)

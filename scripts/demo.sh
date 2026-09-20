@@ -2,15 +2,28 @@
 set -eu
 
 mode="${1:---check}"
+automation_arg="${2:-}"
+automated="${DEMO_AUTOMATED:-false}"
 stage_timeout_secs="${DEMO_STAGE_TIMEOUT_SECS:-120}"
 
 usage() {
-    printf '%s\n' "Usage: $0 [--check|--record]"
+    printf '%s\n' "Usage: $0 [--check|--record] [--automated]"
 }
 
 case "$mode" in
     --check|--record) ;;
     *) usage >&2; exit 2 ;;
+esac
+
+case "$automation_arg" in
+    '') ;;
+    --automated) automated=true ;;
+    *) usage >&2; exit 2 ;;
+esac
+
+case "$automated" in
+    true|false) ;;
+    *) printf '%s\n' 'DEMO_AUTOMATED must be true or false.' >&2; exit 2 ;;
 esac
 
 case "$stage_timeout_secs" in
@@ -61,8 +74,10 @@ trap cleanup EXIT HUP INT TERM
 
 pause_scene() {
     printf '\n%s\n' "$1"
-    printf '%s' 'Press Enter to continue... '
-    read answer
+    if [ "$automated" != true ]; then
+        printf '%s' 'Press Enter to continue... '
+        read answer
+    fi
 }
 
 pause_scene 'Scene 1/5 — Go-native MCP status and self-test'

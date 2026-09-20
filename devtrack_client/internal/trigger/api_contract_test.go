@@ -90,6 +90,44 @@ func TestAPIContractHealthShape(t *testing.T) {
 	}
 }
 
+func TestReportEODIncludesExplicitLocalCommits(t *testing.T) {
+	var received struct {
+		Email   string      `json:"email"`
+		Date    string      `json:"date"`
+		Commits []EODCommit `json:"commits"`
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/reports/eod" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"output":"report","action_id":7}`))
+	}))
+	defer srv.Close()
+
+	client := &HTTPTriggerClient{serverURL: srv.URL, httpClient: &http.Client{}}
+	commits := []EODCommit{{
+		TicketID: "DEMO-101", CommitMessage: "finish demo",
+		CommitHash: "abc123", Timestamp: "2026-09-04T18:00:00+05:30",
+	}}
+	result, err := client.ReportEODFull("dev@example.com", "2026-09-04", commits)
+	if err != nil {
+		t.Fatalf("ReportEODFull: %v", err)
+	}
+	if result.ActionID == nil || *result.ActionID != 7 {
+		t.Fatalf("action ID = %v, want 7", result.ActionID)
+	}
+	if received.Email != "dev@example.com" || received.Date != "2026-09-04" {
+		t.Fatalf("request metadata = %#v", received)
+	}
+	if len(received.Commits) != 1 || received.Commits[0].TicketID != "DEMO-101" {
+		t.Fatalf("request commits = %#v", received.Commits)
+	}
+}
+
 // TestAPIContractPingRejectsNon200 verifies the client's Ping() treats any
 // non-200 response as a failed health check, matching the contract spec.
 func TestAPIContractPingRejectsNon200(t *testing.T) {

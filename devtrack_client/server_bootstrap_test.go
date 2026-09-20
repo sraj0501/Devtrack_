@@ -26,7 +26,7 @@ func TestServerBootstrapFreshManagedCheckoutRunsSparseClone(t *testing.T) {
 		"git init " + filepath.Join(home, "server"),
 		"git -C " + filepath.Join(home, "server") + " sparse-checkout set devtrack_server",
 		"git -C " + filepath.Join(home, "server") + " checkout -B main FETCH_HEAD",
-		"uv sync",
+		"uv sync --extra ai",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("bootstrap commands missing %q:\n%s", want, joined)
@@ -67,8 +67,9 @@ func TestServerBootstrapExistingCheckoutSyncsAndPullsLocalModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		projectRoot + "|uv sync",
+		projectRoot + "|uv sync --extra ai",
 		"|ollama pull llama3.2",
+		"|ollama pull nomic-embed-text",
 	}
 	if strings.Join(calls, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("commands = %#v, want %#v", calls, want)
@@ -96,8 +97,9 @@ func TestServerBootstrapSkipsPullForDetectedLocalModel(t *testing.T) {
 	if err := runServerBootstrap(home, projectRoot, "ollama", "qwen2.5:7b", runner, true); err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(calls, "\n"); got != "uv sync" {
-		t.Fatalf("bootstrap commands = %q, want only uv sync", got)
+	want := "uv sync --extra ai\nollama pull nomic-embed-text"
+	if got := strings.Join(calls, "\n"); got != want {
+		t.Fatalf("bootstrap commands = %q, want %q", got, want)
 	}
 	state, err := readServerBootstrapState(home)
 	if err != nil {
@@ -122,8 +124,8 @@ func TestServerBootstrapCloudProviderNeverPullsModel(t *testing.T) {
 	if err := runServerBootstrap(home, projectRoot, "openai", "cloud-model", runner); err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(calls, "\n"); got != "uv sync" {
-		t.Fatalf("cloud bootstrap commands = %q, want only uv sync", got)
+	if got := strings.Join(calls, "\n"); got != "uv sync --extra ai" {
+		t.Fatalf("cloud bootstrap commands = %q, want only uv sync --extra ai", got)
 	}
 }
 

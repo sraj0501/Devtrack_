@@ -63,8 +63,8 @@ The setup wizard walks through:
    - **External**: you run the Python server separately (see External mode below).
 2. **Background server bootstrap** (managed mode only) — setup records
    `~/.local/share/devtrack/server/devtrack_server/` immediately, then a detached worker
-   sparse-clones only `devtrack_server/` (~5 MB), runs `uv sync`, and pulls the configured model only
-   when local Ollama has no usable generation model already installed. The wizard does not wait for
+   sparse-clones only `devtrack_server/` (~5 MB), runs `uv sync --extra ai`, pulls the configured
+   generation model when needed, and prepares `nomic-embed-text`. The wizard does not wait for
    these steps.
 3. **Server database** (managed mode) — requires a PostgreSQL connection URL and writes it as `POSTGRES_URL`.
 4. **Git repository** — the path DevTrack will monitor for commits.
@@ -267,7 +267,7 @@ This installs a launchd plist (macOS), a systemd user unit (Linux), or a Schedul
 devtrack upgrade
 ```
 
-This upgrades the binary immediately, then starts the managed Python checkout/update, `uv sync`, and
+This upgrades the binary immediately, then starts the managed Python checkout/update, `uv sync --extra ai`, and
 local Ollama model preparation in the same non-blocking bootstrap worker. Follow it with `devtrack doctor`.
 
 ---

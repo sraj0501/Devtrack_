@@ -20,6 +20,8 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_MAX_COMMITS = 25
+
 # ── VoiceSeeder ───────────────────────────────────────────────────────────────
 
 
@@ -31,7 +33,12 @@ class VoiceSeeder:
     existing git history, requiring zero developer action.
     """
 
-    def seed_from_git(self, repo_path: str, since_months: int = 6) -> int:
+    def seed_from_git(
+        self,
+        repo_path: str,
+        since_months: int = 6,
+        max_commits: int = DEFAULT_MAX_COMMITS,
+    ) -> int:
         """Embed recent commit messages from *repo_path* into ChromaDB.
 
         Args:
@@ -43,17 +50,17 @@ class VoiceSeeder:
             Returns 0 when git or ChromaDB is unavailable — never raises.
         """
         try:
-            return self._seed(repo_path, since_months)
+            return self._seed(repo_path, since_months, max_commits)
         except Exception as exc:  # noqa: BLE001
             logger.warning("voice_seeder: unexpected error seeding %s: %s", repo_path, exc)
             return 0
 
     # ── internal ──────────────────────────────────────────────────────────────
 
-    def _seed(self, repo_path: str, since_months: int) -> int:
+    def _seed(self, repo_path: str, since_months: int, max_commits: int) -> int:
         """Internal implementation — callers should use seed_from_git()."""
         # Step 1: Run git log to collect commits.
-        commits = self._run_git_log(repo_path, since_months)
+        commits = self._run_git_log(repo_path, since_months, max_commits)
         if commits is None:
             return 0  # git unavailable
 
@@ -61,7 +68,7 @@ class VoiceSeeder:
         from backend.db.voice_seed_store import is_already_seeded, mark_seeded
 
         # Step 3: Embed each commit message into ChromaDB.
-        embedded = 0
+        candidates: list[tuple[str, str]] = []
         for commit_hash, message in commits:
             # Skip merge commits — they don't reflect the developer's writing voice.
             if message.startswith("Merge branch") or message.startswith("Merge pull request"):
@@ -71,8 +78,34 @@ class VoiceSeeder:
             if is_already_seeded(commit_hash, repo_path):
                 continue
 
-            # Embed into ChromaDB via the existing RAG pipeline.
-            success = self._embed_commit(commit_hash, message, repo_path)
+            candidates.append((commit_hash, message))
+
+        if not candidates:
+            return 0
+
+        from backend.rag.embedder import embed_batch
+        from backend.rag.vector_store import VectorStore
+
+        texts = [f"Context: {message}\nResponse: {message}" for _, message in candidates]
+        vectors = embed_batch(texts)
+        store = VectorStore()
+
+        embedded = 0
+        for (commit_hash, message), text, vec in zip(candidates, texts, vectors):
+            if vec is None:
+                continue
+            success = store.upsert(
+                commit_hash,
+                text,
+                vec,
+                {
+                    "source": "git_history",
+                    "context_type": "commit",
+                    "trigger": message[:300],
+                    "response": message[:400],
+                    "repo_path": repo_path[:200],
+                },
+            )
             if success:
                 mark_seeded(commit_hash, repo_path)
                 embedded += 1
@@ -82,7 +115,10 @@ class VoiceSeeder:
         return embedded
 
     def _run_git_log(
-        self, repo_path: str, since_months: int
+        self,
+        repo_path: str,
+        since_months: int,
+        max_commits: int = DEFAULT_MAX_COMMITS,
     ) -> Optional[list[tuple[str, str]]]:
         """Run `git log` and return a list of (hash, subject) pairs.
 
@@ -96,6 +132,7 @@ class VoiceSeeder:
                     "-C", repo_path,
                     "log",
                     f"--since={since_spec}",
+                    f"--max-count={max(1, max_commits)}",
                     "--pretty=format:%H|%s",
                     "--",
                 ],
@@ -129,30 +166,3 @@ class VoiceSeeder:
                 commits.append((commit_hash, subject))
 
         return commits
-
-    def _embed_commit(self, commit_hash: str, message: str, repo_path: str) -> bool:
-        """Embed a single commit message into ChromaDB.
-
-        Returns True on success, False when ChromaDB or Ollama is unavailable.
-        """
-        try:
-            from backend.rag.embedder import embed as rag_embed
-            from backend.rag.vector_store import VectorStore
-
-            text = f"Context: {message}\nResponse: {message}"
-            vec = rag_embed(text)
-            if vec is None:
-                return False  # Ollama / embedding model unavailable
-
-            store = VectorStore()
-            metadata = {
-                "source": "git_history",
-                "context_type": "commit",
-                "trigger": message[:300],
-                "response": message[:400],
-                "repo_path": repo_path[:200],
-            }
-            return store.upsert(commit_hash, text, vec, metadata)
-        except Exception as exc:
-            logger.warning("voice_seeder: ChromaDB embed failed for %s: %s", commit_hash, exc)
-            return False

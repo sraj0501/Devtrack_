@@ -75,12 +75,17 @@ type WorkspacesConfig struct {
 	Workspaces []WorkspaceConfig `yaml:"workspaces"`
 }
 
-// LoadWorkspacesConfig loads workspaces.yaml if it exists.
-// Returns (nil, nil) when the file does not exist (backward compat: single-repo mode).
+// LoadWorkspacesConfig loads workspaces.yaml, creating an empty file when it
+// does not exist. Repository discovery is intentionally confined to this file;
+// .env contains process settings and secrets, not repository configuration.
 func LoadWorkspacesConfig() (*WorkspacesConfig, error) {
 	path := GetWorkspacesFilePath()
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, nil
+		cfg := &WorkspacesConfig{Version: "1", Workspaces: []WorkspaceConfig{}}
+		if err := cfg.Save(); err != nil {
+			return nil, fmt.Errorf("failed to create empty workspaces file: %w", err)
+		}
+		return cfg, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to check workspaces file: %w", err)
 	}
@@ -117,7 +122,7 @@ func LoadWorkspacesConfig() (*WorkspacesConfig, error) {
 
 // ResolveWorkspaceForPath returns the enabled workspace whose Path best matches
 // (longest prefix of) the given filesystem path. Returns (nil, nil) when there
-// is no workspaces.yaml or no matching workspace (single-repo / unconfigured mode).
+// is no matching workspace.
 func ResolveWorkspaceForPath(p string) (*WorkspaceConfig, error) {
 	cfg, err := LoadWorkspacesConfig()
 	if err != nil || cfg == nil {

@@ -14,6 +14,8 @@ import (
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/codexhistory"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
@@ -41,7 +43,7 @@ type WorkspaceMonitor struct {
 
 // IntegratedMonitor combines Git monitoring and time-based scheduling
 type IntegratedMonitor struct {
-	workspaceMonitors     []*WorkspaceMonitor // one per repo (single-repo has exactly one)
+	workspaceMonitors     []*WorkspaceMonitor // one per enabled workspaces.yaml entry
 	scheduler             *Scheduler
 	config                *config.Config
 	database              *db.Database
@@ -57,8 +59,8 @@ type IntegratedMonitor struct {
 }
 
 // NewIntegratedMonitor creates a new integrated monitoring system.
-// repoPath is used as the single workspace when workspaces.yaml is absent.
-func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
+// Repository paths are loaded exclusively from workspaces.yaml.
+func NewIntegratedMonitor(_ string) (*IntegratedMonitor, error) {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -71,15 +73,16 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 		return nil, fmt.Errorf("failed to create database: %w", err)
 	}
 
-	// Build workspace monitors: prefer workspaces.yaml when present
+	// Build workspace monitors from the sole repository source: workspaces.yaml.
 	var workspaceMonitors []*WorkspaceMonitor
 	wsCfg, err := config.LoadWorkspacesConfig()
 	if err != nil {
-		log.Printf("Warning: failed to load workspaces.yaml: %v (falling back to single-repo mode)", err)
+		database.Close()
+		return nil, fmt.Errorf("failed to load workspaces.yaml: %w", err)
 	}
 
 	if wsCfg != nil && len(wsCfg.GetEnabledWorkspaces()) > 0 {
-		log.Printf("Multi-repo mode: loading %d workspace(s) from workspaces.yaml", len(wsCfg.GetEnabledWorkspaces()))
+		log.Printf("Loading %d workspace(s) from workspaces.yaml", len(wsCfg.GetEnabledWorkspaces()))
 		for _, ws := range wsCfg.GetEnabledWorkspaces() {
 			gm, err := NewGitMonitor(ws.Path)
 			if err != nil {
@@ -105,13 +108,8 @@ func NewIntegratedMonitor(repoPath string) (*IntegratedMonitor, error) {
 			return nil, fmt.Errorf("workspaces.yaml found but no valid workspaces could be loaded")
 		}
 	} else {
-		// Single-repo backward-compat mode
-		log.Printf("Single-repo mode: monitoring %s", repoPath)
-		gm, err := NewGitMonitor(repoPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create git monitor: %w", err)
-		}
-		workspaceMonitors = []*WorkspaceMonitor{{gitMonitor: gm}}
+		database.Close()
+		return nil, fmt.Errorf("no enabled workspaces configured; add one with: devtrack workspace add <name> <path>")
 	}
 
 	// Create integrated monitor
@@ -164,7 +162,54 @@ func (im *IntegratedMonitor) Start(ctx context.Context) error {
 	go executor.Start(ctx)
 	log.Println("✓ Queue executor started")
 
+	// Sage capture is deliberately failure-isolated from the existing monitor.
+	// The spool importer always runs; Codex history polling is explicit opt-in.
+	im.startSageCapture(ctx)
+
 	return nil
+}
+
+func (im *IntegratedMonitor) startSageCapture(ctx context.Context) {
+	dataHome, err := config.DevtrackDataHome()
+	if err != nil {
+		log.Printf("Sage disabled: data directory unavailable")
+		return
+	}
+	root := filepath.Join(dataHome, "sage")
+	if err := sage.EnsureSpool(root); err != nil {
+		log.Printf("Sage disabled: %v", err)
+		return
+	}
+	poller := codexhistory.Poller{Root: root}
+	run := func() {
+		if codexhistory.Enabled(root) {
+			if count, err := poller.Poll(ctx); err != nil {
+				log.Printf("Sage Codex history poll skipped: %v", err)
+			} else if count > 0 {
+				log.Printf("Sage captured %d normalized command event(s)", count)
+			}
+		}
+		result, err := sage.ImportSpool(root, sage.DefaultImportLimit, im.database.InsertSageEvent)
+		if err != nil {
+			log.Printf("Sage spool import skipped: %v", err)
+		} else if result.Imported+result.Duplicates+result.Quarantined > 0 {
+			log.Printf("Sage spool: imported=%d duplicate=%d quarantined=%d remaining=%d", result.Imported, result.Duplicates, result.Quarantined, result.Remaining)
+		}
+	}
+	go func() {
+		run()
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				run()
+			}
+		}
+	}()
+	log.Printf("✓ Sage spool importer started (Codex history=%t)", codexhistory.Enabled(root))
 }
 
 // SetQueueNotifyFn registers a callback on the queue executor that is invoked
@@ -245,7 +290,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 		return
 	}
 	if newCfg == nil {
-		log.Println("workspaces.yaml removed — single-repo mode active on restart")
+		log.Println("workspaces.yaml removed — no repositories will be monitored until an entry is added")
 		return
 	}
 

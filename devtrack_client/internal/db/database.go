@@ -13,6 +13,7 @@ import (
 	"time"
 
 	cfg "github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	_ "modernc.org/sqlite"
 )
 
@@ -487,7 +488,7 @@ func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
 
 	result, err := d.db.Exec(query,
 		record.TriggerType,
-		record.Timestamp,
+		record.Timestamp.Format(time.RFC3339Nano),
 		record.Source,
 		record.RepoPath,
 		record.CommitHash,
@@ -920,7 +921,7 @@ func (d *Database) GetAnalytics() (map[string]any, error) {
 	var today int
 	err := d.db.QueryRow(`
 		SELECT COUNT(*) FROM triggers
-		WHERE date(timestamp) = date('now')
+		WHERE substr(CAST(timestamp AS TEXT), 1, 10) = strftime('%Y-%m-%d', 'now', 'localtime')
 	`).Scan(&today)
 	if err == nil {
 		analytics["triggers_today"] = today
@@ -1767,12 +1768,12 @@ func (d *Database) GetTriggerStats() TriggerStats {
 
 	// triggers today (all types)
 	_ = d.db.QueryRow(
-		"SELECT COUNT(*) FROM triggers WHERE date(timestamp) = date('now')",
+		"SELECT COUNT(*) FROM triggers WHERE substr(CAST(timestamp AS TEXT), 1, 10) = strftime('%Y-%m-%d', 'now', 'localtime')",
 	).Scan(&stats.TriggersToday)
 
 	// commit triggers today
 	_ = d.db.QueryRow(
-		"SELECT COUNT(*) FROM triggers WHERE trigger_type='commit' AND date(timestamp)=date('now')",
+		"SELECT COUNT(*) FROM triggers WHERE trigger_type='commit' AND substr(CAST(timestamp AS TEXT), 1, 10) = strftime('%Y-%m-%d', 'now', 'localtime')",
 	).Scan(&stats.CommitsToday)
 
 	// last trigger timestamp → HH:MM
@@ -1790,8 +1791,8 @@ func (d *Database) GetTriggerStats() TriggerStats {
 	_ = d.db.QueryRow(`
 		SELECT COUNT(*) FROM triggers
 		WHERE processed = 0
-		  AND timestamp >= datetime('now','-24 hours')
-		  AND timestamp <= datetime('now','-5 minutes')
+		  AND datetime(substr(CAST(timestamp AS TEXT), 1, 19)) >= datetime('now','localtime','-24 hours')
+		  AND datetime(substr(CAST(timestamp AS TEXT), 1, 19)) <= datetime('now','localtime','-5 minutes')
 	`).Scan(&stats.Errors24h)
 
 	return stats
@@ -1934,8 +1935,8 @@ func (d *Database) SetVacationMode(enabled bool, until string, threshold float64
 // CountTriggersToday returns commit and timer trigger counts for today.
 func (d *Database) CountTriggersToday() (commits int, timers int) {
 	today := time.Now().Format("2006-01-02")
-	d.db.QueryRow(`SELECT COUNT(*) FROM triggers WHERE trigger_type='commit' AND date(timestamp)=?`, today).Scan(&commits)
-	d.db.QueryRow(`SELECT COUNT(*) FROM triggers WHERE trigger_type='timer'  AND date(timestamp)=?`, today).Scan(&timers)
+	d.db.QueryRow(`SELECT COUNT(*) FROM triggers WHERE trigger_type='commit' AND substr(CAST(timestamp AS TEXT),1,10)=?`, today).Scan(&commits)
+	d.db.QueryRow(`SELECT COUNT(*) FROM triggers WHERE trigger_type='timer'  AND substr(CAST(timestamp AS TEXT),1,10)=?`, today).Scan(&timers)
 	return
 }
 
@@ -2406,6 +2407,25 @@ func (d *Database) applyMigrationTables() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_pr_comments_status ON pr_review_comments(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_pr_comments_pr     ON pr_review_comments(pr_id, platform)`,
+		// 014-create-sage-events
+		`CREATE TABLE IF NOT EXISTS sage_events (
+			delivery_key  TEXT PRIMARY KEY,
+			schema_version INTEGER NOT NULL,
+			event_id      TEXT NOT NULL,
+			harness       TEXT NOT NULL,
+			session_id    TEXT NOT NULL,
+			event_type    TEXT NOT NULL,
+			tool          TEXT NOT NULL,
+			occurred_at   DATETIME NOT NULL,
+			project_id    TEXT NOT NULL DEFAULT '',
+			command       TEXT NOT NULL,
+			signature     TEXT NOT NULL,
+			success       INTEGER,
+			exit_code     INTEGER,
+			imported_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_sage_events_occurred ON sage_events(occurred_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_sage_events_signature ON sage_events(signature)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := d.db.Exec(stmt); err != nil && !strings.Contains(err.Error(), "already exists") {
@@ -2413,6 +2433,40 @@ func (d *Database) applyMigrationTables() error {
 		}
 	}
 	return nil
+}
+
+func (d *Database) createSageEventsTable() error {
+	_, err := d.db.Exec(`
+		CREATE TABLE IF NOT EXISTS sage_events (
+			delivery_key TEXT PRIMARY KEY, schema_version INTEGER NOT NULL,
+			event_id TEXT NOT NULL, harness TEXT NOT NULL, session_id TEXT NOT NULL,
+			event_type TEXT NOT NULL, tool TEXT NOT NULL, occurred_at DATETIME NOT NULL,
+			project_id TEXT NOT NULL DEFAULT '', command TEXT NOT NULL, signature TEXT NOT NULL,
+			success INTEGER, exit_code INTEGER,
+			imported_at DATETIME NOT NULL DEFAULT (datetime('now'))
+		);
+		CREATE INDEX IF NOT EXISTS idx_sage_events_occurred ON sage_events(occurred_at);
+		CREATE INDEX IF NOT EXISTS idx_sage_events_signature ON sage_events(signature);
+	`)
+	return err
+}
+
+// InsertSageEvent appends a privacy-minimized event exactly once. It returns
+// false for an already-imported delivery.
+func (d *Database) InsertSageEvent(event sage.Event) (bool, error) {
+	result, err := d.db.Exec(`
+		INSERT OR IGNORE INTO sage_events (
+			delivery_key, schema_version, event_id, harness, session_id, event_type,
+			tool, occurred_at, project_id, command, signature, success, exit_code
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		event.DeliveryKey(), event.SchemaVersion, event.EventID, event.Harness,
+		event.SessionID, event.EventType, event.Tool, event.OccurredAt.UTC(),
+		event.ProjectID, event.Command, event.Signature, event.Success, event.ExitCode)
+	if err != nil {
+		return false, fmt.Errorf("insert sage event: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	return rows == 1, err
 }
 
 // ---------------------------------------------------------------------------
@@ -2431,7 +2485,7 @@ type TriggerCommit struct {
 	Timestamp string
 }
 
-// ListTodayCommits returns all commit triggers from today (UTC date), optionally
+// ListTodayCommits returns all commit triggers from today (local date), optionally
 // filtered to a specific repo path. Pass repoPath="" for all repos.
 // Results are ordered ASC by timestamp.
 func (d *Database) ListTodayCommits(repoPath string) ([]TriggerCommit, error) {
@@ -2440,7 +2494,7 @@ func (d *Database) ListTodayCommits(repoPath string) ([]TriggerCommit, error) {
 		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
 		FROM triggers
 		WHERE trigger_type='commit'
-		  AND date(timestamp) = date('now')
+		  AND substr(CAST(timestamp AS TEXT), 1, 10) = strftime('%Y-%m-%d', 'now', 'localtime')
 		  AND (? = '' OR repo_path = ?)
 		ORDER BY timestamp ASC
 	`
@@ -2508,13 +2562,42 @@ func (d *Database) MostRecentCommit() (TriggerCommit, error) {
 	return c, nil
 }
 
-// CountTodayCommits returns the number of commit triggers today (UTC date).
+// ListRecentCommits returns the most recent commit triggers across all repos.
+func (d *Database) ListRecentCommits(limit int) ([]TriggerCommit, error) {
+	if limit <= 0 {
+		return []TriggerCommit{}, nil
+	}
+	rows, err := d.db.Query(`
+		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
+		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
+		FROM triggers
+		WHERE trigger_type='commit'
+		ORDER BY timestamp DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ListRecentCommits: %w", err)
+	}
+	defer rows.Close()
+
+	commits := make([]TriggerCommit, 0)
+	for rows.Next() {
+		var commit TriggerCommit
+		if err := rows.Scan(&commit.Hash, &commit.Message, &commit.TicketID, &commit.RepoPath, &commit.Timestamp); err != nil {
+			return nil, fmt.Errorf("ListRecentCommits scan: %w", err)
+		}
+		commits = append(commits, commit)
+	}
+	return commits, rows.Err()
+}
+
+// CountTodayCommits returns the number of commit triggers today (local date).
 func (d *Database) CountTodayCommits() (int, error) {
 	var n int
 	err := d.db.QueryRow(`
 		SELECT COUNT(*) FROM triggers
 		WHERE trigger_type='commit'
-		  AND date(timestamp) = date('now')
+		  AND substr(CAST(timestamp AS TEXT), 1, 10) = strftime('%Y-%m-%d', 'now', 'localtime')
 	`).Scan(&n)
 	return n, err
 }

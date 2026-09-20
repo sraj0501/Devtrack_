@@ -45,6 +45,15 @@ def _make_completed_process(stdout: str, returncode: int = 0) -> subprocess.Comp
     return cp
 
 
+def test_git_history_is_bounded_for_first_run(tmp_path: Path) -> None:
+    from backend.voice_seeder import VoiceSeeder
+
+    with patch("subprocess.run", return_value=_make_completed_process("")) as run:
+        VoiceSeeder()._run_git_log(str(tmp_path), since_months=6)
+
+    assert "--max-count=25" in run.call_args.args[0]
+
+
 @pytest.fixture()
 def isolated_engine(tmp_path: Path, monkeypatch):
     import backend.db.voice_seed_store as vss
@@ -71,7 +80,7 @@ class TestSeedFromGit:
 
         with (
             patch("subprocess.run", return_value=_make_completed_process(FAKE_GIT_LOG)),
-            patch("backend.rag.embedder.embed", return_value=fake_vec),
+            patch("backend.rag.embedder.embed_batch", side_effect=lambda texts: [fake_vec] * len(texts)),
             patch("backend.rag.vector_store.VectorStore.upsert", return_value=True),
             patch("backend.rag.vector_store.VectorStore._init", return_value=True),
         ):
@@ -90,7 +99,10 @@ class TestSeedFromGit:
 
         with (
             patch("subprocess.run", return_value=_make_completed_process(only_merges)),
-            patch("backend.rag.embedder.embed", return_value=[0.1] * 768),
+            patch(
+                "backend.rag.embedder.embed_batch",
+                side_effect=lambda texts: [[0.1] * 768] * len(texts),
+            ),
             patch("backend.rag.vector_store.VectorStore.upsert", return_value=True),
             patch("backend.rag.vector_store.VectorStore._init", return_value=True),
         ):
@@ -116,7 +128,10 @@ class TestIdempotency:
 
         common_patches = dict(
             subprocess_run=patch("subprocess.run", return_value=_make_completed_process(log_output)),
-            embed=patch("backend.rag.embedder.embed", return_value=fake_vec),
+            embed=patch(
+                "backend.rag.embedder.embed_batch",
+                side_effect=lambda texts: [fake_vec] * len(texts),
+            ),
             upsert=patch("backend.rag.vector_store.VectorStore.upsert", return_value=True),
             init=patch("backend.rag.vector_store.VectorStore._init", return_value=True),
         )
@@ -135,7 +150,7 @@ class TestIdempotency:
         # Second call — same git output, same DB
         with (
             patch("subprocess.run", return_value=_make_completed_process(log_output)),
-            patch("backend.rag.embedder.embed", return_value=fake_vec),
+            patch("backend.rag.embedder.embed_batch", side_effect=lambda texts: [fake_vec] * len(texts)),
             patch("backend.rag.vector_store.VectorStore.upsert", return_value=True),
             patch("backend.rag.vector_store.VectorStore._init", return_value=True),
         ):
@@ -195,7 +210,7 @@ class TestChromaDBUnavailable:
 
         with (
             patch("subprocess.run", return_value=_make_completed_process(log_output)),
-            patch("backend.rag.embedder.embed", return_value=None),
+            patch("backend.rag.embedder.embed_batch", side_effect=lambda texts: [None] * len(texts)),
         ):
             seeder = VoiceSeeder()
             count = seeder.seed_from_git(str(tmp_path), since_months=6)
@@ -213,7 +228,7 @@ class TestChromaDBUnavailable:
 
         with (
             patch("subprocess.run", return_value=_make_completed_process(log_output)),
-            patch("backend.voice_seeder.VoiceSeeder._embed_commit", side_effect=_bad_embed),
+            patch("backend.rag.embedder.embed_batch", side_effect=_bad_embed),
         ):
             seeder = VoiceSeeder()
             count = seeder.seed_from_git(str(tmp_path), since_months=6)

@@ -1,15 +1,81 @@
 ﻿# DevTrack Project Board
 
-_Last updated: 2026-09-04 — v3.1.1 and the official MCP Registry record are published; TASK-151's
-Glama container is ready; authenticated Glama submission and PR #13608's badge remain pending._
+**[2026-09-15] TASK-156 / SAGE-002 — DevTrack Sage vertical capture slice (complete).**
+Added the Go-native atomic immutable spool, bounded importer, corrupt-file quarantine, append-only
+`sage_events` SQLite migration, and durable delivery-key deduplication. The importer is now owned
+by `IntegratedMonitor.Start(ctx)` and is failure-isolated from existing monitoring. Added an
+explicitly opt-in (`DEVTRACK_SAGE_CODEX_HISTORY=true`) read-only Codex SQLite poller matching the
+supplemental compatibility logic: only active `vscode` and `cli` threads are queried, first use
+starts from now, in-progress items are revisited, output is not retained, and pause/resume advances
+the capture cutoff rather than backfilling paused activity. Targeted Sage, database, and infra
+tests, the full Go suite, and `go vet ./...` pass. Idempotent Codex install/remove now preserves
+unrelated hooks and settings, fails closed on malformed configuration, accepts Windows UTF-8 BOM
+files, and selects read-only history mode on Windows to avoid the Warp/console-host compatibility
+path. `scripts/e2e-sage-capture.ps1` passes against a freshly built executable: install, preservation
+of an unrelated hook, silent capture, privacy canary, backlog status, and uninstall. Sanitized
+observation from a trusted live Codex hook remains an external gate. Next: TASK-157 / SAGE-003.
+Added a selective `sage harness list|install|uninstall <name>` registry and retained the Codex
+`install-hooks` forms as compatibility aliases. The extension contract rejects non-portable Go
+dynamic plugins: future external adapters use explicit, versioned declarative packages (and later
+sandboxed WASI where required), while MCP is reserved for discovery, diagnostics, and approved
+management rather than capture transport. Only the selected harness is mutated or enabled.
+
+**[2026-09-14] TASK-155 / SAGE-001 — DevTrack Sage contract (complete; observed-fixture gate deferred).** Started the
+Go-native Sage foundation on `feat/SAGE-001-contract`, separate from the TASK-154 UI branch.
+Inventoried all 135 pinned Python regression scenarios into `docs/SAGE_PORT_PARITY_MATRIX.md`,
+added the normalized event v1 fixture/parser and local pause/status seam, and preserved the
+legacy Git agent behind explicit `sage git` aliases. Capture, hooks, and search are not yet
+installed. Published Codex, Claude Code, and Gemini CLI hook contracts were compared, with Codex
+as the provisional first choice. A pure Codex `PostToolUse`/Bash normalizer and synthetic
+privacy/dedup fixtures were added without changing live Codex settings. The later Python
+compatibility fix at `b85a1ab` was reviewed: its `vscode` + `cli` read-only history sources and
+Windows no-popup hook selection are now recorded as a supplemental baseline, with a pure Go
+history-item normalizer and synthetic fixture. Warp is not named upstream; its relationship is
+inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
+verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-157.
+
+_Last updated: 2026-09-15 — SAGE-002 capture slice in progress; UI redesign remains on its separate
+branch. Clean Windows installation and full Managed Linux validation are
+owner-confirmed complete; packaged qualification, media, and listing follow-ups remain._
+
+**[2026-09-10] Environment validation closure.** The owner confirmed that the supported clean
+Windows installation and the full Managed Linux validation journey are complete. These runs were
+performed outside GitHub Actions and no run IDs were supplied, so the record distinguishes owner
+confirmation from hosted-CI evidence. Neither item remains in the active queue. Packaged-build
+acceptance, privacy-reviewed media, and the Glama path/badge are still separate follow-ups.
+
+**[2026-09-09] TASK-153 — Windows admin browser acceptance (complete).**
+Added the missing authenticated server queue list/detail/rejection UI, transactional audit,
+and an atomic execution claim that prevents dispatch after rejection. Added Playwright via
+an optional development group and `scripts/e2e-admin.ps1`, using the existing Managed
+environment and a temporary source admin server. The real Windows flow passed: commit
+`5947fc5c7986`, action 17 rejected at confidence 0.95, EOD action 18 visible, MCP passing,
+and disposable workspace cleanup. 134 focused tests passed. Private browser artifacts stay
+ignored. Clean Windows installation and full Managed Linux validation were subsequently confirmed
+complete by the owner on 2026-09-10; mock receiver approval, packaged qualification, and public
+media remain separate. Details: `docs/WINDOWS_ADMIN_ACCEPTANCE.md`. Next unused ID: TASK-154.
+Visible showcase and saved-result inspection modes now leave the real prototype open
+for the owner. The browser follows the window size; responsive admin layout checks pass
+across four pages at five widths (375–1920px). The local Managed webhook service was
+restarted after inspection exposed that it was stopped; webhook and Ollama health return 200.
+
+**[2026-09-06] TASK-152 — Automated Windows/Linux no-send E2E.** Added isolated native Windows and
+POSIX scripts that build the current Go client, start a lightweight daemon with outbound delivery
+disabled, create a real `DEMO-201` commit, wait for SQLite observation, assert MCP context, and clean
+temporary state. A Windows launcher runs native Windows plus WSL, falling back to a disposable Go
+Docker image when WSL lacks Go. Native Windows and Linux-container executions passed locally. The
+full Managed PostgreSQL/Python/LLM/admin/media acceptance gates remain separate and the development
+hold stays active. The automation is committed on `origin/dev` at `ed0f571`; End-to-end run
+`34045590767` passed its Windows and Ubuntu jobs, and CI `34045590760` plus wiki CI `34045590730`
+passed for the same commit.
 
 **[2026-09-04] TASK-151 — Glama listing readiness.** PR #13608's automated follow-up now requires a
 working Glama listing and score badge. Added a dedicated root `Dockerfile.mcp` that builds the Go
 client and starts `devtrack mcp serve` over stdio with a disposable SQLite database; it neither
 starts the unrelated Python HTTP backend nor requires PostgreSQL or secrets. Client CI builds the
 container and verifies initialization, discovery of all six read-only tools, and shutdown. Local
-protocol preflight passed. Glama submission requires the owner's OAuth session; after all Glama
-checks pass, update PR #13608 with the exact listing path's badge.
+protocol preflight passed. Glama's admins approved the submitted server on 2026-09-06. Record the
+exact approved listing path and update PR #13608 with that path's badge.
 
 **[2026-08-18] PostgreSQL epic and Phase 9 baseline reconciled.** TASK-141 (PR #247), TASK-114
 (PR #249), TASK-115 (PR #250), TASK-116 (PR #251), and TASK-117 (PR #252) are merged to `dev` at
