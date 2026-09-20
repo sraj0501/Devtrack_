@@ -17,6 +17,13 @@ Learning data stays local by default. If you explicitly configure a cloud LLM, r
 Outlook, or another external source, the data required for that selected integration leaves the
 machine under its configured consent and provider policy.
 
+> **Current `dev` limitation:** automatic local Git-history seeding is implemented through the
+> Managed onboarding worker. The HTTP adapter behind several communication-learning commands still
+> calls methods that are absent from `LearningIntegration`; `enable-learning`, `learning-sync`,
+> reset/cron operations, profile display, and response testing must be treated as unavailable until
+> that adapter is repaired. `learning-status` remains useful for inspection. The sections below
+> describe the intended command contract, not a completed end-to-end path.
+
 ---
 
 ## Setup
@@ -87,7 +94,7 @@ Shows consent status, sample count, and last sync time.
 | Variable | Description |
 |---|---|
 | `LEARNING_CRON_SCHEDULE` | Cron expression for daily sync (e.g. `0 20 * * *` for 8pm daily) |
-| `MONGODB_URI` | Optional. Only used to pull Microsoft Teams messages as an extra voice source (needs `TEAMS_ENABLED` and `motor`). It is never required, and it does not replace local storage. |
+| `MONGODB_URI` | Optional storage for Microsoft Teams samples when Graph authentication, learning consent, and the `motor` dependency are available. It is never required, and it does not replace local storage. |
 
 Samples and profiles live locally under `DATA_DIR/learning/`. Git history alone is enough to seed
 voice evidence, but profile generation is a Python-server capability and therefore uses the required
@@ -147,5 +154,5 @@ If no profile exists, these features fall back to standard AI output — no erro
 | Store | Location | Contents |
 |---|---|---|
 | Local files | `DATA_DIR/learning/` | Samples (JSONL), profile (JSON), consent |
-| MongoDB (optional) | `MONGODB_URI` | Teams messages only, when `TEAMS_ENABLED=true`. Not required. |
+| MongoDB (optional) | `MONGODB_URI` | Teams samples collected through an authenticated, consented Microsoft Graph integration. Not required. |
 | Vector store | `DATA_DIR/learning/chroma/` | Embeddings for RAG (if AI tier installed) |

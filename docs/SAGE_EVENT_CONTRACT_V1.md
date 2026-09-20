@@ -51,8 +51,10 @@ The supplemental Windows compatibility seam accepts completed or failed Codex
 original command from `commandActions`, preserves a consistent exit status, deduplicates repeated
 actions within an item, and applies the same command minimization. Output, cwd, thread IDs, and
 item IDs are never copied. This shape is derived from the Python reference compatibility fix at
-`b85a1ab`; the Go code does not yet open Codex SQLite databases. `cli` covers terminal-launched
-Codex sessions generally. The repository contains no Warp-specific branch or identifier.
+`b85a1ab`. The opt-in Go history poller now opens Codex history databases read-only, starts from the
+current high-water mark on first use, revisits in-progress items, and imports only supported active
+`vscode` and `cli` threads. `cli` covers terminal-launched Codex sessions generally. The repository
+contains no Warp-specific branch or identifier.
 
 ## CLI compatibility and exit behavior
 

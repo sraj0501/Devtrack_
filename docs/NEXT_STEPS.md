@@ -1,11 +1,11 @@
 # Next Steps — DevTrack Sage
 
-_Updated 2026-09-20. This file lists active work only. Completed delivery and validation history
+_Updated 2026-09-21. This file lists active work only. Completed delivery and validation history
 lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
 ## Current product initiative
 
-Plan **DevTrack Sage** as DevTrack's local, cross-harness memory layer. The product is no longer
+Complete **DevTrack Sage** as DevTrack's local, cross-harness memory layer. The product is no longer
 named Git Sage because its scope extends beyond Git operations to commands, tool activity,
 and searchable personal knowledge across coding-agent harnesses.
 
@@ -24,7 +24,7 @@ context is maintained in `agent-memory/initiatives/sage.md`. SAGE-001 establishe
 contract and port boundary as TASK-155. SAGE-002 is complete as TASK-156: the atomic bounded
 spool, append-only SQLite event store, daemon importer, and opt-in read-only Codex history adapter
 are implemented, hook installation/removal is reversible, and the isolated packaged capture
-journey passes. Continue SAGE-003 with optional distillation and retry semantics now that the
+journey passes. Continue SAGE-003 with required structured distillation and retry semantics now that the
 model-free searchable index slice is implemented. SAGE-003 remains incomplete until it produces
 the reference-compatible structured Markdown knowledge and passes the refreshed parity matrix.
 Sanitized observed hook fixtures
@@ -33,6 +33,11 @@ The selective harness registry and external plugin boundary are now fixed in
 `SAGE_HARNESS_PLUGIN_CONTRACT.md`; new adapters must plug into that boundary rather than adding
 global installer switches or harness-specific storage.
 `Data/agent_logs/project_board.md` remains the task-ID authority.
+
+The parity inventory now accounts for all 136 reference test methods at `b85a1ab`, including the
+previously omitted explicit CLI-history capture scenario. The next parity pass must add exact Go
+test ownership and an implementation status to every row; a reconciled row count alone is not a
+completion claim.
 
 ## Open release follow-ups
 

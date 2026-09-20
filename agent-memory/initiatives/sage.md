@@ -4,9 +4,9 @@ description: Active execution plan for cross-harness, self-writing personal comm
 type: project
 ---
 
-The durable implementation plan is `docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md`. Until the Sage
-feature branch is integrated, this memory records the corrected product direction and execution
-order that must replace stale legacy and playback language on `dev`.
+The durable implementation plan is `docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md`. The capture,
+model-free search, and legacy-removal foundation is integrated into `dev`; this memory records the
+remaining execution order and the durable boundaries that future work must preserve.
 
 ## Direction
 
@@ -52,43 +52,24 @@ quickly, print nothing, perform no model or network call, and never break an age
 
 ## Current state
 
-- Branch `feat/SAGE-003-port` contains the integrated Sage/workspace foundation from
-  `feat/SAGE-003-knowledge` through documentation commit `3bf1759`.
-- SAGE-001 and SAGE-002 are represented on that feature line: event contract, silent Codex
-  capture, atomic spool, bounded importer/quarantine, SQLite events, pause/resume, and idempotent
-  harness lifecycle.
-- SAGE-003 has only its model-free foundation there: deterministic grouping by normalized
-  signature, source attribution, command-family topics, FTS5 search, and `search`/`topics` CLI.
-- The legacy Git-agent routing, autonomous agent code, provider variables, and free-form fallback
-  are removed on `feat/SAGE-003-port`. Independently used `devtrack git` and commit-enhancement
-  helpers live under neutral `internal/gitcmd` ownership.
+- `dev` contains the event contract, silent Codex capture, atomic spool, bounded
+  importer/quarantine, SQLite events, pause/resume, and idempotent harness lifecycle.
+- The current SAGE-003 slice is model-free: deterministic grouping by normalized signature,
+  source attribution, command-family topics, FTS5 search, and the `search`/`topics` CLI.
+- Remaining SAGE-003 work begins with executable parity mapping and structured local-model
+  distillation, then deterministic Markdown, routing/corrections, safe commits, retries,
+  diagnostics, and capture-to-knowledge closure.
 
 ## Ordered next steps
 
-### 0. Integrate and reconcile the foundation — complete on feature branch
-
-Rebase or merge `feat/SAGE-003-knowledge` onto current `dev`, resolve drift, and run the full Go,
-Sage race-sensitive, packaged clean-install, and wiki validation suites. Reconcile the durable
-implementation plan and parity matrix on `dev` to `b85a1ab` before further feature work.
-
-### 1. Remove legacy Git Sage — complete on feature branch
-
-- Remove legacy commands, aliases, free-form question fallback, help text, configuration, and
-  the Sage CLI dependency on `gitsage`.
-- Audit all other `gitsage` consumers. Relocate independently used helpers only when needed, then
-  delete unused agent code and tests.
-- Unknown Sage commands must fail clearly instead of becoming repository questions.
-
-Gate: `devtrack sage` exposes only capture, knowledge, routing, diagnostics, and harness lifecycle.
-
-### 2. Make reference parity executable
+### 1. Make reference parity executable
 
 Refresh `docs/SAGE_PORT_PARITY_MATRIX.md` against all 136 reference tests at `b85a1ab`. Every row
 must identify the Go owner, exact Go test, status (`implemented`, `partial`, `pending`, or
 `adapted`), and the reason for any Go-specific adaptation. The matrix, not file presence, is the
 completion authority.
 
-### 3. Implement asynchronous structured distillation
+### 2. Implement asynchronous structured distillation
 
 - Add neutral `internal/llmclient` transport and Sage-owned distillation orchestration.
 - Default to local Ollama; no model work occurs on the hook path.
@@ -96,33 +77,33 @@ completion authority.
   verdict. The model never selects paths or edits files.
 - Invalid output and model outages remain retryable; an outage is never recorded as a skip.
 
-### 4. Write deterministic Markdown knowledge
+### 3. Write deterministic Markdown knowledge
 
 Implement stable topic filenames, parseable headings/signatures, atomic replacement, stable entry
 ordering, idempotent insertion, existing-entry reuse, topic-index maintenance, and path traversal
 protection. SQLite owns queue/processing/search state; Markdown topic files are the durable,
 user-visible artifacts. Reprocessing the same events must be byte-stable and duplicate-free.
 
-### 5. Add routing and correction operations
+### 4. Add routing and correction operations
 
 Implement persistent routes, manual correction, merge/refile, skipped-action records, sanitized
 topic/filename handling, and the `routes`, `route`, `merge`, and `log` commands. Existing documented
 entries override stale inferred routes, and user corrections survive later classification.
 
-### 6. Add safe local knowledge commits
+### 5. Add safe local knowledge commits
 
 Commit only Sage-owned knowledge paths while preserving unrelated staged and unstaged work. Skip
 ownership-ambiguous files, handle spaces and Sage-owned deletions, avoid empty commits, respect an
 auto-commit-off setting, and no-op outside Git repositories. Sage never pushes.
 
-### 7. Finish retries and diagnostics
+### 6. Finish retries and diagnostics
 
 Persist attempt count, next retry time, sanitized last error, processing lease, skip reason, and
 completion state. `status`, `doctor`, and `log` must distinguish captured, waiting, retrying,
 processing, documented, explicitly skipped, quarantined, and terminally failed work. Restart must
 recover abandoned leases without loss or duplication.
 
-### 8. Close SAGE-003
+### 7. Close SAGE-003
 
 Run the clean capture-to-self-written-knowledge journey twice: install Codex capture, capture a
 useful command silently, import once, distill, write deterministic Markdown, index/search it,
@@ -131,13 +112,13 @@ absent, preserve unrelated Git state, and uninstall without damaging unrelated c
 Require unit, golden, fuzz, fault-injection, race, Windows, and Linux coverage for the applicable
 parity scenarios.
 
-### 9. Expand harness support
+### 8. Expand harness support
 
 Finish Codex first, then add Claude Code, Copilot CLI, OpenCode, Cursor/IDE history, and Devin CLI
 one at a time. Do not advertise an adapter until it passes the shared silence, latency, privacy,
 deduplication, fail-open, install/removal, configuration-preservation, and unsupported-event suite.
 
-### 10. Add read-only integration and operational closure
+### 9. Add read-only integration and operational closure
 
 After the local CLI is stable, expose read-only MCP knowledge search/topics/status/entry retrieval.
 Add retention/deletion controls, quarantine inspection, deterministic index rebuild, repair, and

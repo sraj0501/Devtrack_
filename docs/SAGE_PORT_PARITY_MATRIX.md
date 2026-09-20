@@ -13,6 +13,7 @@ SQLite, or different internal process boundaries.
 |---|---|---|---|
 | `tool/tests/test_ide_capture.py:55` `test_captures_original_command_once_and_excludes_cli_and_old_history` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
 | `tool/tests/test_ide_capture.py:66` `test_in_progress_command_is_collected_when_it_finishes` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
+| `tool/tests/test_ide_capture.py:73` `test_captures_cli_when_explicitly_enabled` | `internal/sage/codexhistory` | SAGE-002 | Implemented by `TestPollStartsFromNowAndCapturesIDEAndCLIOnce`; Codex history remains explicitly opt-in |
 | `tool/tests/test_ide_capture.py:78` `test_pause_does_not_read_or_advance_history` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
 | `tool/tests/test_ide_capture.py:86` `test_reset_excludes_commands_from_the_paused_period` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
 | `tool/tests/test_ide_capture.py:92` `test_failure_does_not_advance_checkpoint` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |

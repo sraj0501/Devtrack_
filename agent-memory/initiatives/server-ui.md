@@ -1,10 +1,13 @@
 ---
 name: Server UI refresh
-description: Active uncommitted admin-console visual work
+description: Active admin-console redesign awaiting integration decision
 type: project
 ---
 
-Current uncommitted admin template and CSS changes are active work in progress. Test them and either include them in or isolate them from the release-candidate baseline before packaged qualification and privacy-reviewed media capture.
+The full-console redesign is committed on `feat/TASK-154-server-admin-ui` at `54ceb05`, but that
+commit is not an ancestor of current `dev`. The current `dev` working tree has no uncommitted admin
+changes. Review and integrate the branch or explicitly retire it before packaged qualification and
+privacy-reviewed media capture.
 
 The admin console is a server-rendered Jinja/HTML and HTMX application under `devtrack_server/backend/admin`, with shared styling in `static/admin.css`. Keep this lightweight architecture for the first redesign. Do not introduce a SPA framework or frontend build pipeline unless audited interaction requirements justify the maintenance cost.
 
@@ -23,13 +26,16 @@ The pass covers login, navigation shell, dashboard, pending-action queue/detail,
 
 This is a visual and interaction redesign. It does not authorize changes to approval rules, delivery safety, authentication semantics, retention behavior, or server business logic. Document and review any workflow change separately.
 
-## Next steps
+## Integration gate
 
-1. Inventory routes, templates, partials, states, actions, and viewports; capture a safe fixture baseline.
-2. Define information architecture and primary operator action per page.
-3. Build shared design tokens and components in the existing CSS.
-4. Apply the system to the shell/dashboard, then review flows, tables, forms, and secondary pages.
-5. Verify HTMX focus/state behavior, accessibility, zoom, reduced motion, overflow, long values, and responsiveness.
-6. Add route/template coverage and lightweight visual regression for key desktop and mobile states.
+1. Review the feature-branch diff against current `dev` and reconcile any template, route, or CSS drift.
+2. Re-run focused admin route/template tests plus accessibility, zoom, reduced-motion, overflow,
+   long-value, and responsive checks on the reconciled branch.
+3. Integrate through the normal feature-to-`dev` flow or explicitly retire the branch; do not leave
+   release documentation implying uncommitted local work.
+4. Qualify the packaged build, then capture fresh privacy-reviewed screenshots and video from the
+   integrated behavior.
 
-The refresh is ready only when the design is consistent across admin routes, non-happy states are explicit, accessibility and responsive checks pass, and current captures reflect tested behavior.
+The refresh is ready for release only when it is integrated, consistent across admin routes,
+non-happy states are explicit, accessibility and responsive checks pass, and current captures
+reflect tested packaged behavior.

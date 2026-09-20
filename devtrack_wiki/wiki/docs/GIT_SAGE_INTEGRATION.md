@@ -1,9 +1,21 @@
-# Using DevTrack Sage
+# DevTrack Sage and the retired Git Sage name
 
 DevTrack Sage is the Go-native, local command-knowledge subsystem bundled with `devtrack`. It
 captures privacy-minimized command activity from supported coding harnesses, imports it into local
 SQLite, and makes repeated command knowledge searchable. It is not a repository chat agent and it
 does not execute Git operations.
+
+Older documentation used **Git Sage** for a different repository-agent experiment. That surface is
+retired: `sage ask`, `sage do`, `sage pr`, `sage interactive`, `sage git`, and free-form questions
+no longer exist. Do not use `GIT_SAGE_*` settings for current Sage; a few Python-server reads remain
+only as legacy model fallbacks. The independently useful enhanced-commit workflow remains available
+as `devtrack git`, while `devtrack sage` now means command capture and personal knowledge.
+
+| Need | Current command |
+|---|---|
+| Commit-message assistance or Git pass-through | `devtrack git ...` |
+| Silent command capture and local knowledge search | `devtrack sage ...` |
+| Repository questions or autonomous Git actions | Not provided |
 
 ## Install capture
 

@@ -147,4 +147,5 @@ Before marking COMPLETE on the board:
 - [ ] All commits pushed
 - [ ] Engineer log has a task summary entry
 - [ ] No debug code, commented-out blocks, or TODOs left in changed files
-- [ ] Tests pass: `uv run pytest backend/tests/ -q` and `cd devtrack-bin && go test ./...`
+- [ ] Tests pass: `cd devtrack_server && uv run pytest backend/tests/ -q` and
+      `cd devtrack_client && go test ./...`

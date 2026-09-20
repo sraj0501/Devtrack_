@@ -381,14 +381,27 @@ events into SQLite, groups repeated command signatures, and provides FTS-backed 
 attribution. This is an infrastructure preview, not a complete Sage release; self-written
 structured entries and durable Markdown knowledge remain SAGE-003 work.
 
+Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
+That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;
+the Python server may still read a few of those names as legacy model fallbacks. Use `devtrack git`
+for explicit enhanced commits and normal Git pass-through; use `devtrack sage` only for local
+command capture and knowledge. `sage ask`, `sage do`, `sage pr`, `sage interactive`, `sage git`,
+and free-form Sage questions are not supported.
+
 ### Personalized AI ("Talk Like You")
 
 ```bash
-devtrack enable-learning        # opt in
-devtrack learning-sync          # mine your git history
+devtrack enable-learning        # grant communication-learning consent
+devtrack learning-sync          # sync the optional communication source
 devtrack show-profile           # view your inferred writing style
 devtrack test-response "Completed auth module"
 ```
+
+> **Current `dev` limitation:** automatic Git-history voice seeding runs through the managed
+> onboarding worker, but the HTTP adapters behind several communication-learning CLI commands are
+> incomplete. Treat `enable-learning`, `learning-sync`, reset/cron operations, profile display, and
+> response testing as unavailable until the server adapter is repaired. `learning-status` remains
+> the inspection command.
 
 Learns your writing voice from **your own git history** — local, automatic, no external service. It combines a style profile with ChromaDB RAG (real examples of how you write) to personalize every commit message, ticket comment, and report the system generates.
 
@@ -396,7 +409,7 @@ On a fresh Managed installation, the daemon automatically seeds Tier 0 voice dat
 workspaces and generates the first profile in the background. Completion is saved locally in
 `first-run-profile.json`; no PM action is sent and daemon startup never waits for the profile.
 
-Microsoft Teams is an **optional** extra signal (`TEAMS_ENABLED`), not a requirement — the local git-history path is the default and works entirely offline.
+Microsoft Teams is an **optional** extra signal when Microsoft Graph authentication is available and the user grants learning consent. It is not a requirement — the local git-history path is the default and works entirely offline.
 
 ### Ticket alerter
 
@@ -535,7 +548,7 @@ The Go daemon spawns `backend.webhook_server` as a subprocess in the default man
 cd devtrack_server && uv run python -m backend.webhook_server
 ```
 
-All trigger endpoints require the `X-DevTrack-API-Key` header (set `DEVTRACK_API_KEY` in `.env`). Webhook signature verification uses source-specific secrets (`AZURE_WEBHOOK_SECRET`, `GITHUB_WEBHOOK_SECRET`, etc.). GitLab webhooks are registered automatically at startup when `GITLAB_WEBHOOK_URL` is configured.
+All trigger endpoints require the `X-DevTrack-API-Key` header when `DEVTRACK_API_KEY` is configured. Azure DevOps webhooks use `WEBHOOK_AZURE_USERNAME` and `WEBHOOK_AZURE_PASSWORD`; GitHub and GitLab use `WEBHOOK_GITHUB_SECRET` and `WEBHOOK_GITLAB_SECRET`. GitLab webhook auto-registration additionally requires `GITLAB_PAT`, `GITLAB_PROJECT_IDS`, and `DEVTRACK_WEBHOOK_PUBLIC_URL`.
 
 The stable request and response shapes, authentication rules, and matching Go/Python contract tests
 are documented in [the HTTP API contract](docs/HTTP_API.md).
@@ -628,6 +641,7 @@ Sign in with `ADMIN_USERNAME` / `ADMIN_PASSWORD` (set in `.env`). The dashboard 
 | Page | What you can do |
 |------|----------------|
 | **Dashboard** | Health overview, trigger throughput stats, quick links |
+| **Pending Actions** | Inspect server-side queued actions and reject still-pending rows with an audited, race-safe review token |
 | **Users** | Create/delete users, change roles (`admin` / `viewer`), disable/enable accounts, reset passwords |
 | **API Keys** | Generate and revoke per-user API keys |
 | **License** | View current license tier, seat count, and terms acceptance status |
@@ -744,6 +758,7 @@ Key references in this repo:
 
 | I want to… | Go to |
 |-----------|-------|
+| Find the current documentation source for a topic | [Documentation map](docs/README.md) |
 | Understand where the product is going | [**PRODUCT_BIBLE.md**](PRODUCT_BIBLE.md) — the source of truth |
 | Install it | [Installation](docs/INSTALLATION.md) |
 | Verify the real local workflow | [End-to-end validation](docs/END_TO_END_VALIDATION.md) · [Demo storyboard](docs/DEMO_STORYBOARD.md) |

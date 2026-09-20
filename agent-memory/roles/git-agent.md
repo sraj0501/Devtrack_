@@ -94,16 +94,12 @@ EOF
 
 **Always `--base dev`.** Never `--base main`.
 
-### Subtree pushes (GitLab split repos)
-```bash
-# Push Go daemon to gitlab-client
-git subtree push --prefix=devtrack-bin/ gitlab-client dev
+### Repository boundary
 
-# Push Python backend to gitlab-server
-git subtree push --prefix=backend/ gitlab-server dev
-```
-
-Only do subtree pushes when the developer explicitly requests it, and only targeting `dev` on the remote.
+The current source of truth is the GitHub monorepo: `devtrack_client/`, `devtrack_server/`, and
+`devtrack_wiki/`. The old GitLab subtree workflow and the retired `devtrack-bin/` and root
+`backend/` paths are historical. Do not perform subtree pushes unless the owner explicitly defines
+a new supported mirror workflow.
 
 ---
 

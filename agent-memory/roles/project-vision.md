@@ -140,16 +140,16 @@ Run after every engineer task completes, and anytime the developer asks.
 
 ```bash
 # Secrets
-grep -rn "sk-\|ghp_\|Bearer \|api_key\s*=\s*['\"][^'\"\$]" --include="*.py" --include="*.go" backend/ devtrack-bin/
+grep -rn "sk-\|ghp_\|Bearer \|api_key\s*=\s*['\"][^'\"\$]" --include="*.py" --include="*.go" devtrack_server/backend/ devtrack_client/
 
 # Hardcoded hosts/ports outside config
-grep -rn "localhost:[0-9]\|127\.0\.0\.1:[0-9]\|0\.0\.0\.0:[0-9]" --include="*.py" --include="*.go" backend/ devtrack-bin/ | grep -v "_test\|#\|config\|get_\|Get\|Config"
+grep -rn "localhost:[0-9]\|127\.0\.0\.1:[0-9]\|0\.0\.0\.0:[0-9]" --include="*.py" --include="*.go" devtrack_server/backend/ devtrack_client/ | grep -v "_test\|#\|config\|get_\|Get\|Config"
 
 # Hardcoded timeouts in Go (non-test)
-grep -rn "time\.Sleep([0-9]\|timeout\s*=\s*[0-9]" --include="*.go" devtrack-bin/ | grep -v "_test"
+grep -rn "time\.Sleep([0-9]\|timeout\s*=\s*[0-9]" --include="*.go" devtrack_client/ | grep -v "_test"
 
 # os.getenv outside config.py
-grep -rn "os\.getenv\b" --include="*.py" backend/ | grep -v "config\.py\|conftest\|test_"
+grep -rn "os\.getenv\b" --include="*.py" devtrack_server/backend/ | grep -v "config\.py\|conftest\|test_"
 ```
 
 **Rules**:

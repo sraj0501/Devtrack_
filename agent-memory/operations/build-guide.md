@@ -1,3 +1,9 @@
+---
+name: Shared build guide
+description: Current build commands, architecture, package ownership, and debugging guidance
+type: project
+---
+
 # Shared build guide
 
 > **Source of truth for product direction:** [`PRODUCT_BIBLE.md`](../../PRODUCT_BIBLE.md) (pivot 2026-06-10).
@@ -23,7 +29,8 @@ Monorepo with three independent codebases sharing one HTTP/JSON boundary:
 | `devtrack_wiki/` | HTML/Markdown | **DOCS** — website (Netlify → devtrack.cloud) |
 | `devtrack-bin/`, root `backend/` | — | **RETIRED** in TASK-048. Deleted; do not recreate. |
 
-- `docs/ARCHITECTURE.md` — client↔server boundary (this replaced the old `HTTP_API.md`).
+- `docs/ARCHITECTURE.md` — system and ownership boundaries.
+- `docs/HTTP_API.md` — executable Go↔Python request/response contract.
 - `docs/split-manifest.md` — file-ownership catalogue from the monorepo split.
 
 ## Build & Run Commands
@@ -60,7 +67,7 @@ plist (macOS) / systemd unit (Linux).
   cross-test contamination.
 - Tests touching `DATABASE_DIR` need an autouse `monkeypatch.setenv("DATABASE_DIR", tmp_path)`
   fixture to avoid SQLite cross-contamination.
-- Python subsystems (NLP, TUI, LLM, report generator, git_sage) degrade gracefully if deps
+- Python subsystems (TUI, LLM, and report generation) degrade gracefully if optional dependencies
   are missing — every optional import is `try/except` gated.
 
 ## Architecture
@@ -76,8 +83,9 @@ SQLite (offline source)     PostgreSQL server events · PM APIs · MS Graph
 PostgreSQL is mandatory for Python server persistence and server-side events. The Go client remains
 SQLite-only so observation, queueing, MCP context, and offline backlog replay do not require a server.
 
-The only client↔server interface is **HTTPS POST to `/trigger/*`** and related endpoints
-(see `docs/ARCHITECTURE.md`). There is no shared compiled artefact. The legacy TCP IPC
+The client↔server interface is authenticated **HTTP/JSON**, primarily `/trigger/*` plus the related
+health, report, voice, queue, and account endpoints documented in `docs/HTTP_API.md`. There is no
+shared compiled artefact. The legacy TCP IPC
 channel (`127.0.0.1:35893`) is retained internally but new trigger types must use HTTP.
 
 ### Go client packages (`devtrack_client/`)
@@ -88,7 +96,7 @@ and `mcp` (JSON-RPC 2.0 stdio server).
 
 | Package / file | Purpose |
 |---|---|
-| `main.go` | Entry point; routes CLI args. `git` subcommand runs Go-native via `gitsage.RunGit` |
+| `main.go` | Entry point; routes CLI args. `git` subcommand delegates to `internal/gitcmd` |
 | `cli.go`, `cli_*.go` | CLI command implementations (`start`/`stop`/`status`/`boardroom`/`plan`/…) |
 | `internal/config/` | YAML + `.env` config; `config.go` (modes, workspaces), `config_env.go` (typed env accessors) |
 | `internal/db/` | SQLite via modernc.org/sqlite; trigger history, task updates, notifications |
@@ -104,7 +112,8 @@ and `mcp` (JSON-RPC 2.0 stdio server).
 | `cli_queue.go`, `cli_eod.go`, `cli_review.go` | Pending-actions queue, EOD report, PR review CLI groups |
 | `internal/telegram/` | **Go-native** Telegram bot; starts with daemon when `TELEGRAM_ENABLED=true` |
 | `connectors/{github,gitlab,azure}/` | **Go-native** PM connectors (list/view/sync/check) |
-| `gitsage/` | Existing Git helpers and legacy repository-agent code; audit consumers, relocate reusable helpers, and remove the legacy agent per `initiatives/sage.md` |
+| `internal/gitcmd/` | Go-native Git and commit-enhancement helpers used independently of Sage |
+| `internal/sage/`, `sage_cli.go` | Sage capture, spool/import state, harness lifecycle, model-free knowledge/search, and CLI |
 | `versioninfo.json`, `resource_windows_amd64.syso` | Windows binary metadata/icon (`go generate` via goversioninfo) |
 
 ### Python server modules (`devtrack_server/backend/`)
@@ -174,7 +183,7 @@ the configured or loopback-fallback server URL and degrade when no backend is re
   held launch posts remain owner-account actions.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.
 - **Shipped (v3.x):** three-codebase split (EPIC-SPLIT); client-server decoupling (Go-native
-  connectors, gitsage, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;
+  connectors, Git helpers, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;
   automated release pipeline; v3.0.9 `skip_issues`; v3.0.10 Windows fixes (isatty, editor hooks,
   auto-enhance); Phases 0–8 (silent daemon, pending-actions queue, ticket extractor, silent commit,
   EOD pipeline, voice training, dialectic self-improvement, PR puppet master, MCP server);
@@ -185,13 +194,13 @@ the configured or loopback-fallback server URL and degrade when no backend is re
 
 ## Key Patterns
 
-- **Client entry:** `main.go` routes CLI args; `git` subcommand is Go-native via `gitsage.RunGit`
-  (`gitsage/commit.go`) — AI-enhanced commit/add/history + transparent pass-through, no shell
+- **Client entry:** `main.go` routes CLI args; `git` subcommand uses `internal/gitcmd` for
+  AI-enhanced commit/add/history plus transparent pass-through, with no shell
   wrapper, no Python dependency.
 - **Server entry:** `webhook_server.py` is the process the client spawns (managed) or connects to
   (external). Handles inbound webhooks and `/trigger/*` from the client.
-- **HTTP boundary:** no shared artefact; only HTTPS POST `/trigger/*`. New trigger types use HTTP,
-  not the legacy TCP IPC.
+- **HTTP boundary:** no shared artefact; client/server calls use the documented authenticated
+  HTTP/JSON contract. New trigger types use HTTP, not the legacy TCP IPC.
 - **Config centralization:** Python via `backend.config`; Go via `internal/config`. Never `os.getenv`
   outside `config.py`.
 - **Database access:** centralized via `db/` models — no raw SQLite in business logic.
@@ -211,17 +220,24 @@ the prompt unchanged if no profile — fully graceful):
 Injection points use `context_type` ∈ {commit, description, report, task, comment}. Setup:
 `ollama pull nomic-embed-text` (ChromaDB ships via `uv sync`; data in `DATA_DIR/learning/chroma/`).
 
-**Data sources:** git history (automatic) + optional Teams via MS Graph (`TEAMS_ENABLED`). Teams
-messages → MongoDB when `MONGODB_URI` set + `motor` installed; user matched by Azure AD object ID
+**Data sources:** git history (automatic) + optional Teams via MS Graph when Graph authentication is
+available and the user grants learning consent. Teams messages → MongoDB when `MONGODB_URI` is set
+and `motor` is installed; user matched by Azure AD object ID
 (`consent.json:user_object_id`), not UPN. CLI: `enable-learning`, `learning-sync [--full]`,
 `show-profile`, `test-response`, `learning-status`, `learning-reset`.
+
+Current `dev` caveat: the HTTP handlers for enable/sync/reset/cron/profile/test/revoke call an
+incomplete `LearningIntegration` adapter and are not an end-to-end supported path. Automatic
+Git-history seeding uses the separate Managed onboarding worker; `learning-status` remains useful
+for inspection. Keep this limitation aligned with the public known-issues page until the adapter is
+repaired.
 
 > Direction (`PRODUCT_BIBLE.md`): personalization evolves into local dialectic user modeling
 > (SQLite FTS5 + ChromaDB, Hermes persona model) — local-first, Teams as an opt-in tier.
 
 ## Admin UI (`devtrack_server/backend/admin/`)
 
-FastAPI admin console: JWT-cookie auth (env `ADMIN_USERNAME`/`PASSWORD`); dashboard (process
+FastAPI admin console: JWT-cookie auth (env `ADMIN_USERNAME`/`ADMIN_PASSWORD`); dashboard (process
 health, LLM info, license tier, trigger stats); user management (create/role/disable/reset/API
 keys); license page; server/process control; audit log; HTMX partials for processes/stats.
 `ADMIN_EMBED=true` mounts it on the main webhook server (port 8089) instead of a separate process.
@@ -247,8 +263,9 @@ CLI: `devtrack alerts [--all|--clear]`. Config: `ALERT_ENABLED`, `ALERT_POLL_INT
 
 - **AI commit enhancement silently fell back:** check Ollama is running (`ollama serve`); enhancement
   failures degrade to the original message.
-- **Git monitor not detecting commits:** confirm daemon is in the right repo (`devtrack status`),
-  `DEVTRACK_WORKSPACE` points to it; `tail -f Data/logs/daemon.log | grep -i commit`.
+- **Git monitor not detecting commits:** confirm the repository is enabled in the authoritative
+  `workspaces.yaml` (`devtrack workspace list`) and inspect `devtrack logs -f`. The retired
+  `DEVTRACK_WORKSPACE` fallback is ignored.
 - **Structured task parsing unavailable:** check the configured LLM provider and server logs; the
   request must degrade to raw/template data rather than blocking the Git flow.
 - **Tests "provider not found":** call `reset_provider_cache()` in setup/teardown when changing `LLM_PROVIDER`.

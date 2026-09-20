@@ -1,11 +1,13 @@
 ﻿# DevTrack Project Board
 
-**[2026-09-20] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
-Branch `feat/SAGE-003-port` integrates the SAGE-001/SAGE-002 capture foundation and model-free
-search slice, then removes the legacy Git Sage repository-agent surface. `devtrack sage` now
+**[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
+Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and
+removes the legacy Git Sage repository-agent surface. `devtrack sage` now
 rejects ask/do/pr/interactive/git/free-form commands before starting a model, network request, or
 Git operation. Independently used `devtrack git` and commit-enhancement helpers moved to neutral
-`internal/gitcmd` ownership, and the obsolete `GIT_SAGE_*` configuration surface was removed.
+`internal/gitcmd` ownership, and the obsolete client-facing `GIT_SAGE_*` configuration surface was
+removed. A few Python-server reads remain only as legacy model fallbacks; they do not restore or
+configure the retired repository agent.
 Remaining SAGE-003 scope is structured local-model distillation, deterministic Markdown, routing,
 merge/refile, safe local commits, retries/leases, diagnostics, and executable parity closure.
 
@@ -43,7 +45,7 @@ history-item normalizer and synthetic fixture. Warp is not named upstream; its r
 inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
 verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-157.
 
-_Last updated: 2026-09-20 — SAGE-003 is in progress; UI redesign remains on its separate
+_Last updated: 2026-09-21 — SAGE-003 is in progress; UI redesign remains on its separate
 branch. Clean Windows installation and full Managed Linux validation are
 owner-confirmed complete; packaged qualification, media, and listing follow-ups remain._
 

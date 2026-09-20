@@ -642,6 +642,7 @@ const NAV = [
     items: [
       { id: 'GIT_FEATURES',       label: 'Git Features',      icon: git_icon() },
       { id: 'GIT_COMMIT_WORKFLOW', label: 'Commit Workflow',   icon: commit_icon() },
+      { id: 'SAGE',               label: 'DevTrack Sage',      icon: agent_icon() },
     ]
   },
   {
@@ -670,7 +671,6 @@ const NAV = [
   {
     group: 'AI & Personalization',
     items: [
-      { id: 'SAGE',            label: 'DevTrack Sage',      icon: agent_icon() },
       { id: 'LLM_GUIDE',       label: 'LLM Setup',          icon: ai_icon() },
       { id: 'PERSONALIZATION',  label: 'Personalization',    icon: user_icon() },
       { id: 'LLM_STRATEGY',    label: 'LLM Strategy',       icon: strategy_icon() },
@@ -1077,9 +1077,9 @@ uv run python -m backend.server_tui</code></pre>
 
   ADMIN_CONSOLE: `<div class="md-body">
 <h1>Admin Console</h1>
-<p>The Admin Console is a lightweight web UI for managing DevTrack's Python backend — users, roles, API keys, LLM configuration, integration credentials, license status, and a trigger throughput stats panel — without touching the command line or <code>.env</code> directly. It is built with HTMX + Jinja2 and has no JavaScript build step.</p>
+<p>The Admin Console is a lightweight web UI for operating DevTrack's Python backend — reviewing server-side pending actions, monitoring connected clients and trigger activity, and managing users, roles, API keys, LLM configuration, integration credentials, and license status — without touching the command line or <code>.env</code> directly. It is built with HTMX + Jinja2 and has no JavaScript build step.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">CS-3 complete — v2.0.0</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Current <code>dev</code> console — latest public release remains v3.1.1</div>
 
 <h2>Launching</h2>
 <pre><code class="language-bash">cd Devtrack_/devtrack_server\nuv run python -m backend.admin</code></pre>
@@ -1115,8 +1115,13 @@ ADMIN_EMBED=true devtrack start   # or set in .env</code></pre>
 
 <h2>Pages</h2>
 
+<h3>Pending Actions</h3>
+<p><code>/admin/queue</code> lists server-side actions that are still pending, including their action type, target, workspace, and confidence. Opening an action shows its status and review metadata, a human-readable draft when the payload contains one, and the complete formatted payload.</p>
+<p>The current web review flow supports rejection. Rejection requires an authenticated session and a per-action review token, changes only a still-pending row, records the reviewer and timestamp, and writes a <code>queue_reject</code> audit event in the same PostgreSQL transaction. A worker that has already claimed an action wins the race, so a late or replayed rejection returns a conflict instead of rewriting delivery state.</p>
+<blockquote><p>The Admin Console does not currently approve or edit queued actions. Delivery workers claim pending rows through the queue gateway; the web page provides inspection and explicit rejection.</p></blockquote>
+
 <h3>Dashboard</h3>
-<p>Live overview of all server processes (same data as the Server TUI), service health checks (webhook server reachability, Ollama availability), and summary stats — total commits logged, work sessions this week, alerts delivered.</p>
+<p>The responsive operations dashboard summarizes connected clients, the active LLM provider, webhook port, and license tier, then exposes auto-refreshing connected-client, trigger-activity, and request-narrative panels. On narrow screens the grids collapse to one column and the sidebar becomes an accessible drawer that closes from its overlay or the Escape key.</p>
 
 <h4>Trigger Stats Panel</h4>
 <p>An HTMX-powered stats panel on the dashboard shows four counters that auto-refresh every 30 seconds without a full page reload:</p>
@@ -1149,7 +1154,7 @@ ADMIN_EMBED=true devtrack start   # or set in .env</code></pre>
 <p>Read-only view of the active LLM provider configuration (which provider is primary, which are fallbacks), and the status of each external integration credential (Azure DevOps, GitHub, GitLab, Jira, Telegram, Slack). A green tick means the credential is present and the service responded to a ping; red means missing or unreachable.</p>
 
 <h3>Audit Log</h3>
-<p>Timestamped log of every admin action — login, user creation/deletion, role change, disable/enable, password reset, key rotation — with the acting username and IP address. Useful for auditing shared team deployments.</p>
+<p>Timestamped log of every admin action — login, queue rejection, user creation/deletion, role change, disable/enable, password reset, and key rotation — with the acting username and IP address. Useful for auditing shared team deployments.</p>
 
 <h2>Authentication</h2>
 <p>The console uses a <strong>JWT session cookie</strong>. Credentials are set via <code>ADMIN_USERNAME</code> / <code>ADMIN_PASSWORD</code> in <code>.env</code>. On first login you will be prompted to change the default password if <code>ADMIN_PASSWORD=changeme</code> is still set — the console will refuse to serve any page other than the password-change form until it is updated.</p>
@@ -1170,10 +1175,11 @@ uv run python -m backend.admin
 # Or embed on the webhook server (single-process mode)
 # ADMIN_EMBED=true  # add to .env, then devtrack start as normal</code></pre>
 
-<h2>HTTP Route Tests (CS-3)</h2>
-<p><code>backend/tests/test_admin_routes.py</code> ships 31 HTTP-level tests covering every admin route introduced or extended in CS-3. The test client fires real HTTP requests against a TestClient-wrapped FastAPI instance — no mocking of route handlers. Coverage includes:</p>
+<h2>HTTP Route Tests</h2>
+<p><code>backend/tests/test_admin_routes.py</code> covers the established management routes, while <code>backend/tests/test_admin_queue.py</code> and <code>test_queue_gateway.py</code> protect the review flow and queue transitions. The route tests fire real HTTP requests against a TestClient-wrapped FastAPI instance. Coverage includes:</p>
 <ul>
 <li>Dashboard stats panel HTMX fragment (<code>GET /admin/stats-panel</code>) — correct counter values and zero-degradation when DB absent</li>
+<li>Pending-action list/detail and rejection — authentication, review-token validation, reviewer metadata, audit entry, missing actions, claim/reject races, and replay conflicts</li>
 <li>User role update (<code>POST /admin/users/{username}/role</code>) — promotion, demotion, self-role-change rejected</li>
 <li>Soft disable / enable (<code>POST /admin/users/{username}/disable</code> and <code>/enable</code>) — disabled user cannot auth; self-disable rejected</li>
 <li>Password reset (<code>POST /admin/users/{username}/reset-password</code>) — new password accepted, old rejected</li>
@@ -1183,7 +1189,7 @@ uv run python -m backend.admin
 
 <h2>Design Notes</h2>
 <ul>
-<li><strong>Dark theme</strong> — matches the DevTrack aesthetic; inherits CSS variables so it respects the system theme.</li>
+<li><strong>Responsive operations cockpit</strong> — dark, server-rendered cards and tables scale from a wide monitoring view to a single-column mobile layout, with reduced-motion support.</li>
 <li><strong>No JS build step</strong> — HTMX is loaded from CDN; all interactivity is server-rendered HTML fragments. Works without a bundler.</li>
 <li><strong>Separate from the webhook server by default</strong> — the admin console and the webhook server (port 8089) are two distinct FastAPI apps. Stopping the admin console does not affect webhook delivery. Use <code>ADMIN_EMBED=true</code> to co-host them.</li>
 <li><strong>One server store</strong> — user records, API keys, roles, audit entries, and server events use the required PostgreSQL database through shared SQLAlchemy stores.</li>
@@ -1560,11 +1566,12 @@ devtrack uninstall --yes</code></pre>
 <li><strong>Stops the running daemon</strong> — sends a stop signal if the daemon is currently running; waits for it to exit cleanly.</li>
 <li><strong>Removes autostart</strong> — unregisters the launchd LaunchAgent (macOS), systemd user service (Linux), or shell profile block (WSL) that was installed by <code>devtrack autostart-install</code>.</li>
 <li><strong>Deletes the data directory</strong> — removes <code>Data/</code> including the SQLite database, logs, PID files, TLS certs, and reports. Skipped if <code>DATA_DIR</code> is not set.</li>
-<li><strong>Removes the <code>~/.devtrack/</code> directory</strong> — deletes the XDG home used by <code>devtrack setup</code> (<code>devtrack.conf</code>, <code>cloud.json</code>, <code>telemetry.json</code>, <code>schema_version</code>, <code>workspaces.yaml</code>).</li>
+<li><strong>Removes the <code>~/.devtrack/</code> registration directory</strong> — deletes the active <code>devtrack.conf</code> environment-file pointer and optional <code>cloud.json</code> session configuration.</li>
+<li><strong>Removes the registered DevTrack data home unless <code>--keep-data</code> is used</strong> — this includes the SQLite database, logs, the generated environment file, <code>workspaces.yaml</code>, the local <code>telemetry_enabled</code> marker, and any managed Python checkout.</li>
 <li><strong>Removes the binary</strong> — deletes the <code>devtrack</code> binary from its current location. On Windows, asks you to remove it manually if a file lock prevents deletion.</li>
 </ol>
 
-<blockquote><p><strong>Note:</strong> Uninstall does <em>not</em> touch your monitored git repositories, the Python virtualenv created by <code>uv sync</code>, or your <code>.env</code> file. Those are left in place so you can reinstall without re-entering credentials.</p></blockquote>
+<blockquote><p><strong>Note:</strong> Uninstall never touches monitored Git repositories. Use <code>devtrack uninstall --keep-data</code> when you want to preserve the registered data home, generated environment, workspace configuration, and managed server checkout.</p></blockquote>
 
 <h2>Platform Behaviour</h2>
 <div class="table-wrap"><table>
@@ -1624,6 +1631,8 @@ devtrack start</code></pre>
 </ul>
 <h2>Current dev — E2E and Windows Admin Acceptance</h2>
 <ul>
+<li><strong>Server review queue:</strong> the authenticated Admin Console now lists pending PostgreSQL actions, exposes their draft and full payload, and supports race-safe rejection with reviewer metadata and an audit event. Approval and editing are not part of this web flow yet.</li>
+<li><strong>Responsive operations dashboard:</strong> the refreshed console presents connected clients, active runtime configuration, trigger activity, and recent request paths in a dark operations view with responsive grids and a mobile navigation drawer.</li>
 <li><strong>Credential-free client lane:</strong> new PowerShell and POSIX scripts build the current Go client in isolation, start the lightweight daemon, create a real <code>DEMO-201</code> commit, wait for SQLite observation, and assert that MCP exposes the ticket and a non-zero local-day commit count.</li>
 <li><strong>Windows 11 launcher:</strong> <code>.\scripts\e2e-local.ps1</code> runs native Windows plus WSL Linux; when the WSL distribution has no Go toolchain, it uses a disposable <code>golang:1.24-bookworm</code> Docker container without modifying WSL.</li>
 <li><strong>CI definition:</strong> the repository now runs the same no-send test on native <code>windows-latest</code> and <code>ubuntu-latest</code> runners. Local Windows and Linux-container executions passed, and GitHub Actions run <code>34045590767</code> passed for <code>dev</code> commit <code>ed0f571</code>. The general CI and wiki CI runs for that commit passed as well.</li>
@@ -1826,11 +1835,10 @@ devtrack uninstall</code></pre>
 
 <h2>Local Paths</h2>
 <div class="table-wrap"><table><thead><tr><th>Variable</th><th>Purpose</th></tr></thead><tbody>
-<tr><td><code>DEVTRACK_WORKSPACE</code></td><td>Single repository to observe when a workspace list is not used.</td></tr>
-<tr><td><code>WORKSPACES_FILE</code></td><td>Path to multi-repository <code>workspaces.yaml</code>.</td></tr>
+<tr><td><code>WORKSPACES_FILE</code></td><td>Path to the authoritative <code>workspaces.yaml</code> repository list. The retired <code>DEVTRACK_WORKSPACE</code> fallback is ignored.</td></tr>
 <tr><td><code>DATA_DIR</code></td><td>Runtime root.</td></tr>
 <tr><td><code>DATABASE_DIR</code></td><td>Go-owned SQLite directory.</td></tr>
-<tr><td><code>LOG_DIR</code>, <code>PID_DIR</code>, <code>REPORT_DIR</code></td><td>Generated logs, lifecycle state and reports.</td></tr>
+<tr><td><code>LOG_DIR</code>, <code>PID_DIR</code></td><td>Generated logs and lifecycle state. Reports are stored under <code>DATA_DIR/reports</code>.</td></tr>
 </tbody></table></div>
 <p>Setup creates these paths. Do not point tests or multiple users at a shared production data directory.</p>
 
@@ -2068,7 +2076,7 @@ devtrack workspace remove myrepo                  # remove a workspace
 devtrack workspace enable myrepo                  # resume monitoring
 devtrack workspace disable myrepo                 # pause without removing
 devtrack workspace reload                         # hot-reload after manual edits</code></pre>
-<p>The file path is set by <code>WORKSPACES_FILE</code> in <code>.env</code> (default: <code>~/.devtrack/workspaces.yaml</code> or <code>$PROJECT_ROOT/workspaces.yaml</code>).</p>
+<p>The file path is set by <code>WORKSPACES_FILE</code> in the registered environment. Setup normally places it beside the generated <code>data/</code> directory under the DevTrack XDG data home. Without an explicit value, the compatibility default is <code>$PROJECT_ROOT/workspaces.yaml</code>. Run <code>devtrack settings</code> instead of guessing the resolved path.</p>
 
 <h2>Universal Fields</h2>
 <p>Every workspace entry, regardless of platform, supports these fields:</p>
@@ -2308,7 +2316,7 @@ workspaces:
 <tr><td>GitLab: pm_project ignored</td><td>Value is not a numeric string</td><td>Use <code>"12345"</code> not <code>my-project</code></td></tr>
 <tr><td>ADO work items in wrong sprint</td><td>Backslash not escaped in YAML</td><td>Use <code>"Project\\Sprint 42"</code> (double backslash)</td></tr>
 <tr><td>Workspace not monitoring</td><td><code>enabled: false</code> or invalid path</td><td>Run <code>devtrack workspace list</code> to check status</td></tr>
-<tr><td>All commits routing to wrong platform</td><td>Empty <code>pm_platform</code></td><td>Falls back to priority chain (Azure → GitLab → GitHub). Set explicitly.</td></tr>
+<tr><td>Commit has no intended PM target</td><td>Empty or incorrect <code>pm_platform</code></td><td>Set the exact platform on the authoritative workspace; do not rely on automatic platform guessing.</td></tr>
 <tr><td>GitHub Enterprise not reached</td><td><code>pm_api_url</code> not set</td><td>Set to <code>https://github.mycompany.com/api/v3</code></td></tr>
 <tr><td>Duplicate issues from GitHub + Azure DevOps</td><td>Both workspaces included in issue listing</td><td>Add <code>skip_issues: true</code> to the code-hosting workspace (usually GitHub). See the dual-platform setup example above.</td></tr>
 </tbody>
@@ -2317,18 +2325,20 @@ workspaces:
 
   MULTI_REPO: `<div class="md-body">
 <h1>Multi-Repo Monitoring</h1>
-<p>By default DevTrack monitors a single repository (<code>DEVTRACK_WORKSPACE</code>). <strong>Multi-repo mode</strong> lets you monitor any number of repositories simultaneously, each routing to its own project management platform.</p>
+<p>DevTrack monitors the enabled repositories declared in the authoritative <code>workspaces.yaml</code>. A file may contain one workspace or many; the retired <code>DEVTRACK_WORKSPACE</code> fallback is ignored.</p>
 
 <h2>Setup</h2>
-<pre><code class="language-bash"># Create workspaces.yaml at PROJECT_ROOT (or copy the sample)
-cp workspaces.yaml.sample workspaces.yaml
-nano workspaces.yaml
+<pre><code class="language-bash"># Add repositories through the supported CLI
+devtrack workspace add work-api ~/work/api --pm azure
+devtrack workspace add oss-lib ~/oss/lib --pm github
 
-# Restart the daemon to pick up changes
-devtrack restart
+# Inspect the authoritative file path and loaded entries
+devtrack settings
+devtrack workspace list
 
-# Verify multi-repo mode is active
-devtrack status   # shows workspace_count: N</code></pre>
+# Reload after a manual edit; restart is not normally required
+devtrack workspace reload
+devtrack status</code></pre>
 
 <p>The daemon also hot-reloads on save — edit <code>workspaces.yaml</code> and DevTrack surgically restarts only the monitors that changed, without interrupting others.</p>
 
@@ -2454,19 +2464,19 @@ workspaces:
 <li>Go daemon detects a commit in a workspace path</li>
 <li>If the current branch matches an <code>ignore_branches</code> pattern, the event is dropped immediately</li>
 <li>The trigger message includes <code>pm_platform</code>, <code>pm_project</code>, <code>pm_milestone</code>, and <code>workspace_name</code></li>
-<li>Python bridge reads <code>pm_platform</code> and calls only that platform's sync handler</li>
+<li>The Python server reads <code>pm_platform</code> and calls only that platform's sync handler</li>
 <li>Azure, GitHub, GitLab, and Jira are all skipped for platform values that don't match</li>
 </ol>
-<p>When <code>pm_platform</code> is empty or <code>workspaces.yaml</code> is absent, the legacy priority chain runs: Azure → GitLab → GitHub, stopping at the first match.</p>
+<p><code>workspaces.yaml</code> is required. Set <code>pm_platform</code> explicitly to avoid an ambiguous <code>auto</code> target; the retired single-workspace environment fallback is not supported.</p>
 
 <h2>TUI Dashboard</h2>
 <p>The <strong>Workspaces</strong> tab in <code>devtrack tui</code> shows a live table of all configured workspaces with their PM platform, enabled status, and last-seen commit time.</p>
 
 <h2>Troubleshooting</h2>
 <ul>
-<li><strong>Single-repo mode despite workspaces.yaml</strong> — confirm the file is at <code>\$PROJECT_ROOT/workspaces.yaml</code> (or <code>WORKSPACES_FILE</code> is set); check for YAML parse errors: <code>python3 -c "import yaml; yaml.safe_load(open('workspaces.yaml'))"</code></li>
+<li><strong>Configured repository not monitored</strong> — run <code>devtrack settings</code> to resolve <code>WORKSPACES_FILE</code>, then <code>devtrack workspace list</code> to surface parse, path, and enabled-state problems.</li>
 <li><strong>Workspace not monitored</strong> — confirm <code>enabled: true</code> and that the path is a valid git repo</li>
-<li><strong>Commits routing to wrong platform</strong> — confirm <code>pm_platform</code> matches one of <code>azure | gitlab | github | jira | none</code>; an unknown value falls back to the priority chain</li>
+<li><strong>Commits routing to the wrong platform</strong> — confirm <code>pm_platform</code> is explicitly one of <code>azure | gitlab | github | jira | none</code> for the matching repository entry.</li>
 <li><strong>pm_project not applied for GitLab</strong> — must be a numeric string (e.g., <code>"12345"</code>); strings that fail int conversion are silently ignored</li>
 </ul>
 </div>`,
@@ -2531,7 +2541,7 @@ QUEUE_DRAIN_INTERVAL_SECS=10</code></pre>
 <p>DevTrack can run in a fully air-gapped environment with zero inbound or outbound network access:</p>
 <ol>
 <li>Set <code>LLM_PROVIDER=ollama</code> and run Ollama locally (<code>OLLAMA_HOST=http://localhost:11434</code>)</li>
-<li>Leave all PM credentials empty (<code>AZURE_DEVOPS_TOKEN</code>, <code>GITHUB_TOKEN</code>, etc.) — integrations are skipped when credentials are absent</li>
+<li>Leave all PM credentials empty (<code>AZURE_DEVOPS_PAT</code>, <code>GITHUB_TOKEN</code>, etc.) — integrations are skipped when credentials are absent</li>
 <li>Leave telemetry disabled (the default). It sends nothing unless you explicitly run <code>devtrack telemetry on</code>.</li>
 <li>Leave optional Teams/MongoDB voice sources unconfigured; local Git history, SQLite, and the local learning directory remain the default.</li>
 </ol>
@@ -2669,9 +2679,18 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 </div>`,
 
   SAGE: `<div class="md-body">
-<h1>DevTrack Sage</h1>
+<h1>DevTrack Sage and the retired Git Sage name</h1>
 <p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
 <blockquote><p><strong>Development status:</strong> Sage is under active development on <code>dev</code> and is not part of the latest <code>v3.1.1</code> release. SAGE-001 and SAGE-002 are implemented. SAGE-003 currently provides an initial searchable SQLite slice, not the complete self-writing knowledge product.</p></blockquote>
+
+<h2>What happened to Git Sage?</h2>
+<p>Older DevTrack documentation used <strong>Git Sage</strong> for a repository chat and Git-operation experiment. That product surface has been removed. The current <code>devtrack sage</code> namespace is deliberately narrower and safer: it captures privacy-minimized command events and builds local personal knowledge.</p>
+<div class="table-wrap"><table><thead><tr><th>Need</th><th>Current surface</th></tr></thead><tbody>
+<tr><td>Commit-message assistance or Git pass-through</td><td><code>devtrack git ...</code></td></tr>
+<tr><td>Silent command capture and local knowledge search</td><td><code>devtrack sage ...</code></td></tr>
+<tr><td>Repository chat or autonomous Git operations</td><td>Not provided</td></tr>
+</tbody></table></div>
+<p>Removed forms—<code>sage ask</code>, <code>sage do</code>, <code>sage pr</code>, <code>sage interactive</code>, <code>sage git</code>, and free-form Sage questions—fail clearly and do not start a model, network request, or Git operation. Do not use <code>GIT_SAGE_*</code> settings for current Sage; a few Python-server reads remain only as legacy model fallbacks.</p>
 
 <h2>Authoritative behavior</h2>
 <p>The parity baseline is <code>D:\\git_apps\\ai_sessions_skills</code> at commit <code>b85a1ab</code>. DevTrack ports its behavior into the Go client: command/tool capture, normalized signatures, deduplication, topic routing, local-model distillation, structured entries, deterministic Markdown knowledge files, search, corrections, lifecycle controls, diagnostics, and safe local commits.</p>
@@ -2834,7 +2853,7 @@ devtrack github-view &lt;issue-number&gt;</code></pre>
 <pre><code class="language-bash">TELEGRAM_ENABLED=true
 TELEGRAM_BOT_TOKEN=&lt;bot-token&gt;
 TELEGRAM_ALLOWED_CHAT_IDS=&lt;your-chat-id&gt;
-TELEGRAM_CHAT_IDS=&lt;notification-chat-id&gt;</code></pre>
+TELEGRAM_CHAT_ID=&lt;notification-chat-id&gt;</code></pre>
 <blockquote><p>If <code>TELEGRAM_ALLOWED_CHAT_IDS</code> is empty, the current bot accepts commands from any chat that reaches it. Do not expose that development-mode configuration.</p></blockquote>
 <h2>Start and Verify</h2>
 <pre><code class="language-bash">devtrack restart
@@ -2879,7 +2898,7 @@ devtrack plan --folder docs/specs/
 <li><strong>Stories</strong> — user-facing deliverables (e.g. "OAuth2 login flow", "MFA enrollment")</li>
 <li><strong>Tasks</strong> — concrete implementation steps with estimates</li>
 </ol>
-<p>All items are created in the PM platform configured by <code>PM_PLATFORM</code> in your <code>.env</code>.</p>
+<p>The CLI asks you to choose Azure DevOps, GitLab, or GitHub for an inline plan. A Markdown plan may declare <code>platform: azure|gitlab|github</code> in its <code>## Meta</code> block. Credentials remain in the environment; non-secret organization/project routing remains in <code>workspaces.yaml</code>.</p>
 
 <h2>Boardroom Review</h2>
 <p>Before creating tickets, run the problem through the Boardroom for multi-persona AI review:</p>
@@ -2890,9 +2909,11 @@ devtrack plan --folder docs/specs/
 <p>Then, if approved, run <code>devtrack plan</code> to create the tickets.</p>
 
 <h2>Configuration</h2>
-<pre><code class="language-bash">PM_PLATFORM=azure          # azure | gitlab | github | jira | none
-NEWPROJECT_ENABLED=true    # Enable /newproject Telegram command
-</code></pre>
+<pre><code class="language-yaml"># In a plan file
+## Meta
+platform: azure   # azure | gitlab | github
+project: MyProject</code></pre>
+<p>For inline text, choose the target from the CLI prompt. The current <code>devtrack plan</code> flow does not use a global <code>PM_PLATFORM</code> environment variable and does not offer Jira as a creation target.</p>
 </div>`,
 
   PROJECT_PLANNING: `<div class="md-body">
@@ -2925,10 +2946,10 @@ devtrack boardroom --file docs/reporting-spec.md --output review.md  # save repo
 </code></pre>
 
 <h2>Configuration</h2>
-<pre><code class="language-bash">NEWPROJECT_ENABLED=true
-SPEC_REVIEW_BASE_URL=https://your-spec-server.internal  # optional
-PM_PLATFORM=azure   # or gitlab | github | jira
-</code></pre>
+<pre><code class="language-markdown">## Meta
+platform: github   # azure | gitlab | github
+project: owner/repository</code></pre>
+<p>The CLI prompts for a target when an inline problem or plan file omits <code>platform</code>. Keep platform credentials in the registered environment and workspace routing in <code>workspaces.yaml</code>; the current CLI does not read a global <code>PM_PLATFORM</code> value.</p>
 </div>`,
 
   WORK_TRACKER: `<div class="md-body">
@@ -2959,7 +2980,7 @@ devtrack work report
 <tr><td><code>devtrack work stop</code></td><td>Stop the active session and record duration</td></tr>
 <tr><td><code>devtrack work status</code></td><td>Show active session and today's completed sessions</td></tr>
 <tr><td><code>devtrack work report</code></td><td>Generate AI narrative EOD summary with achievements, in-progress, pending</td></tr>
-<tr><td><code>devtrack work report --email</code></td><td>Send report via MS Graph (Outlook) to <code>EOD_REPORT_EMAIL</code></td></tr>
+<tr><td><code>devtrack work report --email &lt;address&gt;</code></td><td>Generate the report and request delivery to the explicit address</td></tr>
 </tbody></table>
 
 <h2>Configuration</h2>
@@ -3270,7 +3291,7 @@ function renderHome() {
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation, MCP context, and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1 is public; current <code>dev</code> adds a passing, credential-free Windows and Linux commit-to-MCP E2E lane.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1 is public; current <code>dev</code> adds the Sage capture/search foundation, an Admin Console review queue, and cross-platform commit-to-MCP validation.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the platform asset from GitHub Releases (Windows uses the published <code>.exe</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
@@ -3294,13 +3315,13 @@ function renderHome() {
         { id:'PM_AGENT',        icon:'🗂️', title:'PM Agent',            desc:'AI decomposes problems into Epic → Story → Task hierarchies.' },
         { id:'PROJECT_PLANNING',icon:'📋', title:'AI Project Planning', desc:'<code>/newproject</code> in Telegram: describe requirements, pick team from live roster, AI auto-fetches workloads, generates a full YAML spec with sprints/stories/risks, emails it to the PM for review, and creates everything in the PM tool on approval.' },
         // ── AI & Personalization ──────────────────────────────────────────────
-        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'In-development, Go-native cross-harness command knowledge: local capture and SQLite search exist now; structured Markdown distillation and full reference parity remain in progress.' },
+        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'Current command-knowledge product and Git Sage migration guide: local capture and SQLite search exist on <code>dev</code>; the retired repository agent does not.' },
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
         { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'"Talk Like You" — AI that learns from local Git history and explicit examples; Teams is an optional opt-in source and writes in your voice using RAG-powered few-shot examples.' },
         // ── System Integration ────────────────────────────────────────────────
         { id:'AUTOSTART',       icon:'🔌', title:'Auto-Start',          desc:'Auto-start DevTrack at login — OS-aware. Run <code>devtrack autostart-install</code>: launchd LaunchAgent on macOS, systemd user service on Linux/WSL, Windows Task Scheduler task on Windows, or a shell profile block on WSL without systemd. All env vars are baked into the unit at install time — no separate <code>.env</code> file needed at runtime.' },
         { id:'SERVER_TUI',      icon:'🖥️', title:'Server TUI',          desc:'Textual process monitor for the Python backend. Shows all server processes with live CPU/MEM/status, a health bar, and a trigger throughput stats panel (triggers today, commits today, errors in last 24 h). Navigate with ↑↓, restart with r, toggle logs with l.' },
-        { id:'ADMIN_CONSOLE',   icon:'🛡️', title:'Admin Console',       desc:'Web UI at <code>http://localhost:8090/admin/</code> — manage users, roles, API keys; soft disable/enable users; reset passwords; license status page; HTMX trigger stats panel (30s auto-refresh); LLM config, integration credentials, and a full audit log. Run with <code>uv run python -m backend.admin</code> from the Python checkout or set <code>ADMIN_EMBED=true</code> to co-host on port 8089.' },
+        { id:'ADMIN_CONSOLE',   icon:'🛡️', title:'Admin Console',       desc:'Responsive operations UI at <code>http://localhost:8090/admin/</code> — inspect and reject pending server actions, monitor clients and trigger activity, manage users and credentials, and review the audit log. Run with <code>uv run python -m backend.admin</code> from the Python checkout or set <code>ADMIN_EMBED=true</code> to co-host on port 8089.' },
         { id:'TELEMETRY',       icon:'📊', title:'Telemetry',           desc:'Optional usage tracking: download counts, command frequencies, version adoption. Fully transparent, no PII. Opt-in only: nothing is sent unless you explicitly enable it.' },
         { id:'CLOUD_MODE',      icon:'☁️', title:'Cloud Mode',          desc:'Connect your local daemon to a remote managed backend. <code>devtrack cloud login --url URL --key KEY</code> saves credentials to <code>~/.devtrack/cloud.json</code>. Bypasses cert-pinning for CA-signed remote certs.' },
         // ── Account & Licensing ───────────────────────────────────────────────

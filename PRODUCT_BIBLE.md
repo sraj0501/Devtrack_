@@ -90,7 +90,9 @@ No feature is interface-specific.
 ### 5. All learning is local and private
 Training data — git history, PR comments, meeting transcripts, user corrections — is
 stored locally in SQLite and ChromaDB. Nothing leaves the machine for training purposes
-without explicit opt-in (`TEAMS_ENABLED`, `RECORDINGS_ENABLED`). Local LLM
+without explicit opt-in. `TEAMS_ENABLED` and `RECORDINGS_ENABLED` are target-state control names,
+not implemented current-`dev` environment switches; today, Teams access depends on explicit Graph
+authentication and learning consent, while recording ingestion remains future work. Local LLM
 (Ollama) is the default for all inference. Cloud LLM providers are optional upgrades.
 
 ### 6. Self-improvement is mandatory, not optional
@@ -352,7 +354,8 @@ Manual fine-tuning. Optional. Highest signal-to-noise because the developer expl
 chose these examples. Injected directly into ChromaDB, tagged as high-weight.
 
 **Tier 3 — Opt-in, requires MS Graph:**
-Teams messages. `TEAMS_ENABLED=true`. Captures written communication patterns across
+Teams messages. Target contract: `TEAMS_ENABLED=true`; this switch is not implemented on current
+`dev`, whose communication-learning HTTP adapter is also incomplete. Captures written communication patterns across
 channels, DMs, and meeting chats. Significantly richer than git history for informal
 register and team-specific vocabulary.
 
@@ -614,4 +617,3 @@ to be reworked, not patched.
 | 2026-06-10 | Layer 3: channel parity rule for corrections — approve/reject/edit must exist on at least one non-TUI channel. Justification: the TUI-optional principle (non-negotiables #4, #12) is only enforceable if corrections are never TUI-exclusive. | Shashank Raj + Claude |
 | 2026-06-14 | Second brain positioning added to Vision. Non-negotiable #13: client is sole interface to all server capabilities (rolling capability audit). Phase 1 expanded to include TUI confidence layer (merged former Phase 7) — adoption gate: pending queue and TUI ship together. Phases renumbered: old Phase 7 removed, old Phase 8 → Phase 7, new Phase 8 = MCP server + headless integration. | Shashank Raj + Claude |
 | 2026-06-18 | Tier 4 terminology: "Teams meeting transcripts" → "Recording transcripts from any source (Teams, Zoom, Google Meet, Webex, etc.)". Env var `TEAMS_TRANSCRIPTS_ENABLED` → `RECORDINGS_ENABLED`. Voice matching requirement updated accordingly. Rationale: Tier 4 must be source-agnostic; "TEAMS" implies MS Teams exclusivity which is not the intent. | Shashank Raj + Claude |
-

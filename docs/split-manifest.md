@@ -6,6 +6,9 @@ _Generated: 2026-05-24 | TASK-041 | Branch: features/SPLIT-001-monorepo-restruct
 > describe the pre-split repository as it existed during TASK-041. They are not current setup or
 > architecture instructions. Current code lives in `devtrack_client/`, `devtrack_server/`, and
 > `devtrack_wiki/`; GitHub is the sole source of truth and the DevTrack Community License applies.
+> References to `git-sage`, `gitsage/`, and `backend/git_sage/` describe removed prototypes. Current
+> Git helpers live in `devtrack_client/internal/gitcmd/`; current DevTrack Sage command knowledge
+> lives in `devtrack_client/internal/sage/`. See `ARCHITECTURE.md` for current ownership.
 
 This document catalogues every file and directory in the monorepo root and assigns each
 to one of five owners:

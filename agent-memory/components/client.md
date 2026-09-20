@@ -1,3 +1,9 @@
+---
+name: DevTrack client
+description: Go client build, architecture, configuration, and server boundary
+type: project
+---
+
 # devtrack_client — Client Binary
 
 Go module: `github.com/sraj0501/Devtrack_/devtrack_client`
@@ -35,18 +41,18 @@ core runtime is split into layered `internal/` packages (acyclic):
 `config` · `db` · `health` · `learning` ← `trigger` ← `infra` ← `daemon`; plus `trigger` ← `tui`.
 Also: `connectors/{github,gitlab,azure}/` (Go-native PM connectors), `internal/alerts/` +
 `internal/notify/` (Go-native ticket alerts + notifiers), `internal/telegram/` (Go-native bot),
-and `internal/sage/` on the Sage feature line. See `../operations/build-guide.md` for the full
-package map.
+`internal/sage/` (capture and command knowledge), and `internal/gitcmd/` (independent Git/commit
+helpers). See `../operations/build-guide.md` for the full package map.
 
-The `git` subcommand is handled Go-natively via `gitsage.RunGit` — no bash or Python wrapper.
+The `git` subcommand is handled Go-natively through `internal/gitcmd` — no bash or Python wrapper.
 Windows syscall isolation uses build-tag splits (`*_unix.go` / `*_windows.go`).
 
 ## DevTrack Sage
 
 DevTrack Sage is the Go-native cross-harness, self-writing command-knowledge product. Its current
-implementation boundary and ordered work are in `../initiatives/sage.md`. Existing repository-agent
-code under `gitsage/` is pending consumer audit, helper relocation where necessary, and removal; do
-not extend it as Sage architecture.
+implementation boundary and ordered work are in `../initiatives/sage.md`. The legacy repository
+agent and `gitsage/` package are removed; do not restore their chat, autonomous Git, or free-form
+question behavior as Sage architecture.
 
 ## Configuration
 
@@ -56,7 +62,9 @@ Key client-only vars: `IPC_CONNECT_TIMEOUT_SECS`, `HTTP_TIMEOUT`, `HTTP_TIMEOUT_
 
 ## Server Communication
 
-The client sends triggers to `devtrack_server` over HTTPS POST. The server URL is set via `DEVTRACK_SERVER_URL`. In managed mode the client spawns the server as a subprocess.
+The client uses the documented authenticated HTTP/JSON boundary to call `devtrack_server`, with
+`/trigger/*` as the primary event family. The server URL is set via `DEVTRACK_SERVER_URL`. In
+managed mode the client spawns the server as a subprocess.
 
 Full API contract: `docs/ARCHITECTURE.md`
 

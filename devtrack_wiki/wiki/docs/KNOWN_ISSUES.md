@@ -19,17 +19,27 @@ downloads happen in the background. They may be temporarily degraded after setup
 `devtrack doctor`, and `devtrack doctor --repair` expose progress and recovery; Go-native features
 remain usable.
 
-## End-to-end validation hold
+## Remaining release qualification
 
-Roadmap feature work is paused while clean-machine installation, full Linux Managed-demo parity,
-admin-queue review, and privacy-reviewed screenshot/video capture are completed. The Windows
-local-user Managed workflow has passed twice with real commit detection, `DEMO-101` mapping,
-confidence-bearing staging, EOD generation, six-tool MCP introspection, and disposable-workspace
-cleanup. A separate credential-free core lane has passed locally on native Windows, in a Linux Go
+Clean Windows installation and the full Managed Linux journey were confirmed complete by the owner
+on 2026-09-10. The credential-free core lane also passed locally on native Windows, in a Linux Go
 container, and on GitHub-hosted Windows and Ubuntu runners, covering a real `DEMO-201` commit through
-the daemon, SQLite, and MCP. The workflow is committed on `dev`; End-to-end run `34045590767` passed
-for commit `ed0f571`. This evidence does not mean the remaining full Managed release gates are
-complete.
+the daemon, SQLite, and MCP. Those source and environment checks do not close the remaining gates:
+the packaged build still needs qualification, public screenshots/video still need privacy review,
+and the exact Glama listing path must be recorded before its score badge is updated.
+
+DevTrack Sage development is the active product initiative. Its capture and model-free search
+foundation is on `dev`; structured distillation, deterministic Markdown, correction routing,
+retry/diagnostic state, safe local commits, and executable parity closure remain incomplete.
+
+## Communication-learning CLI adapter
+
+Automatic local Git-history voice seeding is implemented in Managed onboarding. However, the
+Python HTTP handlers for several communication-learning commands currently call methods that are
+absent from `LearningIntegration`. Until that adapter is repaired, treat `enable-learning`,
+`learning-sync`, reset/cron operations, `show-profile`, and `test-response` as unavailable;
+`learning-status` remains the supported inspection path. Teams and Outlook must not be advertised
+as a completed end-to-end learning workflow.
 
 ## Platform rollout
 
