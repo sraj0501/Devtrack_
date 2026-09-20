@@ -1,0 +1,10 @@
+{
+  "type": "commandExecution",
+  "status": "completed",
+  "exitCode": 0,
+  "commandActions": [
+    {"command": "git status --short"}
+  ],
+  "cwd": "/private/repo",
+  "output": "PRIVATE_OUTPUT_CANARY"
+}

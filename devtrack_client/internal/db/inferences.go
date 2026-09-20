@@ -465,7 +465,7 @@ func (d *Database) GetSkill(name string) (*Skill, error) {
 // parseTimestamp parses a SQLite datetime string into time.Time.
 // Tries RFC3339 first, then the SQLite default format.
 func parseTimestamp(s string) time.Time {
-	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02 15:04:05"} {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02 15:04:05", "2006-01-02 15:04:05 -0700 MST"} {
 		if t, err := time.Parse(layout, s); err == nil {
 			return t
 		}

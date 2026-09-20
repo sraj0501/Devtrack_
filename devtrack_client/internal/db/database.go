@@ -13,6 +13,7 @@ import (
 	"time"
 
 	cfg "github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	_ "modernc.org/sqlite"
 )
 
@@ -2406,13 +2407,86 @@ func (d *Database) applyMigrationTables() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_pr_comments_status ON pr_review_comments(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_pr_comments_pr     ON pr_review_comments(pr_id, platform)`,
+		// 014-create-sage-events
+		`CREATE TABLE IF NOT EXISTS sage_events (
+			delivery_key  TEXT PRIMARY KEY,
+			schema_version INTEGER NOT NULL,
+			event_id      TEXT NOT NULL,
+			harness       TEXT NOT NULL,
+			session_id    TEXT NOT NULL,
+			event_type    TEXT NOT NULL,
+			tool          TEXT NOT NULL,
+			occurred_at   DATETIME NOT NULL,
+			project_id    TEXT NOT NULL DEFAULT '',
+			command       TEXT NOT NULL,
+			signature     TEXT NOT NULL,
+			success       INTEGER,
+			exit_code     INTEGER,
+			imported_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_sage_events_occurred ON sage_events(occurred_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_sage_events_signature ON sage_events(signature)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := d.db.Exec(stmt); err != nil && !strings.Contains(err.Error(), "already exists") {
 			return fmt.Errorf("applyMigrationTables: %w", err)
 		}
 	}
+	if err := d.createSageKnowledgeTables(); err != nil {
+		return fmt.Errorf("applyMigrationTables sage knowledge: %w", err)
+	}
 	return nil
+}
+
+func (d *Database) createSageEventsTable() error {
+	_, err := d.db.Exec(`
+		CREATE TABLE IF NOT EXISTS sage_events (
+			delivery_key TEXT PRIMARY KEY, schema_version INTEGER NOT NULL,
+			event_id TEXT NOT NULL, harness TEXT NOT NULL, session_id TEXT NOT NULL,
+			event_type TEXT NOT NULL, tool TEXT NOT NULL, occurred_at DATETIME NOT NULL,
+			project_id TEXT NOT NULL DEFAULT '', command TEXT NOT NULL, signature TEXT NOT NULL,
+			success INTEGER, exit_code INTEGER,
+			imported_at DATETIME NOT NULL DEFAULT (datetime('now'))
+		);
+		CREATE INDEX IF NOT EXISTS idx_sage_events_occurred ON sage_events(occurred_at);
+		CREATE INDEX IF NOT EXISTS idx_sage_events_signature ON sage_events(signature);
+	`)
+	return err
+}
+
+// InsertSageEvent appends a privacy-minimized event exactly once. It returns
+// false for an already-imported delivery.
+func (d *Database) InsertSageEvent(event sage.Event) (bool, error) {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return false, fmt.Errorf("begin sage event insert: %w", err)
+	}
+	defer tx.Rollback()
+	result, err := tx.Exec(`
+		INSERT OR IGNORE INTO sage_events (
+			delivery_key, schema_version, event_id, harness, session_id, event_type,
+			tool, occurred_at, project_id, command, signature, success, exit_code
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		event.DeliveryKey(), event.SchemaVersion, event.EventID, event.Harness,
+		event.SessionID, event.EventType, event.Tool, event.OccurredAt.UTC(),
+		event.ProjectID, event.Command, event.Signature, event.Success, event.ExitCode)
+	if err != nil {
+		return false, fmt.Errorf("insert sage event: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("inspect sage event insert: %w", err)
+	}
+	if rows == 0 {
+		return false, nil
+	}
+	if err := upsertSageKnowledgeTx(tx, event, event.DeliveryKey()); err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("commit sage event insert: %w", err)
+	}
+	return true, nil
 }
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "event_id": "evt-001",
+  "harness": "codex",
+  "session_id": "session-001",
+  "event_type": "command",
+  "tool": "shell",
+  "occurred_at": "2026-09-10T12:00:00Z",
+  "project_id": "project-001",
+  "command": "git status --short",
+  "signature": "git status",
+  "success": true,
+  "exit_code": 0
+}

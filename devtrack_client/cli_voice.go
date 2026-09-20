@@ -61,12 +61,7 @@ func runVoiceSeed() error {
 	tc := trigger.NewHTTPTriggerClient()
 
 	if wsCfg == nil || len(wsCfg.Workspaces) == 0 {
-		// Single-repo mode: use the configured workspace path.
-		repoPath := config.ExpandWorkspacePath(os.Getenv("DEVTRACK_WORKSPACE"))
-		if repoPath == "" {
-			return fmt.Errorf("voice seed: no workspaces configured and DEVTRACK_WORKSPACE is not set")
-		}
-		return seedRepo(tc, repoPath, sinceMonths)
+		return fmt.Errorf("voice seed: no workspaces configured; add one with: devtrack workspace add <name> <path>")
 	}
 
 	var lastErr error
@@ -114,18 +109,16 @@ func runVoiceProfile() error {
 	tc := trigger.NewHTTPTriggerClient()
 
 	var repoPaths []string
-	if wsCfg == nil || len(wsCfg.Workspaces) == 0 {
-		repoPath := config.ExpandWorkspacePath(os.Getenv("DEVTRACK_WORKSPACE"))
-		if repoPath != "" {
-			repoPaths = append(repoPaths, repoPath)
-		}
-	} else {
+	if wsCfg != nil {
 		for _, ws := range wsCfg.GetEnabledWorkspaces() {
 			repoPath := config.ExpandWorkspacePath(ws.Path)
 			if repoPath != "" {
 				repoPaths = append(repoPaths, repoPath)
 			}
 		}
+	}
+	if len(repoPaths) == 0 {
+		return fmt.Errorf("voice profile: no enabled workspaces configured; add one with: devtrack workspace add <name> <path>")
 	}
 
 	path, wordCount, err := tc.VoiceProfileGenerate(repoPaths)

@@ -148,16 +148,7 @@ func (cli *CLI) handleIsWorkspace() error {
 	gitRoot := strings.TrimSpace(string(out))
 	gitRoot, _ = filepath.Abs(gitRoot)
 
-	// Single-repo mode: check DEVTRACK_WORKSPACE
-	workspacePath := strings.TrimSpace(os.Getenv("DEVTRACK_WORKSPACE"))
-	if workspacePath != "" {
-		wsAbs, _ := filepath.Abs(workspacePath)
-		if wsAbs == gitRoot || strings.HasPrefix(gitRoot, wsAbs+string(filepath.Separator)) {
-			os.Exit(0)
-		}
-	}
-
-	// Multi-repo mode: check workspaces.yaml
+	// Repository membership comes only from workspaces.yaml.
 	wsCfg, err := LoadWorkspacesConfig()
 	if err != nil || wsCfg == nil {
 		os.Exit(1)
