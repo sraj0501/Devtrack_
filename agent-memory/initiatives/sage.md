@@ -52,25 +52,26 @@ quickly, print nothing, perform no model or network call, and never break an age
 
 ## Current state
 
-- The current checkout is `dev`; it does not yet contain the six Sage/workspace commits on
+- Branch `feat/SAGE-003-port` contains the integrated Sage/workspace foundation from
   `feat/SAGE-003-knowledge` through documentation commit `3bf1759`.
 - SAGE-001 and SAGE-002 are represented on that feature line: event contract, silent Codex
   capture, atomic spool, bounded importer/quarantine, SQLite events, pause/resume, and idempotent
   harness lifecycle.
 - SAGE-003 has only its model-free foundation there: deterministic grouping by normalized
   signature, source attribution, command-family topics, FTS5 search, and `search`/`topics` CLI.
-- The feature line still contains legacy Git-agent routing in `handleSage`/`routeSage`; corrected
-  documentation does not mean that implementation has been removed.
+- The legacy Git-agent routing, autonomous agent code, provider variables, and free-form fallback
+  are removed on `feat/SAGE-003-port`. Independently used `devtrack git` and commit-enhancement
+  helpers live under neutral `internal/gitcmd` ownership.
 
 ## Ordered next steps
 
-### 0. Integrate and reconcile the foundation
+### 0. Integrate and reconcile the foundation — complete on feature branch
 
 Rebase or merge `feat/SAGE-003-knowledge` onto current `dev`, resolve drift, and run the full Go,
 Sage race-sensitive, packaged clean-install, and wiki validation suites. Reconcile the durable
 implementation plan and parity matrix on `dev` to `b85a1ab` before further feature work.
 
-### 1. Remove legacy Git Sage
+### 1. Remove legacy Git Sage — complete on feature branch
 
 - Remove legacy commands, aliases, free-form question fallback, help text, configuration, and
   the Sage CLI dependency on `gitsage`.

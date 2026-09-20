@@ -41,8 +41,7 @@ If the configured LLM or managed server is unavailable, DevTrack degrades gracef
 devtrack commits list
 devtrack commits enhance
 devtrack commits review
-devtrack sage ask "explain the staged changes"
-devtrack sage do "prepare a conventional commit"
 ```
 
-`devtrack commits` manages deferred commit work. `devtrack sage` is the separate Go-native repository assistant.
+`devtrack commits` manages deferred commit work. DevTrack Sage is a separate local command-knowledge
+product and does not perform repository operations.

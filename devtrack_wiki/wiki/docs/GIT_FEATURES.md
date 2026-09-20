@@ -18,8 +18,8 @@ devtrack git commit -m "short message" --no-enhance
 This explicitly invoked Go-native workflow can refine the message, offer a ticket picker, capture
 time, and offer a push. If the LLM is unavailable, the original message remains usable.
 
-Configuration uses `GIT_SAGE_PROVIDER`, `GIT_SAGE_DEFAULT_MODEL`, `OLLAMA_HOST`, and the appropriate
-provider credential. Server `LLM_PROVIDER` does not replace the client git-sage configuration.
+Configuration uses the shared `LLM_PROVIDER`, `OLLAMA_HOST`, `OLLAMA_MODEL`, and the appropriate
+provider credential. Ollama remains the offline-first default.
 
 ## Deferred commits
 
@@ -32,17 +32,18 @@ devtrack commits review
 Deferred staged work is pinned by a Git reference and can be recovered even if the worktree changes.
 The pre-push enhancement hook never blocks a push.
 
-## Git-sage agent
+## DevTrack Sage command knowledge
 
 ```bash
-devtrack sage ask "how do I undo the last commit but keep the files?"
-devtrack sage do "squash the last three commits" --verbose
-devtrack sage pr
-devtrack sage interactive
+devtrack sage harness install codex
+devtrack sage status
+devtrack sage search "undo commit"
+devtrack sage topics
 ```
 
-Squash operations use a soft reset plus commit, never interactive rebase. Agent failures roll back
-when possible and do not add a blocking dependency to normal Git commands.
+Sage silently captures a bounded, privacy-minimized command event from supported harnesses and
+indexes it locally. It does not execute Git operations or answer repository questions; use normal
+Git commands and `devtrack git` for explicit commit workflow assistance.
 
 ## Ticket and PM behavior
 

@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/connectors/pm"
-	"github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/gitcmd"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/match"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/tui"
@@ -21,8 +21,8 @@ import (
 // gitCommitHooks builds the PM/push post-commit behaviour injected into the
 // Go-native commit flow. All steps are interactive and degrade gracefully:
 // they no-op on non-TTY stdin, missing PM creds, pm_platform "none", or errors.
-func gitCommitHooks() *gitsage.CommitHooks {
-	return &gitsage.CommitHooks{
+func gitCommitHooks() *gitcmd.CommitHooks {
+	return &gitcmd.CommitHooks{
 		BeforeCommit:  gitBeforeCommit,
 		AfterCommit:   gitAfterCommit,
 		QueueForLater: gitQueueForLater,
@@ -50,7 +50,7 @@ func gitQueueForLater(repoPath, message, branch, diffPatch string, files []strin
 // chosen, appends a "Refs: <id>" trailer. The selected ticket is returned as
 // opaque state for gitAfterCommit.
 func gitBeforeCommit(repoPath, message string) (string, any) {
-	if !gitsage.IsInteractive() {
+	if !gitcmd.IsInteractive() {
 		return "", nil
 	}
 	ws, _ := config.ResolveWorkspaceForPath(repoPath)
@@ -121,7 +121,7 @@ func gitBeforeCommit(repoPath, message string) (string, any) {
 // rankTickets reorders tickets by likelihood against the commit signal (branch,
 // subject, staged files) and returns them with their parallel match scores.
 func rankTickets(repoPath, message string, tickets []pm.Ticket) ([]pm.Ticket, []float64) {
-	g := gitsage.NewGitOps(repoPath)
+	g := gitcmd.NewGitOps(repoPath)
 	branch, _ := g.CurrentBranch()
 	files, _ := g.StagedFiles()
 
@@ -224,7 +224,7 @@ func commitSubject(message string) string {
 // gitAfterCommit runs the time prompt, immediate PM sync (with offline-queue
 // fallback), and the auto-push prompt.
 func gitAfterCommit(repoPath, hash, branch, message string, state any) {
-	if !gitsage.IsInteractive() {
+	if !gitcmd.IsInteractive() {
 		return
 	}
 	reader := bufio.NewReader(os.Stdin)

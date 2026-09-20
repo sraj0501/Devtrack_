@@ -15,4 +15,9 @@ Historical task evidence remains in `Data/agent_logs/`; source-of-truth product 
 documents remain at their existing repository paths and are linked from the index instead of
 duplicated here.
 
+Tool-neutral role playbooks live in `roles/` and are linked from [INDEX.md](INDEX.md). They are
+shared workflow instructions, not automatically installed commands or permission grants.
+Shared project paths and workflow defaults live in [project-config.md](project-config.md), never in
+a harness-specific directory.
+
 Run `python scripts/check_agent_memory.py` after changing memory or agent adapters.

@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	gitsage "github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/gitcmd"
 )
 
 func main() {
@@ -34,8 +34,8 @@ func main() {
 			if err != nil || repoPath == "" {
 				repoPath = "."
 			}
-			if err := gitsage.RunGit(repoPath, os.Args[2:], gitCommitHooks()); err != nil {
-				var ece *gitsage.ExitCodeError
+			if err := gitcmd.RunGit(repoPath, os.Args[2:], gitCommitHooks()); err != nil {
+				var ece *gitcmd.ExitCodeError
 				if errors.As(err, &ece) {
 					os.Exit(ece.Code)
 				}
@@ -214,10 +214,10 @@ func printBasicUsage() {
 	fmt.Println("INFO:       logs | db-stats | stats | version | settings | help")
 	fmt.Println()
 	fmt.Println("GIT:        git add | git commit -m 'msg'     AI-enhanced; shell-init required")
-	fmt.Println("SAGE:       sage ask '<question>'              one-shot Q&A about the repo")
-	fmt.Println("            sage do '<task>' [--verbose]       agentic task execution")
-	fmt.Println("            sage pr                            show current branch PR info")
-	fmt.Println("            sage interactive                   multi-turn chat")
+	fmt.Println("SAGE:       sage status|pause|resume|doctor    local capture state")
+	fmt.Println("            sage search <query> [--topic name] search command knowledge")
+	fmt.Println("            sage topics                       list knowledge topics")
+	fmt.Println("            sage harness list|install|uninstall <name>")
 	fmt.Println()
 	fmt.Println("ISSUES:     issues                                 browse assigned tickets (TUI)")
 	fmt.Println("GITHUB:     github-check | github-list | github-sync | github-view <number>")

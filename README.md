@@ -169,11 +169,17 @@ blocked.
 
 ### Current product focus: DevTrack Sage
 
-Planning has begun for **DevTrack Sage**, a broader local knowledge and session-memory layer that is
-not restricted to Git workflows. This is a planning direction, not a claim that the broader
-capability is implemented. The currently shipped `devtrack sage ask` and `devtrack sage do`
-commands remain Git-focused. See the
-[implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md).
+**DevTrack Sage** is the planned local, cross-harness command-knowledge product. It captures useful
+command activity from supported coding harnesses, groups and indexes it locally, and will turn it
+into searchable, self-writing personal documentation. The Go-native port follows the behavior of
+the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
+
+On the current development branch, the capture pipeline and a model-free SQLite search/index slice
+are implemented. SAGE-003 is not complete or part of the v3.1.1 release: structured local-model
+distillation, deterministic topic Markdown, routing corrections, merge/refile, retry handling, and
+the remaining parity tests are still pending. See the
+[implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
+[port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md).
 
 ### Update an existing installation
 
@@ -270,7 +276,7 @@ After that, `git commit` routes through DevTrack for monitored repos. Everything
 | **Outlook / MS Graph** | Send EOD reports by email |
 | **Telegram** | Go-native daemon control, logs, queue review/corrections, and notifications |
 | **Slack** | Outbound alert notifications through an incoming webhook |
-| **Ollama / OpenAI / Anthropic / Groq** | AI commit messages, reports, conflict resolution, git-sage agent |
+| **Ollama / OpenAI / Anthropic / Groq** | AI commit messages, reports, and conflict resolution |
 
 ---
 
@@ -357,16 +363,23 @@ devtrack work report --email me@org.com
 
 Every `git commit` while a session is active automatically attaches its hash — no manual logging.
 
-### Sage commands — current Git-focused agent
+### DevTrack Sage — self-writing command knowledge
 
-![git-sage standup demo](devtrack_wiki/wiki/assets/standup-demo.gif)
+The development branch currently supports the capture foundation and model-free retrieval:
 
 ```bash
-devtrack sage do "squash my last 5 commits"
-devtrack sage ask "how do I rebase onto main?"
+devtrack sage harness list
+devtrack sage harness install codex
+devtrack sage status
+devtrack sage search "rebase"
+devtrack sage topics
 ```
 
-Runs an agentic loop: plans operations, executes them, reads output, handles failures with rollback, only asks when genuinely ambiguous. Session approval dialog (auto / review / suggest-only), step history, and interactive undo built in.
+Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
+service in the hook path, and it does not block the host coding agent. The daemon imports normalized
+events into SQLite, groups repeated command signatures, and provides FTS-backed search with source
+attribution. This is an infrastructure preview, not a complete Sage release; self-written
+structured entries and durable Markdown knowledge remain SAGE-003 work.
 
 ### Personalized AI ("Talk Like You")
 
@@ -562,25 +575,26 @@ Source: `devtrack_client/internal/mcp/` (server core) and `devtrack_client/mcp_c
 
 ### Development-agent playbooks
 
-The repository retains five historical Claude role definitions under
-[`.claude/agents/_archive/`](.claude/agents/_archive/) and keeps the current role, memory, and
-authorization contract in
-[`agent-memory/operations/agent-system.md`](agent-memory/operations/agent-system.md). These are
-project-maintenance assets, not `devtrack` CLI commands, and the archived files are not advertised
-as automatically installed Claude slash commands. A contributor's Codex or agent environment may
-install adapters for the same roles separately.
+The repository keeps six tool-neutral role playbooks under
+[`agent-memory/roles/`](agent-memory/roles/) and the shared role, memory, and authorization contract
+in [`agent-memory/operations/agent-system.md`](agent-memory/operations/agent-system.md). Every
+repository agent can discover these playbooks through [`agent-memory/INDEX.md`](agent-memory/INDEX.md).
+They are project-maintenance assets, not `devtrack` CLI commands, automatically installed agent
+commands, or permission grants.
 
 | Role | Responsibility |
 |------|----------------|
 | **project-vision** | Break plans into board tasks and enforce vision and authorization boundaries |
 | **devtrack-engineer** | Implement an approved `TASK-NNN` on a task branch and record engineering evidence |
 | **git-agent** | Perform explicitly authorized Git plumbing without expanding the requested scope |
+| **docu-agent** | Synchronize the wiki, shared memory, and README with verified repository state |
 | **memory-compactor** | Reconcile durable project memory without discarding still-relevant decisions |
 | **post-generator** | Turn engineer-log evidence into held dev.to, Hacker News, and LinkedIn drafts under `Data/agent_logs/posts/` |
 
-The documentation-maintenance workflow is checked in at
-[`.claude/commands/docu-agent.md`](.claude/commands/docu-agent.md); how a contributor invokes it
-depends on their local agent environment. The planning and
+The documentation-maintenance workflow is available to every repository agent at
+[`agent-memory/roles/docu-agent.md`](agent-memory/roles/docu-agent.md); how a contributor invokes it
+depends on their local agent environment. Shared agent configuration lives in
+[`agent-memory/project-config.md`](agent-memory/project-config.md). The planning and
 engineering roles use `Data/agent_logs/project_board.md` as their durable contract, while verified
 implementation history is recorded in `Data/agent_logs/engineer_log.md`. Role names alone do not
 authorize commits, pushes, PR operations, releases, publication, or deployment.
@@ -743,8 +757,9 @@ Key references in this repo:
 | Deploy only the Python backend on a server | [Python AI server](#python-ai-server) |
 | Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
-| Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [archived Claude definitions](.claude/agents/_archive/) |
+| Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [shared role playbooks](agent-memory/roles/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
+| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) |
 
 ---
 

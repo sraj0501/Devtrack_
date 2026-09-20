@@ -3,11 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
-
-	gitsage "github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
 )
 
 // CLI provides command-line interface for daemon management
@@ -51,40 +48,13 @@ func NewCLI() (*CLI, error) {
 
 func resolveRepoPath() (string, error) {
 	wsCfg, err := LoadWorkspacesConfig()
-	if err == nil && wsCfg != nil && len(wsCfg.GetEnabledWorkspaces()) > 0 {
+	if err != nil {
+		return "", fmt.Errorf("load workspaces.yaml: %w", err)
+	}
+	if wsCfg != nil && len(wsCfg.GetEnabledWorkspaces()) > 0 {
 		return "", nil
 	}
-
-	workspacePath := strings.TrimSpace(os.Getenv("DEVTRACK_WORKSPACE"))
-	if workspacePath != "" {
-		workspacePath = filepath.Clean(workspacePath)
-		if IsGitRepository(workspacePath) {
-			return workspacePath, nil
-		}
-
-		parentPath := filepath.Dir(workspacePath)
-		if IsGitRepository(parentPath) {
-			return parentPath, nil
-		}
-
-		return "", fmt.Errorf("DEVTRACK_WORKSPACE is not a git repository: %s", workspacePath)
-	}
-
-	repoPath, err := os.Getwd()
-	if err != nil {
-		repoPath = "."
-	}
-
-	if IsGitRepository(repoPath) {
-		return repoPath, nil
-	}
-
-	parentPath := filepath.Dir(repoPath)
-	if IsGitRepository(parentPath) {
-		return parentPath, nil
-	}
-
-	return "", fmt.Errorf("not in a git repository and DEVTRACK_WORKSPACE is not set")
+	return "", fmt.Errorf("no enabled workspaces configured; add one with: devtrack workspace add <name> <path>")
 }
 
 // Execute runs the CLI command
@@ -279,69 +249,30 @@ func requiresManagedMode(command string) error {
 	return nil
 }
 
-// handleSage dispatches git-sage subcommands.
-//
-// Usage:
-//
-//	devtrack sage ask "<question>"       — one-shot Q&A about the repository
-//	devtrack sage do "<task>" [--verbose] — agentic task execution with approval dialog
-//	devtrack sage pr                     — show current branch PR info
-//	devtrack sage interactive            — explicit interactive multi-turn chat
-//	devtrack sage                        — interactive multi-turn chat
+// handleSage dispatches only the local command-knowledge product. Legacy
+// repository chat and autonomous Git commands are intentionally rejected.
 func (cli *CLI) handleSage() error {
-	repoPath, err := os.Getwd()
+	sub, args, err := routeSage(os.Args[2:])
 	if err != nil {
-		repoPath = "."
+		return err
 	}
-
-	args := os.Args
-	if len(args) < 3 {
-		return gitsage.RunInteractive(repoPath)
-	}
-
-	sub := args[2]
 	switch sub {
-	case "ask":
-		if len(args) < 4 {
-			fmt.Println("Usage: devtrack sage ask \"<question>\"")
-			return fmt.Errorf("missing question")
-		}
-		question := strings.Join(args[3:], " ")
-		return gitsage.RunAsk(repoPath, question)
-
-	case "do":
-		if len(args) < 4 {
-			fmt.Println("Usage: devtrack sage do \"<task>\"")
-			return fmt.Errorf("missing task")
-		}
-		// Strip --verbose flag; pass remaining tokens as task
-		verbose := false
-		var taskParts []string
-		for _, a := range args[3:] {
-			if a == "--verbose" || a == "-v" {
-				verbose = true
-			} else {
-				taskParts = append(taskParts, a)
-			}
-		}
-		task := strings.Join(taskParts, " ")
-		return gitsage.RunDoVerbose(repoPath, task, verbose)
-
-	case "pr":
-		info, err := gitsage.FindPR(repoPath)
-		if err != nil {
-			return fmt.Errorf("sage pr: %w", err)
-		}
-		fmt.Println(info.Format())
-		return nil
-
-	case "interactive":
-		return gitsage.RunInteractive(repoPath)
-
+	case "status", "pause", "resume", "doctor":
+		return runSageState(sub, args)
+	case "install-hooks":
+		return runSageHookInstall(true, args)
+	case "uninstall-hooks":
+		return runSageHookInstall(false, args)
+	case "hook":
+		return runSageHook(args, os.Stdin)
+	case "harness":
+		return runSageHarness(args, os.Stdout)
+	case "search":
+		return runSageSearch(args, os.Stdout)
+	case "topics":
+		return runSageTopics(args, os.Stdout)
 	default:
-		// Treat anything else as a question
-		question := strings.Join(args[2:], " ")
-		return gitsage.RunAsk(repoPath, question)
+		return fmt.Errorf("unknown Sage command %q", sub)
 	}
 }
 

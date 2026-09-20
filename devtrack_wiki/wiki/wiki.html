@@ -642,7 +642,6 @@ const NAV = [
     items: [
       { id: 'GIT_FEATURES',       label: 'Git Features',      icon: git_icon() },
       { id: 'GIT_COMMIT_WORKFLOW', label: 'Commit Workflow',   icon: commit_icon() },
-      { id: 'GIT_SAGE',            label: 'DevTrack Sage',      icon: agent_icon() },
     ]
   },
   {
@@ -671,6 +670,7 @@ const NAV = [
   {
     group: 'AI & Personalization',
     items: [
+      { id: 'SAGE',            label: 'DevTrack Sage',      icon: agent_icon() },
       { id: 'LLM_GUIDE',       label: 'LLM Setup',          icon: ai_icon() },
       { id: 'PERSONALIZATION',  label: 'Personalization',    icon: user_icon() },
       { id: 'LLM_STRATEGY',    label: 'LLM Strategy',       icon: strategy_icon() },
@@ -1615,6 +1615,13 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
+<h2>Current dev — DevTrack Sage foundation</h2>
+<ul>
+<li><strong>Product direction:</strong> <code>devtrack sage</code> is exclusively the local, cross-harness, self-writing command-knowledge product. DevTrack is porting behavior from <code>ai_sessions_skills</code> commit <code>b85a1ab</code>; repository-assistant commands are not part of this product surface.</li>
+<li><strong>Capture foundation:</strong> SAGE-001 and SAGE-002 provide the versioned event contract, fail-open Codex capture, atomic local spool, bounded import/quarantine, append-only SQLite events, pause/resume state, and harness installation management.</li>
+<li><strong>Searchable knowledge slice:</strong> repeated command signatures are grouped deterministically in SQLite, indexed with FTS5, attributed to source harnesses, backfilled idempotently, and exposed through <code>devtrack sage search</code> and <code>devtrack sage topics</code>.</li>
+<li><strong>Still in progress:</strong> SAGE-003 is not complete. Structured what/why/example/notes distillation, deterministic Markdown topic files, routing and correction operations, retry-safe local-model processing, logs/diagnostics, safe local knowledge commits, remaining harness adapters, and parity coverage are pending.</li>
+</ul>
 <h2>Current dev — E2E and Windows Admin Acceptance</h2>
 <ul>
 <li><strong>Credential-free client lane:</strong> new PowerShell and POSIX scripts build the current Go client in isolation, start the lightweight daemon, create a real <code>DEMO-201</code> commit, wait for SQLite observation, and assert that MCP exposes the ticket and a non-zero local-day commit count.</li>
@@ -1636,7 +1643,7 @@ devtrack start</code></pre>
 <ul>
 <li>Standalone Go client with managed, lightweight and external modes.</li>
 <li>Cross-platform daemon, autostart, workspace routing and Go-native PM connectors.</li>
-<li>Git-sage improvements, Windows fixes, local SQLite observation and alerts.</li>
+<li>Windows fixes, local SQLite observation and alerts.</li>
 </ul>
 <h2>First-Run Path</h2>
 <ul>
@@ -1759,14 +1766,20 @@ devtrack azure-check  | azure-list  | azure-sync  | azure-view &lt;id&gt;
 devtrack issues</code></pre>
 <p>Platform operations use the active workspace's non-secret routing metadata and environment-held credentials. See the integration and Workspaces pages before enabling outbound sync.</p>
 
-<h2>Git Assistance</h2>
+<h2>Git Commands</h2>
 <pre><code class="language-bash">devtrack git add
-devtrack git commit -m "message"
-devtrack sage ask "question about this repository"
-devtrack sage do "git task"
-devtrack sage pr
-devtrack sage interactive</code></pre>
-<p>Normal <code>git commit</code> remains normal Git and is observed after completion. Assisted commands are explicit and failures must not block the developer's ordinary Git workflow.</p>
+devtrack git commit -m "message"</code></pre>
+<p>Normal <code>git commit</code> remains normal Git and is observed after completion. Git operations are separate from DevTrack Sage's cross-harness command-knowledge workflow.</p>
+
+<h2>DevTrack Sage (current dev)</h2>
+<pre><code class="language-bash">devtrack sage status
+devtrack sage pause
+devtrack sage resume
+devtrack sage harness list
+devtrack sage harness install codex
+devtrack sage search "docker compose" [--topic containers]
+devtrack sage topics</code></pre>
+<p>These unreleased commands manage local capture and query the initial SQLite knowledge index. SAGE-003 remains partial; search results are not yet the reference-compatible structured Markdown knowledge base.</p>
 
 <h2>Interfaces, Alerts and Lifecycle</h2>
 <pre><code class="language-bash">devtrack tui
@@ -1829,7 +1842,7 @@ devtrack uninstall</code></pre>
 <tr><td>Anthropic</td><td><code>ANTHROPIC_API_KEY</code>, <code>ANTHROPIC_MODEL</code></td><td>Optional cloud provider/fallback.</td></tr>
 <tr><td>Groq</td><td><code>GROQ_API_KEY</code>, <code>GROQ_MODEL</code></td><td>Optional OpenAI-compatible fallback.</td></tr>
 </tbody></table></div>
-<p><code>OLLAMA_URL</code> and <code>LMSTUDIO_URL</code> are retired. The current settings are <code>OLLAMA_HOST</code> and <code>LMSTUDIO_HOST</code>. Git-sage can select its own provider/model with <code>GIT_SAGE_PROVIDER</code> and <code>GIT_SAGE_DEFAULT_MODEL</code>.</p>
+<p><code>OLLAMA_URL</code> and <code>LMSTUDIO_URL</code> are retired. The current settings are <code>OLLAMA_HOST</code> and <code>LMSTUDIO_HOST</code>. Sage's asynchronous structured distillation is still being ported; the hook path never calls a model.</p>
 
 <h2>Timeout and Readiness Settings</h2>
 <p>Setup writes visible defaults for IPC connection/retry, short/normal/long HTTP operations, LLM requests, prompt-bound legacy/optional interfaces and sentiment analysis. Common settings include:</p>
@@ -2645,7 +2658,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
-<p><strong>Planned, not released:</strong> DevTrack Sage will evolve the existing Git-oriented assistant into DevTrack's broader local cross-harness memory product. Silent event capture, asynchronous distillation into searchable command knowledge, later playback, read-only MCP access, and migration work remain design-stage plans; none should be described as shipped. The current Git-oriented Sage commands remain shipped legacy behavior during that transition.</p>
+<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from <code>ai_sessions_skills</code> commit <code>b85a1ab</code>. Capture and the initial searchable SQLite grouping/index are implemented; structured distillation, deterministic Markdown knowledge, routing and corrections, remaining harnesses, diagnostics, safe local commits, and full parity coverage are still in progress.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2655,50 +2668,57 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <p><a href="#VISION" onclick="navigate('VISION');return false;">→ Go to Roadmap</a></p>
 </div>`,
 
-  GIT_SAGE: `<div class="md-body">
+  SAGE: `<div class="md-body">
 <h1>DevTrack Sage</h1>
-<p><strong>DevTrack Sage</strong> is the planned local cross-harness memory product for capturing developer activity and turning it into searchable command knowledge. The broader product is not yet released.</p>
-<blockquote><p><strong>Current versus planned:</strong> the Git-oriented commands documented below are shipped legacy behavior from the earlier Git Sage scope. DevTrack Sage expands beyond Git with silent event capture, asynchronous distillation into searchable command knowledge, later playback, and read-only MCP access; those broader capabilities remain planned.</p></blockquote>
+<p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
+<blockquote><p><strong>Development status:</strong> Sage is under active development on <code>dev</code> and is not part of the latest <code>v3.1.1</code> release. SAGE-001 and SAGE-002 are implemented. SAGE-003 currently provides an initial searchable SQLite slice, not the complete self-writing knowledge product.</p></blockquote>
 
-<h2>Modes</h2>
+<h2>Authoritative behavior</h2>
+<p>The parity baseline is <code>D:\\git_apps\\ai_sessions_skills</code> at commit <code>b85a1ab</code>. DevTrack ports its behavior into the Go client: command/tool capture, normalized signatures, deduplication, topic routing, local-model distillation, structured entries, deterministic Markdown knowledge files, search, corrections, lifecycle controls, diagnostics, and safe local commits.</p>
+<p>The <code>devtrack sage</code> namespace is reserved exclusively for this command-knowledge workflow. It is not a repository chat or Git-operation assistant.</p>
+
+<h2>Implemented foundation</h2>
 <ul>
-<li><strong>ask</strong> — natural-language question about the repo (<code>git-sage ask "what changed in the last 3 commits?"</code>)</li>
-<li><strong>do</strong> — agentic: plan → execute → verify (<code>git-sage do "squash the last 4 commits"</code>)</li>
-<li><strong>interactive</strong> — REPL session with full context retained between turns</li>
+<li>Versioned, normalized harness-event contract with privacy and size limits.</li>
+<li>Fail-open Codex capture that performs no model or network call on the hook path.</li>
+<li>Atomic local spool, bounded import, malformed-event quarantine, and append-only SQLite storage.</li>
+<li>Pause/resume state and idempotent harness installation that preserves unrelated configuration.</li>
+<li>Deterministic grouping by command signature, FTS5 search, topic aggregation, source-harness attribution, usage/success counts, and idempotent backfill.</li>
 </ul>
 
-<h2>Quick Start</h2>
-<pre><code class="language-bash"># Ask a question
-devtrack git-sage ask "which files changed most in the last week?"
+<h2>Current dev commands</h2>
+<pre><code class="language-bash"># Capture state and lifecycle
+devtrack sage status
+devtrack sage pause
+devtrack sage resume
 
-# Perform an operation (shows approval dialog first)
-devtrack git-sage do "rebase feature/auth onto main"
+# Harness registration
+devtrack sage harness list
+devtrack sage harness install codex
+devtrack sage harness uninstall codex
 
-# Interactive session
-devtrack git-sage
-</code></pre>
+# Initial SQLite knowledge index
+devtrack sage search "docker compose"
+devtrack sage search "docker compose" --topic containers
+devtrack sage topics</code></pre>
+<p>Capture is local and hooks are silent and fail-open. Search output is stable Markdown rendered from the current SQLite index.</p>
 
-<h2>Configuration</h2>
-<table><thead><tr><th>Variable</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td><code>GIT_SAGE_PROVIDER</code></td><td>LLM provider: <code>ollama</code>, <code>openai</code>, <code>groq</code> (defaults to <code>LLM_PROVIDER</code>)</td></tr>
-<tr><td><code>GIT_SAGE_DEFAULT_MODEL</code></td><td>Model name (e.g. <code>llama3</code>, <code>compound-beta</code>)</td></tr>
-<tr><td><code>GROQ_API_KEY</code></td><td>API key when using Groq provider</td></tr>
-</tbody></table>
-
-<h2>Session UX</h2>
+<h2>What remains before SAGE-003 is complete</h2>
 <ul>
-<li><strong>do</strong> mode shows an approval dialog (auto / review / suggest-only) before the first command</li>
-<li>After the task completes, up to 5 follow-up questions can be asked in the same context</li>
-<li>Command history and <code>undo [N]</code> are available at any point</li>
-<li>Agent always uses <code>git reset --soft HEAD~N</code> for squash — never interactive rebase</li>
+<li>Asynchronous local-model distillation into validated <strong>what / why / example / notes</strong> fields.</li>
+<li>Deterministic Markdown topic files and topic index as the durable user-visible knowledge artifacts.</li>
+<li>Technology routing, correction-stable routes, merge/refile operations, activity logs, and truthful doctor diagnostics.</li>
+<li>Bounded retry behavior so model outages retain work instead of permanently skipping it.</li>
+<li>Safe local knowledge commits that never touch unrelated work and never push.</li>
+<li>Remaining supported harness adapters and the complete reference parity regression matrix.</li>
 </ul>
 
-<h2>Troubleshooting</h2>
+<h2>Privacy and failure behavior</h2>
 <ul>
-<li><strong>Agent does nothing then says Done</strong> — LLM returning prose instead of JSON. Switch to <code>llama-3.3-70b-versatile</code> on Groq for reliable JSON compliance.</li>
-<li><strong>Groq 403</strong> — ensure <code>openai</code> SDK is installed: <code>uv add openai</code></li>
-<li><strong>Infinite loop</strong> — lower <code>max_steps</code>; use <code>--verbose</code> to trace agent decisions</li>
+<li>Normal capture stores normalized commands without private argument values where possible; raw output, prompts, and reasoning are not normal knowledge inputs.</li>
+<li>Raw harness payloads stay out of telemetry, PostgreSQL, remote servers, and general client-event synchronization.</li>
+<li>No Python runtime is required. Capture and knowledge storage are Go-client-owned local state.</li>
+<li>A model outage cannot block an agent session. Distillation runs asynchronously and queued work remains retryable.</li>
 </ul>
 </div>`,
 
@@ -3264,8 +3284,7 @@ function renderHome() {
         { id:'MULTI_REPO',       icon:'🗃️', title:'Multi-Repo Setup',   desc:'Monitor multiple git repos simultaneously, each routing to its own PM platform. Configure in <code>workspaces.yaml</code> with <code>pm_platform</code>, <code>pm_project</code>, and <code>pm_milestone</code> per workspace. Hot-reloads on save.' },
         { id:'HTTP_API',         icon:'🔌', title:'HTTP API Contract',   desc:'Stable Go-to-Python routes, authentication, payload boundaries, retries, and cross-platform compatibility checks.' },
         // ── Git & Shell ────────────────────────────────────────────────────────
-        { id:'GIT_FEATURES',    icon:'🔀', title:'Git Features',        desc:'Shell integration, AI commits, and conflict resolution. Add <code>eval "$(devtrack shell-init)"</code> to <code>~/.zshrc</code> once. Use <code>git commit</code> normally — DevTrack observes completed commits silently; explicit <code>devtrack git</code>/<code>sage</code> commands provide optional assisted workflows. <code>devtrack start</code> auto-enables git for all workspaces.' },
-        { id:'GIT_SAGE',        icon:'🤖', title:'DevTrack Sage',       desc:'Planned local cross-harness memory product; current Git-oriented Sage commands remain shipped legacy behavior.' },
+        { id:'GIT_FEATURES',    icon:'🔀', title:'Git Features',        desc:'Shell integration, AI commits, and conflict resolution. Add <code>eval "$(devtrack shell-init)"</code> to <code>~/.zshrc</code> once. Use <code>git commit</code> normally — DevTrack observes completed commits silently. <code>devtrack start</code> auto-enables git for all workspaces.' },
         // ── Integrations ──────────────────────────────────────────────────────
         { id:'AZURE_DEVOPS',    icon:'🔷', title:'Azure DevOps',        desc:'Sync work items, auto-comment, and transition states. <code>IsPRApproved</code> uses the real ADO Pull Requests API (TASK-102).' },
         { id:'GITLAB',          icon:'🦊', title:'GitLab',              desc:'Full CLI and Telegram access; inbound webhooks; issue enrichment on create.' },
@@ -3275,6 +3294,7 @@ function renderHome() {
         { id:'PM_AGENT',        icon:'🗂️', title:'PM Agent',            desc:'AI decomposes problems into Epic → Story → Task hierarchies.' },
         { id:'PROJECT_PLANNING',icon:'📋', title:'AI Project Planning', desc:'<code>/newproject</code> in Telegram: describe requirements, pick team from live roster, AI auto-fetches workloads, generates a full YAML spec with sprints/stories/risks, emails it to the PM for review, and creates everything in the PM tool on approval.' },
         // ── AI & Personalization ──────────────────────────────────────────────
+        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'In-development, Go-native cross-harness command knowledge: local capture and SQLite search exist now; structured Markdown distillation and full reference parity remain in progress.' },
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
         { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'"Talk Like You" — AI that learns from local Git history and explicit examples; Teams is an optional opt-in source and writes in your voice using RAG-powered few-shot examples.' },
         // ── System Integration ────────────────────────────────────────────────
@@ -3327,7 +3347,7 @@ go build -o devtrack .
 ./devtrack work report</code></pre>
       <p style="margin:.5rem 0 .75rem;font-size:.85rem;opacity:.7;">The wizard reuses an installed generation-capable Ollama model when available. If none is ready, it can explicitly use an already-present OpenAI or Anthropic key as a temporary fast lane while Ollama remains the local default.</p>
       <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Lightweight mode (no Python at all)</p>
-      <pre><code class="language-bash"># Git monitoring, scheduling, git-sage, PM connectors and alerts are all Go-native.
+      <pre><code class="language-bash"># Git monitoring, scheduling, Sage capture/search, PM connectors and alerts are Go-native.
 # Set this before \`devtrack start\` to skip the Python server entirely.
 DEVTRACK_SERVER_MODE=lightweight
 devtrack start</code></pre>

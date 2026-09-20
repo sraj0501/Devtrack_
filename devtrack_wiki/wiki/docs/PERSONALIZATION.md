@@ -134,7 +134,7 @@ Once a profile exists, it is automatically applied to:
 |---|---|
 | Commit message enhancement | Matches your length and formality |
 | Work update descriptions | Writes in your voice |
-| git-sage responses | Adapts explanations to your style |
+| DevTrack Sage knowledge | Produces private, searchable command documentation |
 | Daily report generation | Matches your preferred format |
 | Task descriptions | Uses your phrasing patterns |
 

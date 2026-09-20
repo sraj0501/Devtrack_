@@ -18,6 +18,10 @@ func NewWorkspaceCommands() *WorkspaceCommands {
 
 // List prints all configured workspaces from workspaces.yaml
 func (wc *WorkspaceCommands) List() error {
+	path := GetWorkspacesFilePath()
+	_, statErr := os.Stat(path)
+	wasMissing := os.IsNotExist(statErr)
+
 	cfg, err := LoadWorkspacesConfig()
 	if err != nil {
 		fmt.Printf("Failed to load workspaces.yaml: %v\n", err)
@@ -25,7 +29,11 @@ func (wc *WorkspaceCommands) List() error {
 	}
 
 	if cfg == nil || len(cfg.Workspaces) == 0 {
-		fmt.Println("No workspaces.yaml found. Running in single-repo mode.")
+		if wasMissing {
+			fmt.Printf("Created empty workspaces file: %s\n", path)
+		}
+		fmt.Println("No workspaces configured.")
+		fmt.Println("Create an entry with: devtrack workspace add <name> <path> [--pm azure|gitlab|github|jira|none]")
 		return nil
 	}
 

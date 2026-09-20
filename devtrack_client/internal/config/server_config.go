@@ -187,7 +187,7 @@ func isLocalMachineHost(host string) bool {
 func RunInstall() error {
 	fmt.Println("DevTrack uses a client-server architecture:")
 	fmt.Println()
-	fmt.Println("  Go binary (devtrack)  — client/daemon: git monitoring, scheduling, CLI, git-sage")
+	fmt.Println("  Go binary (devtrack)  — client/daemon: git monitoring, scheduling, CLI, DevTrack Sage")
 	fmt.Println("  Python backend server — AI processing, integrations, reports, boardroom")
 	fmt.Println()
 	fmt.Println("Two modes:")

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/gitcmd"
 )
 
 // EnhanceDeferredCommits enhances all pending deferred commits when the LLM is
@@ -19,7 +19,7 @@ func EnhanceDeferredCommits(database *db.Database) (int, error) {
 	if database == nil {
 		return 0, nil
 	}
-	if !gitsage.LLMReachable() {
+	if !gitcmd.LLMReachable() {
 		return 0, nil
 	}
 
@@ -30,7 +30,7 @@ func EnhanceDeferredCommits(database *db.Database) (int, error) {
 
 	enhanced := 0
 	for _, c := range pending {
-		msg, err := gitsage.EnhanceForDiff(c.OriginalMessage, c.DiffPatch, c.Branch)
+		msg, err := gitcmd.EnhanceForDiff(c.OriginalMessage, c.DiffPatch, c.Branch)
 		if err != nil || strings.TrimSpace(msg) == "" || msg == c.OriginalMessage {
 			continue
 		}

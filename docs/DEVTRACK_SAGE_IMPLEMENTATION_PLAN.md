@@ -4,27 +4,25 @@
 
 DevTrack Sage is the product name for DevTrack's local, cross-harness command memory. Its scope is
 larger than Git: it captures useful command and tool activity from supported coding harnesses,
-turns that activity into searchable personal knowledge, and later supports deliberate session
-playback.
+and turns that activity into searchable, self-writing personal command knowledge.
 
 DevTrack Sage is implemented entirely in Go. The Python implementation in
 `D:\git_apps\ai_sessions_skills` is the behavioral reference for the port, not a runtime
-dependency. The functional `tool/` baseline is pinned to commit
-`94a2544f8c85a630fa8b5d9a94d9938121aef11b`. Later knowledge-only commits and the reference
-worktree's generated knowledge changes are not part of the port baseline.
+dependency. The authoritative `tool/` baseline is current reference commit `b85a1ab`. The parity
+matrix must be refreshed whenever that baseline changes; generated personal knowledge content is
+test evidence, not source code to copy.
 
-The existing `devtrack sage ask`, `do`, `pr`, and interactive commands remain shipped Git-oriented
-behavior. They are a compatibility surface, not the architecture for the new capture pipeline.
-During migration they will remain available and gain explicit `devtrack sage git ...` aliases.
+The `devtrack sage` namespace belongs exclusively to this cross-harness command-knowledge product.
 
 ## First releasable outcome
 
-A user can install one supported harness adapter, work normally, and later find a useful command
-through `devtrack sage search` without the hook blocking their harness, calling a model, or sending
-raw activity off the machine.
+A user can install one supported harness adapter, work normally, and later find a useful,
+self-written command entry through `devtrack sage search`. The hook never blocks the harness,
+calls a model, or sends raw activity off the machine. Distillation happens asynchronously and
+defaults to a local model; unavailable models leave work retryable.
 
-Playback, visible-reasoning capture, automatic cloud synchronization, and autonomous command
-execution are not part of this first outcome.
+Visible-reasoning capture, automatic cloud synchronization, and autonomous command execution are
+not part of this product plan.
 
 ## Go port contract
 
@@ -55,14 +53,16 @@ devtrack sage status
 devtrack sage pause
 devtrack sage resume
 devtrack sage doctor
-devtrack sage install-hooks [--harness <name>]
+devtrack sage harness list
+devtrack sage harness install <name>
+devtrack sage harness uninstall <name>
 devtrack sage search <query>
 devtrack sage topics
-devtrack sage git ask|do|pr|interactive
+devtrack sage log
+devtrack sage routes
+devtrack sage route <binary> <topic>
+devtrack sage merge <source> <destination>
 ```
-
-The old `devtrack sage ask|do|pr|interactive` forms remain temporary aliases and emit a migration
-notice. The legacy `gitsage` Go package is not renamed or removed during the first milestone.
 
 ## Architecture
 
@@ -90,11 +90,17 @@ break the host harness. The daemon owns retries, processing state, and model wor
 Recommended code boundaries:
 
 - `internal/sage`: event contracts, normalization, redaction, spool writer, importer, and service.
+- `internal/sage/harness`: adapter registry and selective lifecycle; no adapter is enabled globally.
 - `internal/sage/hooks`: fixture-driven harness adapters and idempotent installers.
 - `internal/db`: append-only Sage migrations and query methods using the existing database owner.
 - `devtrack_client`: CLI routing and daemon lifecycle integration.
-- `internal/llmclient` (later): shared provider transport extracted from `gitsage/llm.go` without
-  changing legacy behavior.
+- `internal/llmclient`: reusable local/OpenAI-compatible provider transport owned independently
+  by the new Sage pipeline.
+
+External adapter evolution follows `SAGE_HARNESS_PLUGIN_CONTRACT.md`: versioned declarative
+packages first, with an optional sandboxed WASI normalizer for payloads that need code. MCP is a
+discovery/management surface, never a dependency of the hook hot path. Dynamic Go plugins are not
+used because they do not provide a portable Windows extension mechanism.
 
 ## Storage contract
 
@@ -104,28 +110,27 @@ The first schema should store normalized facts, not complete transcripts:
 - Redacted command, normalized signature, project identity, success state, and exit code when known.
 - Import state, bounded attempt count, and a sanitized last error.
 - Knowledge entries, topics, source-event links, and an FTS search index.
+- Deterministically rendered `knowledge/*.md`, topic index, route decisions, and skipped-action
+  records matching the reference product behavior.
 
 Event IDs make imports idempotent. A secondary signature prevents common duplicate hook deliveries
-within a session. Raw command output and reasoning are excluded from normal capture. Any future
-playback store must be manually activated, visibly indicated, separately retained, and local-only
-by default.
+within a session. Raw command output, user messages, and reasoning are excluded from capture.
 
 ## Delivery milestones
 
-### SAGE-001 — Contract and compatibility seam
+### SAGE-001 — Contract and port boundary
 
 Inventory the pinned Python behaviors and tests, assign each one to a Go package and test, then
 define versioned normalized event fixtures, the CLI namespace, data/config/spool roots, redaction
-rules, exit behavior, and the legacy alias policy. Add parser and compatibility tests before wiring
-a real harness.
+rules, and exit behavior. Add parser and contract tests before wiring a real harness.
 
 Acceptance:
 
 - Malformed, oversized, duplicated, and secret-bearing fixture inputs have deterministic results.
 - Every in-scope Python test scenario is present in a checked-in port-parity matrix with a Go test
   name or an explicit later-milestone assignment.
-- Existing Git-oriented Sage tests and commands continue to pass.
 - `status`, `pause`, `resume`, and `doctor` have stable machine-readable exit behavior.
+- The Sage CLI exposes only the command-knowledge product surface.
 
 ### SAGE-002 — One vertical capture slice
 
@@ -140,11 +145,24 @@ Acceptance:
 - Two repeated clean runs capture the fixture journey once, with no model or network work in-hook.
 - Pause/resume is immediate and status/doctor explain backlog and sanitized failures.
 
+Implementation status (2026-09-15): the Go client now has an atomic immutable event spool, a
+bounded failure-isolated importer, quarantine handling, durable delivery-key deduplication, and
+the append-only `sage_events` SQLite migration. `IntegratedMonitor.Start(ctx)` owns the importer.
+The Codex history path reads `state_5.sqlite` and
+`thread_history_1.sqlite` with SQLite `mode=ro`, accepts only active `vscode` and `cli` sources,
+starts from the time it is enabled, and is gated by either installation state or
+`DEVTRACK_SAGE_CODEX_HISTORY=true`. It never reads user messages or persists command output.
+Idempotent install/remove preserves unrelated Codex settings; Windows selects history mode and
+removes only obsolete DevTrack-owned per-command hooks. The isolated packaged executable journey
+passes install, silent capture, privacy-canary, status/backlog, and uninstall checks. SAGE-002 is
+complete; sanitized observation from a trusted live Codex hook remains a separate external gate.
+
 ### SAGE-003 — Searchable personal command knowledge
 
-Add deterministic command grouping, topics, FTS-backed search, source attribution, and Markdown
-rendering. Introduce optional local-model distillation behind the importer; deterministic fallback
-must remain useful when no model is available.
+Add deterministic command grouping, topic routing, FTS-backed search, source attribution, and
+reference-compatible Markdown knowledge files. Introduce local-model distillation behind the
+importer. Go owns routing, deduplication, file mutation, signatures, and formatting; the model
+returns validated structured title/what/why/example/notes fields and never edits files directly.
 
 Acceptance:
 
@@ -152,6 +170,17 @@ Acceptance:
 - Reprocessing produces byte-stable rendered knowledge and no duplicate entries.
 - Model outage, timeout, and invalid output retry within bounds and never lose source events.
 - Secrets and absolute private paths do not appear in knowledge output or diagnostics.
+- Route correction and merge/refile decisions persist and override later classification.
+- Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
+  push to a remote.
+
+Implementation status (2026-09-20): the first model-free slice is implemented. Imported events
+are grouped transactionally by normalized signature into deterministic knowledge records with
+source attribution, command-family topics, occurrence/outcome counts, and an FTS5 index.
+`devtrack sage search <query> [--topic <topic>]` and `devtrack sage topics` render stable Markdown.
+Duplicate deliveries do not inflate knowledge counts. This is infrastructure, not milestone
+completion: structured distillation, durable topic Markdown, route correction, merge/refile,
+skipped-action records, safe local commits, retry state, and remaining parity scenarios are pending.
 
 ### SAGE-004 — Cross-harness expansion
 
@@ -166,19 +195,16 @@ Acceptance:
 - Adapter documentation identifies unsupported events and the verified contract version/date.
 - Upgrades preserve user-authored hook entries and existing captured knowledge.
 
-### SAGE-005 — Read-only integration and migration closure
+### SAGE-005 — Read-only integration and operational closure
 
-Expose knowledge search and status to the existing MCP server, finalize the Git command migration,
-and add bounded retention/repair tooling.
+Expose knowledge search and status to the existing MCP server and add bounded retention/repair
+tooling.
 
 Acceptance:
 
 - MCP additions remain read-only and do not expose raw event payloads.
-- Old aliases have tested migration messaging and a separately approved removal policy.
 - Corrupt spool files are quarantined with sanitized diagnostics; healthy work continues.
-
-Playback becomes a separate epic only after SAGE-003 is accepted. Its design must not broaden the
-normal capture contract implicitly.
+- Search/index repair can rebuild from deterministic knowledge records without model calls.
 
 ## Test and release strategy
 
@@ -193,7 +219,8 @@ normal capture contract implicitly.
   run the relevant packages with `go test -race`.
 - Fault injection: unwritable spool, truncated input, locked database, daemon restart, model outage,
   duplicate delivery, and migration replay.
-- Integration: disposable config/data roots; no mutation of the developer's real installation.
+- Integration: disposable config/data/knowledge roots; no mutation of the developer's real
+  installation or unrelated Git state.
 - Performance: record hook wall time and enforce a small bounded payload; no synchronous dependency.
 - Privacy: canary secrets and private paths must be absent from stored normalized data, knowledge,
   logs, and MCP responses.
@@ -208,21 +235,21 @@ for inspection or export.
 
 1. Harness hook contracts differ and change. Treat each adapter as versioned integration code,
    verified from current official documentation and captured fixtures.
-2. Existing `sage` syntax already belongs to the Git agent. Adopt the compatibility aliases above;
-   do not silently change the meaning of an existing command.
+2. Keep the public command surface aligned with capture, knowledge, routing, diagnostics, and
+   read-only retrieval.
 3. Redaction cannot make arbitrary transcripts safe. Keep normal capture structured and minimal;
    exclude raw output and reasoning from this milestone.
 4. Model-generated knowledge can be unstable. Preserve normalized source events and make the
    rendered knowledge deterministic and rebuildable.
-5. Decide which harness is the first supported vertical slice after comparing event completeness,
-   installer safety, and the team's actual daily usage.
-6. “Port everything” means parity for the product behavior and tests in the pinned baseline. It
+5. “Port everything” means parity for the product behavior and tests in the pinned baseline. It
    does not require preserving Python-specific process boundaries, subprocess mechanics, or file
    layouts when DevTrack already has a safer Go-native owner.
 
 ## Immediate next step
 
-Start SAGE-001 with a port inventory: convert the pinned Python test list into a checked-in parity
-matrix, collect sanitized fixtures from the candidate harnesses, score their available
-lifecycle/tool events, and check in the normalized v1 Go event schema plus tests. Do not build
-playback or all adapters before one complete capture-to-search slice works.
+SAGE-001 and SAGE-002 are complete, and SAGE-003 has only its model-free index/search foundation.
+Refresh [SAGE_PORT_PARITY_MATRIX.md](SAGE_PORT_PARITY_MATRIX.md) against reference commit `b85a1ab`,
+then implement structured local-model distillation, deterministic topic Markdown, route correction,
+merge/refile, skipped-action records, safe local commits, and retry semantics. Do not start unrelated
+features until one complete capture-to-self-written-knowledge journey passes twice from a clean
+isolated installation.
