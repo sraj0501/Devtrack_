@@ -56,9 +56,13 @@ quickly, print nothing, perform no model or network call, and never break an age
   importer/quarantine, SQLite events, pause/resume, and idempotent harness lifecycle.
 - The current SAGE-003 slice is model-free: deterministic grouping by normalized signature,
   source attribution, command-family topics, FTS5 search, and the `search`/`topics` CLI.
-- Remaining SAGE-003 work begins with executable parity mapping and structured local-model
-  distillation, then deterministic Markdown, routing/corrections, safe commits, retries,
-  diagnostics, and capture-to-knowledge closure.
+- The current SAGE-003 branch adds the neutral, context-aware LLM transport and a Sage-owned
+  structured distiller plus a non-blocking background worker. Model timeout, idle polling, and
+  retry delay are bounded and configurable for slower offline models. This foundation is not yet
+  connected to a durable SQLite queue or the daemon lifecycle.
+- Remaining SAGE-003 work begins with the durable queue/daemon integration and deterministic
+  Markdown writer, then routing/corrections, safe commits, persisted retries, diagnostics, and
+  capture-to-knowledge closure.
 
 ## Ordered next steps
 
@@ -69,13 +73,19 @@ must identify the Go owner, exact Go test, status (`implemented`, `partial`, `pe
 `adapted`), and the reason for any Go-specific adaptation. The matrix, not file presence, is the
 completion authority.
 
-### 2. Implement asynchronous structured distillation
+### 2. Connect asynchronous distillation to durable daemon state
 
-- Add neutral `internal/llmclient` transport and Sage-owned distillation orchestration.
-- Default to local Ollama; no model work occurs on the hook path.
-- Validate structured `title`, `what`, `why`, `example`, and `notes` fields plus an explicit skip
-  verdict. The model never selects paths or edits files.
-- Invalid output and model outages remain retryable; an outage is never recorded as a skip.
+- Wire the existing Sage background worker into daemon startup and shutdown; startup must remain
+  non-blocking and cancellation must promptly end polling, retry waits, and in-flight requests.
+- Back the worker queue with SQLite claims, processing leases, attempt counts, next-retry time,
+  sanitized errors, explicit skip reasons, and completion state. Recover abandoned leases after
+  restart without losing or duplicating work.
+- Keep offline-model timing configurable through `DEVTRACK_SAGE_MODEL_TIMEOUT_SECS`,
+  `DEVTRACK_SAGE_IDLE_POLL_MS`, and `DEVTRACK_SAGE_RETRY_DELAY_SECS`. Defaults must remain forgiving
+  for local models while bounds prevent indefinite requests, long idle waits, or busy loops.
+- Keep hooks and foreground Git operations completely detached from model availability and queue
+  progress. Invalid output and model outages remain retryable; only an explicit validated verdict
+  may skip an event.
 
 ### 3. Write deterministic Markdown knowledge
 
