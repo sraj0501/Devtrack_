@@ -76,7 +76,7 @@ DevTrack daemon
     -> bounded spool importer
     -> redaction and deduplication
     -> SQLite event store
-    -> local asynchronous distillation
+    -> daemon-owned asynchronous distillation worker
     -> deterministic knowledge records and search index
 
 CLI / later MCP tools
@@ -86,6 +86,12 @@ CLI / later MCP tools
 The hook hot path must not open SQLite, call a model or network service, wait on the daemon, or
 write ordinary stdout/stderr. A spool write failure is observable through diagnostics but must not
 break the host harness. The daemon owns retries, processing state, and model work.
+
+Background model requests default to a forgiving three-minute timeout for offline models and are
+configurable with `DEVTRACK_SAGE_MODEL_TIMEOUT_SECS` (bounded to 5–1800 seconds). The worker uses a
+short, cancellation-aware idle poll (`DEVTRACK_SAGE_IDLE_POLL_MS`, default 500 ms) and retry delay
+(`DEVTRACK_SAGE_RETRY_DELAY_SECS`, default 2 seconds), so it neither busy-spins nor becomes stuck in
+long sleep cycles during shutdown or when new work arrives.
 
 Recommended code boundaries:
 
@@ -181,6 +187,12 @@ source attribution, command-family topics, occurrence/outcome counts, and an FTS
 Duplicate deliveries do not inflate knowledge counts. This is infrastructure, not milestone
 completion: structured distillation, durable topic Markdown, route correction, merge/refile,
 skipped-action records, safe local commits, retry state, and remaining parity scenarios are pending.
+
+Implementation update (2026-09-21): the first structured-distillation boundary now exists. A
+neutral context-aware `internal/llmclient` transport supports Ollama and OpenAI-compatible JSON
+generation, and `internal/sage/distill` validates structured drafts, distinguishes explicit skips
+from retryable failures, and exposes a daemon-owned worker whose `Start` method returns immediately.
+This slice is not yet wired to a durable SQLite distillation queue or Markdown writer.
 
 ### SAGE-004 — Cross-harness expansion
 
