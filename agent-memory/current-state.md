@@ -4,14 +4,14 @@ description: Active implementation planning and unresolved release follow-ups
 type: project
 ---
 
-**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, and neutral ownership for the independently used Git/commit-enhancement helpers. Next finish structured distillation, deterministic Markdown, routing, merge/refile, safe local commits, retries, diagnostics, and parity coverage. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
+**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, and neutral ownership for the independently used Git/commit-enhancement helpers. It also contains a neutral context-aware LLM client, validated structured distillation, and a non-blocking background worker with configurable bounded timing for slower offline models. Next connect that worker to durable SQLite claims and daemon lifecycle, then implement deterministic Markdown, routing, merge/refile, safe local commits, persisted retries, diagnostics, and parity closure. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
 
-**Immediate P0 product correction:** TASK-158 is implementation-complete on
-`fix/TASK-158-silent-git-path`, but remains uncommitted. Normal Git is no longer routed through
+**Immediate P0 product correction:** TASK-158 is committed on
+`fix/TASK-158-silent-git-path` and under review in PR #264. Normal Git is no longer routed through
 DevTrack; the explicit AI commit helper returns after Git without ticket, duration, PM, or push
 questions; generated observation hooks are silent and fail-open; and database initialization no
-longer prints into the user-facing path. Native Linux and explicit TTY/non-TTY qualification remain
-review gates. Land this isolated correction before starting TASK-160.
+longer prints into the user-facing path. Complete PR review and land this
+isolated correction before starting TASK-160.
 TASK-159 then replaces manual per-commit time entry with local, privacy-bounded activity-window
 inference; explicit work-session commands remain optional overrides/corrections.
 

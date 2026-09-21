@@ -95,12 +95,12 @@ SQLite, or different internal process boundaries.
 | `tool/tests/test_portable.py:674` `test_insert_preserves_earlier_entries` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
 | `tool/tests/test_portable.py:681` `test_skipped_file_records_the_sig` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
 | `tool/tests/test_portable.py:685` `test_documented_sigs_spans_every_file` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:703` `test_clean_response` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:708` `test_answer_wrapped_in_a_fence_or_chatter` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:716` `test_model_emitted_sig_is_stripped` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:723` `test_skip_verdict_is_distinguished_from_malformed` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:735` `test_empty_commands_fall_back_to_the_captured_command` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:741` `test_garbage_is_rejected_not_written` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
+| `tool/tests/test_portable.py:703` `test_clean_response` | `internal/sage/distill + knowledge` | SAGE-003 | Partial: `TestParseAcceptsFencedChatterAndCleansFields`; Markdown writing remains |
+| `tool/tests/test_portable.py:708` `test_answer_wrapped_in_a_fence_or_chatter` | `internal/sage/distill + knowledge` | SAGE-003 | Partial: `TestParseAcceptsFencedChatterAndCleansFields`; Markdown writing remains |
+| `tool/tests/test_portable.py:716` `test_model_emitted_sig_is_stripped` | `internal/sage/distill + knowledge` | SAGE-003 | Partial: `TestParseAcceptsFencedChatterAndCleansFields`; Markdown writing remains |
+| `tool/tests/test_portable.py:723` `test_skip_verdict_is_distinguished_from_malformed` | `internal/sage/distill + knowledge` | SAGE-003 | Implemented by `TestParseDistinguishesSkipFromMalformed` |
+| `tool/tests/test_portable.py:735` `test_empty_commands_fall_back_to_the_captured_command` | `internal/sage/distill + knowledge` | SAGE-003 | Implemented by `TestParseAcceptsFencedChatterAndCleansFields` |
+| `tool/tests/test_portable.py:741` `test_garbage_is_rejected_not_written` | `internal/sage/distill + knowledge` | SAGE-003 | Partial: `TestParseDistinguishesSkipFromMalformed`; writer remains |
 | `tool/tests/test_portable.py:759` `test_renders_a_parseable_entry` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
 | `tool/tests/test_portable.py:766` `test_blank_notes_omits_the_bullet` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
 | `tool/tests/test_portable.py:770` `test_multiline_prose_is_flattened` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
@@ -128,17 +128,17 @@ SQLite, or different internal process boundaries.
 | `tool/tests/test_portable.py:959` `test_hook_verbs_are_silent_and_never_fail` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
 | `tool/tests/test_portable.py:965` `test_a_legacy_shim_cannot_silently_restart_capture` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
 | `tool/tests/test_portable.py:971` `test_status_reports_both_states` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
-| `tool/tests/test_portable.py:1008` `test_normal_reply_is_returned` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
-| `tool/tests/test_portable.py:1011` `test_token_limit_with_no_output_is_a_failure_not_a_verdict` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
+| `tool/tests/test_portable.py:1008` `test_normal_reply_is_returned` | `internal/sage/distill` | SAGE-003 | Implemented by `TestOllamaChatJSONUsesContextAndJSONMode` |
+| `tool/tests/test_portable.py:1011` `test_token_limit_with_no_output_is_a_failure_not_a_verdict` | `internal/sage/distill` | SAGE-003 | Partial: empty model output is an error in `internal/llmclient`; explicit regression test remains |
 | `tool/tests/test_portable.py:1017` `test_shipped_ollama_backend_has_no_output_cap` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
 | `tool/tests/test_portable.py:1023` `test_text_backend_defers_prompt_file_substitution` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
 | `tool/tests/test_portable.py:1074` `test_documents_and_routes` | `internal/sage/knowledge + distill` | SAGE-003 | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` covers model-free routing, persistence, and search; distillation remains |
 | `tool/tests/test_portable.py:1081` `test_second_variant_merges_without_calling_the_model` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1093` `test_already_documented_sig_is_untouched` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1101` `test_model_outage_is_not_recorded_as_skipped` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1111` `test_skip_verdict_is_recorded_so_it_never_returns` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1119` `test_malformed_reply_is_retried_under_the_schema` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1136` `test_skip_verdict_is_not_retried` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1101` `test_model_outage_is_not_recorded_as_skipped` | `internal/sage/knowledge + distill` | SAGE-003 | Partial: `TestDistillerMarksModelFailuresRetryable` and `TestWorkerPersistsCompleteSkipAndRetryOutcomes`; durable SQLite queue remains |
+| `tool/tests/test_portable.py:1111` `test_skip_verdict_is_recorded_so_it_never_returns` | `internal/sage/knowledge + distill` | SAGE-003 | Partial: `TestWorkerPersistsCompleteSkipAndRetryOutcomes`; durable SQLite queue remains |
+| `tool/tests/test_portable.py:1119` `test_malformed_reply_is_retried_under_the_schema` | `internal/sage/knowledge + distill` | SAGE-003 | Adapted: JSON mode is requested on the first call; malformed output is retryable (`TestParseDistinguishesSkipFromMalformed`) |
+| `tool/tests/test_portable.py:1136` `test_skip_verdict_is_not_retried` | `internal/sage/knowledge + distill` | SAGE-003 | Partial: `TestDistillerReturnsExplicitSkipWithoutRetry` and worker outcome coverage; durable queue remains |
 | `tool/tests/test_portable.py:1149` `test_unknown_binary_is_classified_once_then_remembered` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1174` `test_classifier_choice_is_sanitised` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
 | `tool/tests/test_portable.py:1190` `test_unreachable_classifier_falls_back_to_its_own_file` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |

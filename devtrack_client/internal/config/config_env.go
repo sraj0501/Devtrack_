@@ -912,6 +912,22 @@ func GetHTTPTimeoutLong() int {
 	return positiveIntEnv("HTTP_TIMEOUT_LONG", 60)
 }
 
+// GetSageModelTimeoutSecs bounds one background local-model request. The
+// three-minute default is forgiving for offline models without waiting forever.
+func GetSageModelTimeoutSecs() int {
+	return boundedPositiveIntEnv("DEVTRACK_SAGE_MODEL_TIMEOUT_SECS", 180, 5, 1800)
+}
+
+// GetSageIdlePollMS keeps new queued work responsive without a busy loop.
+func GetSageIdlePollMS() int {
+	return boundedPositiveIntEnv("DEVTRACK_SAGE_IDLE_POLL_MS", 500, 50, 5000)
+}
+
+// GetSageRetryDelaySecs prevents a failing offline model from spinning.
+func GetSageRetryDelaySecs() int {
+	return boundedPositiveIntEnv("DEVTRACK_SAGE_RETRY_DELAY_SECS", 2, 1, 60)
+}
+
 // GetSQLiteBusyTimeoutMS returns how long SQLite waits for a concurrent writer
 // before returning SQLITE_BUSY. Reads SQLITE_BUSY_TIMEOUT_MS; default 5000.
 func GetSQLiteBusyTimeoutMS() int {
@@ -926,6 +942,18 @@ func positiveIntEnv(name string, fallback int) int {
 	parsed, err := strconv.Atoi(val)
 	if err != nil || parsed <= 0 {
 		fmt.Fprintf(os.Stderr, "WARNING: invalid %s %q — using default %d\n", name, val, fallback)
+		return fallback
+	}
+	return parsed
+}
+
+func boundedPositiveIntEnv(name string, fallback, minimum, maximum int) int {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < minimum || parsed > maximum {
 		return fallback
 	}
 	return parsed

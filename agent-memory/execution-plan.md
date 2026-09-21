@@ -13,12 +13,12 @@ without an authorized board task and a dedicated branch targeting `dev`.
 ## Pickup checkpoint
 
 - Current `dev` contains the SAGE-001/SAGE-002 capture foundation, the model-free SAGE-003 search
-  slice, removal of legacy Git Sage, and neutral `internal/gitcmd` ownership.
-- TASK-158 is implementation-complete and Windows-validated on
-  `fix/TASK-158-silent-git-path`; its source, documentation, board, and memory changes remain
-  uncommitted. Native Linux plus explicit TTY/non-TTY qualification remain review gates. Land the
-  work as one isolated correction before another implementation branch is created.
-- TASK-157 / SAGE-003 is the active product initiative. TASK-158, TASK-160, and TASK-159 are now
+  slice, removal of legacy Git Sage, neutral `internal/gitcmd` ownership, and the SAGE-003 LLM
+  transport, structured distiller, and non-blocking background worker. Durable SQLite queue
+  ownership and daemon lifecycle wiring remain the next Sage implementation boundary.
+- TASK-158 is committed on `fix/TASK-158-silent-git-path` and under review in PR #264. Finish the
+  review gate and land it before starting TASK-160.
+- TASK-157 / SAGE-003 is the active product initiative. TASK-158, TASK-160, and TASK-159 are
   allocated to the silent actor, deterministic ticket contract, and automatic-time corrections;
   the next unused task ID is TASK-161, subject to board verification.
 - The board's active summary now describes the foundation as merged into `dev`; preserve closed
@@ -72,17 +72,21 @@ Gate: scenario totals reconcile exactly, every row is actionable, and the matrix
 presence or a prose claim—is the completion authority.
 
 ### 5. Build one asynchronous distillation vertical slice
+### 5. Complete the asynchronous distillation vertical slice
 
-1. Add a neutral `internal/llmclient` transport and Sage-owned orchestration.
-2. Keep hooks limited to bounded normalization and atomic spooling; no model or network work may
-   occur on the hook path.
-3. Default to local Ollama and validate structured `title`, `what`, `why`, `example`, and `notes`
-   fields plus an explicit skip verdict.
-4. Keep topic/path selection deterministic and outside the model.
-5. Treat invalid output and model outages as retryable infrastructure state, never as a skip.
+1. Wire the existing non-blocking worker into daemon startup and cancellation-aware shutdown.
+2. Implement its queue interface with durable SQLite claims, processing leases, attempts,
+   next-retry timestamps, sanitized errors, explicit skip reasons, and completion state.
+3. Recover abandoned leases after restart without loss or duplicate completion.
+4. Preserve the configurable bounded timing contract: a forgiving offline-model timeout, short
+   idle polling, and bounded retry delay. Hooks and foreground Git operations never wait on Sage.
+5. Feed successful validated drafts into the deterministic Markdown stage; keep topic/path
+   selection outside the model and retain malformed output or outages as retryable state.
 
-Gate: one imported event can be distilled asynchronously through a tested local-model boundary,
-and timeout, malformed-output, cancellation, and outage cases retain recoverable work.
+Gate: one imported event can be claimed durably and distilled asynchronously through the daemon;
+startup returns immediately, shutdown cancels promptly, restart recovers expired leases, and
+timeout, malformed-output, cancellation, and outage cases retain recoverable work without
+interrupting capture or foreground Git operations.
 
 ### 6. Produce deterministic Markdown knowledge
 
