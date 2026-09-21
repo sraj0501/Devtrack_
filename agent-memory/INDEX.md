@@ -18,6 +18,7 @@ DevTrack is an offline-first silent Go daemon with an optional Python AI/server 
 - [current-state.md](current-state.md) — current initiatives, branch state, and unresolved release work.
 - [execution-plan.md](execution-plan.md) — ordered pickup sequence and acceptance gates for the active work.
 - [initiatives/sage.md](initiatives/sage.md) — active DevTrack Sage port of the cross-harness, self-writing command-knowledge product; legacy Git Sage and playback are excluded.
+- [initiatives/ticket-mapping.md](initiatives/ticket-mapping.md) — TASK-160 deterministic branch grammar, resolution precedence, provenance, and correction contract.
 - [initiatives/server-ui.md](initiatives/server-ui.md) — active admin-console visual work.
 
 ## Unresolved release follow-ups

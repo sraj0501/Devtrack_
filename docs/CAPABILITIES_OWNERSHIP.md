@@ -49,8 +49,8 @@ Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through T
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| AI-enhanced commit (A/E/R/Q/C) | `git commit` | Go-native (`internal/gitcmd` → LLM) | Client | Calls the explicitly configured Ollama/OpenAI-compatible provider directly from the client. |
-| Stage / history / passthrough | `git add`, `git history`, `git <any>` | Go-native | Client | |
+| AI-enhanced commit (A/E/R/Q/C) | `devtrack git commit` | Go-native (`internal/gitcmd` → LLM) | Client | Explicit helper only; normal `git commit` is never intercepted. Calls the configured Ollama/OpenAI-compatible provider directly from the client. |
+| Stage / history / passthrough | `devtrack git add`, optional `git history`/`git messages` aliases | Go-native | Client | Shell integration leaves native `git add` and `git commit` unchanged. |
 | DevTrack Sage | `sage status/pause/resume/search/topics/doctor/harness` | Go-native (`internal/sage/`) | Client | Local command capture and searchable knowledge; legacy repository chat/autonomous Git commands are removed. |
 | Deferred (offline) commits | `commits pending/review/enhance`, `commit-queue` | Go-native | Client | Durable snapshot + 3-way apply |
 
@@ -61,9 +61,9 @@ Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through T
 | GitHub issues: check/list/sync/view | `github-check/list/sync/view` | Go-native | Client | `connectors/github` |
 | GitLab issues: check/list/sync/view | `gitlab-check/list/sync/view` | Go-native | Client | `connectors/gitlab` |
 | Azure work items: check/list/sync/view | `azure-check/list/sync/view` | Go-native | Client | `connectors/azure` |
-| Ticket comment / create | (in commit flow) | Go-native | Client | `connectors/*/comment.go`, `create.go` |
-| Offline ticket cache | (in commit flow) | Go-native (SQLite) | Client | `ticket_cache` table |
-| Smart matching + likelihood | (in commit flow) | Go-native (fuzzy + optional Ollama embeddings) | Client | `internal/match` |
+| Ticket comment / create | (background trigger / explicit command) | Go-native | Client | `connectors/*/comment.go`, `create.go`; outbound work stages through `pending_actions`. |
+| Offline ticket cache | (background trigger / explicit command) | Go-native (SQLite) | Client | `ticket_cache` table |
+| Smart matching + likelihood | (background trigger) | Go-native (fuzzy + optional Ollama embeddings) | Client | `internal/match`; TASK-160 will make suggestions non-authoritative. |
 | Jira | — | **None in client** | Server | ⚠ No Go Jira connector; Jira handled only server-side today |
 | GitHub ticket sync (legacy) | (internal) | Go-native | Client | ✅ Removed Python `github_ticket_sync.py` call (Phase 1b — d5f8f36); routes to Go-native `github-sync` |
 

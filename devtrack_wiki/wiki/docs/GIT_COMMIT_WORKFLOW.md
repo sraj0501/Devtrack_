@@ -2,6 +2,9 @@
 
 `devtrack git commit` wraps a normal Git commit with repository-aware message generation. Git still owns the commit; DevTrack must never make the developer's normal Git workflow depend on its AI or server.
 
+> This page describes the unreleased TASK-158 correction in the current source branch. The public
+> v3.1.1 shell-wrapped path has a known post-commit prompt regression.
+
 ## Interactive commit
 
 Stage changes and provide an initial message:
@@ -31,7 +34,10 @@ devtrack git commit -m "describe the change" --dry-run
 
 ## After the commit
 
-In an interactive terminal, DevTrack can ask for time spent and whether to push. Work that becomes a PM update or another outbound action must be staged through `pending_actions`; there is no direct-send fallback.
+DevTrack returns immediately after Git completes. It does not ask for a ticket, duration, PM post,
+or push, and it never pushes as a side effect of committing. The daemon observes the completed
+commit asynchronously, records it locally, and stages applicable outbound work through
+`pending_actions`.
 
 If the configured LLM or managed server is unavailable, DevTrack degrades gracefully. Inspect the repository with `git status` and use normal Git commands whenever needed.
 

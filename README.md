@@ -22,7 +22,7 @@
 
 You write code. DevTrack handles the rest.
 
-A background daemon watches your commits and infers everything around them — which ticket you're on (from the branch name), what you did today, what the standup should say. It drafts the ticket comment and the EOD report **in your writing voice**, learned from your own git history. Your only obligation: name branches with ticket IDs.
+A background daemon watches your commits and infers everything around them — which ticket you're on (from the branch name), what you did today, what the standup should say. It drafts the ticket comment and the EOD report **in your writing voice**, learned from your own git history. Your only obligation: follow the workspace branch convention, `<kind>/<ticket-key>-<number>-<slug>`.
 
 **Nothing is sent behind your back.** Every outbound action — a Jira comment, a ticket transition, an email — is *staged* in a review queue first. You approve it, or you let it earn auto-approve over time. The daemon never prompts you, never blocks a commit, and never interrupts.
 
@@ -52,6 +52,11 @@ you run `devtrack telemetry on`.
 
 The latest public release is **v3.1.1**. Download the matching platform asset from
 [GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.1), or build from source:
+
+> **Known v3.1.1 regression:** its shell-wrapped commit path can still ask post-commit questions.
+> TASK-158 fixes this in the current source branch by keeping native Git untouched and making the
+> explicit helper return immediately. Treat the silent-path correction as unreleased until its
+> branch is reviewed, merged, and included in a later release.
 
 ```bash
 git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
@@ -251,16 +256,21 @@ devtrack eod                    # preview today's EOD report
 
 ### Optional: AI-enhanced commits
 
-Separately, `devtrack git commit` is an **interactive** wrapper that refines your commit message with AI, offers a ticket picker, and can log time. It is opt-in and never part of the silent daemon path:
+Normal `git commit` always runs as normal Git. DevTrack observes the completed commit asynchronously;
+it does not replace the command or ask follow-up questions.
+
+For an explicitly requested AI-refined message, run:
 
 ```bash
-eval "$(devtrack shell-init)"    # add to ~/.zshrc or ~/.bashrc — done once
-devtrack enable-git              # opt this repo in
+devtrack git commit -m "short message"
+devtrack git commit -m "short message" --dry-run
+devtrack git commit -m "short message" --no-enhance
 ```
 
-After that, `git commit` routes through DevTrack for monitored repos. Everything else (`git push`, `git pull`, `git status`) goes straight to real git, unmodified. Escape hatch: `GIT_NO_DEVTRACK=1 git commit -m "skip"`.
-
-> AI commit enhancement is only active when the daemon is running. If you stop it, `git commit` passes through with zero delay and no errors.
+This explicit helper may refine the commit message before Git runs. After a successful commit it
+returns immediately: no ticket picker, duration question, PM-post question, or push offer. Ticket
+resolution and outbound staging belong to the background daemon. `devtrack shell-init` is retained
+only for the optional `git history`/`git messages` aliases and never intercepts `git commit`.
 
 ---
 
@@ -342,7 +352,9 @@ workspaces:
 
 Per-workspace PM overrides (`pm_assignee`, `pm_iteration_path`, `pm_area_path`, `pm_milestone`) are applied when DevTrack creates work items or issues for that repo — Azure uses `assigned_to`/`area_path`/`iteration_path`, GitHub/GitLab use `assignees` and `milestone`. Omit any field to use the global default.
 
-`skip_issues: true` marks a workspace as code-only — it is excluded from `devtrack issues`, ticket sync, and the commit-time ticket picker. Use this when the same repo is tracked in two PM platforms (e.g. GitHub for code review, Azure DevOps for sprint planning) to prevent duplicate ticket lists.
+`skip_issues: true` marks a workspace as code-only — it is excluded from `devtrack issues` and ticket
+sync. Use this when the same repo is tracked in two PM platforms (e.g. GitHub for code review, Azure
+DevOps for sprint planning) to prevent duplicate ticket lists.
 
 ```bash
 devtrack workspace list
@@ -479,8 +491,9 @@ What it does:
 - In Managed mode, writes and validates the required PostgreSQL connection configuration
 - Creates the `~/.devtrack/` configuration directory and writes `workspaces.yaml` there
 - Writes `WORKSPACES_FILE` into the generated environment file, pointing at the workspace file
-- Registers shell integration automatically in `.bashrc` or `.zshrc` on Unix and the PowerShell
-  profile on Windows
+- Registers optional shell aliases in `.bashrc` or `.zshrc` on Unix and the PowerShell profile on
+  Windows; these aliases add `git history`/`git messages` only and do not intercept `git add` or
+  `git commit`
 - Writes `~/.devtrack/devtrack.conf` pointing at the generated environment file
 
 After `devtrack setup` completes, run `devtrack start` — no manual `source .env` needed. Git
@@ -784,8 +797,8 @@ The canonical release pipeline is [`.github/workflows/release.yml`](.github/work
 It runs when an authorized maintainer pushes a semantic-version tag:
 
 ```bash
-GIT_NO_DEVTRACK=1 git tag -a vX.Y.Z -m "Release vX.Y.Z"
-GIT_NO_DEVTRACK=1 git push origin vX.Y.Z
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 GitHub Actions runs the Go tests, cross-compiles Linux amd64/arm64, macOS amd64/arm64, and Windows

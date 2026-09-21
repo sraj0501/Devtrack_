@@ -35,7 +35,8 @@ DevTrack is a silent background AI layer that absorbs all developer meta-work �
 updates, EOD reports, PR review cycles, time tracking — by watching what the developer
 already does (committing code) and inferring everything else.
 
-The developer's only obligation is to name branches sensibly. DevTrack handles the rest.
+The developer's only obligation is to follow the workspace's ticket branch convention. DevTrack
+handles the rest.
 
 Over time, DevTrack gets better. Every correction trains it. Every approval signals
 confidence. After months of use, the developer forgets it is running — but their PM
@@ -151,17 +152,24 @@ capability audit is a rolling checklist, updated with each phase.
 
 This is the entirety of what a developer must learn to use DevTrack:
 
-**1. Name your branches with the ticket ID:**
+**1. Name branches with the workspace ticket key and ticket number:**
 ```
 feature/PROJ-123-description
 fix/ADO-456-null-check
 hotfix/GH-789-regression
 ```
 
+The canonical grammar is `<kind>/<ticket-key>-<number>-<slug>`. The workspace owns the uppercase
+`ticket-key` (for example `PROJ`, `ADO`, `GH`, or `GL`). The ticket number is a positive decimal
+integer, and the slug is lowercase kebab-case. Supported default kinds are `feature`, `feat`, `fix`,
+`bugfix`, `hotfix`, `chore`, `docs`, `refactor`, and `test`. Workspace configuration may add kinds
+or advanced ID patterns, but it must still define a full, anchored branch grammar with one named
+`ticket` capture. Substring matches at arbitrary branch positions are not authoritative.
+
 **2. Optionally prefix commits for higher confidence:**
 ```
 PROJ-123: fix null check in auth flow
-refs #456: update API response schema
+Refs: PROJ-456
 ```
 
 **3. For explicit override:**
@@ -169,19 +177,37 @@ refs #456: update API response schema
 devtrack work start PROJ-123    # set active ticket manually
 ```
 
-That is all. DevTrack reads signals in priority order:
+That is all. DevTrack resolves one authoritative ticket in strict priority order:
 
 | Signal | Example | Confidence |
 |---|---|---|
-| Branch name | `feature/PROJ-123-*` | High |
-| Commit message prefix | `PROJ-123: description` | High |
-| Git trailer | `refs: PROJ-123` | High |
-| Active ticket (explicit) | `devtrack work start PROJ-123` | Explicit |
-| Recent active tickets | last modified, assigned to me | Low — flagged |
-| No signal found | — | Logged as unlinked, never blocked |
+| Canonical branch | `feature/PROJ-123-description` | Deterministic — authoritative |
+| Explicit commit prefix | `PROJ-123: description` | Deterministic fallback |
+| Explicit Git trailer | `Refs: PROJ-123` | Deterministic fallback |
+| Active ticket (explicit) | `devtrack work start PROJ-123` | Explicit fallback |
+| Recent tickets or LLM ranking | candidate list only | Suggestion — never authoritative |
+| No deterministic signal | — | Logged as unlinked, never blocked |
 
-Ticket ID patterns are configurable per workspace (`ticket_pattern` in `workspaces.yaml`).
-Default patterns cover the most common formats across all platforms.
+Branch evidence always wins. A contradictory lower-priority reference is recorded as a conflict and
+prevents automatic outbound action until corrected; it never silently overrides the branch. Multiple
+explicit ticket references at the same priority are ambiguous and remain unlinked until corrected.
+Merge commits use the canonical source-branch name from the merge subject when it can be parsed
+unambiguously.
+
+The canonical ticket reference and the PM platform's external ID are separate values. For Jira they
+may be identical (`PROJ-123`). For numeric systems, a branch-safe workspace key maps to the native
+number (`GH-42` → GitHub issue `42`, `GL-18` → GitLab issue IID `18`, `ADO-456` → Azure work item
+`456`). This mapping is configured during explicit workspace setup and works offline afterward.
+
+LLMs may rank cached candidate tickets only after deterministic resolution fails. An LLM suggestion
+is stored separately, carries confidence and provenance, and can become authoritative only through a
+review/correction action. It cannot populate or overwrite the effective ticket ID by itself.
+
+Nonconforming branches never block Git and never cause a prompt. Their commits are stored as
+unlinked and surfaced later through status, doctor, and correction channels. Every mapping stores
+its source, confidence, state (`linked`, `unlinked`, `conflict`, or `corrected`), and append-only
+correction history. Existing rows created before this contract remain marked as legacy; migrations do
+not reinterpret historical mappings with new rules.
 
 ---
 
@@ -477,11 +503,14 @@ unexpected posted. At least one auto-approve timeout has been extended based on
 observed accuracy.
 
 ### Phase 2 — Opinionated ticket extractor
-Branch regex → ticket ID. Commit message keyword parsing. Active ticket fallback.
-Unmatched commits logged as unlinked — never blocked. Configurable `ticket_pattern`
-per workspace in `workspaces.yaml`.
-**Exit criterion:** >80% of commits correctly mapped to tickets without any developer
-configuration beyond standard branch naming.
+Canonical, fully anchored branch grammar → ticket ID. Explicit commit prefix/trailer is the second
+signal, followed by an explicitly selected active ticket. Incidental prose IDs and prior mappings
+are never authoritative fallbacks. Unmatched or ambiguous commits are logged as unlinked and never
+blocked; LLM output is suggestion-only. Workspace configuration owns the ticket key, provider
+adapter, and any strictly validated custom pattern.
+**Exit criterion:** canonical branches map deterministically without a model or network; every
+mapping exposes its provenance; conflicts cannot auto-execute outbound work; and nonconforming
+branches remain silent and correctable.
 
 ### Phase 3 — Silent commit handler
 On every commit: extract ticket → draft comment in developer's voice → stage in pending
@@ -617,3 +646,4 @@ to be reworked, not patched.
 | 2026-06-10 | Layer 3: channel parity rule for corrections — approve/reject/edit must exist on at least one non-TUI channel. Justification: the TUI-optional principle (non-negotiables #4, #12) is only enforceable if corrections are never TUI-exclusive. | Shashank Raj + Claude |
 | 2026-06-14 | Second brain positioning added to Vision. Non-negotiable #13: client is sole interface to all server capabilities (rolling capability audit). Phase 1 expanded to include TUI confidence layer (merged former Phase 7) — adoption gate: pending queue and TUI ship together. Phases renumbered: old Phase 7 removed, old Phase 8 → Phase 7, new Phase 8 = MCP server + headless integration. | Shashank Raj + Claude |
 | 2026-06-18 | Tier 4 terminology: "Teams meeting transcripts" → "Recording transcripts from any source (Teams, Zoom, Google Meet, Webex, etc.)". Env var `TEAMS_TRANSCRIPTS_ENABLED` → `RECORDINGS_ENABLED`. Voice matching requirement updated accordingly. Rationale: Tier 4 must be source-agnostic; "TEAMS" implies MS Teams exclusivity which is not the intent. | Shashank Raj + Claude |
+| 2026-09-21 | Deterministic ticket contract: canonical `<kind>/<ticket-key>-<number>-<slug>` branches are authoritative; only explicit commit references and explicit active-ticket state may provide deterministic fallbacks. LLM/recent-ticket output is suggestion-only, conflicts never auto-act, platform-native IDs are stored separately, and nonconformance remains silent/unlinked. Rationale: ticket mapping is workflow identity and must be explainable, portable, and stable without an LLM. | Shashank Raj + Codex |

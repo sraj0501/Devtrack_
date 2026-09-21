@@ -974,7 +974,7 @@ devtrack voice status</code></pre>
 <tr><td><strong>9. workspaces.yaml</strong></td><td>Writes a starter <code>workspaces.yaml</code> under the DevTrack XDG data directory and sets <code>WORKSPACES_FILE</code> in the generated environment file.</td></tr>
 <tr><td><strong>10. Write .env</strong></td><td>Generates a complete <code>.env</code> under the DevTrack XDG data directory with visible runtime defaults and your answers. <code>ADMIN_SECRET_KEY</code> is auto-generated; Managed mode requires a valid <code>postgresql://</code> URL with a database name. Written with <code>chmod 0600</code>.</td></tr>
 <tr><td><strong>11. Register .env</strong></td><td>Writes the <code>.env</code> path to <code>~/.devtrack/devtrack.conf</code>. All future <code>devtrack</code> commands pick this up automatically via <code>AutoLoadEnv()</code>.</td></tr>
-<tr><td><strong>12. Shell integration</strong></td><td><strong>(v2.1.0-dev)</strong> Writes <code>eval "$(devtrack shell-init)"</code> directly to the detected shell profile (<code>~/.zshrc</code> or <code>~/.bashrc</code>) — no manual copy-paste. No <code>source .env</code> needed.</td></tr>
+<tr><td><strong>12. Shell integration</strong></td><td>Writes the optional <code>devtrack shell-init</code> integration to the detected shell profile. It adds <code>git history</code>/<code>git messages</code> aliases only; native <code>git add</code> and <code>git commit</code> remain unchanged. No <code>source .env</code> is needed.</td></tr>
 <tr><td><strong>13. Autostart</strong></td><td>Prompts to install OS-native autostart via <code>devtrack autostart-install</code>.</td></tr>
 <tr><td><strong>14. Background bootstrap</strong></td><td>Managed mode starts a detached, idempotent sparse checkout, <code>uv sync --extra ai</code>, and local Ollama preparation. It reuses or pulls a generation model as needed and prepares <code>nomic-embed-text</code> for personalization. Atomic state and a local log make every step visible in <code>devtrack doctor</code> and <code>devtrack status</code>.</td></tr>
 <tr><td><strong>15. First-run quick win</strong></td><td>Setup immediately suggests <code>devtrack mcp setup</code> and the question “What am I working on?” — both SQLite-backed and available without Python. In Managed mode, when the optional local AI server becomes ready, the daemon mines at most 25 recent commits from enabled local Git workspaces, batches their embeddings, builds the voice profile, and suggests <code>devtrack work report</code>. External mode never sends local learning data automatically.</td></tr>
@@ -1622,6 +1622,14 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
+<h2>Unreleased TASK-158 — completely silent Git path</h2>
+<ul>
+<li><strong>Release boundary:</strong> public v3.1.1 still contains the shell-wrapped post-commit prompt regression. The correction remains unreleased until reviewed and integrated.</li>
+<li><strong>Native Git stays native:</strong> shell integration no longer routes <code>git add</code> or <code>git commit</code> through DevTrack. It retains only the optional history/message aliases.</li>
+<li><strong>No post-commit interrogation:</strong> the explicitly invoked AI commit helper returns after Git completes without asking for a ticket, duration, PM post, or push.</li>
+<li><strong>No commit-time push:</strong> committing never invokes <code>git push</code>. Outbound PM work remains asynchronous and stages through the pending queue.</li>
+<li><strong>Silent observation:</strong> the generated post-commit hook suppresses its own errors and always lets Git succeed; database initialization details no longer appear in the user-facing path.</li>
+</ul>
 <h2>Current dev — DevTrack Sage foundation</h2>
 <ul>
 <li><strong>Product direction:</strong> <code>devtrack sage</code> is exclusively the local, cross-harness, self-writing command-knowledge product. DevTrack is porting behavior from <code>ai_sessions_skills</code> commit <code>b85a1ab</code>; repository-assistant commands are not part of this product surface.</li>
@@ -2090,7 +2098,7 @@ devtrack workspace reload                         # hot-reload after manual edit
 <tr><td><code>ignore_branches</code></td><td>No</td><td>List of branch patterns to skip (e.g. <code>main</code>, <code>release/*</code>)</td></tr>
 <tr><td><code>tags</code></td><td>No</td><td>Arbitrary labels for your own filtering</td></tr>
 <tr><td><code>pm_assignee</code></td><td>No</td><td>Default assignee for new issues/tasks (format varies by platform)</td></tr>
-<tr><td><code>skip_issues</code></td><td>No</td><td><code>false</code> (default). Set <code>true</code> to mark this workspace as code-only: excluded from <code>devtrack issues</code>, ticket sync, and the commit-time ticket picker. Use when a repo is tracked in two platforms (e.g. GitHub for code, Azure DevOps for PM) to prevent duplicate ticket lists.</td></tr>
+<tr><td><code>skip_issues</code></td><td>No</td><td><code>false</code> (default). Set <code>true</code> to mark this workspace as code-only: excluded from <code>devtrack issues</code> and ticket sync. Use when a repo is tracked in two platforms (e.g. GitHub for code, Azure DevOps for PM) to prevent duplicate ticket lists.</td></tr>
 </tbody>
 </table></div>
 
@@ -3305,7 +3313,7 @@ function renderHome() {
         { id:'MULTI_REPO',       icon:'🗃️', title:'Multi-Repo Setup',   desc:'Monitor multiple git repos simultaneously, each routing to its own PM platform. Configure in <code>workspaces.yaml</code> with <code>pm_platform</code>, <code>pm_project</code>, and <code>pm_milestone</code> per workspace. Hot-reloads on save.' },
         { id:'HTTP_API',         icon:'🔌', title:'HTTP API Contract',   desc:'Stable Go-to-Python routes, authentication, payload boundaries, retries, and cross-platform compatibility checks.' },
         // ── Git & Shell ────────────────────────────────────────────────────────
-        { id:'GIT_FEATURES',    icon:'🔀', title:'Git Features',        desc:'Shell integration, AI commits, and conflict resolution. Add <code>eval "$(devtrack shell-init)"</code> to <code>~/.zshrc</code> once. Use <code>git commit</code> normally — DevTrack observes completed commits silently. <code>devtrack start</code> auto-enables git for all workspaces.' },
+        { id:'GIT_FEATURES',    icon:'🔀', title:'Git Features',        desc:'Silent commit observation, explicitly requested AI commit messages, and conflict resolution. Use <code>git commit</code> normally — DevTrack never intercepts it and observes completed commits in the background. <code>devtrack start</code> enables observation for all workspaces.' },
         // ── Integrations ──────────────────────────────────────────────────────
         { id:'AZURE_DEVOPS',    icon:'🔷', title:'Azure DevOps',        desc:'Sync work items, auto-comment, and transition states. <code>IsPRApproved</code> uses the real ADO Pull Requests API (TASK-102).' },
         { id:'GITLAB',          icon:'🦊', title:'GitLab',              desc:'Full CLI and Telegram access; inbound webhooks; issue enrichment on create.' },

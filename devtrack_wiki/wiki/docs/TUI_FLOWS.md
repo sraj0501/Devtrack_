@@ -13,10 +13,11 @@ It shows overview, activity, pending actions, alerts, and workspaces. Queue acti
 rejected, or edited. Equivalent correction commands remain available through the CLI and supported
 notification channels.
 
-## Ticket picker
+## Ticket correction
 
-The ticket picker belongs only to the explicitly invoked interactive `devtrack git commit` wrapper.
-It is not part of silent commit observation and does not gate the daemon.
+Commit-time ticket selection is not part of the DevTrack workflow. Ticket resolution runs in the
+background; unlinked results are corrected later through explicit queue, work-session, or status
+surfaces. TASK-160 will add the strict deterministic provenance and conflict contract.
 
 ## Python server TUI
 

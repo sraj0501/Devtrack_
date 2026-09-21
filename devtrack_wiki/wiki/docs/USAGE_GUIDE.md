@@ -17,8 +17,9 @@ blocks Git.
 
 ## Optional interactive Git wrapper
 
-`devtrack git commit` can refine the message, offer the Go-native ticket picker, record time, and
-offer a push. This is an explicitly invoked workflow and is separate from the silent daemon path.
+`devtrack git commit` can refine the message before Git runs. After a successful commit it returns
+without asking about tickets, time, PM posting, or pushing. This explicitly invoked helper is
+separate from the silent daemon path.
 
 ## Pending actions
 
