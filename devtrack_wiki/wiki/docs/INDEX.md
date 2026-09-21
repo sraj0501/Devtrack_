@@ -23,10 +23,10 @@ New to DevTrack? Read these in order:
 
 ## Features
 
-- [Git Features Guide](GIT_FEATURES.md) — enhanced commits, conflict resolution, git context enrichment
+- [Git Features Guide](GIT_FEATURES.md) — silent observation, explicit commit enhancement, and Git context
 - [DevTrack Sage and Git Sage migration](GIT_SAGE_INTEGRATION.md) — current local command knowledge,
   the separate enhanced-commit workflow, and retired repository-agent commands
-- [Git Commit Workflow](GIT_COMMIT_WORKFLOW.md) — AI-powered iterative commit message refinement
+- [Git Commit Workflow](GIT_COMMIT_WORKFLOW.md) — explicit message refinement with no post-commit prompts or push
 - [AI Personalization](PERSONALIZATION.md) — "Talk Like You" — teach DevTrack your communication style
 - [Advanced Features](ADVANCED_FEATURES.md) — boardroom, supported alert polling, reporting, and server administration
 - [LLM Strategy](LLM_STRATEGY.md) — multi-provider AI architecture and fallback chain

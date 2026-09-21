@@ -251,7 +251,7 @@ Each workspace entry in `workspaces.yaml` carries:
 - `pm_org` — Azure org name, or GitHub/GitLab owner/org
 - `pm_username` — assignee filter (GitHub login / GitLab username / Azure email)
 - `pm_api_url` — optional self-hosted URL override (GitHub Enterprise, self-hosted GitLab, etc.)
-- `skip_issues` — `true` marks the workspace as code-only; excluded from `devtrack issues`, `SyncAllTickets`, `PushCachedTickets`, and the commit-time ticket picker. Use when one repo is tracked in two platforms (e.g. GitHub for code, Azure DevOps for PM) to prevent duplicate ticket lists. `ResolveWorkspaceForPath` prefers non-skip workspaces at equal path depth so PM-authoritative entries win commit routing.
+- `skip_issues` — `true` marks the workspace as code-only; excluded from `devtrack issues`, `SyncAllTickets`, and `PushCachedTickets`. Use when one repo is tracked in two platforms (e.g. GitHub for code, Azure DevOps for PM) to prevent duplicate ticket lists. `ResolveWorkspaceForPath` prefers non-skip workspaces at equal path depth so PM-authoritative entries win ticket routing.
 
 All connector constructors (`pm.NewGitHubClient(ws)`, `pm.NewGitLabClient(ws)`, `pm.NewAzureClient(ws)`) take an explicit workspace struct and never read non-secret config from env.
 
@@ -466,30 +466,29 @@ Description Enhancer (AI)
 └─ Categorize work (feature, bug, doc, etc.)
          │
          ▼
-Task Matcher
-├─ Fuzzy match to known tasks
-├─ Semantic match using sentence-transformers
-└─ Verify against project management system
+Optional candidate enrichment
+├─ Runs outside the Git command path
+├─ Cannot override the Go-resolved ticket
+└─ Degrades without blocking when optional services are unavailable
          │
          ▼
-Create task_update message
+Persist the local trigger and create a pending-action draft
 {
   "task_id": "PR-123",
   "status": "in progress",
   "description": "Fixed authentication bug in OAuth flow",
-  "time_spent_hours": 2,
   "category": "bug fix"
 }
          │
          ▼
-Send to project management APIs
-├─ Azure DevOps: Update work item
-├─ GitHub: Update PR/Issue
-├─ Teams: Post status update
-└─ Log in local database
+Return from background processing
+├─ No question is sent back to the Git command
+├─ No direct Git push occurs
+├─ Outbound PM/email work remains in pending_actions
+└─ Optional failures remain visible in diagnostics
          │
          ▼
-Acknowledge to user: "Updated PR #123 with 2 hours of work"
+User inspects or corrects later through queue/status/TUI/notification channels
 ```
 
 ---

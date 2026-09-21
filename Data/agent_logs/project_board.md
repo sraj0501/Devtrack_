@@ -1,5 +1,138 @@
 ﻿# DevTrack Project Board
 
+**[2026-09-21] TASK-158 — Restore the completely silent Git path (implementation complete, P0).**
+**Priority:** P0 product-correctness regression; execute before the next SAGE-003 implementation
+slice, then resume TASK-157. **Branch:** `fix/TASK-158-silent-git-path`.
+**Assigned to:** engineer. **Started:** 2026-09-21.
+
+DevTrack must not ask follow-up questions when a developer commits. The v3.1.1
+`devtrack git commit` post-commit hook still asks for a duration and whether to push, can expose the
+internal `Database initialized` log line, and directly invokes `git push`. That conflicts with the
+North Star: observe normal work silently, infer or record locally, stage outbound actions, and never
+interrupt the developer.
+
+**Spec:**
+- Remove every ticket-picker, time-entry, PM-post, and push question reachable from normal Git
+  interception and post-commit paths. Explicit inspection, setup, correction, and configuration
+  commands may print requested results, but commit completion never leads into another question.
+- Remove post-commit direct push. A developer may issue `git push` explicitly; any future autonomous
+  Git action must honor the pending-actions contract.
+- Keep database initialization details in daemon diagnostics/logs, never commit stdout or stderr.
+- Preserve silent commit observation, ticket inference, persistence, pending-action staging, and
+  fail-open behavior. Missing ticket, PM, database, model, or server context must not block Git.
+- Reconcile CLI help, README/wiki wording, shell integration, and regression tests with the silent
+  installed behavior.
+
+**Acceptance criteria:**
+- [ ] Normal `git commit` in a monitored repository produces zero DevTrack questions and zero
+      DevTrack stdout/stderr on Windows and Linux.
+- [x] `devtrack git commit` asks no post-commit questions and offers no direct push; explicit
+      overrides use commands or flags rather than unsolicited follow-up prompts.
+- [x] `Log this work?`, `Push to origin`, and `Database initialized` cannot appear in the
+      user-facing commit path.
+- [x] Commit detection still persists the commit, infers or records an unlinked ticket without
+      blocking, and stages applicable outbound PM work.
+- [ ] Automated TTY and non-TTY tests prove silence and fail-open behavior; the full Go suite and
+      `go vet ./...` pass.
+- [x] Product docs describe one silent default path and separate explicit correction/configuration
+      commands from background behavior.
+
+**Engineer status:** IMPLEMENTATION COMPLETE — normal Git is no longer routed through DevTrack; the explicit
+AI commit helper has no ticket/time/PM/push callbacks; the generated observation hook is silent and
+fail-open; the database startup banner is removed; and public/current architecture docs match the
+behavior. Verified with the full Go suite, `go vet ./...`, memory validation, wiki inline-JS checks,
+and `git diff --check` on Windows. Cross-platform shell generation is covered in Go tests. Native
+Linux plus explicit TTY/non-TTY execution remain review gates before every acceptance box can be
+closed.
+**Blockers:** no implementation blocker; Linux/TTY qualification is pending.
+
+**[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (planned, P0).**
+**Priority:** P0 product contract; execute after TASK-158 and before automatic time inference or the
+next SAGE-003 implementation slice. **Depends on:** TASK-158.
+**Branch:** `features/TASK-160-deterministic-ticket-contract`.
+
+Ticket assignment must be deterministic by default, not delegated to an LLM. Adopt the canonical
+branch grammar `<kind>/<ticket-key>-<number>-<slug>`, for example `feature/PROJ-123-login`,
+`fix/ADO-456-null-check`, or `hotfix/GH-789-regression`. The `<ticket-id>` must match the workspace's
+configured `ticket_pattern`; setup provides a platform-appropriate default and makes the convention
+visible. Branch mapping wins over every other signal. The finalized product and implementation
+contract is `agent-memory/initiatives/ticket-mapping.md`; PRODUCT_BIBLE.md owns the immutable user
+contract.
+
+**Deterministic precedence:**
+1. Canonical branch ticket ID.
+2. Explicit commit prefix or trailer (`PROJ-123: ...`, `Refs: PROJ-123`).
+3. Explicit active-ticket override set by `devtrack work start PROJ-123`.
+4. Otherwise record the commit as unlinked.
+
+Free-form commit-message scanning and "last mapped ticket" reuse must not silently create an
+authoritative mapping. An LLM may rank or suggest tickets only after deterministic signals fail;
+that suggestion carries explicit confidence, remains reviewable/correctable, and cannot override a
+deterministic mapping or turn an unlinked commit into a final mapping without the pending-action
+trust path.
+
+**Spec:**
+- Anchor branch parsing to the canonical grammar instead of accepting a ticket-like substring at an
+  arbitrary branch position. Keep `ticket_pattern` workspace-specific and validate it at setup and
+  reload.
+- Parse only explicit commit prefixes/trailers as the second deterministic signal; distinguish them
+  from incidental ticket text in a prose commit message.
+- Treat the explicit active ticket as an override signal with recorded provenance. Remove or demote
+  implicit last-ticket reuse to a non-authoritative suggestion.
+- Persist `ticket_id`, mapping source, confidence, and any corrected prior mapping so every decision
+  is explainable and the learning loop has evidence.
+- Store the canonical branch reference separately from the provider-native external ID so `GH-42`,
+  `GL-18`, and `ADO-456` can route to numeric issue/work-item IDs without weakening the convention.
+- Treat multiple same-priority references as ambiguous. A contradictory lower-priority reference
+  cannot override a canonical branch and prevents automatic outbound execution until corrected.
+- Preserve pre-contract mappings as `legacy`; do not reinterpret historical rows with the new
+  resolver during migration.
+- Add a non-blocking convention check to setup/status/doctor. DevTrack remains silent and never
+  blocks a commit: a nonconforming branch is stored as unlinked and surfaced later for correction.
+- Ensure workspace hot reload notices `ticket_pattern` and related ticket-contract changes.
+- Document one cross-platform convention and provider-specific examples in onboarding, README, and
+  the wiki.
+
+**Acceptance criteria:**
+- [ ] Canonical branches map deterministically and take precedence over contradictory commit text,
+      active-ticket state, and LLM suggestions.
+- [ ] Explicit commit prefix/trailer and explicit active-ticket override work in the documented
+      order when the branch has no ticket.
+- [ ] Incidental IDs in prose and the previously mapped ticket do not silently assign a commit.
+- [ ] Nonconforming branches remain unlinked without prompting or blocking Git and are visible in
+      status/doctor with a correction path.
+- [ ] Mapping records expose source and confidence; corrections preserve the original decision for
+      learning/audit.
+- [ ] Canonical and provider-native IDs remain distinct, legacy rows are not reinterpreted, and
+      LLM/recent-ticket candidates are stored separately from the effective mapping.
+- [ ] Custom workspace patterns, config reload, merge commits, provider ID normalization, and
+      contradictory-signal cases have deterministic tests.
+
+**Engineer status:** PLANNED — not dispatched.
+**Blockers:** TASK-158.
+
+**[2026-09-21] TASK-159 — Silent automatic time inference (planned, HIGH).**
+**Priority:** HIGH; paired with TASK-158 and TASK-157 / SAGE-003.
+**Depends on:** TASK-158. **Branch:** `features/TASK-159-silent-time-inference`.
+
+Replace per-commit duration entry with passive, local time evidence. Explicit
+`devtrack work start|stop|adjust` remains an optional override/correction surface, not a required
+daily workflow. Define bounded activity windows from local commit/session evidence, with inactivity
+gaps and EOD closure, while preserving raw evidence and user adjustments for audit. Do not capture
+keystrokes, window activity, raw command output, or cloud telemetry.
+
+**Acceptance criteria:**
+- [ ] No commit path asks how long work took.
+- [ ] Local activity/session evidence produces deterministic per-ticket duration without a manual
+      answer after each commit.
+- [ ] Explicit session commands correct inference without discarding the measured value.
+- [ ] Inactivity and EOD closure use real last-activity evidence, not just elapsed time from start.
+- [ ] The algorithm, defaults, privacy boundary, confidence, and corrections are documented and
+      covered by clock-controlled tests.
+
+**Engineer status:** PLANNED — not dispatched.
+**Blockers:** TASK-158.
+
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and
 removes the legacy Git Sage repository-agent surface. `devtrack sage` now
@@ -45,9 +178,11 @@ history-item normalizer and synthetic fixture. Warp is not named upstream; its r
 inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
 verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-157.
 
-_Last updated: 2026-09-21 — SAGE-003 is in progress; UI redesign remains on its separate
-branch. Clean Windows installation and full Managed Linux validation are
-owner-confirmed complete; packaged qualification, media, and listing follow-ups remain._
+_Last updated: 2026-09-21 — TASK-158 silent-Git correction is the immediate P0, followed by
+TASK-160 deterministic ticket mapping and TASK-159 silent time inference; TASK-157 / SAGE-003
+remains the active product initiative. UI redesign remains on its separate branch. Clean Windows
+installation and full Managed Linux validation are owner-confirmed complete; packaged
+qualification, media, and listing follow-ups remain. Next unused task ID: TASK-161._
 
 **[2026-09-10] Environment validation closure.** The owner confirmed that the supported clean
 Windows installation and the full Managed Linux validation journey are complete. These runs were

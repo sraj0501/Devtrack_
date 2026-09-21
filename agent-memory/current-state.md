@@ -6,6 +6,22 @@ type: project
 
 **Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, and neutral ownership for the independently used Git/commit-enhancement helpers. Next finish structured distillation, deterministic Markdown, routing, merge/refile, safe local commits, retries, diagnostics, and parity coverage. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
 
+**Immediate P0 product correction:** TASK-158 is implementation-complete on
+`fix/TASK-158-silent-git-path`, but remains uncommitted. Normal Git is no longer routed through
+DevTrack; the explicit AI commit helper returns after Git without ticket, duration, PM, or push
+questions; generated observation hooks are silent and fail-open; and database initialization no
+longer prints into the user-facing path. Native Linux and explicit TTY/non-TTY qualification remain
+review gates. Land this isolated correction before starting TASK-160.
+TASK-159 then replaces manual per-commit time entry with local, privacy-bounded activity-window
+inference; explicit work-session commands remain optional overrides/corrections.
+
+**Deterministic ticket contract:** TASK-160 makes `<kind>/<ticket-key>-<number>-<slug>` the canonical branch
+grammar and assigns tickets in this order: canonical branch, explicit commit prefix/trailer,
+explicit active-ticket override, otherwise unlinked. Free-form message scanning, last-ticket reuse,
+and LLM output cannot silently become authoritative mappings. LLMs may suggest a reviewable mapping
+only after deterministic evidence fails. Nonconforming branches never block Git; status/doctor and
+the correction channels surface them later.
+
 **Active UI work:** The server-admin redesign is committed on `feat/TASK-154-server-admin-ui` but is not integrated into current `dev`. Review and integrate or explicitly retire that branch before packaged-build qualification and media capture. `initiatives/server-ui.md` owns the design scope and integration gate.
 
 **Unresolved release follow-ups:** packaged-build acceptance; privacy-reviewed media; exact Glama listing path and the score-badge update on awesome-mcp-servers PR #13608.
@@ -16,9 +32,10 @@ from `LearningIntegration`. Treat those CLI paths as unavailable until repaired;
 remains inspection-only evidence, and Teams/Outlook learning is not end-to-end complete.
 
 **Pickup sequence:** `execution-plan.md` owns the cross-initiative order and acceptance gates. In
-brief: land the pending documentation baseline; make SAGE-003 parity executable; complete one
-asynchronous, deterministic Codex capture-to-knowledge journey; then resolve the separate UI branch
-and release follow-ups. Do not expand harness support or MCP exposure before the Codex closure gate.
+brief: review and land TASK-158; complete TASK-160 and TASK-159; make SAGE-003 parity executable and
+complete one asynchronous, deterministic Codex capture-to-knowledge journey; then resolve the
+separate UI branch and release follow-ups. Do not expand harness support or MCP exposure before the
+Codex closure gate.
 
 **Storage boundary:** Go remains SQLite-only and never connects to PostgreSQL. Python requires `POSTGRES_URL`, validates it, and applies Alembic before serving; client-event sync is opt-in and idempotent.
 

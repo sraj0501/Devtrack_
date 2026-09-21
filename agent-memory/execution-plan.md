@@ -1,6 +1,6 @@
 ---
 name: Active execution plan
-description: Ordered pickup sequence for documentation closure, SAGE-003, UI integration, and release gates
+description: Ordered pickup sequence for silent Git correction, SAGE-003, UI integration, and release gates
 type: project
 ---
 
@@ -14,29 +14,53 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 - Current `dev` contains the SAGE-001/SAGE-002 capture foundation, the model-free SAGE-003 search
   slice, removal of legacy Git Sage, and neutral `internal/gitcmd` ownership.
-- A documentation synchronization is present as documentation-only working-tree changes under
-  `agent-memory/` and `devtrack_wiki/wiki/wiki.html`. Review and land or deliberately revise this
-  baseline before creating an implementation branch; preserve unrelated work.
-- TASK-157 / SAGE-003 is the active product initiative. The next task ID appears to be TASK-158,
-  but the board must be checked before allocation.
+- TASK-158 is implementation-complete and Windows-validated on
+  `fix/TASK-158-silent-git-path`; its source, documentation, board, and memory changes remain
+  uncommitted. Native Linux plus explicit TTY/non-TTY qualification remain review gates. Land the
+  work as one isolated correction before another implementation branch is created.
+- TASK-157 / SAGE-003 is the active product initiative. TASK-158, TASK-160, and TASK-159 are now
+  allocated to the silent actor, deterministic ticket contract, and automatic-time corrections;
+  the next unused task ID is TASK-161, subject to board verification.
 - The board's active summary now describes the foundation as merged into `dev`; preserve closed
   task history and do not rewrite historical branch references.
 
 ## Ordered work
 
-### 1. Close the documentation baseline
+### 1. Review and land the silent Git correction
 
-1. Review the pending documentation and memory diff against current `dev`.
-2. Allocate the verified next task ID and use a `docs/TASK-NNN-*` branch.
-3. Reconcile active board wording without rewriting closed history.
-4. Validate with `git diff --check`, `python scripts/check_agent_memory.py`, and
-   `python devtrack_wiki/check_inline_js.py`.
-5. Commit only the authorized documentation and memory files, then open a PR targeting `dev`.
+1. Review the complete TASK-158 source and documentation diff against current `dev`.
+2. Preserve closed history and unrelated work; do not mix TASK-160 implementation into this branch.
+3. Re-run the Go suite, vet, memory validation, wiki validation, and `git diff --check`.
+4. Commit, push, or open a PR only when explicitly authorized; the PR target is `dev`.
 
-Gate: the next implementation branch starts from a clean, reviewed documentation baseline whose
-board, memory, and wiki agree on the current Sage and UI state.
+Gate: TASK-158 is committed on its dedicated branch with normal `git commit` silent on Windows and
+Linux, the explicit helper free of post-commit questions, optional failures fail-open, and public
+documentation plus shared memory aligned with the implementation.
 
-### 2. Make SAGE-003 parity executable
+### 2. Enforce deterministic branch-to-ticket mapping
+
+Implement TASK-160 around one canonical grammar: `<kind>/<ticket-key>-<number>-<slug>`, with the ticket ID
+validated by the workspace's configured pattern. Resolution order is canonical branch, explicit
+commit prefix/trailer, explicit active-ticket override, then unlinked. Free-form message scanning,
+last-ticket reuse, and LLM suggestions are not authoritative mappings. Persist provenance and
+confidence, keep nonconformance non-blocking, and surface it later through status/doctor and
+correction channels. `initiatives/ticket-mapping.md` is the implementation contract and must be read
+before task decomposition or dispatch.
+
+Gate: contradictory-signal tests prove branch precedence; incidental prose IDs and prior mappings
+cannot silently link a commit; custom patterns and hot reload work; and every mapping is explainable.
+
+### 3. Implement silent automatic time inference
+
+Implement TASK-159 without adding surveillance. Derive bounded, deterministic work windows from
+local commit and session activity, use real last-activity evidence for inactivity/EOD closure, and
+retain explicit `work start|stop|adjust` as optional override/correction commands. Preserve measured
+and adjusted values for audit, attach confidence, and never ask for duration after a commit.
+
+Gate: time evidence is produced without per-commit input, corrections are auditable, privacy
+boundaries are explicit, and clock-controlled tests cover gaps, restarts, EOD, and ticket changes.
+
+### 4. Make SAGE-003 parity executable
 
 Refresh `docs/SAGE_PORT_PARITY_MATRIX.md` against `D:\git_apps\ai_sessions_skills` at `b85a1ab`.
 The 135-versus-136 discrepancy is resolved: the omitted reference scenario was
@@ -47,7 +71,7 @@ reference scenario must still name its Go owner, exact Go test, status (`impleme
 Gate: scenario totals reconcile exactly, every row is actionable, and the matrix—not file
 presence or a prose claim—is the completion authority.
 
-### 3. Build one asynchronous distillation vertical slice
+### 5. Build one asynchronous distillation vertical slice
 
 1. Add a neutral `internal/llmclient` transport and Sage-owned orchestration.
 2. Keep hooks limited to bounded normalization and atomic spooling; no model or network work may
@@ -60,7 +84,7 @@ presence or a prose claim—is the completion authority.
 Gate: one imported event can be distilled asynchronously through a tested local-model boundary,
 and timeout, malformed-output, cancellation, and outage cases retain recoverable work.
 
-### 4. Produce deterministic Markdown knowledge
+### 6. Produce deterministic Markdown knowledge
 
 Implement stable topic filenames, parseable headings/signatures, atomic replacement, stable entry
 ordering, idempotent insertion, existing-entry reuse, topic-index maintenance, and path-traversal
@@ -69,7 +93,7 @@ protection. SQLite owns processing/search state; Markdown is the portable, user-
 Gate: processing the same input twice is byte-stable and duplicate-free, interrupted writes cannot
 corrupt an existing knowledge file, and unsafe topic/path values cannot escape the knowledge root.
 
-### 5. Complete routing, safe commits, retries, and diagnostics
+### 7. Complete routing, safe commits, retries, and diagnostics
 
 1. Add persistent routes, manual correction, merge/refile, skipped-action records, and the
    `routes`, `route`, `merge`, and `log` commands.
@@ -86,7 +110,7 @@ corrupt an existing knowledge file, and unsafe topic/path values cannot escape t
 Gate: correction and retry behavior survives restarts, Git operations cannot capture unrelated
 work, and diagnostics explain every queued event's state without exposing private content.
 
-### 6. Close SAGE-003 end to end
+### 8. Close SAGE-003 end to end
 
 Run the clean Codex capture-to-self-written-knowledge journey twice: install capture, capture a
 useful command silently, import once, distill, write deterministic Markdown, index/search it,
@@ -98,7 +122,7 @@ sanitized evidence and update the parity matrix from actual tests.
 
 Gate: one resilient Codex journey passes twice. Do not add another harness before this gate passes.
 
-### 7. Resolve the server-admin UI branch
+### 9. Resolve the server-admin UI branch
 
 Review `feat/TASK-154-server-admin-ui` against current `dev`. Reconcile template, route, test, and
 CSS drift, rerun focused functional/accessibility/responsive checks, then either integrate it
@@ -106,7 +130,7 @@ through a PR to `dev` or explicitly retire it. Do not mix this decision into SAG
 
 Gate: no release document or media workflow depends on an unintegrated UI branch.
 
-### 8. Close release follow-ups
+### 10. Close release follow-ups
 
 1. Qualify the packaged build rather than a source checkout.
 2. Capture and approve privacy-reviewed media from the integrated packaged behavior.

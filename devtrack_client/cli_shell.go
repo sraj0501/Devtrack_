@@ -27,17 +27,19 @@ func (cli *CLI) handleShellInit() error {
 	return cli.handleShellInitBash()
 }
 
-// handleShellInitBash outputs the bash/zsh git() shim.
+// handleShellInitBash outputs the bash/zsh compatibility shim. Normal Git
+// commands, including add and commit, always go directly to Git; DevTrack
+// observes completed commits through its daemon/hook path.
 func (cli *CLI) handleShellInitBash() error {
 	fmt.Print(`# DevTrack shell integration
-# Transparently routes git commands through DevTrack for monitored workspaces.
+# Keeps legacy history/messages aliases without intercepting normal Git work.
 # Add to ~/.zshrc or ~/.bashrc:
 #   eval "$(devtrack shell-init)"
 
 git() {
   # Only intercept when inside a git repo
   if command git rev-parse --git-dir >/dev/null 2>&1; then
-    # Honour explicit bypass: GIT_NO_DEVTRACK=1 git commit
+    # Honour an explicit bypass of the optional aliases.
     if [ "${GIT_NO_DEVTRACK:-}" = "1" ]; then
       command git "$@"
       return $?
@@ -46,8 +48,8 @@ git() {
     local _dt_enabled=""
 
     # Fast path: per-repo opt-in/out via git config (reads .git/config, no subprocess)
-    # 'devtrack enable-git'  sets devtrack.enabled=true  → always intercept
-    # 'devtrack disable-git' sets devtrack.enabled=false → never intercept (overrides workspaces.yaml)
+    # 'devtrack enable-git'  enables observation and the optional aliases
+    # 'devtrack disable-git' disables the aliases (and observation on restart)
     _dt_enabled=$(command git config --local devtrack.enabled 2>/dev/null || true)
 
     # Explicit opt-out: skip even if this repo is in workspaces.yaml
@@ -65,7 +67,7 @@ git() {
 
     if [ "$_dt_enabled" = "true" ]; then
       case "$1" in
-        commit|history|messages|add)
+        history|messages)
           devtrack git "$@"
           return $?
           ;;
@@ -79,7 +81,8 @@ git() {
 	return nil
 }
 
-// handleShellInitPowerShell outputs the PowerShell git function shim.
+// handleShellInitPowerShell outputs the PowerShell compatibility shim. Normal
+// Git commands always execute through the native Git application.
 // Usage: devtrack shell-init --powershell | Out-String | Invoke-Expression
 // Or add to $PROFILE: devtrack shell-init --powershell | Out-String | Invoke-Expression
 func (cli *CLI) handleShellInitPowerShell() error {
@@ -93,7 +96,7 @@ func (cli *CLI) handleShellInitPowerShell() error {
 function git {
     param([Parameter(ValueFromRemainingArguments)]$gitArgs)
 
-    # Honour explicit bypass: $env:GIT_NO_DEVTRACK = "1"
+    # Honour an explicit bypass of the optional aliases.
     if ($env:GIT_NO_DEVTRACK -eq "1") {
         & (Get-Command git -CommandType Application).Source @gitArgs
         return
@@ -123,7 +126,7 @@ function git {
 
     if ($dtEnabled -eq "true" -and $gitArgs.Count -gt 0) {
         switch ($gitArgs[0]) {
-            { $_ -in 'commit','history','messages','add' } {
+            { $_ -in 'history','messages' } {
                 devtrack git @gitArgs
                 return
             }
@@ -164,18 +167,24 @@ func (cli *CLI) handleIsWorkspace() error {
 	return nil
 }
 
-// handleEnableGit sets git config devtrack.enabled=true in the current repo,
-// opting it into DevTrack shell integration without editing workspaces.yaml.
+// handleEnableGit enables silent observation in the current repository.
 func (cli *CLI) handleEnableGit() error {
 	cmd := exec.Command("git", "config", "--local", "devtrack.enabled", "true")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to set git config: %v\nAre you inside a git repository?", err)
 	}
+	repoPath, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("resolve repository path: %w", err)
+	}
+	if err := InstallPostCommitHook(repoPath); err != nil {
+		return fmt.Errorf("install silent commit hook: %w", err)
+	}
 	fmt.Println("✓ DevTrack git integration enabled for this repo.")
-	fmt.Println("  git add, git commit, git history will now route through DevTrack.")
+	fmt.Println("  Normal Git commands remain unchanged; completed commits are observed silently.")
 	fmt.Println()
 	if runtime.GOOS == "windows" {
-		fmt.Println("  Shell integration required — add to your PowerShell profile ($PROFILE):")
+		fmt.Println("  Optional history aliases — add to your PowerShell profile ($PROFILE):")
 		fmt.Println(`    devtrack shell-init --powershell | Out-String | Invoke-Expression`)
 		fmt.Println()
 		fmt.Println("  To find your profile path:  echo $PROFILE")
@@ -184,7 +193,7 @@ func (cli *CLI) handleEnableGit() error {
 		fmt.Println("  Using Git Bash instead? Add to ~/.bashrc:")
 		fmt.Println(`    eval "$(devtrack shell-init)"`)
 	} else {
-		fmt.Println("  Shell integration required — add to ~/.zshrc or ~/.bashrc if not done yet:")
+		fmt.Println("  Optional history aliases — add to ~/.zshrc or ~/.bashrc if desired:")
 		fmt.Println(`    eval "$(devtrack shell-init)"`)
 		fmt.Println()
 		fmt.Println("  If already set up, reload your shell function to pick up any updates:")

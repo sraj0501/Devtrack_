@@ -1,5 +1,5 @@
 // Package pm is a thin platform-agnostic facade over the github/gitlab/azure
-// connectors so the commit flow and ticket picker can list and comment on
+// connectors so explicit ticket commands and background workflows can list and comment on
 // tickets without knowing per-platform types.
 //
 // API keys / secrets stay in .env (GITHUB_TOKEN, GITLAB_PAT, AZURE_DEVOPS_PAT).
@@ -21,7 +21,7 @@ import (
 type Ticket struct {
 	Platform string `json:"platform"` // "github" | "gitlab" | "azure"
 	Number   int    `json:"number"`
-	ID       string `json:"id"`   // e.g. "#42", "AB#1234"
+	ID       string `json:"id"` // e.g. "#42", "AB#1234"
 	Title    string `json:"title"`
 	Body     string `json:"body"`
 	State    string `json:"state"`
@@ -277,4 +277,3 @@ func parseOwnerRepo(remote string) string {
 	}
 	return ""
 }
-

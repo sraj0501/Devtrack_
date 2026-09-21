@@ -209,7 +209,6 @@ func NewDatabase() (*Database, error) {
 		return nil, fmt.Errorf("failed to initialize server event sync: %w", err)
 	}
 
-	log.Printf("Database initialized: %s", dbPath)
 	return db, nil
 }
 

@@ -22,8 +22,9 @@ type ExitCodeError struct{ Code int }
 
 func (e *ExitCodeError) Error() string { return fmt.Sprintf("git exited with code %d", e.Code) }
 
-// CommitHooks lets the host (package main) inject PM/push behaviour around the
-// commit without coupling gitcmd to connectors. Both fields are optional.
+// CommitHooks lets the host inject optional behavior around an explicitly
+// requested enhanced commit. Production uses only QueueForLater; the before and
+// after seams remain for embedders/tests but must not be wired to normal commits.
 type CommitHooks struct {
 	// BeforeCommit runs after the user accepts a message but before `git commit`.
 	// It may return a modified message (e.g. with a "Refs:" trailer) and an
@@ -423,7 +424,8 @@ func LLMReachable() bool {
 // commitWith creates the commit. A non-empty message is written to a temp file
 // and passed via -F (preserving multi-line bodies); otherwise git's editor opens.
 // When hooks are provided, BeforeCommit may rewrite the message and AfterCommit
-// runs the post-commit (PM sync / push) flow.
+// observes completion. DevTrack production leaves both nil so commit completion
+// stays silent; the daemon handles all asynchronous workflow processing.
 func commitWith(repoPath string, f commitFlags, message string, hooks *CommitHooks) error {
 	// BeforeCommit: let the host link a ticket and append a "Refs:" trailer.
 	var state any
@@ -441,9 +443,9 @@ func commitWith(repoPath string, f commitFlags, message string, hooks *CommitHoo
 		if err := passthroughGit(repoPath, append([]string{"commit"}, f.passthru...)); err != nil {
 			return err
 		}
-		// After a successful editor-based commit, read the real message and fire
-		// BeforeCommit retroactively so the ticket picker can still appear and
-		// AfterCommit receives a ticket state for PM sync.
+		// After a successful editor-based commit, read the real message before
+		// invoking any optional host callback. DevTrack production leaves these
+		// callbacks nil so this path returns immediately.
 		if hooks != nil && hooks.BeforeCommit != nil {
 			g2 := NewGitOps(repoPath)
 			if realMsg, _ := g2.run("log", "-1", "--format=%B"); strings.TrimSpace(realMsg) != "" {
@@ -471,7 +473,7 @@ func commitWith(repoPath string, f commitFlags, message string, hooks *CommitHoo
 		fmt.Println("✓ Committed.")
 	}
 
-	// AfterCommit: run the post-commit flow (time prompt, PM sync, push).
+	// Optional host callback. DevTrack production deliberately leaves this nil.
 	if hooks != nil && hooks.AfterCommit != nil {
 		g := NewGitOps(repoPath)
 		hash, _ := g.HEAD()

@@ -49,7 +49,7 @@ type WorkspaceConfig struct {
 	PMAreaPath      string `yaml:"pm_area_path"`      // Azure: area path (e.g. "MyProject\\Backend")
 	PMMilestone     int    `yaml:"pm_milestone"`      // GitHub: milestone number; GitLab: milestone_id
 	// SkipIssues marks this workspace as code-only: it is excluded from
-	// "devtrack issues", ticket sync, and the commit-time ticket picker.
+	// "devtrack issues" and ticket sync.
 	// Use when one repo is tracked in two platforms (e.g. GitHub for code,
 	// Azure DevOps for PM) to avoid showing duplicate tickets.
 	SkipIssues bool `yaml:"skip_issues"`
@@ -145,7 +145,7 @@ func ResolveWorkspaceForPath(p string) (*WorkspaceConfig, error) {
 		wp := filepath.Clean(ws.Path)
 		if abs == wp || strings.HasPrefix(abs, wp+string(filepath.Separator)) {
 			// Prefer longer prefix match. On a tie, prefer a workspace that is
-			// not skip_issues so the commit-time ticket picker uses the PM
+			// not skip_issues so ticket routing uses the PM
 			// platform rather than the code-only platform.
 			if len(wp) > bestLen || (len(wp) == bestLen && best != nil && best.SkipIssues && !ws.SkipIssues) {
 				best = ws

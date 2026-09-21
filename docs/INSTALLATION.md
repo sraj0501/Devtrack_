@@ -77,7 +77,7 @@ The setup wizard walks through:
 7. **PM platform** — GitHub Issues, Azure DevOps, Jira, or none.
 8. **Directories** — creates `~/.local/share/devtrack/data/{db,logs,pids,reports,...}`.
 9. **Config files** — writes `~/.local/share/devtrack/.env` and `~/.local/share/devtrack/workspaces.yaml`.
-10. **Shell integration** — appends `eval "$(devtrack shell-init)"` to your shell RC file (`~/.zshrc` or `~/.bashrc`). This transparently routes `git commit`/`add`/`history` through DevTrack for monitored workspaces, honouring per-repo opt-in/out (`devtrack enable-git` / `disable-git`) and the `GIT_NO_DEVTRACK=1` bypass.
+10. **Shell integration** — optionally appends `eval "$(devtrack shell-init)"` to your shell RC file (`~/.zshrc` or `~/.bashrc`) for the `git history` and `git messages` aliases. Normal Git commands, including `git add` and `git commit`, remain native. Per-repo observation is controlled with `devtrack enable-git` / `disable-git`.
 11. **Autostart** (optional) — installs a login item that starts the daemon automatically after login.
 
 The `.env` path is registered in `~/.devtrack/devtrack.conf`. Subsequent `devtrack` commands load it automatically — no manual `source .env` is needed.
