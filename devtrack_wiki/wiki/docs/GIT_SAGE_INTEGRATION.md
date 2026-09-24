@@ -47,9 +47,21 @@ devtrack sage doctor
 ```
 
 The current development milestone includes capture, deterministic signatures, grouping, source
-attribution, topics, and SQLite FTS search. Structured local-model distillation, deterministic
-Markdown topic files, correction-stable routing, merge/refile, retries, and safe local knowledge
-commits remain in progress until SAGE-003 closes.
+attribution, topics, SQLite FTS search, a neutral Go LLM transport, structured drafts with required
+`title`/`what`/`why`/`example` fields and optional `notes`, and a non-blocking distillation worker. Durable SQLite
+claims, daemon lifecycle wiring, deterministic Markdown topic files, correction-stable routing,
+merge/refile, retries, and safe local knowledge commits remain in progress until SAGE-003 closes.
+
+Current `dev` also defines bounded worker settings:
+
+```bash
+DEVTRACK_SAGE_MODEL_TIMEOUT_SECS=180  # allowed: 5–1800 seconds
+DEVTRACK_SAGE_IDLE_POLL_MS=500        # allowed: 50–5000 ms
+DEVTRACK_SAGE_RETRY_DELAY_SECS=2      # allowed: 1–60 seconds
+```
+
+These tune the worker foundation only; they do not mean durable queue claims or daemon wiring are
+complete.
 
 ## Git workflows
 

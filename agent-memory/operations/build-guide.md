@@ -226,11 +226,11 @@ and `motor` is installed; user matched by Azure AD object ID
 (`consent.json:user_object_id`), not UPN. CLI: `enable-learning`, `learning-sync [--full]`,
 `show-profile`, `test-response`, `learning-status`, `learning-reset`.
 
-Current `dev` caveat: the HTTP handlers for enable/sync/reset/cron/profile/test/revoke call an
-incomplete `LearningIntegration` adapter and are not an end-to-end supported path. Automatic
-Git-history seeding uses the separate Managed onboarding worker; `learning-status` remains useful
-for inspection. Keep this limitation aligned with the public known-issues page until the adapter is
-repaired.
+Current `dev` caveat: the HTTP handlers for status/enable/sync/reset/cron/profile/test/revoke use an
+incomplete `LearningIntegration` adapter and are not an end-to-end supported path. Status, enable,
+sync, reset, cron, test, and revoke call absent method names; profile invokes an existing method
+before initialization. Automatic Git-history seeding uses the separate Managed onboarding worker.
+Keep this limitation aligned with the public known-issues page until the adapter is repaired.
 
 > Direction (`PRODUCT_BIBLE.md`): personalization evolves into local dialectic user modeling
 > (SQLite FTS5 + ChromaDB, Hermes persona model) — local-first, Teams as an opt-in tier.

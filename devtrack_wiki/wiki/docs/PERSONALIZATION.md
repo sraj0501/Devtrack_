@@ -19,10 +19,10 @@ machine under its configured consent and provider policy.
 
 > **Current `dev` limitation:** automatic local Git-history seeding is implemented through the
 > Managed onboarding worker. The HTTP adapter behind several communication-learning commands still
-> calls methods that are absent from `LearningIntegration`; `enable-learning`, `learning-sync`,
-> reset/cron operations, profile display, and response testing must be treated as unavailable until
-> that adapter is repaired. `learning-status` remains useful for inspection. The sections below
-> describe the intended command contract, not a completed end-to-end path.
+> uses an incomplete `LearningIntegration` adapter. Status, enable, sync, reset, cron, test, and
+> revoke call absent method names; profile calls an existing method before initialization. Treat all
+> of these CLI paths as unavailable until the adapter is repaired. The sections below describe the
+> intended command contract, not a completed end-to-end path.
 
 ---
 
@@ -85,7 +85,8 @@ devtrack test-response "I finished the login module and it's ready for review"
 devtrack learning-status
 ```
 
-Shows consent status, sample count, and last sync time.
+Intended to show consent status, sample count, and last sync time. The current server adapter calls
+an absent `get_status` method, so this command is unavailable until the adapter is repaired.
 
 ---
 

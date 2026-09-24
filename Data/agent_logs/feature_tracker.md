@@ -1,6 +1,44 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-06 (cross-platform core E2E passes locally and in hosted CI; Glama approved; full gates pending)_
+_Last updated: 2026-09-25 (TASK-158 and the Sage distillation foundation are merged to unreleased
+`dev`; native Linux silence qualification and later product gates remain)_
+
+---
+
+## 2026-09-25 — Active development reconciliation (TASK-154–161)
+
+**Phase**: Post-v3.1.1 product correction and DevTrack Sage
+
+**Status**: IN PROGRESS
+
+**Current evidence**:
+
+- **TASK-154 — server-admin UI:** committed at `54ceb05` on
+  `feat/TASK-154-server-admin-ui`; not integrated into `dev`. Review and integrate or explicitly
+  retire it before packaged-build qualification and media capture.
+- **TASK-155 / SAGE-001 and TASK-156 / SAGE-002:** the Go-native Sage contract, Codex capture,
+  atomic spool/import, SQLite event storage, harness lifecycle, and model-free search foundation are
+  integrated into `dev`.
+- **TASK-157 / SAGE-003:** PR #263 merged the neutral Go LLM client, validated structured distiller,
+  explicit skip/retry semantics, and non-blocking worker at `e4283db`. Durable SQLite claims,
+  daemon lifecycle wiring, deterministic Markdown, routing/corrections, safe local commits,
+  diagnostics, and executable parity closure remain.
+- **TASK-158:** PR #264 merged the completely silent native-Git correction at `fe3ad38`. Native
+  Linux TTY and non-TTY qualification remains unchecked; an uncommitted test draft is not pass
+  evidence. PR #264's hosted-Windows unit-test job also timed out in SQLite-backed `internal/db` and
+  `internal/mcp`, although Windows build/vet, native MCPB smoke, and no-send E2E passed. The
+  correction is not part of public v3.1.1.
+- **TASK-160:** planned next after TASK-158 qualification. Canonical branch, explicit commit
+  prefix/trailer, explicit active ticket, otherwise unlinked; mapping provenance must be persisted.
+- **TASK-159:** planned after TASK-160. Infer bounded local work windows without per-commit prompts,
+  retaining auditable explicit corrections.
+- **TASK-161:** the rolling `dev` update-channel implementation and documentation reconciliation are
+  assigned to `features/TASK-161-rolling-dev-channel`. Focused tests pass; it remains unmerged and
+  unreleased and excludes the separate TASK-158 validation draft.
+
+**External state checked 2026-09-25**: PRs #263 and #264 are merged, GitHub reports no open pull
+requests, and v3.1.1 remains the latest public release. Both PR check sets retain a failed
+hosted-Windows unit-test job; the remaining checks described above passed.
 
 ---
 

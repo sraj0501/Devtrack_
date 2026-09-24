@@ -2,8 +2,8 @@
 
 `devtrack git commit` wraps a normal Git commit with repository-aware message generation. Git still owns the commit; DevTrack must never make the developer's normal Git workflow depend on its AI or server.
 
-> This page describes the unreleased TASK-158 correction in the current source branch. The public
-> v3.1.1 shell-wrapped path has a known post-commit prompt regression.
+> This page describes the TASK-158 correction merged into `dev` by PR #264. It remains unreleased;
+> public v3.1.1 still has the shell-wrapped post-commit prompt regression.
 
 ## Interactive commit
 

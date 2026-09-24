@@ -73,10 +73,14 @@ func main() {
 			return
 		}
 
-		// devtrack upgrade [--check] — self-update binary and run migrations
+		// devtrack upgrade [--check] [--dev|--main] — self-update binary and run migrations
 		if cmd == "upgrade" {
-			checkOnly := len(os.Args) > 2 && os.Args[2] == "--check"
-			if err := RunUpgrade(checkOnly); err != nil {
+			checkOnly, channel, err := parseUpgradeArgs(os.Args[2:])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			if err := RunUpgradeForChannel(checkOnly, channel); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
@@ -236,7 +240,7 @@ func printBasicUsage() {
 	fmt.Println("            cloud status | cloud logout")
 	fmt.Println("ACCOUNT:    login | logout | whoami | license | terms | telemetry [on|off]")
 	fmt.Println()
-	fmt.Println("UPDATE:     upgrade | upgrade --check")
+	fmt.Println("UPDATE:     upgrade [--check] [--dev|--main]")
 	fmt.Println("UNINSTALL:  uninstall | uninstall --keep-data")
 	fmt.Println()
 	fmt.Println("MCP:        mcp [serve|status]                 MCP server for Claude Code integration (stdio)")

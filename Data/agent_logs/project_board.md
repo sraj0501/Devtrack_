@@ -1,9 +1,42 @@
 ﻿# DevTrack Project Board
 
-**[2026-09-21] TASK-158 — Restore the completely silent Git path (implementation complete, P0).**
+**[2026-09-25] TASK-161 — Rolling development update channel and state reconciliation (in progress, HIGH).**
+**Priority:** HIGH distribution/developer-experience follow-up. **Branch:**
+`features/TASK-161-rolling-dev-channel`. **Assigned to:** engineer. **Started:** 2026-09-25.
+
+Add an explicit, persisted update-channel contract without changing the stable default. Plain
+`devtrack upgrade` follows the saved channel and defaults existing installations to stable `main`;
+`--dev` opts into a rolling `dev` prerelease; `--main`/`--stable` returns to stable; and `--check`
+may inspect either channel without switching. Managed Python-server bootstrap follows the selected
+branch. A `dev`-branch workflow builds five platform assets, publishes or refreshes the rolling
+prerelease, and never changes the stable release. Reconcile README, wiki, shared memory, plans, and
+status records with the verified PR #263/#264, release, CI, learning-adapter, and UI-branch state.
+
+**Acceptance criteria:**
+- [x] Channel flags parse in any order, reject conflicts/unknown flags, and default to stable.
+- [x] A successful explicit channel switch persists atomically; `--check` does not switch it.
+- [x] Stable and rolling GitHub release endpoints are distinct, and the rolling endpoint validates
+      the `dev` prerelease contract before installation.
+- [x] Managed server bootstrap follows `main` or `dev` consistently with the selected channel.
+- [x] The `dev` workflow tests and builds Windows amd64, Linux amd64/arm64, and macOS amd64/arm64,
+      then updates the rolling prerelease without mutating stable tags/releases.
+- [x] Focused update-channel tests pass and documentation validators pass.
+- [ ] Full Go suite is green on the task branch or every unrelated/environmental failure is
+      reproduced, recorded, and resolved or explicitly accepted for PR review.
+- [ ] Branch is pushed and a PR targeting `dev` is open; no direct `main` mutation occurs.
+
+**Engineer status:** IN PROGRESS — implementation and documentation are prepared locally; focused
+channel tests and documentation validation pass. Full local Go testing exposed documented host and
+pre-existing failures. TASK-158's separate post-commit silence-test draft is excluded from this
+branch.
+**Blockers:** no implementation blocker; PR validation remains.
+
+---
+
+**[2026-09-21] TASK-158 — Restore the completely silent Git path (merged; native Linux validation pending, P0).**
 **Priority:** P0 product-correctness regression; execute before the next SAGE-003 implementation
 slice, then resume TASK-157. **Branch:** `fix/TASK-158-silent-git-path`.
-**Assigned to:** engineer. **Started:** 2026-09-21.
+**Assigned to:** engineer. **Started:** 2026-09-21. **Merged:** PR #264 to `dev` at `fe3ad38`.
 
 DevTrack must not ask follow-up questions when a developer commits. The v3.1.1
 `devtrack git commit` post-commit hook still asks for a duration and whether to push, can expose the
@@ -37,18 +70,20 @@ interrupt the developer.
 - [x] Product docs describe one silent default path and separate explicit correction/configuration
       commands from background behavior.
 
-**Engineer status:** IMPLEMENTATION COMPLETE — normal Git is no longer routed through DevTrack; the explicit
-AI commit helper has no ticket/time/PM/push callbacks; the generated observation hook is silent and
-fail-open; the database startup banner is removed; and public/current architecture docs match the
-behavior. Verified with the full Go suite, `go vet ./...`, memory validation, wiki inline-JS checks,
-and `git diff --check` on Windows. Cross-platform shell generation is covered in Go tests. Native
-Linux plus explicit TTY/non-TTY execution remain review gates before every acceptance box can be
-closed.
-**Blockers:** no implementation blocker; Linux/TTY qualification is pending.
+**Engineer status:** MERGED / VALIDATION FOLLOW-UP — PR #264 merged to `dev` at `fe3ad38` on
+2026-09-21. Normal Git is no longer routed through DevTrack; the explicit AI commit helper has no
+ticket/time/PM/push callbacks; the generated observation hook is silent and fail-open; and the
+database startup banner is removed. The full Go suite, `go vet ./...`, memory validation, wiki
+inline-JS checks, and `git diff --check` passed in the recorded local Windows run before merge.
+However, PR #264's hosted-Windows unit-test job failed on 60-second SQLite timeouts in `internal/db`
+and `internal/mcp`; Windows build/vet, native MCPB smoke, and no-send E2E passed. Native Linux plus
+explicit TTY/non-TTY execution also remain unchecked.
+**Blockers:** no implementation blocker; native Linux TTY/non-TTY qualification and an all-green
+hosted-Windows unit-test baseline are pending.
 
 **[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (planned, P0).**
-**Priority:** P0 product contract; execute after TASK-158 and before automatic time inference or the
-next SAGE-003 implementation slice. **Depends on:** TASK-158.
+**Priority:** P0 product contract; execute after TASK-158 native Linux qualification and before
+automatic time inference or the next SAGE-003 implementation slice. **Depends on:** TASK-158.
 **Branch:** `features/TASK-160-deterministic-ticket-contract`.
 
 Ticket assignment must be deterministic by default, not delegated to an LLM. Adopt the canonical
@@ -109,11 +144,11 @@ trust path.
       contradictory-signal cases have deterministic tests.
 
 **Engineer status:** PLANNED — not dispatched.
-**Blockers:** TASK-158.
+**Blockers:** TASK-158 native Linux TTY/non-TTY qualification.
 
 **[2026-09-21] TASK-159 — Silent automatic time inference (planned, HIGH).**
 **Priority:** HIGH; paired with TASK-158 and TASK-157 / SAGE-003.
-**Depends on:** TASK-158. **Branch:** `features/TASK-159-silent-time-inference`.
+**Depends on:** TASK-158 native Linux qualification. **Branch:** `features/TASK-159-silent-time-inference`.
 
 Replace per-commit duration entry with passive, local time evidence. Explicit
 `devtrack work start|stop|adjust` remains an optional override/correction surface, not a required
@@ -131,7 +166,7 @@ keystrokes, window activity, raw command output, or cloud telemetry.
       covered by clock-controlled tests.
 
 **Engineer status:** PLANNED — not dispatched.
-**Blockers:** TASK-158.
+**Blockers:** TASK-158 native Linux TTY/non-TTY qualification.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and
@@ -141,8 +176,10 @@ Git operation. Independently used `devtrack git` and commit-enhancement helpers 
 `internal/gitcmd` ownership, and the obsolete client-facing `GIT_SAGE_*` configuration surface was
 removed. A few Python-server reads remain only as legacy model fallbacks; they do not restore or
 configure the retired repository agent.
-Remaining SAGE-003 scope is structured local-model distillation, deterministic Markdown, routing,
-merge/refile, safe local commits, retries/leases, diagnostics, and executable parity closure.
+PR #263 merged the neutral LLM transport, validated structured distiller, and non-blocking Sage
+worker to `dev` at `e4283db`. Remaining SAGE-003 scope begins with durable SQLite claims and daemon
+lifecycle wiring, then deterministic Markdown, routing, merge/refile, safe local commits,
+persisted retries/leases, diagnostics, and executable parity closure.
 
 **[2026-09-15] TASK-156 / SAGE-002 — DevTrack Sage vertical capture slice (complete).**
 Added the Go-native atomic immutable spool, bounded importer, corrupt-file quarantine, append-only
@@ -178,11 +215,16 @@ history-item normalizer and synthetic fixture. Warp is not named upstream; its r
 inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
 verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-157.
 
-_Last updated: 2026-09-21 — TASK-158 silent-Git correction is the immediate P0, followed by
-TASK-160 deterministic ticket mapping and TASK-159 silent time inference; TASK-157 / SAGE-003
-remains the active product initiative. UI redesign remains on its separate branch. Clean Windows
-installation and full Managed Linux validation are owner-confirmed complete; packaged
-qualification, media, and listing follow-ups remain. Next unused task ID: TASK-161._
+_Last updated: 2026-09-25 — PR #263 (SAGE distillation foundation) and PR #264 (TASK-158 silent Git
+path) are merged to `dev`; GitHub has no open pull requests. Both PR check sets retain a failed
+hosted-Windows unit-test job; PR #264 timed out in SQLite-backed tests while other Windows lanes
+passed. TASK-158 still needs native Linux TTY/non-TTY qualification and a green Windows unit-test
+baseline before TASK-160, followed by TASK-159. TASK-157 / SAGE-003 remains the active product
+initiative, with durable queue/daemon integration next. The working tree also holds an unallocated
+rolling `dev` release/update-channel work is now allocated to TASK-161 on its dedicated branch and
+remains unshipped. UI redesign remains on its separate branch. v3.1.1 remains the latest public
+release; packaged qualification, media, and listing follow-ups remain. Next unused task ID:
+TASK-162._
 
 **[2026-09-10] Environment validation closure.** The owner confirmed that the supported clean
 Windows installation and the full Managed Linux validation journey are complete. These runs were

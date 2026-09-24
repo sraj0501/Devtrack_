@@ -1538,6 +1538,8 @@ chmod +x devtrack-server.sh
 devtrack upgrade --check
 devtrack upgrade</code></pre>
 <p>Linux and macOS use <code>devtrack_&lt;os&gt;_&lt;arch&gt;.tar.gz</code>. Windows downloads the published <code>.exe</code> directly. A development build reports the latest release without overwriting itself as a tagged installation.</p>
+<h2>Unreleased rolling update channels</h2>
+<p>TASK-161 on <code>features/TASK-161-rolling-dev-channel</code> adds a persistent update-channel choice: stable releases from <code>main</code> remain the default, while <code>devtrack upgrade --dev</code> opts into a rolling <code>dev</code> prerelease and <code>devtrack upgrade --main</code> (or <code>--stable</code>) returns to stable. <code>--check</code> can inspect either channel without switching. These flags are not available in v3.1.1 or merged <code>dev</code> yet; use them only after the PR is reviewed, integrated, and publishes the first prerelease.</p>
 <h2>Managed Server Update</h2>
 <p>After the binary succeeds, managed mode updates the optional Python server through the durable background worker:</p>
 <pre><code class="language-bash">devtrack doctor
@@ -1622,9 +1624,9 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
-<h2>Unreleased TASK-158 — completely silent Git path</h2>
+<h2>Current dev — TASK-158 completely silent Git path</h2>
 <ul>
-<li><strong>Release boundary:</strong> public v3.1.1 still contains the shell-wrapped post-commit prompt regression. The correction remains unreleased until reviewed and integrated.</li>
+<li><strong>Merge and release boundary:</strong> PR #264 is merged into <code>dev</code>. Public v3.1.1 still contains the shell-wrapped post-commit prompt regression, so the correction remains unreleased.</li>
 <li><strong>Native Git stays native:</strong> shell integration no longer routes <code>git add</code> or <code>git commit</code> through DevTrack. It retains only the optional history/message aliases.</li>
 <li><strong>No post-commit interrogation:</strong> the explicitly invoked AI commit helper returns after Git completes without asking for a ticket, duration, PM post, or push.</li>
 <li><strong>No commit-time push:</strong> committing never invokes <code>git push</code>. Outbound PM work remains asynchronous and stages through the pending queue.</li>
@@ -1635,10 +1637,19 @@ devtrack start</code></pre>
 <li><strong>Product direction:</strong> <code>devtrack sage</code> is exclusively the local, cross-harness, self-writing command-knowledge product. DevTrack is porting behavior from <code>ai_sessions_skills</code> commit <code>b85a1ab</code>; repository-assistant commands are not part of this product surface.</li>
 <li><strong>Capture foundation:</strong> SAGE-001 and SAGE-002 provide the versioned event contract, fail-open Codex capture, atomic local spool, bounded import/quarantine, append-only SQLite events, pause/resume state, and harness installation management.</li>
 <li><strong>Searchable knowledge slice:</strong> repeated command signatures are grouped deterministically in SQLite, indexed with FTS5, attributed to source harnesses, backfilled idempotently, and exposed through <code>devtrack sage search</code> and <code>devtrack sage topics</code>.</li>
-<li><strong>Still in progress:</strong> SAGE-003 is not complete. Structured what/why/example/notes distillation, deterministic Markdown topic files, routing and correction operations, retry-safe local-model processing, logs/diagnostics, safe local knowledge commits, remaining harness adapters, and parity coverage are pending.</li>
+<li><strong>Distillation foundation:</strong> PR #263 adds a neutral Go LLM client, structured title/what/why/example/notes drafts with required-field validation and explicit skip verdicts, and a non-blocking worker with bounded model calls.</li>
+<li><strong>Still in progress:</strong> SAGE-003 is not complete. The worker is not yet wired to durable SQLite claims or daemon lifecycle. Deterministic Markdown topic files, routing and correction operations, persistent retries/leases, logs/diagnostics, safe local knowledge commits, remaining harness adapters, and parity coverage are pending.</li>
+</ul>
+<h2>TASK-161 under review — rolling update channels</h2>
+<ul>
+<li><strong>Stable by default:</strong> existing and new installations continue to follow releases from <code>main</code>.</li>
+<li><strong>Explicit rolling opt-in:</strong> TASK-161 adds <code>devtrack upgrade --dev</code>, with <code>--main</code>/<code>--stable</code> to return and <code>--check</code> to inspect without switching.</li>
+<li><strong>Not merged or released:</strong> the task branch, flags, and rolling <code>dev</code> prerelease workflow are not part of v3.1.1 or current <code>origin/dev</code>.</li>
 </ul>
 <h2>Current dev — E2E and Windows Admin Acceptance</h2>
 <ul>
+<li><strong>UI integration boundary:</strong> the TASK-154 full-console redesign is committed at <code>54ceb05</code> on its separate branch but is not integrated into <code>dev</code>. Review and integrate or explicitly retire it before packaged-build qualification and media capture.</li>
+<li><strong>Windows CI gap:</strong> the merged PR #263 and PR #264 check sets retain a failed hosted-Windows unit-test job. PR #264 timed out in SQLite-backed <code>internal/db</code> and <code>internal/mcp</code> tests; its Windows build/vet, MCPB smoke, no-send E2E, and Sage distillation tests passed. Those green lanes do not close the unit-test gate.</li>
 <li><strong>Server review queue:</strong> the authenticated Admin Console now lists pending PostgreSQL actions, exposes their draft and full payload, and supports race-safe rejection with reviewer metadata and an audit event. Approval and editing are not part of this web flow yet.</li>
 <li><strong>Responsive operations dashboard:</strong> the refreshed console presents connected clients, active runtime configuration, trigger activity, and recent request paths in a dark operations view with responsive grids and a mobile navigation drawer.</li>
 <li><strong>Credential-free client lane:</strong> new PowerShell and POSIX scripts build the current Go client in isolation, start the lightweight daemon, create a real <code>DEMO-201</code> commit, wait for SQLite observation, and assert that MCP exposes the ticket and a non-zero local-day commit count.</li>
@@ -1858,7 +1869,7 @@ devtrack uninstall</code></pre>
 <tr><td>Anthropic</td><td><code>ANTHROPIC_API_KEY</code>, <code>ANTHROPIC_MODEL</code></td><td>Optional cloud provider/fallback.</td></tr>
 <tr><td>Groq</td><td><code>GROQ_API_KEY</code>, <code>GROQ_MODEL</code></td><td>Optional OpenAI-compatible fallback.</td></tr>
 </tbody></table></div>
-<p><code>OLLAMA_URL</code> and <code>LMSTUDIO_URL</code> are retired. The current settings are <code>OLLAMA_HOST</code> and <code>LMSTUDIO_HOST</code>. Sage's asynchronous structured distillation is still being ported; the hook path never calls a model.</p>
+<p><code>OLLAMA_URL</code> and <code>LMSTUDIO_URL</code> are retired. The current settings are <code>OLLAMA_HOST</code> and <code>LMSTUDIO_HOST</code>. Current <code>dev</code> contains Sage's asynchronous structured-distillation boundary, but it is not yet wired into durable claims or daemon lifecycle. The hook path never calls a model.</p>
 
 <h2>Timeout and Readiness Settings</h2>
 <p>Setup writes visible defaults for IPC connection/retry, short/normal/long HTTP operations, LLM requests, prompt-bound legacy/optional interfaces and sentiment analysis. Common settings include:</p>
@@ -1868,8 +1879,14 @@ HTTP_TIMEOUT_SHORT=10
 HTTP_TIMEOUT=30
 HTTP_TIMEOUT_LONG=60
 LLM_REQUEST_TIMEOUT_SECS=120
-SQLITE_BUSY_TIMEOUT_MS=5000</code></pre>
+SQLITE_BUSY_TIMEOUT_MS=5000
+
+# Current dev only; bounded background Sage worker settings
+DEVTRACK_SAGE_MODEL_TIMEOUT_SECS=180
+DEVTRACK_SAGE_IDLE_POLL_MS=500
+DEVTRACK_SAGE_RETRY_DELAY_SECS=2</code></pre>
 <p>Increase the long/LLM timeouts for a healthy but slow local model. Invalid explicit overrides fail with the setting name instead of silently inventing a value.</p>
+<p>The Sage defaults are bounded in code: model timeout 5–1800 seconds, idle poll 50–5000 ms, and retry delay 1–60 seconds. They configure the worker foundation on <code>dev</code>; they do not imply that durable queue processing is complete.</p>
 
 <h2>Workspaces and Secrets</h2>
 <p>DevTrack deliberately separates credentials from routing metadata:</p>
@@ -2676,7 +2693,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
-<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from <code>ai_sessions_skills</code> commit <code>b85a1ab</code>. Capture and the initial searchable SQLite grouping/index are implemented; structured distillation, deterministic Markdown knowledge, routing and corrections, remaining harnesses, diagnostics, safe local commits, and full parity coverage are still in progress.</p>
+<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from <code>ai_sessions_skills</code> commit <code>b85a1ab</code>. Capture, the searchable SQLite grouping/index, a neutral Go LLM client, structured-output validation, and a non-blocking distillation worker are implemented. Durable SQLite claims and daemon wiring, deterministic Markdown knowledge, routing and corrections, remaining harnesses, diagnostics, safe local commits, and full parity coverage are still in progress.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2689,7 +2706,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   SAGE: `<div class="md-body">
 <h1>DevTrack Sage and the retired Git Sage name</h1>
 <p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
-<blockquote><p><strong>Development status:</strong> Sage is under active development on <code>dev</code> and is not part of the latest <code>v3.1.1</code> release. SAGE-001 and SAGE-002 are implemented. SAGE-003 currently provides an initial searchable SQLite slice, not the complete self-writing knowledge product.</p></blockquote>
+<blockquote><p><strong>Development status:</strong> Sage is under active development on <code>dev</code> and is not part of the latest <code>v3.1.1</code> release. SAGE-001 and SAGE-002 are implemented. SAGE-003 provides the searchable SQLite slice plus a structured distillation foundation, not the complete self-writing knowledge product.</p></blockquote>
 
 <h2>What happened to Git Sage?</h2>
 <p>Older DevTrack documentation used <strong>Git Sage</strong> for a repository chat and Git-operation experiment. That product surface has been removed. The current <code>devtrack sage</code> namespace is deliberately narrower and safer: it captures privacy-minimized command events and builds local personal knowledge.</p>
@@ -2711,6 +2728,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Atomic local spool, bounded import, malformed-event quarantine, and append-only SQLite storage.</li>
 <li>Pause/resume state and idempotent harness installation that preserves unrelated configuration.</li>
 <li>Deterministic grouping by command signature, FTS5 search, topic aggregation, source-harness attribution, usage/success counts, and idempotent backfill.</li>
+<li>Neutral Go LLM transport with bounded HTTP behavior, structured drafts with required title/what/why/example fields and optional notes, explicit skip verdicts, and a non-blocking worker.</li>
 </ul>
 
 <h2>Current dev commands</h2>
@@ -2732,7 +2750,7 @@ devtrack sage topics</code></pre>
 
 <h2>What remains before SAGE-003 is complete</h2>
 <ul>
-<li>Asynchronous local-model distillation into validated <strong>what / why / example / notes</strong> fields.</li>
+<li>Durable SQLite claims, attempts, retry timing, and daemon lifecycle wiring for the existing asynchronous distillation worker.</li>
 <li>Deterministic Markdown topic files and topic index as the durable user-visible knowledge artifacts.</li>
 <li>Technology routing, correction-stable routes, merge/refile operations, activity logs, and truthful doctor diagnostics.</li>
 <li>Bounded retry behavior so model outages retain work instead of permanently skipping it.</li>
@@ -3299,9 +3317,9 @@ function renderHome() {
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation, MCP context, and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1 is public; current <code>dev</code> adds the Sage capture/search foundation, an Admin Console review queue, and cross-platform commit-to-MCP validation.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1 is public; current <code>dev</code> adds the silent Git correction and Sage capture, search, and structured-distillation foundations. Rolling update channels are unreleased TASK-161 branch work.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
-        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the platform asset from GitHub Releases (Windows uses the published <code>.exe</code>), runs versioned migrations, and auto-restarts the daemon. Unix: <code>sudo cp</code> fallback for root-owned paths. Windows: Administrator guidance.' },
+        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the stable platform asset, runs migrations, and restarts the daemon. Persistent <code>--dev</code>/<code>--main</code> update-channel selection is unreleased TASK-161 branch work, not a v3.1.1 command.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
@@ -3323,7 +3341,7 @@ function renderHome() {
         { id:'PM_AGENT',        icon:'🗂️', title:'PM Agent',            desc:'AI decomposes problems into Epic → Story → Task hierarchies.' },
         { id:'PROJECT_PLANNING',icon:'📋', title:'AI Project Planning', desc:'<code>/newproject</code> in Telegram: describe requirements, pick team from live roster, AI auto-fetches workloads, generates a full YAML spec with sprints/stories/risks, emails it to the PM for review, and creates everything in the PM tool on approval.' },
         // ── AI & Personalization ──────────────────────────────────────────────
-        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'Current command-knowledge product and Git Sage migration guide: local capture and SQLite search exist on <code>dev</code>; the retired repository agent does not.' },
+        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'Current command-knowledge product and Git Sage migration guide: local capture, SQLite search, and the structured-distillation foundation exist on <code>dev</code>; durable worker orchestration and Markdown knowledge remain.' },
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
         { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'"Talk Like You" — AI that learns from local Git history and explicit examples; Teams is an optional opt-in source and writes in your voice using RAG-powered few-shot examples.' },
         // ── System Integration ────────────────────────────────────────────────

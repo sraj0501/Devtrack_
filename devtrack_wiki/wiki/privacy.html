@@ -93,18 +93,16 @@
       <p>OpenAI, Anthropic, and Groq are optional. They are used only when configured and selected by the provider chain. Prompt text required for generation is sent to the selected provider; do not enable a cloud provider if that is incompatible with your project policy.</p>
       <p>Setup may offer an already-present OpenAI or Anthropic credential as a temporary fast lane while a local model downloads. It requires explicit acceptance, and Ollama remains primary.</p>
       <h2>Learning data</h2>
-      <p>Git voice seeding reads local commit history. Additional PM, Teams, or recording sources are opt-in. Local profiles and examples are used to guide generated text and can be reset with <code>devtrack learning-reset</code>.</p>
+      <p>Git voice seeding reads local commit history. Additional PM, Teams, or recording sources are opt-in. Local profiles and examples are used to guide generated text. The intended learning reset/revoke commands currently depend on an incomplete server adapter; do not rely on them until that adapter is repaired.</p>
     </section>
     <section id="control" class="tab-content">
       <h1>Your control</h1>
       <pre><code>devtrack telemetry status
 devtrack telemetry off
-devtrack learning-status
-devtrack revoke-consent
-devtrack learning-reset
 devtrack queue list
 devtrack queue reject &lt;id&gt;
-devtrack uninstall --keep-data</code></pre>
+devtrack uninstall</code></pre>
+      <p><code>learning-status</code>, <code>revoke-consent</code>, and <code>learning-reset</code> are currently unavailable because their server adapter is incomplete. A normal uninstall removes DevTrack data; <code>--keep-data</code> deliberately preserves it.</p>
       <p>Before deleting data, stop the daemon and back up the path reported by <code>devtrack settings</code>. Database schemas evolve; direct SQL deletion is not a supported privacy workflow.</p>
       <p>To report a privacy or security issue, open a GitHub issue without including credentials, tokens, private code, or personal data.</p>
     </section>

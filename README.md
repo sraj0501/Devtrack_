@@ -54,9 +54,9 @@ The latest public release is **v3.1.1**. Download the matching platform asset fr
 [GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.1), or build from source:
 
 > **Known v3.1.1 regression:** its shell-wrapped commit path can still ask post-commit questions.
-> TASK-158 fixes this in the current source branch by keeping native Git untouched and making the
-> explicit helper return immediately. Treat the silent-path correction as unreleased until its
-> branch is reviewed, merged, and included in a later release.
+> TASK-158 is merged into `dev`: native Git is no longer routed through DevTrack, generated
+> observation hooks are silent and fail-open, and the explicit helper returns immediately after
+> Git. The correction remains unreleased until it is promoted and included in a later release.
 
 ```bash
 git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
@@ -167,8 +167,12 @@ The Python service and model preparation are background work. If they are not re
 keep coding and check `devtrack doctor`; the Go-native path remains usable and commits are not
 blocked.
 
-> **Current validation status:** The remaining release follow-ups are packaged-build acceptance,
-> privacy-reviewed media capture, and confirmation of the exact Glama listing path and score badge.
+> **Current validation status:** The separate TASK-154 server-admin redesign is committed but not
+> integrated into `dev`; review and integrate or retire it before packaged-build acceptance. The
+> merged PR #263/#264 check sets also retain a failed hosted-Windows unit-test job; PR #264 timed
+> out in SQLite-backed tests while its other Windows lanes passed. The remaining release follow-ups
+> also include privacy-reviewed media capture and confirmation of the exact Glama listing path and
+> score badge.
 > See the
 > [end-to-end validation record](docs/END_TO_END_VALIDATION.md) for current evidence and exit criteria.
 
@@ -179,10 +183,11 @@ command activity from supported coding harnesses, groups and indexes it locally,
 into searchable, self-writing personal documentation. The Go-native port follows the behavior of
 the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
 
-On the current development branch, the capture pipeline and a model-free SQLite search/index slice
-are implemented. SAGE-003 is not complete or part of the v3.1.1 release: structured local-model
-distillation, deterministic topic Markdown, routing corrections, merge/refile, retry handling, and
-the remaining parity tests are still pending. See the
+On the current development branch, the capture pipeline, model-free SQLite search/index slice,
+neutral Go LLM transport, validated structured distiller, and non-blocking background worker are
+implemented. SAGE-003 is not complete or part of the v3.1.1 release: the worker still needs durable
+SQLite claims and daemon lifecycle wiring, followed by deterministic topic Markdown, routing
+corrections, merge/refile, persisted retry diagnostics, and the remaining parity tests. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md).
 
@@ -192,8 +197,11 @@ the remaining parity tests are still pending. See the
 devtrack upgrade
 ```
 
-`devtrack upgrade` installs the latest public release, including the Phase 9 onboarding and MCP
-commands introduced in v3.1.0.
+`devtrack upgrade` installs the latest build from the selected update channel. Existing and new
+installations default to stable releases from `main`; TASK-161 adds `devtrack upgrade --dev` as an
+opt-in path for rolling development builds. That channel is not part of v3.1.1 or the current
+`origin/dev` baseline and is usable only after the TASK-161 PR is merged and its workflow publishes
+a `dev` prerelease.
 
 The daemon mines enabled local repositories in Managed mode and builds the voice profile once the
 local AI server is reachable. `devtrack status` and `devtrack doctor` show the persistent result and
@@ -377,7 +385,8 @@ Every `git commit` while a session is active automatically attaches its hash —
 
 ### DevTrack Sage — self-writing command knowledge
 
-The development branch currently supports the capture foundation and model-free retrieval:
+The development branch currently supports the capture foundation, model-free retrieval, and the
+model boundary for asynchronous distillation:
 
 ```bash
 devtrack sage harness list
@@ -390,8 +399,10 @@ devtrack sage topics
 Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
 service in the hook path, and it does not block the host coding agent. The daemon imports normalized
 events into SQLite, groups repeated command signatures, and provides FTS-backed search with source
-attribution. This is an infrastructure preview, not a complete Sage release; self-written
-structured entries and durable Markdown knowledge remain SAGE-003 work.
+attribution. A neutral Go LLM client, schema-validated structured distiller, and cancellation-aware
+background worker are also present, with local Ollama as the default. This is an infrastructure
+preview, not a complete Sage release: durable queue claims, daemon lifecycle integration,
+self-written Markdown knowledge, routing/correction, and recovery diagnostics remain SAGE-003 work.
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;
@@ -411,9 +422,9 @@ devtrack test-response "Completed auth module"
 
 > **Current `dev` limitation:** automatic Git-history voice seeding runs through the managed
 > onboarding worker, but the HTTP adapters behind several communication-learning CLI commands are
-> incomplete. Treat `enable-learning`, `learning-sync`, reset/cron operations, profile display, and
-> response testing as unavailable until the server adapter is repaired. `learning-status` remains
-> the inspection command.
+> incomplete. Treat `learning-status`, `enable-learning`, `learning-sync`, reset/cron operations,
+> profile display, response testing, and consent revocation as unavailable until the server adapter
+> is repaired.
 
 Learns your writing voice from **your own git history** — local, automatic, no external service. It combines a style profile with ChromaDB RAG (real examples of how you write) to personalize every commit message, ticket comment, and report the system generates.
 
@@ -529,13 +540,24 @@ The command prints the resolved targets before confirmation. There is no `--dry-
 
 ### Self-update (`devtrack upgrade`)
 
+> **Unreleased TASK-161 change:** `--dev`, `--main`, `--stable`, and persisted update-channel
+> selection are implemented on `features/TASK-161-rolling-dev-channel` but are not present in
+> v3.1.1 or the current `origin/dev` baseline. Until the PR is merged and publishes a `dev`
+> prerelease, released builds should use plain `devtrack upgrade`.
+
 ```bash
-devtrack upgrade          # download and install the latest release binary
+devtrack upgrade          # update from the currently selected channel (main by default)
+devtrack upgrade --dev    # switch to rolling builds from the dev branch
+devtrack upgrade --main   # switch back to stable releases from main (--stable also works)
 sudo devtrack upgrade     # use when the binary is in a root-owned directory (e.g. /usr/local/bin)
 ```
 
+The selected channel is saved after a successful switch. Subsequent `devtrack upgrade` commands
+stay on that channel until you explicitly choose `--dev` or `--main`. `--check` can be combined
+with either flag to inspect a channel without switching to it.
+
 What happens on upgrade:
-1. Downloads the latest binary for your OS/arch from **GitHub Releases** (`sraj0501/Devtrack_`) — Linux/macOS use `.tar.gz`; Windows uses a direct `.exe`
+1. Downloads the latest binary for your OS/arch from **GitHub Releases** (`sraj0501/Devtrack_`) — stable releases come from `main`, while the rolling `dev` prerelease comes from the `dev` branch; Linux/macOS use `.tar.gz` and Windows uses a direct `.exe`
 2. Applies all versioned migrations that have not yet run (schema changes, config file moves, etc.)
 3. Auto-restarts the daemon so the new binary takes effect immediately
 4. On Unix: falls back to `sudo cp` automatically if the target directory is root-owned and the command wasn't run as root

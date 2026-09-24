@@ -762,7 +762,7 @@ PostgreSQL numeric IDs as the same action. Transport failures leave the local ro
 
 ### Health Monitoring
 
-The daemon checks 6 services every 30 seconds:
+The daemon checks five services every 30 seconds:
 
 | Service | Check Method | Auto-Restart |
 |---------|-------------|--------------|
@@ -832,8 +832,9 @@ task state is tracked in `Data/agent_logs/project_board.md`.
 ### Phase 9 — Adoption Gate (complete)
 Current product planning focuses on **DevTrack Sage**, the broader local cross-harness capture and
 personal command-knowledge layer described in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md). The existing
-Git-oriented Sage commands remain a compatibility surface during planning. Packaged-build acceptance
-and privacy-reviewed media remain release follow-ups tracked in
+legacy repository-chat and autonomous-Git Sage commands have been removed; independently useful Git
+helpers remain under `devtrack git`. Packaged-build acceptance and privacy-reviewed media remain
+release follow-ups tracked in
 [`docs/END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md).
 
 > **Not planned, ever:** NATS/Redis/external message queues, Kubernetes, or multi-tenancy.

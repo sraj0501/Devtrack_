@@ -1,7 +1,7 @@
 # Git features
 
-> The silent native-Git behavior below is the unreleased TASK-158 correction. Public v3.1.1 still
-> has a known regression in its shell-wrapped commit path.
+> The silent native-Git behavior below is merged into `dev` in PR #264 but remains unreleased.
+> Public v3.1.1 still has a known regression in its shell-wrapped commit path.
 
 ## Silent observation
 
