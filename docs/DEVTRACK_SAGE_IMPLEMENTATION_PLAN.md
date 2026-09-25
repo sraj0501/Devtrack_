@@ -259,9 +259,12 @@ for inspection or export.
 
 ## Immediate next step
 
-SAGE-001 and SAGE-002 are complete, and SAGE-003 has only its model-free index/search foundation.
-Refresh [SAGE_PORT_PARITY_MATRIX.md](SAGE_PORT_PARITY_MATRIX.md) against reference commit `b85a1ab`,
-then implement structured local-model distillation, deterministic topic Markdown, route correction,
-merge/refile, skipped-action records, safe local commits, and retry semantics. Do not start unrelated
-features until one complete capture-to-self-written-knowledge journey passes twice from a clean
-isolated installation.
+SAGE-001 and SAGE-002 are complete. SAGE-003 now has its model-free index/search foundation plus
+the shared LLM transport, validated structured-draft parser, and non-blocking worker boundary.
+After the repository-wide TASK-160 deterministic ticket contract and TASK-159 automatic-time work,
+first reconcile every reference scenario with an exact Go test and explicit status in the parity
+matrix. Then wire that worker to durable SQLite claims and daemon lifecycle and implement
+deterministic topic Markdown, route correction, merge/refile, skipped-action records, safe local
+commits, and retry semantics. Keep the parity matrix executable as each slice lands. Do not expand
+to another harness until one complete capture-to-self-written-knowledge journey passes twice from
+a clean isolated installation.

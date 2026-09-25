@@ -18,8 +18,9 @@ records. Use this map before treating a document as current implementation guida
 | Release-facing MCP listing copy | [`REGISTRY_SUBMISSION_PACKAGE.md`](REGISTRY_SUBMISSION_PACKAGE.md) |
 | Public user documentation | [`../devtrack_wiki/wiki/wiki.html`](../devtrack_wiki/wiki/wiki.html) and [`../devtrack_wiki/wiki/docs/`](../devtrack_wiki/wiki/docs/) |
 
-The latest public release is **v3.1.1**. Newer `dev` work—most notably the DevTrack Sage capture
-and model-free search foundation—is unreleased and must be labelled as such.
+The latest public release is **v3.1.1**. Newer `dev` work—most notably the DevTrack Sage capture,
+model-free search, and initial structured-distillation boundary plus the TASK-158 silent-Git
+correction—is unreleased and must be labelled as such.
 
 ## Historical records
 

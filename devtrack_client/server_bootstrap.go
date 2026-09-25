@@ -162,6 +162,10 @@ func runServerBootstrap(home, projectRoot, provider, model string, runner bootst
 	backendDir := filepath.Join(projectRoot, "backend")
 	targetDir := filepath.Dir(projectRoot)
 	managedCheckout := filepath.Clean(targetDir) == filepath.Clean(filepath.Join(home, "server"))
+	serverBranch := devtrackServerBranch
+	if readUpdateChannel(home) == updateChannelDev {
+		serverBranch = "dev"
+	}
 	_, backendErr := os.Stat(backendDir)
 	if backendErr != nil || managedCheckout {
 		if err := update("cloning", "Downloading the optional Python server"); err != nil {
@@ -183,8 +187,8 @@ func runServerBootstrap(home, projectRoot, provider, model string, runner bootst
 			remoteArgs,
 			{"-C", targetDir, "sparse-checkout", "init", "--cone"},
 			{"-C", targetDir, "sparse-checkout", "set", "devtrack_server"},
-			{"-C", targetDir, "fetch", "--depth", "1", "origin", devtrackServerBranch},
-			{"-C", targetDir, "checkout", "-B", devtrackServerBranch, "FETCH_HEAD"},
+			{"-C", targetDir, "fetch", "--depth", "1", "origin", serverBranch},
+			{"-C", targetDir, "checkout", "-B", serverBranch, "FETCH_HEAD"},
 		} {
 			if err := runner("", "git", args...); err != nil {
 				return fail("cloning", fmt.Errorf("git %s: %w", strings.Join(args, " "), err))

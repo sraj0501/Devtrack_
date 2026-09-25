@@ -1,7 +1,34 @@
 # Next Steps — DevTrack Sage
 
-_Updated 2026-09-21. This file lists active work only. Completed delivery and validation history
+_Updated 2026-09-25. This file lists active work only. Completed delivery and validation history
 lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
+
+## Immediate repository sequence
+
+TASK-158 merged into `origin/dev` through PR #264. Its implementation restores the silent Git
+contract: normal Git remains native, `devtrack git commit` has no ticket/time/PM/push follow-up,
+observation is silent and fail-open, and database initialization no longer leaks into the commit
+path. Native Linux plus explicit TTY/non-TTY qualification still remain release gates; this is
+unreleased development state, not a claim about v3.1.1.
+
+The PR #263 and PR #264 check sets also each retain a failed hosted-Windows unit-test job. PR #264's
+job hit the 60-second timeout in SQLite-backed `internal/db` and `internal/mcp` tests, while Windows
+build/vet, native MCPB smoke, no-send E2E, and the Sage distillation packages passed. Restore a
+green Windows unit-test baseline rather than treating those other lanes as substitutes.
+
+The next product task is **TASK-160**, which implements the deterministic branch-to-ticket contract
+defined in `PRODUCT_BIBLE.md`: canonical branch, explicit commit prefix/trailer, explicit active
+ticket, otherwise unlinked. TASK-159 follows by replacing per-commit duration entry with bounded,
+local activity-window inference and optional correction commands. After those product-correctness
+slices, continue TASK-157 / SAGE-003 at its durable distillation-queue boundary.
+Before that implementation slice, reconcile every reference scenario with an exact Go test and
+explicit implementation status in the parity matrix.
+
+TASK-161 owns the rolling `dev` update-channel implementation on
+`features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. The full Go suite, vet, focused
+tests, and documentation checks pass locally, but the feature still requires hosted checks, review,
+integration, and successful first-prerelease publication before public documentation may describe
+`devtrack upgrade --dev` as supported or shipped behavior.
 
 ## Current product initiative
 
@@ -24,9 +51,12 @@ context is maintained in `agent-memory/initiatives/sage.md`. SAGE-001 establishe
 contract and port boundary as TASK-155. SAGE-002 is complete as TASK-156: the atomic bounded
 spool, append-only SQLite event store, daemon importer, and opt-in read-only Codex history adapter
 are implemented, hook installation/removal is reversible, and the isolated packaged capture
-journey passes. Continue SAGE-003 with required structured distillation and retry semantics now that the
-model-free searchable index slice is implemented. SAGE-003 remains incomplete until it produces
-the reference-compatible structured Markdown knowledge and passes the refreshed parity matrix.
+journey passes. The first SAGE-003 structured-distillation boundary is also merged: shared Go LLM
+transport, validated structured drafts, explicit skip versus retryable failure semantics, and a
+non-blocking worker. Continue by wiring durable SQLite claims and daemon lifecycle, then produce
+deterministic Markdown, routing/correction, merge/refile, skipped-action records, safe local
+commits, and parity closure. SAGE-003 remains incomplete until it produces reference-compatible
+structured Markdown knowledge and passes the refreshed parity matrix.
 Sanitized observed hook fixtures
 remain an external harness-validation gate.
 The selective harness registry and external plugin boundary are now fixed in
@@ -34,13 +64,14 @@ The selective harness registry and external plugin boundary are now fixed in
 global installer switches or harness-specific storage.
 `Data/agent_logs/project_board.md` remains the task-ID authority.
 
-The parity inventory now accounts for all 136 reference test methods at `b85a1ab`, including the
-previously omitted explicit CLI-history capture scenario. The next parity pass must add exact Go
-test ownership and an implementation status to every row; a reconciled row count alone is not a
-completion claim.
+The parity inventory accounts for all 136 reference test methods at `b85a1ab`, including the
+previously omitted explicit CLI-history capture scenario. Every row still needs exact Go-test
+ownership and an implementation status; a reconciled row count alone is not a completion claim.
 
 ## Open release follow-ups
 
+- Review `feat/TASK-154-server-admin-ui` at `54ceb05` against current `dev`, then integrate it or
+  explicitly retire it before packaged-build qualification.
 - Qualify the admin review journey against packaged release artifacts.
 - Capture and privacy-review the approved launch screenshots and video.
 - Record the exact approved Glama listing path and add its score badge to

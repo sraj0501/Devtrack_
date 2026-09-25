@@ -21,11 +21,20 @@ import (
 
 const githubRepo = "sraj0501/Devtrack_"
 const githubAPIBase = "https://api.github.com"
+const updateChannelFile = "update-channel"
+
+type updateChannel string
+
+const (
+	updateChannelMain updateChannel = "main"
+	updateChannelDev  updateChannel = "dev"
+)
 
 type githubRelease struct {
-	TagName string        `json:"tag_name"`
-	Name    string        `json:"name"`
-	Assets  []githubAsset `json:"assets"`
+	TagName    string        `json:"tag_name"`
+	Name       string        `json:"name"`
+	Prerelease bool          `json:"prerelease"`
+	Assets     []githubAsset `json:"assets"`
 }
 
 type githubAsset struct {
@@ -33,42 +42,93 @@ type githubAsset struct {
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
-// RunUpgrade implements `devtrack upgrade [--check]`.
+// parseUpgradeArgs accepts flags in any order. An empty channel means to use
+// the persisted selection (main for installations that predate channels).
+func parseUpgradeArgs(args []string) (bool, updateChannel, error) {
+	var checkOnly bool
+	var channel updateChannel
+	for _, arg := range args {
+		switch arg {
+		case "--check":
+			checkOnly = true
+		case "--dev":
+			if channel != "" && channel != updateChannelDev {
+				return false, "", fmt.Errorf("--dev and --main cannot be used together")
+			}
+			channel = updateChannelDev
+		case "--main", "--stable":
+			if channel != "" && channel != updateChannelMain {
+				return false, "", fmt.Errorf("--dev and --main cannot be used together")
+			}
+			channel = updateChannelMain
+		default:
+			return false, "", fmt.Errorf("unknown upgrade option %q (use --check, --dev, or --main)", arg)
+		}
+	}
+	return checkOnly, channel, nil
+}
+
+// RunUpgrade preserves the original package-level API and follows the saved channel.
 func RunUpgrade(checkOnly bool) error {
+	return RunUpgradeForChannel(checkOnly, "")
+}
+
+// RunUpgradeForChannel implements `devtrack upgrade [--check] [--dev|--main]`.
+func RunUpgradeForChannel(checkOnly bool, requested updateChannel) error {
 	fmt.Println("Checking for updates...")
 
-	latest, err := fetchLatestRelease()
+	home, homeErr := devtrackDataHome()
+	channel := requested
+	if channel == "" {
+		channel = readUpdateChannel(home)
+	}
+	fmt.Printf("  Update channel:  %s\n", channel)
+
+	latest, err := fetchRelease(channel)
 	if err != nil {
 		return fmt.Errorf("could not reach GitHub: %w", err)
 	}
 
 	current := GetDevTrackVersion()
-	if current == "dev" {
+	// A source build has no immutable version identity. Keep the historical
+	// safeguard unless the user explicitly asks to replace it with a channel build.
+	if current == "dev" && requested == "" {
 		fmt.Printf("  Current version: dev build (not a release)\n")
-		fmt.Printf("  Latest release:  %s\n", latest.TagName)
+		fmt.Printf("  Latest %s build: %s\n", channel, releaseVersion(latest, channel))
 		if !checkOnly {
-			fmt.Println("  Tip: upgrade only applies to installed release binaries.")
+			fmt.Printf("  Tip: use 'devtrack upgrade --%s' to replace this source build.\n", channel)
 		}
 		return nil
 	}
 
+	target := releaseVersion(latest, channel)
 	fmt.Printf("  Current version: %s\n", current)
-	fmt.Printf("  Latest release:  %s\n", latest.TagName)
+	fmt.Printf("  Latest %s build: %s\n", channel, target)
 
-	cmp := compareSemver(normaliseTag(current), normaliseTag(latest.TagName))
-	if cmp == 0 {
+	if isCurrentVersion(current, target, channel) {
 		fmt.Println("  Already up to date.")
+		if !checkOnly && requested != "" {
+			persistUpdateChannel(home, channel)
+		}
 		return nil
 	}
-	if cmp > 0 {
+	if channel == updateChannelMain && !strings.HasPrefix(current, "dev-") && current != "dev" &&
+		compareSemver(normaliseTag(current), normaliseTag(target)) > 0 {
 		fmt.Println("  Already up to date (current build is newer than latest release).")
+		if !checkOnly && requested != "" {
+			persistUpdateChannel(home, channel)
+		}
 		return nil
 	}
 
-	fmt.Printf("  Update available: %s → %s\n", current, latest.TagName)
+	fmt.Printf("  Update available: %s → %s\n", current, target)
 
 	if checkOnly {
-		fmt.Println("\nRun 'devtrack upgrade' to install the update.")
+		flag := ""
+		if requested != "" {
+			flag = " --" + string(channel)
+		}
+		fmt.Printf("\nRun 'devtrack upgrade%s' to install the update.\n", flag)
 		return nil
 	}
 
@@ -106,21 +166,26 @@ func RunUpgrade(checkOnly bool) error {
 		return fmt.Errorf("install failed: %w", err)
 	}
 
-	fmt.Printf("✓ Updated to %s\n", latest.TagName)
+	fmt.Printf("✓ Updated to %s\n", target)
+	if homeErr != nil {
+		fmt.Printf("Warning: could not save the %s update channel: %v\n", channel, homeErr)
+	} else {
+		persistUpdateChannel(home, channel)
+	}
 	fmt.Println("\nApplying configuration migrations...")
 	RunPendingMigrations()
 
 	fmt.Println()
 	// Keep the optional server update outside the binary-upgrade critical path.
 	// The same durable worker used by setup reports progress through doctor/status.
-	if xdgHome, homeErr := devtrackDataHome(); homeErr != nil {
+	if home == "" || homeErr != nil {
 		fmt.Printf("Warning: could not determine DevTrack data home: %v\n", homeErr)
 	} else if GetServerMode() == ServerModeManaged {
 		projectRoot := GetProjectRootOptional()
 		if projectRoot == "" {
-			projectRoot = filepath.Join(xdgHome, "server", "devtrack_server")
+			projectRoot = filepath.Join(home, "server", "devtrack_server")
 		}
-		if started, startErr := startServerBootstrap(xdgHome, projectRoot, GetLLMProvider(), GetOllamaModel()); startErr != nil {
+		if started, startErr := startServerBootstrap(home, projectRoot, GetLLMProvider(), GetOllamaModel()); startErr != nil {
 			fmt.Printf("Warning: background Python server update could not start: %v\n", startErr)
 			fmt.Println("The binary was upgraded successfully. Run 'devtrack doctor --repair' to retry.")
 		} else if started {
@@ -142,6 +207,60 @@ func RunUpgrade(checkOnly bool) error {
 		fmt.Println("\nDone. Run 'devtrack start' to use the new version.")
 	}
 	return nil
+}
+
+func releaseVersion(release *githubRelease, channel updateChannel) string {
+	if channel == updateChannelDev && strings.TrimSpace(release.Name) != "" {
+		return strings.TrimSpace(release.Name)
+	}
+	return release.TagName
+}
+
+func isCurrentVersion(current, target string, channel updateChannel) bool {
+	if channel == updateChannelDev {
+		return current == target
+	}
+	return compareSemver(normaliseTag(current), normaliseTag(target)) == 0
+}
+
+func readUpdateChannel(home string) updateChannel {
+	if home == "" {
+		return updateChannelMain
+	}
+	data, err := os.ReadFile(filepath.Join(home, updateChannelFile))
+	if err == nil && strings.TrimSpace(string(data)) == string(updateChannelDev) {
+		return updateChannelDev
+	}
+	return updateChannelMain
+}
+
+func persistUpdateChannel(home string, channel updateChannel) {
+	if home == "" {
+		return
+	}
+	if err := os.MkdirAll(home, 0755); err != nil {
+		fmt.Printf("Warning: could not save update channel: %v\n", err)
+		return
+	}
+	path := filepath.Join(home, updateChannelFile)
+	tmp, err := os.CreateTemp(home, ".update-channel-*.tmp")
+	if err != nil {
+		fmt.Printf("Warning: could not save update channel: %v\n", err)
+		return
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if _, err = fmt.Fprintln(tmp, channel); err == nil {
+		err = tmp.Close()
+	} else {
+		_ = tmp.Close()
+	}
+	if err == nil {
+		err = atomicReplaceFile(tmpPath, path)
+	}
+	if err != nil {
+		fmt.Printf("Warning: could not save update channel: %v\n", err)
+	}
 }
 
 // platformAssetName returns the asset filename for the current OS/arch.
@@ -169,11 +288,16 @@ func isDaemonRunning() bool {
 	return isProcessAlive(pid)
 }
 
-// fetchLatestRelease queries the GitHub releases API for the latest release.
-func fetchLatestRelease() (*githubRelease, error) {
-	url := githubAPIBase + "/repos/" + githubRepo + "/releases/latest"
+// fetchRelease queries the stable release endpoint or the rolling dev prerelease.
+func fetchRelease(channel updateChannel) (*githubRelease, error) {
+	path := "/repos/" + githubRepo + "/releases/latest"
+	if channel == updateChannelDev {
+		path = "/repos/" + githubRepo + "/releases/tags/dev"
+	}
+	return fetchReleaseAt(githubAPIBase+path, channel, &http.Client{Timeout: 15 * time.Second})
+}
 
-	client := &http.Client{Timeout: 15 * time.Second}
+func fetchReleaseAt(url string, channel updateChannel, client *http.Client) (*githubRelease, error) {
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
@@ -195,6 +319,9 @@ func fetchLatestRelease() (*githubRelease, error) {
 	}
 	if release.TagName == "" {
 		return nil, fmt.Errorf("no releases found")
+	}
+	if channel == updateChannelDev && (!release.Prerelease || release.TagName != "dev") {
+		return nil, fmt.Errorf("development release is not a dev prerelease")
 	}
 	return &release, nil
 }

@@ -6,8 +6,8 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-09-03 (client-server decoupling complete; PostgreSQL is mandatory server-side;
-Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through TASK-148)._
+_Last updated: 2026-09-25 (client-server decoupling complete; PostgreSQL is mandatory server-side;
+TASK-158 and the first Sage structured-distillation boundary are merged on unreleased `dev`)._
 
 ## Ownership model (intended)
 
@@ -92,10 +92,11 @@ Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through T
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Enable / sync learning | `enable-learning`, `learning-sync`, `learning-status` | HTTP → server | Server | `/learning/enable`, `/learning/sync`, `/learning/status` |
-| Cron management | `learning-setup-cron`, `learning-remove-cron`, `learning-cron-status` | HTTP → server | Server | `/learning/cron/*` |
-| Reset | `learning-reset` | HTTP → server | Server | `/learning/reset` |
-| Profile / test response / revoke | `show-profile`, `test-response`, `revoke-consent` | HTTP → server | Server | `/learning/profile`, `/learning/test-response`, `/learning/revoke` |
+| Learning status | `learning-status` | HTTP → server | Server | ⚠ `/learning/status` calls absent `LearningIntegration.get_status`; unavailable until repaired. |
+| Enable / sync learning | `enable-learning`, `learning-sync` | HTTP → server | Server | ⚠ `/learning/enable` and `/learning/sync` call adapter methods absent from `LearningIntegration`; unavailable until repaired. |
+| Cron management | `learning-setup-cron`, `learning-remove-cron`, `learning-cron-status` | HTTP → server | Server | ⚠ `/learning/cron/*` calls adapter methods absent from `LearningIntegration`. |
+| Reset | `learning-reset` | HTTP → server | Server | ⚠ `/learning/reset` calls an adapter method absent from `LearningIntegration`. |
+| Profile / test response / revoke | `show-profile`, `test-response`, `revoke-consent` | HTTP → server | Server | ⚠ Profile calls the existing method before initialization; test/revoke use absent method names. Treat the group as unsupported pending adapter repair. |
 
 ## 7. Reporting — Owner: **Server** (AI-enhanced generation)
 
@@ -139,19 +140,21 @@ Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through T
 ## Summary of current mismatches (⚠ = decoupling work)
 
 Phase 1 (remove + convert-to-HTTP) and Phase 2 (port alerts/notify delivery to Go) are both
-**complete**. No known mismatches remain.
+**complete**. Ownership boundaries match, but the communication-learning HTTP adapter has a known
+functional gap: most handlers call methods that `LearningIntegration` does not implement.
 
 | Capability | Intended owner | Status |
 |---|---|---|
 | `server-tui`, `admin-start` | Server | ✅ Removed from client (Phase 1a — d5f8f36) |
 | GitHub ticket sync (`github_ticket_sync.py`) | Client | ✅ Python call removed (Phase 1b — d5f8f36) |
 | Reports (preview/send/save/summary/EOD) | Server | ✅ HTTP → server (Phase 1c) |
-| Learning suite (all `learning-*`, profile, test-response, revoke) | Server | ✅ HTTP → server (Phase 1c) |
+| Learning suite (all `learning-*`, profile, test-response, revoke) | Server | ⚠ HTTP boundary exists; status is inspection-only and the remaining adapter methods require repair |
 | Cloud/auth/license (`login/logout/whoami/license/terms`) | Server | ✅ HTTP → server (Phase 1c) |
 | Ticket alerts (`alerts`, poller) | Client | ✅ Ported to Go (Phase 2 — `internal/alerts/`) |
 | Telegram / Slack delivery | Client | ✅ Ported to Go (Phase 2 — `internal/telegram/`, `internal/notify/`) |
 
-Everything matches its intended owner.
+Everything matches its intended owner; ownership alignment must not be read as end-to-end feature
+availability for the learning suite.
 
 ## How to change ownership
 

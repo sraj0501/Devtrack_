@@ -4,16 +4,22 @@ description: Active implementation planning and unresolved release follow-ups
 type: project
 ---
 
-**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, and neutral ownership for the independently used Git/commit-enhancement helpers. It also contains a neutral context-aware LLM client, validated structured distillation, and a non-blocking background worker with configurable bounded timing for slower offline models. Next connect that worker to durable SQLite claims and daemon lifecycle, then implement deterministic Markdown, routing, merge/refile, safe local commits, persisted retries, diagnostics, and parity closure. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
+**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, neutral ownership for independently used Git/commit-enhancement helpers, and the SAGE-003 neutral LLM transport, structured distiller, and non-blocking worker merged in PR #263. Next connect that worker to durable SQLite claims and daemon lifecycle, then implement deterministic Markdown, routing, merge/refile, safe local commits, persisted retries, diagnostics, and parity closure. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
 
-**Immediate P0 product correction:** TASK-158 is committed on
-`fix/TASK-158-silent-git-path` and under review in PR #264. Normal Git is no longer routed through
-DevTrack; the explicit AI commit helper returns after Git without ticket, duration, PM, or push
-questions; generated observation hooks are silent and fail-open; and database initialization no
-longer prints into the user-facing path. Complete PR review and land this
-isolated correction before starting TASK-160.
+**Immediate validation follow-up:** TASK-158 merged to `dev` in PR #264 (`fe3ad38`). Normal Git is
+no longer routed through DevTrack; the explicit AI commit helper returns after Git without ticket,
+duration, PM, or push questions; generated observation hooks are silent and fail-open; and database
+initialization no longer prints into the user-facing path. Native Linux with explicit TTY and
+non-TTY execution is still unverified. Close this validation follow-up before treating TASK-158 as
+fully qualified, then begin TASK-160.
 TASK-159 then replaces manual per-commit time entry with local, privacy-bounded activity-window
 inference; explicit work-session commands remain optional overrides/corrections.
+
+**Current CI gap:** The merged PR #263 and PR #264 check sets each contain a failed hosted-Windows
+unit-test job even though Windows build/vet, native MCPB smoke, and no-send E2E passed. PR #264's
+failed job timed out after 60 seconds in SQLite-backed `internal/db` and `internal/mcp` tests; its
+Sage distillation tests passed. Treat `dev` as lacking an all-green Windows unit-test baseline until
+the timeout is reproduced or rerun successfully.
 
 **Deterministic ticket contract:** TASK-160 makes `<kind>/<ticket-key>-<number>-<slug>` the canonical branch
 grammar and assigns tickets in this order: canonical branch, explicit commit prefix/trailer,
@@ -26,16 +32,24 @@ the correction channels surface them later.
 
 **Unresolved release follow-ups:** packaged-build acceptance; privacy-reviewed media; exact Glama listing path and the score-badge update on awesome-mcp-servers PR #13608.
 
+**Active distribution work:** TASK-161 owns the rolling `dev` prerelease and persisted update-channel
+implementation on `features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. Stable `main`
+remains the default and the feature remains unreleased until the PR is merged and its workflow
+publishes the first `dev` prerelease. TASK-158 validation work is excluded from this branch. v3.1.1
+remains the latest public release.
+
 **Known communication-learning gap:** Managed onboarding can seed voice data from local Git history,
-but the Python HTTP adapter behind enable/sync/reset/cron/profile/test/revoke calls methods absent
-from `LearningIntegration`. Treat those CLI paths as unavailable until repaired; `learning-status`
-remains inspection-only evidence, and Teams/Outlook learning is not end-to-end complete.
+but the Python HTTP adapter behind status/enable/sync/reset/cron/profile/test/revoke is incomplete.
+`LearningIntegration` lacks the method names used by status, enable, sync, reset, cron, test, and
+revoke; profile calls an existing method before initialization and is not a useful end-to-end path.
+Treat all of those CLI paths as unavailable until repaired. Teams/Outlook learning is not
+end-to-end complete.
 
 **Pickup sequence:** `execution-plan.md` owns the cross-initiative order and acceptance gates. In
-brief: review and land TASK-158; complete TASK-160 and TASK-159; make SAGE-003 parity executable and
-complete one asynchronous, deterministic Codex capture-to-knowledge journey; then resolve the
-separate UI branch and release follow-ups. Do not expand harness support or MCP exposure before the
-Codex closure gate.
+brief: close TASK-158's native Linux TTY/non-TTY qualification; complete TASK-160 and TASK-159;
+make SAGE-003 parity executable and complete one asynchronous, deterministic Codex
+capture-to-knowledge journey; then resolve the separate UI branch and release follow-ups. Do not
+expand harness support or MCP exposure before the Codex closure gate.
 
 **Storage boundary:** Go remains SQLite-only and never connects to PostgreSQL. Python requires `POSTGRES_URL`, validates it, and applies Alembic before serving; client-event sync is opt-in and idempotent.
 

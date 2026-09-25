@@ -1,6 +1,6 @@
 ---
 name: Active execution plan
-description: Ordered pickup sequence for silent Git correction, SAGE-003, UI integration, and release gates
+description: Ordered pickup sequence for silent Git validation, ticket and time corrections, SAGE-003, UI integration, and release gates
 type: project
 ---
 
@@ -12,30 +12,41 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
-- Current `dev` contains the SAGE-001/SAGE-002 capture foundation, the model-free SAGE-003 search
-  slice, removal of legacy Git Sage, neutral `internal/gitcmd` ownership, and the SAGE-003 LLM
-  transport, structured distiller, and non-blocking background worker. Durable SQLite queue
-  ownership and daemon lifecycle wiring remain the next Sage implementation boundary.
-- TASK-158 is committed on `fix/TASK-158-silent-git-path` and under review in PR #264. Finish the
-  review gate and land it before starting TASK-160.
-- TASK-157 / SAGE-003 is the active product initiative. TASK-158, TASK-160, and TASK-159 are
-  allocated to the silent actor, deterministic ticket contract, and automatic-time corrections;
-  the next unused task ID is TASK-161, subject to board verification.
+- Current `dev` at `fe3ad38` contains the SAGE-001/SAGE-002 capture foundation, the model-free
+  SAGE-003 search slice, removal of legacy Git Sage, neutral `internal/gitcmd` ownership, and the
+  SAGE-003 LLM transport, structured distiller, and non-blocking worker from PR #263. Durable SQLite
+  queue ownership and daemon lifecycle wiring remain the next Sage implementation boundary.
+- TASK-158 merged through PR #264. Native Linux plus explicit TTY/non-TTY qualification remain
+  unchecked. A separate local test draft is not part of TASK-161 and is not validation evidence.
+- PR #263 and PR #264 each have a failed hosted-Windows unit-test check. On PR #264 the 60-second
+  job timed out in SQLite-backed `internal/db` and `internal/mcp`; Windows build/vet, MCPB smoke,
+  no-send E2E, and the Sage distillation packages passed. Restore an all-green Windows unit-test
+  baseline as part of the validation follow-up.
+- TASK-161 owns the rolling `dev` release/update-channel work on
+  `features/TASK-161-rolling-dev-channel`. Keep it separate from TASK-158 validation and do not
+  claim it as shipped until review and first prerelease publication succeed.
+- TASK-157 / SAGE-003 is the active product initiative. TASK-160 and TASK-159 remain allocated to
+  the deterministic ticket contract and automatic-time corrections;
+  the next unused task ID is TASK-162, subject to board verification.
 - The board's active summary now describes the foundation as merged into `dev`; preserve closed
   task history and do not rewrite historical branch references.
 
 ## Ordered work
 
-### 1. Review and land the silent Git correction
+### 1. Close the silent Git native-Linux validation follow-up
 
-1. Review the complete TASK-158 source and documentation diff against current `dev`.
-2. Preserve closed history and unrelated work; do not mix TASK-160 implementation into this branch.
-3. Re-run the Go suite, vet, memory validation, wiki validation, and `git diff --check`.
-4. Commit, push, or open a PR only when explicitly authorized; the PR target is `dev`.
+1. Preserve the merged TASK-158 implementation and unrelated working-tree changes.
+2. Review the separate TTY/non-TTY test draft independently; do not treat its presence as a pass.
+3. Run the silence and fail-open path on native Linux in both non-TTY and pseudo-TTY contexts, then
+   run the Go suite and `go vet ./...`.
+4. Reproduce or successfully rerun the hosted-Windows unit-test timeout, without treating the green
+   Windows build/vet, MCPB, or E2E jobs as substitutes for that failed test job.
+5. Record sanitized evidence on the board and close the remaining acceptance boxes only after the
+   native Linux and hosted-Windows gates pass. Commit, push, or open a PR only when explicitly
+   authorized.
 
-Gate: TASK-158 is committed on its dedicated branch with normal `git commit` silent on Windows and
-Linux, the explicit helper free of post-commit questions, optional failures fail-open, and public
-documentation plus shared memory aligned with the implementation.
+Gate: normal `git commit` is proven silent and fail-open on native Linux in both TTY and non-TTY
+execution, with the merged explicit helper still free of post-commit questions.
 
 ### 2. Enforce deterministic branch-to-ticket mapping
 
@@ -71,22 +82,20 @@ reference scenario must still name its Go owner, exact Go test, status (`impleme
 Gate: scenario totals reconcile exactly, every row is actionable, and the matrix—not file
 presence or a prose claim—is the completion authority.
 
-### 5. Build one asynchronous distillation vertical slice
 ### 5. Complete the asynchronous distillation vertical slice
 
-1. Wire the existing non-blocking worker into daemon startup and cancellation-aware shutdown.
+1. Wire the merged non-blocking worker into daemon startup and cancellation-aware shutdown.
 2. Implement its queue interface with durable SQLite claims, processing leases, attempts,
    next-retry timestamps, sanitized errors, explicit skip reasons, and completion state.
 3. Recover abandoned leases after restart without loss or duplicate completion.
-4. Preserve the configurable bounded timing contract: a forgiving offline-model timeout, short
-   idle polling, and bounded retry delay. Hooks and foreground Git operations never wait on Sage.
-5. Feed successful validated drafts into the deterministic Markdown stage; keep topic/path
-   selection outside the model and retain malformed output or outages as retryable state.
+4. Preserve configurable bounded model, polling, and retry timing. Hooks and foreground Git
+   operations never wait on Sage.
+5. Feed validated drafts into deterministic Markdown while keeping topic/path selection outside the
+   model; malformed output and outages remain retryable state.
 
 Gate: one imported event can be claimed durably and distilled asynchronously through the daemon;
 startup returns immediately, shutdown cancels promptly, restart recovers expired leases, and
-timeout, malformed-output, cancellation, and outage cases retain recoverable work without
-interrupting capture or foreground Git operations.
+timeout, malformed-output, cancellation, and outage cases retain recoverable work.
 
 ### 6. Produce deterministic Markdown knowledge
 
