@@ -25,7 +25,8 @@ Before that implementation slice, reconcile every reference scenario with an exa
 explicit implementation status in the parity matrix.
 
 TASK-161 owns the rolling `dev` update-channel implementation on
-`features/TASK-161-rolling-dev-channel`. Focused tests pass, but it still requires PR review,
+`features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. The full Go suite, vet, focused
+tests, and documentation checks pass locally, but the feature still requires hosted checks, review,
 integration, and successful first-prerelease publication before public documentation may describe
 `devtrack upgrade --dev` as supported or shipped behavior.
 

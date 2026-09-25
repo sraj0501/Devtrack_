@@ -33,10 +33,10 @@ the correction channels surface them later.
 **Unresolved release follow-ups:** packaged-build acceptance; privacy-reviewed media; exact Glama listing path and the score-badge update on awesome-mcp-servers PR #13608.
 
 **Active distribution work:** TASK-161 owns the rolling `dev` prerelease and persisted update-channel
-implementation on `features/TASK-161-rolling-dev-channel`. Stable `main` remains the default and the
-feature remains unreleased until its PR is reviewed and its workflow publishes the first `dev`
-prerelease. TASK-158 validation work is excluded from this branch. At allocation time GitHub had no
-open pull requests; v3.1.1 remained the latest public release.
+implementation on `features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. Stable `main`
+remains the default and the feature remains unreleased until the PR is merged and its workflow
+publishes the first `dev` prerelease. TASK-158 validation work is excluded from this branch. v3.1.1
+remains the latest public release.
 
 **Known communication-learning gap:** Managed onboarding can seed voice data from local Git history,
 but the Python HTTP adapter behind status/enable/sync/reset/cron/profile/test/revoke is incomplete.

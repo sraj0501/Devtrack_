@@ -33,11 +33,12 @@ _Last updated: 2026-09-25 (TASK-158 and the Sage distillation foundation are mer
 - **TASK-159:** planned after TASK-160. Infer bounded local work windows without per-commit prompts,
   retaining auditable explicit corrections.
 - **TASK-161:** the rolling `dev` update-channel implementation and documentation reconciliation are
-  assigned to `features/TASK-161-rolling-dev-channel`. Focused tests pass; it remains unmerged and
+  pushed at `fe902f5` on `features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. The full Go
+  suite, vet, focused tests, and documentation checks pass locally. It remains unmerged and
   unreleased and excludes the separate TASK-158 validation draft.
 
-**External state checked 2026-09-25**: PRs #263 and #264 are merged, GitHub reports no open pull
-requests, and v3.1.1 remains the latest public release. Both PR check sets retain a failed
+**External state checked 2026-09-25**: PRs #263 and #264 are merged; PR #265 is open against `dev`;
+and v3.1.1 remains the latest public release. The earlier PR check sets retain a failed
 hosted-Windows unit-test job; the remaining checks described above passed.
 
 ---
