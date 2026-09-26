@@ -30,10 +30,11 @@ reviewed, integrated, or retired before the packaged build is qualified. Public 
 still need privacy review, and the exact Glama listing path must be recorded before its score badge
 is updated.
 
-The merged PR #263 and PR #264 check sets each retain a failed hosted-Windows unit-test job. PR
-#264's job timed out after 60 seconds in SQLite-backed `internal/db` and `internal/mcp` tests;
-Windows build/vet, native MCPB smoke, no-send E2E, and Sage distillation tests passed. These green
-lanes do not replace the failed unit-test gate.
+The merged PR #263 and PR #264 check sets retain historical failed hosted-Windows unit-test jobs. PR
+#264's job timed out after 60 seconds in SQLite-backed `internal/db` and `internal/mcp` tests. PR
+#265 subsequently passed all 19 branch checks, including the full Windows test job, Windows/Ubuntu
+no-send E2E, all five native MCPB smokes, PostgreSQL, wiki, and memory validation. This restores a
+green branch baseline; TASK-158's native-Linux TTY/non-TTY qualification remains separate.
 
 DevTrack Sage development is the active product initiative. Its capture, model-free search, neutral
 Go LLM client, validated structured distiller, and non-blocking worker foundation are on `dev`.

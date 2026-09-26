@@ -80,10 +80,14 @@ confidence-bearing action staging, an EOD narrative containing the observed comm
 local-day commit count, and cleanup of the disposable workspace. Do not approve any action merely to
 complete the demonstration.
 
-The Windows local-user Managed gate passed twice on 2026-09-04. The remaining release gates are a
-clean Windows account or machine, the full POSIX Managed demo, PostgreSQL-backed action review in
-the admin UI, and privacy-reviewed screenshots/video. The automated client lane supplements rather
-than replaces those gates. Roadmap feature development remains on hold until the full gates pass.
+The Windows local-user Managed gate passed twice on 2026-09-04. The owner then confirmed a clean
+Windows installation and a full Managed Linux acceptance run with PostgreSQL, Python, Ollama,
+staging, EOD, and MCP on 2026-09-10. The remaining release follow-ups are packaged-build Windows
+admin acceptance, review or retirement of the unintegrated TASK-154 admin-UI branch,
+privacy-reviewed screenshots/video, and recording the exact approved Glama path plus its score
+badge. TASK-158 also retains a separate native-Linux TTY/non-TTY qualification follow-up; do not
+conflate that narrow Git-silence gate with the already-completed Managed Linux journey. Automated
+client lanes supplement rather than replace packaged-build and interactive acceptance evidence.
 
 ## Source checkout
 

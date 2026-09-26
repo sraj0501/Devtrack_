@@ -15,11 +15,12 @@ fully qualified, then begin TASK-160.
 TASK-159 then replaces manual per-commit time entry with local, privacy-bounded activity-window
 inference; explicit work-session commands remain optional overrides/corrections.
 
-**Current CI gap:** The merged PR #263 and PR #264 check sets each contain a failed hosted-Windows
-unit-test job even though Windows build/vet, native MCPB smoke, and no-send E2E passed. PR #264's
-failed job timed out after 60 seconds in SQLite-backed `internal/db` and `internal/mcp` tests; its
-Sage distillation tests passed. Treat `dev` as lacking an all-green Windows unit-test baseline until
-the timeout is reproduced or rerun successfully.
+**Current CI evidence:** The merged PR #263 and PR #264 check sets each retain a historical failed
+hosted-Windows unit-test job; PR #264 timed out after 60 seconds in SQLite-backed `internal/db` and
+`internal/mcp` tests. PR #265 subsequently passed all 19 checks at branch head, including the full
+Windows unit-test job, Windows/Ubuntu no-send E2E, five native MCPB smokes, PostgreSQL, wiki, and
+shared-memory gates. That re-establishes a green branch baseline, but it does not merge TASK-161 or
+replace TASK-158's still-missing native-Linux TTY/non-TTY qualification.
 
 **Deterministic ticket contract:** TASK-160 makes `<kind>/<ticket-key>-<number>-<slug>` the canonical branch
 grammar and assigns tickets in this order: canonical branch, explicit commit prefix/trailer,
@@ -36,7 +37,8 @@ the correction channels surface them later.
 implementation on `features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. Stable `main`
 remains the default and the feature remains unreleased until the PR is merged and its workflow
 publishes the first `dev` prerelease. TASK-158 validation work is excluded from this branch. v3.1.1
-remains the latest public release.
+remains the latest public release. All 19 hosted checks on PR #265 are green; review, merge, and the
+first rolling-prerelease publication remain.
 
 **Known communication-learning gap:** Managed onboarding can seed voice data from local Git history,
 but the Python HTTP adapter behind status/enable/sync/reset/cron/profile/test/revoke is incomplete.

@@ -70,7 +70,7 @@ devtrack_server/backend/webhook_server.py   <-- FastAPI entry point
 | `backend/jira/` | Jira REST API client |
 | `backend/github/` | GitHub API integration |
 | `backend/azure/` | Azure DevOps integration |
-| `backend/msgraph_python/` | Microsoft Graph (Teams, Outlook) |
+| `backend/msgraph_python/` | Microsoft Graph modules; Teams/Outlook communication learning is not end-to-end available |
 | `backend/db/` | PostgreSQL-backed server stores and migrations; client SQLite boundary helpers |
 | `backend/ai/` | Low-level AI utilities (Ollama client, inference helpers) |
 | `backend/admin/` | Admin console routes (FastAPI + HTMX, JWT auth, user/license management) |

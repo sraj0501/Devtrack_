@@ -1,7 +1,8 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-25 (TASK-158 and the Sage distillation foundation are merged to unreleased
-`dev`; native Linux silence qualification and later product gates remain)_
+_Last updated: 2026-09-26 (TASK-158 and the Sage distillation foundation are merged to unreleased
+`dev`; PR #265 is all-green but unmerged; native Linux silence qualification and later product gates
+remain)_
 
 ---
 
@@ -34,12 +35,15 @@ _Last updated: 2026-09-25 (TASK-158 and the Sage distillation foundation are mer
   retaining auditable explicit corrections.
 - **TASK-161:** the rolling `dev` update-channel implementation and documentation reconciliation are
   pushed at `fe902f5` on `features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. The full Go
-  suite, vet, focused tests, and documentation checks pass locally. It remains unmerged and
-  unreleased and excludes the separate TASK-158 validation draft.
+  suite, vet, focused tests, and documentation checks pass locally. All 19 hosted checks pass,
+  including the full Windows test job, both no-send E2E lanes, all five native MCPB smokes,
+  PostgreSQL, wiki, and shared-memory validation. It remains unmerged and unreleased and excludes
+  the separate TASK-158 validation draft.
 
-**External state checked 2026-09-25**: PRs #263 and #264 are merged; PR #265 is open against `dev`;
-and v3.1.1 remains the latest public release. The earlier PR check sets retain a failed
-hosted-Windows unit-test job; the remaining checks described above passed.
+**External state checked 2026-09-26**: PRs #263 and #264 are merged; PR #265 is open against `dev`
+with all 19 checks passing; and v3.1.1 remains the latest public release. The earlier PR check sets
+retain their historical failed hosted-Windows unit-test jobs, superseded as the current branch
+baseline by PR #265's successful Windows test.
 
 ---
 

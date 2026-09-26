@@ -1,17 +1,23 @@
 # AI Personalization ("Talk Like You")
 
-DevTrack can learn your communication style and use it when generating commit messages, task descriptions, and work summaries — so the output sounds like you wrote it, not like a generic AI.
+DevTrack can build a local writing profile from evidence you control. Generators that explicitly
+load that profile can use it as style context; the profile does not prove that every AI path is
+personalized.
 
 ---
 
 ## How It Works
 
-DevTrack collects samples of how you write from:
-- Your Git commit messages
-- Your Microsoft Teams chat history (with explicit consent)
-- Your Outlook emails (with explicit consent)
+The working `devtrack voice` routes collect samples from:
+- local Git commit messages (`voice seed`);
+- explicit manual examples (`voice add`); and
+- configured GitHub, GitLab, or Azure PR descriptions/comments (`voice sync`).
 
-It builds a local profile — formality level, average length, common phrases, sign-offs, emoji usage — and injects this style into every AI prompt.
+Teams and Outlook are intended opt-in sources, but their separate communication-learning adapter is
+not currently end-to-end available.
+
+Profile generation writes a local `profile.md` with observed writing characteristics. Consumers must
+load it explicitly; it is not injected into every AI prompt automatically.
 
 Learning data stays local by default. If you explicitly configure a cloud LLM, remote server, Teams,
 Outlook, or another external source, the data required for that selected integration leaves the
@@ -26,15 +32,29 @@ machine under its configured consent and provider policy.
 
 ---
 
-## Setup
+## Working voice commands
 
-### 1. Enable Learning
+```bash
+devtrack voice seed
+devtrack voice add --context comment "Fixed the null check in auth flow"
+devtrack voice sync
+devtrack voice profile
+devtrack voice status
+```
+
+These commands use the maintained `/voice/*` HTTP routes. They are distinct from the legacy
+communication-learning command group below.
+
+## Legacy communication-learning contract (currently unavailable)
+
+### Intended enable flow
 
 ```bash
 devtrack enable-learning
 ```
 
-This starts an interactive consent flow that explains exactly what data will be collected, where it is stored, and how to revoke access. You must consent before any data is collected.
+This is the intended consent flow, but the current server adapter method is absent. Do not run it as
+an operational privacy control until the adapter is repaired.
 
 To collect from the past N days (default is 30):
 
@@ -42,7 +62,7 @@ To collect from the past N days (default is 30):
 devtrack enable-learning 14    # collect last 14 days
 ```
 
-### 2. Sync Data
+### Intended communication sync and cron
 
 After enabling, run a sync to collect samples:
 
@@ -61,7 +81,7 @@ devtrack learning-remove-cron   # remove cron entry
 
 ---
 
-## Using Your Profile
+## Legacy profile/test commands (currently unavailable)
 
 ### View Your Profile
 
@@ -69,11 +89,13 @@ devtrack learning-remove-cron   # remove cron entry
 devtrack show-profile
 ```
 
-Shows the learned style: formality level, average response length, common phrases, detected tone, emoji preference, sign-off patterns.
+This intended top-level command currently calls the legacy adapter before initialization. Use
+`devtrack voice status` to inspect corpus/profile state and `devtrack voice profile` to generate the
+maintained local profile instead.
 
 ### Test a Response
 
-Generate a sample personalized response without affecting anything:
+The intended response-preview command is currently unavailable:
 
 ```bash
 devtrack test-response "I finished the login module and it's ready for review"
@@ -95,7 +117,7 @@ an absent `get_status` method, so this command is unavailable until the adapter 
 | Variable | Description |
 |---|---|
 | `LEARNING_CRON_SCHEDULE` | Cron expression for daily sync (e.g. `0 20 * * *` for 8pm daily) |
-| `MONGODB_URI` | Optional storage for Microsoft Teams samples when Graph authentication, learning consent, and the `motor` dependency are available. It is never required, and it does not replace local storage. |
+| `MONGODB_URI` | Referenced by the incomplete Microsoft Teams adapter. It is never required for the maintained local Git/manual/PM voice paths. |
 
 Samples and profiles live locally under `DATA_DIR/learning/`. Git history alone is enough to seed
 voice evidence, but profile generation is a Python-server capability and therefore uses the required
@@ -114,7 +136,7 @@ Once installed, RAG is automatic — no extra configuration needed.
 
 ---
 
-## Disabling / Resetting
+## Legacy consent reset contract (currently unavailable)
 
 ### Revoke Consent
 
@@ -122,7 +144,8 @@ Once installed, RAG is automatic — no extra configuration needed.
 devtrack revoke-consent
 ```
 
-Revokes consent and stops all future data collection. Existing data is preserved.
+Intended behavior: revoke consent and stop future communication-source collection while preserving
+existing data. The adapter method is currently absent, so the command is not a reliable control.
 
 ### Full Reset
 
@@ -130,21 +153,25 @@ Revokes consent and stops all future data collection. Existing data is preserved
 devtrack learning-reset
 ```
 
-Wipes all collected data (local files, plus any Teams samples in MongoDB) and resets consent. Use this to start fresh.
+Intended behavior: wipe collected learning data and reset consent. The adapter method is currently
+absent. For the current release, stop DevTrack, back up anything needed, and use normal uninstall
+without `--keep-data`; direct SQL deletion is unsupported.
 
 ---
 
-## Integrations That Use Your Profile
+## Profile consumers and boundaries
 
-Once a profile exists, it is automatically applied to:
+The Python personalization/report paths can load a generated profile and RAG examples. Availability
+depends on the specific route and configured provider; a profile is not automatically applied to
+every generator.
 
 | Feature | How your style is used |
 |---|---|
-| Commit message enhancement | Matches your length and formality |
-| Work update descriptions | Writes in your voice |
-| DevTrack Sage knowledge | Produces private, searchable command documentation |
+| Python commit-message enrichment | Supplies commit-context style and related examples |
+| Ticket comments and work descriptions | Supplies comment/description style and related examples |
+| DevTrack Sage knowledge | Future consumer; deterministic Markdown knowledge is not complete yet |
 | Daily report generation | Matches your preferred format |
-| Task descriptions | Uses your phrasing patterns |
+| Python planning/task descriptions | Uses task-context style and related examples |
 
 If no profile exists, these features fall back to standard AI output — no errors, just no personalization.
 
@@ -155,5 +182,5 @@ If no profile exists, these features fall back to standard AI output — no erro
 | Store | Location | Contents |
 |---|---|---|
 | Local files | `DATA_DIR/learning/` | Samples (JSONL), profile (JSON), consent |
-| MongoDB (optional) | `MONGODB_URI` | Teams samples collected through an authenticated, consented Microsoft Graph integration. Not required. |
+| MongoDB (optional) | `MONGODB_URI` | Referenced by the incomplete Teams adapter; not required for the working Git/PM voice paths. |
 | Vector store | `DATA_DIR/learning/chroma/` | Embeddings for RAG (if AI tier installed) |

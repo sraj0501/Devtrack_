@@ -64,8 +64,9 @@ docker run -p 8089:8089 --env-file .env devtrack-server
 The Go binary on the host then connects via `DEVTRACK_SERVER_MODE=external`.
 
 `devtrack_server/docker-compose.yml` provides backing services for the Python server. PostgreSQL is
-required for server persistence and server-side events (`POSTGRES_URL`); MongoDB remains optional
-and is used only as a Microsoft Teams voice-learning source. The Go client does not require either:
+required for server persistence and server-side events (`POSTGRES_URL`); MongoDB is referenced only
+by the incomplete optional Microsoft Teams voice-learning adapter and is not part of the maintained
+local Git/manual/PM voice paths. The Go client does not require either:
 its local-first observation, queue, MCP, and replay path remains SQLite-backed and works offline.
 Server startup validates PostgreSQL connectivity and advances the schema to Alembic head before
 accepting requests. Compose waits for its bundled PostgreSQL health check; managed installs require
@@ -132,8 +133,8 @@ The Go binary (~5 MB, no Python) is published to **GitHub Releases** (`github.co
         ┌────────────────┼────────────────┬─────────────────┐
         │                │                │                 │
         ▼                ▼                ▼                 ▼
-    Azure DevOps      GitHub          Teams              Outlook
-    Work Items        Issues/PRs      Notifications      Email
+    Azure DevOps      GitHub          Teams learning     Outlook
+    Work Items        Issues/PRs      (adapter gap)      Email delivery
 ```
 
 ---
@@ -293,9 +294,9 @@ The smart processing engine that handles LLM enrichment and integrations.
 | **backend/llm/ollama_provider.py** | Local Ollama integration |
 | **backend/llm/openai_provider.py** | OpenAI GPT-4 integration |
 | **backend/llm/anthropic_provider.py** | Anthropic Claude integration |
-| **backend/personalized_ai.py** | AI learning from user communications (`ai` tier) |
+| **backend/personalized_ai.py** | Legacy communication-personalization engine (`ai` tier); its top-level HTTP adapter is incomplete |
 | **backend/rag/** | ChromaDB-backed RAG few-shot examples for personalization (`ai` tier) |
-| **backend/learning_integration.py** | Learning consent and profile handling |
+| **backend/learning_integration.py** | Legacy consent/profile adapter; current HTTP callers reference missing or prematurely initialized methods |
 
 #### User Interaction & Reporting
 
@@ -331,7 +332,7 @@ The smart processing engine that handles LLM enrichment and integrations.
 | **backend/gitlab/client.py** | GitLab issue fetching, commenting, creating |
 | **backend/github/client.py** | GitHub issue fetching, commenting, creating (GHE-ready) |
 | **backend/jira/client.py** | Jira REST API client |
-| **backend/msgraph_python/** | Microsoft Graph integration (Teams, Outlook) |
+| **backend/msgraph_python/** | Microsoft Graph modules (Teams learning is not end-to-end available; Outlook email is a separate delivery path) |
 
 ---
 

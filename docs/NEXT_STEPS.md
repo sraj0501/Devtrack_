@@ -1,6 +1,6 @@
 # Next Steps — DevTrack Sage
 
-_Updated 2026-09-25. This file lists active work only. Completed delivery and validation history
+_Updated 2026-09-26. This file lists active work only. Completed delivery and validation history
 lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
 ## Immediate repository sequence
@@ -11,10 +11,10 @@ observation is silent and fail-open, and database initialization no longer leaks
 path. Native Linux plus explicit TTY/non-TTY qualification still remain release gates; this is
 unreleased development state, not a claim about v3.1.1.
 
-The PR #263 and PR #264 check sets also each retain a failed hosted-Windows unit-test job. PR #264's
-job hit the 60-second timeout in SQLite-backed `internal/db` and `internal/mcp` tests, while Windows
-build/vet, native MCPB smoke, no-send E2E, and the Sage distillation packages passed. Restore a
-green Windows unit-test baseline rather than treating those other lanes as substitutes.
+The PR #263 and PR #264 check sets retain historical failed hosted-Windows unit-test jobs. PR #264's
+job hit the 60-second timeout in SQLite-backed `internal/db` and `internal/mcp` tests. PR #265 later
+passed all 19 hosted checks, including the full Windows test job, re-establishing a green branch
+baseline. TASK-158's native-Linux TTY/non-TTY qualification remains a separate open gate.
 
 The next product task is **TASK-160**, which implements the deterministic branch-to-ticket contract
 defined in `PRODUCT_BIBLE.md`: canonical branch, explicit commit prefix/trailer, explicit active
@@ -26,9 +26,9 @@ explicit implementation status in the parity matrix.
 
 TASK-161 owns the rolling `dev` update-channel implementation on
 `features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. The full Go suite, vet, focused
-tests, and documentation checks pass locally, but the feature still requires hosted checks, review,
-integration, and successful first-prerelease publication before public documentation may describe
-`devtrack upgrade --dev` as supported or shipped behavior.
+tests, and documentation checks pass locally, and all 19 hosted PR checks pass. The feature still
+requires review, integration, and successful first-prerelease publication before public
+documentation may describe `devtrack upgrade --dev` as supported or shipped behavior.
 
 ## Current product initiative
 

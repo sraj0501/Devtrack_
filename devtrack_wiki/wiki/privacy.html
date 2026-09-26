@@ -68,7 +68,7 @@
         <li><strong>Go client:</strong> local SQLite for triggers, work sessions, pending actions, history, MCP context, and offline replay.</li>
         <li><strong>Python server:</strong> PostgreSQL is required for server persistence and server-side events.</li>
         <li><strong>Voice retrieval:</strong> ChromaDB is optional and lives with the configured Python server (local in managed mode, server-side in external mode).</li>
-        <li><strong>Teams learning source:</strong> MongoDB is optional and used only when that integration is enabled.</li>
+        <li><strong>Teams learning source:</strong> MongoDB is referenced only by an optional adapter whose end-to-end HTTP path is currently incomplete. It is not required for the working local Git-history voice path.</li>
       </ul>
       <p>The Go client never connects directly to PostgreSQL.</p>
     </section>
@@ -93,7 +93,7 @@
       <p>OpenAI, Anthropic, and Groq are optional. They are used only when configured and selected by the provider chain. Prompt text required for generation is sent to the selected provider; do not enable a cloud provider if that is incompatible with your project policy.</p>
       <p>Setup may offer an already-present OpenAI or Anthropic credential as a temporary fast lane while a local model downloads. It requires explicit acceptance, and Ollama remains primary.</p>
       <h2>Learning data</h2>
-      <p>Git voice seeding reads local commit history. Additional PM, Teams, or recording sources are opt-in. Local profiles and examples are used to guide generated text. The intended learning reset/revoke commands currently depend on an incomplete server adapter; do not rely on them until that adapter is repaired.</p>
+      <p>Git voice seeding reads local commit history. PM voice sync is available through the separate <code>devtrack voice sync</code> path. The legacy communication-learning adapter for Teams/Outlook and the top-level status, enable, sync, reset, cron, profile, test, and revoke commands is incomplete; do not rely on those paths until the adapter is repaired.</p>
     </section>
     <section id="control" class="tab-content">
       <h1>Your control</h1>
@@ -102,7 +102,7 @@ devtrack telemetry off
 devtrack queue list
 devtrack queue reject &lt;id&gt;
 devtrack uninstall</code></pre>
-      <p><code>learning-status</code>, <code>revoke-consent</code>, and <code>learning-reset</code> are currently unavailable because their server adapter is incomplete. A normal uninstall removes DevTrack data; <code>--keep-data</code> deliberately preserves it.</p>
+      <p><code>learning-status</code>, <code>enable-learning</code>, <code>learning-sync</code>, learning cron commands, <code>show-profile</code>, <code>test-response</code>, <code>revoke-consent</code>, and <code>learning-reset</code> are currently unavailable because their server adapter is incomplete. These are distinct from the working <code>devtrack voice seed|profile|add|sync|status</code> routes. A normal uninstall removes DevTrack data; <code>--keep-data</code> deliberately preserves it.</p>
       <p>Before deleting data, stop the daemon and back up the path reported by <code>devtrack settings</code>. Database schemas evolve; direct SQL deletion is not a supported privacy workflow.</p>
       <p>To report a privacy or security issue, open a GitHub issue without including credentials, tokens, private code, or personal data.</p>
     </section>
@@ -120,7 +120,7 @@ devtrack uninstall</code></pre>
         <li>Run <code>devtrack stop</code>.</li><li>Revoke the credential at its provider.</li>
         <li>Replace it in the registered DevTrack environment file.</li><li>Review local logs and pending actions before restarting.</li>
       </ol></div>
-      <p><strong>Last updated:</strong> September 3, 2026</p>
+      <p><strong>Last updated:</strong> September 26, 2026</p>
     </section>
   </div></div>
   <script src="assets/script.js"></script>
