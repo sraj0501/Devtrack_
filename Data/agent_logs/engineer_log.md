@@ -22,6 +22,8 @@
 - PR #265 subsequently merged to `dev` at `f6b0ec0`. Successful workflow run `36136822555`
   published the rolling `dev-f6b0ec0` prerelease with checksums and all five platform binaries:
   https://github.com/sraj0501/Devtrack_/releases/tag/dev
+- The completed post-merge documentation synchronization is under review in PR #266 targeting
+  `dev`: https://github.com/sraj0501/Devtrack_/pull/266
 
 ### [2026-09-25] TASK-161 — rolling development update channel pushed for review
 
