@@ -200,10 +200,12 @@ devtrack upgrade
 ```
 
 `devtrack upgrade` installs the latest build from the selected update channel. Existing and new
-installations default to stable releases from `main`; TASK-161 adds `devtrack upgrade --dev` as an
-opt-in path for rolling development builds. That channel is not part of v3.1.1 or the current
-`origin/dev` baseline and is usable only after the TASK-161 PR is merged and its workflow publishes
-a `dev` prerelease.
+installations default to stable releases from `main`. TASK-161 merged through
+[PR #265](https://github.com/sraj0501/Devtrack_/pull/265), and current rolling `dev` binaries add
+`devtrack upgrade --dev` as the explicit opt-in path for development builds. The v3.1.1 binary does
+not contain these flags; install a binary from the rolling
+[`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev) (or build `origin/dev`)
+before selecting a channel from the CLI.
 
 The daemon mines enabled local repositories in Managed mode and builds the voice profile once the
 local AI server is reachable. `devtrack status` and `devtrack doctor` show the persistent result and
@@ -549,10 +551,12 @@ The command prints the resolved targets before confirmation. There is no `--dry-
 
 ### Self-update (`devtrack upgrade`)
 
-> **Unreleased TASK-161 change:** `--dev`, `--main`, `--stable`, and persisted update-channel
-> selection are implemented on `features/TASK-161-rolling-dev-channel` but are not present in
-> v3.1.1 or the current `origin/dev` baseline. Until the PR is merged and publishes a `dev`
-> prerelease, released builds should use plain `devtrack upgrade`.
+> **Rolling `dev` feature, not a v3.1.1 command:** `--dev`, `--main`, `--stable`, and persisted
+> update-channel selection merged through [PR #265](https://github.com/sraj0501/Devtrack_/pull/265)
+> and are available in the rolling
+> [`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev). A v3.1.1 installation
+> must first install that development binary manually (or build `origin/dev`); afterward these flags
+> select and persist the desired channel. Plain `devtrack upgrade` remains the stable v3.1.1 path.
 
 ```bash
 devtrack upgrade          # update from the currently selected channel (main by default)

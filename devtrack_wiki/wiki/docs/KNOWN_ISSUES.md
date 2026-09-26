@@ -45,10 +45,10 @@ TASK-158's completely silent native-Git path is also merged into `dev` but is no
 Until a newer public build ships, v3.1.1 users can still encounter its shell-wrapped post-commit
 prompt regression.
 
-Rolling `dev` update-channel support is TASK-161 work on
-`features/TASK-161-rolling-dev-channel`. Treat `devtrack upgrade --dev`, `--main`, and `--stable`
-as unavailable in published or merged builds until its PR is reviewed, integrated, and publishes
-the first `dev` prerelease.
+Rolling `dev` update-channel support merged through PR #265 and is available in the published
+[`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev). The stable v3.1.1 binary
+does not contain `devtrack upgrade --dev`, `--main`, or `--stable`; install the development binary
+manually (or build current `dev`) before using those flags.
 
 ## Communication-learning CLI adapter
 

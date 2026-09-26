@@ -16,9 +16,12 @@
 - Recorded all 19 PR checks passing, including the full hosted-Windows unit-test job that restores
   the current branch baseline after the historical PR #263/#264 timeouts.
 - Verification passed: shared-memory boundary, inline JavaScript, Git Bash installer syntax,
-  whitespace, 66-file Markdown local-link audit, HTML asset/link audit, wiki hash targets, five
+  whitespace, 86-file Markdown local-link audit, HTML asset/link audit, wiki hash targets, five
   platform fallbacks, and stale-claim scans. No browser connection was available, so no visual
   browser result is claimed.
+- PR #265 subsequently merged to `dev` at `f6b0ec0`. Successful workflow run `36136822555`
+  published the rolling `dev-f6b0ec0` prerelease with checksums and all five platform binaries:
+  https://github.com/sraj0501/Devtrack_/releases/tag/dev
 
 ### [2026-09-25] TASK-161 — rolling development update channel pushed for review
 
@@ -46,13 +49,14 @@ shell-safe message `feat-TASK-161-rolling-development-update-channel`.
 ## Task Summary — TASK-161: Rolling development update channel — 2026-09-25
 
 - Total commits: 1 implementation/documentation commit plus this status follow-up
-- Acceptance criteria met: 8/8 locally and all 19 hosted checks passing; review/merge pending
+- Acceptance criteria met: 8/8 locally and all 19 hosted checks passing; merged and rolling
+  prerelease published on 2026-09-25
 - Tickets auto-updated: 0 external PM tickets
 - Estimated daily time saved: not measured
 - Blockers encountered: none
 - One thing that still feels rough: the installed v3.1.1 commit wrapper does not preserve a quoted
   multi-word `-m` value correctly under this Windows invocation path
-- Ready for PM review: YES
+- Ready for PM review: COMPLETE — PR #265 merged
 
 ---
 

@@ -24,11 +24,10 @@ slices, continue TASK-157 / SAGE-003 at its durable distillation-queue boundary.
 Before that implementation slice, reconcile every reference scenario with an exact Go test and
 explicit implementation status in the parity matrix.
 
-TASK-161 owns the rolling `dev` update-channel implementation on
-`features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. The full Go suite, vet, focused
-tests, and documentation checks pass locally, and all 19 hosted PR checks pass. The feature still
-requires review, integration, and successful first-prerelease publication before public
-documentation may describe `devtrack upgrade --dev` as supported or shipped behavior.
+TASK-161's rolling `dev` update channel merged through PR #265 at `f6b0ec0` after all 19 hosted
+checks passed. Successful workflow run `36136822555` published `dev-f6b0ec0` with checksums and all
+five platform binaries. The channel flags are supported in that rolling prerelease/current `dev`,
+not in stable v3.1.1; stable `main` remains the default.
 
 ## Current product initiative
 

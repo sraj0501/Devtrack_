@@ -12,7 +12,7 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
-- Current `dev` at `fe3ad38` contains the SAGE-001/SAGE-002 capture foundation, the model-free
+- Current `dev` at `f6b0ec0` contains the SAGE-001/SAGE-002 capture foundation, the model-free
   SAGE-003 search slice, removal of legacy Git Sage, neutral `internal/gitcmd` ownership, and the
   SAGE-003 LLM transport, structured distiller, and non-blocking worker from PR #263. Durable SQLite
   queue ownership and daemon lifecycle wiring remain the next Sage implementation boundary.
@@ -22,9 +22,9 @@ without an authorized board task and a dedicated branch targeting `dev`.
   60-second job timed out in SQLite-backed `internal/db` and `internal/mcp`. PR #265 later passed
   all 19 branch checks, including the full Windows test job, so the hosted baseline is green again;
   TASK-158's native-Linux TTY/non-TTY qualification remains separate and incomplete.
-- TASK-161 owns the rolling `dev` release/update-channel work on
-  `features/TASK-161-rolling-dev-channel`. Keep it separate from TASK-158 validation and do not
-  claim it as shipped until review and first prerelease publication succeed.
+- TASK-161 merged through PR #265 at `f6b0ec0`; workflow run `36136822555` published the rolling
+  `dev-f6b0ec0` prerelease with all five platform binaries and checksums. It is available on the
+  rolling `dev` channel but is not part of stable v3.1.1. Keep TASK-158 validation separate.
 - TASK-157 / SAGE-003 is the active product initiative. TASK-160 and TASK-159 remain allocated to
   the deterministic ticket contract and automatic-time corrections;
   the next unused task ID is TASK-162, subject to board verification.

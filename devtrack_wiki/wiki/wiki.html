@@ -1538,8 +1538,8 @@ chmod +x devtrack-server.sh
 devtrack upgrade --check
 devtrack upgrade</code></pre>
 <p>Linux and macOS use <code>devtrack_&lt;os&gt;_&lt;arch&gt;.tar.gz</code>. Windows downloads the published <code>.exe</code> directly. A development build reports the latest release without overwriting itself as a tagged installation.</p>
-<h2>Unreleased rolling update channels</h2>
-<p>TASK-161 on <code>features/TASK-161-rolling-dev-channel</code> adds a persistent update-channel choice: stable releases from <code>main</code> remain the default, while <code>devtrack upgrade --dev</code> opts into a rolling <code>dev</code> prerelease and <code>devtrack upgrade --main</code> (or <code>--stable</code>) returns to stable. <code>--check</code> can inspect either channel without switching. These flags are not available in v3.1.1 or merged <code>dev</code> yet; use them only after the PR is reviewed, integrated, and publishes the first prerelease.</p>
+<h2>Rolling development update channel</h2>
+<p>TASK-161 merged through <a href="https://github.com/sraj0501/Devtrack_/pull/265" target="_blank" rel="noopener">PR #265</a> and adds a persistent update-channel choice: stable releases from <code>main</code> remain the default, while <code>devtrack upgrade --dev</code> opts into the rolling <a href="https://github.com/sraj0501/Devtrack_/releases/tag/dev" target="_blank" rel="noopener"><code>dev</code> prerelease</a> and <code>devtrack upgrade --main</code> (or <code>--stable</code>) returns to stable. <code>--check</code> can inspect either channel without switching. The v3.1.1 binary does not contain these flags; first install a rolling-development binary manually or build current <code>dev</code>.</p>
 <h2>Managed Server Update</h2>
 <p>After the binary succeeds, managed mode updates the optional Python server through the durable background worker:</p>
 <pre><code class="language-bash">devtrack doctor
@@ -1640,12 +1640,12 @@ devtrack start</code></pre>
 <li><strong>Distillation foundation:</strong> PR #263 adds a neutral Go LLM client, structured title/what/why/example/notes drafts with required-field validation and explicit skip verdicts, and a non-blocking worker with bounded model calls.</li>
 <li><strong>Still in progress:</strong> SAGE-003 is not complete. The worker is not yet wired to durable SQLite claims or daemon lifecycle. Deterministic Markdown topic files, routing and correction operations, persistent retries/leases, logs/diagnostics, safe local knowledge commits, remaining harness adapters, and parity coverage are pending.</li>
 </ul>
-<h2>TASK-161 under review — rolling update channels</h2>
+<h2>TASK-161 merged — rolling update channels</h2>
 <ul>
 <li><strong>Stable by default:</strong> existing and new installations continue to follow releases from <code>main</code>.</li>
 <li><strong>Explicit rolling opt-in:</strong> TASK-161 adds <code>devtrack upgrade --dev</code>, with <code>--main</code>/<code>--stable</code> to return and <code>--check</code> to inspect without switching.</li>
-<li><strong>Review evidence:</strong> <a href="https://github.com/sraj0501/Devtrack_/pull/265" target="_blank" rel="noopener">PR #265</a> targets <code>dev</code> and all 19 hosted checks pass.</li>
-<li><strong>Not merged or released:</strong> the task branch, flags, and rolling <code>dev</code> prerelease workflow are not part of v3.1.1 or current <code>origin/dev</code>.</li>
+<li><strong>Merge evidence:</strong> <a href="https://github.com/sraj0501/Devtrack_/pull/265" target="_blank" rel="noopener">PR #265</a> passed all 19 hosted checks and merged to <code>dev</code> at <code>f6b0ec0</code>.</li>
+<li><strong>Published rolling build:</strong> successful workflow run <a href="https://github.com/sraj0501/Devtrack_/actions/runs/36136822555" target="_blank" rel="noopener">36136822555</a> published <a href="https://github.com/sraj0501/Devtrack_/releases/tag/dev" target="_blank" rel="noopener"><code>dev-f6b0ec0</code></a> with checksums and all five platform binaries. Stable v3.1.1 remains unchanged and does not contain the channel flags.</li>
 </ul>
 <h2>Current dev — E2E and Windows Admin Acceptance</h2>
 <ul>
@@ -3310,9 +3310,9 @@ function renderHome() {
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation, MCP context, and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1 is public; current <code>dev</code> adds the silent Git correction and Sage capture, search, and structured-distillation foundations. Rolling update channels are unreleased TASK-161 branch work.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1 remains stable; current <code>dev</code> adds the silent Git correction, Sage capture/search/structured-distillation foundations, and the published rolling development update channel.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
-        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the stable platform asset, runs migrations, and restarts the daemon. Persistent <code>--dev</code>/<code>--main</code> update-channel selection is unreleased TASK-161 branch work, not a v3.1.1 command.' },
+        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the selected channel\'s platform asset, runs migrations, and restarts the daemon. Persistent <code>--dev</code>/<code>--main</code> selection is available in the rolling <code>dev</code> prerelease, not in v3.1.1.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },

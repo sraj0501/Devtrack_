@@ -1,6 +1,6 @@
 ﻿# DevTrack Project Board
 
-**[2026-09-25] TASK-161 — Rolling development update channel and state reconciliation (in progress, HIGH).**
+**[2026-09-25] TASK-161 — Rolling development update channel and state reconciliation (complete, HIGH).**
 **Priority:** HIGH distribution/developer-experience follow-up. **Branch:**
 `features/TASK-161-rolling-dev-channel`. **Assigned to:** engineer. **Started:** 2026-09-25.
 
@@ -23,17 +23,18 @@ status records with the verified PR #263/#264, release, CI, learning-adapter, an
 - [x] Focused update-channel tests pass and documentation validators pass.
 - [x] Full Go suite is green on the task branch or every unrelated/environmental failure is
       reproduced, recorded, and resolved or explicitly accepted for PR review.
-- [x] Branch is pushed and PR #265 targets `dev`; no direct `main` mutation occurs.
+- [x] PR #265 merged to `dev` without a direct `main` mutation; workflow run `36136822555`
+      published `dev-f6b0ec0` with checksums and all five platform binaries.
 
-**Engineer status:** READY FOR REVIEW — commit `fe902f5` is pushed and PR #265 targets `dev`.
-After rebasing onto `origin/dev`, the full Go suite, `go vet ./...`, five focused update-channel
-tests, shared-memory validation, wiki inline-JavaScript validation, and `git diff --check` pass.
-All 19 hosted checks pass, including the full Windows test job, both no-send E2E lanes, all five
-native MCPB smokes, PostgreSQL, wiki, and shared-memory validation. TASK-158's separate post-commit
-silence-test draft is excluded from this branch.
+**Engineer status:** COMPLETE — PR #265 merged to `dev` at `f6b0ec0`. The full Go suite,
+`go vet ./...`, five focused update-channel tests, shared-memory validation, wiki inline-JavaScript
+validation, and `git diff --check` passed. All 19 hosted checks passed, including the full Windows
+test job, both no-send E2E lanes, all five native MCPB smokes, PostgreSQL, wiki, and shared-memory
+validation. The successful `dev` workflow published `dev-f6b0ec0`; TASK-158's separate post-commit
+silence-test draft remains excluded.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/265
-**Blockers:** no implementation or CI blocker; review, merge, and first rolling-prerelease
-publication remain.
+**Release:** https://github.com/sraj0501/Devtrack_/releases/tag/dev
+**Blockers:** none for TASK-161. Stable v3.1.1 intentionally remains unchanged.
 
 ---
 
@@ -219,15 +220,15 @@ history-item normalizer and synthetic fixture. Warp is not named upstream; its r
 inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
 verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-157.
 
-_Last updated: 2026-09-26 — PR #263 (SAGE distillation foundation) and PR #264 (TASK-158 silent Git
-path) are merged to `dev`; TASK-161 is under review in PR #265 with all 19 hosted checks passing.
+_Last updated: 2026-09-26 — PR #263 (SAGE distillation foundation), PR #264 (TASK-158 silent Git
+path), and PR #265 (TASK-161 rolling updates) are merged to `dev`; PR #265 passed all 19 checks.
 The earlier PR check sets retain historical failed hosted-Windows unit-test jobs, while PR #265's
 full Windows test pass restores the branch baseline. TASK-158 still needs native Linux TTY/non-TTY
 qualification before TASK-160, followed by TASK-159. TASK-157 / SAGE-003 remains the active product
-initiative, with durable queue/daemon integration next. TASK-161 remains unmerged and unshipped on
-its dedicated branch. The UI redesign remains on its separate branch. v3.1.1 remains the latest
-public release; packaged qualification, media, and listing follow-ups remain. Next unused task ID:
-TASK-162._
+initiative, with durable queue/daemon integration next. Workflow run `36136822555` published the
+rolling `dev-f6b0ec0` prerelease; stable v3.1.1 remains the latest stable public release. The UI
+redesign remains on its separate branch; packaged qualification, media, and listing follow-ups
+remain. Next unused task ID: TASK-162._
 
 **[2026-09-10] Environment validation closure.** The owner confirmed that the supported clean
 Windows installation and the full Managed Linux validation journey are complete. These runs were
