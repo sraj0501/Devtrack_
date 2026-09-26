@@ -15,11 +15,12 @@ fully qualified, then begin TASK-160.
 TASK-159 then replaces manual per-commit time entry with local, privacy-bounded activity-window
 inference; explicit work-session commands remain optional overrides/corrections.
 
-**Current CI gap:** The merged PR #263 and PR #264 check sets each contain a failed hosted-Windows
-unit-test job even though Windows build/vet, native MCPB smoke, and no-send E2E passed. PR #264's
-failed job timed out after 60 seconds in SQLite-backed `internal/db` and `internal/mcp` tests; its
-Sage distillation tests passed. Treat `dev` as lacking an all-green Windows unit-test baseline until
-the timeout is reproduced or rerun successfully.
+**Current CI evidence:** The merged PR #263 and PR #264 check sets each retain a historical failed
+hosted-Windows unit-test job; PR #264 timed out after 60 seconds in SQLite-backed `internal/db` and
+`internal/mcp` tests. PR #265 subsequently passed all 19 checks and merged TASK-161 to `dev` at
+`f6b0ec0`, including the full Windows unit-test job, Windows/Ubuntu no-send E2E, five native MCPB
+smokes, PostgreSQL, wiki, and shared-memory gates. That re-establishes a green hosted baseline but
+does not replace TASK-158's still-missing native-Linux TTY/non-TTY qualification.
 
 **Deterministic ticket contract:** TASK-160 makes `<kind>/<ticket-key>-<number>-<slug>` the canonical branch
 grammar and assigns tickets in this order: canonical branch, explicit commit prefix/trailer,
@@ -32,11 +33,11 @@ the correction channels surface them later.
 
 **Unresolved release follow-ups:** packaged-build acceptance; privacy-reviewed media; exact Glama listing path and the score-badge update on awesome-mcp-servers PR #13608.
 
-**Active distribution work:** TASK-161 owns the rolling `dev` prerelease and persisted update-channel
-implementation on `features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. Stable `main`
-remains the default and the feature remains unreleased until the PR is merged and its workflow
-publishes the first `dev` prerelease. TASK-158 validation work is excluded from this branch. v3.1.1
-remains the latest public release.
+**Distribution state:** TASK-161 merged through PR #265 at `f6b0ec0`. Its successful `dev` workflow
+run `36136822555` published the rolling `dev-f6b0ec0` prerelease with checksums and all five platform
+binaries at `https://github.com/sraj0501/Devtrack_/releases/tag/dev`. Stable `main` remains the
+default, and v3.1.1 remains the latest stable public release; v3.1.1 does not contain the new channel
+flags. TASK-158 native-Linux validation remains separate from this completed distribution work.
 
 **Known communication-learning gap:** Managed onboarding can seed voice data from local Git history,
 but the Python HTTP adapter behind status/enable/sync/reset/cron/profile/test/revoke is incomplete.

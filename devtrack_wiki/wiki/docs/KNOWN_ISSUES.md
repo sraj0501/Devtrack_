@@ -30,10 +30,11 @@ reviewed, integrated, or retired before the packaged build is qualified. Public 
 still need privacy review, and the exact Glama listing path must be recorded before its score badge
 is updated.
 
-The merged PR #263 and PR #264 check sets each retain a failed hosted-Windows unit-test job. PR
-#264's job timed out after 60 seconds in SQLite-backed `internal/db` and `internal/mcp` tests;
-Windows build/vet, native MCPB smoke, no-send E2E, and Sage distillation tests passed. These green
-lanes do not replace the failed unit-test gate.
+The merged PR #263 and PR #264 check sets retain historical failed hosted-Windows unit-test jobs. PR
+#264's job timed out after 60 seconds in SQLite-backed `internal/db` and `internal/mcp` tests. PR
+#265 subsequently passed all 19 branch checks, including the full Windows test job, Windows/Ubuntu
+no-send E2E, all five native MCPB smokes, PostgreSQL, wiki, and memory validation. This restores a
+green branch baseline; TASK-158's native-Linux TTY/non-TTY qualification remains separate.
 
 DevTrack Sage development is the active product initiative. Its capture, model-free search, neutral
 Go LLM client, validated structured distiller, and non-blocking worker foundation are on `dev`.
@@ -44,10 +45,10 @@ TASK-158's completely silent native-Git path is also merged into `dev` but is no
 Until a newer public build ships, v3.1.1 users can still encounter its shell-wrapped post-commit
 prompt regression.
 
-Rolling `dev` update-channel support is TASK-161 work on
-`features/TASK-161-rolling-dev-channel`. Treat `devtrack upgrade --dev`, `--main`, and `--stable`
-as unavailable in published or merged builds until its PR is reviewed, integrated, and publishes
-the first `dev` prerelease.
+Rolling `dev` update-channel support merged through PR #265 and is available in the published
+[`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev). The stable v3.1.1 binary
+does not contain `devtrack upgrade --dev`, `--main`, or `--stable`; install the development binary
+manually (or build current `dev`) before using those flags.
 
 ## Communication-learning CLI adapter
 

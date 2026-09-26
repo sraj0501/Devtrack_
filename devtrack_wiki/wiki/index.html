@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DevTrack — Never write a standup again</title>
-  <meta name="description" content="You commit. DevTrack updates the ticket and writes the EOD report — silently, in your voice, entirely on your machine. A local-first background daemon that never prompts you and stages every outbound action for your review.">
+  <meta name="description" content="You commit. DevTrack prepares ticket updates and EOD reports through a local-first background daemon. Outbound actions are staged for review; cloud and service integrations are explicit opt-ins.">
   <meta property="og:title" content="DevTrack — Never write a standup again">
-  <meta property="og:description" content="You commit. Tickets update, EOD reports write themselves — silently, in your voice, entirely on your machine.">
+  <meta property="og:description" content="You commit. DevTrack prepares ticket updates and EOD reports through a local-first workflow with reviewed outbound actions.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://devtrack.cloud/">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="DevTrack — Never write a standup again">
-  <meta name="twitter:description" content="You commit. Tickets update, EOD reports write themselves — silently, in your voice, entirely on your machine.">
+  <meta name="twitter:description" content="You commit. DevTrack prepares ticket updates and EOD reports through a local-first workflow with reviewed outbound actions.">
 
   <link rel="icon" type="image/png" sizes="192x192" href="assets/devtrack.png" />
   <link rel="apple-touch-icon" href="assets/devtrack.png" />
@@ -73,7 +73,7 @@
   </h1>
 
   <p class="hero-sub">
-    You commit. Tickets update, EOD reports write themselves — silently, in your voice, entirely on your machine. A background daemon watches your commits and infers the rest. It never prompts you, and nothing is sent until you approve it.
+    You commit. DevTrack prepares ticket updates and EOD reports through a local-first background daemon. It never prompts in the Git path. PM, email, and chat actions wait in the review queue; optional cloud models and external services are used only when you configure them.
   </p>
 
   <div class="hero-cta">
@@ -113,8 +113,8 @@
     <div class="proof-label">Prompts. The daemon never interrupts you</div>
   </div>
   <div class="proof-item reveal reveal-delay-1">
-    <div class="proof-num grad-text">100%</div>
-    <div class="proof-label">Local — your code never leaves your machine</div>
+    <div class="proof-num grad-text">Local-first</div>
+    <div class="proof-label">SQLite core; cloud and service connections are opt-in</div>
   </div>
   <div class="proof-item reveal reveal-delay-2">
     <div class="proof-num grad-text">0</div>
@@ -161,9 +161,9 @@
 
       <div class="feat-card reveal">
         <div class="feat-icon" style="background:rgba(139,92,246,.12);">🤖</div>
-        <div class="feat-title">DevTrack Sage</div>
-        <div class="feat-desc">Silent, privacy-minimized command capture from coding harnesses, grouped and indexed locally as searchable personal knowledge.</div>
-        <span class="feat-tag" style="color:#8b5cf6;border-color:rgba(139,92,246,.3);">Go · SQLite · local</span>
+        <div class="feat-title">DevTrack Sage (in development)</div>
+        <div class="feat-desc">Current <code>dev</code> has privacy-minimized Codex capture, SQLite import, and search foundations. It is not part of v3.1.1; durable distillation and Markdown knowledge remain unfinished.</div>
+        <span class="feat-tag" style="color:#8b5cf6;border-color:rgba(139,92,246,.3);">unreleased · current dev</span>
       </div>
 
       <div class="feat-card reveal reveal-delay-1">
@@ -176,7 +176,7 @@
       <div class="feat-card reveal">
         <div class="feat-icon" style="background:rgba(245,158,11,.12);">🎨</div>
         <div class="feat-title">Talk Like You</div>
-        <div class="feat-desc">Learns your writing voice from your own git history — automatically, with nothing to configure. Every generated update sounds like you wrote it, not a bot. (Teams history is an optional extra source, off by default.)</div>
+        <div class="feat-desc">Managed onboarding can seed a local voice profile from your Git history. The separate Teams/Outlook communication-learning adapter is currently incomplete and is not an available end-to-end source.</div>
         <span class="feat-tag" style="color:#f59e0b;border-color:rgba(245,158,11,.3);">ChromaDB · RAG few-shot</span>
       </div>
 
@@ -307,8 +307,8 @@
       </div>
       <div class="integration-card reveal reveal-delay-3">
         <div class="integration-logo">💬</div>
-        <div class="integration-name">MS Teams</div>
-        <div class="integration-desc">Optional extra voice source — off by default</div>
+        <div class="integration-name">MS Teams (not ready)</div>
+        <div class="integration-desc">Communication-learning adapter requires repair before use</div>
       </div>
       <div class="integration-card reveal reveal-delay-3">
         <div class="integration-logo">📊</div>
@@ -349,14 +349,14 @@
       <div class="demo-item reveal reveal-delay-1">
         <div class="demo-item-header">
           <span class="demo-item-icon">🤖</span>
-          <span class="demo-item-title">DevTrack Sage</span>
+          <span class="demo-item-title">DevTrack Sage · development preview</span>
         </div>
         <div class="demo-item-body">
 <span class="cmd">$ devtrack sage search "undo commit"</span><br><br>
 <span class="info">## Keep changes while undoing a commit</span><br>
 <span class="muted">Topic: git · seen 4 times · codex</span><br><br>
 <span class="ok">git reset --soft HEAD~1</span><br><br>
-<span class="hl">Private command knowledge, indexed locally.</span>
+<span class="hl">Unreleased search foundation on current dev; not in v3.1.1.</span>
         </div>
       </div>
 
@@ -379,17 +379,15 @@
       <div class="demo-item reveal reveal-delay-1">
         <div class="demo-item-header">
           <span class="demo-item-icon">🎨</span>
-          <span class="demo-item-title">Personalized AI Updates</span>
+          <span class="demo-item-title">Local Voice Profile</span>
         </div>
         <div class="demo-item-body">
-<span class="cmd">$ devtrack test-response "completed auth module"</span><br><br>
-<span class="info">✦ Loading style profile...</span><br>
-<span class="info">✦ Retrieving 3 RAG examples...</span><br><br>
-<span class="ok">Generated (in your voice):</span><br>
-<span class="hl">"Wrapped up the auth module — JWT</span><br>
-<span class="hl"> validation + refresh token rotation</span><br>
-<span class="hl"> both done. Ready for review."</span><br><br>
-<span class="warn">Matches your communication style ✓</span>
+<span class="cmd">$ devtrack voice seed</span><br>
+<span class="info">Seeding voice corpus from local Git history...</span><br>
+<span class="ok">27 messages embedded.</span><br><br>
+<span class="cmd">$ devtrack voice profile</span><br>
+<span class="ok">Voice profile generated locally.</span><br><br>
+<span class="warn">Legacy learning/profile/test commands remain unavailable pending adapter repair.</span>
         </div>
       </div>
 
@@ -463,8 +461,8 @@
               <div class="about-stat-label">PM integrations</div>
             </div>
             <div>
-              <div class="about-stat-num grad-text">100%</div>
-              <div class="about-stat-label">Local & private</div>
+              <div class="about-stat-num grad-text">Local-first</div>
+              <div class="about-stat-label">Opt-in external integrations</div>
             </div>
             <div>
               <div class="about-stat-num grad-text">Free</div>

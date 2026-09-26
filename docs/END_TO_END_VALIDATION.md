@@ -142,10 +142,12 @@ preserving those commits in the daily history.
 
 The environment-validation gates are complete. Remaining release-level checks are:
 
-1. **Windows review passed on 2026-09-09** through the source admin UI, including rejection and audit.
+1. Review the unintegrated `feat/TASK-154-server-admin-ui` branch at `54ceb05` against current
+   `dev`, then integrate it through a PR or explicitly retire it before packaged qualification.
+2. **Windows review passed on 2026-09-09** through the source admin UI, including rejection and audit.
    Repeat against packaged builds during release qualification. The local `devtrack queue list`
    intentionally does not mirror PostgreSQL actions when continuous event sync is disabled.
-2. Capture the approved screenshot/video set from a privacy-reviewed terminal and browser session.
+3. Capture the approved screenshot/video set from a privacy-reviewed terminal and browser session.
 
 ## Capture list
 
@@ -166,5 +168,5 @@ detection, reviewable staging, EOD preview, then MCP reading the resulting conte
 
 Release qualification closes when packaged acceptance passes, captured media matches actual
 behavior, and reproduced blockers have regression coverage. Update this document with the date and
-evidence when those two remaining checks close. Completed environment validation must not be
+evidence when these remaining checks close. Completed environment validation must not be
 reintroduced as future work.

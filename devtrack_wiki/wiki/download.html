@@ -288,7 +288,15 @@
       <div class="platform-icon">🐧</div>
       <div class="platform-name">Linux</div>
       <div class="platform-arch">x86_64 · amd64</div>
-      <a class="dl-btn dl-btn-secondary" href="#" id="dl-linux-amd64" data-platform="linux" data-arch="amd64" data-ext="tar.gz">
+      <a class="dl-btn dl-btn-secondary" href="https://github.com/sraj0501/Devtrack_/releases/download/v3.1.1/devtrack_linux_amd64.tar.gz" id="dl-linux-amd64" data-platform="linux" data-arch="amd64" data-ext="tar.gz">
+        ↓ Download .tar.gz
+      </a>
+    </div>
+    <div class="platform-card" id="card-linux-arm64">
+      <div class="platform-icon">🐧</div>
+      <div class="platform-name">Linux</div>
+      <div class="platform-arch">ARM64 · aarch64</div>
+      <a class="dl-btn dl-btn-secondary" href="https://github.com/sraj0501/Devtrack_/releases/download/v3.1.1/devtrack_linux_arm64.tar.gz" id="dl-linux-arm64" data-platform="linux" data-arch="arm64" data-ext="tar.gz">
         ↓ Download .tar.gz
       </a>
     </div>
@@ -296,7 +304,7 @@
       <div class="platform-icon">🍎</div>
       <div class="platform-name">macOS</div>
       <div class="platform-arch">Apple Silicon · arm64</div>
-      <a class="dl-btn dl-btn-secondary" href="#" id="dl-darwin-arm64" data-platform="darwin" data-arch="arm64" data-ext="tar.gz">
+      <a class="dl-btn dl-btn-secondary" href="https://github.com/sraj0501/Devtrack_/releases/download/v3.1.1/devtrack_darwin_arm64.tar.gz" id="dl-darwin-arm64" data-platform="darwin" data-arch="arm64" data-ext="tar.gz">
         ↓ Download .tar.gz
       </a>
     </div>
@@ -304,7 +312,7 @@
       <div class="platform-icon">🍎</div>
       <div class="platform-name">macOS</div>
       <div class="platform-arch">Intel · amd64</div>
-      <a class="dl-btn dl-btn-secondary" href="#" id="dl-darwin-amd64" data-platform="darwin" data-arch="amd64" data-ext="tar.gz">
+      <a class="dl-btn dl-btn-secondary" href="https://github.com/sraj0501/Devtrack_/releases/download/v3.1.1/devtrack_darwin_amd64.tar.gz" id="dl-darwin-amd64" data-platform="darwin" data-arch="amd64" data-ext="tar.gz">
         ↓ Download .tar.gz
       </a>
     </div>
@@ -312,7 +320,7 @@
       <div class="platform-icon">🪟</div>
       <div class="platform-name">Windows</div>
       <div class="platform-arch">x86_64 · amd64</div>
-      <a class="dl-btn dl-btn-secondary" href="#" id="dl-windows-amd64" data-platform="windows" data-arch="amd64" data-ext="exe">
+      <a class="dl-btn dl-btn-secondary" href="https://github.com/sraj0501/Devtrack_/releases/download/v3.1.1/devtrack_windows_amd64.exe" id="dl-windows-amd64" data-platform="windows" data-arch="amd64" data-ext="exe">
         ↓ Download .exe
       </a>
       <div style="font-size:.75rem;color:var(--muted);margin-top:4px;">or use the PowerShell one-liner below</div>
@@ -517,9 +525,10 @@ fetch(GH_API, { headers: { Accept: 'application/vnd.github.v3+json' } })
     cardId = isARM ? 'card-darwin-arm64' : 'card-darwin-amd64';
     dlId   = isARM ? 'dl-darwin-arm64'   : 'dl-darwin-amd64';
   } else {
-    // Default to Linux amd64
-    cardId = 'card-linux-amd64';
-    dlId   = 'dl-linux-amd64';
+    const isARM = (navigator.userAgentData && navigator.userAgentData.architecture === 'arm') ||
+                  /aarch64|arm64/.test(ua);
+    cardId = isARM ? 'card-linux-arm64' : 'card-linux-amd64';
+    dlId   = isARM ? 'dl-linux-arm64'   : 'dl-linux-amd64';
   }
 
   const card = document.getElementById(cardId);

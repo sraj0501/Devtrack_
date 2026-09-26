@@ -1,5 +1,30 @@
 # DevTrack Engineer Log
 
+### [2026-09-26] TASK-161 — documentation completion audit and hosted-CI reconciliation
+
+**Notes**:
+
+- Re-audited README, shared project memory, active plans, ownership/architecture records, project
+  trackers, the complete public wiki, privacy copy, verification guidance, and download metadata
+  against the current branch, code routes, and live PR #265 state.
+- Corrected material public drift: unreleased Sage is now labeled as development work; maintained
+  `devtrack voice` routes are separated from the broken legacy learning adapter; Teams/Outlook and
+  Slack/Telegram boundaries are explicit; legacy Telegram planning is not presented as Go-bot
+  functionality; and local-first copy acknowledges explicitly configured cloud/server services.
+- Added a durable v3.1.1 download fallback for all five published OS/architecture assets, including
+  the previously omitted Linux ARM64 card, while preserving live latest-release discovery.
+- Recorded all 19 PR checks passing, including the full hosted-Windows unit-test job that restores
+  the current branch baseline after the historical PR #263/#264 timeouts.
+- Verification passed: shared-memory boundary, inline JavaScript, Git Bash installer syntax,
+  whitespace, 86-file Markdown local-link audit, HTML asset/link audit, wiki hash targets, five
+  platform fallbacks, and stale-claim scans. No browser connection was available, so no visual
+  browser result is claimed.
+- PR #265 subsequently merged to `dev` at `f6b0ec0`. Successful workflow run `36136822555`
+  published the rolling `dev-f6b0ec0` prerelease with checksums and all five platform binaries:
+  https://github.com/sraj0501/Devtrack_/releases/tag/dev
+- The completed post-merge documentation synchronization is under review in PR #266 targeting
+  `dev`: https://github.com/sraj0501/Devtrack_/pull/266
+
 ### [2026-09-25] TASK-161 — rolling development update channel pushed for review
 
 **Original message**: "feat(TASK-161): add rolling development update channel"
@@ -18,19 +43,22 @@ shell-safe message `feat-TASK-161-rolling-development-update-channel`.
 - Full `go test ./... -timeout 120s`, `go vet ./...`, five focused update-channel tests, memory
   validation, wiki inline-JavaScript validation, and `git diff --check origin/dev...HEAD` pass after
   the rebase.
+- All 19 hosted PR checks passed on 2026-09-25/26, including the full Windows test job, Windows and
+  Ubuntu no-send E2E, five native MCPB smokes, PostgreSQL, API-contract, wiki, and memory gates.
 - The separate TASK-158 native-silence test draft is preserved in a named local stash and excluded
   from the branch.
 
 ## Task Summary — TASK-161: Rolling development update channel — 2026-09-25
 
 - Total commits: 1 implementation/documentation commit plus this status follow-up
-- Acceptance criteria met: 8/8 locally; hosted PR checks and review pending
+- Acceptance criteria met: 8/8 locally and all 19 hosted checks passing; merged and rolling
+  prerelease published on 2026-09-25
 - Tickets auto-updated: 0 external PM tickets
 - Estimated daily time saved: not measured
 - Blockers encountered: none
 - One thing that still feels rough: the installed v3.1.1 commit wrapper does not preserve a quoted
   multi-word `-m` value correctly under this Windows invocation path
-- Ready for PM review: YES
+- Ready for PM review: COMPLETE — PR #265 merged
 
 ---
 

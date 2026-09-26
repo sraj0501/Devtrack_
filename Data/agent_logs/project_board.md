@@ -1,6 +1,6 @@
 ﻿# DevTrack Project Board
 
-**[2026-09-25] TASK-161 — Rolling development update channel and state reconciliation (in progress, HIGH).**
+**[2026-09-25] TASK-161 — Rolling development update channel and state reconciliation (complete, HIGH).**
 **Priority:** HIGH distribution/developer-experience follow-up. **Branch:**
 `features/TASK-161-rolling-dev-channel`. **Assigned to:** engineer. **Started:** 2026-09-25.
 
@@ -23,14 +23,18 @@ status records with the verified PR #263/#264, release, CI, learning-adapter, an
 - [x] Focused update-channel tests pass and documentation validators pass.
 - [x] Full Go suite is green on the task branch or every unrelated/environmental failure is
       reproduced, recorded, and resolved or explicitly accepted for PR review.
-- [x] Branch is pushed and PR #265 targets `dev`; no direct `main` mutation occurs.
+- [x] PR #265 merged to `dev` without a direct `main` mutation; workflow run `36136822555`
+      published `dev-f6b0ec0` with checksums and all five platform binaries.
 
-**Engineer status:** READY FOR REVIEW — commit `fe902f5` is pushed and PR #265 targets `dev`.
-After rebasing onto `origin/dev`, the full Go suite, `go vet ./...`, five focused update-channel
-tests, shared-memory validation, wiki inline-JavaScript validation, and `git diff --check` pass.
-TASK-158's separate post-commit silence-test draft is excluded from this branch.
+**Engineer status:** COMPLETE — PR #265 merged to `dev` at `f6b0ec0`. The full Go suite,
+`go vet ./...`, five focused update-channel tests, shared-memory validation, wiki inline-JavaScript
+validation, and `git diff --check` passed. All 19 hosted checks passed, including the full Windows
+test job, both no-send E2E lanes, all five native MCPB smokes, PostgreSQL, wiki, and shared-memory
+validation. The successful `dev` workflow published `dev-f6b0ec0`; TASK-158's separate post-commit
+silence-test draft remains excluded.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/265
-**Blockers:** no implementation blocker; hosted PR checks and review remain.
+**Release:** https://github.com/sraj0501/Devtrack_/releases/tag/dev
+**Blockers:** none for TASK-161. Stable v3.1.1 intentionally remains unchanged.
 
 ---
 
@@ -76,11 +80,11 @@ interrupt the developer.
 ticket/time/PM/push callbacks; the generated observation hook is silent and fail-open; and the
 database startup banner is removed. The full Go suite, `go vet ./...`, memory validation, wiki
 inline-JS checks, and `git diff --check` passed in the recorded local Windows run before merge.
-However, PR #264's hosted-Windows unit-test job failed on 60-second SQLite timeouts in `internal/db`
-and `internal/mcp`; Windows build/vet, native MCPB smoke, and no-send E2E passed. Native Linux plus
-explicit TTY/non-TTY execution also remain unchecked.
-**Blockers:** no implementation blocker; native Linux TTY/non-TTY qualification and an all-green
-hosted-Windows unit-test baseline are pending.
+PR #264's hosted-Windows unit-test job failed on 60-second SQLite timeouts in `internal/db` and
+`internal/mcp`; Windows build/vet, native MCPB smoke, and no-send E2E passed. PR #265 later passed
+the full hosted-Windows unit-test job, restoring the branch baseline. Native Linux plus explicit
+TTY/non-TTY execution remain unchecked.
+**Blockers:** no implementation blocker; native Linux TTY/non-TTY qualification remains pending.
 
 **[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (planned, P0).**
 **Priority:** P0 product contract; execute after TASK-158 native Linux qualification and before
@@ -216,16 +220,15 @@ history-item normalizer and synthetic fixture. Warp is not named upstream; its r
 inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
 verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-157.
 
-_Last updated: 2026-09-25 — PR #263 (SAGE distillation foundation) and PR #264 (TASK-158 silent Git
-path) are merged to `dev`; TASK-161 is now under review in PR #265. Both earlier PR check sets retain a failed
-hosted-Windows unit-test job; PR #264 timed out in SQLite-backed tests while other Windows lanes
-passed. TASK-158 still needs native Linux TTY/non-TTY qualification and a green Windows unit-test
-baseline before TASK-160, followed by TASK-159. TASK-157 / SAGE-003 remains the active product
-initiative, with durable queue/daemon integration next. The working tree also holds an unallocated
-rolling `dev` release/update-channel work is now allocated to TASK-161 on its dedicated branch and
-remains unshipped. UI redesign remains on its separate branch. v3.1.1 remains the latest public
-release; packaged qualification, media, and listing follow-ups remain. Next unused task ID:
-TASK-162._
+_Last updated: 2026-09-26 — PR #263 (SAGE distillation foundation), PR #264 (TASK-158 silent Git
+path), and PR #265 (TASK-161 rolling updates) are merged to `dev`; PR #265 passed all 19 checks.
+The earlier PR check sets retain historical failed hosted-Windows unit-test jobs, while PR #265's
+full Windows test pass restores the branch baseline. TASK-158 still needs native Linux TTY/non-TTY
+qualification before TASK-160, followed by TASK-159. TASK-157 / SAGE-003 remains the active product
+initiative, with durable queue/daemon integration next. Workflow run `36136822555` published the
+rolling `dev-f6b0ec0` prerelease; stable v3.1.1 remains the latest stable public release. The UI
+redesign remains on its separate branch; packaged qualification, media, and listing follow-ups
+remain. Next unused task ID: TASK-162._
 
 **[2026-09-10] Environment validation closure.** The owner confirmed that the supported clean
 Windows installation and the full Managed Linux validation journey are complete. These runs were

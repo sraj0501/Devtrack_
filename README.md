@@ -4,7 +4,7 @@
 
 **Never write a standup again.**
 
-*You commit. Tickets update, EOD reports write themselves — silently, in your voice, entirely on your machine.*
+*You commit. Tickets update, EOD reports write themselves — silently, in your voice, with a local-first default and explicit opt-in integrations.*
 
 `devtrack` — a single Go binary. Local-first. Offline by default.
 
@@ -169,10 +169,12 @@ blocked.
 
 > **Current validation status:** The separate TASK-154 server-admin redesign is committed but not
 > integrated into `dev`; review and integrate or retire it before packaged-build acceptance. The
-> merged PR #263/#264 check sets also retain a failed hosted-Windows unit-test job; PR #264 timed
-> out in SQLite-backed tests while its other Windows lanes passed. The remaining release follow-ups
-> also include privacy-reviewed media capture and confirmation of the exact Glama listing path and
-> score badge.
+> merged PR #263/#264 check sets retain historical failed hosted-Windows unit-test jobs; PR #264
+> timed out in SQLite-backed tests while its other Windows lanes passed. PR #265 subsequently
+> passed all 19 hosted checks, including the full Windows test job, restoring a green branch
+> baseline. TASK-158's native-Linux TTY/non-TTY qualification remains separate. The remaining
+> release follow-ups also include privacy-reviewed media capture and confirmation of the exact Glama
+> listing path and score badge.
 > See the
 > [end-to-end validation record](docs/END_TO_END_VALIDATION.md) for current evidence and exit criteria.
 
@@ -198,10 +200,12 @@ devtrack upgrade
 ```
 
 `devtrack upgrade` installs the latest build from the selected update channel. Existing and new
-installations default to stable releases from `main`; TASK-161 adds `devtrack upgrade --dev` as an
-opt-in path for rolling development builds. That channel is not part of v3.1.1 or the current
-`origin/dev` baseline and is usable only after the TASK-161 PR is merged and its workflow publishes
-a `dev` prerelease.
+installations default to stable releases from `main`. TASK-161 merged through
+[PR #265](https://github.com/sraj0501/Devtrack_/pull/265), and current rolling `dev` binaries add
+`devtrack upgrade --dev` as the explicit opt-in path for development builds. The v3.1.1 binary does
+not contain these flags; install a binary from the rolling
+[`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev) (or build `origin/dev`)
+before selecting a channel from the CLI.
 
 The daemon mines enabled local repositories in Managed mode and builds the voice profile once the
 local AI server is reachable. `devtrack status` and `devtrack doctor` show the persistent result and
@@ -290,7 +294,7 @@ only for the optional `git history`/`git messages` aliases and never intercepts 
 | **GitHub** | Comment on issues/PRs, sync recent activity, alert on review requests |
 | **GitLab** | Comment on issues; list, view, create, and sync issues through the Go connector |
 | **Jira** | Server-side webhook and PM support; Go-client connector parity is part of the staged rollout |
-| **Microsoft Teams** | Learn your communication style for personalized AI output |
+| **Microsoft Teams** | Communication-learning adapter code exists, but the end-to-end Teams learning path is currently unavailable pending adapter repair |
 | **Outlook / MS Graph** | Send EOD reports by email |
 | **Telegram** | Go-native daemon control, logs, queue review/corrections, and notifications |
 | **Slack** | Outbound alert notifications through an incoming webhook |
@@ -414,10 +418,11 @@ and free-form Sage questions are not supported.
 ### Personalized AI ("Talk Like You")
 
 ```bash
-devtrack enable-learning        # grant communication-learning consent
-devtrack learning-sync          # sync the optional communication source
-devtrack show-profile           # view your inferred writing style
-devtrack test-response "Completed auth module"
+devtrack voice seed             # seed from local Git history
+devtrack voice add "example"    # add an explicit writing sample
+devtrack voice sync             # sync supported PM descriptions/comments
+devtrack voice profile          # generate the local profile.md
+devtrack voice status           # inspect corpus/profile state
 ```
 
 > **Current `dev` limitation:** automatic Git-history voice seeding runs through the managed
@@ -426,13 +431,19 @@ devtrack test-response "Completed auth module"
 > profile display, response testing, and consent revocation as unavailable until the server adapter
 > is repaired.
 
-Learns your writing voice from **your own git history** — local, automatic, no external service. It combines a style profile with ChromaDB RAG (real examples of how you write) to personalize every commit message, ticket comment, and report the system generates.
+DevTrack can learn writing evidence from **your own Git history**—local, automatic, and without a
+communication service. It combines a generated profile with optional ChromaDB examples. Python
+generators that explicitly load this context can use it; the profile is not injected into every AI
+request automatically.
 
 On a fresh Managed installation, the daemon automatically seeds Tier 0 voice data from enabled local Git
 workspaces and generates the first profile in the background. Completion is saved locally in
 `first-run-profile.json`; no PM action is sent and daemon startup never waits for the profile.
 
-Microsoft Teams is an **optional** extra signal when Microsoft Graph authentication is available and the user grants learning consent. It is not a requirement — the local git-history path is the default and works entirely offline.
+Microsoft Teams is designed as an **optional** extra signal when Microsoft Graph authentication is
+available and the user grants learning consent. That end-to-end communication-learning adapter is
+currently incomplete and must not be treated as available. Local Git-history seeding is the working
+default and can run without Teams or another communication source.
 
 ### Ticket alerter
 
@@ -540,10 +551,12 @@ The command prints the resolved targets before confirmation. There is no `--dry-
 
 ### Self-update (`devtrack upgrade`)
 
-> **Unreleased TASK-161 change:** `--dev`, `--main`, `--stable`, and persisted update-channel
-> selection are implemented on `features/TASK-161-rolling-dev-channel` but are not present in
-> v3.1.1 or the current `origin/dev` baseline. Until the PR is merged and publishes a `dev`
-> prerelease, released builds should use plain `devtrack upgrade`.
+> **Rolling `dev` feature, not a v3.1.1 command:** `--dev`, `--main`, `--stable`, and persisted
+> update-channel selection merged through [PR #265](https://github.com/sraj0501/Devtrack_/pull/265)
+> and are available in the rolling
+> [`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev). A v3.1.1 installation
+> must first install that development binary manually (or build `origin/dev`); afterward these flags
+> select and persist the desired channel. Plain `devtrack upgrade` remains the stable v3.1.1 path.
 
 ```bash
 devtrack upgrade          # update from the currently selected channel (main by default)
@@ -748,9 +761,10 @@ no backend is reachable.
 
 > DevTrack runs **natively** — a Go binary plus a `uv`-managed Python server. The Go client keeps its
 > offline source of truth in local SQLite and does not connect to a database server. PostgreSQL is
-> mandatory for Python-server persistence and server-side events; MongoDB remains optional as a
-> Teams voice-learning source. Server startup validates PostgreSQL and advances the Alembic schema
-> before accepting traffic; there is no server-side SQLite fallback.
+> mandatory for Python-server persistence and server-side events; MongoDB is referenced only by the
+> incomplete optional Teams voice-learning adapter and is not required. Server startup validates
+> PostgreSQL and advances the Alembic schema before accepting traffic; there is no server-side
+> SQLite fallback.
 
 ### Python AI server
 
@@ -877,9 +891,11 @@ services receive the minimum context required for the operation you enabled.
   enable a cloud provider if that conflicts with project policy.
 - **Nothing is posted without review.** All outbound actions are staged in the pending-actions queue until you approve them.
 - **Telemetry is opt-in** and off by default (`devtrack telemetry status`). No pings are sent unless you run `devtrack telemetry on`.
-- **Voice learning is local in managed mode by default.** Git-history seeding is local; Teams and
-  external-server learning sources require explicit configuration. Learning data can be wiped with
-  `devtrack learning-reset`.
+- **Voice learning is local in managed mode by default.** Git-history seeding is local. Teams and
+  Outlook communication learning are not currently end-to-end available. The legacy
+  `learning-*`, profile/test, and consent-reset commands depend on an incomplete adapter; do not rely
+  on `devtrack learning-reset` as a deletion control until that adapter is repaired. A normal
+  uninstall removes DevTrack data unless `--keep-data` is supplied.
 
 ---
 

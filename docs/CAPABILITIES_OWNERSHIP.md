@@ -6,8 +6,9 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-09-25 (client-server decoupling complete; PostgreSQL is mandatory server-side;
-TASK-158 and the first Sage structured-distillation boundary are merged on unreleased `dev`)._
+_Last updated: 2026-09-26 (client-server decoupling complete; PostgreSQL is mandatory server-side;
+TASK-158 and the first Sage structured-distillation boundary are merged on unreleased `dev`; legacy
+communication-learning adapter gaps are explicit)._
 
 ## Ownership model (intended)
 
@@ -148,7 +149,7 @@ functional gap: most handlers call methods that `LearningIntegration` does not i
 | `server-tui`, `admin-start` | Server | ✅ Removed from client (Phase 1a — d5f8f36) |
 | GitHub ticket sync (`github_ticket_sync.py`) | Client | ✅ Python call removed (Phase 1b — d5f8f36) |
 | Reports (preview/send/save/summary/EOD) | Server | ✅ HTTP → server (Phase 1c) |
-| Learning suite (all `learning-*`, profile, test-response, revoke) | Server | ⚠ HTTP boundary exists; status is inspection-only and the remaining adapter methods require repair |
+| Legacy learning suite (all `learning-*`, profile, test-response, revoke) | Server | ⚠ HTTP boundary exists, but every path is unavailable pending adapter repair; use the maintained `devtrack voice` routes for Git/manual/PM voice evidence |
 | Cloud/auth/license (`login/logout/whoami/license/terms`) | Server | ✅ HTTP → server (Phase 1c) |
 | Ticket alerts (`alerts`, poller) | Client | ✅ Ported to Go (Phase 2 — `internal/alerts/`) |
 | Telegram / Slack delivery | Client | ✅ Ported to Go (Phase 2 — `internal/telegram/`, `internal/notify/`) |

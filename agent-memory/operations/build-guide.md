@@ -220,8 +220,9 @@ the prompt unchanged if no profile — fully graceful):
 Injection points use `context_type` ∈ {commit, description, report, task, comment}. Setup:
 `ollama pull nomic-embed-text` (ChromaDB ships via `uv sync`; data in `DATA_DIR/learning/chroma/`).
 
-**Data sources:** git history (automatic) + optional Teams via MS Graph when Graph authentication is
-available and the user grants learning consent. Teams messages → MongoDB when `MONGODB_URI` is set
+**Data sources:** local Git history is the working automatic source. Teams/Outlook via MS Graph is
+an intended opt-in source, but its `LearningIntegration` HTTP adapter is not currently end-to-end
+usable. The dormant path writes Teams messages to MongoDB when `MONGODB_URI` is set
 and `motor` is installed; user matched by Azure AD object ID
 (`consent.json:user_object_id`), not UPN. CLI: `enable-learning`, `learning-sync [--full]`,
 `show-profile`, `test-response`, `learning-status`, `learning-reset`.
@@ -233,7 +234,8 @@ before initialization. Automatic Git-history seeding uses the separate Managed o
 Keep this limitation aligned with the public known-issues page until the adapter is repaired.
 
 > Direction (`PRODUCT_BIBLE.md`): personalization evolves into local dialectic user modeling
-> (SQLite FTS5 + ChromaDB, Hermes persona model) — local-first, Teams as an opt-in tier.
+> (SQLite FTS5 + ChromaDB, Hermes persona model) — local-first; Teams remains an incomplete opt-in
+> tier until the communication-learning adapter is repaired.
 
 ## Admin UI (`devtrack_server/backend/admin/`)
 

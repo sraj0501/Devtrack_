@@ -12,19 +12,19 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
-- Current `dev` at `fe3ad38` contains the SAGE-001/SAGE-002 capture foundation, the model-free
+- Current `dev` at `f6b0ec0` contains the SAGE-001/SAGE-002 capture foundation, the model-free
   SAGE-003 search slice, removal of legacy Git Sage, neutral `internal/gitcmd` ownership, and the
   SAGE-003 LLM transport, structured distiller, and non-blocking worker from PR #263. Durable SQLite
   queue ownership and daemon lifecycle wiring remain the next Sage implementation boundary.
 - TASK-158 merged through PR #264. Native Linux plus explicit TTY/non-TTY qualification remain
   unchecked. A separate local test draft is not part of TASK-161 and is not validation evidence.
-- PR #263 and PR #264 each have a failed hosted-Windows unit-test check. On PR #264 the 60-second
-  job timed out in SQLite-backed `internal/db` and `internal/mcp`; Windows build/vet, MCPB smoke,
-  no-send E2E, and the Sage distillation packages passed. Restore an all-green Windows unit-test
-  baseline as part of the validation follow-up.
-- TASK-161 owns the rolling `dev` release/update-channel work on
-  `features/TASK-161-rolling-dev-channel`. Keep it separate from TASK-158 validation and do not
-  claim it as shipped until review and first prerelease publication succeed.
+- PR #263 and PR #264 each retain a historical failed hosted-Windows unit-test check. On PR #264 the
+  60-second job timed out in SQLite-backed `internal/db` and `internal/mcp`. PR #265 later passed
+  all 19 branch checks, including the full Windows test job, so the hosted baseline is green again;
+  TASK-158's native-Linux TTY/non-TTY qualification remains separate and incomplete.
+- TASK-161 merged through PR #265 at `f6b0ec0`; workflow run `36136822555` published the rolling
+  `dev-f6b0ec0` prerelease with all five platform binaries and checksums. It is available on the
+  rolling `dev` channel but is not part of stable v3.1.1. Keep TASK-158 validation separate.
 - TASK-157 / SAGE-003 is the active product initiative. TASK-160 and TASK-159 remain allocated to
   the deterministic ticket contract and automatic-time corrections;
   the next unused task ID is TASK-162, subject to board verification.
@@ -39,11 +39,10 @@ without an authorized board task and a dedicated branch targeting `dev`.
 2. Review the separate TTY/non-TTY test draft independently; do not treat its presence as a pass.
 3. Run the silence and fail-open path on native Linux in both non-TTY and pseudo-TTY contexts, then
    run the Go suite and `go vet ./...`.
-4. Reproduce or successfully rerun the hosted-Windows unit-test timeout, without treating the green
-   Windows build/vet, MCPB, or E2E jobs as substitutes for that failed test job.
-5. Record sanitized evidence on the board and close the remaining acceptance boxes only after the
-   native Linux and hosted-Windows gates pass. Commit, push, or open a PR only when explicitly
-   authorized.
+4. Preserve PR #265's successful full hosted-Windows unit-test rerun as the replacement baseline;
+   do not erase the historical PR #263/#264 failures or misattribute other green lanes as the test.
+5. Record sanitized native-Linux evidence on the board and close the remaining acceptance boxes only
+   after both TTY and non-TTY paths pass. Commit, push, or open a PR only when explicitly authorized.
 
 Gate: normal `git commit` is proven silent and fail-open on native Linux in both TTY and non-TTY
 execution, with the merged explicit helper still free of post-commit questions.

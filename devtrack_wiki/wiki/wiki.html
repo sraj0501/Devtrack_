@@ -1195,12 +1195,12 @@ uv run python -m backend.admin
 <li><strong>One server store</strong> — user records, API keys, roles, audit entries, and server events use the required PostgreSQL database through shared SQLAlchemy stores.</li>
 </ul>
 
-<blockquote><p><strong>Storage note:</strong> The Go client keeps its offline source of truth in local SQLite and can observe, queue, report, and serve MCP context without a server. The Python server requires PostgreSQL for server-side persistence and aggregate events; startup validates it and applies Alembic migrations. MongoDB is optional and used only as an extra Teams voice-learning source.</p></blockquote>
+<blockquote><p><strong>Storage note:</strong> The Go client keeps its offline source of truth in local SQLite and can observe, queue, report, and serve MCP context without a server. The Python server requires PostgreSQL for server-side persistence and aggregate events; startup validates it and applies Alembic migrations. MongoDB is referenced only by the incomplete optional Teams voice-learning adapter and is not required for the working local Git/PM voice routes.</p></blockquote>
 </div>`,
 
   SLACK_BOT: `<div class="md-body">
 <h1>Slack Bot</h1>
-<p>The Slack bot lets you control DevTrack from any Slack channel using a single slash command: <code>/devtrack &lt;subcommand&gt;</code>. It uses <strong>Socket Mode</strong> — no public URL, no firewall rules, no ngrok required.</p>
+<p>Current Go-native Slack support is outbound alert delivery through <code>SLACK_WEBHOOK_URL</code>. The Socket Mode slash-command bot documented below is a separate legacy Python process: the Go daemon does not start it, and it is not the primary supported client-control path.</p>
 
 <h2>Setup</h2>
 <ol>
@@ -1538,8 +1538,8 @@ chmod +x devtrack-server.sh
 devtrack upgrade --check
 devtrack upgrade</code></pre>
 <p>Linux and macOS use <code>devtrack_&lt;os&gt;_&lt;arch&gt;.tar.gz</code>. Windows downloads the published <code>.exe</code> directly. A development build reports the latest release without overwriting itself as a tagged installation.</p>
-<h2>Unreleased rolling update channels</h2>
-<p>TASK-161 on <code>features/TASK-161-rolling-dev-channel</code> adds a persistent update-channel choice: stable releases from <code>main</code> remain the default, while <code>devtrack upgrade --dev</code> opts into a rolling <code>dev</code> prerelease and <code>devtrack upgrade --main</code> (or <code>--stable</code>) returns to stable. <code>--check</code> can inspect either channel without switching. These flags are not available in v3.1.1 or merged <code>dev</code> yet; use them only after the PR is reviewed, integrated, and publishes the first prerelease.</p>
+<h2>Rolling development update channel</h2>
+<p>TASK-161 merged through <a href="https://github.com/sraj0501/Devtrack_/pull/265" target="_blank" rel="noopener">PR #265</a> and adds a persistent update-channel choice: stable releases from <code>main</code> remain the default, while <code>devtrack upgrade --dev</code> opts into the rolling <a href="https://github.com/sraj0501/Devtrack_/releases/tag/dev" target="_blank" rel="noopener"><code>dev</code> prerelease</a> and <code>devtrack upgrade --main</code> (or <code>--stable</code>) returns to stable. <code>--check</code> can inspect either channel without switching. The v3.1.1 binary does not contain these flags; first install a rolling-development binary manually or build current <code>dev</code>.</p>
 <h2>Managed Server Update</h2>
 <p>After the binary succeeds, managed mode updates the optional Python server through the durable background worker:</p>
 <pre><code class="language-bash">devtrack doctor
@@ -1640,16 +1640,17 @@ devtrack start</code></pre>
 <li><strong>Distillation foundation:</strong> PR #263 adds a neutral Go LLM client, structured title/what/why/example/notes drafts with required-field validation and explicit skip verdicts, and a non-blocking worker with bounded model calls.</li>
 <li><strong>Still in progress:</strong> SAGE-003 is not complete. The worker is not yet wired to durable SQLite claims or daemon lifecycle. Deterministic Markdown topic files, routing and correction operations, persistent retries/leases, logs/diagnostics, safe local knowledge commits, remaining harness adapters, and parity coverage are pending.</li>
 </ul>
-<h2>TASK-161 under review — rolling update channels</h2>
+<h2>TASK-161 merged — rolling update channels</h2>
 <ul>
 <li><strong>Stable by default:</strong> existing and new installations continue to follow releases from <code>main</code>.</li>
 <li><strong>Explicit rolling opt-in:</strong> TASK-161 adds <code>devtrack upgrade --dev</code>, with <code>--main</code>/<code>--stable</code> to return and <code>--check</code> to inspect without switching.</li>
-<li><strong>Not merged or released:</strong> the task branch, flags, and rolling <code>dev</code> prerelease workflow are not part of v3.1.1 or current <code>origin/dev</code>.</li>
+<li><strong>Merge evidence:</strong> <a href="https://github.com/sraj0501/Devtrack_/pull/265" target="_blank" rel="noopener">PR #265</a> passed all 19 hosted checks and merged to <code>dev</code> at <code>f6b0ec0</code>.</li>
+<li><strong>Published rolling build:</strong> successful workflow run <a href="https://github.com/sraj0501/Devtrack_/actions/runs/36136822555" target="_blank" rel="noopener">36136822555</a> published <a href="https://github.com/sraj0501/Devtrack_/releases/tag/dev" target="_blank" rel="noopener"><code>dev-f6b0ec0</code></a> with checksums and all five platform binaries. Stable v3.1.1 remains unchanged and does not contain the channel flags.</li>
 </ul>
 <h2>Current dev — E2E and Windows Admin Acceptance</h2>
 <ul>
 <li><strong>UI integration boundary:</strong> the TASK-154 full-console redesign is committed at <code>54ceb05</code> on its separate branch but is not integrated into <code>dev</code>. Review and integrate or explicitly retire it before packaged-build qualification and media capture.</li>
-<li><strong>Windows CI gap:</strong> the merged PR #263 and PR #264 check sets retain a failed hosted-Windows unit-test job. PR #264 timed out in SQLite-backed <code>internal/db</code> and <code>internal/mcp</code> tests; its Windows build/vet, MCPB smoke, no-send E2E, and Sage distillation tests passed. Those green lanes do not close the unit-test gate.</li>
+<li><strong>Windows CI history:</strong> the merged PR #263 and PR #264 check sets retain historical failed hosted-Windows unit-test jobs; PR #264 timed out in SQLite-backed <code>internal/db</code> and <code>internal/mcp</code> tests. PR #265 later passed all 19 branch checks, including the full Windows test job, restoring a green branch baseline. TASK-158's native-Linux TTY/non-TTY qualification remains separate.</li>
 <li><strong>Server review queue:</strong> the authenticated Admin Console now lists pending PostgreSQL actions, exposes their draft and full payload, and supports race-safe rejection with reviewer metadata and an audit event. Approval and editing are not part of this web flow yet.</li>
 <li><strong>Responsive operations dashboard:</strong> the refreshed console presents connected clients, active runtime configuration, trigger activity, and recent request paths in a dark operations view with responsive grids and a mobile navigation drawer.</li>
 <li><strong>Credential-free client lane:</strong> new PowerShell and POSIX scripts build the current Go client in isolation, start the lightweight daemon, create a real <code>DEMO-201</code> commit, wait for SQLite observation, and assert that MCP exposes the ticket and a non-zero local-day commit count.</li>
@@ -2060,7 +2061,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\e2e-local.ps1<
 <p>The automated client lane does not start or validate PostgreSQL, the Python server, an LLM, the embedded admin UI, or media capture. On an already configured Managed installation, run the full no-send demo without scene pauses:</p>
 <pre><code class="language-powershell">.\scripts\demo.ps1 -Mode Record -Automated</code></pre>
 <pre><code class="language-bash">./scripts/demo.sh --record --automated</code></pre>
-<p>This environment-dependent lane uses real local services but keeps the disposable workspace on PM <code>none</code> and does not approve or deliver staged actions. A source-based Windows browser run passed on 2026-09-09 against an existing Managed PostgreSQL installation, including login, exact-action inspection, transactional rejection, reviewer/timestamp/audit verification, EOD visibility, MCP, and cleanup. The owner confirmed clean Windows installation and the full Managed Linux lane complete on 2026-09-10 outside GitHub Actions. Packaged-build admin acceptance and privacy-reviewed media remain separate follow-ups.</p>
+<p>This environment-dependent lane uses real local services but keeps the disposable workspace on PM <code>none</code> and does not approve or deliver staged actions. A source-based Windows browser run passed on 2026-09-09 against an existing Managed PostgreSQL installation, including login, exact-action inspection, transactional rejection, reviewer/timestamp/audit verification, EOD visibility, MCP, and cleanup. The owner confirmed clean Windows installation and the full Managed Linux lane complete on 2026-09-10 outside GitHub Actions. Before packaged-build admin acceptance and privacy-reviewed media, review and integrate or explicitly retire the separate TASK-154 admin-UI branch.</p>
 <h2>Run Go Verification</h2>
 <pre><code class="language-bash">cd devtrack_client
 GOCACHE=/tmp/devtrack-go-cache GOMODCACHE=/tmp/devtrack-go-mod go test ./...
@@ -2508,7 +2509,7 @@ workspaces:
 
   OFFLINE_RESILIENCE: `<div class="md-body">
 <h1>Offline Resilience</h1>
-<p>DevTrack is designed <strong>offline-first</strong>: the daemon runs entirely on your machine and never requires internet connectivity to capture commits, log work, or store history. External integrations (Azure DevOps, GitHub, Jira, Ollama remote, Teams) are optional and degrade gracefully when unreachable.</p>
+<p>DevTrack is designed <strong>offline-first</strong>: the Go daemon and SQLite source of truth run locally and never require internet connectivity to capture commits, log work, or store history. Configured PM systems, remote/cloud models, external servers, and notification services receive only the data needed for those explicit operations and degrade without blocking local observation. The Teams communication-learning adapter is not currently end-to-end available.</p>
 
 <h2>What Works Fully Offline</h2>
 <div class="table-wrap"><table>
@@ -2533,7 +2534,7 @@ workspaces:
 <tr><td>Azure DevOps sync</td><td>The pending action remains visible and retryable; Git activity continues normally</td></tr>
 <tr><td>GitHub / GitLab sync</td><td>The pending action remains visible and retryable; connector failure does not block Git</td></tr>
 <tr><td>Jira integration</td><td>Read and alert paths degrade gracefully; unsupported write routing never gains a direct-send fallback</td></tr>
-<tr><td>Teams / Graph API</td><td>Skipped; personalization falls back to profile-only (no RAG examples)</td></tr>
+<tr><td>Teams / Graph API</td><td>The communication-learning adapter is currently unavailable; use local Git seeding, manual examples, or supported PM voice sync instead</td></tr>
 <tr><td>Ticket alerter poller</td><td>Poll cycle fails silently; retries on next interval</td></tr>
 <tr><td>Telemetry ping</td><td>Silently discarded after HTTP timeout</td></tr>
 </tbody>
@@ -2568,7 +2569,7 @@ QUEUE_DRAIN_INTERVAL_SECS=10</code></pre>
 <li>Set <code>LLM_PROVIDER=ollama</code> and run Ollama locally (<code>OLLAMA_HOST=http://localhost:11434</code>)</li>
 <li>Leave all PM credentials empty (<code>AZURE_DEVOPS_PAT</code>, <code>GITHUB_TOKEN</code>, etc.) — integrations are skipped when credentials are absent</li>
 <li>Leave telemetry disabled (the default). It sends nothing unless you explicitly run <code>devtrack telemetry on</code>.</li>
-<li>Leave optional Teams/MongoDB voice sources unconfigured; local Git history, SQLite, and the local learning directory remain the default.</li>
+<li>Leave the incomplete Teams/MongoDB learning adapter unconfigured; local Git history, supported PM voice sync, SQLite, and the local learning directory remain the maintained paths.</li>
 </ol>
 
 <p>For configuration details, see the <a href="#CONFIGURATION" onclick="navigate('CONFIGURATION');return false;">Configuration Reference</a>. For troubleshooting connectivity, see the <a href="#TROUBLESHOOTING" onclick="navigate('TROUBLESHOOTING');return false;">Troubleshooting Guide</a>.</p>
@@ -2686,7 +2687,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.1.1 public; core validation complete</div>
 <p>DevTrack's product build arc and Phase 9 adoption work are complete: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, read-only MCP context, first-run onboarding, and native MCPB distribution. The latest public release is <code>v3.1.1</code>.</p>
 <h2>Current focus</h2>
-<p>The core no-send workflow is validated. The owner confirmed clean Windows installation and full Managed Linux acceptance with PostgreSQL, Python, Ollama, staging, EOD, and MCP complete on 2026-09-10 outside GitHub Actions. Earlier Windows Managed, credential-free cross-platform E2E, and source-based admin acceptance runs also passed. Packaged-build Windows admin acceptance and privacy-reviewed launch media remain release follow-ups. The official MCP Registry record remains active/latest. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
+<p>The core no-send workflow is validated. The owner confirmed clean Windows installation and full Managed Linux acceptance with PostgreSQL, Python, Ollama, staging, EOD, and MCP complete on 2026-09-10 outside GitHub Actions. Earlier Windows Managed, credential-free cross-platform E2E, and source-based admin acceptance runs also passed. The separate TASK-154 admin-UI branch must be integrated or retired before packaged-build Windows admin acceptance and privacy-reviewed launch media. The official MCP Registry record remains active/latest. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
 <h2>Next</h2>
 <ol>
 <li>Repeat the Windows admin login, action inspection, rejection, and audit journey against packaged release artifacts rather than the source checkout.</li>
@@ -2905,7 +2906,7 @@ devtrack logs -f</code></pre>
 
   PM_AGENT: `<div class="md-body">
 <h1>PM Agent</h1>
-<p>The <strong>PM Agent</strong> decomposes a problem or feature description into a structured Epic → Story → Task hierarchy and creates everything directly in your configured project management platform (Azure DevOps, GitHub, GitLab, or Jira).</p>
+<p>The <strong>PM Agent</strong> decomposes a problem or feature description into a structured Epic → Story → Task hierarchy and can create it through an explicitly invoked <code>devtrack plan</code> flow for Azure DevOps, GitHub, or GitLab. The current creation flow does not offer Jira.</p>
 
 <h2>CLI Usage</h2>
 <pre><code class="language-bash"># Inline problem statement
@@ -2944,17 +2945,9 @@ project: MyProject</code></pre>
 
   PROJECT_PLANNING: `<div class="md-body">
 <h1>AI Project Planning</h1>
-<p>DevTrack's AI project planning feature turns a plain-text description of requirements into a full project spec — sprints, stories, risks, team assignments — and can create everything in your PM tool in one command.</p>
+<p>DevTrack's supported project-planning surface is the explicit CLI: <code>devtrack plan</code> generates an Epic → Story → Task hierarchy and creates it for Azure DevOps, GitHub, or GitLab; <code>devtrack boardroom</code> provides an optional multi-persona review first.</p>
 
-<h2>Telegram: /newproject</h2>
-<p>The most interactive path: type <code>/newproject</code> in Telegram, describe your requirements in plain language, and the AI takes over:</p>
-<ol>
-<li>Fetches the live team roster from your PM platform</li>
-<li>Checks current workloads per team member</li>
-<li>Generates a full YAML spec with sprints, user stories, risks, and assignments</li>
-<li>Emails the spec to the PM for review</li>
-<li>On approval, creates all epics/stories/tasks in the PM tool</li>
-</ol>
+<blockquote><p><strong>Legacy boundary:</strong> an older Python Telegram implementation contains a <code>/newproject</code> prototype. The current Go-native Telegram bot does not expose that command, so it must not be presented as a supported mobile planning path.</p></blockquote>
 
 <h2>CLI: devtrack plan</h2>
 <pre><code class="language-bash"># From inline description
@@ -3317,9 +3310,9 @@ function renderHome() {
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation, MCP context, and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1 is public; current <code>dev</code> adds the silent Git correction and Sage capture, search, and structured-distillation foundations. Rolling update channels are unreleased TASK-161 branch work.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1 remains stable; current <code>dev</code> adds the silent Git correction, Sage capture/search/structured-distillation foundations, and the published rolling development update channel.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
-        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the stable platform asset, runs migrations, and restarts the daemon. Persistent <code>--dev</code>/<code>--main</code> update-channel selection is unreleased TASK-161 branch work, not a v3.1.1 command.' },
+        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the selected channel\'s platform asset, runs migrations, and restarts the daemon. Persistent <code>--dev</code>/<code>--main</code> selection is available in the rolling <code>dev</code> prerelease, not in v3.1.1.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
@@ -3334,16 +3327,16 @@ function renderHome() {
         { id:'GIT_FEATURES',    icon:'🔀', title:'Git Features',        desc:'Silent commit observation, explicitly requested AI commit messages, and conflict resolution. Use <code>git commit</code> normally — DevTrack never intercepts it and observes completed commits in the background. <code>devtrack start</code> enables observation for all workspaces.' },
         // ── Integrations ──────────────────────────────────────────────────────
         { id:'AZURE_DEVOPS',    icon:'🔷', title:'Azure DevOps',        desc:'Sync work items, auto-comment, and transition states. <code>IsPRApproved</code> uses the real ADO Pull Requests API (TASK-102).' },
-        { id:'GITLAB',          icon:'🦊', title:'GitLab',              desc:'Full CLI and Telegram access; inbound webhooks; issue enrichment on create.' },
-        { id:'GITHUB',          icon:'🐙', title:'GitHub',              desc:'Full CLI parity, bidirectional sync, inbound webhooks, Telegram commands, and per-workspace milestone assignment via <code>pm_milestone</code> in workspaces.yaml.' },
-        { id:'TELEGRAM_BOT',    icon:'📱', title:'Telegram Bot',        desc:'Control DevTrack remotely from your phone.' },
-        { id:'SLACK_BOT',       icon:'💬', title:'Slack Bot',           desc:'Socket Mode slash command <code>/devtrack &lt;cmd&gt;</code> — no public URL required. Supports all work-session and PM commands plus proactive work-reminder nudges.' },
+        { id:'GITLAB',          icon:'🦊', title:'GitLab',              desc:'Go-native issue list, view, create, comment, and sync paths plus optional inbound webhooks. Approval detection remains below GitHub/Azure parity.' },
+        { id:'GITHUB',          icon:'🐙', title:'GitHub',              desc:'Go-native issue/PR browsing, staged ticket updates, alerts, review context, and per-workspace milestone routing.' },
+        { id:'TELEGRAM_BOT',    icon:'📱', title:'Telegram Bot',        desc:'Optional Go-native daemon visibility, alerts, and pending-queue review/corrections from an authorized chat.' },
+        { id:'SLACK_BOT',       icon:'💬', title:'Slack Notifications', desc:'Go-native outbound webhook alerts. The Socket Mode command bot is a separate legacy Python process that the daemon does not start.' },
         { id:'PM_AGENT',        icon:'🗂️', title:'PM Agent',            desc:'AI decomposes problems into Epic → Story → Task hierarchies.' },
-        { id:'PROJECT_PLANNING',icon:'📋', title:'AI Project Planning', desc:'<code>/newproject</code> in Telegram: describe requirements, pick team from live roster, AI auto-fetches workloads, generates a full YAML spec with sprints/stories/risks, emails it to the PM for review, and creates everything in the PM tool on approval.' },
+        { id:'PROJECT_PLANNING',icon:'📋', title:'AI Project Planning', desc:'Use explicit <code>devtrack plan</code> and optional <code>devtrack boardroom</code> CLI flows. The legacy Python Telegram <code>/newproject</code> prototype is not part of the current Go bot.' },
         // ── AI & Personalization ──────────────────────────────────────────────
         { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'Current command-knowledge product and Git Sage migration guide: local capture, SQLite search, and the structured-distillation foundation exist on <code>dev</code>; durable worker orchestration and Markdown knowledge remain.' },
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
-        { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'"Talk Like You" — AI that learns from local Git history and explicit examples; Teams is an optional opt-in source and writes in your voice using RAG-powered few-shot examples.' },
+        { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'Maintained <code>devtrack voice</code> routes seed from local Git, manual examples, and supported PM content. Teams/Outlook communication learning and legacy learning controls remain unavailable pending adapter repair.' },
         // ── System Integration ────────────────────────────────────────────────
         { id:'AUTOSTART',       icon:'🔌', title:'Auto-Start',          desc:'Auto-start DevTrack at login — OS-aware. Run <code>devtrack autostart-install</code>: launchd LaunchAgent on macOS, systemd user service on Linux/WSL, Windows Task Scheduler task on Windows, or a shell profile block on WSL without systemd. All env vars are baked into the unit at install time — no separate <code>.env</code> file needed at runtime.' },
         { id:'SERVER_TUI',      icon:'🖥️', title:'Server TUI',          desc:'Textual process monitor for the Python backend. Shows all server processes with live CPU/MEM/status, a health bar, and a trigger throughput stats panel (triggers today, commits today, errors in last 24 h). Navigate with ↑↓, restart with r, toggle logs with l.' },

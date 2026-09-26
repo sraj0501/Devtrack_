@@ -1,7 +1,8 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-25 (TASK-158 and the Sage distillation foundation are merged to unreleased
-`dev`; native Linux silence qualification and later product gates remain)_
+_Last updated: 2026-09-26 (TASK-158, the Sage distillation foundation, and TASK-161 are merged to
+`dev`; the rolling `dev-f6b0ec0` prerelease is published; native Linux silence qualification and
+later product gates remain)_
 
 ---
 
@@ -32,14 +33,18 @@ _Last updated: 2026-09-25 (TASK-158 and the Sage distillation foundation are mer
   prefix/trailer, explicit active ticket, otherwise unlinked; mapping provenance must be persisted.
 - **TASK-159:** planned after TASK-160. Infer bounded local work windows without per-commit prompts,
   retaining auditable explicit corrections.
-- **TASK-161:** the rolling `dev` update-channel implementation and documentation reconciliation are
-  pushed at `fe902f5` on `features/TASK-161-rolling-dev-channel`; PR #265 targets `dev`. The full Go
-  suite, vet, focused tests, and documentation checks pass locally. It remains unmerged and
-  unreleased and excludes the separate TASK-158 validation draft.
+- **TASK-161:** the rolling `dev` update-channel implementation merged through PR #265 at
+  `f6b0ec0`. The full Go suite, vet, focused tests, documentation checks, and all 19 hosted checks
+  passed, including full Windows tests, both no-send E2E lanes, all five native MCPB smokes,
+  PostgreSQL, wiki, and shared-memory validation. Successful workflow run `36136822555` published
+  `dev-f6b0ec0` with checksums and all five platform binaries. Stable v3.1.1 remains unchanged, and
+  the separate TASK-158 validation draft remains excluded.
 
-**External state checked 2026-09-25**: PRs #263 and #264 are merged; PR #265 is open against `dev`;
-and v3.1.1 remains the latest public release. The earlier PR check sets retain a failed
-hosted-Windows unit-test job; the remaining checks described above passed.
+**External state checked 2026-09-26**: PRs #263, #264, and #265 are merged to `dev`; PR #265 passed
+all 19 checks, and its successful `dev` workflow published the rolling `dev-f6b0ec0` prerelease.
+v3.1.1 remains the latest stable public release. The earlier PR check sets retain their historical
+failed hosted-Windows unit-test jobs, superseded as the current baseline by PR #265's successful
+Windows test.
 
 ---
 
