@@ -1,5 +1,15 @@
 # DevTrack Engineer Log
 
+### [2026-09-29] TASK-158 — native silence qualification
+
+Commit `2525783`, PR #267: real Git commits execute generated hooks with writable and missing log
+destinations, asserting successful commits and zero output. Linux verifies terminal attachment
+before executing PTY cases. Windows and Linux complete suites/build/vet passed in `36474861545`;
+no-send E2E passed in `36474861507`. Local MCP fixtures were aligned with local-day storage and
+the package passed. Windows Application Control blocked some local test binaries and the freshly
+built DevTrack helper even outside the sandbox; used the documented raw-Git commit fallback.
+No PM messages or outbound integration actions were requested.
+
 ### [2026-09-26] TASK-161 — documentation completion audit and hosted-CI reconciliation
 
 **Notes**:

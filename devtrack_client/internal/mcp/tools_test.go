@@ -50,10 +50,11 @@ func TestGetActiveContext_WithTicket(t *testing.T) {
 	defer cleanup()
 	repoPath := t.TempDir()
 
-	// Insert a commit trigger directly via SQL
+	// Match the local wall-clock dates stored by InsertTrigger. SQLite 'now'
+	// alone is UTC and belongs to yesterday near midnight in positive offsets.
 	_, err := database.ExecRaw(`
 		INSERT INTO triggers (trigger_type, commit_hash, commit_message, ticket_id, repo_path, timestamp, source)
-		VALUES ('commit', 'abc12345', 'fix auth flow', 'PROJ-123', ?, datetime('now'), 'git')
+		VALUES ('commit', 'abc12345', 'fix auth flow', 'PROJ-123', ?, datetime('now', 'localtime'), 'git')
 	`, repoPath)
 	if err != nil {
 		t.Fatalf("insert test commit: %v", err)
@@ -79,7 +80,7 @@ func TestGetActiveContext_IgnoresDeletedRepository(t *testing.T) {
 
 	_, err := database.ExecRaw(`
 		INSERT INTO triggers (trigger_type, commit_hash, commit_message, ticket_id, repo_path, timestamp, source)
-		VALUES ('commit', 'abc12345', 'old demo', 'DEMO-101', ?, datetime('now'), 'git')
+		VALUES ('commit', 'abc12345', 'old demo', 'DEMO-101', ?, datetime('now', 'localtime'), 'git')
 	`, filepath.Join(t.TempDir(), "removed"))
 	if err != nil {
 		t.Fatalf("insert test commit: %v", err)
@@ -107,7 +108,7 @@ func TestGetTodayCommits_Groups(t *testing.T) {
 		hash := "aaaaaaa" + string(rune('0'+i))
 		_, err := database.ExecRaw(`
 			INSERT INTO triggers (trigger_type, commit_hash, commit_message, ticket_id, repo_path, timestamp, source)
-			VALUES ('commit', ?, ?, 'PROJ-99', '/repos/ws', datetime('now'), 'git')
+			VALUES ('commit', ?, ?, 'PROJ-99', '/repos/ws', datetime('now', 'localtime'), 'git')
 		`, hash, msg)
 		if err != nil {
 			t.Fatalf("insert: %v", err)
@@ -160,7 +161,7 @@ func TestGetTicketContext_Filters(t *testing.T) {
 	} {
 		_, err := database.ExecRaw(`
 			INSERT INTO triggers (trigger_type, commit_hash, commit_message, ticket_id, repo_path, timestamp, source)
-			VALUES ('commit', ?, 'msg', ?, '/repos/ws', datetime('now'), 'git')
+			VALUES ('commit', ?, 'msg', ?, '/repos/ws', datetime('now', 'localtime'), 'git')
 		`, row.hash, row.ticket)
 		if err != nil {
 			t.Fatalf("insert: %v", err)

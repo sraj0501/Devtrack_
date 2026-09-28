@@ -66,6 +66,10 @@ jobs:
           go-version-file: devtrack_client/go.mod
           cache-dependency-path: devtrack_client/go.sum
 
+      - name: Silent Git commit qualification (pipes and Linux PTY)
+        working-directory: devtrack_client
+        run: go test ./internal/infra -run TestPostCommitRealGitSilentFailOpen -count=1 -v -timeout 60s
+
       - name: go test
         working-directory: devtrack_client
         run: go test ./... -timeout 60s
