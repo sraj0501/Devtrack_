@@ -9,9 +9,10 @@ type: project
 **Immediate validation follow-up:** TASK-158 merged to `dev` in PR #264 (`fe3ad38`). Normal Git is
 no longer routed through DevTrack; the explicit AI commit helper returns after Git without ticket,
 duration, PM, or push questions; generated observation hooks are silent and fail-open; and database
-initialization no longer prints into the user-facing path. Native Linux with explicit TTY and
-non-TTY execution is still unverified. Close this validation follow-up before treating TASK-158 as
-fully qualified, then begin TASK-160.
+initialization no longer prints into the user-facing path. PR #267 at `2525783` now qualifies
+native Linux PTY/non-TTY execution and Windows non-TTY execution, including unavailable observation
+logs. Client CI run `36474861545` passed both full Go suites and build/vet jobs. Integrate the
+qualification PR, then begin TASK-160.
 TASK-159 then replaces manual per-commit time entry with local, privacy-bounded activity-window
 inference; explicit work-session commands remain optional overrides/corrections.
 
@@ -20,7 +21,8 @@ hosted-Windows unit-test job; PR #264 timed out after 60 seconds in SQLite-backe
 `internal/mcp` tests. PR #265 subsequently passed all 19 checks and merged TASK-161 to `dev` at
 `f6b0ec0`, including the full Windows unit-test job, Windows/Ubuntu no-send E2E, five native MCPB
 smokes, PostgreSQL, wiki, and shared-memory gates. That re-establishes a green hosted baseline but
-does not replace TASK-158's still-missing native-Linux TTY/non-TTY qualification.
+is supplemented by PR #267's successful native-Linux TTY/non-TTY qualification and full Windows
+and Linux suites in run `36474861545`.
 
 **Deterministic ticket contract:** TASK-160 makes `<kind>/<ticket-key>-<number>-<slug>` the canonical branch
 grammar and assigns tickets in this order: canonical branch, explicit commit prefix/trailer,
@@ -47,7 +49,7 @@ Treat all of those CLI paths as unavailable until repaired. Teams/Outlook learni
 end-to-end complete.
 
 **Pickup sequence:** `execution-plan.md` owns the cross-initiative order and acceptance gates. In
-brief: close TASK-158's native Linux TTY/non-TTY qualification; complete TASK-160 and TASK-159;
+brief: integrate TASK-158's qualified PR #267; complete TASK-160 and TASK-159;
 make SAGE-003 parity executable and complete one asynchronous, deterministic Codex
 capture-to-knowledge journey; then resolve the separate UI branch and release follow-ups. Do not
 expand harness support or MCP exposure before the Codex closure gate.

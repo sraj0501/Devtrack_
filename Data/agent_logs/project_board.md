@@ -38,7 +38,7 @@ silence-test draft remains excluded.
 
 ---
 
-**[2026-09-21] TASK-158 — Restore the completely silent Git path (merged; native Linux validation pending, P0).**
+**[2026-09-21] TASK-158 — Restore the completely silent Git path (qualified; closure PR #267, P0).**
 **Priority:** P0 product-correctness regression; execute before the next SAGE-003 implementation
 slice, then resume TASK-157. **Branch:** `fix/TASK-158-silent-git-path`.
 **Assigned to:** engineer. **Started:** 2026-09-21. **Merged:** PR #264 to `dev` at `fe3ad38`.
@@ -62,7 +62,7 @@ interrupt the developer.
   installed behavior.
 
 **Acceptance criteria:**
-- [ ] Normal `git commit` in a monitored repository produces zero DevTrack questions and zero
+- [x] Normal `git commit` in a monitored repository produces zero DevTrack questions and zero
       DevTrack stdout/stderr on Windows and Linux.
 - [x] `devtrack git commit` asks no post-commit questions and offers no direct push; explicit
       overrides use commands or flags rather than unsolicited follow-up prompts.
@@ -70,7 +70,7 @@ interrupt the developer.
       user-facing commit path.
 - [x] Commit detection still persists the commit, infers or records an unlinked ticket without
       blocking, and stages applicable outbound PM work.
-- [ ] Automated TTY and non-TTY tests prove silence and fail-open behavior; the full Go suite and
+- [x] Automated TTY and non-TTY tests prove silence and fail-open behavior; the full Go suite and
       `go vet ./...` pass.
 - [x] Product docs describe one silent default path and separate explicit correction/configuration
       commands from background behavior.
@@ -85,6 +85,15 @@ PR #264's hosted-Windows unit-test job failed on 60-second SQLite timeouts in `i
 the full hosted-Windows unit-test job, restoring the branch baseline. Native Linux plus explicit
 TTY/non-TTY execution remain unchecked.
 **Blockers:** no implementation blocker; native Linux TTY/non-TTY qualification remains pending.
+
+**2026-09-29 qualification complete:** PR #267 at `2525783` passed client CI run
+[`36474861545`](https://github.com/sraj0501/Devtrack_/actions/runs/36474861545): both native
+Windows/Linux build and vet, full Go suites, and explicit silent-commit steps. Linux job
+`109106556152` executed both PTY and pipe cases, with writable and unavailable destinations;
+Windows job `109106556112` executed both pipe cases. The PTY test asserts all three streams are
+terminals before committing. Both no-send E2E jobs passed in run `36474861507`; general Go,
+Python/Postgres, and shared-memory checks passed in `36474861478`. All acceptance boxes are now
+proven; PR integration remains. This evidence supersedes the pending validation notes below.
 
 **2026-09-29 closure work:** User authorized closing TASK-158, TASK-160, and TASK-159,
 in that dependency order. Qualification branch: `fix/TASK-158-native-silence-qualification`.
