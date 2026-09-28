@@ -942,6 +942,10 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 	if pmPlatform == "" || pmPlatform == "none" {
 		pmPlatform = "none"
 	}
+	ticketWorkspace := WorkspaceConfig{PMPlatform: pmPlatform}
+	if err := (&WorkspacesConfig{Workspaces: []WorkspaceConfig{ticketWorkspace}}).ValidateTickets(); err != nil {
+		return err
+	}
 	// Derive a short name from the last path component.
 	name := filepath.Base(workspacePath)
 	if name == "" || name == "." {
@@ -954,6 +958,8 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 		"  - name: \"" + name + "\"\n" +
 		"    path: \"" + filepath.ToSlash(workspacePath) + "\"\n" +
 		"    pm_platform: \"" + pmPlatform + "\"\n" +
+		"    ticket_key: \"" + ticketWorkspace.TicketContract().Key + "\"\n" +
+		"    # Branch convention: " + ticketWorkspace.TicketConvention() + "\n" +
 		"    pm_project: \"\"\n" +
 		"    enabled: true\n" +
 		"    ignore_branches: []\n" +
@@ -962,7 +968,11 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 		"    pm_iteration_path: \"\"\n" +
 		"    pm_area_path: \"\"\n" +
 		"    pm_milestone: 0\n"
-	return os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		return err
+	}
+	fmt.Println("Ticket branch convention: " + ticketWorkspace.TicketConvention())
+	return nil
 }
 
 // printAutostartInstructions shows the autostart command.

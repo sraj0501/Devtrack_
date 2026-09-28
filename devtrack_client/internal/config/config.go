@@ -2,10 +2,8 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -53,10 +51,10 @@ type WorkspaceConfig struct {
 	// Use when one repo is tracked in two platforms (e.g. GitHub for code,
 	// Azure DevOps for PM) to avoid showing duplicate tickets.
 	SkipIssues bool `yaml:"skip_issues"`
-	// TicketPattern is a Go regex used to extract ticket IDs from branch names
-	// and commit messages. Supports named group "ticket" or first capture group.
-	// When empty, the default multi-pattern extractor is used (covers Jira, ADO, GitHub).
-	// Example: "(?P<ticket>[A-Z]+-\\d+)" or "#(\\d+)"
+	// TicketKey is the canonical uppercase namespace, distinct from provider IDs.
+	TicketKey string `yaml:"ticket_key,omitempty"`
+	// TicketPattern optionally replaces the full anchored branch grammar. It must
+	// have exactly one named ticket capture. It is never a message-scanning regex.
 	TicketPattern string `yaml:"ticket_pattern,omitempty"`
 	// EODTime is the local time (HH:MM, 24h) at which the EOD report fires for this workspace.
 	// If empty, the global EOD_REPORT_HOUR / EOD_REPORT_MINUTE settings are used.
@@ -105,16 +103,8 @@ func LoadWorkspacesConfig() (*WorkspacesConfig, error) {
 		cfg.Workspaces[i].Path = expandWorkspacePath(cfg.Workspaces[i].Path)
 	}
 
-	// Validate ticket_pattern regexes — clear invalid ones with a warning
-	for i := range cfg.Workspaces {
-		if cfg.Workspaces[i].TicketPattern == "" {
-			continue
-		}
-		if _, err := regexp.Compile(cfg.Workspaces[i].TicketPattern); err != nil {
-			log.Printf("workspace %q: invalid ticket_pattern %q: %v — using defaults",
-				cfg.Workspaces[i].Name, cfg.Workspaces[i].TicketPattern, err)
-			cfg.Workspaces[i].TicketPattern = ""
-		}
+	if err := cfg.ValidateTickets(); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
@@ -170,6 +160,9 @@ func ExpandWorkspacePath(path string) string { return expandWorkspacePath(path) 
 
 // Save writes the WorkspacesConfig back to the workspaces.yaml file.
 func (wc *WorkspacesConfig) Save() error {
+	if err := wc.ValidateTickets(); err != nil {
+		return err
+	}
 	path := GetWorkspacesFilePath()
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return fmt.Errorf("failed to create directory for workspaces file: %w", err)
@@ -184,6 +177,7 @@ func (wc *WorkspacesConfig) Save() error {
 	copy(normalized.Workspaces, wc.Workspaces)
 	for i := range normalized.Workspaces {
 		normalized.Workspaces[i].Path = filepath.ToSlash(normalized.Workspaces[i].Path)
+		normalized.Workspaces[i].TicketKey = normalized.Workspaces[i].TicketContract().Key
 	}
 
 	data, err := yaml.Marshal(&normalized)
