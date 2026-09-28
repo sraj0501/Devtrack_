@@ -86,6 +86,18 @@ the full hosted-Windows unit-test job, restoring the branch baseline. Native Lin
 TTY/non-TTY execution remain unchecked.
 **Blockers:** no implementation blocker; native Linux TTY/non-TTY qualification remains pending.
 
+**2026-09-29 closure work:** User authorized closing TASK-158, TASK-160, and TASK-159,
+in that dependency order. Qualification branch: `fix/TASK-158-native-silence-qualification`.
+Added real Git commit tests with the generated observation hook, writable and unavailable log
+destinations, and Linux pseudo-terminal assertions. Local Windows non-TTY cases pass; native
+Linux execution and the complete suite remain pending. The hosted Windows baseline was verified
+green in client CI run `36136822514`. Do not mark the remaining boxes complete until CI evidence
+proves the terminal and non-terminal paths.
+The local full-suite attempt is limited by Windows Application Control blocking several generated
+test executables, including after escalation and repository-local temporary-directory isolation.
+`go vet ./...` passes. MCP local-day fixtures were corrected (UTC fixtures could fall on yesterday
+in Asia/Kolkata); the MCP package now passes locally. Hosted CI must establish the full-suite gate.
+
 **[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (planned, P0).**
 **Priority:** P0 product contract; execute after TASK-158 native Linux qualification and before
 automatic time inference or the next SAGE-003 implementation slice. **Depends on:** TASK-158.
