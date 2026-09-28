@@ -22,10 +22,11 @@ import (
 
 // WorkspaceMonitor pairs a GitMonitor with its workspace routing metadata
 type WorkspaceMonitor struct {
-	gitMonitor    *GitMonitor
-	workspaceName string
-	pmPlatform    string
-	pmProject     string
+	workspaceConfig config.WorkspaceConfig // last valid config, including ticket identity
+	gitMonitor      *GitMonitor
+	workspaceName   string
+	pmPlatform      string
+	pmProject       string
 	// Per-workspace PM settings
 	pmAssignee      string
 	pmIterationPath string
@@ -90,6 +91,7 @@ func NewIntegratedMonitor(_ string) (*IntegratedMonitor, error) {
 				continue
 			}
 			workspaceMonitors = append(workspaceMonitors, &WorkspaceMonitor{
+				workspaceConfig: ws,
 				gitMonitor:      gm,
 				workspaceName:   ws.Name,
 				pmPlatform:      ws.PMPlatform,
@@ -274,10 +276,9 @@ func (im *IntegratedMonitor) Stop() {
 // workspaceKey returns a string that uniquely identifies a workspace's config.
 // If the key changes, the monitor must be restarted.
 func workspaceKey(ws config.WorkspaceConfig) string {
-	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%d|%s",
-		ws.Name, ws.Path, ws.PMPlatform, ws.PMProject,
-		ws.PMAssignee, ws.PMIterationPath, ws.PMMilestone,
-		strings.Join(ws.IgnoreBranches, ","))
+	// Include the full non-secret workspace contract, rather than maintaining a
+	// partial field list which can leave monitors using stale ticket patterns.
+	return fmt.Sprintf("%#v", ws)
 }
 
 // ReloadWorkspaces hot-reloads the workspace configuration.
@@ -310,10 +311,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 	// Stop monitors for removed or changed workspaces
 	for name, wm := range oldByName {
 		ws, stillWanted := desiredByName[name]
-		if !stillWanted || workspaceKey(ws) != fmt.Sprintf("%s|%s|%s|%s|%s|%s|%d|%s",
-			wm.workspaceName, wm.gitMonitor.repoPath, wm.pmPlatform, wm.pmProject,
-			wm.pmAssignee, wm.pmIterationPath, wm.pmMilestone,
-			strings.Join(wm.ignoreBranches, ",")) {
+		if !stillWanted || workspaceKey(ws) != workspaceKey(wm.workspaceConfig) {
 			log.Printf("Stopping monitor for workspace %q", name)
 			wm.gitMonitor.Stop()
 			delete(oldByName, name)
@@ -337,6 +335,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 			continue
 		}
 		wm := &WorkspaceMonitor{
+			workspaceConfig: ws,
 			gitMonitor:      gm,
 			workspaceName:   ws.Name,
 			pmPlatform:      ws.PMPlatform,

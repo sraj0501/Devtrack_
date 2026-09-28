@@ -95,6 +95,7 @@ func (wc *WorkspaceCommands) Add(name, path, pmPlatform string) error {
 	}
 
 	fmt.Printf("Added workspace %q (%s)\n", name, path)
+	fmt.Println("Ticket branch convention: " + cfg.Workspaces[len(cfg.Workspaces)-1].TicketConvention())
 	wc.sendWorkspaceReload()
 	return nil
 }

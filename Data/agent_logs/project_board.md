@@ -38,7 +38,7 @@ silence-test draft remains excluded.
 
 ---
 
-**[2026-09-21] TASK-158 — Restore the completely silent Git path (qualified; closure PR #267, P0).**
+**[2026-09-21] TASK-158 — Restore the completely silent Git path (complete, P0).**
 **Priority:** P0 product-correctness regression; execute before the next SAGE-003 implementation
 slice, then resume TASK-157. **Branch:** `fix/TASK-158-silent-git-path`.
 **Assigned to:** engineer. **Started:** 2026-09-21. **Merged:** PR #264 to `dev` at `fe3ad38`.
@@ -94,6 +94,8 @@ Windows job `109106556112` executed both pipe cases. The PTY test asserts all th
 terminals before committing. Both no-send E2E jobs passed in run `36474861507`; general Go,
 Python/Postgres, and shared-memory checks passed in `36474861478`. All acceptance boxes are now
 proven; PR integration remains. This evidence supersedes the pending validation notes below.
+PR #267 merged into `dev` at `7e1b53f` after all 18 checks passed on final documentation head
+`d7836aa` (client run `36475737536`, general CI `36475737427`, E2E `36475737420`). TASK-158 is closed.
 
 **2026-09-29 closure work:** User authorized closing TASK-158, TASK-160, and TASK-159,
 in that dependency order. Qualification branch: `fix/TASK-158-native-silence-qualification`.
@@ -107,7 +109,7 @@ test executables, including after escalation and repository-local temporary-dire
 `go vet ./...` passes. MCP local-day fixtures were corrected (UTC fixtures could fall on yesterday
 in Asia/Kolkata); the MCP package now passes locally. Hosted CI must establish the full-suite gate.
 
-**[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (planned, P0).**
+**[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (in progress, P0).**
 **Priority:** P0 product contract; execute after TASK-158 native Linux qualification and before
 automatic time inference or the next SAGE-003 implementation slice. **Depends on:** TASK-158.
 **Branch:** `features/TASK-160-deterministic-ticket-contract`.
@@ -169,8 +171,17 @@ trust path.
 - [ ] Custom workspace patterns, config reload, merge commits, provider ID normalization, and
       contradictory-signal cases have deterministic tests.
 
-**Engineer status:** PLANNED — not dispatched.
-**Blockers:** TASK-158 native Linux TTY/non-TTY qualification.
+**Engineer status:** STARTED 2026-09-29 — user authorized closure; TASK-158 gate passed and merged.
+Implement the six slices in `agent-memory/initiatives/ticket-mapping.md`: strict resolver and
+configuration; additive provenance and correction audit; runtime/outbound integration; inspection
+and correction channels; isolated reviewable suggestions; documentation and cross-platform proof.
+Each slice is reviewed in a PR to `dev`. No acceptance box closes from resolver-only tests.
+Slice 1 adds the deterministic resolver, full-pattern validation, visible persisted namespace
+defaults, and real reload tests proving invalid edits retain the old monitor while valid changes
+restart it. Resolver/config/reload package tests and vet pass locally. Windows Application Control
+continues to block the root test executable; hosted CI will validate that suite. Runtime still uses
+the legacy extractor until slice 3; task completion remains unproven.
+**Blockers:** none.
 
 **[2026-09-21] TASK-159 — Silent automatic time inference (planned, HIGH).**
 **Priority:** HIGH; paired with TASK-158 and TASK-157 / SAGE-003.

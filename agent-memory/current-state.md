@@ -11,8 +11,9 @@ no longer routed through DevTrack; the explicit AI commit helper returns after G
 duration, PM, or push questions; generated observation hooks are silent and fail-open; and database
 initialization no longer prints into the user-facing path. PR #267 at `2525783` now qualifies
 native Linux PTY/non-TTY execution and Windows non-TTY execution, including unavailable observation
-logs. Client CI run `36474861545` passed both full Go suites and build/vet jobs. Integrate the
-qualification PR, then begin TASK-160.
+logs. Client CI run `36474861545` passed both full Go suites and build/vet jobs. The
+qualification PR merged into `dev` at `7e1b53f`; TASK-158 is complete. TASK-160 implementation is
+authorized and active on `features/TASK-160-deterministic-ticket-contract`.
 TASK-159 then replaces manual per-commit time entry with local, privacy-bounded activity-window
 inference; explicit work-session commands remain optional overrides/corrections.
 
@@ -49,7 +50,7 @@ Treat all of those CLI paths as unavailable until repaired. Teams/Outlook learni
 end-to-end complete.
 
 **Pickup sequence:** `execution-plan.md` owns the cross-initiative order and acceptance gates. In
-brief: integrate TASK-158's qualified PR #267; complete TASK-160 and TASK-159;
+brief: complete TASK-160 and TASK-159 (TASK-158 is qualified and merged through PR #267);
 make SAGE-003 parity executable and complete one asynchronous, deterministic Codex
 capture-to-knowledge journey; then resolve the separate UI branch and release follow-ups. Do not
 expand harness support or MCP exposure before the Codex closure gate.
