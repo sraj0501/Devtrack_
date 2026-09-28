@@ -181,6 +181,11 @@ defaults, and real reload tests proving invalid edits retain the old monitor whi
 restart it. Resolver/config/reload package tests and vet pass locally. Windows Application Control
 continues to block the root test executable; hosted CI will validate that suite. Runtime still uses
 the legacy extractor until slice 3; task completion remains unproven.
+Slice 1 merged through PR #268 at `87dcbc7`, with all 18 hosted checks passing (client run
+`36477899702`). Slice 2 on `features/TASK-160-mapping-persistence` adds atomic mapping persistence,
+legacy-preserving migration, immutable original evidence, append-only corrections with request
+idempotency and optimistic versions, repository-scoped lookup, and effective provenance in MCP.
+Full database/MCP suites and vet pass locally; production resolver integration remains slice 3.
 **Blockers:** none.
 
 **[2026-09-21] TASK-159 — Silent automatic time inference (planned, HIGH).**

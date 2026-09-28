@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 
 	cfg "github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	_ "modernc.org/sqlite"
 )
 
@@ -25,17 +27,21 @@ type Database struct {
 
 // TriggerRecord represents a trigger event in the database
 type TriggerRecord struct {
-	ID            int64
-	TriggerType   string
-	Timestamp     time.Time
-	Source        string
-	RepoPath      string
-	CommitHash    string
-	CommitMessage string
-	Author        string
-	Data          string // JSON data
-	Processed     bool
-	TicketID      string // extracted ticket ID (branch/message/active-ticket); "" = unlinked
+	ID             int64
+	TriggerType    string
+	Timestamp      time.Time
+	Source         string
+	RepoPath       string
+	CommitHash     string
+	CommitMessage  string
+	Author         string
+	Data           string // JSON data
+	Processed      bool
+	TicketID       string // extracted ticket ID (branch/message/active-ticket); "" = unlinked
+	WorkspaceName  string
+	TicketMapping  *ticket.Resolution
+	TicketEvidence ticket.Evidence
+	TicketContract ticket.Contract
 }
 
 // ResponseRecord represents a user response in the database
@@ -475,17 +481,25 @@ func (d *Database) initSchema() error {
 			return fmt.Errorf("migration failed (%s): %w", alter, err)
 		}
 	}
-	return nil
+	return d.initTicketMappings()
 }
 
 // InsertTrigger inserts a trigger record into the database
 func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
+	if record.TicketMapping != nil {
+		record.TicketID = record.TicketMapping.TicketID
+	}
+	tx, err := d.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
 	query := `
 		INSERT INTO triggers (trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, ticket_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	result, err := d.db.Exec(query,
+	result, err := tx.Exec(query,
 		record.TriggerType,
 		record.Timestamp.Format(time.RFC3339Nano),
 		record.Source,
@@ -506,6 +520,14 @@ func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
 		return 0, fmt.Errorf("failed to get last insert id: %w", err)
 	}
 
+	if record.TriggerType == "commit" {
+		if err := insertTicketMapping(tx, id, record); err != nil {
+			return 0, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
 	return id, nil
 }
 
@@ -2497,117 +2519,70 @@ func (d *Database) InsertSageEvent(event sage.Event) (bool, error) {
 // The triggers table stores repo_path (not workspace_name) and has no branch
 // column; those fields are populated from available data.
 type TriggerCommit struct {
+	ID        int64
 	Hash      string
 	Message   string
 	TicketID  string
-	RepoPath  string // maps to triggers.repo_path
+	RepoPath  string
 	Timestamp string
+	Mapping   ticket.Resolution
 }
 
-// ListTodayCommits returns all commit triggers from today (local date), optionally
-// filtered to a specific repo path. Pass repoPath="" for all repos.
-// Results are ordered ASC by timestamp.
+const commitMappingSelect = `SELECT t.id, COALESCE(t.commit_hash,''), COALESCE(t.commit_message,''),
+    COALESCE(t.ticket_id,''), COALESCE(t.repo_path,''), COALESCE(t.timestamp,''), COALESCE(m.effective_json,'')
+    FROM triggers t LEFT JOIN ticket_mappings m ON m.trigger_id=t.id WHERE t.trigger_type='commit'`
+
+func (d *Database) listMappedCommits(suffix string, args ...any) ([]TriggerCommit, error) {
+	rows, err := d.db.Query(commitMappingSelect+suffix, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []TriggerCommit{}
+	for rows.Next() {
+		var c TriggerCommit
+		var mappingJSON string
+		if err := rows.Scan(&c.ID, &c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp, &mappingJSON); err != nil {
+			return nil, err
+		}
+		if mappingJSON != "" {
+			if err := json.Unmarshal([]byte(mappingJSON), &c.Mapping); err != nil {
+				return nil, err
+			}
+			c.TicketID = c.Mapping.TicketID
+		} else {
+			c.Mapping = ticket.Resolution{TicketID: c.TicketID, Source: "legacy", State: "legacy"}
+			if c.TicketID == "" {
+				c.Mapping.State = "unlinked"
+			}
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// ListTodayCommits returns local-day commits and their effective mapping provenance.
 func (d *Database) ListTodayCommits(repoPath string) ([]TriggerCommit, error) {
-	q := `
-		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
-		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
-		FROM triggers
-		WHERE trigger_type='commit'
-		  AND substr(CAST(timestamp AS TEXT), 1, 10) = strftime('%Y-%m-%d', 'now', 'localtime')
-		  AND (? = '' OR repo_path = ?)
-		ORDER BY timestamp ASC
-	`
-	rows, err := d.db.Query(q, repoPath, repoPath)
-	if err != nil {
-		return nil, fmt.Errorf("ListTodayCommits: %w", err)
-	}
-	defer rows.Close()
-	var out []TriggerCommit
-	for rows.Next() {
-		var c TriggerCommit
-		if err := rows.Scan(&c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp); err != nil {
-			return nil, fmt.Errorf("ListTodayCommits scan: %w", err)
-		}
-		out = append(out, c)
-	}
-	return out, rows.Err()
+	return d.listMappedCommits(` AND substr(CAST(t.timestamp AS TEXT),1,10)=strftime('%Y-%m-%d','now','localtime') AND (?='' OR t.repo_path=?) ORDER BY t.timestamp ASC`, repoPath, repoPath)
 }
 
-// ListTicketCommits returns the N most recent commit triggers for a given ticket_id.
 func (d *Database) ListTicketCommits(ticketID string, limit int) ([]TriggerCommit, error) {
-	q := `
-		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
-		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
-		FROM triggers
-		WHERE trigger_type='commit'
-		  AND ticket_id = ?
-		ORDER BY timestamp DESC
-		LIMIT ?
-	`
-	rows, err := d.db.Query(q, ticketID, limit)
-	if err != nil {
-		return nil, fmt.Errorf("ListTicketCommits: %w", err)
-	}
-	defer rows.Close()
-	var out []TriggerCommit
-	for rows.Next() {
-		var c TriggerCommit
-		if err := rows.Scan(&c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp); err != nil {
-			return nil, fmt.Errorf("ListTicketCommits scan: %w", err)
-		}
-		out = append(out, c)
-	}
-	return out, rows.Err()
+	return d.listMappedCommits(` AND t.ticket_id=? ORDER BY t.timestamp DESC LIMIT ?`, ticketID, limit)
 }
 
-// MostRecentCommit returns the most recent commit trigger across all repos.
-// Returns a zero TriggerCommit (empty fields) when no commits exist.
 func (d *Database) MostRecentCommit() (TriggerCommit, error) {
-	var c TriggerCommit
-	err := d.db.QueryRow(`
-		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
-		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
-		FROM triggers
-		WHERE trigger_type='commit'
-		ORDER BY timestamp DESC
-		LIMIT 1
-	`).Scan(&c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp)
-	if err == sql.ErrNoRows {
-		return TriggerCommit{}, nil
+	commits, err := d.ListRecentCommits(1)
+	if err != nil || len(commits) == 0 {
+		return TriggerCommit{}, err
 	}
-	if err != nil {
-		return TriggerCommit{}, fmt.Errorf("MostRecentCommit: %w", err)
-	}
-	return c, nil
+	return commits[0], nil
 }
 
-// ListRecentCommits returns the most recent commit triggers across all repos.
 func (d *Database) ListRecentCommits(limit int) ([]TriggerCommit, error) {
 	if limit <= 0 {
 		return []TriggerCommit{}, nil
 	}
-	rows, err := d.db.Query(`
-		SELECT COALESCE(commit_hash,''), COALESCE(commit_message,''),
-		       COALESCE(ticket_id,''), COALESCE(repo_path,''), COALESCE(timestamp,'')
-		FROM triggers
-		WHERE trigger_type='commit'
-		ORDER BY timestamp DESC
-		LIMIT ?
-	`, limit)
-	if err != nil {
-		return nil, fmt.Errorf("ListRecentCommits: %w", err)
-	}
-	defer rows.Close()
-
-	commits := make([]TriggerCommit, 0)
-	for rows.Next() {
-		var commit TriggerCommit
-		if err := rows.Scan(&commit.Hash, &commit.Message, &commit.TicketID, &commit.RepoPath, &commit.Timestamp); err != nil {
-			return nil, fmt.Errorf("ListRecentCommits scan: %w", err)
-		}
-		commits = append(commits, commit)
-	}
-	return commits, rows.Err()
+	return d.listMappedCommits(` ORDER BY t.timestamp DESC LIMIT ?`, limit)
 }
 
 // CountTodayCommits returns the number of commit triggers today (local date).

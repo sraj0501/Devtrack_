@@ -1,5 +1,14 @@
 # DevTrack Engineer Log
 
+### [2026-09-29] TASK-160 — deterministic resolver and durable mapping audit
+
+Slice 1 merged through PR #268 at `87dcbc7` after all 18 checks passed. Resolver tests cover
+canonical grammar, explicit references, conflicts, merge subjects, provider IDs, and custom
+pattern rejection. Real reload tests prove invalid settings retain the valid monitor and valid
+ticket-pattern edits replace it. Slice 2 preserves legacy mappings and original evidence while
+recording corrections atomically with request idempotency and concurrent version checks. Full
+database/MCP suites and vet pass locally. Runtime integration and correction channels remain open.
+
 ### [2026-09-29] TASK-158 — native silence qualification
 
 Commit `2525783`, PR #267: real Git commits execute generated hooks with writable and missing log
