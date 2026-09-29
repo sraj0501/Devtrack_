@@ -1,6 +1,6 @@
 ﻿# DevTrack Project Board
 
-**[2026-09-29] TASK-162 — Align no-send E2E with deterministic ticket contract (passed, P0).**
+**[2026-09-29] TASK-162 — Align no-send E2E with deterministic ticket contract (complete, P0).**
 **Priority:** P0 CI integration follow-up. **Branch:**
 `fix/TASK-162-align-no-send-e2e-ticket`. **Assigned to:** engineer. **Started:** 2026-09-29.
 
@@ -15,14 +15,14 @@ contract.
 - [x] Native Windows and the supported disposable Linux fallback observe the commit and expose
       `E2E-201` through MCP; the installed WSL distribution has no Go toolchain.
 - [x] The full Go suite, `go vet ./...`, shared-memory validation, and `git diff --check` pass.
-- [ ] Hosted checks are green after integration.
+- [x] Hosted checks are green after integration.
 
-**Engineer status:** PASSED LOCALLY — Windows and Linux no-send E2E, full Go tests/vet, shared-memory
-validation, and whitespace validation passed on 2026-09-29. Linux used the repository's Docker
-fallback because WSL lacks Go. The unrelated untracked `Microsoft/` and `devtrack_client/.claude/`
-paths remain excluded.
+**Engineer status:** COMPLETE — PR #271 merged to `dev` at `a4a06fb` on 2026-09-29. Native Windows
+and disposable-Linux no-send E2E, the full local Go suite/vet, shared-memory validation, and
+whitespace validation passed. All six hosted checks passed, including Windows and Ubuntu no-send
+E2E. The unrelated untracked `Microsoft/` path remains excluded.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/271
-**Blockers:** hosted integration.
+**Blockers:** none.
 
 ---
 
@@ -192,7 +192,7 @@ The existing upstream task branch (partial commit `aa0d2c0` plus merged TASK-158
 reconciled locally without force; the combined tree passed the full Windows and Ubuntu WSL2 Go
 suite/vet and 75 focused Python contract tests before push.
 
-**[2026-09-21] TASK-159 — Silent automatic time inference (planned, HIGH).**
+**[2026-09-21] TASK-159 — Silent automatic time inference (in progress, HIGH).**
 **Priority:** HIGH; paired with TASK-158 and TASK-157 / SAGE-003.
 **Depends on:** TASK-158 native Linux qualification. **Branch:** `features/TASK-159-silent-time-inference`.
 
@@ -211,9 +211,10 @@ keystrokes, window activity, raw command output, or cloud telemetry.
 - [ ] The algorithm, defaults, privacy boundary, confidence, and corrections are documented and
       covered by clock-controlled tests.
 
-**Engineer status:** NEXT — product work is ready after the TASK-162 CI follow-up.
-**Blockers:** TASK-160 is integrated; a fresh TASK-159 branch should start from updated `origin/dev`
-after TASK-162 restores the no-send E2E gate.
+**Assigned to:** engineer. **Started:** 2026-09-29.
+**Engineer status:** IN PROGRESS — branch `features/TASK-159-silent-time-inference` starts from
+merged `dev` at `a4a06fb` after TASK-162 restored the no-send E2E gate.
+**Blockers:** none.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and

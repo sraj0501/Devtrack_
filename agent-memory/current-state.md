@@ -13,11 +13,11 @@ initialization no longer prints into the user-facing path. On 2026-09-26, Ubuntu
 passed explicit redirected non-TTY and pseudo-TTY silence/fail-open tests plus the full Go suite and
 `go vet ./...`. TASK-158 is qualified. TASK-160 merged through PR #270 at `a097a0b` after passing
 its Windows and Ubuntu WSL2 implementation gates. Seventeen hosted checks passed; both no-send E2E
-lanes used a stale `DEMO-201` fixture in an `E2E` workspace. TASK-162 corrects that fixture and has
-passed native Windows plus disposable-Linux no-send E2E, the full Go suite/vet, shared-memory, and
-whitespace checks locally. PR #271 targets `dev`; hosted integration remains before TASK-159 replaces manual per-commit
-time entry with local, privacy-bounded activity-window inference; explicit work-session commands
-remain optional overrides/corrections.
+lanes used a stale `DEMO-201` fixture in an `E2E` workspace. TASK-162 corrected that fixture and
+merged through PR #271 at `a4a06fb`; all six hosted checks passed, including both no-send E2E lanes.
+TASK-159 is now active from that merged head and replaces manual per-commit time entry with local,
+privacy-bounded activity-window inference; explicit work-session commands remain optional
+overrides/corrections.
 
 **Current CI evidence:** The merged PR #263 and PR #264 check sets each retain a historical failed
 hosted-Windows unit-test job; PR #264 timed out after 60 seconds in SQLite-backed `internal/db` and
@@ -53,7 +53,7 @@ Treat all of those CLI paths as unavailable until repaired. Teams/Outlook learni
 end-to-end complete.
 
 **Pickup sequence:** `execution-plan.md` owns the cross-initiative order and acceptance gates. In
-brief: restore the no-send E2E gate in TASK-162, then implement TASK-159;
+brief: implement TASK-159 now that TASK-162 restored the no-send E2E gate;
 make SAGE-003 parity executable and complete one asynchronous, deterministic Codex
 capture-to-knowledge journey; then resolve the separate UI branch and release follow-ups. Do not
 expand harness support or MCP exposure before the Codex closure gate.

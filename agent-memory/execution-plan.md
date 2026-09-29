@@ -31,8 +31,8 @@ without an authorized board task and a dedicated branch targeting `dev`.
 - TASK-161 merged through PR #265 at `f6b0ec0`; workflow run `36136822555` published the rolling
   `dev-f6b0ec0` prerelease with all five platform binaries and checksums. It is available on the
   rolling `dev` channel but is not part of stable v3.1.1. TASK-158 validation is separately complete.
-- TASK-157 / SAGE-003 is the active product initiative. TASK-160 is integrated, TASK-162's stale
-  no-send E2E fixture fix passes locally and awaits integration, and TASK-159 remains allocated;
+- TASK-157 / SAGE-003 is the active product initiative. TASK-160 and TASK-162 are integrated, and
+  TASK-159 is active on `features/TASK-159-silent-time-inference` from merged `dev` at `a4a06fb`;
   the next unused task ID is TASK-163, subject to board verification.
 - The board's active summary now describes the foundation as merged into `dev`; preserve closed
   task history and do not rewrite historical branch references.
@@ -76,7 +76,7 @@ Result: passed on Windows and Ubuntu WSL2 on 2026-09-29. Full Go tests and vet p
 integrated through PR #270 at `a097a0b`. Seventeen hosted checks passed; TASK-162 aligns the two
 stale no-send E2E fixtures with the configured `E2E` workspace key. Native Windows and the supported
 disposable Linux fallback E2E, the full Go suite/vet, memory validation, and whitespace checks pass
-locally; PR #271 targets `dev`, and hosted integration remains before TASK-159.
+locally. PR #271 merged at `a4a06fb`; all six hosted checks passed, including both no-send E2E lanes.
 
 ### 3. Implement silent automatic time inference — next after TASK-160 integration
 
