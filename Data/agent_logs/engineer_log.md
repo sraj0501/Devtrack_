@@ -31,7 +31,14 @@ tests/vet plus the 75 Python contract tests passed again on the reconciled tree.
   API/trigger tests; shared-memory validation; wiki inline-JavaScript validation; and
   `git diff --check` all pass.
 - Blockers encountered: no product/test blocker; the accidental cache inclusion was removed before push.
-- Ready for PM review: YES — branch push is authorized; PR/integration remains pending.
+- Ready for PM review: YES — final reconciliation with merged slices #268/#269 is in progress.
+
+### [2026-09-29] TASK-160 — merged slice history
+
+Slice 1 merged through PR #268 at `87dcbc7` after all 18 checks passed. Slice 2 merged through
+PR #269 at `2fda9e8`. The completed branch was then reconciled with both merged slices so the
+runtime integration, correction channels, outbound gating, documentation, and cross-platform
+qualification can be reviewed as one final integration change.
 
 ### [2026-09-26] TASK-158 — Ubuntu WSL2 silence qualification complete
 

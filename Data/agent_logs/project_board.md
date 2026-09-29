@@ -159,7 +159,8 @@ commands, onboarding, and documentation are implemented on
 Ubuntu WSL2 `go test ./...` and `go vet ./...`, 75 focused Python API/trigger tests, shared-memory
 validation, wiki inline-JavaScript validation, and `git diff --check` pass. The pytest cache warning
 is environmental and did not affect the 75 passing tests.
-**Blockers:** no product/test blocker. Push is owner-authorized; PR/integration remains pending.
+**Blockers:** no product/test blocker. Final PR/integration remains pending after reconciliation
+with merged slices #268 (`87dcbc7`) and #269 (`2fda9e8`).
 TASK-159 implementation must start from a fresh branch after this work is integrated.
 The existing upstream task branch (partial commit `aa0d2c0` plus merged TASK-158 PR #267) was
 reconciled locally without force; the combined tree passed the full Windows and Ubuntu WSL2 Go

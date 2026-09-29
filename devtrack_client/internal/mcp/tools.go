@@ -147,7 +147,11 @@ func makeGetActiveContext(database *db.Database) func(context.Context, map[strin
 
 		confidence := "none"
 		if recent.Hash != "" {
-			if recent.TicketID != "" && recent.TicketID != "unlinked" {
+			if recent.TicketConflict {
+				confidence = "conflict"
+			} else if recent.TicketSource == "legacy" {
+				confidence = "unknown"
+			} else if recent.TicketID != "" && recent.TicketID != "unlinked" {
 				confidence = "high"
 			} else {
 				confidence = "low"
@@ -169,6 +173,7 @@ func makeGetActiveContext(database *db.Database) func(context.Context, map[strin
 			"ticket_state":          recent.TicketState,
 			"ticket_confidence":     recent.TicketConfidence,
 			"ticket_conflict":       recent.TicketConflict,
+			"ticket_mapping":        ticketMappingPayload(recent),
 			"repo_path":             recent.RepoPath,
 			"confidence":            confidence,
 			"today_commits":         todayCount,
@@ -204,6 +209,7 @@ func makeGetTodayCommits(database *db.Database) func(context.Context, map[string
 				"ticket_state":      c.TicketState,
 				"ticket_confidence": c.TicketConfidence,
 				"ticket_conflict":   c.TicketConflict,
+				"ticket_mapping":    ticketMappingPayload(c),
 			})
 		}
 
@@ -320,10 +326,11 @@ func makeGetTicketContext(database *db.Database) func(context.Context, map[strin
 		lastActivity := ""
 		for _, c := range commits {
 			commitList = append(commitList, map[string]interface{}{
-				"hash":      shortHash(c.Hash),
-				"message":   c.Message,
-				"repo_path": c.RepoPath,
-				"timestamp": c.Timestamp,
+				"ticket_mapping": ticketMappingPayload(c),
+				"hash":           shortHash(c.Hash),
+				"message":        c.Message,
+				"repo_path":      c.RepoPath,
+				"timestamp":      c.Timestamp,
 			})
 			if lastActivity == "" {
 				lastActivity = c.Timestamp
@@ -348,6 +355,17 @@ func makeGetTicketContext(database *db.Database) func(context.Context, map[strin
 			"pending_actions": pendingList,
 			"last_activity":   lastActivity,
 		}, nil
+	}
+}
+
+func ticketMappingPayload(c db.TriggerCommit) map[string]interface{} {
+	return map[string]interface{}{
+		"ticket_id":   c.TicketID,
+		"external_id": c.TicketExternalID,
+		"source":      c.TicketSource,
+		"state":       c.TicketState,
+		"confidence":  c.TicketConfidence,
+		"conflict":    c.TicketConflict,
 	}
 }
 

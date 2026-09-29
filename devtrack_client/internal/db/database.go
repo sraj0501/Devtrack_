@@ -2759,9 +2759,7 @@ type TriggerCommit struct {
 	Timestamp        string
 }
 
-// ListTodayCommits returns all commit triggers from today (local date), optionally
-// filtered to a specific repo path. Pass repoPath="" for all repos.
-// Results are ordered ASC by timestamp.
+// ListTodayCommits returns local-day commits and their effective mapping provenance.
 func (d *Database) ListTodayCommits(repoPath string) ([]TriggerCommit, error) {
 	q := `
 		SELECT id, COALESCE(commit_hash,''), COALESCE(commit_message,''), COALESCE(ticket_id,''),
@@ -2795,7 +2793,6 @@ func (d *Database) ListTodayCommits(repoPath string) ([]TriggerCommit, error) {
 	return out, rows.Err()
 }
 
-// ListTicketCommits returns the N most recent commit triggers for a given ticket_id.
 func (d *Database) ListTicketCommits(ticketID string, limit int) ([]TriggerCommit, error) {
 	q := `
 		SELECT id, COALESCE(commit_hash,''), COALESCE(commit_message,''), COALESCE(ticket_id,''),
@@ -2832,8 +2829,6 @@ func (d *Database) ListTicketCommits(ticketID string, limit int) ([]TriggerCommi
 	return out, rows.Err()
 }
 
-// MostRecentCommit returns the most recent commit trigger across all repos.
-// Returns a zero TriggerCommit (empty fields) when no commits exist.
 func (d *Database) MostRecentCommit() (TriggerCommit, error) {
 	var c TriggerCommit
 	row := d.db.QueryRow(`
@@ -2861,7 +2856,6 @@ func (d *Database) MostRecentCommit() (TriggerCommit, error) {
 	return c, nil
 }
 
-// ListRecentCommits returns the most recent commit triggers across all repos.
 func (d *Database) ListRecentCommits(limit int) ([]TriggerCommit, error) {
 	if limit <= 0 {
 		return []TriggerCommit{}, nil
