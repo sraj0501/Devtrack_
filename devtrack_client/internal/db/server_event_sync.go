@@ -156,7 +156,11 @@ func (d *Database) initServerEventSync() error {
 					'workspace_name', NEW.workspace_name, 'description', NEW.description,
 					'commits', NEW.commits, 'duration_minutes', NEW.duration_minutes,
 					'adjusted_minutes', NEW.adjusted_minutes,
-					'auto_stopped', NEW.auto_stopped, 'created_at', NEW.created_at
+					'auto_stopped', NEW.auto_stopped,
+					'measurement_source', NEW.measurement_source,
+					'last_activity_at', NEW.last_activity_at,
+					'confidence', NEW.confidence, 'evidence_count', NEW.evidence_count,
+					'created_at', NEW.created_at
 				)
 			)
 			ON CONFLICT(event_id) DO UPDATE SET
@@ -175,7 +179,11 @@ func (d *Database) initServerEventSync() error {
 					'workspace_name', NEW.workspace_name, 'description', NEW.description,
 					'commits', NEW.commits, 'duration_minutes', NEW.duration_minutes,
 					'adjusted_minutes', NEW.adjusted_minutes,
-					'auto_stopped', NEW.auto_stopped, 'created_at', NEW.created_at
+					'auto_stopped', NEW.auto_stopped,
+					'measurement_source', NEW.measurement_source,
+					'last_activity_at', NEW.last_activity_at,
+					'confidence', NEW.confidence, 'evidence_count', NEW.evidence_count,
+					'created_at', NEW.created_at
 				)
 			)
 			ON CONFLICT(event_id) DO UPDATE SET

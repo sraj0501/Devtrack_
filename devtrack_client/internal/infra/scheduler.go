@@ -380,20 +380,8 @@ func (s *Scheduler) scheduleEODReport() {
 		var eodCommits []trigger.EODCommit
 		if dbErr == nil {
 			defer database.Close()
-			active, _ := database.GetActiveWorkSession()
-			if active != nil {
-				endedAt := time.Now().UTC().Format("2006-01-02 15:04:05")
-				startTime, parseErr := time.Parse("2006-01-02 15:04:05", active.StartedAt)
-				durationMins := 0
-				if parseErr == nil {
-					durationMins = int(time.Since(startTime).Minutes())
-					if durationMins < 0 {
-						durationMins = 0
-					}
-				}
-				if stopErr := database.EndWorkSession(active.ID, endedAt, durationMins); stopErr == nil {
-					log.Printf("✅ Auto-stopped work session #%d for EOD report", active.ID)
-				}
+			if err := database.CloseInactiveWorkSession(time.Now(), 0); err != nil {
+				log.Printf("close work session for EOD: %v", err)
 			}
 			if localCommits, commitsErr := database.ListTodayCommits(""); commitsErr == nil {
 				eodCommits = make([]trigger.EODCommit, 0, len(localCommits))
@@ -446,23 +434,9 @@ func (s *Scheduler) scheduleIdleSessionStop() {
 		if dbErr != nil {
 			return
 		}
-		active, fetchErr := database.GetActiveWorkSession()
-		if fetchErr != nil || active == nil {
-			return
-		}
-
-		startTime, parseErr := time.Parse("2006-01-02 15:04:05", active.StartedAt)
-		if parseErr != nil {
-			return
-		}
-		elapsedMins := int(time.Since(startTime).Minutes())
-		if elapsedMins >= idleMins {
-			endedAt := time.Now().UTC().Format("2006-01-02 15:04:05")
-			if stopErr := database.EndWorkSession(active.ID, endedAt, elapsedMins); stopErr == nil {
-				// Mark auto_stopped flag
-				database.Exec("UPDATE work_sessions SET auto_stopped = 1 WHERE id = ?", active.ID) //nolint:errcheck
-				log.Printf("⏱️  Work session #%d auto-stopped after %d idle minutes", active.ID, elapsedMins)
-			}
+		defer database.Close()
+		if err := database.CloseInactiveWorkSession(time.Now(), time.Duration(idleMins)*time.Minute); err != nil {
+			log.Printf("close idle work session: %v", err)
 		}
 	})
 	if err != nil {

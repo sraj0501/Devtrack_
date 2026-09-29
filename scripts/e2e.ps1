@@ -189,7 +189,48 @@ try {
         throw "MCP context did not contain the observed commit and local-day count:`n$mcpOutput"
     }
 
+    # The log can precede the work-time transaction; wait for persisted CLI evidence.
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        $workStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($workStatus -match '\[inferred, confidence 0\.50\].*E2E-201') { break }
+        if ([DateTime]::UtcNow -ge $deadline) {
+            throw "Commit did not produce an inferred work session:`n$workStatus"
+        }
+        Start-Sleep -Milliseconds 250
+    } while ($true)
+
+    Invoke-Checked $binary work adjust 45
+    $correctedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+    if ($correctedStatus -notmatch '45m.*\[adjusted\].*E2E-201') {
+        throw "CLI correction was not visible:`n$correctedStatus"
+    }
+    Invoke-Checked $binary stop
+    Invoke-Checked $binary start
+    $restartedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+    if ($restartedStatus -ne $correctedStatus) {
+        throw "Work sessions changed across daemon restart:`n$restartedStatus"
+    }
+
+    Push-Location $workspace
+    try {
+        Invoke-Checked $binary work start E2E-202
+        $activeStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($activeStatus -notmatch 'Active session' -or $activeStatus -notmatch 'Ticket: E2E-202') {
+            throw "Explicit session did not start:`n$activeStatus"
+        }
+        Invoke-Checked $binary work stop
+        $stoppedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($stoppedStatus -notmatch 'No active session' -or
+            $stoppedStatus -notmatch '\[explicit,.*E2E-202' -or
+            $stoppedStatus -notmatch '45m.*\[adjusted\].*E2E-201') {
+            throw "Explicit stop or earlier correction was lost:`n$stoppedStatus"
+        }
+    }
+    finally { Pop-Location }
+
     Invoke-Checked $binary queue list
+    Write-Host 'PASS: automatic time, CLI correction, restart persistence, and explicit start/stop.'
     Write-Host "PASS: Windows no-send E2E observed $commitHash and exposed it through MCP."
 }
 finally {

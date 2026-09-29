@@ -406,6 +406,53 @@ var allMigrations = []Migration{
 			return database.backfillLegacyTicketMappings()
 		},
 	},
+	{
+		ID:          "017-silent-time-inference",
+		Description: "Add privacy-bounded work activity evidence and auditable time corrections",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+			if _, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS work_activity_evidence (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					work_session_id INTEGER,
+					source_kind TEXT NOT NULL,
+					source_id TEXT NOT NULL,
+					occurred_at TEXT NOT NULL,
+					ticket_ref TEXT NOT NULL DEFAULT '',
+					repo_path TEXT NOT NULL DEFAULT '',
+					workspace_name TEXT NOT NULL DEFAULT '',
+					created_at TEXT NOT NULL DEFAULT (datetime('now')),
+					FOREIGN KEY (work_session_id) REFERENCES work_sessions(id),
+					UNIQUE(source_kind, source_id)
+				);
+				CREATE INDEX IF NOT EXISTS idx_work_activity_time
+					ON work_activity_evidence(occurred_at);
+				CREATE TABLE IF NOT EXISTS work_session_adjustments (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					work_session_id INTEGER NOT NULL,
+					previous_minutes INTEGER,
+					adjusted_minutes INTEGER NOT NULL,
+					channel TEXT NOT NULL DEFAULT 'cli',
+					reason TEXT NOT NULL DEFAULT '',
+					created_at TEXT NOT NULL DEFAULT (datetime('now')),
+					FOREIGN KEY (work_session_id) REFERENCES work_sessions(id)
+				);
+				CREATE INDEX IF NOT EXISTS idx_work_session_adjustments_session
+					ON work_session_adjustments(work_session_id, id);
+				CREATE INDEX IF NOT EXISTS idx_work_sessions_activity
+					ON work_sessions(measurement_source, repo_path, workspace_name, last_activity_at);
+				DROP TRIGGER IF EXISTS sync_work_sessions_insert;
+				DROP TRIGGER IF EXISTS sync_work_sessions_update;
+			`); err != nil {
+				return err
+			}
+			return database.initServerEventSync()
+		},
+	},
 }
 
 func (d *Database) backfillLegacyTicketMappings() error {
