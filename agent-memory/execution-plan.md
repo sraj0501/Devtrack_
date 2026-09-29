@@ -76,7 +76,7 @@ Result: passed on Windows and Ubuntu WSL2 on 2026-09-29. Full Go tests and vet p
 integrated through PR #270 at `a097a0b`. Seventeen hosted checks passed; TASK-162 aligns the two
 stale no-send E2E fixtures with the configured `E2E` workspace key. Native Windows and the supported
 disposable Linux fallback E2E, the full Go suite/vet, memory validation, and whitespace checks pass
-locally; hosted integration remains before TASK-159.
+locally; PR #271 targets `dev`, and hosted integration remains before TASK-159.
 
 ### 3. Implement silent automatic time inference — next after TASK-160 integration
 

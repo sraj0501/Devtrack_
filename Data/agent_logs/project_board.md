@@ -21,7 +21,8 @@ contract.
 validation, and whitespace validation passed on 2026-09-29. Linux used the repository's Docker
 fallback because WSL lacks Go. The unrelated untracked `Microsoft/` and `devtrack_client/.claude/`
 paths remain excluded.
-**Blockers:** commit/push/PR authorization and hosted integration.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/271
+**Blockers:** hosted integration.
 
 ---
 
