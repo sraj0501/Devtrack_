@@ -3,9 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
@@ -54,6 +58,7 @@ func (cli *CLI) handleWorkStart() error {
 	}
 
 	// Check for already-active session
+	defer db.Close()
 	active, err := db.GetActiveWorkSession()
 	if err != nil {
 		return fmt.Errorf("could not check active session: %w", err)
@@ -74,12 +79,37 @@ func (cli *CLI) handleWorkStart() error {
 		ticketRef = os.Args[3]
 	}
 
-	repoPath := "."
-	workspaceName := ""
+	ws, err := currentTicketWorkspace()
+	if err != nil {
+		return err
+	}
+	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return fmt.Errorf("resolve repository: %w", err)
+	}
+	repoPath := filepath.Clean(strings.TrimSpace(string(out)))
+	workspaceName := ws.Name
+	resolver, err := resolverForWorkspace(ws)
+	if err != nil {
+		return err
+	}
+	if ticketRef != "" && resolver.Resolve(ticket.ResolveInput{ActiveTicket: ticketRef}).TicketID != ticketRef {
+		return fmt.Errorf("ticket reference does not match workspace convention")
+	}
 
 	id, err := db.InsertWorkSession(ticketRef, repoPath, workspaceName)
 	if err != nil {
 		return fmt.Errorf("failed to start session: %w", err)
+	}
+
+	if ticketRef != "" {
+		if err := db.SetActiveTicket(workspaceName, repoPath, ticketRef, ticket.ResolverConfig{
+			TicketKey: ws.TicketKey, Kinds: ws.TicketKinds, BranchPattern: ws.TicketPattern,
+		}); err != nil {
+			return err
+		}
+	} else if err := db.ClearActiveTicket(workspaceName, repoPath); err != nil {
+		return err
 	}
 
 	msg := fmt.Sprintf("✅ Work session started (ID %d)", id)
@@ -98,12 +128,22 @@ func (cli *CLI) handleWorkStop() error {
 		return fmt.Errorf("database error: %w", err)
 	}
 
+	defer db.Close()
 	active, err := db.GetActiveWorkSession()
 	if err != nil {
 		return fmt.Errorf("could not check active session: %w", err)
 	}
 	if active == nil {
-		fmt.Println("No active work session found.")
+		// Automatic time closure does not revoke an explicit ticket selection.
+		// An explicit stop clears it even after the timed session was closed.
+		if ws, err := currentTicketWorkspace(); err == nil {
+			if out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output(); err == nil {
+				if err := db.ClearActiveTicket(ws.Name, filepath.Clean(strings.TrimSpace(string(out)))); err != nil {
+					return err
+				}
+			}
+		}
+		fmt.Println("No active work session found; current ticket override cleared when available.")
 		return nil
 	}
 
@@ -119,11 +159,14 @@ func (cli *CLI) handleWorkStop() error {
 	durationMins := int(time.Since(startTime).Minutes())
 	durationMins = max(durationMins, 0)
 
-	endedAt := time.Now().UTC().Format("2006-01-02 15:04:05")
+	endedAt := time.Now().Format(time.RFC3339Nano)
 	if err := db.EndWorkSession(active.ID, endedAt, durationMins); err != nil {
 		return fmt.Errorf("failed to stop session: %w", err)
 	}
 
+	if err := db.ClearActiveTicket(active.WorkspaceName, active.RepoPath); err != nil {
+		return err
+	}
 	hours := durationMins / 60
 	mins := durationMins % 60
 	durationStr := fmt.Sprintf("%dm", durationMins)
@@ -158,6 +201,7 @@ func (cli *CLI) handleWorkAdjust() error {
 	}
 
 	// Try active session first, then today's last session
+	defer db.Close()
 	active, err := db.GetActiveWorkSession()
 	if err != nil {
 		return fmt.Errorf("could not check active session: %w", err)
@@ -197,13 +241,20 @@ func (cli *CLI) handleWorkStatus() error {
 		return fmt.Errorf("database error: %w", err)
 	}
 
+	defer db.Close()
 	active, err := db.GetActiveWorkSession()
 	if err != nil {
 		return fmt.Errorf("could not check active session: %w", err)
 	}
 
 	if active != nil {
-		startTime, _ := time.Parse("2006-01-02 15:04:05", active.StartedAt)
+		startTime, parseErr := time.Parse("2006-01-02 15:04:05", active.StartedAt)
+		if parseErr != nil {
+			startTime, parseErr = time.Parse(time.RFC3339Nano, active.StartedAt)
+		}
+		if parseErr != nil {
+			return parseErr
+		}
 		elapsed := int(time.Since(startTime).Minutes())
 		hours := elapsed / 60
 		mins := elapsed % 60
@@ -264,9 +315,9 @@ func (cli *CLI) handleWorkStatus() error {
 		if ticketStr == "" {
 			ticketStr = "(no ticket)"
 		}
-		adjNote := ""
+		adjNote := fmt.Sprintf(" [%s, confidence %.2f]", s.MeasurementSource, s.Confidence)
 		if s.AdjustedMinutes != nil {
-			adjNote = " [adjusted]"
+			adjNote += " [adjusted]"
 		}
 		fmt.Printf("  • %s  %s%s\n", durationStr+adjNote, ticketStr, "")
 	}

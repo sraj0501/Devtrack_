@@ -50,7 +50,7 @@ func CanExtend(window Window, current time.Time, context Context, policy Policy)
 		return false
 	}
 	start, _ := Bounds(window.FirstActivity, window.LastActivity, policy)
-	_, candidateEnd := Bounds(window.FirstActivity, current, policy)
+	candidateEnd := current.Add(policy.Padding)
 	return candidateEnd.Sub(start) <= policy.MaxWindow
 }
 

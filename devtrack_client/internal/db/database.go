@@ -187,11 +187,13 @@ type WorkSessionRecord struct {
 }
 
 // WorkSessionAdjustment is an append-only audit record for an explicit time
-// correction. The measured duration on the session is never overwritten.
+// correction. Adjustments never replace measured duration; MeasuredMinutes
+// captures its value at correction time even if later evidence changes it.
 type WorkSessionAdjustment struct {
 	ID              int64
 	WorkSessionID   int64
 	PreviousMinutes *int
+	MeasuredMinutes *int
 	AdjustedMinutes int
 	Channel         string
 	Reason          string
@@ -478,8 +480,10 @@ func (d *Database) initSchema() error {
 	);
 	CREATE INDEX IF NOT EXISTS idx_work_sessions_started ON work_sessions(started_at);
 	CREATE INDEX IF NOT EXISTS idx_work_sessions_ended ON work_sessions(ended_at);
-	CREATE INDEX IF NOT EXISTS idx_work_sessions_activity
-		ON work_sessions(measurement_source, repo_path, workspace_name, last_activity_at);
+	CREATE TABLE IF NOT EXISTS active_ticket_overrides (
+        workspace TEXT NOT NULL, repo_path TEXT NOT NULL, ticket_id TEXT NOT NULL,
+        selected_at TEXT NOT NULL, PRIMARY KEY(workspace, repo_path)
+    );
 	CREATE TABLE IF NOT EXISTS work_activity_evidence (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		work_session_id INTEGER,
@@ -599,12 +603,14 @@ func (d *Database) initSchema() error {
 		`ALTER TABLE work_sessions ADD COLUMN last_activity_at TEXT`,
 		`ALTER TABLE work_sessions ADD COLUMN confidence REAL NOT NULL DEFAULT 1.0`,
 		`ALTER TABLE work_sessions ADD COLUMN evidence_count INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE work_session_adjustments ADD COLUMN measured_minutes INTEGER`,
 	} {
 		if _, err := d.db.Exec(alter); err != nil && !strings.Contains(err.Error(), "duplicate column") {
 			return fmt.Errorf("migration failed (%s): %w", alter, err)
 		}
 	}
-	return nil
+	_, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_work_sessions_activity ON work_sessions(measurement_source, repo_path, workspace_name, last_activity_at)`)
+	return err
 }
 
 // InsertTrigger inserts a trigger record into the database
@@ -1909,30 +1915,29 @@ func (d *Database) CleanOldHealthSnapshots(retentionDays int) error {
 
 // InsertWorkSession starts a new work session and returns its ID
 func (d *Database) InsertWorkSession(ticketRef, repoPath, workspaceName string) (int64, error) {
-	query := `
-		INSERT INTO work_sessions (
-			started_at, ticket_ref, repo_path, workspace_name, commits,
-			measurement_source, confidence
-		)
-		VALUES (datetime('now'), ?, ?, ?, '[]', 'explicit', 1.0)
-	`
-	result, err := d.db.Exec(query, ticketRef, repoPath, workspaceName)
-	if err != nil {
-		return 0, fmt.Errorf("failed to insert work session: %w", err)
-	}
-	return result.LastInsertId()
+	return d.insertWorkSessionAt(ticketRef, repoPath, workspaceName, time.Now())
 }
 
 // EndWorkSession marks a session as ended and stores the auto-measured duration
 func (d *Database) EndWorkSession(id int64, endedAt string, durationMins int) error {
-	query := `
-		UPDATE work_sessions
-		SET ended_at = ?, duration_minutes = ?
-		WHERE id = ?
-	`
-	_, err := d.db.Exec(query, endedAt, durationMins, id)
+	end, err := parseWorkSessionTime(endedAt)
+	if err != nil {
+		return err
+	}
+	if durationMins < 0 {
+		return fmt.Errorf("duration must be non-negative")
+	}
+	result, err := d.db.Exec(`UPDATE work_sessions SET ended_at=?, duration_minutes=?
+        WHERE id=? AND ended_at IS NULL AND julianday(started_at) <= julianday(?)`, endedAt, durationMins, id, end.Format(time.RFC3339Nano))
 	if err != nil {
 		return fmt.Errorf("failed to end work session %d: %w", id, err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count != 1 {
+		return fmt.Errorf("work session %d is missing, already closed, or starts after the stop time", id)
 	}
 	return nil
 }
@@ -1940,19 +1945,22 @@ func (d *Database) EndWorkSession(id int64, endedAt string, durationMins int) er
 // AdjustWorkSessionTime sets the user-overridden time for a session.
 // The original auto-measured duration_minutes is preserved for audit purposes.
 func (d *Database) AdjustWorkSessionTime(id int64, adjustedMins int) error {
+	if adjustedMins < 0 {
+		return fmt.Errorf("adjusted minutes must be non-negative")
+	}
 	tx, err := d.db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin work session adjustment: %w", err)
 	}
 	defer tx.Rollback()
-	var previous *int
-	if err := tx.QueryRow(`SELECT adjusted_minutes FROM work_sessions WHERE id = ?`, id).Scan(&previous); err != nil {
+	var previous, measured *int
+	if err := tx.QueryRow(`SELECT adjusted_minutes, duration_minutes FROM work_sessions WHERE id = ?`, id).Scan(&previous, &measured); err != nil {
 		return fmt.Errorf("read work session %d adjustment: %w", id, err)
 	}
 	if _, err := tx.Exec(`
 		INSERT INTO work_session_adjustments (
-			work_session_id, previous_minutes, adjusted_minutes, channel
-		) VALUES (?, ?, ?, 'cli')`, id, previous, adjustedMins); err != nil {
+			work_session_id, previous_minutes, adjusted_minutes, channel, measured_minutes
+		) VALUES (?, ?, ?, 'cli', ?)`, id, previous, adjustedMins, measured); err != nil {
 		return fmt.Errorf("audit work session %d adjustment: %w", id, err)
 	}
 	if _, err := tx.Exec(`UPDATE work_sessions SET adjusted_minutes = ? WHERE id = ?`, adjustedMins, id); err != nil {
@@ -1967,7 +1975,7 @@ func (d *Database) AdjustWorkSessionTime(id int64, adjustedMins int) error {
 // ListWorkSessionAdjustments returns the append-only correction history.
 func (d *Database) ListWorkSessionAdjustments(id int64) ([]WorkSessionAdjustment, error) {
 	rows, err := d.db.Query(`
-		SELECT id, work_session_id, previous_minutes, adjusted_minutes, channel, reason, created_at
+		SELECT id, work_session_id, previous_minutes, adjusted_minutes, channel, reason, created_at, measured_minutes
 		FROM work_session_adjustments WHERE work_session_id = ? ORDER BY id`, id)
 	if err != nil {
 		return nil, fmt.Errorf("list work session %d adjustments: %w", id, err)
@@ -1978,7 +1986,7 @@ func (d *Database) ListWorkSessionAdjustments(id int64) ([]WorkSessionAdjustment
 		var adjustment WorkSessionAdjustment
 		if err := rows.Scan(&adjustment.ID, &adjustment.WorkSessionID, &adjustment.PreviousMinutes,
 			&adjustment.AdjustedMinutes, &adjustment.Channel, &adjustment.Reason,
-			&adjustment.CreatedAt); err != nil {
+			&adjustment.CreatedAt, &adjustment.MeasuredMinutes); err != nil {
 			return nil, fmt.Errorf("scan work session adjustment: %w", err)
 		}
 		adjustments = append(adjustments, adjustment)
@@ -1990,7 +1998,7 @@ func (d *Database) ListWorkSessionAdjustments(id int64) ([]WorkSessionAdjustment
 func (d *Database) GetActiveWorkSession() (*WorkSessionRecord, error) {
 	query := `
 		SELECT id, started_at, ended_at, ticket_ref, repo_path, workspace_name,
-		       description, commits, duration_minutes, adjusted_minutes, auto_stopped,
+		       COALESCE(description, ''), COALESCE(commits, '[]'), duration_minutes, adjusted_minutes, auto_stopped,
 		       measurement_source, last_activity_at, confidence, evidence_count, created_at
 		FROM work_sessions
 		WHERE ended_at IS NULL
@@ -2005,10 +2013,10 @@ func (d *Database) GetActiveWorkSession() (*WorkSessionRecord, error) {
 func (d *Database) GetWorkSessionsForDate(date string) ([]WorkSessionRecord, error) {
 	query := `
 		SELECT id, started_at, ended_at, ticket_ref, repo_path, workspace_name,
-		       description, commits, duration_minutes, adjusted_minutes, auto_stopped,
+		       COALESCE(description, ''), COALESCE(commits, '[]'), duration_minutes, adjusted_minutes, auto_stopped,
 		       measurement_source, last_activity_at, confidence, evidence_count, created_at
 		FROM work_sessions
-		WHERE date(started_at) = ?
+		WHERE substr(started_at, 1, 10) = ?
 		ORDER BY started_at ASC
 	`
 	rows, err := d.db.Query(query, date)

@@ -403,7 +403,10 @@ devtrack work report           # EOD narrative in terminal
 devtrack work report --email me@org.com
 ```
 
-Every `git commit` while a session is active automatically attaches its hash — no manual logging.
+In the TASK-159 development implementation, monitored commits produce local time estimates
+without starting a session. `work start|stop|adjust` provides optional explicit timing and
+corrections; `work status` shows the source and confidence. Matching commits attach to an
+explicit session. See [time inference and its limits](docs/WORK_TIME_INFERENCE.md).
 
 ### DevTrack Sage — self-writing command knowledge
 

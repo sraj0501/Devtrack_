@@ -18,6 +18,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/codexhistory"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/worktime"
 )
 
 // WorkspaceMonitor pairs a GitMonitor with its workspace routing metadata
@@ -419,27 +420,9 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 	// TASK-160 deterministic resolution: canonical branch, explicit prefix or
 	// trailer, explicit active work-session ticket, otherwise unlinked. Prior
 	// mappings and incidental prose never become authoritative.
-	resolver, err := ticket.NewResolver(ticket.ResolverConfig{
-		TicketKey: ws.ticketKey, Kinds: ws.ticketKinds, BranchPattern: ws.ticketPattern,
+	resolution := im.resolveCommitMapping(ws, &ticket.ResolveInput{
+		Branch: commit.Branch, CommitMessage: commit.Message, IsMerge: commit.IsMerge,
 	})
-	activeTicket := ""
-	if im.database != nil {
-		if active, activeErr := im.database.GetActiveWorkSession(); activeErr == nil && active != nil &&
-			(active.RepoPath == "" || filepath.Clean(active.RepoPath) == filepath.Clean(ws.gitMonitor.repoPath)) &&
-			(active.WorkspaceName == "" || active.WorkspaceName == ws.workspaceName) {
-			activeTicket = active.TicketRef
-		}
-	}
-	resolution := ticket.Result{State: ticket.StateUnlinked, Source: ticket.SourceNone,
-		Reason: "invalid ticket convention"}
-	if err != nil {
-		log.Printf("trigger commit: invalid ticket convention for workspace %q; recording unlinked: %v", ws.workspaceName, err)
-	} else {
-		resolution = resolver.Resolve(ticket.ResolveInput{
-			Branch: commit.Branch, CommitMessage: commit.Message,
-			ActiveTicket: activeTicket, IsMerge: commit.IsMerge,
-		})
-	}
 	ticketID := resolution.TicketID
 	ticketConfidence := resolution.Confidence
 	if resolution.Conflict {
@@ -622,6 +605,19 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 			log.Printf("Failed to log trigger to database: %v", err)
 		} else {
 			log.Printf("✓ Logged trigger to database (ID: %d)", triggerID)
+		}
+	}
+
+	// Time evidence is local and independent of model/server availability.
+	if im.database != nil && event.Type == TriggerTypeCommit {
+		if commit, ok := event.Data.(CommitInfo); ok {
+			_, _, err := im.database.RecordWorkActivity(db.WorkActivity{
+				SourceKind: "commit", SourceID: commit.Hash, OccurredAt: commit.Timestamp.In(time.Local),
+				TicketRef: event.TicketID, RepoPath: event.RepoPath, WorkspaceName: event.WorkspaceName,
+			}, worktime.DefaultPolicy())
+			if err != nil {
+				log.Printf("record local work activity: %v", err)
+			}
 		}
 	}
 

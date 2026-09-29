@@ -55,3 +55,16 @@ func TestBoundsClampAtEODAndMaxWindow(t *testing.T) {
 		t.Fatalf("window = %s, want cap %s", got, policy.MaxWindow)
 	}
 }
+
+func TestCanExtendRejectsCapAndDayBoundary(t *testing.T) {
+	first := time.Date(2026, 9, 29, 8, 0, 0, 0, time.UTC)
+	window := Window{FirstActivity: first, LastActivity: first.Add(7 * time.Hour)}
+	if CanExtend(window, first.Add(7*time.Hour+45*time.Minute), Context{}, DefaultPolicy()) {
+		t.Fatal("padding must count toward the maximum window")
+	}
+	window.FirstActivity = time.Date(2026, 9, 29, 23, 55, 0, 0, time.UTC)
+	window.LastActivity = window.FirstActivity
+	if CanExtend(window, window.FirstActivity.Add(10*time.Minute), Context{}, DefaultPolicy()) {
+		t.Fatal("next-day activity must start a new window")
+	}
+}
