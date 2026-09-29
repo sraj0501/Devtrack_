@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"gopkg.in/yaml.v3"
 )
 
@@ -51,10 +52,13 @@ type WorkspaceConfig struct {
 	// Use when one repo is tracked in two platforms (e.g. GitHub for code,
 	// Azure DevOps for PM) to avoid showing duplicate tickets.
 	SkipIssues bool `yaml:"skip_issues"`
-	// TicketKey is the canonical uppercase namespace, distinct from provider IDs.
-	TicketKey string `yaml:"ticket_key,omitempty"`
-	// TicketPattern optionally replaces the full anchored branch grammar. It must
-	// have exactly one named ticket capture. It is never a message-scanning regex.
+	// TicketKey is the uppercase workspace namespace in canonical ticket refs.
+	// TicketKinds optionally replaces the default canonical branch kinds.
+	TicketKey   string   `yaml:"ticket_key,omitempty"`
+	TicketKinds []string `yaml:"ticket_kinds,omitempty"`
+	// TicketPattern is an advanced full-branch regex. It must be anchored and
+	// contain exactly one named "ticket" capture. Empty uses the canonical
+	// <kind>/<ticket-key>-<number>-<slug> grammar.
 	TicketPattern string `yaml:"ticket_pattern,omitempty"`
 	// EODTime is the local time (HH:MM, 24h) at which the EOD report fires for this workspace.
 	// If empty, the global EOD_REPORT_HOUR / EOD_REPORT_MINUTE settings are used.
@@ -103,8 +107,12 @@ func LoadWorkspacesConfig() (*WorkspacesConfig, error) {
 		cfg.Workspaces[i].Path = expandWorkspacePath(cfg.Workspaces[i].Path)
 	}
 
-	if err := cfg.ValidateTickets(); err != nil {
-		return nil, err
+	// Invalid ticket contracts fail explicitly. Reload callers retain the last
+	// valid monitor configuration when this function returns an error.
+	for i := range cfg.Workspaces {
+		if err := validateWorkspaceTicketContract(cfg.Workspaces[i]); err != nil {
+			return nil, fmt.Errorf("workspace %q: %w", cfg.Workspaces[i].Name, err)
+		}
 	}
 
 	return cfg, nil
@@ -160,8 +168,10 @@ func ExpandWorkspacePath(path string) string { return expandWorkspacePath(path) 
 
 // Save writes the WorkspacesConfig back to the workspaces.yaml file.
 func (wc *WorkspacesConfig) Save() error {
-	if err := wc.ValidateTickets(); err != nil {
-		return err
+	for i := range wc.Workspaces {
+		if err := validateWorkspaceTicketContract(wc.Workspaces[i]); err != nil {
+			return fmt.Errorf("workspace %q: %w", wc.Workspaces[i].Name, err)
+		}
 	}
 	path := GetWorkspacesFilePath()
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -177,7 +187,6 @@ func (wc *WorkspacesConfig) Save() error {
 	copy(normalized.Workspaces, wc.Workspaces)
 	for i := range normalized.Workspaces {
 		normalized.Workspaces[i].Path = filepath.ToSlash(normalized.Workspaces[i].Path)
-		normalized.Workspaces[i].TicketKey = normalized.Workspaces[i].TicketContract().Key
 	}
 
 	data, err := yaml.Marshal(&normalized)
@@ -190,6 +199,15 @@ func (wc *WorkspacesConfig) Save() error {
 	}
 
 	return nil
+}
+
+func validateWorkspaceTicketContract(ws WorkspaceConfig) error {
+	_, err := ticket.NewResolver(ticket.ResolverConfig{
+		TicketKey:     ws.TicketKey,
+		Kinds:         ws.TicketKinds,
+		BranchPattern: ws.TicketPattern,
+	})
+	return err
 }
 
 // GetEnabledWorkspaces returns all enabled workspace configs

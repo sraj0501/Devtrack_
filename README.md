@@ -352,12 +352,14 @@ workspaces:
   - name: my-api-github
     path: ~/work/my-api
     pm_platform: github
+    ticket_key: GH
     pm_org: acme-corp
     pm_username: sraj0501
     skip_issues: true          # code-only: excluded from devtrack issues + ticket sync
   - name: my-api-ado
     path: ~/work/my-api
     pm_platform: azure
+    ticket_key: ADO
     pm_org: acme-corp
     pm_username: jane@acme.com
 ```
@@ -370,9 +372,25 @@ DevOps for sprint planning) to prevent duplicate ticket lists.
 
 ```bash
 devtrack workspace list
-devtrack workspace add my-project ~/code/project --pm github
+devtrack workspace add my-project ~/code/project --pm github --ticket-key GH
 devtrack workspace install-hooks   # push post-commit hooks to all enabled workspaces
 ```
+
+Each workspace has an uppercase `ticket_key`. Setup chooses a visible default (`GH`, `GL`, `ADO`,
+or a key derived from the workspace name). The canonical branch grammar is
+`<kind>/<ticket-key>-<number>-<slug>` and is matched against the complete branch name. Resolution is
+deterministic: canonical branch, explicit first-line commit prefix or `Refs:` trailer, explicit
+`devtrack work start`, otherwise unlinked. Incidental IDs in prose, the previously mapped ticket,
+and LLM suggestions never become authoritative mappings. Inspect or correct mappings explicitly:
+
+```bash
+devtrack ticket convention
+devtrack ticket check feature/GH-42-fix-timeout
+devtrack ticket link abc1234 GH-42
+```
+
+Contradictory evidence is retained as a conflict and cannot stage outbound PM work until corrected.
+Nonconforming branches remain silent and never block Git.
 
 > **Empty repositories**: If a monitored workspace has no commits yet, the daemon watches the folder silently and begins triggering normally once the first commit arrives — no log spam or errors during the empty-repo period.
 

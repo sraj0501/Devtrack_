@@ -942,15 +942,12 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 	if pmPlatform == "" || pmPlatform == "none" {
 		pmPlatform = "none"
 	}
-	ticketWorkspace := WorkspaceConfig{PMPlatform: pmPlatform}
-	if err := (&WorkspacesConfig{Workspaces: []WorkspaceConfig{ticketWorkspace}}).ValidateTickets(); err != nil {
-		return err
-	}
 	// Derive a short name from the last path component.
 	name := filepath.Base(workspacePath)
 	if name == "" || name == "." {
 		name = "default"
 	}
+	ticketKey := defaultTicketKey(name, pmPlatform)
 	content := "# workspaces.yaml — managed by DevTrack\n" +
 		"# Add more workspaces with: devtrack workspace add <name> <path> [platform]\n" +
 		"# pm_platform options: azure | github | gitlab | jira | none\n\n" +
@@ -958,9 +955,8 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 		"  - name: \"" + name + "\"\n" +
 		"    path: \"" + filepath.ToSlash(workspacePath) + "\"\n" +
 		"    pm_platform: \"" + pmPlatform + "\"\n" +
-		"    ticket_key: \"" + ticketWorkspace.TicketContract().Key + "\"\n" +
-		"    # Branch convention: " + ticketWorkspace.TicketConvention() + "\n" +
 		"    pm_project: \"\"\n" +
+		"    ticket_key: \"" + ticketKey + "\"\n" +
 		"    enabled: true\n" +
 		"    ignore_branches: []\n" +
 		"    tags: []\n" +
@@ -968,11 +964,28 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 		"    pm_iteration_path: \"\"\n" +
 		"    pm_area_path: \"\"\n" +
 		"    pm_milestone: 0\n"
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		return err
+	return os.WriteFile(path, []byte(content), 0644)
+}
+
+func defaultTicketKey(workspaceName, pmPlatform string) string {
+	switch strings.ToLower(strings.TrimSpace(pmPlatform)) {
+	case "github":
+		return "GH"
+	case "gitlab":
+		return "GL"
+	case "azure", "azure_devops":
+		return "ADO"
 	}
-	fmt.Println("Ticket branch convention: " + ticketWorkspace.TicketConvention())
-	return nil
+	var key strings.Builder
+	for _, r := range strings.ToUpper(workspaceName) {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			key.WriteRune(r)
+		}
+	}
+	if key.Len() == 0 || (key.String()[0] >= '0' && key.String()[0] <= '9') {
+		return "WORK"
+	}
+	return key.String()
 }
 
 // printAutostartInstructions shows the autostart command.

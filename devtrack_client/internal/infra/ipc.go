@@ -54,11 +54,11 @@ const (
 
 // IPCMessage represents a message sent between Go and Python
 type IPCMessage struct {
-	Type      MessageType            `json:"type"`
-	Timestamp time.Time              `json:"timestamp"`
-	ID        string                 `json:"id"`
+	Type      MessageType    `json:"type"`
+	Timestamp time.Time      `json:"timestamp"`
+	ID        string         `json:"id"`
 	Data      map[string]any `json:"data"`
-	Error     string                 `json:"error,omitempty"`
+	Error     string         `json:"error,omitempty"`
 }
 
 // IPCServer manages IPC communication
@@ -398,19 +398,25 @@ func (c *IPCClient) StartListening(handler func(msg IPCMessage) error) {
 func getSocketPath() (string, error) {
 	// Use TCP socket instead of Unix socket for better container compatibility
 	// Unix sockets can have issues with docker exec -d due to file descriptor handling
-	return config.GetIPCAddress(), nil  // Get from environment config
+	return config.GetIPCAddress(), nil // Get from environment config
 }
 
 // CreateCommitTriggerMessage creates a commit trigger message
 func CreateCommitTriggerMessage(data trigger.CommitTriggerData) IPCMessage {
 	msgData := map[string]any{
-		"repo_path":      data.RepoPath,
-		"commit_hash":    data.CommitHash,
-		"commit_message": data.CommitMessage,
-		"author":         data.Author,
-		"timestamp":      data.Timestamp,
-		"files_changed":  data.FilesChanged,
-		"branch":         data.Branch,
+		"repo_path":          data.RepoPath,
+		"commit_hash":        data.CommitHash,
+		"commit_message":     data.CommitMessage,
+		"author":             data.Author,
+		"timestamp":          data.Timestamp,
+		"files_changed":      data.FilesChanged,
+		"branch":             data.Branch,
+		"ticket_id":          data.TicketID,
+		"ticket_external_id": data.TicketExternalID,
+		"ticket_source":      data.TicketSource,
+		"ticket_state":       data.TicketState,
+		"ticket_conflict":    data.TicketConflict,
+		"ticket_confidence":  data.TicketConfidence,
 	}
 	if data.WorkspaceName != "" {
 		msgData["workspace_name"] = data.WorkspaceName

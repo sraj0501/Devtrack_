@@ -15,22 +15,22 @@ without an authorized board task and a dedicated branch targeting `dev`.
 - **2026-09-29:** TASK-158 qualification PR #267 at `2525783` passed native Linux PTY/pipe and
   Windows pipe tests, both full Go suites and build/vet, and no-send E2E. Evidence: client run
   `36474861545`, E2E run `36474861507`, general CI run `36474861478`. This supersedes the earlier
-  pending qualification statements below. PR #267 merged at `7e1b53f`; proceed to TASK-160, then TASK-159;
-  the user explicitly authorized closing all three tasks.
+  pending qualification statements below. PR #267 merged at `7e1b53f`; proceed to TASK-160, then TASK-159.
 
 - Current `dev` at `f6b0ec0` contains the SAGE-001/SAGE-002 capture foundation, the model-free
   SAGE-003 search slice, removal of legacy Git Sage, neutral `internal/gitcmd` ownership, and the
   SAGE-003 LLM transport, structured distiller, and non-blocking worker from PR #263. Durable SQLite
   queue ownership and daemon lifecycle wiring remain the next Sage implementation boundary.
-- TASK-158 merged through PR #264. Native Linux plus explicit TTY/non-TTY qualification remain
-  unchecked. A separate local test draft is not part of TASK-161 and is not validation evidence.
+- TASK-158 merged through PR #264 and is fully qualified. On 2026-09-26, Ubuntu 24.04.5 under WSL2
+  passed the preserved redirected non-TTY and pseudo-TTY silence/fail-open integration test, the
+  full Go suite, and `go vet ./...`.
 - PR #263 and PR #264 each retain a historical failed hosted-Windows unit-test check. On PR #264 the
   60-second job timed out in SQLite-backed `internal/db` and `internal/mcp`. PR #265 later passed
   all 19 branch checks, including the full Windows test job, so the hosted baseline is green again;
-  TASK-158's native-Linux TTY/non-TTY qualification remains separate and incomplete.
+  TASK-158's later Linux TTY/non-TTY qualification remains separate and is complete.
 - TASK-161 merged through PR #265 at `f6b0ec0`; workflow run `36136822555` published the rolling
   `dev-f6b0ec0` prerelease with all five platform binaries and checksums. It is available on the
-  rolling `dev` channel but is not part of stable v3.1.1. Keep TASK-158 validation separate.
+  rolling `dev` channel but is not part of stable v3.1.1. TASK-158 validation is separately complete.
 - TASK-157 / SAGE-003 is the active product initiative. TASK-160 and TASK-159 remain allocated to
   the deterministic ticket contract and automatic-time corrections;
   the next unused task ID is TASK-162, subject to board verification.
@@ -39,7 +39,7 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Ordered work
 
-### 1. Close the silent Git native-Linux validation follow-up
+### 1. Close the silent Git native-Linux validation follow-up — complete
 
 1. Preserve the merged TASK-158 implementation and unrelated working-tree changes.
 2. Review the separate TTY/non-TTY test draft independently; do not treat its presence as a pass.
@@ -53,7 +53,11 @@ without an authorized board task and a dedicated branch targeting `dev`.
 Gate: normal `git commit` is proven silent and fail-open on native Linux in both TTY and non-TTY
 execution, with the merged explicit helper still free of post-commit questions.
 
-### 2. Enforce deterministic branch-to-ticket mapping
+Result: passed on Ubuntu 24.04.5 under WSL2 on 2026-09-26. Both redirected non-TTY and
+`script`-backed pseudo-TTY commits were silent and successful with an unavailable log destination;
+the full Linux Go suite and `go vet ./...` passed.
+
+### 2. Enforce deterministic branch-to-ticket mapping — locally passed
 
 Implement TASK-160 around one canonical grammar: `<kind>/<ticket-key>-<number>-<slug>`, with the ticket ID
 validated by the workspace's configured pattern. Resolution order is canonical branch, explicit
@@ -66,7 +70,13 @@ before task decomposition or dispatch.
 Gate: contradictory-signal tests prove branch precedence; incidental prose IDs and prior mappings
 cannot silently link a commit; custom patterns and hot reload work; and every mapping is explainable.
 
-### 3. Implement silent automatic time inference
+Result: passed on Windows and Ubuntu WSL2 on 2026-09-29. Full Go tests and vet passed on both;
+75 focused Python API/trigger tests, memory validation, wiki inline-script validation, and
+`git diff --check` also passed. Implementation commit `92c0711` was pushed; merged slices #268 and
+#269 are reconciled in final PR #270 targeting `dev`. Integration remains the handoff gate before
+TASK-159.
+
+### 3. Implement silent automatic time inference — next after TASK-160 integration
 
 Implement TASK-159 without adding surveillance. Derive bounded, deterministic work windows from
 local commit and session activity, use real last-activity evidence for inactivity/EOD closure, and

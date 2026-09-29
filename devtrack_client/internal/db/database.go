@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -15,7 +14,6 @@ import (
 
 	cfg "github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
-	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	_ "modernc.org/sqlite"
 )
 
@@ -27,21 +25,49 @@ type Database struct {
 
 // TriggerRecord represents a trigger event in the database
 type TriggerRecord struct {
+	ID                 int64
+	TriggerType        string
+	Timestamp          time.Time
+	Source             string
+	RepoPath           string
+	CommitHash         string
+	CommitMessage      string
+	Author             string
+	Data               string // JSON data
+	Processed          bool
+	TicketID           string // effective canonical reference; "" = unlinked
+	TicketCanonicalRef string
+	TicketExternalID   string
+	TicketSource       string
+	TicketConfidence   float64
+	TicketState        string
+	TicketBranch       string
+	TicketConflict     bool
+}
+
+// TicketMappingCorrection is an append-only explicit mapping correction.
+type TicketMappingCorrection struct {
 	ID             int64
-	TriggerType    string
-	Timestamp      time.Time
-	Source         string
-	RepoPath       string
-	CommitHash     string
-	CommitMessage  string
-	Author         string
-	Data           string // JSON data
-	Processed      bool
-	TicketID       string // extracted ticket ID (branch/message/active-ticket); "" = unlinked
-	WorkspaceName  string
-	TicketMapping  *ticket.Resolution
-	TicketEvidence ticket.Evidence
-	TicketContract ticket.Contract
+	TriggerID      int64
+	PreviousRef    string
+	ReplacementRef string
+	Channel        string
+	Actor          string
+	Reason         string
+	CreatedAt      string
+}
+
+// TicketMappingCandidate is a non-authoritative LLM or cached-ticket suggestion.
+type TicketMappingCandidate struct {
+	ID           int64
+	TriggerID    int64
+	CandidateRef string
+	ExternalID   string
+	Confidence   float64
+	Source       string
+	Model        string
+	Status       string
+	CreatedAt    string
 }
 
 // ResponseRecord represents a user response in the database
@@ -247,8 +273,46 @@ func (d *Database) initSchema() error {
 		data TEXT,
 		processed BOOLEAN DEFAULT 0,
 		ticket_id TEXT DEFAULT '',
+		ticket_canonical_ref TEXT DEFAULT '',
+		ticket_external_id TEXT DEFAULT '',
+		ticket_source TEXT DEFAULT 'legacy',
+		ticket_confidence REAL DEFAULT 0,
+		ticket_state TEXT DEFAULT 'legacy',
+		ticket_branch TEXT DEFAULT '',
+		ticket_conflict BOOLEAN DEFAULT 0,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS ticket_mapping_corrections (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		trigger_id INTEGER NOT NULL,
+		previous_ref TEXT NOT NULL DEFAULT '',
+		replacement_ref TEXT NOT NULL,
+		channel TEXT NOT NULL,
+		actor TEXT NOT NULL DEFAULT 'user',
+		reason TEXT NOT NULL DEFAULT '',
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (trigger_id) REFERENCES triggers(id),
+		UNIQUE(trigger_id, replacement_ref, channel, actor, reason)
+	);
+	CREATE INDEX IF NOT EXISTS idx_ticket_mapping_corrections_trigger
+		ON ticket_mapping_corrections(trigger_id, id);
+
+	CREATE TABLE IF NOT EXISTS ticket_mapping_candidates (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		trigger_id INTEGER NOT NULL,
+		candidate_ref TEXT NOT NULL,
+		external_id TEXT NOT NULL DEFAULT '',
+		confidence REAL NOT NULL,
+		source TEXT NOT NULL,
+		model TEXT NOT NULL DEFAULT '',
+		status TEXT NOT NULL DEFAULT 'pending',
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (trigger_id) REFERENCES triggers(id),
+		UNIQUE(trigger_id, candidate_ref, source, model)
+	);
+	CREATE INDEX IF NOT EXISTS idx_ticket_mapping_candidates_trigger
+		ON ticket_mapping_candidates(trigger_id, status, confidence DESC);
 
 	-- Responses table: stores user responses to triggers
 	CREATE TABLE IF NOT EXISTS responses (
@@ -476,30 +540,34 @@ func (d *Database) initSchema() error {
 		`ALTER TABLE deferred_commits ADD COLUMN base_sha TEXT`,
 		`ALTER TABLE deferred_commits ADD COLUMN snapshot_sha TEXT`,
 		`ALTER TABLE triggers ADD COLUMN ticket_id TEXT DEFAULT ''`,
+		`ALTER TABLE triggers ADD COLUMN ticket_canonical_ref TEXT DEFAULT ''`,
+		`ALTER TABLE triggers ADD COLUMN ticket_external_id TEXT DEFAULT ''`,
+		`ALTER TABLE triggers ADD COLUMN ticket_source TEXT DEFAULT 'legacy'`,
+		`ALTER TABLE triggers ADD COLUMN ticket_confidence REAL DEFAULT 0`,
+		`ALTER TABLE triggers ADD COLUMN ticket_state TEXT DEFAULT 'legacy'`,
+		`ALTER TABLE triggers ADD COLUMN ticket_branch TEXT DEFAULT ''`,
+		`ALTER TABLE triggers ADD COLUMN ticket_conflict BOOLEAN DEFAULT 0`,
 	} {
 		if _, err := d.db.Exec(alter); err != nil && !strings.Contains(err.Error(), "duplicate column") {
 			return fmt.Errorf("migration failed (%s): %w", alter, err)
 		}
 	}
-	return d.initTicketMappings()
+	return nil
 }
 
 // InsertTrigger inserts a trigger record into the database
 func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
-	if record.TicketMapping != nil {
-		record.TicketID = record.TicketMapping.TicketID
-	}
-	tx, err := d.db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback()
 	query := `
-		INSERT INTO triggers (trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, ticket_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO triggers (
+			trigger_type, timestamp, source, repo_path, commit_hash, commit_message,
+			author, data, processed, ticket_id, ticket_canonical_ref,
+			ticket_external_id, ticket_source, ticket_confidence, ticket_state,
+			ticket_branch, ticket_conflict
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	result, err := tx.Exec(query,
+	result, err := d.db.Exec(query,
 		record.TriggerType,
 		record.Timestamp.Format(time.RFC3339Nano),
 		record.Source,
@@ -510,6 +578,13 @@ func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
 		record.Data,
 		record.Processed,
 		record.TicketID,
+		record.TicketCanonicalRef,
+		record.TicketExternalID,
+		record.TicketSource,
+		record.TicketConfidence,
+		record.TicketState,
+		record.TicketBranch,
+		record.TicketConflict,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert trigger: %w", err)
@@ -520,14 +595,6 @@ func (d *Database) InsertTrigger(record TriggerRecord) (int64, error) {
 		return 0, fmt.Errorf("failed to get last insert id: %w", err)
 	}
 
-	if record.TriggerType == "commit" {
-		if err := insertTicketMapping(tx, id, record); err != nil {
-			return 0, err
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return 0, err
-	}
 	return id, nil
 }
 
@@ -615,7 +682,10 @@ func (d *Database) InsertLog(record LogRecord) error {
 // GetTriggerByID retrieves a trigger by ID
 func (d *Database) GetTriggerByID(id int64) (*TriggerRecord, error) {
 	query := `
-		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, COALESCE(ticket_id,'')
+		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed,
+		       COALESCE(ticket_id,''), COALESCE(ticket_canonical_ref,''), COALESCE(ticket_external_id,''),
+		       COALESCE(ticket_source,'legacy'), COALESCE(ticket_confidence,0), COALESCE(ticket_state,'legacy'),
+		       COALESCE(ticket_branch,''), COALESCE(ticket_conflict,0)
 		FROM triggers
 		WHERE id = ?
 	`
@@ -633,6 +703,13 @@ func (d *Database) GetTriggerByID(id int64) (*TriggerRecord, error) {
 		&record.Data,
 		&record.Processed,
 		&record.TicketID,
+		&record.TicketCanonicalRef,
+		&record.TicketExternalID,
+		&record.TicketSource,
+		&record.TicketConfidence,
+		&record.TicketState,
+		&record.TicketBranch,
+		&record.TicketConflict,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get trigger: %w", err)
@@ -644,7 +721,10 @@ func (d *Database) GetTriggerByID(id int64) (*TriggerRecord, error) {
 // GetRecentTriggers retrieves recent triggers
 func (d *Database) GetRecentTriggers(limit int) ([]TriggerRecord, error) {
 	query := `
-		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed, COALESCE(ticket_id,'')
+		SELECT id, trigger_type, timestamp, source, repo_path, commit_hash, commit_message, author, data, processed,
+		       COALESCE(ticket_id,''), COALESCE(ticket_canonical_ref,''), COALESCE(ticket_external_id,''),
+		       COALESCE(ticket_source,'legacy'), COALESCE(ticket_confidence,0), COALESCE(ticket_state,'legacy'),
+		       COALESCE(ticket_branch,''), COALESCE(ticket_conflict,0)
 		FROM triggers
 		ORDER BY timestamp DESC
 		LIMIT ?
@@ -671,6 +751,13 @@ func (d *Database) GetRecentTriggers(limit int) ([]TriggerRecord, error) {
 			&record.Data,
 			&record.Processed,
 			&record.TicketID,
+			&record.TicketCanonicalRef,
+			&record.TicketExternalID,
+			&record.TicketSource,
+			&record.TicketConfidence,
+			&record.TicketState,
+			&record.TicketBranch,
+			&record.TicketConflict,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan trigger: %w", err)
@@ -681,9 +768,149 @@ func (d *Database) GetRecentTriggers(limit int) ([]TriggerRecord, error) {
 	return triggers, nil
 }
 
+// InsertTicketMappingCorrection appends an explicit correction. Repeating the
+// same correction is idempotent and returns the existing row ID.
+func (d *Database) InsertTicketMappingCorrection(c TicketMappingCorrection) (int64, error) {
+	if c.TriggerID <= 0 || strings.TrimSpace(c.ReplacementRef) == "" || strings.TrimSpace(c.Channel) == "" {
+		return 0, fmt.Errorf("ticket correction requires trigger, replacement ref, and channel")
+	}
+	if c.Actor == "" {
+		c.Actor = "user"
+	}
+	_, err := d.db.Exec(`
+		INSERT OR IGNORE INTO ticket_mapping_corrections
+			(trigger_id, previous_ref, replacement_ref, channel, actor, reason)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, c.TriggerID, c.PreviousRef, c.ReplacementRef, c.Channel, c.Actor, c.Reason)
+	if err != nil {
+		return 0, fmt.Errorf("insert ticket mapping correction: %w", err)
+	}
+	var id int64
+	err = d.db.QueryRow(`
+		SELECT id FROM ticket_mapping_corrections
+		WHERE trigger_id=? AND replacement_ref=? AND channel=? AND actor=? AND reason=?
+	`, c.TriggerID, c.ReplacementRef, c.Channel, c.Actor, c.Reason).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("read ticket mapping correction: %w", err)
+	}
+	return id, nil
+}
+
+// InsertTicketMappingCandidate stores a suggestion separately from the
+// effective mapping. It never updates triggers.ticket_id.
+func (d *Database) InsertTicketMappingCandidate(c TicketMappingCandidate) (int64, error) {
+	if c.TriggerID <= 0 || strings.TrimSpace(c.CandidateRef) == "" || strings.TrimSpace(c.Source) == "" {
+		return 0, fmt.Errorf("ticket candidate requires trigger, candidate ref, and source")
+	}
+	if c.Confidence < 0 || c.Confidence > 1 {
+		return 0, fmt.Errorf("ticket candidate confidence must be between 0 and 1")
+	}
+	if c.Status == "" {
+		c.Status = "pending"
+	}
+	_, err := d.db.Exec(`
+		INSERT INTO ticket_mapping_candidates
+			(trigger_id, candidate_ref, external_id, confidence, source, model, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(trigger_id, candidate_ref, source, model) DO UPDATE SET
+			external_id=excluded.external_id, confidence=excluded.confidence, status=excluded.status
+	`, c.TriggerID, c.CandidateRef, c.ExternalID, c.Confidence, c.Source, c.Model, c.Status)
+	if err != nil {
+		return 0, fmt.Errorf("insert ticket mapping candidate: %w", err)
+	}
+	var id int64
+	err = d.db.QueryRow(`
+		SELECT id FROM ticket_mapping_candidates
+		WHERE trigger_id=? AND candidate_ref=? AND source=? AND model=?
+	`, c.TriggerID, c.CandidateRef, c.Source, c.Model).Scan(&id)
+	return id, err
+}
+
+// GetEffectiveTicketMapping returns the original mapping plus the latest
+// append-only correction without mutating the trigger's original evidence.
+func (d *Database) GetEffectiveTicketMapping(triggerID int64) (string, string, error) {
+	var original string
+	if err := d.db.QueryRow(`SELECT COALESCE(ticket_canonical_ref, ticket_id, '') FROM triggers WHERE id=?`, triggerID).Scan(&original); err != nil {
+		return "", "", fmt.Errorf("read original ticket mapping: %w", err)
+	}
+	var corrected string
+	err := d.db.QueryRow(`
+		SELECT replacement_ref FROM ticket_mapping_corrections
+		WHERE trigger_id=? ORDER BY id DESC LIMIT 1
+	`, triggerID).Scan(&corrected)
+	if err == sql.ErrNoRows {
+		return original, original, nil
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("read effective ticket mapping: %w", err)
+	}
+	return original, corrected, nil
+}
+
+// FindCommitTrigger resolves an exact hash or unique hash prefix to a commit
+// trigger. Ambiguous prefixes fail instead of correcting the wrong commit.
+func (d *Database) FindCommitTrigger(commitRef string) (*TriggerRecord, error) {
+	commitRef = strings.TrimSpace(commitRef)
+	if commitRef == "" {
+		return nil, fmt.Errorf("commit reference is required")
+	}
+	rows, err := d.db.Query(`
+		SELECT id FROM triggers
+		WHERE trigger_type='commit' AND commit_hash LIKE ?
+		ORDER BY timestamp DESC LIMIT 2
+	`, commitRef+"%")
+	if err != nil {
+		return nil, fmt.Errorf("find commit trigger: %w", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("no observed commit matches %q", commitRef)
+	}
+	if len(ids) > 1 {
+		return nil, fmt.Errorf("commit prefix %q is ambiguous", commitRef)
+	}
+	return d.GetTriggerByID(ids[0])
+}
+
+// TicketMappingHealth reports recent deterministic mapping states.
+func (d *Database) TicketMappingHealth(repoPath string, limit int) (unlinked, conflicts int, err error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	query := `
+		SELECT
+			COALESCE(SUM(CASE WHEN correction_id IS NULL AND (ticket_state='unlinked' OR ticket_id='') THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN correction_id IS NULL AND (ticket_conflict=1 OR ticket_state='conflict') THEN 1 ELSE 0 END), 0)
+		FROM (
+			SELECT ticket_id, ticket_state, ticket_conflict,
+				(SELECT id FROM ticket_mapping_corrections
+				 WHERE trigger_id=triggers.id ORDER BY id DESC LIMIT 1) AS correction_id
+			FROM triggers
+			WHERE trigger_type='commit'`
+	args := make([]any, 0, 2)
+	if repoPath != "" {
+		query += ` AND repo_path=?`
+		args = append(args, repoPath)
+	}
+	query += ` ORDER BY timestamp DESC LIMIT ?)`
+	args = append(args, limit)
+	if err := d.db.QueryRow(query, args...).Scan(&unlinked, &conflicts); err != nil {
+		return 0, 0, fmt.Errorf("ticket mapping health: %w", err)
+	}
+	return unlinked, conflicts, nil
+}
+
 // GetLastTicketID returns the most recently extracted (non-empty) ticket ID
-// for commit triggers in the given repo. Used by the active-ticket fallback
-// strategy (TASK-069) when branch and commit-message extraction both fail.
+// for commit triggers in the given repo. Retained for read compatibility and
+// diagnostics; deterministic resolution must never use it as an authority.
 // Returns "" with no error when no prior matched commit exists.
 func (d *Database) GetLastTicketID(repoPath string) (string, error) {
 	var ticketID string
@@ -2519,70 +2746,173 @@ func (d *Database) InsertSageEvent(event sage.Event) (bool, error) {
 // The triggers table stores repo_path (not workspace_name) and has no branch
 // column; those fields are populated from available data.
 type TriggerCommit struct {
-	ID        int64
-	Hash      string
-	Message   string
-	TicketID  string
-	RepoPath  string
-	Timestamp string
-	Mapping   ticket.Resolution
+	ID               int64
+	Hash             string
+	Message          string
+	TicketID         string
+	TicketExternalID string
+	TicketSource     string
+	TicketState      string
+	TicketConfidence float64
+	TicketConflict   bool
+	RepoPath         string // maps to triggers.repo_path
+	Timestamp        string
 }
 
-const commitMappingSelect = `SELECT t.id, COALESCE(t.commit_hash,''), COALESCE(t.commit_message,''),
-    COALESCE(t.ticket_id,''), COALESCE(t.repo_path,''), COALESCE(t.timestamp,''), COALESCE(m.effective_json,'')
-    FROM triggers t LEFT JOIN ticket_mappings m ON m.trigger_id=t.id WHERE t.trigger_type='commit'`
-
-func (d *Database) listMappedCommits(suffix string, args ...any) ([]TriggerCommit, error) {
-	rows, err := d.db.Query(commitMappingSelect+suffix, args...)
+// ListTodayCommits returns local-day commits and their effective mapping provenance.
+func (d *Database) ListTodayCommits(repoPath string) ([]TriggerCommit, error) {
+	q := `
+		SELECT id, COALESCE(commit_hash,''), COALESCE(commit_message,''), COALESCE(ticket_id,''),
+		       COALESCE(ticket_external_id,''), COALESCE(ticket_source,'legacy'),
+		       COALESCE(ticket_state,'legacy'), COALESCE(ticket_confidence,0), COALESCE(ticket_conflict,0),
+		       COALESCE(repo_path,''), COALESCE(timestamp,''),
+		       COALESCE((SELECT replacement_ref FROM ticket_mapping_corrections
+		                 WHERE trigger_id=triggers.id ORDER BY id DESC LIMIT 1), '')
+		FROM triggers
+		WHERE trigger_type='commit'
+		  AND substr(CAST(timestamp AS TEXT), 1, 10) = strftime('%Y-%m-%d', 'now', 'localtime')
+		  AND (? = '' OR repo_path = ?)
+		ORDER BY timestamp ASC
+	`
+	rows, err := d.db.Query(q, repoPath, repoPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ListTodayCommits: %w", err)
 	}
 	defer rows.Close()
-	out := []TriggerCommit{}
+	var out []TriggerCommit
 	for rows.Next() {
 		var c TriggerCommit
-		var mappingJSON string
-		if err := rows.Scan(&c.ID, &c.Hash, &c.Message, &c.TicketID, &c.RepoPath, &c.Timestamp, &mappingJSON); err != nil {
-			return nil, err
+		var correction string
+		if err := rows.Scan(&c.ID, &c.Hash, &c.Message, &c.TicketID, &c.TicketExternalID, &c.TicketSource,
+			&c.TicketState, &c.TicketConfidence, &c.TicketConflict, &c.RepoPath, &c.Timestamp, &correction); err != nil {
+			return nil, fmt.Errorf("ListTodayCommits scan: %w", err)
 		}
-		if mappingJSON != "" {
-			if err := json.Unmarshal([]byte(mappingJSON), &c.Mapping); err != nil {
-				return nil, err
-			}
-			c.TicketID = c.Mapping.TicketID
-		} else {
-			c.Mapping = ticket.Resolution{TicketID: c.TicketID, Source: "legacy", State: "legacy"}
-			if c.TicketID == "" {
-				c.Mapping.State = "unlinked"
-			}
-		}
+		applyEffectiveTicketCorrection(&c, correction)
 		out = append(out, c)
 	}
 	return out, rows.Err()
 }
 
-// ListTodayCommits returns local-day commits and their effective mapping provenance.
-func (d *Database) ListTodayCommits(repoPath string) ([]TriggerCommit, error) {
-	return d.listMappedCommits(` AND substr(CAST(t.timestamp AS TEXT),1,10)=strftime('%Y-%m-%d','now','localtime') AND (?='' OR t.repo_path=?) ORDER BY t.timestamp ASC`, repoPath, repoPath)
-}
-
 func (d *Database) ListTicketCommits(ticketID string, limit int) ([]TriggerCommit, error) {
-	return d.listMappedCommits(` AND t.ticket_id=? ORDER BY t.timestamp DESC LIMIT ?`, ticketID, limit)
+	q := `
+		SELECT id, COALESCE(commit_hash,''), COALESCE(commit_message,''), COALESCE(ticket_id,''),
+		       COALESCE(ticket_external_id,''), COALESCE(ticket_source,'legacy'),
+		       COALESCE(ticket_state,'legacy'), COALESCE(ticket_confidence,0), COALESCE(ticket_conflict,0),
+		       COALESCE(repo_path,''), COALESCE(timestamp,''),
+		       COALESCE((SELECT replacement_ref FROM ticket_mapping_corrections
+		                 WHERE trigger_id=triggers.id ORDER BY id DESC LIMIT 1), '')
+		FROM triggers
+		WHERE trigger_type='commit'
+		  AND COALESCE((
+			SELECT replacement_ref FROM ticket_mapping_corrections
+			WHERE trigger_id=triggers.id ORDER BY id DESC LIMIT 1
+		  ), ticket_id) = ?
+		ORDER BY timestamp DESC
+		LIMIT ?
+	`
+	rows, err := d.db.Query(q, ticketID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ListTicketCommits: %w", err)
+	}
+	defer rows.Close()
+	var out []TriggerCommit
+	for rows.Next() {
+		var c TriggerCommit
+		var correction string
+		if err := rows.Scan(&c.ID, &c.Hash, &c.Message, &c.TicketID, &c.TicketExternalID, &c.TicketSource,
+			&c.TicketState, &c.TicketConfidence, &c.TicketConflict, &c.RepoPath, &c.Timestamp, &correction); err != nil {
+			return nil, fmt.Errorf("ListTicketCommits scan: %w", err)
+		}
+		applyEffectiveTicketCorrection(&c, correction)
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 func (d *Database) MostRecentCommit() (TriggerCommit, error) {
-	commits, err := d.ListRecentCommits(1)
-	if err != nil || len(commits) == 0 {
-		return TriggerCommit{}, err
+	var c TriggerCommit
+	row := d.db.QueryRow(`
+		SELECT id, COALESCE(commit_hash,''), COALESCE(commit_message,''), COALESCE(ticket_id,''),
+		       COALESCE(ticket_external_id,''), COALESCE(ticket_source,'legacy'),
+		       COALESCE(ticket_state,'legacy'), COALESCE(ticket_confidence,0), COALESCE(ticket_conflict,0),
+		       COALESCE(repo_path,''), COALESCE(timestamp,''),
+		       COALESCE((SELECT replacement_ref FROM ticket_mapping_corrections
+		                 WHERE trigger_id=triggers.id ORDER BY id DESC LIMIT 1), '')
+		FROM triggers
+		WHERE trigger_type='commit'
+		ORDER BY timestamp DESC
+		LIMIT 1
+	`)
+	var correction string
+	err := row.Scan(&c.ID, &c.Hash, &c.Message, &c.TicketID, &c.TicketExternalID, &c.TicketSource,
+		&c.TicketState, &c.TicketConfidence, &c.TicketConflict, &c.RepoPath, &c.Timestamp, &correction)
+	if err == sql.ErrNoRows {
+		return TriggerCommit{}, nil
 	}
-	return commits[0], nil
+	if err != nil {
+		return TriggerCommit{}, fmt.Errorf("MostRecentCommit: %w", err)
+	}
+	applyEffectiveTicketCorrection(&c, correction)
+	return c, nil
 }
 
 func (d *Database) ListRecentCommits(limit int) ([]TriggerCommit, error) {
 	if limit <= 0 {
 		return []TriggerCommit{}, nil
 	}
-	return d.listMappedCommits(` ORDER BY t.timestamp DESC LIMIT ?`, limit)
+	rows, err := d.db.Query(`
+		SELECT id, COALESCE(commit_hash,''), COALESCE(commit_message,''), COALESCE(ticket_id,''),
+		       COALESCE(ticket_external_id,''), COALESCE(ticket_source,'legacy'),
+		       COALESCE(ticket_state,'legacy'), COALESCE(ticket_confidence,0), COALESCE(ticket_conflict,0),
+		       COALESCE(repo_path,''), COALESCE(timestamp,''),
+		       COALESCE((SELECT replacement_ref FROM ticket_mapping_corrections
+		                 WHERE trigger_id=triggers.id ORDER BY id DESC LIMIT 1), '')
+		FROM triggers
+		WHERE trigger_type='commit'
+		ORDER BY timestamp DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ListRecentCommits: %w", err)
+	}
+	defer rows.Close()
+
+	commits := make([]TriggerCommit, 0)
+	for rows.Next() {
+		var commit TriggerCommit
+		var correction string
+		if err := rows.Scan(&commit.ID, &commit.Hash, &commit.Message, &commit.TicketID, &commit.TicketExternalID,
+			&commit.TicketSource, &commit.TicketState, &commit.TicketConfidence, &commit.TicketConflict,
+			&commit.RepoPath, &commit.Timestamp, &correction); err != nil {
+			return nil, fmt.Errorf("ListRecentCommits scan: %w", err)
+		}
+		applyEffectiveTicketCorrection(&commit, correction)
+		commits = append(commits, commit)
+	}
+	return commits, rows.Err()
+}
+
+// applyEffectiveTicketCorrection overlays the latest append-only correction
+// onto a read model while leaving the trigger's original evidence immutable.
+func applyEffectiveTicketCorrection(commit *TriggerCommit, replacement string) {
+	if replacement == "" {
+		return
+	}
+	commit.TicketID = replacement
+	commit.TicketExternalID = externalIDFromCanonicalRef(replacement)
+	commit.TicketSource = "correction"
+	commit.TicketState = "corrected"
+	commit.TicketConfidence = 1
+	commit.TicketConflict = false
+}
+
+func externalIDFromCanonicalRef(ref string) string {
+	for _, prefix := range []string{"GH-", "GL-", "ADO-"} {
+		if strings.HasPrefix(ref, prefix) {
+			return strings.TrimPrefix(ref, prefix)
+		}
+	}
+	return ref
 }
 
 // CountTodayCommits returns the number of commit triggers today (local date).

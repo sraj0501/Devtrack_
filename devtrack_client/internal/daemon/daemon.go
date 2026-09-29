@@ -783,16 +783,23 @@ func (d *Daemon) startAlertPoller() {
 				log.Printf("merged-pr: no workspace %q for PR %s, skipping", ev.Workspace, ev.PRID)
 				continue
 			}
-			ext, _ := ticket.NewExtractor(ws.TicketPattern)
-			ticketConfidence := 0.95 // merged branch name — developer contract
-			ticketID := ext.Extract(ev.HeadBranch)
-			if ticketID == "" {
-				ticketID = ext.Extract(ev.PRTitle)
-				ticketConfidence = 0.85
+			resolver, resolveErr := ticket.NewResolver(ticket.ResolverConfig{
+				TicketKey: ws.TicketKey, Kinds: ws.TicketKinds, BranchPattern: ws.TicketPattern,
+			})
+			if resolveErr != nil {
+				log.Printf("merged-pr: invalid ticket convention for workspace %q: %v", ev.Workspace, resolveErr)
+				continue
 			}
-			if ticketID == "" {
+			resolution := resolver.Resolve(ticket.ResolveInput{
+				Branch: ev.HeadBranch, CommitMessage: ev.PRTitle,
+			})
+			if resolution.TicketID == "" {
 				log.Printf("[UNLINKED] merged PR %s (%q → %q) workspace=%q — no ticket ID extracted",
 					ev.PRID, ev.HeadBranch, ev.BaseBranch, ev.Workspace)
+				continue
+			}
+			if resolution.Conflict {
+				log.Printf("merged-pr: ticket conflict for PR %s: %s", ev.PRID, resolution.Reason)
 				continue
 			}
 			err := tc.SendCommitTrigger(trigger.CommitTriggerData{
@@ -801,8 +808,12 @@ func (d *Daemon) startAlertPoller() {
 				CommitMessage:     fmt.Sprintf("Merge PR #%s: %s (branch %s)", ev.PRID, ev.PRTitle, ev.HeadBranch),
 				Timestamp:         ev.MergedAt.Format(time.RFC3339),
 				Branch:            ev.BaseBranch,
-				TicketID:          ticketID,
-				TicketConfidence:  ticketConfidence,
+				TicketID:          resolution.TicketID,
+				TicketExternalID:  ticket.ExternalID(resolution.TicketID, ws.PMPlatform),
+				TicketConfidence:  resolution.Confidence,
+				TicketSource:      string(resolution.Source),
+				TicketState:       string(resolution.State),
+				TicketConflict:    resolution.Conflict,
 				IsMergeToDefault:  true,
 				WorkspaceName:     ws.Name,
 				PMPlatform:        ws.PMPlatform,
@@ -814,11 +825,11 @@ func (d *Daemon) startAlertPoller() {
 				PMInProgressLabel: ws.InProgressLabel,
 			})
 			if err != nil {
-				log.Printf("merged-pr: send trigger for PR %s (ticket %s): %v", ev.PRID, ticketID, err)
+				log.Printf("merged-pr: send trigger for PR %s (ticket %s): %v", ev.PRID, resolution.TicketID, err)
 				continue
 			}
 			log.Printf("merged-pr: PR %s merged into %s → staged done transition for ticket %s",
-				ev.PRID, ev.BaseBranch, ticketID)
+				ev.PRID, ev.BaseBranch, resolution.TicketID)
 		}
 	})
 

@@ -11,9 +11,17 @@
 
 ## Signal priority
 
-DevTrack resolves ticket context from the branch name, commit prefix, Git trailer, an explicit
-`devtrack work start`, or recent ticket context—in that order. An unlinked commit is logged and never
-blocks Git.
+DevTrack resolves ticket context from a full canonical branch match, an explicit first-line commit
+prefix or `Refs:` trailer, or an explicit `devtrack work start`—in that order. Otherwise the commit
+is unlinked. Incidental prose IDs, recent tickets, and LLM suggestions are never authoritative.
+Conflicts are retained for correction and cannot stage outbound work. None of these states blocks
+Git.
+
+```bash
+devtrack ticket convention
+devtrack ticket check feature/PROJ-123-description
+devtrack ticket link abc1234 PROJ-123
+```
 
 ## Optional interactive Git wrapper
 

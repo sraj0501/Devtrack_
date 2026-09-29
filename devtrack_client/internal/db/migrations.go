@@ -360,6 +360,64 @@ var allMigrations = []Migration{
 			return database.createSageKnowledgeTables()
 		},
 	},
+	{
+		ID:          "016-deterministic-ticket-mapping",
+		Description: "Add deterministic ticket mapping provenance and append-only corrections",
+		Apply: func() error {
+			database, err := NewDatabase()
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer database.Close()
+			_, err = database.db.Exec(`
+				CREATE TABLE IF NOT EXISTS ticket_mapping_corrections (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					trigger_id INTEGER NOT NULL,
+					previous_ref TEXT NOT NULL DEFAULT '',
+					replacement_ref TEXT NOT NULL,
+					channel TEXT NOT NULL,
+					actor TEXT NOT NULL DEFAULT 'user',
+					reason TEXT NOT NULL DEFAULT '',
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					FOREIGN KEY (trigger_id) REFERENCES triggers(id),
+					UNIQUE(trigger_id, replacement_ref, channel, actor, reason)
+				);
+				CREATE INDEX IF NOT EXISTS idx_ticket_mapping_corrections_trigger
+					ON ticket_mapping_corrections(trigger_id, id);
+				CREATE TABLE IF NOT EXISTS ticket_mapping_candidates (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					trigger_id INTEGER NOT NULL,
+					candidate_ref TEXT NOT NULL,
+					external_id TEXT NOT NULL DEFAULT '',
+					confidence REAL NOT NULL,
+					source TEXT NOT NULL,
+					model TEXT NOT NULL DEFAULT '',
+					status TEXT NOT NULL DEFAULT 'pending',
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					FOREIGN KEY (trigger_id) REFERENCES triggers(id),
+					UNIQUE(trigger_id, candidate_ref, source, model)
+				);
+				CREATE INDEX IF NOT EXISTS idx_ticket_mapping_candidates_trigger
+					ON ticket_mapping_candidates(trigger_id, status, confidence DESC);
+			`)
+			if err != nil {
+				return err
+			}
+			return database.backfillLegacyTicketMappings()
+		},
+	},
+}
+
+func (d *Database) backfillLegacyTicketMappings() error {
+	_, err := d.db.Exec(`
+		UPDATE triggers
+		SET ticket_canonical_ref = COALESCE(NULLIF(ticket_canonical_ref, ''), ticket_id),
+			ticket_source = 'legacy',
+			ticket_state = 'legacy',
+			ticket_confidence = 0
+		WHERE ticket_id != '' AND (ticket_source IS NULL OR ticket_source = '' OR ticket_source = 'legacy')
+	`)
+	return err
 }
 
 // RunPendingMigrations applies any migrations that have not yet been recorded

@@ -6,31 +6,33 @@ type: project
 
 **Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `D:\git_apps\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, neutral ownership for independently used Git/commit-enhancement helpers, and the SAGE-003 neutral LLM transport, structured distiller, and non-blocking worker merged in PR #263. Next connect that worker to durable SQLite claims and daemon lifecycle, then implement deterministic Markdown, routing, merge/refile, safe local commits, persisted retries, diagnostics, and parity closure. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
 
-**Immediate validation follow-up:** TASK-158 merged to `dev` in PR #264 (`fe3ad38`). Normal Git is
+**Completed validation follow-up:** TASK-158 merged to `dev` in PR #264 (`fe3ad38`). Normal Git is
 no longer routed through DevTrack; the explicit AI commit helper returns after Git without ticket,
 duration, PM, or push questions; generated observation hooks are silent and fail-open; and database
-initialization no longer prints into the user-facing path. PR #267 at `2525783` now qualifies
-native Linux PTY/non-TTY execution and Windows non-TTY execution, including unavailable observation
-logs. Client CI run `36474861545` passed both full Go suites and build/vet jobs. The
-qualification PR merged into `dev` at `7e1b53f`; TASK-158 is complete. TASK-160 implementation is
-authorized and active on `features/TASK-160-deterministic-ticket-contract`.
-TASK-159 then replaces manual per-commit time entry with local, privacy-bounded activity-window
-inference; explicit work-session commands remain optional overrides/corrections.
+initialization no longer prints into the user-facing path. On 2026-09-26, Ubuntu 24.04.5 under WSL2
+passed explicit redirected non-TTY and pseudo-TTY silence/fail-open tests plus the full Go suite and
+`go vet ./...`. TASK-158 is qualified. TASK-160 passed its Windows and Ubuntu WSL2 implementation
+gates on 2026-09-29. Implementation commit `92c0711` and its follow-ups are pushed;
+final PR #270 targets `dev`; CI/integration remains pending.
+The completed TASK-160 branch is being reconciled with merged slices #268 and #269 for its final
+integration PR. TASK-159 next replaces manual per-commit time entry with local, privacy-bounded
+activity-window inference; explicit work-session commands remain optional overrides/corrections.
 
 **Current CI evidence:** The merged PR #263 and PR #264 check sets each retain a historical failed
 hosted-Windows unit-test job; PR #264 timed out after 60 seconds in SQLite-backed `internal/db` and
 `internal/mcp` tests. PR #265 subsequently passed all 19 checks and merged TASK-161 to `dev` at
 `f6b0ec0`, including the full Windows unit-test job, Windows/Ubuntu no-send E2E, five native MCPB
-smokes, PostgreSQL, wiki, and shared-memory gates. That re-establishes a green hosted baseline but
-is supplemented by PR #267's successful native-Linux TTY/non-TTY qualification and full Windows
-and Linux suites in run `36474861545`.
+smokes, PostgreSQL, wiki, and shared-memory gates. That re-establishes a green hosted baseline; the
+separate TASK-158 Linux TTY/non-TTY qualification subsequently passed under Ubuntu WSL2.
 
-**Deterministic ticket contract:** TASK-160 makes `<kind>/<ticket-key>-<number>-<slug>` the canonical branch
+**Qualified deterministic ticket contract:** TASK-160 makes `<kind>/<ticket-key>-<number>-<slug>` the canonical branch
 grammar and assigns tickets in this order: canonical branch, explicit commit prefix/trailer,
 explicit active-ticket override, otherwise unlinked. Free-form message scanning, last-ticket reuse,
 and LLM output cannot silently become authoritative mappings. LLMs may suggest a reviewable mapping
 only after deterministic evidence fails. Nonconforming branches never block Git; status/doctor and
-the correction channels surface them later.
+the correction channels surface them later. The implementation and local cross-platform checks pass
+on `features/TASK-160-deterministic-ticket-contract`; commit `92c0711` and its implementation
+follow-ups are pushed and reconciled with current `dev` in final PR #270; integration remains pending.
 
 **Active UI work:** The server-admin redesign is committed on `feat/TASK-154-server-admin-ui` but is not integrated into current `dev`. Review and integrate or explicitly retire that branch before packaged-build qualification and media capture. `initiatives/server-ui.md` owns the design scope and integration gate.
 
@@ -40,7 +42,7 @@ the correction channels surface them later.
 run `36136822555` published the rolling `dev-f6b0ec0` prerelease with checksums and all five platform
 binaries at `https://github.com/sraj0501/Devtrack_/releases/tag/dev`. Stable `main` remains the
 default, and v3.1.1 remains the latest stable public release; v3.1.1 does not contain the new channel
-flags. TASK-158 native-Linux validation remains separate from this completed distribution work.
+flags. TASK-158 validation is complete and remains separate from this completed distribution work.
 
 **Known communication-learning gap:** Managed onboarding can seed voice data from local Git history,
 but the Python HTTP adapter behind status/enable/sync/reset/cron/profile/test/revoke is incomplete.
@@ -50,7 +52,7 @@ Treat all of those CLI paths as unavailable until repaired. Teams/Outlook learni
 end-to-end complete.
 
 **Pickup sequence:** `execution-plan.md` owns the cross-initiative order and acceptance gates. In
-brief: complete TASK-160 and TASK-159 (TASK-158 is qualified and merged through PR #267);
+brief: push and integrate the locally passed TASK-160 work, then implement TASK-159;
 make SAGE-003 parity executable and complete one asynchronous, deterministic Codex
 capture-to-knowledge journey; then resolve the separate UI branch and release follow-ups. Do not
 expand harness support or MCP exposure before the Codex closure gate.

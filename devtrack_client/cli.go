@@ -23,7 +23,7 @@ func NewCLI() (*CLI, error) {
 			cmd == "azure-list" || cmd == "azure-sync" || cmd == "azure-view" ||
 			cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
 			cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
-			cmd == "ticket-sync" || cmd == "narrative" || cmd == "eod" || cmd == "skills" ||
+			cmd == "ticket" || cmd == "ticket-sync" || cmd == "narrative" || cmd == "eod" || cmd == "skills" ||
 			cmd == "review" {
 			return &CLI{}, nil
 		}
@@ -155,6 +155,8 @@ func (cli *CLI) Execute() error {
 		return cli.handleGitHubSync()
 	case "ticket-sync":
 		return cli.handleTicketSync()
+	case "ticket":
+		return cli.handleTicket()
 	case "issues":
 		return cli.handleIssues()
 	case "narrative":
@@ -456,23 +458,27 @@ func (cli *CLI) handleWorkspace() error {
 		return wc.List()
 	case "add":
 		if len(os.Args) < 5 {
-			fmt.Println("Usage: devtrack workspace add <name> <path> [--pm azure|gitlab|github|jira|none]")
+			fmt.Println("Usage: devtrack workspace add <name> <path> [--pm azure|gitlab|github|jira|none] [--ticket-key KEY]")
 			return fmt.Errorf("missing arguments")
 		}
 		name := os.Args[3]
 		path := os.Args[4]
 		pmPlatform := ""
+		ticketKey := ""
 		addArgs := os.Args[5:]
 		for i := 0; i < len(addArgs); i++ {
 			if addArgs[i] == "--pm" && i+1 < len(addArgs) {
 				pmPlatform = addArgs[i+1]
+				i++
+			} else if addArgs[i] == "--ticket-key" && i+1 < len(addArgs) {
+				ticketKey = addArgs[i+1]
 				i++
 			} else if !strings.HasPrefix(addArgs[i], "--") {
 				// backwards-compatible: bare positional platform arg
 				pmPlatform = addArgs[i]
 			}
 		}
-		return wc.Add(name, path, pmPlatform)
+		return wc.Add(name, path, pmPlatform, ticketKey)
 	case "remove":
 		if len(os.Args) < 4 {
 			fmt.Println("Usage: devtrack workspace remove <name>")
@@ -499,7 +505,7 @@ func (cli *CLI) handleWorkspace() error {
 		fmt.Printf("Unknown workspace subcommand: %s\n", subCmd)
 		fmt.Println("Usage:")
 		fmt.Println("  devtrack workspace list                         List configured workspaces")
-		fmt.Println("  devtrack workspace add <name> <path> [--pm azure|gitlab|github|jira|none]  Add a workspace")
+		fmt.Println("  devtrack workspace add <name> <path> [--pm PLATFORM] [--ticket-key KEY]  Add a workspace")
 		fmt.Println("  devtrack workspace remove <name>                Remove a workspace")
 		fmt.Println("  devtrack workspace enable <name>                Enable a workspace")
 		fmt.Println("  devtrack workspace disable <name>               Disable a workspace")

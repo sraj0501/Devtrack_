@@ -26,8 +26,11 @@ application/json`.
 ### `POST /trigger/commit`
 
 Required client fields are `commit_hash`, `commit_message`, `author`, and `branch`. The client may
-also provide repository, timestamp, changed-file, resolved-ticket, confidence, workspace-routing,
-and PM-specific fields. A successful response includes `status`, `actions`, and `commit_hash`.
+also provide repository, timestamp, changed-file, workspace-routing, and PM-specific fields. The
+deterministic ticket fields are `ticket_id` (canonical reference), `ticket_external_id`,
+`ticket_source`, `ticket_state`, `ticket_confidence`, and `ticket_conflict`. A conflicted mapping may
+be retained locally but the server must not stage an outbound PM action from it. A successful
+response includes `status`, `actions`, and `commit_hash`.
 
 ### `POST /trigger/timer`
 

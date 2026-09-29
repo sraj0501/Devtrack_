@@ -141,6 +141,7 @@ func (cli *CLI) handleStatus() error {
 		printBootstrapCapabilities(os.Stdout)
 		printFirstRunGuidance(os.Stdout)
 		printTicketExtractionStats("")
+		printTicketMappingHealth()
 		fmt.Println("Config files:")
 		if envPath := resolveEnvFilePath(); envPath != "" {
 			fmt.Printf("  .env          %s\n", envPath)
@@ -294,6 +295,7 @@ func (cli *CLI) handleStatus() error {
 
 	// Ticket extraction hit-rate (Phase 2 exit criterion)
 	printTicketExtractionStats("")
+	printTicketMappingHealth()
 
 	// Config file locations
 	fmt.Println("Config files:")
@@ -378,9 +380,8 @@ const ticketExtractionWindow = 50
 const ticketExtractionMinSample = 5
 
 // printTicketExtractionStats shows the Phase 2 exit-criterion metric: the
-// percentage of recent commits that were successfully mapped to a ticket ID
-// (branch name -> commit message -> active-ticket fallback chain from
-// TASK-068/069). Pass repoPath="" to aggregate across all workspaces.
+// percentage of recent commits that were successfully mapped to a ticket ID.
+// Pass repoPath="" to aggregate across all workspaces.
 func printTicketExtractionStats(repoPath string) {
 	db, err := NewDatabase()
 	if err != nil {

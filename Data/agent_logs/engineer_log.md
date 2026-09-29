@@ -1,23 +1,58 @@
 # DevTrack Engineer Log
 
-### [2026-09-29] TASK-160 — deterministic resolver and durable mapping audit
+### [2026-09-29 10:45] TASK-160 — deterministic ticket contract committed for upstream review
 
-Slice 1 merged through PR #268 at `87dcbc7` after all 18 checks passed. Resolver tests cover
-canonical grammar, explicit references, conflicts, merge subjects, provider IDs, and custom
-pattern rejection. Real reload tests prove invalid settings retain the valid monitor and valid
-ticket-pattern edits replace it. Slice 2 preserves legacy mappings and original evidence while
-recording corrections atomically with request idempotency and concurrent version checks. Full
-database/MCP suites and vet pass locally. Runtime integration and correction channels remain open.
+**Original message**: "feat(TASK-160): enforce deterministic ticket mapping"
+**DevTrack enhanced it to**: no enhancement requested; committed through `devtrack git commit --amend --no-enhance`.
+**Ticket auto-linked**: NO — this repository is not in the running installed daemon's workspace configuration.
+**PM system updated**: NO — repository board only; no external PM connector configured.
+**Time**: ~5 minutes for commit audit and cleanup.
+**Friction**: MEDIUM — a pre-existing local commit had captured a PowerShell module-analysis cache;
+the unpublished commit was cleaned while preserving the local file. The isolated Git configuration
+also required supplying the existing commit identity explicitly on the successful retry.
+**Notes**: implementation commit `92c0711`; all previously recorded Windows, Ubuntu WSL2, Python,
+memory, wiki, and whitespace checks remain green. The first push found an existing remote branch
+containing PR #267 plus partial TASK-160 commit `aa0d2c0`; it was fetched and merged without force.
+The merge retains its independent Linux pipe/PTY CI test, timezone fixes, and hot-reload coverage,
+while the locally qualified resolver remains authoritative. Full Windows and Ubuntu WSL2 Go
+tests/vet plus the 75 Python contract tests passed again on the reconciled tree.
 
-### [2026-09-29] TASK-158 — native silence qualification
+## Task Summary — TASK-160: Deterministic branch-to-ticket contract — 2026-09-29
 
-Commit `2525783`, PR #267: real Git commits execute generated hooks with writable and missing log
-destinations, asserting successful commits and zero output. Linux verifies terminal attachment
-before executing PTY cases. Windows and Linux complete suites/build/vet passed in `36474861545`;
-no-send E2E passed in `36474861507`. Local MCP fixtures were aligned with local-day storage and
-the package passed. Windows Application Control blocked some local test binaries and the freshly
-built DevTrack helper even outside the sandbox; used the documented raw-Git commit fallback.
-No PM messages or outbound integration actions were requested.
+- Total commits: 3 local branch commits (implementation, status follow-up, and upstream reconciliation merge).
+- Acceptance criteria met: 7/7.
+- Implemented canonical branch grammar and strict workspace validation; deterministic branch,
+  prefix/trailer, active-ticket, and unlinked precedence; immutable provenance, append-only
+  corrections, separate non-authoritative candidates, corrected MCP/read models, and outbound
+  conflict suppression.
+- Added `ticket convention`, `ticket check`, and `ticket link`, plus setup/status/doctor visibility
+  and synchronized README, API documentation, examples, and wiki guidance.
+- Verification: Windows and Ubuntu WSL2 full `go test ./...` plus `go vet ./...`; 75 focused Python
+  API/trigger tests; shared-memory validation; wiki inline-JavaScript validation; and
+  `git diff --check` all pass.
+- Blockers encountered: no product/test blocker; the accidental cache inclusion was removed before push.
+- Ready for PM review: YES — final integration PR #270 targets `dev`.
+
+### [2026-09-29] TASK-160 — merged slice history
+
+Slice 1 merged through PR #268 at `87dcbc7` after all 18 checks passed. Slice 2 merged through
+PR #269 at `2fda9e8`. The completed branch was then reconciled with both merged slices so the
+runtime integration, correction channels, outbound gating, documentation, and cross-platform
+qualification can be reviewed as one final integration change.
+
+### [2026-09-26] TASK-158 — Ubuntu WSL2 silence qualification complete
+
+**Notes**:
+
+- Ran the preserved TASK-158 integration draft against a disposable archive of current `dev` on
+  Ubuntu 24.04.5 under WSL2 with Go 1.24.4; the stash was not applied to the working tree.
+- Redirected non-TTY and `script`-backed pseudo-TTY `git commit` both completed successfully with
+  zero hook output. An intentionally unavailable commit-log destination remained fail-open.
+- The full Linux `go test ./...` suite passed across all packages and `go vet ./...` completed with
+  no findings.
+- TASK-158 is fully qualified. TASK-160 is authorized and started on
+  `features/TASK-160-deterministic-ticket-contract` from `origin/dev` at `4c663b0`.
+
 
 ### [2026-09-26] TASK-161 — documentation completion audit and hosted-CI reconciliation
 

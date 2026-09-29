@@ -16,8 +16,8 @@ notification channels.
 ## Ticket correction
 
 Commit-time ticket selection is not part of the DevTrack workflow. Ticket resolution runs in the
-background; unlinked results are corrected later through explicit queue, work-session, or status
-surfaces. TASK-160 will add the strict deterministic provenance and conflict contract.
+background; unlinked results are corrected later through explicit queue, work-session, status, or
+`devtrack ticket link` surfaces. Deterministic provenance and conflicts remain visible for review.
 
 ## Python server TUI
 
