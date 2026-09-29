@@ -69,8 +69,8 @@ func TestGetActiveContext_WithTicket(t *testing.T) {
 	if m["active_ticket"] != "PROJ-123" {
 		t.Errorf("expected active_ticket=PROJ-123, got %v", m["active_ticket"])
 	}
-	if m["confidence"] != "high" {
-		t.Errorf("expected confidence=high, got %v", m["confidence"])
+	if m["confidence"] != "unknown" {
+		t.Errorf("expected confidence=unknown for legacy evidence, got %v", m["confidence"])
 	}
 }
 

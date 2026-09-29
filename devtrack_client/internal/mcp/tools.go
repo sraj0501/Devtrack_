@@ -147,7 +147,11 @@ func makeGetActiveContext(database *db.Database) func(context.Context, map[strin
 
 		confidence := "none"
 		if recent.Hash != "" {
-			if recent.TicketID != "" && recent.TicketID != "unlinked" {
+			if recent.Mapping.Conflict {
+				confidence = "conflict"
+			} else if recent.Mapping.Source == "legacy" {
+				confidence = "unknown"
+			} else if recent.TicketID != "" && recent.TicketID != "unlinked" {
 				confidence = "high"
 			} else {
 				confidence = "low"
@@ -164,6 +168,7 @@ func makeGetActiveContext(database *db.Database) func(context.Context, map[strin
 
 		return map[string]interface{}{
 			"active_ticket":         recent.TicketID,
+			"ticket_mapping":        recent.Mapping,
 			"repo_path":             recent.RepoPath,
 			"confidence":            confidence,
 			"today_commits":         todayCount,
@@ -191,10 +196,11 @@ func makeGetTodayCommits(database *db.Database) func(context.Context, map[string
 				key = "unlinked"
 			}
 			grouped[key] = append(grouped[key], map[string]interface{}{
-				"hash":      shortHash(c.Hash),
-				"message":   c.Message,
-				"timestamp": c.Timestamp,
-				"repo_path": c.RepoPath,
+				"ticket_mapping": c.Mapping,
+				"hash":           shortHash(c.Hash),
+				"message":        c.Message,
+				"timestamp":      c.Timestamp,
+				"repo_path":      c.RepoPath,
 			})
 		}
 
@@ -311,10 +317,11 @@ func makeGetTicketContext(database *db.Database) func(context.Context, map[strin
 		lastActivity := ""
 		for _, c := range commits {
 			commitList = append(commitList, map[string]interface{}{
-				"hash":      shortHash(c.Hash),
-				"message":   c.Message,
-				"repo_path": c.RepoPath,
-				"timestamp": c.Timestamp,
+				"ticket_mapping": c.Mapping,
+				"hash":           shortHash(c.Hash),
+				"message":        c.Message,
+				"repo_path":      c.RepoPath,
+				"timestamp":      c.Timestamp,
 			})
 			if lastActivity == "" {
 				lastActivity = c.Timestamp
