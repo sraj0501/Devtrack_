@@ -112,10 +112,10 @@ while [ ! -f "$state_root/pids/daemon.pid" ]; do
     sleep 1
 done
 
-GIT_NO_DEVTRACK=1 git -C "$workspace" switch -q -c feature/DEMO-201-automated-e2e
+GIT_NO_DEVTRACK=1 git -C "$workspace" switch -q -c feature/E2E-201-automated-e2e
 printf '%s\n' 'observed by the real daemon' >> "$workspace/README.md"
 GIT_NO_DEVTRACK=1 git -C "$workspace" add README.md
-GIT_NO_DEVTRACK=1 git -C "$workspace" commit -q -m 'DEMO-201: verify automated end-to-end flow'
+GIT_NO_DEVTRACK=1 git -C "$workspace" commit -q -m 'E2E-201: verify automated end-to-end flow'
 commit_hash=$(GIT_NO_DEVTRACK=1 git -C "$workspace" rev-parse --short=12 HEAD)
 
 while ! grep -F "$commit_hash" "$state_root/logs/daemon.log" >/dev/null 2>&1; do
@@ -129,7 +129,7 @@ done
 mcp_output=$(DEVTRACK_ENV_FILE="$env_file" XDG_DATA_HOME="$state_root/xdg" "$binary" mcp test 2>&1)
 printf '%s\n' "$mcp_output"
 printf '%s\n' "$mcp_output" | grep -F '=== PASS ===' >/dev/null
-printf '%s\n' "$mcp_output" | grep -F 'DEMO-201' >/dev/null
+printf '%s\n' "$mcp_output" | grep -F 'E2E-201' >/dev/null
 printf '%s\n' "$mcp_output" | grep -E 'today_commits[^0-9]*[1-9]' >/dev/null
 
 DEVTRACK_ENV_FILE="$env_file" XDG_DATA_HOME="$state_root/xdg" "$binary" queue list

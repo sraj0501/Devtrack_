@@ -31,9 +31,9 @@ without an authorized board task and a dedicated branch targeting `dev`.
 - TASK-161 merged through PR #265 at `f6b0ec0`; workflow run `36136822555` published the rolling
   `dev-f6b0ec0` prerelease with all five platform binaries and checksums. It is available on the
   rolling `dev` channel but is not part of stable v3.1.1. TASK-158 validation is separately complete.
-- TASK-157 / SAGE-003 is the active product initiative. TASK-160 and TASK-159 remain allocated to
-  the deterministic ticket contract and automatic-time corrections;
-  the next unused task ID is TASK-162, subject to board verification.
+- TASK-157 / SAGE-003 is the active product initiative. TASK-160 is integrated, TASK-162's stale
+  no-send E2E fixture fix passes locally and awaits integration, and TASK-159 remains allocated;
+  the next unused task ID is TASK-163, subject to board verification.
 - The board's active summary now describes the foundation as merged into `dev`; preserve closed
   task history and do not rewrite historical branch references.
 
@@ -57,7 +57,7 @@ Result: passed on Ubuntu 24.04.5 under WSL2 on 2026-09-26. Both redirected non-T
 `script`-backed pseudo-TTY commits were silent and successful with an unavailable log destination;
 the full Linux Go suite and `go vet ./...` passed.
 
-### 2. Enforce deterministic branch-to-ticket mapping — locally passed
+### 2. Enforce deterministic branch-to-ticket mapping — integrated; CI fixture follow-up active
 
 Implement TASK-160 around one canonical grammar: `<kind>/<ticket-key>-<number>-<slug>`, with the ticket ID
 validated by the workspace's configured pattern. Resolution order is canonical branch, explicit
@@ -72,9 +72,11 @@ cannot silently link a commit; custom patterns and hot reload work; and every ma
 
 Result: passed on Windows and Ubuntu WSL2 on 2026-09-29. Full Go tests and vet passed on both;
 75 focused Python API/trigger tests, memory validation, wiki inline-script validation, and
-`git diff --check` also passed. Implementation commit `92c0711` was pushed; merged slices #268 and
-#269 are reconciled in final PR #270 targeting `dev`. Integration remains the handoff gate before
-TASK-159.
+`git diff --check` also passed. Implementation commit `92c0711` and merged slices #268/#269 were
+integrated through PR #270 at `a097a0b`. Seventeen hosted checks passed; TASK-162 aligns the two
+stale no-send E2E fixtures with the configured `E2E` workspace key. Native Windows and the supported
+disposable Linux fallback E2E, the full Go suite/vet, memory validation, and whitespace checks pass
+locally; hosted integration remains before TASK-159.
 
 ### 3. Implement silent automatic time inference — next after TASK-160 integration
 

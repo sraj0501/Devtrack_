@@ -1,5 +1,30 @@
 ﻿# DevTrack Project Board
 
+**[2026-09-29] TASK-162 — Align no-send E2E with deterministic ticket contract (passed, P0).**
+**Priority:** P0 CI integration follow-up. **Branch:**
+`fix/TASK-162-align-no-send-e2e-ticket`. **Assigned to:** engineer. **Started:** 2026-09-29.
+
+PR #270 merged TASK-160 into `dev`, but both no-send E2E lanes retained TASK-152's `DEMO-201`
+fixture inside a workspace configured with ticket key `E2E`. The deterministic resolver correctly
+records that mismatched commit as unlinked, so the scripts' old MCP assertion is invalid. Use the
+workspace-valid `E2E-201` canonical branch and explicit commit prefix without weakening the ticket
+contract.
+
+**Acceptance criteria:**
+- [x] Windows and POSIX no-send E2E scripts use the canonical `E2E-201` fixture consistently.
+- [x] Native Windows and the supported disposable Linux fallback observe the commit and expose
+      `E2E-201` through MCP; the installed WSL distribution has no Go toolchain.
+- [x] The full Go suite, `go vet ./...`, shared-memory validation, and `git diff --check` pass.
+- [ ] Hosted checks are green after integration.
+
+**Engineer status:** PASSED LOCALLY — Windows and Linux no-send E2E, full Go tests/vet, shared-memory
+validation, and whitespace validation passed on 2026-09-29. Linux used the repository's Docker
+fallback because WSL lacks Go. The unrelated untracked `Microsoft/` and `devtrack_client/.claude/`
+paths remain excluded.
+**Blockers:** commit/push/PR authorization and hosted integration.
+
+---
+
 **[2026-09-25] TASK-161 — Rolling development update channel and state reconciliation (complete, HIGH).**
 **Priority:** HIGH distribution/developer-experience follow-up. **Branch:**
 `features/TASK-161-rolling-dev-channel`. **Assigned to:** engineer. **Started:** 2026-09-25.
@@ -88,7 +113,7 @@ under WSL2 with Go 1.24.4 passed the preserved integration test in both redirect
 destination remained fail-open. The full Linux `go test ./...` suite and `go vet ./...` also passed.
 **Blockers:** none.
 
-**[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (passed, P0).**
+**[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (complete, P0).**
 **Priority:** P0 product contract; execute after TASK-158 native Linux qualification and before
 automatic time inference or the next SAGE-003 implementation slice. **Depends on:** TASK-158.
 **Branch:** `features/TASK-160-deterministic-ticket-contract`.
@@ -159,9 +184,9 @@ commands, onboarding, and documentation are implemented on
 Ubuntu WSL2 `go test ./...` and `go vet ./...`, 75 focused Python API/trigger tests, shared-memory
 validation, wiki inline-JavaScript validation, and `git diff --check` pass. The pytest cache warning
 is environmental and did not affect the 75 passing tests.
-**Blockers:** no product/test blocker. Final PR #270 targets `dev`; CI/integration remains pending
-after reconciliation with merged slices #268 (`87dcbc7`) and #269 (`2fda9e8`).
-TASK-159 implementation must start from a fresh branch after this work is integrated.
+**Blockers:** PR #270 merged to `dev` at `a097a0b`. Seventeen hosted checks passed; both no-send E2E
+lanes exposed TASK-152's stale cross-key fixture and are tracked separately by TASK-162.
+TASK-159 implementation must start from a fresh branch after that CI follow-up is integrated.
 The existing upstream task branch (partial commit `aa0d2c0` plus merged TASK-158 PR #267) was
 reconciled locally without force; the combined tree passed the full Windows and Ubuntu WSL2 Go
 suite/vet and 75 focused Python contract tests before push.
@@ -185,9 +210,9 @@ keystrokes, window activity, raw command output, or cloud telemetry.
 - [ ] The algorithm, defaults, privacy boundary, confidence, and corrections are documented and
       covered by clock-controlled tests.
 
-**Engineer status:** NEXT — product work is ready after TASK-160 integration.
-**Blockers:** TASK-160 is committed and being pushed but is not yet integrated; a fresh TASK-159
-branch should start from updated `origin/dev` after that handoff.
+**Engineer status:** NEXT — product work is ready after the TASK-162 CI follow-up.
+**Blockers:** TASK-160 is integrated; a fresh TASK-159 branch should start from updated `origin/dev`
+after TASK-162 restores the no-send E2E gate.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and
