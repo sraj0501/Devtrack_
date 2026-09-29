@@ -22,10 +22,11 @@ import (
 
 // WorkspaceMonitor pairs a GitMonitor with its workspace routing metadata
 type WorkspaceMonitor struct {
-	gitMonitor    *GitMonitor
-	workspaceName string
-	pmPlatform    string
-	pmProject     string
+	workspaceConfig config.WorkspaceConfig // last valid config, including ticket identity
+	gitMonitor      *GitMonitor
+	workspaceName   string
+	pmPlatform      string
+	pmProject       string
 	// Per-workspace PM settings
 	pmAssignee      string
 	pmIterationPath string
@@ -91,6 +92,7 @@ func NewIntegratedMonitor(_ string) (*IntegratedMonitor, error) {
 				continue
 			}
 			workspaceMonitors = append(workspaceMonitors, &WorkspaceMonitor{
+				workspaceConfig: ws,
 				gitMonitor:      gm,
 				workspaceName:   ws.Name,
 				pmPlatform:      ws.PMPlatform,
@@ -346,6 +348,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 			continue
 		}
 		wm := &WorkspaceMonitor{
+			workspaceConfig: ws,
 			gitMonitor:      gm,
 			workspaceName:   ws.Name,
 			pmPlatform:      ws.PMPlatform,

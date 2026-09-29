@@ -11,11 +11,15 @@
 the unpublished commit was cleaned while preserving the local file. The isolated Git configuration
 also required supplying the existing commit identity explicitly on the successful retry.
 **Notes**: implementation commit `92c0711`; all previously recorded Windows, Ubuntu WSL2, Python,
-memory, wiki, and whitespace checks remain green.
+memory, wiki, and whitespace checks remain green. The first push found an existing remote branch
+containing PR #267 plus partial TASK-160 commit `aa0d2c0`; it was fetched and merged without force.
+The merge retains its independent Linux pipe/PTY CI test, timezone fixes, and hot-reload coverage,
+while the locally qualified resolver remains authoritative. Full Windows and Ubuntu WSL2 Go
+tests/vet plus the 75 Python contract tests passed again on the reconciled tree.
 
 ## Task Summary — TASK-160: Deterministic branch-to-ticket contract — 2026-09-29
 
-- Total commits: 2 branch commits (implementation plus this status follow-up).
+- Total commits: 3 local branch commits (implementation, status follow-up, and upstream reconciliation merge).
 - Acceptance criteria met: 7/7.
 - Implemented canonical branch grammar and strict workspace validation; deterministic branch,
   prefix/trailer, active-ticket, and unlinked precedence; immutable provenance, append-only

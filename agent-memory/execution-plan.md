@@ -12,6 +12,11 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
+- **2026-09-29:** TASK-158 qualification PR #267 at `2525783` passed native Linux PTY/pipe and
+  Windows pipe tests, both full Go suites and build/vet, and no-send E2E. Evidence: client run
+  `36474861545`, E2E run `36474861507`, general CI run `36474861478`. This supersedes the earlier
+  pending qualification statements below. PR #267 merged at `7e1b53f`; proceed to TASK-160, then TASK-159.
+
 - Current `dev` at `f6b0ec0` contains the SAGE-001/SAGE-002 capture foundation, the model-free
   SAGE-003 search slice, removal of legacy Git Sage, neutral `internal/gitcmd` ownership, and the
   SAGE-003 LLM transport, structured distiller, and non-blocking worker from PR #263. Durable SQLite
