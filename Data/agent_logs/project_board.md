@@ -151,15 +151,16 @@ trust path.
 - [x] Custom workspace patterns, config reload, merge commits, provider ID normalization, and
       contradictory-signal cases have deterministic tests.
 
-**Engineer status:** PASSED locally on 2026-09-29 — deterministic resolver/configuration, immutable
+**Engineer status:** COMPLETE — 7/7 criteria passed; implementation commit `92c0711`
+(`feat(TASK-160): enforce deterministic ticket mapping`) on 2026-09-29. Deterministic resolver/configuration, immutable
 provenance and corrections, effective corrected read models, conflict outbound gating, inspection
 commands, onboarding, and documentation are implemented on
 `features/TASK-160-deterministic-ticket-contract`. Full Windows `go test ./...` and `go vet ./...`,
 Ubuntu WSL2 `go test ./...` and `go vet ./...`, 75 focused Python API/trigger tests, shared-memory
 validation, wiki inline-JavaScript validation, and `git diff --check` pass. The pytest cache warning
 is environmental and did not affect the 75 passing tests.
-**Blockers:** no product/test blocker. Commit, push, and PR remain pending explicit owner
-authorization; TASK-159 implementation must start from a fresh branch after this work is integrated.
+**Blockers:** no product/test blocker. Push is owner-authorized; PR/integration remains pending.
+TASK-159 implementation must start from a fresh branch after this work is integrated.
 
 **[2026-09-21] TASK-159 — Silent automatic time inference (planned, HIGH).**
 **Priority:** HIGH; paired with TASK-158 and TASK-157 / SAGE-003.
@@ -181,8 +182,8 @@ keystrokes, window activity, raw command output, or cloud telemetry.
       covered by clock-controlled tests.
 
 **Engineer status:** NEXT — product work is ready after TASK-160 integration.
-**Blockers:** TASK-160 is locally passed but not yet committed or integrated; a fresh TASK-159 branch
-cannot be created safely until the owner authorizes that handoff.
+**Blockers:** TASK-160 is committed and being pushed but is not yet integrated; a fresh TASK-159
+branch should start from updated `origin/dev` after that handoff.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and

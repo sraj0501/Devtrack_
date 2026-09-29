@@ -1,8 +1,21 @@
 # DevTrack Engineer Log
 
+### [2026-09-29 10:45] TASK-160 — deterministic ticket contract committed for upstream review
+
+**Original message**: "feat(TASK-160): enforce deterministic ticket mapping"
+**DevTrack enhanced it to**: no enhancement requested; committed through `devtrack git commit --amend --no-enhance`.
+**Ticket auto-linked**: NO — this repository is not in the running installed daemon's workspace configuration.
+**PM system updated**: NO — repository board only; no external PM connector configured.
+**Time**: ~5 minutes for commit audit and cleanup.
+**Friction**: MEDIUM — a pre-existing local commit had captured a PowerShell module-analysis cache;
+the unpublished commit was cleaned while preserving the local file. The isolated Git configuration
+also required supplying the existing commit identity explicitly on the successful retry.
+**Notes**: implementation commit `92c0711`; all previously recorded Windows, Ubuntu WSL2, Python,
+memory, wiki, and whitespace checks remain green.
+
 ## Task Summary — TASK-160: Deterministic branch-to-ticket contract — 2026-09-29
 
-- Total commits: 0; implementation is locally passed and remains uncommitted pending explicit owner authorization.
+- Total commits: 2 branch commits (implementation plus this status follow-up).
 - Acceptance criteria met: 7/7.
 - Implemented canonical branch grammar and strict workspace validation; deterministic branch,
   prefix/trailer, active-ticket, and unlinked precedence; immutable provenance, append-only
@@ -13,8 +26,8 @@
 - Verification: Windows and Ubuntu WSL2 full `go test ./...` plus `go vet ./...`; 75 focused Python
   API/trigger tests; shared-memory validation; wiki inline-JavaScript validation; and
   `git diff --check` all pass.
-- Blockers encountered: no product/test blocker. Commit/push/PR require explicit owner authorization.
-- Ready for PM review: YES — locally passed; integration pending.
+- Blockers encountered: no product/test blocker; the accidental cache inclusion was removed before push.
+- Ready for PM review: YES — branch push is authorized; PR/integration remains pending.
 
 ### [2026-09-26] TASK-158 — Ubuntu WSL2 silence qualification complete
 

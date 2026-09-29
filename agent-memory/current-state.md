@@ -12,7 +12,8 @@ duration, PM, or push questions; generated observation hooks are silent and fail
 initialization no longer prints into the user-facing path. On 2026-09-26, Ubuntu 24.04.5 under WSL2
 passed explicit redirected non-TTY and pseudo-TTY silence/fail-open tests plus the full Go suite and
 `go vet ./...`. TASK-158 is qualified. TASK-160 passed its Windows and Ubuntu WSL2 implementation
-gates on 2026-09-29 and awaits an explicitly authorized commit/PR handoff.
+gates on 2026-09-29. Implementation commit `92c0711` is ready for the authorized branch push;
+PR/integration remains pending.
 TASK-159 next replaces manual per-commit time entry with local, privacy-bounded activity-window
 inference; explicit work-session commands remain optional overrides/corrections.
 
@@ -29,7 +30,8 @@ explicit active-ticket override, otherwise unlinked. Free-form message scanning,
 and LLM output cannot silently become authoritative mappings. LLMs may suggest a reviewable mapping
 only after deterministic evidence fails. Nonconforming branches never block Git; status/doctor and
 the correction channels surface them later. The implementation and local cross-platform checks pass
-on `features/TASK-160-deterministic-ticket-contract`; it is not committed, pushed, or integrated.
+on `features/TASK-160-deterministic-ticket-contract`; commit `92c0711` is ready to push but is not
+yet integrated.
 
 **Active UI work:** The server-admin redesign is committed on `feat/TASK-154-server-admin-ui` but is not integrated into current `dev`. Review and integrate or explicitly retire that branch before packaged-build qualification and media capture. `initiatives/server-ui.md` owns the design scope and integration gate.
 
@@ -49,7 +51,7 @@ Treat all of those CLI paths as unavailable until repaired. Teams/Outlook learni
 end-to-end complete.
 
 **Pickup sequence:** `execution-plan.md` owns the cross-initiative order and acceptance gates. In
-brief: integrate the locally passed TASK-160 work when authorized, then implement TASK-159;
+brief: push and integrate the locally passed TASK-160 work, then implement TASK-159;
 make SAGE-003 parity executable and complete one asynchronous, deterministic Codex
 capture-to-knowledge journey; then resolve the separate UI branch and release follow-ups. Do not
 expand harness support or MCP exposure before the Codex closure gate.

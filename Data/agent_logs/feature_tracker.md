@@ -34,7 +34,7 @@ prerelease is published)_
 - **TASK-160:** passed its Windows and Ubuntu WSL2 implementation gates on 2026-09-29. Canonical
   branch, explicit prefix/trailer, explicit active ticket, otherwise unlinked; immutable provenance,
   corrections, provider IDs, conflict gating, health reporting, and documentation are implemented.
-  The working tree remains uncommitted pending explicit owner authorization.
+  Implementation commit `92c0711` is ready for the owner-authorized branch push; integration remains pending.
 - **TASK-159:** next after TASK-160 integration. Infer bounded local work windows without per-commit prompts,
   retaining auditable explicit corrections.
 - **TASK-161:** the rolling `dev` update-channel implementation merged through PR #265 at

@@ -18,8 +18,8 @@ baseline. TASK-158's later native-Linux TTY/non-TTY qualification is separately 
 
 **TASK-160** now passes its local Windows and Ubuntu WSL2 implementation gates for the deterministic
 branch-to-ticket contract defined in `PRODUCT_BIBLE.md`: canonical branch, explicit commit
-prefix/trailer, explicit active ticket, otherwise unlinked. Its commit/PR integration awaits
-explicit authorization. **TASK-159 is next after that integration**, replacing per-commit duration
+prefix/trailer, explicit active ticket, otherwise unlinked. Commit `92c0711` is ready for the
+authorized branch push; PR/integration remains pending. **TASK-159 is next after that integration**, replacing per-commit duration
 entry with bounded, local activity-window inference and optional correction commands. After those
 product-correctness slices, continue TASK-157 / SAGE-003 at its durable distillation-queue boundary.
 Before that implementation slice, reconcile every reference scenario with an exact Go test and
