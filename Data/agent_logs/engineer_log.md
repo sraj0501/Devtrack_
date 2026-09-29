@@ -31,7 +31,7 @@ tests/vet plus the 75 Python contract tests passed again on the reconciled tree.
   API/trigger tests; shared-memory validation; wiki inline-JavaScript validation; and
   `git diff --check` all pass.
 - Blockers encountered: no product/test blocker; the accidental cache inclusion was removed before push.
-- Ready for PM review: YES — final reconciliation with merged slices #268/#269 is in progress.
+- Ready for PM review: YES — final integration PR #270 targets `dev`.
 
 ### [2026-09-29] TASK-160 — merged slice history
 

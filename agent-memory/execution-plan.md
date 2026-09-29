@@ -73,7 +73,7 @@ cannot silently link a commit; custom patterns and hot reload work; and every ma
 Result: passed on Windows and Ubuntu WSL2 on 2026-09-29. Full Go tests and vet passed on both;
 75 focused Python API/trigger tests, memory validation, wiki inline-script validation, and
 `git diff --check` also passed. Implementation commit `92c0711` was pushed; merged slices #268 and
-#269 are being reconciled into the final TASK-160 PR. Integration remains the handoff gate before
+#269 are reconciled in final PR #270 targeting `dev`. Integration remains the handoff gate before
 TASK-159.
 
 ### 3. Implement silent automatic time inference — next after TASK-160 integration
