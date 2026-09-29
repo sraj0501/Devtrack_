@@ -230,12 +230,17 @@ func (d *Database) initServerEventSync() error {
 				updated_at = datetime('now'), synced_at = NULL;
 		END`,
 	}
+	tx, err := d.beginSchemaTransaction()
+	if err != nil {
+		return fmt.Errorf("server event sync schema: %w", err)
+	}
+	defer tx.Rollback()
 	for _, statement := range statements {
-		if _, err := d.db.Exec(statement); err != nil {
+		if _, err := tx.Exec(statement); err != nil {
 			return fmt.Errorf("server event sync schema: %w", err)
 		}
 	}
-	return nil
+	return tx.Commit()
 }
 
 // GetOrCreateServerEventClientID returns a stable random identifier stored in
