@@ -38,7 +38,7 @@ silence-test draft remains excluded.
 
 ---
 
-**[2026-09-21] TASK-158 — Restore the completely silent Git path (merged; native Linux validation pending, P0).**
+**[2026-09-21] TASK-158 — Restore the completely silent Git path (complete, P0).**
 **Priority:** P0 product-correctness regression; execute before the next SAGE-003 implementation
 slice, then resume TASK-157. **Branch:** `fix/TASK-158-silent-git-path`.
 **Assigned to:** engineer. **Started:** 2026-09-21. **Merged:** PR #264 to `dev` at `fe3ad38`.
@@ -62,7 +62,7 @@ interrupt the developer.
   installed behavior.
 
 **Acceptance criteria:**
-- [ ] Normal `git commit` in a monitored repository produces zero DevTrack questions and zero
+- [x] Normal `git commit` in a monitored repository produces zero DevTrack questions and zero
       DevTrack stdout/stderr on Windows and Linux.
 - [x] `devtrack git commit` asks no post-commit questions and offers no direct push; explicit
       overrides use commands or flags rather than unsolicited follow-up prompts.
@@ -70,26 +70,29 @@ interrupt the developer.
       user-facing commit path.
 - [x] Commit detection still persists the commit, infers or records an unlinked ticket without
       blocking, and stages applicable outbound PM work.
-- [ ] Automated TTY and non-TTY tests prove silence and fail-open behavior; the full Go suite and
+- [x] Automated TTY and non-TTY tests prove silence and fail-open behavior; the full Go suite and
       `go vet ./...` pass.
 - [x] Product docs describe one silent default path and separate explicit correction/configuration
       commands from background behavior.
 
-**Engineer status:** MERGED / VALIDATION FOLLOW-UP — PR #264 merged to `dev` at `fe3ad38` on
+**Engineer status:** COMPLETE — PR #264 merged to `dev` at `fe3ad38` on
 2026-09-21. Normal Git is no longer routed through DevTrack; the explicit AI commit helper has no
 ticket/time/PM/push callbacks; the generated observation hook is silent and fail-open; and the
 database startup banner is removed. The full Go suite, `go vet ./...`, memory validation, wiki
 inline-JS checks, and `git diff --check` passed in the recorded local Windows run before merge.
 PR #264's hosted-Windows unit-test job failed on 60-second SQLite timeouts in `internal/db` and
 `internal/mcp`; Windows build/vet, native MCPB smoke, and no-send E2E passed. PR #265 later passed
-the full hosted-Windows unit-test job, restoring the branch baseline. Native Linux plus explicit
-TTY/non-TTY execution remain unchecked.
-**Blockers:** no implementation blocker; native Linux TTY/non-TTY qualification remains pending.
+the full hosted-Windows unit-test job, restoring the branch baseline. On 2026-09-26, Ubuntu 24.04.5
+under WSL2 with Go 1.24.4 passed the preserved integration test in both redirected non-TTY and
+`script`-backed pseudo-TTY contexts. Both commits were silent, Git succeeded, and an unavailable log
+destination remained fail-open. The full Linux `go test ./...` suite and `go vet ./...` also passed.
+**Blockers:** none.
 
-**[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (planned, P0).**
+**[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (passed, P0).**
 **Priority:** P0 product contract; execute after TASK-158 native Linux qualification and before
 automatic time inference or the next SAGE-003 implementation slice. **Depends on:** TASK-158.
 **Branch:** `features/TASK-160-deterministic-ticket-contract`.
+**Assigned to:** engineer. **Started:** 2026-09-26.
 
 Ticket assignment must be deterministic by default, not delegated to an LLM. Adopt the canonical
 branch grammar `<kind>/<ticket-key>-<number>-<slug>`, for example `feature/PROJ-123-login`,
@@ -134,22 +137,29 @@ trust path.
   the wiki.
 
 **Acceptance criteria:**
-- [ ] Canonical branches map deterministically and take precedence over contradictory commit text,
+- [x] Canonical branches map deterministically and take precedence over contradictory commit text,
       active-ticket state, and LLM suggestions.
-- [ ] Explicit commit prefix/trailer and explicit active-ticket override work in the documented
+- [x] Explicit commit prefix/trailer and explicit active-ticket override work in the documented
       order when the branch has no ticket.
-- [ ] Incidental IDs in prose and the previously mapped ticket do not silently assign a commit.
-- [ ] Nonconforming branches remain unlinked without prompting or blocking Git and are visible in
+- [x] Incidental IDs in prose and the previously mapped ticket do not silently assign a commit.
+- [x] Nonconforming branches remain unlinked without prompting or blocking Git and are visible in
       status/doctor with a correction path.
-- [ ] Mapping records expose source and confidence; corrections preserve the original decision for
+- [x] Mapping records expose source and confidence; corrections preserve the original decision for
       learning/audit.
-- [ ] Canonical and provider-native IDs remain distinct, legacy rows are not reinterpreted, and
+- [x] Canonical and provider-native IDs remain distinct, legacy rows are not reinterpreted, and
       LLM/recent-ticket candidates are stored separately from the effective mapping.
-- [ ] Custom workspace patterns, config reload, merge commits, provider ID normalization, and
+- [x] Custom workspace patterns, config reload, merge commits, provider ID normalization, and
       contradictory-signal cases have deterministic tests.
 
-**Engineer status:** PLANNED — not dispatched.
-**Blockers:** TASK-158 native Linux TTY/non-TTY qualification.
+**Engineer status:** PASSED locally on 2026-09-29 — deterministic resolver/configuration, immutable
+provenance and corrections, effective corrected read models, conflict outbound gating, inspection
+commands, onboarding, and documentation are implemented on
+`features/TASK-160-deterministic-ticket-contract`. Full Windows `go test ./...` and `go vet ./...`,
+Ubuntu WSL2 `go test ./...` and `go vet ./...`, 75 focused Python API/trigger tests, shared-memory
+validation, wiki inline-JavaScript validation, and `git diff --check` pass. The pytest cache warning
+is environmental and did not affect the 75 passing tests.
+**Blockers:** no product/test blocker. Commit, push, and PR remain pending explicit owner
+authorization; TASK-159 implementation must start from a fresh branch after this work is integrated.
 
 **[2026-09-21] TASK-159 — Silent automatic time inference (planned, HIGH).**
 **Priority:** HIGH; paired with TASK-158 and TASK-157 / SAGE-003.
@@ -170,8 +180,9 @@ keystrokes, window activity, raw command output, or cloud telemetry.
 - [ ] The algorithm, defaults, privacy boundary, confidence, and corrections are documented and
       covered by clock-controlled tests.
 
-**Engineer status:** PLANNED — not dispatched.
-**Blockers:** TASK-158 native Linux TTY/non-TTY qualification.
+**Engineer status:** NEXT — product work is ready after TASK-160 integration.
+**Blockers:** TASK-160 is locally passed but not yet committed or integrated; a fresh TASK-159 branch
+cannot be created safely until the owner authorizes that handoff.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and
@@ -220,11 +231,12 @@ history-item normalizer and synthetic fixture. Warp is not named upstream; its r
 inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
 verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-157.
 
-_Last updated: 2026-09-26 — PR #263 (SAGE distillation foundation), PR #264 (TASK-158 silent Git
+_Last updated: 2026-09-29 — PR #263 (SAGE distillation foundation), PR #264 (TASK-158 silent Git
 path), and PR #265 (TASK-161 rolling updates) are merged to `dev`; PR #265 passed all 19 checks.
 The earlier PR check sets retain historical failed hosted-Windows unit-test jobs, while PR #265's
-full Windows test pass restores the branch baseline. TASK-158 still needs native Linux TTY/non-TTY
-qualification before TASK-160, followed by TASK-159. TASK-157 / SAGE-003 remains the active product
+full Windows test pass restores the branch baseline. TASK-158 is fully qualified, and TASK-160 has
+passed local Windows and Ubuntu WSL2 gates but awaits authorized integration before TASK-159.
+TASK-157 / SAGE-003 remains the active product
 initiative, with durable queue/daemon integration next. Workflow run `36136822555` published the
 rolling `dev-f6b0ec0` prerelease; stable v3.1.1 remains the latest stable public release. The UI
 redesign remains on its separate branch; packaged qualification, media, and listing follow-ups

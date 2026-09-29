@@ -22,6 +22,10 @@
 #                      for a ticket (their issue APIs have no in-progress state)
 #                      and removed automatically on close. Default "in-progress";
 #                      set to "none" to disable.
+#   ticket_key:        uppercase namespace used by the canonical branch grammar
+#                      <kind>/<ticket-key>-<number>-<slug> (for example ADO).
+#   ticket_pattern:    optional advanced full-branch regex. It must be anchored
+#                      and contain exactly one named (?P<ticket>...) capture.
 
 version: "1"
 workspaces:
@@ -30,6 +34,7 @@ workspaces:
     path: "/Users/you/work/api"
     pm_platform: "azure"
     pm_project: ""
+    ticket_key: "ADO"
     enabled: true
     ignore_branches: ["dependabot/*", "renovate/*"]
     tags: ["work", "backend"]
@@ -41,6 +46,7 @@ workspaces:
     path: "/Users/you/work/frontend"
     pm_platform: "azure"
     pm_project: ""
+    ticket_key: "ADO"
     enabled: true
     ignore_branches: []
     tags: ["work", "frontend"]
@@ -52,6 +58,7 @@ workspaces:
     path: "~/git_apps/personal/automation_tools"
     pm_platform: "github"
     pm_project: "myuser/automation_tools"
+    ticket_key: "GH"
     enabled: true
     ignore_branches: []
     tags: ["personal"]
@@ -63,6 +70,7 @@ workspaces:
     path: "~/code/oss/mylib"
     pm_platform: "gitlab"
     pm_project: "98765"
+    ticket_key: "GL"
     enabled: false
     ignore_branches: ["main", "release/*"]
     tags: ["oss"]
@@ -73,6 +81,7 @@ workspaces:
     path: "~/code/experiments"
     pm_platform: "none"
     pm_project: ""
+    ticket_key: "EXP"
     enabled: true
     ignore_branches: []
     tags: ["personal"]

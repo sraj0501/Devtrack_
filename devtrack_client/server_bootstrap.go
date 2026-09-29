@@ -360,5 +360,6 @@ func RunDoctor(repair bool) error {
 	printStatusServer()
 	printBootstrapCapabilities(os.Stdout)
 	printFirstRunGuidance(os.Stdout)
+	printTicketMappingHealth()
 	return nil
 }

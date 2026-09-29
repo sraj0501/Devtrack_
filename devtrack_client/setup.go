@@ -947,6 +947,7 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 	if name == "" || name == "." {
 		name = "default"
 	}
+	ticketKey := defaultTicketKey(name, pmPlatform)
 	content := "# workspaces.yaml — managed by DevTrack\n" +
 		"# Add more workspaces with: devtrack workspace add <name> <path> [platform]\n" +
 		"# pm_platform options: azure | github | gitlab | jira | none\n\n" +
@@ -955,6 +956,7 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 		"    path: \"" + filepath.ToSlash(workspacePath) + "\"\n" +
 		"    pm_platform: \"" + pmPlatform + "\"\n" +
 		"    pm_project: \"\"\n" +
+		"    ticket_key: \"" + ticketKey + "\"\n" +
 		"    enabled: true\n" +
 		"    ignore_branches: []\n" +
 		"    tags: []\n" +
@@ -963,6 +965,27 @@ func createWorkspacesFile(path, workspacePath, pmPlatform string) error {
 		"    pm_area_path: \"\"\n" +
 		"    pm_milestone: 0\n"
 	return os.WriteFile(path, []byte(content), 0644)
+}
+
+func defaultTicketKey(workspaceName, pmPlatform string) string {
+	switch strings.ToLower(strings.TrimSpace(pmPlatform)) {
+	case "github":
+		return "GH"
+	case "gitlab":
+		return "GL"
+	case "azure", "azure_devops":
+		return "ADO"
+	}
+	var key strings.Builder
+	for _, r := range strings.ToUpper(workspaceName) {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			key.WriteRune(r)
+		}
+	}
+	if key.Len() == 0 || (key.String()[0] >= '0' && key.String()[0] <= '9') {
+		return "WORK"
+	}
+	return key.String()
 }
 
 // printAutostartInstructions shows the autostart command.

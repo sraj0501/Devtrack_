@@ -1,5 +1,35 @@
 # DevTrack Engineer Log
 
+## Task Summary — TASK-160: Deterministic branch-to-ticket contract — 2026-09-29
+
+- Total commits: 0; implementation is locally passed and remains uncommitted pending explicit owner authorization.
+- Acceptance criteria met: 7/7.
+- Implemented canonical branch grammar and strict workspace validation; deterministic branch,
+  prefix/trailer, active-ticket, and unlinked precedence; immutable provenance, append-only
+  corrections, separate non-authoritative candidates, corrected MCP/read models, and outbound
+  conflict suppression.
+- Added `ticket convention`, `ticket check`, and `ticket link`, plus setup/status/doctor visibility
+  and synchronized README, API documentation, examples, and wiki guidance.
+- Verification: Windows and Ubuntu WSL2 full `go test ./...` plus `go vet ./...`; 75 focused Python
+  API/trigger tests; shared-memory validation; wiki inline-JavaScript validation; and
+  `git diff --check` all pass.
+- Blockers encountered: no product/test blocker. Commit/push/PR require explicit owner authorization.
+- Ready for PM review: YES — locally passed; integration pending.
+
+### [2026-09-26] TASK-158 — Ubuntu WSL2 silence qualification complete
+
+**Notes**:
+
+- Ran the preserved TASK-158 integration draft against a disposable archive of current `dev` on
+  Ubuntu 24.04.5 under WSL2 with Go 1.24.4; the stash was not applied to the working tree.
+- Redirected non-TTY and `script`-backed pseudo-TTY `git commit` both completed successfully with
+  zero hook output. An intentionally unavailable commit-log destination remained fail-open.
+- The full Linux `go test ./...` suite passed across all packages and `go vet ./...` completed with
+  no findings.
+- TASK-158 is fully qualified. TASK-160 is authorized and started on
+  `features/TASK-160-deterministic-ticket-contract` from `origin/dev` at `4c663b0`.
+
+
 ### [2026-09-26] TASK-161 — documentation completion audit and hosted-CI reconciliation
 
 **Notes**:

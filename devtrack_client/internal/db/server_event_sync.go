@@ -55,6 +55,7 @@ func (d *Database) initServerEventSync() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_server_event_outbox_status
 			ON server_event_outbox(status, updated_at)`,
+		`DROP TRIGGER IF EXISTS sync_triggers_insert`,
 		`CREATE TRIGGER IF NOT EXISTS sync_triggers_insert
 		AFTER INSERT ON triggers BEGIN
 			INSERT INTO server_event_outbox(event_id, table_name, source_row_id, payload)
@@ -65,7 +66,15 @@ func (d *Database) initServerEventSync() error {
 					'source', NEW.source, 'repo_path', NEW.repo_path,
 					'commit_hash', NEW.commit_hash, 'commit_message', NEW.commit_message,
 					'author', NEW.author, 'data', NEW.data, 'processed', NEW.processed,
-					'ticket_id', NEW.ticket_id, 'created_at', NEW.created_at
+					'ticket_id', NEW.ticket_id,
+					'ticket_canonical_ref', NEW.ticket_canonical_ref,
+					'ticket_external_id', NEW.ticket_external_id,
+					'ticket_source', NEW.ticket_source,
+					'ticket_confidence', NEW.ticket_confidence,
+					'ticket_state', NEW.ticket_state,
+					'ticket_branch', NEW.ticket_branch,
+					'ticket_conflict', NEW.ticket_conflict,
+					'created_at', NEW.created_at
 				)
 			)
 			ON CONFLICT(event_id) DO UPDATE SET
@@ -73,6 +82,7 @@ func (d *Database) initServerEventSync() error {
 				status = 'pending', last_error = NULL,
 				updated_at = datetime('now'), synced_at = NULL;
 		END`,
+		`DROP TRIGGER IF EXISTS sync_triggers_update`,
 		`CREATE TRIGGER IF NOT EXISTS sync_triggers_update
 		AFTER UPDATE ON triggers BEGIN
 			INSERT INTO server_event_outbox(event_id, table_name, source_row_id, payload)
@@ -83,7 +93,15 @@ func (d *Database) initServerEventSync() error {
 					'source', NEW.source, 'repo_path', NEW.repo_path,
 					'commit_hash', NEW.commit_hash, 'commit_message', NEW.commit_message,
 					'author', NEW.author, 'data', NEW.data, 'processed', NEW.processed,
-					'ticket_id', NEW.ticket_id, 'created_at', NEW.created_at
+					'ticket_id', NEW.ticket_id,
+					'ticket_canonical_ref', NEW.ticket_canonical_ref,
+					'ticket_external_id', NEW.ticket_external_id,
+					'ticket_source', NEW.ticket_source,
+					'ticket_confidence', NEW.ticket_confidence,
+					'ticket_state', NEW.ticket_state,
+					'ticket_branch', NEW.ticket_branch,
+					'ticket_conflict', NEW.ticket_conflict,
+					'created_at', NEW.created_at
 				)
 			)
 			ON CONFLICT(event_id) DO UPDATE SET

@@ -1,8 +1,9 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-26 (TASK-158, the Sage distillation foundation, and TASK-161 are merged to
-`dev`; the rolling `dev-f6b0ec0` prerelease is published; native Linux silence qualification and
-later product gates remain)_
+_Last updated: 2026-09-29 (TASK-158 is fully qualified, TASK-160 passed locally and awaits
+integration authorization, the Sage
+distillation foundation and TASK-161 are merged to `dev`, and the rolling `dev-f6b0ec0`
+prerelease is published)_
 
 ---
 
@@ -24,14 +25,17 @@ later product gates remain)_
   explicit skip/retry semantics, and non-blocking worker at `e4283db`. Durable SQLite claims,
   daemon lifecycle wiring, deterministic Markdown, routing/corrections, safe local commits,
   diagnostics, and executable parity closure remain.
-- **TASK-158:** PR #264 merged the completely silent native-Git correction at `fe3ad38`. Native
-  Linux TTY and non-TTY qualification remains unchecked; an uncommitted test draft is not pass
-  evidence. PR #264's hosted-Windows unit-test job also timed out in SQLite-backed `internal/db` and
+- **TASK-158:** PR #264 merged the completely silent native-Git correction at `fe3ad38`. Ubuntu
+  24.04.5 under WSL2 subsequently passed redirected non-TTY and pseudo-TTY silence/fail-open tests,
+  the full Go suite, and `go vet ./...` on 2026-09-26. PR #264's hosted-Windows unit-test job timed
+  out in SQLite-backed `internal/db` and
   `internal/mcp`, although Windows build/vet, native MCPB smoke, and no-send E2E passed. The
   correction is not part of public v3.1.1.
-- **TASK-160:** planned next after TASK-158 qualification. Canonical branch, explicit commit
-  prefix/trailer, explicit active ticket, otherwise unlinked; mapping provenance must be persisted.
-- **TASK-159:** planned after TASK-160. Infer bounded local work windows without per-commit prompts,
+- **TASK-160:** passed its Windows and Ubuntu WSL2 implementation gates on 2026-09-29. Canonical
+  branch, explicit prefix/trailer, explicit active ticket, otherwise unlinked; immutable provenance,
+  corrections, provider IDs, conflict gating, health reporting, and documentation are implemented.
+  The working tree remains uncommitted pending explicit owner authorization.
+- **TASK-159:** next after TASK-160 integration. Infer bounded local work windows without per-commit prompts,
   retaining auditable explicit corrections.
 - **TASK-161:** the rolling `dev` update-channel implementation merged through PR #265 at
   `f6b0ec0`. The full Go suite, vet, focused tests, documentation checks, and all 19 hosted checks

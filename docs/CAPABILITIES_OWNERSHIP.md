@@ -64,7 +64,7 @@ communication-learning adapter gaps are explicit)._
 | Azure work items: check/list/sync/view | `azure-check/list/sync/view` | Go-native | Client | `connectors/azure` |
 | Ticket comment / create | (background trigger / explicit command) | Go-native | Client | `connectors/*/comment.go`, `create.go`; outbound work stages through `pending_actions`. |
 | Offline ticket cache | (background trigger / explicit command) | Go-native (SQLite) | Client | `ticket_cache` table |
-| Smart matching + likelihood | (background trigger) | Go-native (fuzzy + optional Ollama embeddings) | Client | `internal/match`; TASK-160 will make suggestions non-authoritative. |
+| Smart matching + likelihood | (background trigger) | Go-native (fuzzy + optional Ollama embeddings) | Client | `internal/match`; TASK-160 stores suggestions separately and keeps them non-authoritative. |
 | Jira | — | **None in client** | Server | ⚠ No Go Jira connector; Jira handled only server-side today |
 | GitHub ticket sync (legacy) | (internal) | Go-native | Client | ✅ Removed Python `github_ticket_sync.py` call (Phase 1b — d5f8f36); routes to Go-native `github-sync` |
 

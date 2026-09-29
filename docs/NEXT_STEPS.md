@@ -1,6 +1,6 @@
 # Next Steps — DevTrack Sage
 
-_Updated 2026-09-26. This file lists active work only. Completed delivery and validation history
+_Updated 2026-09-29. This file lists active work only. Completed delivery and validation history
 lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
 ## Immediate repository sequence
@@ -8,19 +8,20 @@ lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 TASK-158 merged into `origin/dev` through PR #264. Its implementation restores the silent Git
 contract: normal Git remains native, `devtrack git commit` has no ticket/time/PM/push follow-up,
 observation is silent and fail-open, and database initialization no longer leaks into the commit
-path. Native Linux plus explicit TTY/non-TTY qualification still remain release gates; this is
+path. Ubuntu WSL2 plus explicit TTY/non-TTY qualification passed on 2026-09-26; this remains
 unreleased development state, not a claim about v3.1.1.
 
 The PR #263 and PR #264 check sets retain historical failed hosted-Windows unit-test jobs. PR #264's
 job hit the 60-second timeout in SQLite-backed `internal/db` and `internal/mcp` tests. PR #265 later
 passed all 19 hosted checks, including the full Windows test job, re-establishing a green branch
-baseline. TASK-158's native-Linux TTY/non-TTY qualification remains a separate open gate.
+baseline. TASK-158's later native-Linux TTY/non-TTY qualification is separately complete.
 
-The next product task is **TASK-160**, which implements the deterministic branch-to-ticket contract
-defined in `PRODUCT_BIBLE.md`: canonical branch, explicit commit prefix/trailer, explicit active
-ticket, otherwise unlinked. TASK-159 follows by replacing per-commit duration entry with bounded,
-local activity-window inference and optional correction commands. After those product-correctness
-slices, continue TASK-157 / SAGE-003 at its durable distillation-queue boundary.
+**TASK-160** now passes its local Windows and Ubuntu WSL2 implementation gates for the deterministic
+branch-to-ticket contract defined in `PRODUCT_BIBLE.md`: canonical branch, explicit commit
+prefix/trailer, explicit active ticket, otherwise unlinked. Its commit/PR integration awaits
+explicit authorization. **TASK-159 is next after that integration**, replacing per-commit duration
+entry with bounded, local activity-window inference and optional correction commands. After those
+product-correctness slices, continue TASK-157 / SAGE-003 at its durable distillation-queue boundary.
 Before that implementation slice, reconcile every reference scenario with an exact Go test and
 explicit implementation status in the parity matrix.
 

@@ -50,5 +50,8 @@ SQLite claims or daemon lifecycle, and these variables are not part of v3.1.1.
 ## Secrets and workspace metadata
 
 Keep tokens in the environment file. Keep non-secret routing metadata—workspace path, platform,
-organization, project, API URL, user name, ticket pattern, and `skip_issues`—in `workspaces.yaml`.
+organization, project, API URL, user name, `ticket_key`, optional anchored `ticket_pattern`, and
+`skip_issues`—in `workspaces.yaml`. The default convention is
+`<kind>/<ticket-key>-<number>-<slug>`; an advanced pattern must match the full branch and contain
+exactly one named `ticket` capture.
 Never commit real credentials.

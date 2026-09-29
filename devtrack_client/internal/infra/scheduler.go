@@ -30,12 +30,17 @@ type TriggerEvent struct {
 	Source    string
 	Data      interface{}
 	// Workspace context (populated for commit triggers in multi-repo mode)
-	RepoPath      string
-	WorkspaceName string
-	TicketID      string // extracted from branch name (or "" if unlinked)
-	// TicketConfidence reflects the extraction strategy that produced TicketID:
-	// 0.95 branch name, 0.85 commit message, 0.60 active-ticket fallback.
+	RepoPath       string
+	WorkspaceName  string
+	TicketID       string // effective canonical reference (or "" if unlinked)
+	TicketSource   string
+	TicketState    string
+	TicketConflict bool
+	// TicketConfidence is explicit provenance confidence for the mapping.
 	TicketConfidence float64
+	// SuppressOutbound retains local evidence while preventing a conflicted
+	// mapping from producing an automatic external action.
+	SuppressOutbound bool
 	// IsMergeToDefault is true when the commit is a merge commit that landed on
 	// the repository's default branch — the "merged to main → Done" signal.
 	IsMergeToDefault bool

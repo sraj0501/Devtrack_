@@ -33,11 +33,11 @@ func (wc *WorkspaceCommands) List() error {
 			fmt.Printf("Created empty workspaces file: %s\n", path)
 		}
 		fmt.Println("No workspaces configured.")
-		fmt.Println("Create an entry with: devtrack workspace add <name> <path> [--pm azure|gitlab|github|jira|none]")
+		fmt.Println("Create an entry with: devtrack workspace add <name> <path> [--pm azure|gitlab|github|jira|none] [--ticket-key KEY]")
 		return nil
 	}
 
-	fmt.Printf("%-20s %-40s %-12s %s\n", "NAME", "PATH", "PLATFORM", "ENABLED")
+	fmt.Printf("%-20s %-36s %-12s %-10s %s\n", "NAME", "PATH", "PLATFORM", "TICKET KEY", "ENABLED")
 	fmt.Println(strings.Repeat("-", 80))
 	for _, ws := range cfg.Workspaces {
 		enabled := "no"
@@ -48,14 +48,14 @@ func (wc *WorkspaceCommands) List() error {
 		if platform == "" {
 			platform = "(none)"
 		}
-		fmt.Printf("%-20s %-40s %-12s %s\n", ws.Name, ws.Path, platform, enabled)
+		fmt.Printf("%-20s %-36s %-12s %-10s %s\n", ws.Name, ws.Path, platform, ws.TicketKey, enabled)
 	}
 
 	return nil
 }
 
 // Add adds a new workspace entry to workspaces.yaml (creating it if needed)
-func (wc *WorkspaceCommands) Add(name, path, pmPlatform string) error {
+func (wc *WorkspaceCommands) Add(name, path, pmPlatform, ticketKey string) error {
 	path = expandWorkspacePath(path)
 
 	if !IsGitRepository(path) {
@@ -82,11 +82,15 @@ func (wc *WorkspaceCommands) Add(name, path, pmPlatform string) error {
 			return fmt.Errorf("workspace %q already exists", name)
 		}
 	}
+	if ticketKey == "" {
+		ticketKey = defaultTicketKey(name, pmPlatform)
+	}
 
 	cfg.Workspaces = append(cfg.Workspaces, WorkspaceConfig{
 		Name:       name,
 		Path:       path,
 		PMPlatform: pmPlatform,
+		TicketKey:  ticketKey,
 		Enabled:    true,
 	})
 
@@ -94,7 +98,7 @@ func (wc *WorkspaceCommands) Add(name, path, pmPlatform string) error {
 		return fmt.Errorf("failed to save workspaces.yaml: %w", err)
 	}
 
-	fmt.Printf("Added workspace %q (%s)\n", name, path)
+	fmt.Printf("Added workspace %q (%s) with ticket key %s\n", name, path, ticketKey)
 	wc.sendWorkspaceReload()
 	return nil
 }

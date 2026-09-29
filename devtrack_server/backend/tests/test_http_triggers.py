@@ -481,6 +481,26 @@ class TestTriggerProcessorCommit:
         assert not any("pm_sync" in a for a in result["actions"])
         assert not any("queued:post_comment" in a for a in result["actions"])
 
+    def test_skips_pm_sync_when_ticket_mapping_conflicts(self):
+        proc = _bare_processor()
+        proc.llm_task_parser = MagicMock()
+        proc.llm_task_parser.parse.return_value = {"description": "fix", "status": ""}
+        proc.workspace_router = MagicMock()
+        mock_gateway = MagicMock()
+        proc._queue_gateway = mock_gateway
+
+        payload = {
+            **COMMIT_PAYLOAD,
+            "ticket_id": "GH-1",
+            "ticket_source": "branch",
+            "ticket_state": "conflict",
+            "ticket_conflict": True,
+        }
+        result = proc.process_commit(payload)
+
+        mock_gateway.stage.assert_not_called()
+        assert not any(a.startswith("queued:") for a in result["actions"])
+
     def test_no_commit_hash_truncation_fallback_target(self):
         """Phase 3: the old commit_hash[:12] fallback target is dead — confirm a
         commit with no ticket_id never reaches workspace_router with a hash-based

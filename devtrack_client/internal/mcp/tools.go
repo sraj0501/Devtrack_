@@ -164,6 +164,11 @@ func makeGetActiveContext(database *db.Database) func(context.Context, map[strin
 
 		return map[string]interface{}{
 			"active_ticket":         recent.TicketID,
+			"ticket_external_id":    recent.TicketExternalID,
+			"ticket_source":         recent.TicketSource,
+			"ticket_state":          recent.TicketState,
+			"ticket_confidence":     recent.TicketConfidence,
+			"ticket_conflict":       recent.TicketConflict,
 			"repo_path":             recent.RepoPath,
 			"confidence":            confidence,
 			"today_commits":         todayCount,
@@ -191,10 +196,14 @@ func makeGetTodayCommits(database *db.Database) func(context.Context, map[string
 				key = "unlinked"
 			}
 			grouped[key] = append(grouped[key], map[string]interface{}{
-				"hash":      shortHash(c.Hash),
-				"message":   c.Message,
-				"timestamp": c.Timestamp,
-				"repo_path": c.RepoPath,
+				"hash":              shortHash(c.Hash),
+				"message":           c.Message,
+				"timestamp":         c.Timestamp,
+				"repo_path":         c.RepoPath,
+				"ticket_source":     c.TicketSource,
+				"ticket_state":      c.TicketState,
+				"ticket_confidence": c.TicketConfidence,
+				"ticket_conflict":   c.TicketConflict,
 			})
 		}
 

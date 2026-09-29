@@ -180,7 +180,7 @@ func main() {
 			cmd == "plan" || cmd == "boardroom" ||
 			cmd == "github-check" || cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
 			cmd == "gitlab-check" || cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
-			cmd == "ticket-sync" || cmd == "narrative" || cmd == "issues" ||
+			cmd == "ticket" || cmd == "ticket-sync" || cmd == "narrative" || cmd == "issues" ||
 			cmd == "eod" ||
 			cmd == "voice" ||
 			cmd == "newproject" {
@@ -231,6 +231,7 @@ func printBasicUsage() {
 	fmt.Println()
 	fmt.Println("WORKSPACES: workspace list | add <name> <path> | remove <name>")
 	fmt.Println("            workspace enable|disable <name> | workspace reload")
+	fmt.Println("TICKETS:    ticket convention | ticket check [branch] | ticket link <commit> <ref>")
 	fmt.Println("COMMITS:    commits pending | commits review")
 	fmt.Println("ALERTS:     alerts | alerts --all | alerts --clear")
 	fmt.Println("REVIEW:     review                                  show PR review comment queue")
