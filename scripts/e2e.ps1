@@ -159,10 +159,10 @@ try {
         Start-Sleep -Milliseconds 250
     }
 
-    Invoke-Checked git -C $workspace switch -q -c feature/DEMO-201-automated-e2e
+    Invoke-Checked git -C $workspace switch -q -c feature/E2E-201-automated-e2e
     Add-Content -LiteralPath (Join-Path $workspace 'README.md') -Value 'observed by the real daemon' -Encoding utf8
     Invoke-Checked git -C $workspace add README.md
-    Invoke-Checked git -C $workspace commit -q -m 'DEMO-201: verify automated end-to-end flow'
+    Invoke-Checked git -C $workspace commit -q -m 'E2E-201: verify automated end-to-end flow'
     $commitHash = (& git -C $workspace rev-parse --short=12 HEAD).Trim()
     if ($LASTEXITCODE -ne 0) {
         throw 'Could not resolve the E2E commit hash.'
@@ -184,7 +184,7 @@ try {
 
     $mcpOutput = (Invoke-Captured $binary @('mcp', 'test') | Out-String)
     if ($mcpOutput -notmatch '=== PASS ===' -or
-        $mcpOutput -notmatch 'DEMO-201' -or
+        $mcpOutput -notmatch 'E2E-201' -or
         $mcpOutput -notmatch 'today_commits[^0-9]*[1-9]') {
         throw "MCP context did not contain the observed commit and local-day count:`n$mcpOutput"
     }
