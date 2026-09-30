@@ -229,6 +229,7 @@ returns HTTP 401. Local qualification does not establish upstream integration of
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 
 **Engineer status (publication, 2026-09-30):** Durable drafts now publish through the daemon.
+**Publication implementation commit:** `e21975e` — publish durable drafts to Markdown.
 Separate publication retries survive index failures and interrupted acknowledgement without
 model replay. Windows full suite/vet and Linux focused race/vet pass; restart preserves exact
 Markdown bytes. Evidence: `docs/SAGE_PUBLICATION_QUALIFICATION.md`. Routing, correction/merge,

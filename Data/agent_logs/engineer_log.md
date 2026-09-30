@@ -13,6 +13,10 @@
 - Normal sandbox execution works again. WSL service access and installed CLI user-database
   initialization required escalation. Installed daemon was running (PID 7080).
 - Qualification: `docs/SAGE_PUBLICATION_QUALIFICATION.md`. No hosted CI or full parity claim.
+- Commit workflow: supplied `feat(TASK-157): publish durable Sage drafts to Markdown`;
+  DevTrack enhanced it to `feat(sage): publish durable drafts to Markdown` and created `e21975e`
+  in approximately 25 seconds. No raw-Git fallback or post-commit questions. Ticket auto-link
+  and PM update were not observed; the configured workspace reports no PM integration.
 
 ## 2026-09-30 — TASK-157 deterministic Markdown writer
 
