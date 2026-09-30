@@ -16,6 +16,18 @@
   draft; no full Sage completion or hosted-integration claim.
 - Evidence: `docs/SAGE_MARKDOWN_QUALIFICATION.md`.
 
+**Commit outcome:** `f47041f`, created through `devtrack git commit` after about 112 seconds.
+Original message: `feat(TASK-157): add deterministic Sage Markdown writer`.
+DevTrack enhanced it to `feat(sage): Implement deterministic Markdown writer for knowledge base`
+with an explanatory body (its displayed Git subject also included the following summary line).
+The daemon was stopped at pickup and was started for this workflow. The helper emitted no progress
+while enhancing; a fallback was considered, but it completed before any process was stopped.
+No raw commit was used. Ticket auto-link and PM delivery were not reported by this invocation.
+Friction: MEDIUM (silent enhancement delay). The small outcome-log follow-up uses DevTrack's
+`--no-enhance` option. Ledger consistency, eight checker tests, shared-memory validation, and
+diff whitespace checks passed. The first checker-test invocation used an incorrect module import
+path; running `python scripts/test_check_sage_parity.py` passed all eight tests.
+
 ## 2026-09-30 — TASK-157 durable queue and daemon integration
 
 - Continued from published parity commit `8008fbe`; no pending local changes at pickup.

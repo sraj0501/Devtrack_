@@ -233,6 +233,7 @@ replacement, and repairable topic index. Seven reference tests are now executabl
 Full Windows Go suite/vet and Linux writer race/fuzz/vet pass. Evidence:
 `docs/SAGE_MARKDOWN_QUALIFICATION.md`. Next connect durable draft publication to the daemon;
 jobs still end at `distilled`. SAGE-003 and upstream integration remain open.
+**Last implementation commit:** `f47041f` — deterministic Sage Markdown writer, 2026-09-30.
 
 **Latest implementation (2026-09-30):** Durable SQLite queue and daemon integration now implemented
 on `features/TASK-157-sage-parity`. Claims have leases/fencing tokens; retries, skips, and drafts
