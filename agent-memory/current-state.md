@@ -15,9 +15,14 @@ passed explicit redirected non-TTY and pseudo-TTY silence/fail-open tests plus t
 its Windows and Ubuntu WSL2 implementation gates. Seventeen hosted checks passed; both no-send E2E
 lanes used a stale `DEMO-201` fixture in an `E2E` workspace. TASK-162 corrected that fixture and
 merged through PR #271 at `a4a06fb`; all six hosted checks passed, including both no-send E2E lanes.
-TASK-159 is now active from that merged head and replaces manual per-commit time entry with local,
-privacy-bounded activity-window inference; explicit work-session commands remain optional
-overrides/corrections.
+TASK-159 implementation subsequently merged through PR #272 at `94dbc7c` (local Git evidence).
+It replaces manual per-commit time entry with local, privacy-bounded activity-window inference;
+explicit work-session commands remain optional overrides/corrections. The qualification follow-up
+is on `fix/TASK-159-schema-transactions`: `3c3fedf` batches schema initialization transactions,
+and the Windows E2E fix separates timestamped stderr diagnostics from persisted-status stdout.
+On 2026-09-30, full Windows/Fedora WSL2 Go suites and vet plus both no-send E2E lanes passed,
+including correction persistence across daemon restart. All five product criteria are locally
+qualified. See `docs/TASK_159_QUALIFICATION.md` for evidence and upstream-verification limits.
 
 **Current CI evidence:** The merged PR #263 and PR #264 check sets each retain a historical failed
 hosted-Windows unit-test job; PR #264 timed out after 60 seconds in SQLite-backed `internal/db` and
@@ -33,7 +38,7 @@ and LLM output cannot silently become authoritative mappings. LLMs may suggest a
 only after deterministic evidence fails. Nonconforming branches never block Git; status/doctor and
 the correction channels surface them later. The implementation and local cross-platform checks pass
 on `features/TASK-160-deterministic-ticket-contract`; commit `92c0711` and its follow-ups merged to
-`dev` in PR #270. TASK-162 owns the stale no-send E2E fixture exposed by the merged contract.
+`dev` in PR #270. TASK-162 fixed the stale no-send E2E fixture through merged PR #271.
 
 **Active UI work:** The server-admin redesign is committed on `feat/TASK-154-server-admin-ui` but is not integrated into current `dev`. Review and integrate or explicitly retire that branch before packaged-build qualification and media capture. `initiatives/server-ui.md` owns the design scope and integration gate.
 
@@ -53,7 +58,8 @@ Treat all of those CLI paths as unavailable until repaired. Teams/Outlook learni
 end-to-end complete.
 
 **Pickup sequence:** `execution-plan.md` owns the cross-initiative order and acceptance gates. In
-brief: implement TASK-159 now that TASK-162 restored the no-send E2E gate;
+brief: finish TASK-159 follow-up integration and hosted verification (GitHub CLI currently returns
+HTTP 401; local results are in `docs/TASK_159_QUALIFICATION.md`);
 make SAGE-003 parity executable and complete one asynchronous, deterministic Codex
 capture-to-knowledge journey; then resolve the separate UI branch and release follow-ups. Do not
 expand harness support or MCP exposure before the Codex closure gate.
