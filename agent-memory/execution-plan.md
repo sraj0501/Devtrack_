@@ -12,6 +12,13 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
+- **2026-09-30, durable queue:** TASK-157 now implements SQLite claims with lease fencing,
+  retry/skip/draft persistence, transactional enqueue and legacy backfill, pause-aware claiming,
+  and daemon cancellation/join. Full Windows and Fedora WSL2 suites/vet pass, including real
+  spool import through outage/malformed-output recovery to a draft and restart. Evidence:
+  `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Next: deterministic Markdown; full Sage parity
+  and upstream integration remain open.
+
 - **2026-09-30, continuation:** TASK-159 qualification/script commit `2e50763` is pushed and
   verified on `origin/fix/TASK-159-schema-transactions`; GitHub API still returns HTTP 401.
   Continued on stacked branch `features/TASK-157-sage-parity`. All 136 scenarios now reconcile

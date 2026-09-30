@@ -58,9 +58,9 @@ quickly, print nothing, perform no model or network call, and never break an age
   source attribution, command-family topics, FTS5 search, and the `search`/`topics` CLI.
 - PR #263 merged the neutral, context-aware LLM transport, Sage-owned structured distiller, and
   non-blocking background worker into `dev`. Model timeout, idle polling, and retry delay are bounded
-  and configurable for slower offline models. The worker is not yet connected to a durable SQLite
-  queue or the daemon lifecycle.
-- Remaining SAGE-003 work begins with durable queue/daemon integration and deterministic Markdown,
+  and configurable for slower offline models. The TASK-157 branch now connects the worker to a
+  durable SQLite queue and daemon lifecycle; upstream integration is still pending.
+- Remaining SAGE-003 work begins with deterministic Markdown,
   then routing/corrections, safe commits, persisted retries, diagnostics, and capture-to-knowledge
   closure.
 
@@ -85,6 +85,15 @@ must identify the Go owner, exact Go test, status (`implemented`, `partial`, `pe
 completion authority.
 
 ### 2. Connect asynchronous distillation to durable daemon state
+
+Implemented on the TASK-157 branch on 2026-09-30. `sage_jobs` is populated transactionally with
+knowledge insertion; migration backfills older signatures. Atomic claims carry random fencing
+tokens, bounded leases, attempts, and retry times. Expired claims recover after restart; stale
+workers cannot acknowledge replacement claims. Daemon-owned cancellation stops importer/model
+work before the database closes. Pause prevents new claims; an already-running request may finish.
+Only local Ollama configuration is loaded by this daemon path. Valid drafts persist as `distilled`,
+which does not mean Markdown has been written. Error/skip diagnostics use fixed safe categories.
+Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Final Sage parity remains open.
 
 - Wire the merged Sage background worker into daemon startup and shutdown; startup must remain
   non-blocking and cancellation must promptly end polling, retry waits, and in-flight requests.

@@ -37,11 +37,17 @@ type Worker struct {
 // NewBackgroundWorker applies centrally configured, bounded timing defaults.
 // It constructs the worker but does not run it; daemon startup owns Start.
 func NewBackgroundWorker(queue Queue, client llmclient.Config) Worker {
+	modelTimeout := time.Duration(devconfig.GetSageModelTimeoutSecs()) * time.Second
+	// The transport default is shorter than Sage's offline-model budget. Keep
+	// the two aligned unless a caller explicitly supplied a transport timeout.
+	if client.Timeout <= 0 {
+		client.Timeout = modelTimeout
+	}
 	return Worker{
 		Queue: queue,
 		Distiller: Distiller{
 			Client:  client,
-			Timeout: time.Duration(devconfig.GetSageModelTimeoutSecs()) * time.Second,
+			Timeout: modelTimeout,
 		},
 		IdleDelay:  time.Duration(devconfig.GetSageIdlePollMS()) * time.Millisecond,
 		RetryDelay: time.Duration(devconfig.GetSageRetryDelaySecs()) * time.Second,

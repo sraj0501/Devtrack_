@@ -1,5 +1,14 @@
 # DevTrack Feature Tracker
 
+## 2026-09-30 — TASK-157 durable draft processing
+
+The task branch now connects Sage's background worker to SQLite leases, fencing tokens,
+persisted retries/skips/drafts, atomic import enqueue, and daemon cancellation. Full Windows
+and Fedora WSL2 Go suites/vet pass. Integration coverage consumes a real spool event through
+simulated outage and malformed-output recovery, then verifies persistence across restart.
+Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Next: deterministic Markdown writing;
+persisted drafts do not close Sage's self-writing knowledge acceptance gate.
+
 _Last updated: 2026-09-30 (TASK-159 implementation merged; local qualification passed;
 schema/E2E follow-up integration and hosted verification remain open)_
 

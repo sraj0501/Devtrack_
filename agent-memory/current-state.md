@@ -4,13 +4,13 @@ description: Active implementation planning and unresolved release follow-ups
 type: project
 ---
 
-**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `F:\git_apps\Personal_Projects\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, neutral ownership for independently used Git/commit-enhancement helpers, and the SAGE-003 neutral LLM transport, structured distiller, and non-blocking worker merged in PR #263. Next connect that worker to durable SQLite claims and daemon lifecycle, then implement deterministic Markdown, routing, merge/refile, safe local commits, persisted retries, diagnostics, and parity closure. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
+**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `F:\git_apps\Personal_Projects\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, neutral ownership for independently used Git/commit-enhancement helpers, and the SAGE-003 neutral LLM transport, structured distiller, and non-blocking worker merged in PR #263. The TASK-157 branch now wires durable SQLite claims and daemon lifecycle. Next implement deterministic Markdown, routing, merge/refile, safe local commits, diagnostics, and parity closure. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
 
 **Latest Sage checkpoint (2026-09-30):** On `features/TASK-157-sage-parity`, all 136 reference
 scenarios reconcile with pinned `b85a1ab`. The ledger now has explicit statuses, existing test
 references, planned closure tests, and an automated consistency gate. Eight checker fault tests
 and focused Go tests/vet pass on Windows and Fedora WSL2. Six scenarios are implemented, fifteen
-partial, and 115 pending; runtime parity remains open. Next: durable queue/daemon integration.
+partial, and 115 pending; runtime parity remains open. The branch now also implements durable queue/daemon integration with full Windows/WSL suite and vet coverage. Next: deterministic Markdown writing.
 This branch is stacked on TASK-159 follow-up `2e50763`, whose push was independently verified;
 upstream integration and hosted checks remain unverified because the GitHub API returns HTTP 401.
 

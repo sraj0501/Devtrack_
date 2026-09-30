@@ -227,6 +227,14 @@ Evidence: `docs/TASK_159_QUALIFICATION.md`. Follow-up integration/hosted verific
 returns HTTP 401. Local qualification does not establish upstream integration of the follow-up.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
+**Latest implementation (2026-09-30):** Durable SQLite queue and daemon integration now implemented
+on `features/TASK-157-sage-parity`. Claims have leases/fencing tokens; retries, skips, and drafts
+persist. Import enqueue is atomic, pause prevents new claims, and shutdown cancels background work.
+Full Windows and Fedora WSL2 Go suites/vet pass. Runtime integration test covers spool import,
+model outage, malformed response, persisted draft, and duplicate-free restart using an HTTP fixture.
+Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Next: deterministic Markdown writer.
+SAGE-003 remains open; a persisted draft is not the completed capture-to-knowledge journey.
+
 **Engineer status (2026-09-30):** Resumed on `features/TASK-157-sage-parity`, stacked on the
 published TASK-159 follow-up `2e50763`. Reconciled all 136 reference scenarios with `b85a1ab`
 from `F:\git_apps\Personal_Projects\ai_sessions_skills`; the ledger now names existing Go tests,

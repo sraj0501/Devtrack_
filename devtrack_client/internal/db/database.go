@@ -2806,6 +2806,9 @@ func (d *Database) applyMigrationTables() error {
 	if err := d.createSageKnowledgeTables(); err != nil {
 		return fmt.Errorf("applyMigrationTables sage knowledge: %w", err)
 	}
+	if err := d.createSageQueue(); err != nil {
+		return fmt.Errorf("applyMigrationTables sage queue: %w", err)
+	}
 	return nil
 }
 

@@ -1,5 +1,18 @@
 # DevTrack Engineer Log
 
+## 2026-09-30 — TASK-157 durable queue and daemon integration
+
+- Continued from published parity commit `8008fbe`; no pending local changes at pickup.
+- Added transactional enqueue/backfill, atomic SQLite claims, random fencing tokens, leases,
+  retry timing, sanitized diagnostics, and persistent skip/draft outcomes.
+- Connected the worker to daemon-owned cancellation and pause state; shutdown joins Sage before
+  database closure. Production hooks remain independent of model availability.
+- Full native Windows and Fedora WSL2 Go suites and vet passed. Tests include concurrent claims,
+  restart recovery, stale-token rejection, injected import failure, and real spool-to-draft processing
+  across a simulated outage, malformed output, and daemon-worker restart.
+- Scope remains a persisted draft; deterministic Markdown and the full Sage closure gate remain open.
+- Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`.
+
 ## 2026-09-30 — TASK-159 upstream push and TASK-157 parity continuation
 
 - Committed the qualification/script changes through `devtrack git commit` as `2e50763`,

@@ -14,6 +14,7 @@ import (
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/llmclient"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/codexhistory"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
@@ -59,6 +60,8 @@ type IntegratedMonitor struct {
 	// queueExecutor is stored so callers can wire in a late-bound NotifyFn
 	// (e.g. the Telegram bot) after Start() has been called.
 	queueExecutor *QueueExecutor
+	sageCancel    context.CancelFunc
+	sageDone      <-chan struct{}
 }
 
 // NewIntegratedMonitor creates a new integrated monitoring system.
@@ -186,6 +189,10 @@ func (im *IntegratedMonitor) startSageCapture(ctx context.Context) {
 		log.Printf("Sage disabled: %v", err)
 		return
 	}
+	ctx, im.sageCancel = context.WithCancel(ctx)
+	workerDone := im.startSageDistillation(ctx, root, llmclient.LoadOllamaConfig())
+	done := make(chan struct{})
+	im.sageDone = done
 	poller := codexhistory.Poller{Root: root}
 	run := func() {
 		if codexhistory.Enabled(root) {
@@ -203,6 +210,8 @@ func (im *IntegratedMonitor) startSageCapture(ctx context.Context) {
 		}
 	}
 	go func() {
+		defer close(done)
+		defer func() { <-workerDone }()
 		run()
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
@@ -250,6 +259,10 @@ func (im *IntegratedMonitor) Database() *db.Database { return im.database }
 // Stop stops all monitoring
 func (im *IntegratedMonitor) Stop() {
 	log.Println("Stopping integrated monitoring system...")
+	if im.sageCancel != nil {
+		im.sageCancel()
+		<-im.sageDone
+	}
 
 	// Notify Python of graceful shutdown (best-effort).
 	// Skip when using an external server — we don't own it and must not shut it down.
