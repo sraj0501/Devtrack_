@@ -227,6 +227,13 @@ Evidence: `docs/TASK_159_QUALIFICATION.md`. Follow-up integration/hosted verific
 returns HTTP 401. Local qualification does not establish upstream integration of the follow-up.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
+**Latest writer checkpoint (2026-09-30):** The deterministic Markdown library is implemented on
+the Sage task branch: portable filenames, parseable entries, existing-signature reuse, atomic
+replacement, and repairable topic index. Seven reference tests are now executable in Go.
+Full Windows Go suite/vet and Linux writer race/fuzz/vet pass. Evidence:
+`docs/SAGE_MARKDOWN_QUALIFICATION.md`. Next connect durable draft publication to the daemon;
+jobs still end at `distilled`. SAGE-003 and upstream integration remain open.
+
 **Latest implementation (2026-09-30):** Durable SQLite queue and daemon integration now implemented
 on `features/TASK-157-sage-parity`. Claims have leases/fencing tokens; retries, skips, and drafts
 persist. Import enqueue is atomic, pause prevents new claims, and shutdown cancels background work.

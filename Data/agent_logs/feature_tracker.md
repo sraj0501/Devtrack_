@@ -1,5 +1,13 @@
 # DevTrack Feature Tracker
 
+## 2026-09-30 — TASK-157 deterministic Markdown library
+
+The Sage task branch now includes safe topic filenames, deterministic rendering and parsing,
+signature reuse, atomic topic replacement, and a replayable README index. Seven additional
+reference scenarios have executable tests. Windows full Go suite/vet and Linux writer
+race/fuzz/vet passed. Evidence: `docs/SAGE_MARKDOWN_QUALIFICATION.md`. Next connect durable
+publication to the daemon; a persisted draft still does not imply a written knowledge file.
+
 ## 2026-09-30 — TASK-157 durable draft processing
 
 The task branch now connects Sage's background worker to SQLite leases, fencing tokens,

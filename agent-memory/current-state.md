@@ -10,7 +10,7 @@ type: project
 scenarios reconcile with pinned `b85a1ab`. The ledger now has explicit statuses, existing test
 references, planned closure tests, and an automated consistency gate. Eight checker fault tests
 and focused Go tests/vet pass on Windows and Fedora WSL2. Six scenarios are implemented, fifteen
-partial, and 115 pending; runtime parity remains open. The branch now also implements durable queue/daemon integration with full Windows/WSL suite and vet coverage. Next: deterministic Markdown writing.
+partial, and 115 pending; runtime parity remains open. The branch now also implements durable queue/daemon integration with full Windows/WSL suite and vet coverage. The deterministic Markdown writer library is now qualified with seven additional reference tests (13 implemented, 15 partial, 108 pending), full Windows suite/vet, and Linux writer race/fuzz/vet. Next: connect durable draft-to-Markdown publication; the daemon still ends at distilled. See `docs/SAGE_MARKDOWN_QUALIFICATION.md`.
 This branch is stacked on TASK-159 follow-up `2e50763`, whose push was independently verified;
 upstream integration and hosted checks remain unverified because the GitHub API returns HTTP 401.
 

@@ -1,5 +1,21 @@
 # DevTrack Engineer Log
 
+## 2026-09-30 — TASK-157 deterministic Markdown writer
+
+- Continued from pushed `5c64271` on the existing Sage task branch; inspected pinned reference
+  parsing, rendering, insertion, and routing tests before implementation.
+- Added the Go writer library with structural-injection protection, portable filenames,
+  idempotent signature reuse/attachment, atomic replacement, and index repair on retry.
+- Seven reference scenarios now have matching Go tests. Full Windows Go suite/vet and Linux
+  writer race/fuzz/vet passed; fuzzing completed 164,435 executions without failure.
+- Corrected a fixture's expected command-line count after its first run; production parsing
+  correctly kept forged headings/signatures within the command fence.
+- The sandbox process helper failed at setup; repository commands ran through the approved
+  escalated runner. No repository configuration was changed to bypass that failure.
+- Next: durable draft-to-Markdown publication/recovery. The daemon still stops at a persisted
+  draft; no full Sage completion or hosted-integration claim.
+- Evidence: `docs/SAGE_MARKDOWN_QUALIFICATION.md`.
+
 ## 2026-09-30 — TASK-157 durable queue and daemon integration
 
 - Continued from published parity commit `8008fbe`; no pending local changes at pickup.

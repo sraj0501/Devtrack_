@@ -12,6 +12,13 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
+- **2026-09-30, Markdown writer:** TASK-157 now has a qualified Go writer library with atomic
+  replacement, existing-signature reuse, stable insertion, and repairable topic indexes.
+  Windows full Go suite/vet and Linux writer race/fuzz/vet passed. Seven additional reference
+  rows are implemented (13 implemented, 15 partial, 108 pending). Next connect the persisted
+  drafts to durable Markdown publication; the daemon still ends at `distilled`.
+  Evidence: `docs/SAGE_MARKDOWN_QUALIFICATION.md`. Full Sage and upstream integration remain open.
+
 - **2026-09-30, durable queue:** TASK-157 now implements SQLite claims with lease fencing,
   retry/skip/draft persistence, transactional enqueue and legacy backfill, pause-aware claiming,
   and daemon cancellation/join. Full Windows and Fedora WSL2 suites/vet pass, including real
