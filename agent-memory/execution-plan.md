@@ -12,6 +12,15 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
+- **2026-09-30:** TASK-159 implementation is merged through PR #272 at `94dbc7c`, verified
+  from local Git history. The schema transaction follow-up is `3c3fedf` on
+  `fix/TASK-159-schema-transactions`; the Windows E2E script also separates stderr diagnostics
+  from stdout and crosses a timestamp boundary before checking restart persistence.
+  Full Windows/Fedora WSL2 Go suites and vet and both no-send E2E lanes passed, including restart
+  persistence. `docs/TASK_159_QUALIFICATION.md` records the evidence. Hosted checks and follow-up
+  integration remain unverified because GitHub CLI returns HTTP 401. This supersedes the older
+  TASK-159 pickup statements below; Sage remains the next implementation initiative.
+
 - **2026-09-29:** TASK-158 qualification PR #267 at `2525783` passed native Linux PTY/pipe and
   Windows pipe tests, both full Go suites and build/vet, and no-send E2E. Evidence: client run
   `36474861545`, E2E run `36474861507`, general CI run `36474861478`. This supersedes the earlier
@@ -31,8 +40,9 @@ without an authorized board task and a dedicated branch targeting `dev`.
 - TASK-161 merged through PR #265 at `f6b0ec0`; workflow run `36136822555` published the rolling
   `dev-f6b0ec0` prerelease with all five platform binaries and checksums. It is available on the
   rolling `dev` channel but is not part of stable v3.1.1. TASK-158 validation is separately complete.
-- TASK-157 / SAGE-003 is the active product initiative. TASK-160 and TASK-162 are integrated, and
-  TASK-159 is active on `features/TASK-159-silent-time-inference` from merged `dev` at `a4a06fb`;
+- TASK-157 / SAGE-003 is the active product initiative. TASK-160, TASK-162, and the TASK-159
+  implementation are integrated; TASK-159 qualification follow-up is on
+  `fix/TASK-159-schema-transactions` from merged `dev` at `94dbc7c`;
   the next unused task ID is TASK-163, subject to board verification.
 - The board's active summary now describes the foundation as merged into `dev`; preserve closed
   task history and do not rewrite historical branch references.
@@ -57,7 +67,7 @@ Result: passed on Ubuntu 24.04.5 under WSL2 on 2026-09-26. Both redirected non-T
 `script`-backed pseudo-TTY commits were silent and successful with an unavailable log destination;
 the full Linux Go suite and `go vet ./...` passed.
 
-### 2. Enforce deterministic branch-to-ticket mapping — integrated; CI fixture follow-up active
+### 2. Enforce deterministic branch-to-ticket mapping — integrated; CI fixture follow-up complete
 
 Implement TASK-160 around one canonical grammar: `<kind>/<ticket-key>-<number>-<slug>`, with the ticket ID
 validated by the workspace's configured pattern. Resolution order is canonical branch, explicit
@@ -78,7 +88,7 @@ stale no-send E2E fixtures with the configured `E2E` workspace key. Native Windo
 disposable Linux fallback E2E, the full Go suite/vet, memory validation, and whitespace checks pass
 locally. PR #271 merged at `a4a06fb`; all six hosted checks passed, including both no-send E2E lanes.
 
-### 3. Implement silent automatic time inference — next after TASK-160 integration
+### 3. Implement silent automatic time inference — merged; qualification follow-up
 
 Implement TASK-159 without adding surveillance. Derive bounded, deterministic work windows from
 local commit and session activity, use real last-activity evidence for inactivity/EOD closure, and
@@ -87,6 +97,10 @@ and adjusted values for audit, attach confidence, and never ask for duration aft
 
 Gate: time evidence is produced without per-commit input, corrections are auditable, privacy
 boundaries are explicit, and clock-controlled tests cover gaps, restarts, EOD, and ticket changes.
+
+Implementation: PR #272 at `94dbc7c`. Follow-up evidence and integration limits:
+`docs/TASK_159_QUALIFICATION.md`. Do not confuse passing local qualification with verified hosted
+CI or integration of the schema/E2E follow-up.
 
 ### 4. Make SAGE-003 parity executable
 

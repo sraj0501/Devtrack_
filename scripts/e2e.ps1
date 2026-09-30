@@ -25,16 +25,24 @@ function Invoke-Captured {
     )
 
     $previousPreference = $ErrorActionPreference
+    $stderrFile = [IO.Path]::GetTempFileName()
     try {
         $ErrorActionPreference = 'Continue'
-        $output = @(& $Executable @Arguments 2>&1)
+        # Only stdout is command data. Timestamped startup logs on stderr
+        # must not participate in status comparisons across daemon restarts.
+        $output = @(& $Executable @Arguments 2> $stderrFile)
         $exitCode = $LASTEXITCODE
+        $diagnostics = Get-Content -Raw -LiteralPath $stderrFile
     }
     finally {
         $ErrorActionPreference = $previousPreference
+        Remove-Item -LiteralPath $stderrFile -Force
     }
     if ($exitCode -ne 0) {
-        throw "$Executable exited with code $exitCode`n$($output -join [Environment]::NewLine)"
+        throw "$Executable exited with code $exitCode`n$($output -join [Environment]::NewLine)`n$diagnostics"
+    }
+    if ($diagnostics) {
+        Write-Host $diagnostics.TrimEnd()
     }
     return @($output | ForEach-Object { $_.ToString() })
 }
@@ -206,6 +214,9 @@ try {
         throw "CLI correction was not visible:`n$correctedStatus"
     }
     Invoke-Checked $binary stop
+    # Cross a log timestamp boundary so this cannot pass accidentally just
+    # because both status calls happened within the same second.
+    Start-Sleep -Milliseconds 1100
     Invoke-Checked $binary start
     $restartedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
     if ($restartedStatus -ne $correctedStatus) {
