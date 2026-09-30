@@ -111,8 +111,10 @@ Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Final Sage parity remains 
 parsing, deterministic rendering, section insertion, signature reuse/attachment, atomic file
 replacement, and replayable topic-index repair. Seven reference rows now have executable Go tests;
 Windows full suite/vet and Linux writer race/fuzz/vet pass. Evidence:
-`docs/SAGE_MARKDOWN_QUALIFICATION.md`. The daemon still stops at `distilled`: next wire durable
-publication/recovery and the configured root, then prove spool-to-Markdown restart behavior.
+`docs/SAGE_MARKDOWN_QUALIFICATION.md`. Durable publication is now wired through a separate
+SQLite publication queue, configurable knowledge root, and stable signature markers. File/index
+failures retry without repeating the model; daemon restart preserves exact Markdown bytes.
+See `docs/SAGE_PUBLICATION_QUALIFICATION.md` for transaction and filesystem limits.
 Do not mark a job documented merely because its draft exists. Routing/action-equivalence and
 fuzzy section matching remain open alongside the later steps below.
 

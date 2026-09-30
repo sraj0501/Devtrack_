@@ -1,5 +1,19 @@
 # DevTrack Engineer Log
 
+## 2026-09-30 — TASK-157 durable Markdown publication
+
+- Continued from `fe50798` on the existing task branch. Added transactional publication enqueue,
+  legacy draft backfill, safe persistent retries, stable SHA-256 markers, configured output root,
+  and daemon publication lifecycle. Model completion remains distinct from documented state.
+- File/index failure and restart tests pass without duplicate entries or repeated model work.
+  Added a two-handle cancellation regression after review identified that automatic transaction
+  rollback could release the writer lock before file I/O returned.
+- Windows full Go suite/vet passed; the subsequent cancellation regression passed separately.
+  Fedora WSL2 focused Sage database/infra race tests and database/infra/config vet passed.
+- Normal sandbox execution works again. WSL service access and installed CLI user-database
+  initialization required escalation. Installed daemon was running (PID 7080).
+- Qualification: `docs/SAGE_PUBLICATION_QUALIFICATION.md`. No hosted CI or full parity claim.
+
 ## 2026-09-30 — TASK-157 deterministic Markdown writer
 
 - Continued from pushed `5c64271` on the existing Sage task branch; inspected pinned reference

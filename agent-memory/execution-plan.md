@@ -12,6 +12,12 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
+- **2026-09-30, durable publication:** Saved drafts now reach Markdown through the daemon,
+  with separate durable retries/documented state and file/index replay after interrupted
+  acknowledgement. Configured output and spool-to-Markdown restart tests pass. Next implement
+  persistent routing, correction/merge, and publication diagnostics; full-entry search and safe
+  commits remain open. Evidence: `docs/SAGE_PUBLICATION_QUALIFICATION.md`.
+
 - **2026-09-30, Markdown writer:** TASK-157 now has a qualified Go writer library with atomic
   replacement, existing-signature reuse, stable insertion, and repairable topic indexes.
   Windows full Go suite/vet and Linux writer race/fuzz/vet passed. Seven additional reference

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/llmclient"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
 func TestSageDaemonWorkerPauseAndInflightCancellation(t *testing.T) {
@@ -77,6 +79,8 @@ func TestSageDaemonSpoolToDurableDraftSurvivesRestart(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", home)
 	t.Setenv("DEVTRACK_SAGE_IDLE_POLL_MS", "50")
 	t.Setenv("DEVTRACK_SAGE_RETRY_DELAY_SECS", "1")
+	knowledgeRoot := t.TempDir()
+	t.Setenv("DEVTRACK_SAGE_KNOWLEDGE_DIR", knowledgeRoot)
 	root := filepath.Join(home, "devtrack", "sage")
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +100,7 @@ func TestSageDaemonSpoolToDurableDraftSurvivesRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "sage.db")
+	var firstTopic, firstIndex string
 	for round := 0; round < 2; round++ {
 		d, err := db.NewDatabaseAtPath(path)
 		if err != nil {
@@ -115,7 +120,9 @@ func TestSageDaemonSpoolToDurableDraftSurvivesRestart(t *testing.T) {
 				var state, draft string
 				var attempts int
 				err := d.DB().QueryRow(`SELECT state,draft_json,attempts FROM sage_jobs`).Scan(&state, &draft, &attempts)
-				if err == nil && state == "distilled" {
+				var publication string
+				_ = d.DB().QueryRow(`SELECT state FROM sage_publications`).Scan(&publication)
+				if err == nil && state == "distilled" && publication == "documented" {
 					if attempts != 3 || draft == "" {
 						t.Fatalf("attempts=%d draft=%q", attempts, draft)
 					}
@@ -131,6 +138,22 @@ func TestSageDaemonSpoolToDurableDraftSurvivesRestart(t *testing.T) {
 				time.Sleep(150 * time.Millisecond)
 			}
 		}()
+		topic, err := os.ReadFile(filepath.Join(knowledgeRoot, "git.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		index, err := os.ReadFile(filepath.Join(knowledgeRoot, "README.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(knowledge.ParseMarkdown(string(topic))) != 1 {
+			t.Fatal("missing or duplicate Markdown entry")
+		}
+		if round == 0 {
+			firstTopic, firstIndex = string(topic), string(index)
+		} else if firstTopic != string(topic) || firstIndex != string(index) {
+			t.Fatal("restart changed Markdown")
+		}
 	}
 	if calls.Load() != 3 {
 		t.Fatalf("restart repeated model work: calls=%d", calls.Load())

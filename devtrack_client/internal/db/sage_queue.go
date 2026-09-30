@@ -51,7 +51,22 @@ func (d *Database) createSageQueue() error {
 	END;
 	INSERT OR IGNORE INTO sage_jobs(signature,command,failed)
 		SELECT signature,representative_command,CASE WHEN success_count=0 AND failure_count>0 THEN 1 ELSE 0 END
-		FROM sage_knowledge;`)
+		FROM sage_knowledge;
+	CREATE TABLE IF NOT EXISTS sage_publications (
+		signature TEXT PRIMARY KEY REFERENCES sage_jobs(signature),
+		state TEXT NOT NULL DEFAULT 'waiting' CHECK(state IN ('waiting','retrying','documented')),
+		attempts INTEGER NOT NULL DEFAULT 0,
+		next_retry_ms INTEGER NOT NULL DEFAULT 0,
+		last_error TEXT NOT NULL DEFAULT '',
+		filename TEXT NOT NULL DEFAULT '',
+		completed_ms INTEGER NOT NULL DEFAULT 0
+	);
+	CREATE INDEX IF NOT EXISTS idx_sage_publications_due ON sage_publications(state,next_retry_ms);
+	CREATE TRIGGER IF NOT EXISTS sage_publications_enqueue AFTER UPDATE OF state ON sage_jobs
+	WHEN new.state='distilled' BEGIN
+		INSERT OR IGNORE INTO sage_publications(signature) VALUES(new.signature);
+	END;
+	INSERT OR IGNORE INTO sage_publications(signature) SELECT signature FROM sage_jobs WHERE state='distilled';`)
 	if err != nil {
 		return err
 	}

@@ -860,3 +860,9 @@ patched backend.config source due to lazy imports. Full suite: 433 passed.
 **Files**: 22 files across backend/azure/, github/, gitlab/, admin/, server_tui/, rag/, and more
 **Vision check**: PASS
 **Engineer notes**: 50+ new config accessors added to backend/config.py. All os.getenv direct calls replaced across the codebase. .env_sample updated. 397 tests pass.
+# 2026-09-30 — Sage durable publication checkpoint
+
+Saved drafts now reach deterministic Markdown through the daemon with separate durable
+publication retries and documented acknowledgement. Failure/restart/cancellation recovery and
+byte-stable spool-to-Markdown replay pass on Windows; focused Linux race/vet pass.
+See `docs/SAGE_PUBLICATION_QUALIFICATION.md`. Full Sage remains in progress.

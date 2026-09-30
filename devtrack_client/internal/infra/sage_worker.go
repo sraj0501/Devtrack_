@@ -9,6 +9,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/llmclient"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
 type pausedSageQueue struct {
@@ -30,5 +31,28 @@ func (im *IntegratedMonitor) startSageDistillation(ctx context.Context, root str
 		Lease:      (time.Duration(config.GetSageModelTimeoutSecs()) + 30) * time.Second,
 		RetryDelay: time.Duration(config.GetSageRetryDelaySecs()) * time.Second,
 	}, root: root}
-	return distill.NewBackgroundWorker(queue, client).Start(ctx)
+	modelDone := distill.NewBackgroundWorker(queue, client).Start(ctx)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer func() { <-modelDone }()
+		writer := knowledge.Writer{Root: config.GetSageKnowledgeDir(root)}
+		ticker := time.NewTicker(time.Duration(config.GetSageIdlePollMS()) * time.Millisecond)
+		defer ticker.Stop()
+		for ctx.Err() == nil {
+			state, err := sage.ReadState(root)
+			if err == nil && !state.Paused {
+				found, err := queue.PublishNext(ctx, writer)
+				if found && err == nil {
+					continue
+				}
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
+	return done
 }
