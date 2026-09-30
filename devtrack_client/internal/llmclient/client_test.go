@@ -68,3 +68,36 @@ func TestOpenAIChatJSONAndCancellation(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+func TestBackgroundJSONRequestsDoNotCapOutput(t *testing.T) {
+	for _, provider := range []string{"ollama", "openai"} {
+		t.Run(provider, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var request map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+					t.Error(err)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				if _, exists := request["max_tokens"]; exists {
+					t.Error("background generation unexpectedly caps output tokens")
+				}
+				if options, ok := request["options"].(map[string]any); ok {
+					if _, exists := options["num_predict"]; exists {
+						t.Error("background generation unexpectedly caps predictions")
+					}
+				}
+				if provider == "ollama" {
+					_, _ = w.Write([]byte(`{"message":{"content":"{}"},"done":true}`))
+				} else {
+					_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{}"}}]}`))
+				}
+			}))
+			defer server.Close()
+			cfg := Config{Host: server.URL, Provider: provider, Model: "test", Client: server.Client()}
+			if _, err := cfg.ChatJSONContext(context.Background(), []Message{{Role: "user", Content: "test"}}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

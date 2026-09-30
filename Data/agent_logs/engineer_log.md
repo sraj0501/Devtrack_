@@ -1,5 +1,21 @@
 # DevTrack Engineer Log
 
+## 2026-09-30 — TASK-159 upstream push and TASK-157 parity continuation
+
+- Committed the qualification/script changes through `devtrack git commit` as `2e50763`,
+  message `fix(TASK-159): qualify restart persistence on Windows and Linux`.
+- The daemon was stopped; started it for the commit workflow. Ollama was unreachable, so
+  DevTrack preserved the supplied message and committed successfully. No PM delivery was reported.
+- Pushed `fix/TASK-159-schema-transactions`; `git ls-remote` confirmed upstream at
+  `2e507636031444b0100cd4d4a911390aa9659da4`. GitHub API remains HTTP 401; no hosted/merge claim.
+- Continued on `features/TASK-157-sage-parity`, stacked on that published follow-up.
+- Reconciled 136 reference tests against `b85a1ab` in the user-supplied relocated checkout.
+  Added explicit coverage status, existing test references, planned closure tests, and a checker.
+- Eight checker fault tests pass. The pinned-source check passes; `--require-complete` fails
+  as expected with remaining gaps. Focused Go tests and vet pass on Windows and Fedora WSL2.
+- No Sage runtime behavior changed. Empty model output and uncapped requests now have transport
+  regression coverage. Durable queue/daemon integration and final behavioral parity remain open.
+
 ## 2026-09-30 — TASK-159 qualification and shared-state reconciliation
 
 - Qualified schema transaction commit `3c3fedf` and the existing Windows E2E stdout/stderr

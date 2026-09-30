@@ -5,6 +5,11 @@ schema/E2E follow-up integration and hosted verification remain open)_
 
 ## 2026-09-30 — TASK-159: local qualification complete
 
+Publication follow-up: `2e50763` is verified on `origin/fix/TASK-159-schema-transactions`.
+TASK-157 parity work continues on stacked branch `features/TASK-157-sage-parity`: 136 scenarios
+reconciled against `b85a1ab`, explicit test/status ledger, CI consistency checks, and transport
+regressions passing on Windows and Fedora WSL2. Durable queue/daemon wiring remains next.
+
 **Status**: All five product acceptance criteria locally qualified. PR #272's merge is
 recorded locally at `94dbc7c`; the schema/E2E follow-up remains separate.
 

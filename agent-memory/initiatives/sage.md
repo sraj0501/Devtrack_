@@ -15,7 +15,7 @@ It captures useful command/tool activity from supported coding harnesses and tur
 searchable, deterministic personal documentation.
 
 DevTrack Sage is entirely Go-native. Port required behavior and regression coverage from
-`D:\git_apps\ai_sessions_skills` at authoritative commit `b85a1ab`; production Sage must not
+`F:\git_apps\Personal_Projects\ai_sessions_skills` at authoritative commit `b85a1ab`; production Sage must not
 spawn Python or require a Python environment. Port for behavioral parity rather than copying
 Python-specific process boundaries.
 
@@ -67,6 +67,17 @@ quickly, print nothing, perform no model or network call, and never break an age
 ## Ordered next steps
 
 ### 1. Make reference parity executable
+
+2026-09-30: `features/TASK-157-sage-parity` reconciles all 136 scenario names and source lines
+against pinned Git objects from the relocated checkout above. Every row names existing evidence
+or an exact planned closure test. `scripts/check_sage_parity.py` validates the ledger and test
+references; `--reference PATH` verifies the baseline and `--require-complete` rejects open rows.
+CI runs ledger validation and eight fault-injection checks. The conservative inventory is six
+implemented, fifteen partial, and 115 pending; these are coverage classifications, not a product
+completion percentage. Missing terminal-transition ordering and full-entry search assertions
+remain partial. New real-HTTP tests cover empty model output remaining retryable and uncapped
+background requests. Focused Go tests/vet passed on Windows and Fedora WSL2. Durable queue/daemon
+wiring is still the next implementation slice; Sage remains open.
 
 Refresh `docs/SAGE_PORT_PARITY_MATRIX.md` against all 136 reference tests at `b85a1ab`. Every row
 must identify the Go owner, exact Go test, status (`implemented`, `partial`, `pending`, or

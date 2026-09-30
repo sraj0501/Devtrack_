@@ -227,6 +227,14 @@ Evidence: `docs/TASK_159_QUALIFICATION.md`. Follow-up integration/hosted verific
 returns HTTP 401. Local qualification does not establish upstream integration of the follow-up.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
+**Engineer status (2026-09-30):** Resumed on `features/TASK-157-sage-parity`, stacked on the
+published TASK-159 follow-up `2e50763`. Reconciled all 136 reference scenarios with `b85a1ab`
+from `F:\git_apps\Personal_Projects\ai_sessions_skills`; the ledger now names existing Go tests,
+explicit status, and planned closure tests. Added a CI consistency gate with eight fault-injection
+checks and real-HTTP regression tests for retryable empty output and uncapped background requests.
+Focused Go tests/vet passed on Windows and Fedora WSL2. Six scenarios have complete test evidence,
+fifteen are partial, and 115 remain pending. Durable queue/daemon wiring is next; this task is open.
+
 Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and
 removes the legacy Git Sage repository-agent surface. `devtrack sage` now
 rejects ask/do/pr/interactive/git/free-form commands before starting a model, network request, or

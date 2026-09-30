@@ -12,6 +12,14 @@ without an authorized board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
+- **2026-09-30, continuation:** TASK-159 qualification/script commit `2e50763` is pushed and
+  verified on `origin/fix/TASK-159-schema-transactions`; GitHub API still returns HTTP 401.
+  Continued on stacked branch `features/TASK-157-sage-parity`. All 136 scenarios now reconcile
+  with pinned reference `b85a1ab`, with explicit statuses and existing/planned test names.
+  Ledger checker, eight fault tests, and focused Go tests/vet pass on Windows and Fedora WSL2.
+  The completion gate correctly fails (6 implemented, 15 partial, 115 pending).
+  Next: durable SQLite queue and daemon lifecycle; follow-up integration remains separate.
+
 - **2026-09-30:** TASK-159 implementation is merged through PR #272 at `94dbc7c`, verified
   from local Git history. The schema transaction follow-up is `3c3fedf` on
   `fix/TASK-159-schema-transactions`; the Windows E2E script also separates stderr diagnostics
@@ -104,7 +112,7 @@ CI or integration of the schema/E2E follow-up.
 
 ### 4. Make SAGE-003 parity executable
 
-Refresh `docs/SAGE_PORT_PARITY_MATRIX.md` against `D:\git_apps\ai_sessions_skills` at `b85a1ab`.
+Refresh `docs/SAGE_PORT_PARITY_MATRIX.md` against `F:\git_apps\Personal_Projects\ai_sessions_skills` at `b85a1ab`.
 The 135-versus-136 discrepancy is resolved: the omitted reference scenario was
 `test_captures_cli_when_explicitly_enabled`, and the matrix now contains all 136 methods. Every
 reference scenario must still name its Go owner, exact Go test, status (`implemented`, `partial`,

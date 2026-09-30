@@ -1,149 +1,152 @@
 # DevTrack Sage reference parity matrix
 
-Authoritative Python baseline: `D:\git_apps\ai_sessions_skills` commit `b85a1ab`. This is an
-inventory and assignment, not a claim that the corresponding Go behavior is implemented. All 136
-`test_*` methods in the two regression files must have a Go destination and test before parity is
-complete. Go-only event-contract coverage is in `internal/sage/event_test.go`.
+Authoritative baseline: `ai_sessions_skills` commit `b85a1ab`.
+Local reference checkout: `F:\git_apps\Personal_Projects\ai_sessions_skills`.
+All 136 scenarios below were reconciled with the pinned Git objects on 2026-09-30.
+Go paths are relative to `devtrack_client/`. Existing tests are evidence for only the
+behavior stated in the rationale; planned closure tests do not exist yet.
+`partial` and `pending` rows remain open. `adapted` requires an explicit behavioral rationale.
 
-Python-specific watcher subprocess mechanics are assigned to SAGE-002 as daemon-lifecycle behavior
-rather than copied literally. Reference behavior is not excluded merely because DevTrack uses Go,
-SQLite, or different internal process boundaries.
+Run `uv run --no-project python scripts/check_sage_parity.py` for ledger consistency.
+Add `--reference <checkout>` to compare names and source lines against `b85a1ab`,
+or `--require-complete` for the final parity gate. A passing ledger check does not run Go tests
+or establish behavioral parity. Python is development tooling only, never a Sage runtime dependency.
 
-| Python regression scenario | Go destination | Assignment | Port note |
-|---|---|---|---|
-| `tool/tests/test_ide_capture.py:55` `test_captures_original_command_once_and_excludes_cli_and_old_history` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
-| `tool/tests/test_ide_capture.py:66` `test_in_progress_command_is_collected_when_it_finishes` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
-| `tool/tests/test_ide_capture.py:73` `test_captures_cli_when_explicitly_enabled` | `internal/sage/codexhistory` | SAGE-002 | Implemented by `TestPollStartsFromNowAndCapturesIDEAndCLIOnce`; Codex history remains explicitly opt-in |
-| `tool/tests/test_ide_capture.py:78` `test_pause_does_not_read_or_advance_history` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
-| `tool/tests/test_ide_capture.py:86` `test_reset_excludes_commands_from_the_paused_period` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
-| `tool/tests/test_ide_capture.py:92` `test_failure_does_not_advance_checkpoint` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
-| `tool/tests/test_ide_capture.py:100` `test_failed_command_preserves_exit_status` | `internal/sage/hooks/ide` | SAGE-004 | Port as an optional, versioned IDE adapter |
-| `tool/tests/test_portable.py:45` `test_windows_uses_appdata` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:50` `test_windows_falls_back_to_home` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:54` `test_linux_honours_xdg` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:59` `test_linux_default_is_dot_config` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:63` `test_macos_default_is_dot_config` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:75` `test_linux_devin_under_xdg` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:81` `test_linux_respects_xdg_override` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:85` `test_windows_devin_under_appdata` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:91` `test_dot_dirs_are_home_relative_on_every_platform` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:101` `test_windows_prefers_existing_opencode_dir` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:107` `test_every_harness_has_a_skill_destination` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:115` `test_launcher_extension_matches_platform` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:122` `test_both_platform_shims_are_shipped` | `internal/sage/config + hooks` | SAGE-002 | Port platform root and installer behavior |
-| `tool/tests/test_portable.py:129` `test_placeholders_are_rendered_and_empty_model_dropped` | `internal/sage/distill` | SAGE-003 | Port backend selection without Python |
-| `tool/tests/test_portable.py:148` `test_no_backend_when_binary_missing` | `internal/sage/distill` | SAGE-003 | Port backend selection without Python |
-| `tool/tests/test_portable.py:158` `test_shipped_backends_declare_a_prompt_mode` | `internal/sage/distill` | SAGE-003 | Port backend selection without Python |
-| `tool/tests/test_portable.py:171` `test_same_action_different_values_collapses` | `internal/sage/knowledge` | SAGE-003 | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` covers deterministic grouping after normalization |
-| `tool/tests/test_portable.py:177` `test_names_do_not_leak_into_signatures` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
-| `tool/tests/test_portable.py:184` `test_real_subcommands_still_split` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
-| `tool/tests/test_portable.py:190` `test_distinct_actions_stay_distinct` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
-| `tool/tests/test_portable.py:195` `test_pipelines_yield_one_signature_per_segment` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
-| `tool/tests/test_portable.py:199` `test_quoted_separators_do_not_split` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
-| `tool/tests/test_portable.py:202` `test_trivial_commands_are_ignored` | `internal/sage/knowledge` | SAGE-003 | Port command signatures |
-| `tool/tests/test_portable.py:230` `test_every_shape_produces_a_shell_record` | `internal/sage/capture` | SAGE-002 | Port harness payload normalization |
-| `tool/tests/test_portable.py:238` `test_string_encoded_arguments_are_parsed` | `internal/sage/capture` | SAGE-002 | Port harness payload normalization |
-| `tool/tests/test_portable.py:244` `test_failure_shapes_are_detected` | `internal/sage/capture` | SAGE-002 | Port harness payload normalization |
-| `tool/tests/test_portable.py:257` `test_search_tools_become_ripgrep` | `internal/sage/capture` | SAGE-002 | Port harness payload normalization |
-| `tool/tests/test_portable.py:271` `test_edit_tools_are_documented_once_per_kind` | `internal/sage/capture` | SAGE-002 | Port harness payload normalization |
-| `tool/tests/test_portable.py:279` `test_unknown_payload_is_ignored_not_crashed` | `internal/sage/capture` | SAGE-002 | Port harness payload normalization |
-| `tool/tests/test_portable.py:286` `test_windows_paths_do_not_duplicate_hooks_on_reinstall` | `internal/sage/hooks` | SAGE-002 | Port additive install/removal |
-| `tool/tests/test_portable.py:300` `test_merge_preserves_foreign_settings_and_is_idempotent` | `internal/sage/hooks` | SAGE-002 | Port additive install/removal |
-| `tool/tests/test_portable.py:319` `test_remove_is_pure_subtraction` | `internal/sage/hooks` | SAGE-002 | Port additive install/removal |
-| `tool/tests/test_portable.py:328` `test_legacy_marker_purges_old_layout` | `internal/sage/hooks` | SAGE-002 | Port additive install/removal |
-| `tool/tests/test_portable.py:339` `test_missing_file_reports_missing_on_remove` | `internal/sage/hooks` | SAGE-002 | Port additive install/removal |
-| `tool/tests/test_portable.py:344` `test_lock_is_exclusive_and_releasable` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:354` `test_stale_lock_is_reclaimed` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:363` `test_windows_helpers_request_no_console` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:368` `test_posix_helpers_do_not_receive_windows_flags` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:374` `test_real_helper_has_no_console_and_preserves_piped_input` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:382` `test_detached_process_has_no_console` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:397` `test_tasklist_access_failure_does_not_report_a_dead_process` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:402` `test_dead_pid_is_not_alive` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:408` `test_missing_pidfile_is_not_alive` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:412` `test_own_pid_with_fresh_touch_is_alive` | `internal/sage/importer` | SAGE-002 | Adapt to daemon-owned lifecycle |
-| `tool/tests/test_portable.py:457` `test_gitignored_runtime_is_never_dirty` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Port runtime-ignore isolation |
-| `tool/tests/test_portable.py:461` `test_nested_knowledge_folder_commits_with_root_relative_paths` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Port root-relative Sage-owned commits |
-| `tool/tests/test_portable.py:471` `test_preexisting_work_is_left_uncommitted` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Preserve unrelated work |
-| `tool/tests/test_portable.py:479` `test_entangled_file_is_skipped_not_guessed` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Skip ownership-ambiguous files |
-| `tool/tests/test_portable.py:489` `test_user_staged_work_stays_staged` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Preserve the user's index |
-| `tool/tests/test_portable.py:499` `test_paths_with_spaces_survive` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Port path-safe commits |
-| `tool/tests/test_portable.py:505` `test_deletion_by_writer_is_committed` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Track Sage-owned deletions |
-| `tool/tests/test_portable.py:512` `test_nothing_of_ours_makes_no_commit` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Avoid empty commits |
-| `tool/tests/test_portable.py:518` `test_auto_commit_off_is_respected` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Respect the configured local-commit switch |
-| `tool/tests/test_portable.py:526` `test_non_repo_is_a_no_op` | `internal/sage/knowledge/gitcommit` | SAGE-003 | Never require a Git repository |
-| `tool/tests/test_portable.py:547` `test_an_existing_entry_routes_its_whole_binary` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:553` `test_a_binary_the_list_never_knew_still_routes` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:559` `test_unknown_binary_has_no_route_yet` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:562` `test_remembered_decisions_survive_before_any_entry_exists` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:566` `test_entries_win_over_a_stale_remembered_route` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:571` `test_title_is_read_back_from_the_file` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:575` `test_skipped_and_readme_never_become_routes` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:579` `test_filename_cannot_escape_the_knowledge_base` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:590` `test_fallback_is_a_file_of_its_own` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:593` `test_merge_moves_entries_and_repoints_routing` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:605` `test_merge_is_a_no_op_for_a_missing_file` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:608` `test_a_correction_outlives_the_classifier` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:615` `test_parses_heading_sigs_and_commands` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:623` `test_multiple_sigs_on_one_entry` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:628` `test_action_is_derived_from_the_command_block` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:631` `test_same_action_different_flags_is_a_match` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:636` `test_different_subcommand_is_not_a_match` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:649` `test_add_sig_appends_and_is_idempotent` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:658` `test_insert_creates_file_with_header` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:665` `test_insert_reuses_an_existing_section` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:674` `test_insert_preserves_earlier_entries` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:681` `test_skipped_file_records_the_sig` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:685` `test_documented_sigs_spans_every_file` | `internal/sage/knowledge` | SAGE-003 | Port routing, merge, and rendering |
-| `tool/tests/test_portable.py:703` `test_clean_response` | `internal/sage/distill + knowledge` | SAGE-003 | Partial: `TestParseAcceptsFencedChatterAndCleansFields`; Markdown writing remains |
-| `tool/tests/test_portable.py:708` `test_answer_wrapped_in_a_fence_or_chatter` | `internal/sage/distill + knowledge` | SAGE-003 | Partial: `TestParseAcceptsFencedChatterAndCleansFields`; Markdown writing remains |
-| `tool/tests/test_portable.py:716` `test_model_emitted_sig_is_stripped` | `internal/sage/distill + knowledge` | SAGE-003 | Partial: `TestParseAcceptsFencedChatterAndCleansFields`; Markdown writing remains |
-| `tool/tests/test_portable.py:723` `test_skip_verdict_is_distinguished_from_malformed` | `internal/sage/distill + knowledge` | SAGE-003 | Implemented by `TestParseDistinguishesSkipFromMalformed` |
-| `tool/tests/test_portable.py:735` `test_empty_commands_fall_back_to_the_captured_command` | `internal/sage/distill + knowledge` | SAGE-003 | Implemented by `TestParseAcceptsFencedChatterAndCleansFields` |
-| `tool/tests/test_portable.py:741` `test_garbage_is_rejected_not_written` | `internal/sage/distill + knowledge` | SAGE-003 | Partial: `TestParseDistinguishesSkipFromMalformed`; writer remains |
-| `tool/tests/test_portable.py:759` `test_renders_a_parseable_entry` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:766` `test_blank_notes_omits_the_bullet` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:770` `test_multiline_prose_is_flattened` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:777` `test_exact_and_case_insensitive_match_reuse` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:780` `test_near_duplicate_snaps_to_existing` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:785` `test_genuinely_new_section_is_kept` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:788` `test_related_but_differently_worded_sections_are_not_merged` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:799` `test_empty_falls_back_to_default` | `internal/sage/distill + knowledge` | SAGE-003 | Port validated model output and deterministic fallback |
-| `tool/tests/test_portable.py:824` `test_pause_is_persistent_and_reversible` | `internal/sage/state_test.go` | SAGE-001 | `TestPauseResumeStateIsPersistentAndIdempotent` |
-| `tool/tests/test_portable.py:832` `test_resume_when_not_paused_is_harmless` | `internal/sage/state_test.go` | SAGE-001 | `TestPauseResumeStateIsPersistentAndIdempotent` |
-| `tool/tests/test_portable.py:836` `test_env_switch_is_process_local` | `internal/sage/config` | SAGE-002 | Adapt to Go client configuration; no Python process switch |
-| `tool/tests/test_portable.py:842` `test_paused_stops_capture` | `internal/sage/capture` | SAGE-002 | Prove against an installed adapter |
-| `tool/tests/test_portable.py:846` `test_log_records_a_decision_per_line` | `internal/sage/capture + logging` | SAGE-002 | Port silent capture and sanitized diagnostics |
-| `tool/tests/test_portable.py:855` `test_log_flattens_newlines_so_one_action_is_one_line` | `internal/sage/capture + logging` | SAGE-002 | Port silent capture and sanitized diagnostics |
-| `tool/tests/test_portable.py:859` `test_log_never_raises` | `internal/sage/capture + logging` | SAGE-002 | Port silent capture and sanitized diagnostics |
-| `tool/tests/test_portable.py:864` `test_enqueue_logs_new_then_known` | `internal/sage/capture + logging` | SAGE-002 | Port silent capture and sanitized diagnostics |
-| `tool/tests/test_portable.py:873` `test_new_knowledge_base_never_tracks_the_queue` | `internal/sage/capture + logging` | SAGE-002 | Port silent capture and sanitized diagnostics |
-| `tool/tests/test_portable.py:881` `test_existing_gitignore_is_extended_not_replaced` | `internal/sage/capture + logging` | SAGE-002 | Port silent capture and sanitized diagnostics |
-| `tool/tests/test_portable.py:892` `test_repeat_within_one_command_line_is_marked` | `internal/sage/capture + logging` | SAGE-002 | Port silent capture and sanitized diagnostics |
-| `tool/tests/test_portable.py:919` `test_stop_and_start_round_trip` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
-| `tool/tests/test_portable.py:925` `test_restart_replaces_the_watcher_and_stop_releases_it` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
-| `tool/tests/test_portable.py:938` `test_aliases_all_work` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
-| `tool/tests/test_portable.py:948` `test_a_typo_is_loud_rather_than_a_silent_no_op` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
-| `tool/tests/test_portable.py:954` `test_stop_records_its_reason` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
-| `tool/tests/test_portable.py:959` `test_hook_verbs_are_silent_and_never_fail` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
-| `tool/tests/test_portable.py:965` `test_a_legacy_shim_cannot_silently_restart_capture` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
-| `tool/tests/test_portable.py:971` `test_status_reports_both_states` | `internal/sage/importer + CLI` | SAGE-002 | Adapt watcher to DevTrack daemon |
-| `tool/tests/test_portable.py:1008` `test_normal_reply_is_returned` | `internal/sage/distill` | SAGE-003 | Implemented by `TestOllamaChatJSONUsesContextAndJSONMode` |
-| `tool/tests/test_portable.py:1011` `test_token_limit_with_no_output_is_a_failure_not_a_verdict` | `internal/sage/distill` | SAGE-003 | Partial: empty model output is an error in `internal/llmclient`; explicit regression test remains |
-| `tool/tests/test_portable.py:1017` `test_shipped_ollama_backend_has_no_output_cap` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
-| `tool/tests/test_portable.py:1023` `test_text_backend_defers_prompt_file_substitution` | `internal/sage/distill` | SAGE-003 | Port model failure semantics |
-| `tool/tests/test_portable.py:1074` `test_documents_and_routes` | `internal/sage/knowledge + distill` | SAGE-003 | Partial: `TestSageKnowledgeGroupsSearchesAndAttributesEvents` covers model-free routing, persistence, and search; durable worker orchestration, Markdown writing, and final routing remain |
-| `tool/tests/test_portable.py:1081` `test_second_variant_merges_without_calling_the_model` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1093` `test_already_documented_sig_is_untouched` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1101` `test_model_outage_is_not_recorded_as_skipped` | `internal/sage/knowledge + distill` | SAGE-003 | Partial: `TestDistillerMarksModelFailuresRetryable` and `TestWorkerPersistsCompleteSkipAndRetryOutcomes`; durable SQLite queue remains |
-| `tool/tests/test_portable.py:1111` `test_skip_verdict_is_recorded_so_it_never_returns` | `internal/sage/knowledge + distill` | SAGE-003 | Partial: `TestWorkerPersistsCompleteSkipAndRetryOutcomes`; durable SQLite queue remains |
-| `tool/tests/test_portable.py:1119` `test_malformed_reply_is_retried_under_the_schema` | `internal/sage/knowledge + distill` | SAGE-003 | Adapted: JSON mode is requested on the first call; malformed output is retryable (`TestParseDistinguishesSkipFromMalformed`) |
-| `tool/tests/test_portable.py:1136` `test_skip_verdict_is_not_retried` | `internal/sage/knowledge + distill` | SAGE-003 | Partial: `TestDistillerReturnsExplicitSkipWithoutRetry` and worker outcome coverage; durable queue remains |
-| `tool/tests/test_portable.py:1149` `test_unknown_binary_is_classified_once_then_remembered` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1174` `test_classifier_choice_is_sanitised` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1190` `test_unreachable_classifier_falls_back_to_its_own_file` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1202` `test_existing_sections_are_offered_to_the_model` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1215` `test_agent_prompt_uses_separate_runtime_folder` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1225` `test_runtime_setting_is_relative_to_config` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1230` `test_explicit_kb_override_keeps_runtime_isolated` | `internal/sage/knowledge + distill` | SAGE-003 | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1234` `test_keyword_search_matches_whole_entries_and_filters_topics` | `internal/sage/knowledge + distill` | SAGE-003 | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` and `TestSageKnowledgeSearchTreatsFTSSyntaxAsLiteralTerms` |
+| Python regression scenario | Go owner | Assignment | Status | Existing Go tests | Planned closure test | Rationale / remaining work |
+|---|---|---|---|---|---|---|
+| `tool/tests/test_ide_capture.py:62` `test_captures_original_command_once_and_excludes_cli_and_old_history` | `internal/sage/hooks/ide` | SAGE-004 | pending | — | `TestReferenceCapturesOriginalCommandOnceAndExcludesCliAndOldHistory` | Port as an optional, versioned IDE adapter |
+| `tool/tests/test_ide_capture.py:80` `test_in_progress_command_is_collected_when_it_finishes` | `internal/sage/codexhistory` | SAGE-002 | partial | `internal/sage/codexhistory/poller_test.go#TestPollTracksInProgressItemUntilTerminal` | `TestReferenceInProgressCommandIsCollectedWhenItFinishes` | Terminal transition is covered; interleaved fast/slow commands and repeat-poll deduplication remain. |
+| `tool/tests/test_ide_capture.py:73` `test_captures_cli_when_explicitly_enabled` | `internal/sage/codexhistory` | SAGE-002 | implemented | `internal/sage/codexhistory/poller_test.go#TestPollStartsFromNowAndCapturesIDEAndCLIOnce` | — | Implemented by `TestPollStartsFromNowAndCapturesIDEAndCLIOnce`; Codex history remains explicitly opt-in |
+| `tool/tests/test_ide_capture.py:92` `test_pause_does_not_read_or_advance_history` | `internal/sage/hooks/ide` | SAGE-004 | pending | — | `TestReferencePauseDoesNotReadOrAdvanceHistory` | Port as an optional, versioned IDE adapter |
+| `tool/tests/test_ide_capture.py:100` `test_reset_excludes_commands_from_the_paused_period` | `internal/sage/hooks/ide` | SAGE-004 | pending | — | `TestReferenceResetExcludesCommandsFromThePausedPeriod` | Port as an optional, versioned IDE adapter |
+| `tool/tests/test_ide_capture.py:106` `test_failure_does_not_advance_checkpoint` | `internal/sage/hooks/ide` | SAGE-004 | pending | — | `TestReferenceFailureDoesNotAdvanceCheckpoint` | Port as an optional, versioned IDE adapter |
+| `tool/tests/test_ide_capture.py:114` `test_failed_command_preserves_exit_status` | `internal/sage/hooks/ide` | SAGE-004 | partial | `internal/sage/hooks/codex_history_test.go#TestNormalizeCodexHistoryItemPreservesFailureAndDeduplicates` | `TestReferenceFailedCommandPreservesExitStatus` | Failure normalization is covered; reference-specific history path parity remains. |
+| `tool/tests/test_portable.py:45` `test_windows_uses_appdata` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceWindowsUsesAppdata` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:50` `test_windows_falls_back_to_home` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceWindowsFallsBackToHome` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:54` `test_linux_honours_xdg` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceLinuxHonoursXdg` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:59` `test_linux_default_is_dot_config` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceLinuxDefaultIsDotConfig` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:63` `test_macos_default_is_dot_config` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceMacosDefaultIsDotConfig` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:75` `test_linux_devin_under_xdg` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceLinuxDevinUnderXdg` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:81` `test_linux_respects_xdg_override` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceLinuxRespectsXdgOverride` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:85` `test_windows_devin_under_appdata` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceWindowsDevinUnderAppdata` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:91` `test_dot_dirs_are_home_relative_on_every_platform` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceDotDirsAreHomeRelativeOnEveryPlatform` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:101` `test_windows_prefers_existing_opencode_dir` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceWindowsPrefersExistingOpencodeDir` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:107` `test_every_harness_has_a_skill_destination` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceEveryHarnessHasASkillDestination` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:115` `test_launcher_extension_matches_platform` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceLauncherExtensionMatchesPlatform` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:122` `test_both_platform_shims_are_shipped` | `internal/sage/config + hooks` | SAGE-002 | pending | — | `TestReferenceBothPlatformShimsAreShipped` | Port platform root and installer behavior |
+| `tool/tests/test_portable.py:129` `test_placeholders_are_rendered_and_empty_model_dropped` | `internal/sage/distill` | SAGE-003 | pending | — | `TestReferencePlaceholdersAreRenderedAndEmptyModelDropped` | Port backend selection without Python |
+| `tool/tests/test_portable.py:148` `test_no_backend_when_binary_missing` | `internal/sage/distill` | SAGE-003 | pending | — | `TestReferenceNoBackendWhenBinaryMissing` | Port backend selection without Python |
+| `tool/tests/test_portable.py:158` `test_shipped_backends_declare_a_prompt_mode` | `internal/sage/distill` | SAGE-003 | pending | — | `TestReferenceShippedBackendsDeclareAPromptMode` | Port backend selection without Python |
+| `tool/tests/test_portable.py:171` `test_same_action_different_values_collapses` | `internal/sage/knowledge` | SAGE-003 | partial | `internal/db/sage_events_test.go#TestSageKnowledgeGroupsSearchesAndAttributesEvents` | `TestReferenceSameActionDifferentValuesCollapses` | `TestSageKnowledgeGroupsSearchesAndAttributesEvents` covers deterministic grouping after normalization |
+| `tool/tests/test_portable.py:177` `test_names_do_not_leak_into_signatures` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceNamesDoNotLeakIntoSignatures` | Port command signatures |
+| `tool/tests/test_portable.py:184` `test_real_subcommands_still_split` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceRealSubcommandsStillSplit` | Port command signatures |
+| `tool/tests/test_portable.py:190` `test_distinct_actions_stay_distinct` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceDistinctActionsStayDistinct` | Port command signatures |
+| `tool/tests/test_portable.py:195` `test_pipelines_yield_one_signature_per_segment` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferencePipelinesYieldOneSignaturePerSegment` | Port command signatures |
+| `tool/tests/test_portable.py:199` `test_quoted_separators_do_not_split` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceQuotedSeparatorsDoNotSplit` | Port command signatures |
+| `tool/tests/test_portable.py:202` `test_trivial_commands_are_ignored` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceTrivialCommandsAreIgnored` | Port command signatures |
+| `tool/tests/test_portable.py:230` `test_every_shape_produces_a_shell_record` | `internal/sage/capture` | SAGE-002 | pending | — | `TestReferenceEveryShapeProducesAShellRecord` | Port harness payload normalization |
+| `tool/tests/test_portable.py:238` `test_string_encoded_arguments_are_parsed` | `internal/sage/capture` | SAGE-002 | pending | — | `TestReferenceStringEncodedArgumentsAreParsed` | Port harness payload normalization |
+| `tool/tests/test_portable.py:244` `test_failure_shapes_are_detected` | `internal/sage/capture` | SAGE-002 | pending | — | `TestReferenceFailureShapesAreDetected` | Port harness payload normalization |
+| `tool/tests/test_portable.py:257` `test_search_tools_become_ripgrep` | `internal/sage/capture` | SAGE-002 | pending | — | `TestReferenceSearchToolsBecomeRipgrep` | Port harness payload normalization |
+| `tool/tests/test_portable.py:271` `test_edit_tools_are_documented_once_per_kind` | `internal/sage/capture` | SAGE-002 | pending | — | `TestReferenceEditToolsAreDocumentedOncePerKind` | Port harness payload normalization |
+| `tool/tests/test_portable.py:279` `test_unknown_payload_is_ignored_not_crashed` | `internal/sage/capture` | SAGE-002 | pending | — | `TestReferenceUnknownPayloadIsIgnoredNotCrashed` | Port harness payload normalization |
+| `tool/tests/test_portable.py:286` `test_windows_paths_do_not_duplicate_hooks_on_reinstall` | `internal/sage/hooks` | SAGE-002 | pending | — | `TestReferenceWindowsPathsDoNotDuplicateHooksOnReinstall` | Port additive install/removal |
+| `tool/tests/test_portable.py:300` `test_merge_preserves_foreign_settings_and_is_idempotent` | `internal/sage/hooks` | SAGE-002 | pending | — | `TestReferenceMergePreservesForeignSettingsAndIsIdempotent` | Port additive install/removal |
+| `tool/tests/test_portable.py:319` `test_remove_is_pure_subtraction` | `internal/sage/hooks` | SAGE-002 | pending | — | `TestReferenceRemoveIsPureSubtraction` | Port additive install/removal |
+| `tool/tests/test_portable.py:328` `test_legacy_marker_purges_old_layout` | `internal/sage/hooks` | SAGE-002 | pending | — | `TestReferenceLegacyMarkerPurgesOldLayout` | Port additive install/removal |
+| `tool/tests/test_portable.py:339` `test_missing_file_reports_missing_on_remove` | `internal/sage/hooks` | SAGE-002 | pending | — | `TestReferenceMissingFileReportsMissingOnRemove` | Port additive install/removal |
+| `tool/tests/test_portable.py:344` `test_lock_is_exclusive_and_releasable` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferenceLockIsExclusiveAndReleasable` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:354` `test_stale_lock_is_reclaimed` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferenceStaleLockIsReclaimed` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:363` `test_windows_helpers_request_no_console` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferenceWindowsHelpersRequestNoConsole` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:368` `test_posix_helpers_do_not_receive_windows_flags` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferencePosixHelpersDoNotReceiveWindowsFlags` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:374` `test_real_helper_has_no_console_and_preserves_piped_input` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferenceRealHelperHasNoConsoleAndPreservesPipedInput` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:382` `test_detached_process_has_no_console` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferenceDetachedProcessHasNoConsole` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:397` `test_tasklist_access_failure_does_not_report_a_dead_process` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferenceTasklistAccessFailureDoesNotReportADeadProcess` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:402` `test_dead_pid_is_not_alive` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferenceDeadPidIsNotAlive` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:408` `test_missing_pidfile_is_not_alive` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferenceMissingPidfileIsNotAlive` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:412` `test_own_pid_with_fresh_touch_is_alive` | `internal/sage/importer` | SAGE-002 | pending | — | `TestReferenceOwnPidWithFreshTouchIsAlive` | Adapt to daemon-owned lifecycle |
+| `tool/tests/test_portable.py:457` `test_gitignored_runtime_is_never_dirty` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferenceGitignoredRuntimeIsNeverDirty` | Port runtime-ignore isolation |
+| `tool/tests/test_portable.py:461` `test_nested_knowledge_folder_commits_with_root_relative_paths` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferenceNestedKnowledgeFolderCommitsWithRootRelativePaths` | Port root-relative Sage-owned commits |
+| `tool/tests/test_portable.py:471` `test_preexisting_work_is_left_uncommitted` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferencePreexistingWorkIsLeftUncommitted` | Preserve unrelated work |
+| `tool/tests/test_portable.py:479` `test_entangled_file_is_skipped_not_guessed` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferenceEntangledFileIsSkippedNotGuessed` | Skip ownership-ambiguous files |
+| `tool/tests/test_portable.py:489` `test_user_staged_work_stays_staged` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferenceUserStagedWorkStaysStaged` | Preserve the user's index |
+| `tool/tests/test_portable.py:499` `test_paths_with_spaces_survive` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferencePathsWithSpacesSurvive` | Port path-safe commits |
+| `tool/tests/test_portable.py:505` `test_deletion_by_writer_is_committed` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferenceDeletionByWriterIsCommitted` | Track Sage-owned deletions |
+| `tool/tests/test_portable.py:512` `test_nothing_of_ours_makes_no_commit` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferenceNothingOfOursMakesNoCommit` | Avoid empty commits |
+| `tool/tests/test_portable.py:518` `test_auto_commit_off_is_respected` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferenceAutoCommitOffIsRespected` | Respect the configured local-commit switch |
+| `tool/tests/test_portable.py:526` `test_non_repo_is_a_no_op` | `internal/sage/knowledge/gitcommit` | SAGE-003 | pending | — | `TestReferenceNonRepoIsANoOp` | Never require a Git repository |
+| `tool/tests/test_portable.py:547` `test_an_existing_entry_routes_its_whole_binary` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceAnExistingEntryRoutesItsWholeBinary` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:553` `test_a_binary_the_list_never_knew_still_routes` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceABinaryTheListNeverKnewStillRoutes` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:559` `test_unknown_binary_has_no_route_yet` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceUnknownBinaryHasNoRouteYet` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:562` `test_remembered_decisions_survive_before_any_entry_exists` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceRememberedDecisionsSurviveBeforeAnyEntryExists` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:566` `test_entries_win_over_a_stale_remembered_route` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceEntriesWinOverAStaleRememberedRoute` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:571` `test_title_is_read_back_from_the_file` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceTitleIsReadBackFromTheFile` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:575` `test_skipped_and_readme_never_become_routes` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceSkippedAndReadmeNeverBecomeRoutes` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:579` `test_filename_cannot_escape_the_knowledge_base` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceFilenameCannotEscapeTheKnowledgeBase` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:590` `test_fallback_is_a_file_of_its_own` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceFallbackIsAFileOfItsOwn` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:593` `test_merge_moves_entries_and_repoints_routing` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceMergeMovesEntriesAndRepointsRouting` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:605` `test_merge_is_a_no_op_for_a_missing_file` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceMergeIsANoOpForAMissingFile` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:608` `test_a_correction_outlives_the_classifier` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceACorrectionOutlivesTheClassifier` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:615` `test_parses_heading_sigs_and_commands` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceParsesHeadingSigsAndCommands` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:623` `test_multiple_sigs_on_one_entry` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceMultipleSigsOnOneEntry` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:628` `test_action_is_derived_from_the_command_block` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceActionIsDerivedFromTheCommandBlock` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:631` `test_same_action_different_flags_is_a_match` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceSameActionDifferentFlagsIsAMatch` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:636` `test_different_subcommand_is_not_a_match` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceDifferentSubcommandIsNotAMatch` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:649` `test_add_sig_appends_and_is_idempotent` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceAddSigAppendsAndIsIdempotent` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:658` `test_insert_creates_file_with_header` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceInsertCreatesFileWithHeader` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:665` `test_insert_reuses_an_existing_section` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceInsertReusesAnExistingSection` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:674` `test_insert_preserves_earlier_entries` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceInsertPreservesEarlierEntries` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:681` `test_skipped_file_records_the_sig` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceSkippedFileRecordsTheSig` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:685` `test_documented_sigs_spans_every_file` | `internal/sage/knowledge` | SAGE-003 | pending | — | `TestReferenceDocumentedSigsSpansEveryFile` | Port routing, merge, and rendering |
+| `tool/tests/test_portable.py:703` `test_clean_response` | `internal/sage/distill + knowledge` | SAGE-003 | partial | `internal/sage/distill/distill_test.go#TestParseAcceptsFencedChatterAndCleansFields` | `TestReferenceCleanResponse` | Partial: `TestParseAcceptsFencedChatterAndCleansFields`; Markdown writing remains |
+| `tool/tests/test_portable.py:708` `test_answer_wrapped_in_a_fence_or_chatter` | `internal/sage/distill + knowledge` | SAGE-003 | partial | `internal/sage/distill/distill_test.go#TestParseAcceptsFencedChatterAndCleansFields` | `TestReferenceAnswerWrappedInAFenceOrChatter` | Partial: `TestParseAcceptsFencedChatterAndCleansFields`; Markdown writing remains |
+| `tool/tests/test_portable.py:716` `test_model_emitted_sig_is_stripped` | `internal/sage/distill + knowledge` | SAGE-003 | partial | `internal/sage/distill/distill_test.go#TestParseAcceptsFencedChatterAndCleansFields` | `TestReferenceModelEmittedSigIsStripped` | Partial: `TestParseAcceptsFencedChatterAndCleansFields`; Markdown writing remains |
+| `tool/tests/test_portable.py:723` `test_skip_verdict_is_distinguished_from_malformed` | `internal/sage/distill + knowledge` | SAGE-003 | implemented | `internal/sage/distill/distill_test.go#TestParseDistinguishesSkipFromMalformed` | — | Implemented by `TestParseDistinguishesSkipFromMalformed` |
+| `tool/tests/test_portable.py:735` `test_empty_commands_fall_back_to_the_captured_command` | `internal/sage/distill + knowledge` | SAGE-003 | implemented | `internal/sage/distill/distill_test.go#TestParseAcceptsFencedChatterAndCleansFields` | — | Implemented by `TestParseAcceptsFencedChatterAndCleansFields` |
+| `tool/tests/test_portable.py:741` `test_garbage_is_rejected_not_written` | `internal/sage/distill + knowledge` | SAGE-003 | partial | `internal/sage/distill/distill_test.go#TestParseDistinguishesSkipFromMalformed` | `TestReferenceGarbageIsRejectedNotWritten` | Partial: `TestParseDistinguishesSkipFromMalformed`; writer remains |
+| `tool/tests/test_portable.py:759` `test_renders_a_parseable_entry` | `internal/sage/distill + knowledge` | SAGE-003 | pending | — | `TestReferenceRendersAParseableEntry` | Port validated model output and deterministic fallback |
+| `tool/tests/test_portable.py:766` `test_blank_notes_omits_the_bullet` | `internal/sage/distill + knowledge` | SAGE-003 | pending | — | `TestReferenceBlankNotesOmitsTheBullet` | Port validated model output and deterministic fallback |
+| `tool/tests/test_portable.py:770` `test_multiline_prose_is_flattened` | `internal/sage/distill + knowledge` | SAGE-003 | pending | — | `TestReferenceMultilineProseIsFlattened` | Port validated model output and deterministic fallback |
+| `tool/tests/test_portable.py:777` `test_exact_and_case_insensitive_match_reuse` | `internal/sage/distill + knowledge` | SAGE-003 | pending | — | `TestReferenceExactAndCaseInsensitiveMatchReuse` | Port validated model output and deterministic fallback |
+| `tool/tests/test_portable.py:780` `test_near_duplicate_snaps_to_existing` | `internal/sage/distill + knowledge` | SAGE-003 | pending | — | `TestReferenceNearDuplicateSnapsToExisting` | Port validated model output and deterministic fallback |
+| `tool/tests/test_portable.py:785` `test_genuinely_new_section_is_kept` | `internal/sage/distill + knowledge` | SAGE-003 | pending | — | `TestReferenceGenuinelyNewSectionIsKept` | Port validated model output and deterministic fallback |
+| `tool/tests/test_portable.py:788` `test_related_but_differently_worded_sections_are_not_merged` | `internal/sage/distill + knowledge` | SAGE-003 | pending | — | `TestReferenceRelatedButDifferentlyWordedSectionsAreNotMerged` | Port validated model output and deterministic fallback |
+| `tool/tests/test_portable.py:799` `test_empty_falls_back_to_default` | `internal/sage/distill + knowledge` | SAGE-003 | pending | — | `TestReferenceEmptyFallsBackToDefault` | Port validated model output and deterministic fallback |
+| `tool/tests/test_portable.py:824` `test_pause_is_persistent_and_reversible` | `internal/sage/state_test.go` | SAGE-001 | implemented | `internal/sage/state_test.go#TestPauseResumeStateIsPersistentAndIdempotent` | — | `TestPauseResumeStateIsPersistentAndIdempotent` |
+| `tool/tests/test_portable.py:832` `test_resume_when_not_paused_is_harmless` | `internal/sage/state_test.go` | SAGE-001 | implemented | `internal/sage/state_test.go#TestPauseResumeStateIsPersistentAndIdempotent` | — | `TestPauseResumeStateIsPersistentAndIdempotent` |
+| `tool/tests/test_portable.py:836` `test_env_switch_is_process_local` | `internal/sage/config` | SAGE-002 | pending | — | `TestReferenceEnvSwitchIsProcessLocal` | Adapt to Go client configuration; no Python process switch |
+| `tool/tests/test_portable.py:842` `test_paused_stops_capture` | `internal/sage/capture` | SAGE-002 | pending | — | `TestReferencePausedStopsCapture` | Prove against an installed adapter |
+| `tool/tests/test_portable.py:846` `test_log_records_a_decision_per_line` | `internal/sage/capture + logging` | SAGE-002 | pending | — | `TestReferenceLogRecordsADecisionPerLine` | Port silent capture and sanitized diagnostics |
+| `tool/tests/test_portable.py:855` `test_log_flattens_newlines_so_one_action_is_one_line` | `internal/sage/capture + logging` | SAGE-002 | pending | — | `TestReferenceLogFlattensNewlinesSoOneActionIsOneLine` | Port silent capture and sanitized diagnostics |
+| `tool/tests/test_portable.py:859` `test_log_never_raises` | `internal/sage/capture + logging` | SAGE-002 | pending | — | `TestReferenceLogNeverRaises` | Port silent capture and sanitized diagnostics |
+| `tool/tests/test_portable.py:864` `test_enqueue_logs_new_then_known` | `internal/sage/capture + logging` | SAGE-002 | pending | — | `TestReferenceEnqueueLogsNewThenKnown` | Port silent capture and sanitized diagnostics |
+| `tool/tests/test_portable.py:873` `test_new_knowledge_base_never_tracks_the_queue` | `internal/sage/capture + logging` | SAGE-002 | pending | — | `TestReferenceNewKnowledgeBaseNeverTracksTheQueue` | Port silent capture and sanitized diagnostics |
+| `tool/tests/test_portable.py:881` `test_existing_gitignore_is_extended_not_replaced` | `internal/sage/capture + logging` | SAGE-002 | pending | — | `TestReferenceExistingGitignoreIsExtendedNotReplaced` | Port silent capture and sanitized diagnostics |
+| `tool/tests/test_portable.py:892` `test_repeat_within_one_command_line_is_marked` | `internal/sage/capture + logging` | SAGE-002 | pending | — | `TestReferenceRepeatWithinOneCommandLineIsMarked` | Port silent capture and sanitized diagnostics |
+| `tool/tests/test_portable.py:919` `test_stop_and_start_round_trip` | `internal/sage/importer + CLI` | SAGE-002 | pending | — | `TestReferenceStopAndStartRoundTrip` | Adapt watcher to DevTrack daemon |
+| `tool/tests/test_portable.py:925` `test_restart_replaces_the_watcher_and_stop_releases_it` | `internal/sage/importer + CLI` | SAGE-002 | pending | — | `TestReferenceRestartReplacesTheWatcherAndStopReleasesIt` | Adapt watcher to DevTrack daemon |
+| `tool/tests/test_portable.py:938` `test_aliases_all_work` | `internal/sage/importer + CLI` | SAGE-002 | pending | — | `TestReferenceAliasesAllWork` | Adapt watcher to DevTrack daemon |
+| `tool/tests/test_portable.py:948` `test_a_typo_is_loud_rather_than_a_silent_no_op` | `internal/sage/importer + CLI` | SAGE-002 | pending | — | `TestReferenceATypoIsLoudRatherThanASilentNoOp` | Adapt watcher to DevTrack daemon |
+| `tool/tests/test_portable.py:954` `test_stop_records_its_reason` | `internal/sage/importer + CLI` | SAGE-002 | pending | — | `TestReferenceStopRecordsItsReason` | Adapt watcher to DevTrack daemon |
+| `tool/tests/test_portable.py:959` `test_hook_verbs_are_silent_and_never_fail` | `internal/sage/importer + CLI` | SAGE-002 | pending | — | `TestReferenceHookVerbsAreSilentAndNeverFail` | Adapt watcher to DevTrack daemon |
+| `tool/tests/test_portable.py:965` `test_a_legacy_shim_cannot_silently_restart_capture` | `internal/sage/importer + CLI` | SAGE-002 | pending | — | `TestReferenceALegacyShimCannotSilentlyRestartCapture` | Adapt watcher to DevTrack daemon |
+| `tool/tests/test_portable.py:971` `test_status_reports_both_states` | `internal/sage/importer + CLI` | SAGE-002 | pending | — | `TestReferenceStatusReportsBothStates` | Adapt watcher to DevTrack daemon |
+| `tool/tests/test_portable.py:1008` `test_normal_reply_is_returned` | `internal/sage/distill` | SAGE-003 | implemented | `internal/llmclient/client_test.go#TestOllamaChatJSONUsesContextAndJSONMode` | — | Implemented by `TestOllamaChatJSONUsesContextAndJSONMode` |
+| `tool/tests/test_portable.py:1011` `test_token_limit_with_no_output_is_a_failure_not_a_verdict` | `internal/sage/distill` | SAGE-003 | partial | `internal/sage/distill/distill_test.go#TestDistillerEmptyModelOutputRemainsRetryable` | `TestReferenceTokenLimitWithNoOutputIsAFailureNotAVerdict` | Retryability is covered with real HTTP transports for Ollama and OpenAI; token-limit-specific diagnostic logging remains. |
+| `tool/tests/test_portable.py:1017` `test_shipped_ollama_backend_has_no_output_cap` | `internal/sage/distill` | SAGE-003 | partial | `internal/llmclient/client_test.go#TestBackgroundJSONRequestsDoNotCapOutput` | `TestReferenceShippedOllamaBackendHasNoOutputCap` | No output cap is covered for both transports; the reference also asserts deterministic temperature zero, which remains pending. |
+| `tool/tests/test_portable.py:1023` `test_text_backend_defers_prompt_file_substitution` | `internal/sage/distill` | SAGE-003 | pending | — | `TestReferenceTextBackendDefersPromptFileSubstitution` | Port model failure semantics |
+| `tool/tests/test_portable.py:1074` `test_documents_and_routes` | `internal/sage/knowledge + distill` | SAGE-003 | partial | `internal/db/sage_events_test.go#TestSageKnowledgeGroupsSearchesAndAttributesEvents` | `TestReferenceDocumentsAndRoutes` | Partial: `TestSageKnowledgeGroupsSearchesAndAttributesEvents` covers model-free routing, persistence, and search; durable worker orchestration, Markdown writing, and final routing remain |
+| `tool/tests/test_portable.py:1081` `test_second_variant_merges_without_calling_the_model` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceSecondVariantMergesWithoutCallingTheModel` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1093` `test_already_documented_sig_is_untouched` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceAlreadyDocumentedSigIsUntouched` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1101` `test_model_outage_is_not_recorded_as_skipped` | `internal/sage/knowledge + distill` | SAGE-003 | partial | `internal/sage/distill/distill_test.go#TestDistillerMarksModelFailuresRetryable`; `internal/sage/distill/worker_test.go#TestWorkerPersistsCompleteSkipAndRetryOutcomes` | `TestReferenceModelOutageIsNotRecordedAsSkipped` | Partial: `TestDistillerMarksModelFailuresRetryable` and `TestWorkerPersistsCompleteSkipAndRetryOutcomes`; durable SQLite queue remains |
+| `tool/tests/test_portable.py:1111` `test_skip_verdict_is_recorded_so_it_never_returns` | `internal/sage/knowledge + distill` | SAGE-003 | partial | `internal/sage/distill/worker_test.go#TestWorkerPersistsCompleteSkipAndRetryOutcomes` | `TestReferenceSkipVerdictIsRecordedSoItNeverReturns` | Partial: `TestWorkerPersistsCompleteSkipAndRetryOutcomes`; durable SQLite queue remains |
+| `tool/tests/test_portable.py:1119` `test_malformed_reply_is_retried_under_the_schema` | `internal/sage/knowledge + distill` | SAGE-003 | partial | `internal/sage/distill/distill_test.go#TestParseDistinguishesSkipFromMalformed` | `TestReferenceMalformedReplyIsRetriedUnderTheSchema` | Adaptation: Go requests JSON mode on the first call. Parser rejection is covered; persisted malformed-output retries remain. |
+| `tool/tests/test_portable.py:1136` `test_skip_verdict_is_not_retried` | `internal/sage/knowledge + distill` | SAGE-003 | partial | `internal/sage/distill/distill_test.go#TestDistillerReturnsExplicitSkipWithoutRetry` | `TestReferenceSkipVerdictIsNotRetried` | Partial: `TestDistillerReturnsExplicitSkipWithoutRetry` and worker outcome coverage; durable queue remains |
+| `tool/tests/test_portable.py:1149` `test_unknown_binary_is_classified_once_then_remembered` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceUnknownBinaryIsClassifiedOnceThenRemembered` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1174` `test_classifier_choice_is_sanitised` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceClassifierChoiceIsSanitised` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1190` `test_unreachable_classifier_falls_back_to_its_own_file` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceUnreachableClassifierFallsBackToItsOwnFile` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1202` `test_existing_sections_are_offered_to_the_model` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceExistingSectionsAreOfferedToTheModel` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1215` `test_agent_prompt_uses_separate_runtime_folder` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceAgentPromptUsesSeparateRuntimeFolder` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1225` `test_runtime_setting_is_relative_to_config` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceRuntimeSettingIsRelativeToConfig` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1230` `test_explicit_kb_override_keeps_runtime_isolated` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceExplicitKbOverrideKeepsRuntimeIsolated` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1234` `test_keyword_search_matches_whole_entries_and_filters_topics` | `internal/sage/knowledge + distill` | SAGE-003 | partial | `internal/db/sage_events_test.go#TestSageKnowledgeGroupsSearchesAndAttributesEvents`; `internal/db/sage_events_test.go#TestSageKnowledgeSearchTreatsFTSSyntaxAsLiteralTerms` | `TestReferenceKeywordSearchMatchesWholeEntriesAndFiltersTopics` | Model-free SQLite grouping/search is covered; full Markdown entry search and topic-filter assertions remain. |
