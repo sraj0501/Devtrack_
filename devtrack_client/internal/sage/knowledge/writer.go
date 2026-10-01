@@ -15,7 +15,7 @@ import (
 )
 
 // Serialize read/modify/replace operations across Writer instances in this
-// process. The daemon is the single process allowed to publish knowledge.
+// process. Cross-process mutations also hold the Sage database writer lock.
 var publicationMu sync.Mutex
 
 const maxTopicBytes = 4 << 20
@@ -34,6 +34,8 @@ type Writer struct {
 // Write reuses an existing signature anywhere in the knowledge directory,
 // preserving user edits and corrected file placement. New entries append to
 // their section in stable document order, matching the pinned reference.
+// When topic is a binary, existing entries and remembered routes select its
+// destination before falling back to the binary's own filename.
 func (w Writer) Write(topic, signature string, draft distill.Draft) (string, error) {
 	body, err := RenderDraft(draft, signature)
 	if err != nil {
@@ -62,6 +64,17 @@ func (w Writer) Write(topic, signature string, draft distill.Draft) (string, err
 		}
 	}
 	name := SafeFilename(topic)
+	routes, err := w.routes()
+	if err != nil {
+		return "", err
+	}
+	for _, route := range routes {
+		if route.Binary == strings.ToLower(strings.TrimSpace(topic)) {
+			name = route.Filename
+			topic = route.Title
+			break
+		}
+	}
 	text, err := w.read(name)
 	if err != nil {
 		return "", err

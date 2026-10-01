@@ -221,6 +221,8 @@ func printBasicUsage() {
 	fmt.Println("SAGE:       sage status|pause|resume|doctor    local capture state")
 	fmt.Println("            sage search <query> [--topic name] search command knowledge")
 	fmt.Println("            sage topics                       list knowledge topics")
+	fmt.Println("            sage routes                       list effective knowledge routes")
+	fmt.Println("            sage route <binary> <topic>       remember a Markdown destination")
 	fmt.Println("            sage harness list|install|uninstall <name>")
 	fmt.Println()
 	fmt.Println("ISSUES:     issues                                 browse assigned tickets (TUI)")

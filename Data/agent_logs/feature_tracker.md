@@ -1,5 +1,13 @@
 # DevTrack Feature Tracker
 
+## 2026-10-01 — TASK-157 persistent routing and publication
+
+The task branch publishes durable drafts to Markdown and supports `sage routes` / `sage route`.
+Routes survive restart; existing entries override remembered destinations after manual moves.
+Windows full suite/vet and Linux focused race/vet pass. The reference ledger now has 22 implemented,
+15 partial, and 99 pending scenarios. Next: merge/refile, diagnostics, full-entry search, safe
+local commits, and end-to-end closure. Evidence: `docs/SAGE_ROUTING_QUALIFICATION.md`.
+
 ## 2026-09-30 — TASK-157 deterministic Markdown library
 
 The Sage task branch now includes safe topic filenames, deterministic rendering and parsing,

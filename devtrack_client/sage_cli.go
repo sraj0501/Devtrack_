@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,14 +22,45 @@ import (
 // model, daemon, network request, or Git operation.
 func routeSage(args []string) (sub string, rest []string, err error) {
 	if len(args) == 0 {
-		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|doctor|harness")
+		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|routes|route|doctor|harness")
 	}
 	switch args[0] {
-	case "status", "pause", "resume", "doctor", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics":
+	case "status", "pause", "resume", "doctor", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route":
 		return args[0], args[1:], nil
 	default:
 		return "", nil, fmt.Errorf("unknown Sage command %q", args[0])
 	}
+}
+
+func runSageRoutes(sub string, args []string, output io.Writer) error {
+	if sub == "routes" && len(args) != 0 {
+		return fmt.Errorf("usage: devtrack sage routes")
+	}
+	if sub == "route" && (len(args) != 2 || !sageknowledge.ValidRouteBinary(strings.ToLower(strings.TrimSpace(args[0])))) {
+		return fmt.Errorf("usage: devtrack sage route <binary> <topic>")
+	}
+	root, err := sageRoot()
+	if err != nil {
+		return err
+	}
+	writer := sageknowledge.Writer{Root: config.GetSageKnowledgeDir(root)}
+	if sub == "route" {
+		database, err := NewDatabase()
+		if err != nil {
+			return fmt.Errorf("sage knowledge unavailable: %w", err)
+		}
+		defer database.Close()
+		if err := database.RememberSageRoute(context.Background(), writer, args[0], args[1]); err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(output, "%s -> %s (remembered; existing entries take precedence)\n", strings.ToLower(strings.TrimSpace(args[0])), sageknowledge.SafeFilename(args[1]))
+		return err
+	}
+	routes, err := writer.Routes()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(routes)
 }
 
 func sageRoot() (string, error) {

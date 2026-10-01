@@ -125,6 +125,12 @@ user-visible artifacts. Reprocessing the same events must be byte-stable and dup
 
 ### 4. Add routing and correction operations
 
+2026-10-01: persistent routes, `routes`/`route`, existing-entry precedence after manual moves,
+and publication integration are implemented and locally qualified. Windows suite/vet and Linux
+focused race/vet pass. Nine additional reference scenarios are covered (22 implemented, 15 partial,
+99 pending). See `docs/SAGE_ROUTING_QUALIFICATION.md`. Next implement restart-safe merge/refile;
+simple-command routing does not close compound-action parsing or full-entry search.
+
 Implement persistent routes, manual correction, merge/refile, skipped-action records, sanitized
 topic/filename handling, and the `routes`, `route`, `merge`, and `log` commands. Existing documented
 entries override stale inferred routes, and user corrections survive later classification.

@@ -273,6 +273,8 @@ func (cli *CLI) handleSage() error {
 		return runSageSearch(args, os.Stdout)
 	case "topics":
 		return runSageTopics(args, os.Stdout)
+	case "routes", "route":
+		return runSageRoutes(sub, args, os.Stdout)
 	default:
 		return fmt.Errorf("unknown Sage command %q", sub)
 	}

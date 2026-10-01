@@ -20,6 +20,8 @@ func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
 	}{
 		{[]string{"status"}, "status", nil},
 		{[]string{"search", "git"}, "search", []string{"git"}},
+		{[]string{"routes"}, "routes", nil},
+		{[]string{"route", "git", "version-control"}, "route", []string{"git", "version-control"}},
 		{[]string{"harness", "list"}, "harness", []string{"list"}},
 		{[]string{"hook", "codex"}, "hook", []string{"codex"}},
 	} {
@@ -46,6 +48,36 @@ func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
 	} {
 		if _, _, err := routeSage(args); err == nil {
 			t.Fatalf("routeSage(%q) accepted a removed or unknown command", args)
+		}
+	}
+}
+
+func TestSageRoutesCLIUsesConfiguredKnowledgeAndValidatesBeforeOpeningDatabase(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	root := t.TempDir()
+	t.Setenv("DEVTRACK_SAGE_KNOWLEDGE_DIR", root)
+	w := sageknowledge.Writer{Root: root}
+	if err := w.RememberRoute("git", "version-control"); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := runSageRoutes("routes", nil, &output); err != nil {
+		t.Fatal(err)
+	}
+	var routes []sageknowledge.Route
+	if err := json.Unmarshal(output.Bytes(), &routes); err != nil || len(routes) != 1 || routes[0].Filename != "version-control.md" || routes[0].Source != "remembered" {
+		t.Fatalf("%s %v", output.String(), err)
+	}
+	for _, tc := range []struct {
+		sub  string
+		args []string
+	}{
+		{"routes", []string{"extra"}}, {"route", nil}, {"route", []string{"git"}},
+		{"route", []string{"git", "topic", "extra"}}, {"route", []string{"../bad", "topic"}},
+	} {
+		output.Reset()
+		if err := runSageRoutes(tc.sub, tc.args, &output); err == nil || output.Len() != 0 {
+			t.Fatalf("accepted %s %v", tc.sub, tc.args)
 		}
 	}
 }
