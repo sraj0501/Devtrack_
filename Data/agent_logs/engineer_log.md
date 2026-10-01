@@ -1,5 +1,18 @@
 # DevTrack Engineer Log
 
+## 2026-10-01 — TASK-157 persistent routing
+
+- Commit `ae4ac88`: remembered routes, entry precedence, CLI route/list commands, and publication
+  integration. Windows full suite/vet and Fedora WSL2 focused Sage race/vet passed; ledger check
+  reports 22 implemented, 15 partial, 99 pending. Shared-memory and diff checks passed.
+- Original message: `feat(TASK-157): persist Sage routing corrections`. DevTrack kept it unchanged
+  because local Ollama was unavailable. Commit completed in approximately one second with no
+  raw-Git fallback or post-commit questions.
+- Daemon was stopped; started it and confirmed running PID 31068, connected SQLite and Python
+  health. Ticket auto-link and PM update were not observed; workspace reports no PM integration.
+- Friction: sandbox process startup fails before execution; approved escalated commands work.
+  Routing qualification: `docs/SAGE_ROUTING_QUALIFICATION.md`. Full acceptance remains open.
+
 ## 2026-09-30 — TASK-157 durable Markdown publication
 
 - Continued from `fe50798` on the existing task branch. Added transactional publication enqueue,

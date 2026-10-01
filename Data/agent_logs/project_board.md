@@ -229,6 +229,7 @@ returns HTTP 401. Local qualification does not establish upstream integration of
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 
 **Engineer status (routing, 2026-10-01):** Implemented and locally qualified — persistent routes,
+**Routing implementation commit:** `ae4ac88` — persist Sage routing corrections.
 existing-entry precedence, route/list commands, and publication integration. Windows full suite/vet
 and Linux focused race/vet pass. Nine more reference scenarios are implemented (22 implemented,
 15 partial, 99 pending). Evidence: `docs/SAGE_ROUTING_QUALIFICATION.md`. Next: merge/refile.
