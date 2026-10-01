@@ -235,12 +235,14 @@ Windows full suite/vet and Linux focused race/vet pass. Ledger: 24 implemented, 
 97 pending. Evidence: `docs/SAGE_MERGE_QUALIFICATION.md`. Next: diagnostics, skipped-action records,
 full-entry search reconciliation, and safe local knowledge commits. Full acceptance remains open.
 
+**Merge implementation commit:** `b6b7f81` — add recoverable Sage topic merges.
+
 **Engineer status (routing, 2026-10-01):** Implemented and locally qualified — persistent routes,
-**Routing implementation commit:** `ae4ac88` — persist Sage routing corrections.
 existing-entry precedence, route/list commands, and publication integration. Windows full suite/vet
 and Linux focused race/vet pass. Nine more reference scenarios are implemented (22 implemented,
 15 partial, 99 pending). Evidence: `docs/SAGE_ROUTING_QUALIFICATION.md`. Next: merge/refile.
 Full Sage parity and upstream integration remain open.
+**Routing implementation commit:** `ae4ac88` — persist Sage routing corrections.
 
 **Engineer status (publication, 2026-09-30):** Durable drafts now publish through the daemon.
 **Publication implementation commit:** `e21975e` — publish durable drafts to Markdown.

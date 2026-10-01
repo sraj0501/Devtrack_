@@ -1,5 +1,19 @@
 # DevTrack Engineer Log
 
+## 2026-10-01 — TASK-157 recoverable topic merges
+
+- Commit `b6b7f81`: `sage merge`, bounded recovery journal, route repointing, index repair,
+  publication recovery, and edit-conflict/source-note protection. Windows full suite/vet,
+  Fedora WSL2 focused Sage race/vet, ledger consistency, memory boundary, and diff checks pass.
+- Original message: `feat(TASK-157): add recoverable Sage topic merges`. DevTrack kept it unchanged
+  because local Ollama was unavailable; approximately one second, no raw-Git fallback. Ticket
+  auto-link and PM update were not observed. Friction: LOW for commit; sandbox startup still
+  requires escalation. No full acceptance or hosted-CI claim.
+- Routing checkpoint `ae4ac88` and its outcome log `db009e8` were pushed successfully before
+  this slice. The outcome-log commit used `--no-enhance`, completed successfully without prompts,
+  and the combined commit/push command took approximately four seconds.
+- Evidence: `docs/SAGE_MERGE_QUALIFICATION.md`; next work remains on the board and in shared memory.
+
 ## 2026-10-01 — TASK-157 persistent routing
 
 - Commit `ae4ac88`: remembered routes, entry precedence, CLI route/list commands, and publication
