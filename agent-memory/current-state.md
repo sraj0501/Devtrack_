@@ -4,15 +4,15 @@ description: Active implementation planning and unresolved release follow-ups
 type: project
 ---
 
-**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `F:\git_apps\Personal_Projects\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, neutral ownership for independently used Git/commit-enhancement helpers, and the SAGE-003 neutral LLM transport, structured distiller, and non-blocking worker merged in PR #263. The TASK-157 branch implements durable SQLite claims, daemon lifecycle, deterministic Markdown publication, persistent routing, and restart-safe merge/refile. Next implement safe local commits, full-entry search, diagnostics, and parity closure. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
+**Active product initiative:** Complete DevTrack Sage as the Go-native port of the cross-harness, self-writing command-knowledge product in `F:\git_apps\Personal_Projects\ai_sessions_skills` at `b85a1ab`. Current `dev` includes the SAGE-001/SAGE-002 capture foundation, model-free SAGE-003 search slice, removal of the legacy Git Sage CLI/agent surface, neutral ownership for independently used Git/commit-enhancement helpers, and the SAGE-003 neutral LLM transport, structured distiller, and non-blocking worker merged in PR #263. The TASK-157 branch implements durable SQLite claims, daemon lifecycle, deterministic Markdown publication, persistent routing, and restart-safe merge/refile. Skipped-action records and full-entry search are now also locally qualified. Next implement diagnostics, safe local commits, and parity closure. Playback is not in scope. `initiatives/sage.md` owns the ordered execution plan.
 
-**Latest Sage checkpoint (2026-10-01):** Persistent routing and restart-safe merge/refile are
-locally qualified. The CLI exposes `routes`, `route`, and `merge`; publication follows corrected
-destinations. Windows full suite/vet and Fedora WSL2 focused race/vet pass. The 136-scenario ledger
-records 24 implemented, 15 partial, and 97 pending scenarios. Durable queue and Markdown publication
-are also implemented; retries preserve drafts without repeating model work. Next: diagnostics,
-skipped-action records, full-entry search reconciliation, and safe local knowledge commits.
-Full Sage acceptance remains open. See `docs/SAGE_MERGE_QUALIFICATION.md` for recovery limits.
+**Latest Sage checkpoint (2026-10-01):** Skipped-action Markdown publication and full-entry search
+are locally qualified after routing and restart-safe merge/refile. Skip retries never repeat model
+work. Search and topic listing refresh from current Markdown, including manual edits, moves, merges,
+and deletions. Windows full suite/vet and Fedora WSL2 focused race/vet pass. The 136-scenario ledger
+records 27 implemented, 1 adapted, 12 partial, and 96 pending scenarios. Next: diagnostics and safe
+local knowledge commits, followed by remaining parity and repeated end-to-end acceptance.
+Full Sage acceptance remains open. See `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md` for limits.
 This branch is stacked on TASK-159 follow-up `2e50763`, whose push was independently verified;
 upstream integration and hosted checks remain unverified because the GitHub API returns HTTP 401.
 

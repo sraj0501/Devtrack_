@@ -62,11 +62,18 @@ func (d *Database) createSageQueue() error {
 		completed_ms INTEGER NOT NULL DEFAULT 0
 	);
 	CREATE INDEX IF NOT EXISTS idx_sage_publications_due ON sage_publications(state,next_retry_ms);
-	CREATE TRIGGER IF NOT EXISTS sage_publications_enqueue AFTER UPDATE OF state ON sage_jobs
-	WHEN new.state='distilled' BEGIN
+	CREATE TABLE IF NOT EXISTS sage_entries (
+		filename TEXT NOT NULL, line INTEGER NOT NULL, heading TEXT NOT NULL,
+		body TEXT NOT NULL, commands TEXT NOT NULL, topic_fold TEXT NOT NULL,
+		body_fold TEXT NOT NULL, heading_fold TEXT NOT NULL, commands_fold TEXT NOT NULL,
+		PRIMARY KEY(filename,line)
+	);
+	DROP TRIGGER IF EXISTS sage_publications_enqueue;
+	CREATE TRIGGER sage_publications_enqueue AFTER UPDATE OF state ON sage_jobs
+	WHEN new.state IN ('distilled','skipped') BEGIN
 		INSERT OR IGNORE INTO sage_publications(signature) VALUES(new.signature);
 	END;
-	INSERT OR IGNORE INTO sage_publications(signature) SELECT signature FROM sage_jobs WHERE state='distilled';`)
+	INSERT OR IGNORE INTO sage_publications(signature) SELECT signature FROM sage_jobs WHERE state IN ('distilled','skipped');`)
 	if err != nil {
 		return err
 	}

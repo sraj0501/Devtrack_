@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
 	sageknowledge "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
@@ -197,5 +200,39 @@ func TestSageSearchParsesTopicAndRendersKnowledge(t *testing.T) {
 	}
 	if err := writeSageSearch(store, nil, &bytes.Buffer{}); err == nil {
 		t.Fatal("missing query must fail")
+	}
+}
+
+func TestSageSearchRendersCompleteCurrentEntry(t *testing.T) {
+	database, err := db.NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	w := sageknowledge.Writer{Root: t.TempDir()}
+	draft := distill.Draft{Title: "Review", Section: "Committing", Commands: []string{"git diff --staged"}, What: "Inspect staged changes", Why: "Catch subtle regressions", Example: "Before commit", Notes: "Preserve this complete note"}
+	if _, err := w.Write("git", "abcdef01", draft); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteSkipped("abcdef02"); err != nil {
+		t.Fatal(err)
+	}
+	store := sageEntryStore{database: database, writer: w}
+	var out bytes.Buffer
+	if err := writeSageSearch(store, []string{"subtle", "--topic", "git"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"git.md:", "### Review", "git diff --staged", "Catch subtle regressions", "Preserve this complete note"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("missing %q: %s", want, out.String())
+		}
+	}
+	if strings.Contains(out.String(), "Skipped action") {
+		t.Fatal("skip appeared in search")
+	}
+	for _, args := range [][]string{{" "}, {"git", "--topic", ""}, {"git", "--topic", "git", "--topic", "other"}} {
+		if err := writeSageSearch(store, args, &bytes.Buffer{}); err == nil {
+			t.Fatalf("accepted invalid args: %v", args)
+		}
 	}
 }

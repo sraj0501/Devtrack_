@@ -1,5 +1,14 @@
 # DevTrack Feature Tracker
 
+## 2026-10-01 — TASK-157 skipped records and full-entry search
+
+Explicit skips publish idempotent `_skipped.md` signatures through the durable publication queue;
+failures retry without repeating the model. Search returns complete current Markdown entries with
+literal AND keywords, topic filters, and reference ranking. Search/topics reconcile manual edits,
+moves, merges, and deletions. Windows full suite/vet and Linux focused race/vet pass. Ledger:
+27 implemented, 1 adapted, 12 partial, 96 pending. Next: diagnostics and safe local commits.
+Evidence and limits: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Full Sage acceptance remains open.
+
 ## 2026-10-01 — TASK-157 restart-safe merge/refile
 
 `sage merge` moves entries with their signatures, redirects routes, and repairs the topic index.

@@ -180,6 +180,13 @@ Acceptance:
 - Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
   push to a remote.
 
+Latest implementation checkpoint (2026-10-01): TASK-157 now implements durable queue/publication,
+routing, recoverable merge/refile, skipped-action Markdown, and full-entry search/topic listing.
+Search refreshes from current Markdown and reconciles moved/deleted publication filenames.
+Windows full suite/vet and Linux focused race/vet pass. Details and limits:
+`docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Diagnostics, safe local commits, and final acceptance
+remain open. The following dated entries describe earlier foundations.
+
 Implementation status (2026-09-20): the first model-free slice is implemented. Imported events
 are grouped transactionally by normalized signature into deterministic knowledge records with
 source attribution, command-family topics, occurrence/outcome counts, and an FTS5 index.

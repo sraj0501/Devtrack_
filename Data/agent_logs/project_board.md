@@ -228,6 +228,13 @@ returns HTTP 401. Local qualification does not establish upstream integration of
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 
+**Latest engineer status (skips/search, 2026-10-01):** Implemented and locally qualified — durable
+skipped-action Markdown records with replay/backfill, whole-entry literal search, topic filtering,
+and reconciliation after edits, moves, merges, deletions, and restart. Windows full suite/vet and
+Linux focused race/vet pass. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending.
+Evidence: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Next: diagnostics and safe local commits.
+Full Sage acceptance remains open.
+
 **Latest engineer status (merge/refile, 2026-10-01):** Locally qualified — `sage merge` preserves
 entries/signatures, redirects routes, repairs the index, and recovers interrupted writes without
 duplicates. Conflicting edits and unstructured source notes are preserved through explicit errors.

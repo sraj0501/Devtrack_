@@ -131,8 +131,14 @@ focused race/vet pass. Nine additional reference scenarios are covered (22 imple
 99 pending). See `docs/SAGE_ROUTING_QUALIFICATION.md`. Restart-safe merge/refile is now also
 locally qualified (`docs/SAGE_MERGE_QUALIFICATION.md`): journal replay, edit-conflict detection,
 route repointing, and index repair. The ledger is now 24 implemented, 15 partial, 97 pending.
-Next: skipped-action records and diagnostics, then full-entry search reconciliation and safe
-local commits. Simple-command routing does not close compound-action parsing or action equivalence.
+Skipped-action records and full-entry search are now locally qualified (2026-10-01).
+Terminal skips publish atomic, idempotent `_skipped.md` signatures with a fixed safe reason;
+publication failure never repeats model work. Search and topics transactionally refresh a SQLite
+cache from whole Markdown entries and reconcile moved/deleted publication filenames. Literal AND
+keywords, Unicode case folding, topic filtering, and reference ranking are covered. Windows full
+suite/vet and Linux focused race/vet pass. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending.
+See `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Next: diagnostics and safe local commits.
+Simple-command routing does not close compound-action parsing or action equivalence.
 
 Implement persistent routes, manual correction, merge/refile, skipped-action records, sanitized
 topic/filename handling, and the `routes`, `route`, `merge`, and `log` commands. Existing documented

@@ -168,6 +168,11 @@ corrupt an existing knowledge file, and unsafe topic/path values cannot escape t
 
 ### 7. Complete routing, safe commits, retries, and diagnostics
 
+2026-10-01 checkpoint: routing and recoverable merge/refile, skipped-action records, and full-entry
+search/topic reconciliation are locally qualified on TASK-157. Windows suite/vet and Linux focused
+race/vet pass. Next implement diagnostics and safe local commits; preserve the end-to-end gate.
+Evidence: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`.
+
 1. Add persistent routes, manual correction, merge/refile, skipped-action records, and the
    `routes`, `route`, `merge`, and `log` commands.
 2. Preserve corrections across later classification and let existing documented entries override

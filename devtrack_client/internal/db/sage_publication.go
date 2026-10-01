@@ -44,19 +44,29 @@ func (q *SageQueue) PublishNext(ctx context.Context, writer SagePublisher) (bool
 	if err != nil {
 		return false, err
 	}
-	var raw, topic string
-	err = tx.QueryRowContext(ctx, `SELECT j.draft_json,k.topic FROM sage_jobs j
-		JOIN sage_knowledge k ON k.signature=j.signature WHERE j.signature=? AND j.state='distilled'`, signature).Scan(&raw, &topic)
+	var raw, topic, state string
+	err = tx.QueryRowContext(ctx, `SELECT j.draft_json,k.topic,j.state FROM sage_jobs j
+		JOIN sage_knowledge k ON k.signature=j.signature WHERE j.signature=? AND j.state IN ('distilled','skipped')`, signature).Scan(&raw, &topic, &state)
 	if err != nil {
 		return true, err
 	}
 	var draft distill.Draft
-	err = json.Unmarshal([]byte(raw), &draft)
+	if state == "distilled" {
+		err = json.Unmarshal([]byte(raw), &draft)
+	}
 	var filename string
 	if err == nil && ctx.Err() == nil {
 		// Hash the canonical normalized signature, never the random claim token.
 		digest := sha256.Sum256([]byte(signature))
-		filename, err = writer.Write(topic, hex.EncodeToString(digest[:]), draft)
+		if state == "skipped" {
+			if skipWriter, ok := writer.(interface{ WriteSkipped(string) (string, error) }); ok {
+				filename, err = skipWriter.WriteSkipped(hex.EncodeToString(digest[:]))
+			} else {
+				err = errors.New("publisher does not support skipped records")
+			}
+		} else {
+			filename, err = writer.Write(topic, hex.EncodeToString(digest[:]), draft)
+		}
 	}
 	if ctx.Err() != nil {
 		return true, ctx.Err()

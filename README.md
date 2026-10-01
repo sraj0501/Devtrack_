@@ -410,8 +410,8 @@ explicit session. See [time inference and its limits](docs/WORK_TIME_INFERENCE.m
 
 ### DevTrack Sage — self-writing command knowledge
 
-The development branch currently supports the capture foundation, model-free retrieval, and the
-model boundary for asynchronous distillation:
+Sage provides silent capture and local command knowledge. The TASK-157 branch adds durable
+background publication, routing/merge corrections, skipped-action records, and full-entry search:
 
 ```bash
 devtrack sage harness list
@@ -423,11 +423,13 @@ devtrack sage topics
 
 Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
 service in the hook path, and it does not block the host coding agent. The daemon imports normalized
-events into SQLite, groups repeated command signatures, and provides FTS-backed search with source
-attribution. A neutral Go LLM client, schema-validated structured distiller, and cancellation-aware
-background worker are also present, with local Ollama as the default. This is an infrastructure
-preview, not a complete Sage release: durable queue claims, daemon lifecycle integration,
-self-written Markdown knowledge, routing/correction, and recovery diagnostics remain SAGE-003 work.
+events into SQLite and groups repeated command signatures. A structured background distiller uses
+local Ollama by default; publication retries do not repeat model work. On the TASK-157 branch,
+search returns complete Markdown entries, matching all literal keywords, and `--topic git` filters
+by topic filename. Search reflects manual edits and topic moves; skipped records are excluded.
+This remains a development preview: diagnostics, safe local commits, remaining reference parity,
+and end-to-end release qualification are open. See
+[the current Sage checkpoint](docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md) for tested behavior and limits.
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;
