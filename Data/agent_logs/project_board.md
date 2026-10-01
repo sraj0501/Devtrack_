@@ -228,6 +228,13 @@ returns HTTP 401. Local qualification does not establish upstream integration of
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 
+**Latest engineer status (merge/refile, 2026-10-01):** Locally qualified — `sage merge` preserves
+entries/signatures, redirects routes, repairs the index, and recovers interrupted writes without
+duplicates. Conflicting edits and unstructured source notes are preserved through explicit errors.
+Windows full suite/vet and Linux focused race/vet pass. Ledger: 24 implemented, 15 partial,
+97 pending. Evidence: `docs/SAGE_MERGE_QUALIFICATION.md`. Next: diagnostics, skipped-action records,
+full-entry search reconciliation, and safe local knowledge commits. Full acceptance remains open.
+
 **Engineer status (routing, 2026-10-01):** Implemented and locally qualified — persistent routes,
 **Routing implementation commit:** `ae4ac88` — persist Sage routing corrections.
 existing-entry precedence, route/list commands, and publication integration. Windows full suite/vet

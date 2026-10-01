@@ -1,5 +1,13 @@
 # DevTrack Feature Tracker
 
+## 2026-10-01 — TASK-157 restart-safe merge/refile
+
+`sage merge` moves entries with their signatures, redirects routes, and repairs the topic index.
+Interrupted writes replay without duplicate entries; later file edits cause an explicit conflict.
+Windows full suite/vet and Linux focused race/vet pass. Ledger: 24 implemented, 15 partial,
+97 pending. Next: diagnostics, skipped-action records, full-entry search, and safe local commits.
+Evidence and limits: `docs/SAGE_MERGE_QUALIFICATION.md`. Full Sage acceptance remains open.
+
 ## 2026-10-01 — TASK-157 persistent routing and publication
 
 The task branch publishes durable drafts to Markdown and supports `sage routes` / `sage route`.

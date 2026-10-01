@@ -46,6 +46,9 @@ func (w Writer) Write(topic, signature string, draft distill.Draft) (string, err
 	if err := w.prepare(); err != nil {
 		return "", err
 	}
+	if _, err := w.recoverMerge(); err != nil {
+		return "", err
+	}
 	files, err := w.topics()
 	if err != nil {
 		return "", err
@@ -117,6 +120,7 @@ func balancedFences(text string) bool {
 
 // AddSignature attaches a variant to an existing entry without changing prose.
 // It returns false when already present or the target signature is absent.
+// Cross-process callers must hold the shared Sage database writer lock.
 func (w Writer) AddSignature(topic, existing, variant string) (bool, error) {
 	if !validSignature.MatchString(existing) || !validSignature.MatchString(variant) {
 		return false, errors.New("invalid Sage signature")
@@ -124,6 +128,9 @@ func (w Writer) AddSignature(topic, existing, variant string) (bool, error) {
 	publicationMu.Lock()
 	defer publicationMu.Unlock()
 	if err := w.prepare(); err != nil {
+		return false, err
+	}
+	if _, err := w.recoverMerge(); err != nil {
 		return false, err
 	}
 	name := SafeFilename(topic)

@@ -15,8 +15,8 @@ without an authorized board task and a dedicated branch targeting `dev`.
 - **2026-09-30, durable publication:** Saved drafts now reach Markdown through the daemon,
   with separate durable retries/documented state and file/index replay after interrupted
   acknowledgement. Configured output and spool-to-Markdown restart tests pass. Next implement
-  correction/merge and publication diagnostics; persistent routing is locally qualified as of
-  2026-10-01 (`docs/SAGE_ROUTING_QUALIFICATION.md`). Full-entry search and safe
+  publication diagnostics and skipped-action records; persistent routing and restart-safe
+  merge/refile are locally qualified as of 2026-10-01 (`docs/SAGE_MERGE_QUALIFICATION.md`). Full-entry search and safe
   commits remain open. Evidence: `docs/SAGE_PUBLICATION_QUALIFICATION.md`.
 
 - **2026-09-30, Markdown writer:** TASK-157 now has a qualified Go writer library with atomic

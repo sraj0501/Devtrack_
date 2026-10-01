@@ -404,6 +404,7 @@ func (cli *CLI) printUsage() {
 	fmt.Println("  devtrack sage topics                         List knowledge topics")
 	fmt.Println("  devtrack sage routes                         List effective routes and their source")
 	fmt.Println("  devtrack sage route <binary> <topic>         Remember a future Markdown destination")
+	fmt.Println("  devtrack sage merge <source> <destination>   Move entries and remember their destination")
 	fmt.Println("  devtrack sage harness list|install|uninstall Manage capture adapters")
 	fmt.Println()
 	fmt.Println("SHELL INTEGRATION:")

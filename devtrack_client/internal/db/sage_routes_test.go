@@ -110,3 +110,48 @@ func TestSageRouteCorrectionWaitsForPublicationLock(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSageMergeThenRestartAndPublish(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sage.db")
+	d, err := NewDatabaseAtPath(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { d.Close() }()
+	w := knowledge.Writer{Root: t.TempDir()}
+	ctx := context.Background()
+	initial := distill.Draft{Title: "Grep", Commands: []string{"grep foo"}, What: "Find", Why: "Inspect", Example: "grep foo"}
+	if _, err := w.Write("grep", "aaaaaaaaaaaa", initial); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := d.MergeSageTopics(ctx, w, "grep", "shell"); err != nil || n != 1 {
+		t.Fatalf("%d %v", n, err)
+	}
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
+	d, err = NewDatabaseAtPath(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queueEvent(t, d, "grep bar", "grep bar")
+	q := &SageQueue{Database: d}
+	job, found, err := q.Claim(ctx)
+	if err != nil || !found {
+		t.Fatalf("claim: %v %v", found, err)
+	}
+	initial.Commands = []string{"grep bar"}
+	if err := q.Complete(ctx, job.ID, initial); err != nil {
+		t.Fatal(err)
+	}
+	if found, err := q.PublishNext(ctx, w); err != nil || !found {
+		t.Fatalf("publish: %v %v", found, err)
+	}
+	raw, err := os.ReadFile(filepath.Join(w.Root, "shell.md"))
+	if err != nil || len(knowledge.ParseMarkdown(string(raw))) != 2 {
+		t.Fatalf("%s %v", raw, err)
+	}
+	if _, err := os.Stat(filepath.Join(w.Root, "grep.md")); !os.IsNotExist(err) {
+		t.Fatal("old topic recreated", err)
+	}
+}

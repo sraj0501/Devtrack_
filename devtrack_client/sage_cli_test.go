@@ -21,6 +21,7 @@ func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
 		{[]string{"status"}, "status", nil},
 		{[]string{"search", "git"}, "search", []string{"git"}},
 		{[]string{"routes"}, "routes", nil},
+		{[]string{"merge", "grep", "shell"}, "merge", []string{"grep", "shell"}},
 		{[]string{"route", "git", "version-control"}, "route", []string{"git", "version-control"}},
 		{[]string{"harness", "list"}, "harness", []string{"list"}},
 		{[]string{"hook", "codex"}, "hook", []string{"codex"}},
@@ -53,6 +54,12 @@ func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
 }
 
 func TestSageRoutesCLIUsesConfiguredKnowledgeAndValidatesBeforeOpeningDatabase(t *testing.T) {
+	for _, args := range [][]string{nil, {"source"}, {"source", ""}, {"a", "b", "c"}} {
+		var output bytes.Buffer
+		if err := runSageRoutes("merge", args, &output); err == nil || output.Len() != 0 {
+			t.Fatalf("invalid merge accepted: %v %v", args, err)
+		}
+	}
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	root := t.TempDir()
 	t.Setenv("DEVTRACK_SAGE_KNOWLEDGE_DIR", root)

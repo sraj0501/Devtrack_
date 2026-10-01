@@ -22,10 +22,10 @@ import (
 // model, daemon, network request, or Git operation.
 func routeSage(args []string) (sub string, rest []string, err error) {
 	if len(args) == 0 {
-		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|routes|route|doctor|harness")
+		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|routes|route|merge|doctor|harness")
 	}
 	switch args[0] {
-	case "status", "pause", "resume", "doctor", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route":
+	case "status", "pause", "resume", "doctor", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route", "merge":
 		return args[0], args[1:], nil
 	default:
 		return "", nil, fmt.Errorf("unknown Sage command %q", args[0])
@@ -33,6 +33,9 @@ func routeSage(args []string) (sub string, rest []string, err error) {
 }
 
 func runSageRoutes(sub string, args []string, output io.Writer) error {
+	if sub == "merge" && (len(args) != 2 || strings.TrimSpace(args[0]) == "" || strings.TrimSpace(args[1]) == "") {
+		return fmt.Errorf("usage: devtrack sage merge <source> <destination>")
+	}
 	if sub == "routes" && len(args) != 0 {
 		return fmt.Errorf("usage: devtrack sage routes")
 	}
@@ -44,12 +47,20 @@ func runSageRoutes(sub string, args []string, output io.Writer) error {
 		return err
 	}
 	writer := sageknowledge.Writer{Root: config.GetSageKnowledgeDir(root)}
-	if sub == "route" {
+	if sub == "route" || sub == "merge" {
 		database, err := NewDatabase()
 		if err != nil {
 			return fmt.Errorf("sage knowledge unavailable: %w", err)
 		}
 		defer database.Close()
+		if sub == "merge" {
+			count, err := database.MergeSageTopics(context.Background(), writer, args[0], args[1])
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(output, "moved %d entries: %s -> %s\n", count, sageknowledge.SafeFilename(args[0]), sageknowledge.SafeFilename(args[1]))
+			return err
+		}
 		if err := database.RememberSageRoute(context.Background(), writer, args[0], args[1]); err != nil {
 			return err
 		}

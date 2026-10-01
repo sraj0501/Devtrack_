@@ -35,6 +35,9 @@ func (w Writer) RememberRoute(binary, topic string) error {
 	if err := w.prepare(); err != nil {
 		return err
 	}
+	if _, err := w.recoverMerge(); err != nil {
+		return err
+	}
 	routes, err := w.loadRoutes()
 	if err != nil {
 		return err
@@ -82,6 +85,11 @@ func (w Writer) Routes() ([]Route, error) {
 }
 
 func (w Writer) routes() ([]Route, error) {
+	if pending, err := w.read(mergeFile); err != nil {
+		return nil, err
+	} else if len(pending) != 0 {
+		return nil, errors.New("Sage merge recovery pending; retry the merge")
+	}
 	saved, err := w.loadRoutes()
 	if err != nil {
 		return nil, err

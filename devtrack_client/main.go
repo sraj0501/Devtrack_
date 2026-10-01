@@ -223,6 +223,7 @@ func printBasicUsage() {
 	fmt.Println("            sage topics                       list knowledge topics")
 	fmt.Println("            sage routes                       list effective knowledge routes")
 	fmt.Println("            sage route <binary> <topic>       remember a Markdown destination")
+	fmt.Println("            sage merge <source> <destination> move documented entries between topics")
 	fmt.Println("            sage harness list|install|uninstall <name>")
 	fmt.Println()
 	fmt.Println("ISSUES:     issues                                 browse assigned tickets (TUI)")
