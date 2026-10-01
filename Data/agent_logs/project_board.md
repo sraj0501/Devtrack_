@@ -235,6 +235,8 @@ Linux focused race/vet pass. Ledger: 27 implemented, 1 adapted, 12 partial, 96 p
 Evidence: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Next: diagnostics and safe local commits.
 Full Sage acceptance remains open.
 
+**Skipped/search implementation commit:** `9f2281b` — record skipped actions and search full entries.
+
 **Latest engineer status (merge/refile, 2026-10-01):** Locally qualified — `sage merge` preserves
 entries/signatures, redirects routes, repairs the index, and recovers interrupted writes without
 duplicates. Conflicting edits and unstructured source notes are preserved through explicit errors.

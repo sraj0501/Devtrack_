@@ -2965,3 +2965,16 @@ Pre-existing test failure (test_find_related_projects) confirmed unchanged.
 - Blockers encountered: none
 - One thing that still feels rough: `test_skips_pm_sync_when_nlp_returns_none` had quietly encoded the bug as the expected behavior — a reminder that test names asserting a negative ("skips X") deserve extra scrutiny when the surrounding logic changes, since a passing test gave false confidence the old gate was intentional.
 - Ready for PM review: YES
+
+### [2026-10-01 11:02] TASK-157 — skipped-action records and full-entry search
+
+**Original message**: "feat(TASK-157): record skipped actions and search full entries"
+**DevTrack enhanced it to**: unchanged; local Ollama was unavailable and the helper retained the supplied text.
+**Commit**: `9f2281b` on `features/TASK-157-sage-parity`.
+**Ticket auto-linked**: not reported by the helper; TASK-157 is explicit in branch/message.
+**PM system updated**: NO external update observed; workspace platform is none. Local board and feature tracker updated.
+**Time**: ~2 seconds for the commit helper.
+**Friction**: LOW — daemon already running, no prompts, no raw Git commit fallback.
+**Notes**: Explicit skips now publish idempotent private Markdown records with migration/backfill and restart recovery. Search/topics refresh a SQLite cache of complete Markdown entries, preserving literal reference matching and reflecting corrections, merges, edits, moves, and deletion. Windows full Go suite/vet and Fedora WSL2 focused Sage race/vet pass. Ledger/memory validation and whitespace checks pass. Two initial test expectations incorrectly assumed common literal substrings were absent from Markdown; corrected the fixtures without changing reference matching. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending. Full Sage acceptance remains open; next diagnostics and safe local commits.
+
+The accompanying docs-only checkpoint uses `devtrack git commit --no-enhance`; its purpose is to record the implementation hash and validation outcome before the authorized task-branch push. No merge or installed-binary qualification is claimed.
