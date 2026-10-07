@@ -1,9 +1,25 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-29 (TASK-158 is fully qualified, TASK-160 passed locally and awaits
-integration authorization, the Sage
-distillation foundation and TASK-161 are merged to `dev`, and the rolling `dev-f6b0ec0`
-prerelease is published)_
+_Last updated: 2026-09-30 (TASK-159 implementation merged; local qualification passed;
+schema/E2E follow-up integration and hosted verification remain open)_
+
+## 2026-09-30 — TASK-159: local qualification complete
+
+**Status**: All five product acceptance criteria locally qualified. PR #272's merge is
+recorded locally at `94dbc7c`; the schema/E2E follow-up remains separate.
+
+Full Windows and Fedora WSL2 Go suites passed uncached with the 60-second package timeout;
+vet and both isolated no-send E2E lanes passed. Real-daemon checks verified inferred time,
+45-minute correction persistence after restart, explicit start/stop, and MCP visibility.
+Schema rollback/retry and clock-controlled inference/correction tests passed.
+Evidence: `docs/TASK_159_QUALIFICATION.md`.
+
+**Remaining**: verify hosted checks and integrate the follow-up on
+`fix/TASK-159-schema-transactions`. GitHub CLI currently returns HTTP 401.
+TASK-157 / SAGE-003 remains the next implementation initiative.
+
+The dated reconciliation below is historical; this entry and the project board supersede
+its pre-integration TASK-159/TASK-160 status statements.
 
 ---
 

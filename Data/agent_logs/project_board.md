@@ -192,7 +192,7 @@ The existing upstream task branch (partial commit `aa0d2c0` plus merged TASK-158
 reconciled locally without force; the combined tree passed the full Windows and Ubuntu WSL2 Go
 suite/vet and 75 focused Python contract tests before push.
 
-**[2026-09-21] TASK-159 — Silent automatic time inference (in progress, HIGH).**
+**[2026-09-21] TASK-159 — Silent automatic time inference (locally qualified; follow-up integration pending, HIGH).**
 **Priority:** HIGH; paired with TASK-158 and TASK-157 / SAGE-003.
 **Depends on:** TASK-158 native Linux qualification. **Branch:** `features/TASK-159-silent-time-inference`.
 
@@ -203,18 +203,28 @@ gaps and EOD closure, while preserving raw evidence and user adjustments for aud
 keystrokes, window activity, raw command output, or cloud telemetry.
 
 **Acceptance criteria:**
-- [ ] No commit path asks how long work took.
-- [ ] Local activity/session evidence produces deterministic per-ticket duration without a manual
+- [x] No commit path asks how long work took.
+- [x] Local activity/session evidence produces deterministic per-ticket duration without a manual
       answer after each commit.
-- [ ] Explicit session commands correct inference without discarding the measured value.
-- [ ] Inactivity and EOD closure use real last-activity evidence, not just elapsed time from start.
-- [ ] The algorithm, defaults, privacy boundary, confidence, and corrections are documented and
+- [x] Explicit session commands correct inference without discarding the measured value.
+- [x] Inactivity and EOD closure use real last-activity evidence, not just elapsed time from start.
+- [x] The algorithm, defaults, privacy boundary, confidence, and corrections are documented and
       covered by clock-controlled tests.
 
 **Assigned to:** engineer. **Started:** 2026-09-29.
-**Engineer status:** IN PROGRESS — branch `features/TASK-159-silent-time-inference` starts from
-merged `dev` at `a4a06fb` after TASK-162 restored the no-send E2E gate.
-**Blockers:** none.
+**Engineer status:** Implementation merged through PR #272 at `94dbc7c` (verified in local
+Git history). Qualification continues on `fix/TASK-159-schema-transactions`, including schema
+transaction commit `3c3fedf` and the Windows E2E stdout/stderr separation fix. On 2026-09-30,
+the full native Windows Go suite and vet passed, as did Windows and Fedora WSL2 no-send E2E:
+inferred time, a 45-minute correction surviving daemon restart, explicit start/stop, and MCP
+commit visibility. The Windows restart assertion deliberately crosses a timestamp boundary.
+The full Linux suite and vet also passed after installing the missing PTY utility.
+Both full suites passed uncached with the existing 60-second package timeout; Windows's database
+package completed in 6.915 seconds. All five product acceptance criteria are locally qualified.
+Evidence: `docs/TASK_159_QUALIFICATION.md`. Follow-up integration/hosted verification stays open.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/272
+**Blockers:** Hosted checks and follow-up PR status cannot currently be verified: GitHub CLI
+returns HTTP 401. Local qualification does not establish upstream integration of the follow-up.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and

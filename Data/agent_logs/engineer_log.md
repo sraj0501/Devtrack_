@@ -1,5 +1,21 @@
 # DevTrack Engineer Log
 
+## 2026-09-30 — TASK-159 qualification and shared-state reconciliation
+
+- Qualified schema transaction commit `3c3fedf` and the existing Windows E2E stdout/stderr
+  separation change on `fix/TASK-159-schema-transactions`.
+- Windows Go 1.27.0: full uncached suite with a 60-second package timeout and vet passed;
+  database package completed in 6.915 seconds. Schema rollback/retry passed.
+- Fedora 44 WSL2 Go 1.24.4: full uncached suite with the same timeout and vet passed,
+  including pipe/PTY silent-Git cases after installing the missing `script` utility.
+- Both isolated daemon E2E lanes passed automatic inference, correction, restart persistence,
+  explicit start/stop, MCP commit visibility, and cleanup without outbound delivery.
+- Updated the board, feature tracker, and canonical shared memory. All five product criteria
+  are locally qualified; upstream follow-up integration and hosted verification remain open.
+- No new commit, push, or PR mutation was performed. GitHub CLI returned HTTP 401, so no current
+  hosted result is claimed. Detailed evidence: `docs/TASK_159_QUALIFICATION.md`.
+
+
 ### [2026-09-29 10:45] TASK-160 — deterministic ticket contract committed for upstream review
 
 **Original message**: "feat(TASK-160): enforce deterministic ticket mapping"

@@ -581,7 +581,14 @@ func (d *Database) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_pm_queue_ticket       ON pm_update_queue(ticket_id);
 	`
 
-	if _, err := d.db.Exec(schema); err != nil {
+	// Keep schema writes in one transaction instead of committing every DDL
+	// statement separately, particularly costly on fresh on-disk databases.
+	tx, err := d.beginSchemaTransaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(schema); err != nil {
 		return err
 	}
 
@@ -605,12 +612,14 @@ func (d *Database) initSchema() error {
 		`ALTER TABLE work_sessions ADD COLUMN evidence_count INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE work_session_adjustments ADD COLUMN measured_minutes INTEGER`,
 	} {
-		if _, err := d.db.Exec(alter); err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		if _, err := tx.Exec(alter); err != nil && !strings.Contains(err.Error(), "duplicate column") {
 			return fmt.Errorf("migration failed (%s): %w", alter, err)
 		}
 	}
-	_, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_work_sessions_activity ON work_sessions(measurement_source, repo_path, workspace_name, last_activity_at)`)
-	return err
+	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_work_sessions_activity ON work_sessions(measurement_source, repo_path, workspace_name, last_activity_at)`); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // InsertTrigger inserts a trigger record into the database
@@ -2780,10 +2789,19 @@ func (d *Database) applyMigrationTables() error {
 		`CREATE INDEX IF NOT EXISTS idx_sage_events_occurred ON sage_events(occurred_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_sage_events_signature ON sage_events(signature)`,
 	}
+	tx, err := d.beginSchemaTransaction()
+	if err != nil {
+		return fmt.Errorf("applyMigrationTables: %w", err)
+	}
+	defer tx.Rollback()
 	for _, stmt := range stmts {
-		if _, err := d.db.Exec(stmt); err != nil && !strings.Contains(err.Error(), "already exists") {
+		if _, err := tx.Exec(stmt); err != nil && !strings.Contains(err.Error(), "already exists") {
 			return fmt.Errorf("applyMigrationTables: %w", err)
 		}
+	}
+	// Knowledge backfill manages its own transactions; finish this group first.
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("applyMigrationTables commit: %w", err)
 	}
 	if err := d.createSageKnowledgeTables(); err != nil {
 		return fmt.Errorf("applyMigrationTables sage knowledge: %w", err)
