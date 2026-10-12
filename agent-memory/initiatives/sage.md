@@ -58,11 +58,13 @@ quickly, print nothing, perform no model or network call, and never break an age
   source attribution, command-family topics, FTS5 search, and the `search`/`topics` CLI.
 - PR #263 merged the neutral, context-aware LLM transport, Sage-owned structured distiller, and
   non-blocking background worker into `dev`. Model timeout, idle polling, and retry delay are bounded
-  and configurable for slower offline models. The TASK-157 branch now connects the worker to a
-  durable SQLite queue and daemon lifecycle; upstream integration is still pending.
-- Remaining SAGE-003 work begins with deterministic Markdown,
-  then routing/corrections, safe commits, persisted retries, diagnostics, and capture-to-knowledge
-  closure.
+  and configurable for slower offline models.
+- The TASK-157 branch now connects the worker to a durable SQLite queue and daemon lifecycle and
+  implements deterministic Markdown publication, persistent routing, restart-safe merge/refile,
+  skipped-action records, and full-entry search/topic reconciliation.
+- Remaining SAGE-003 work is truthful diagnostics, safe local knowledge commits, the open parity
+  scenarios, and repeated capture-to-knowledge acceptance. The branch must first reconcile current
+  `dev` commit `a329b6f`, which contains the fully verified TASK-159 follow-up from PR #273.
 
 ## Ordered next steps
 

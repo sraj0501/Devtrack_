@@ -168,11 +168,9 @@ keep coding and check `devtrack doctor`; the Go-native path remains usable and c
 blocked.
 
 > **Current validation status:** The separate TASK-154 server-admin redesign is committed but not
-> integrated into `dev`; review and integrate or retire it before packaged-build acceptance. The
-> merged PR #263/#264 check sets retain historical failed hosted-Windows unit-test jobs; PR #264
-> timed out in SQLite-backed tests while its other Windows lanes passed. PR #265 subsequently
-> passed all 19 hosted checks, including the full Windows test job, restoring a green branch
-> baseline. TASK-158's native-Linux TTY/non-TTY qualification remains separate. The remaining
+> integrated into `dev`; review and integrate or retire it before packaged-build acceptance.
+> TASK-159 and its restart/schema follow-up are merged through PR #273 at `a329b6f`; all post-merge
+> workflows passed and rolling release `dev-a329b6f` matches current `dev`. The remaining
 > release follow-ups also include privacy-reviewed media capture and confirmation of the exact Glama
 > listing path and score badge.
 > See the
@@ -185,11 +183,11 @@ command activity from supported coding harnesses, groups and indexes it locally,
 into searchable, self-writing personal documentation. The Go-native port follows the behavior of
 the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
 
-On the current development branch, the capture pipeline, model-free SQLite search/index slice,
-neutral Go LLM transport, validated structured distiller, and non-blocking background worker are
-implemented. SAGE-003 is not complete or part of the v3.1.1 release: the worker still needs durable
-SQLite claims and daemon lifecycle wiring, followed by deterministic topic Markdown, routing
-corrections, merge/refile, persisted retry diagnostics, and the remaining parity tests. See the
+On the TASK-157 development branch, the capture pipeline, durable SQLite jobs, daemon-owned
+distillation, deterministic Markdown publication, persistent routing, restart-safe merge/refile,
+skipped-action records, and full-entry search are implemented. SAGE-003 is not complete or part of
+the v3.1.1 release: truthful diagnostics, safe local knowledge commits, remaining parity tests, and
+the repeated clean end-to-end acceptance journey remain. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md).
 
@@ -403,7 +401,7 @@ devtrack work report           # EOD narrative in terminal
 devtrack work report --email me@org.com
 ```
 
-In the TASK-159 development implementation, monitored commits produce local time estimates
+On current `dev`, monitored commits produce local time estimates
 without starting a session. `work start|stop|adjust` provides optional explicit timing and
 corrections; `work status` shows the source and confidence. Matching commits attach to an
 explicit session. See [time inference and its limits](docs/WORK_TIME_INFERENCE.md).
