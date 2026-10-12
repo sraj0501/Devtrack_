@@ -2,9 +2,9 @@
 
 _Last reconciled: 2026-10-13 — TASK-159 and its schema/restart follow-up are merged to `dev` through
 PR #273 at `a329b6f`; all post-merge workflows passed and rolling release `dev-a329b6f` is current.
-TASK-157 / SAGE-003 remains active on `features/TASK-157-sage-parity` at `c126a40`, twelve commits
-ahead of its merge base and one `dev` commit behind. Next: reconcile `dev`, then finish diagnostics,
-safe local knowledge commits, parity closure, and repeated end-to-end acceptance. Next unused task
+TASK-157 / SAGE-003 remains active on `features/TASK-157-sage-parity`, now reconciled with current
+`dev` at `a329b6f`. Next: finish diagnostics, safe local knowledge commits, parity closure, and
+repeated end-to-end acceptance. Next unused task
 ID: TASK-163, subject to verification before allocation._
 
 **[2026-09-29] TASK-162 — Align no-send E2E with deterministic ticket contract (complete, P0).**

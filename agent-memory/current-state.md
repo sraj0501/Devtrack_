@@ -6,7 +6,7 @@ type: project
 
 **Active product initiative:** TASK-157 / SAGE-003 is the Go-native port of the cross-harness,
 self-writing command-knowledge product in `F:\git_apps\Personal_Projects\ai_sessions_skills` at
-`b85a1ab`. The active branch is `features/TASK-157-sage-parity` at `c126a40`. It implements durable
+`b85a1ab`. The active branch is `features/TASK-157-sage-parity`. It implements durable
 SQLite claims, daemon lifecycle ownership, deterministic Markdown publication, persistent routing,
 restart-safe merge/refile, skipped-action records, and full-entry search. The 136-scenario ledger
 currently records 27 implemented, 1 adapted, 12 partial, and 96 pending scenarios. Next: truthful
@@ -14,11 +14,10 @@ diagnostics, safe local knowledge commits, remaining parity closure, and the rep
 capture-to-knowledge acceptance journey. Playback is not in scope. `initiatives/sage.md` owns the
 detailed boundaries and execution order.
 
-**Integration state:** The TASK-157 branch is twelve commits ahead of its merge base with `dev` and
-one commit behind current `dev`. PR #273 merged the missing TASK-159 schema/restart follow-up to
-`dev` at `a329b6f` on 2026-10-07. Its general CI, client CI, Windows/Linux no-send E2E, PostgreSQL,
-MCPB, registry, and rolling-release checks passed. Reconcile that `dev` tip into TASK-157 before its
-integration PR; do not describe TASK-159 verification as pending.
+**Integration state:** The TASK-157 branch now contains current `dev` at `a329b6f`, including the
+TASK-159 schema/restart follow-up merged through PR #273 on 2026-10-07. Its general CI, client CI,
+Windows/Linux no-send E2E, PostgreSQL, MCPB, registry, and rolling-release checks passed. Do not
+describe TASK-159 verification as pending.
 
 **Distribution state:** Stable v3.1.1 remains the latest public stable release. The rolling `dev`
 release is `dev-a329b6f`, matching current `origin/dev`. `main` and `dev` have diverged in Git

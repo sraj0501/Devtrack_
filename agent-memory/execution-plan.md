@@ -11,11 +11,11 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
-- Active branch: `features/TASK-157-sage-parity` at `c126a40`.
+- Active branch: `features/TASK-157-sage-parity`.
 - Current integration branch: `origin/dev` at `a329b6f` after PR #273; all post-merge workflows
   passed and the rolling release is `dev-a329b6f`.
-- TASK-157 is twelve commits ahead of its merge base and one commit behind `dev`; reconcile the
-  missing `dev` tip before opening its integration PR.
+- TASK-157 contains current `dev` at `a329b6f`; the branch is ready for an integration PR while
+  remaining SAGE-003 work continues.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, and full-entry search/topic reconciliation.
@@ -24,10 +24,11 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Ordered work
 
-### 1. Reconcile the active Sage branch
+### 1. Reconcile the active Sage branch — complete
 
-Bring current `dev` into TASK-157 without discarding the qualified branch work. Re-run the focused
-Sage, database, daemon, parity-ledger, and cross-platform checks affected by the reconciliation.
+Current `dev` at `a329b6f` is merged into TASK-157 without discarding the qualified branch work.
+Run the focused Sage, database, daemon, parity-ledger, and cross-platform checks on the reconciled
+branch before integration.
 
 Gate: TASK-157 contains PR #273's schema/restart fix and remains cleanly reviewable against `dev`.
 

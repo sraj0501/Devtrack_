@@ -63,8 +63,8 @@ quickly, print nothing, perform no model or network call, and never break an age
   implements deterministic Markdown publication, persistent routing, restart-safe merge/refile,
   skipped-action records, and full-entry search/topic reconciliation.
 - Remaining SAGE-003 work is truthful diagnostics, safe local knowledge commits, the open parity
-  scenarios, and repeated capture-to-knowledge acceptance. The branch must first reconcile current
-  `dev` commit `a329b6f`, which contains the fully verified TASK-159 follow-up from PR #273.
+  scenarios, and repeated capture-to-knowledge acceptance. The branch now contains current `dev`
+  commit `a329b6f`, including the fully verified TASK-159 follow-up from PR #273.
 
 ## Ordered next steps
 
