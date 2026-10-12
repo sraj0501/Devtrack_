@@ -800,6 +800,37 @@ soon as the model is ready. The wizard does not wait for these steps;
 `cd devtrack_server && uv sync --extra ai && uv run python -m backend.webhook_server`.
 Set `DEVTRACK_SERVER_URL` on the client machine.
 
+### Resume the local Windows Docker evaluation stack
+
+This checkout may have an ignored `Data/docker-local/` evaluation workspace created during local
+setup. It keeps PostgreSQL and the Python AI server in Docker while the Go client runs natively so
+Windows filesystem monitoring, hooks, autostart, and IPC can still be exercised. From the repository
+root, restart it after Docker Desktop and Ollama are available:
+
+```powershell
+docker compose -f .\Data\docker-local\compose.yml up -d
+
+$env:DEVTRACK_ENV_FILE = (Resolve-Path .\Data\docker-local\client.env)
+$env:XDG_DATA_HOME = (Resolve-Path .\Data\docker-local\client\xdg)
+.\Data\docker-local\bin\devtrack.exe start
+.\Data\docker-local\bin\devtrack.exe status
+```
+
+The server health endpoint is `http://127.0.0.1:8089/health`, and the embedded admin console is at
+`http://127.0.0.1:8089/admin/`. The ignored `.env` files hold local credentials; never commit them.
+To stop the stack without deleting its PostgreSQL volume:
+
+```powershell
+$env:DEVTRACK_ENV_FILE = (Resolve-Path .\Data\docker-local\client.env)
+$env:XDG_DATA_HOME = (Resolve-Path .\Data\docker-local\client\xdg)
+.\Data\docker-local\bin\devtrack.exe stop
+docker compose -f .\Data\docker-local\compose.yml stop
+```
+
+These paths describe the generated evaluation workspace on this machine, not files supplied by a
+fresh clone. For a reproducible repository Compose deployment, use the instructions in
+[Installation](docs/INSTALLATION.md#full-local-compose-deployment).
+
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the full setup walkthrough.
 
 ---

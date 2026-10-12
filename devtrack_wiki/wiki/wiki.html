@@ -846,6 +846,18 @@ cp .env_sample .env
 docker compose up -d devtrack_server
 docker compose ps</code></pre>
 
+<h2>Windows Hybrid Evaluation</h2>
+<p>To test the containerized Python/PostgreSQL path without losing native Windows behavior, run those services in Docker and run the Go client on the host in external mode. This preserves Windows filesystem notifications, Git hooks, login-time autostart and IPC while isolating the server dependencies.</p>
+<p>If a maintainer bootstrap created this checkout's ignored <code>Data/docker-local/</code> workspace, resume it from the repository root:</p>
+<pre><code class="language-powershell">docker compose -f .\\Data\\docker-local\\compose.yml up -d
+
+$env:DEVTRACK_ENV_FILE = (Resolve-Path .\\Data\\docker-local\\client.env)
+$env:XDG_DATA_HOME = (Resolve-Path .\\Data\\docker-local\\client\\xdg)
+.\\Data\\docker-local\\bin\\devtrack.exe start
+.\\Data\\docker-local\\bin\\devtrack.exe status</code></pre>
+<p>The local health endpoint is <code>http://127.0.0.1:8089/health</code> and the embedded admin console is <code>http://127.0.0.1:8089/admin/</code>. The generated Compose and environment files are deliberately ignored and contain local-only credentials.</p>
+<p>A Linux container cannot read a Windows repository path unless the repository is mounted into the container and the path is translated. Without that mapping, commit-message enrichment and queue staging still work, but server-side diff enrichment degrades. Keep the native client for host-specific acceptance and use a fully Linux-mounted workspace when validating complete server-side diff analysis.</p>
+
 <h2>Verify the Database Before Starting DevTrack</h2>
 <pre><code class="language-bash">docker ps --filter name=devtrack-postgres
 docker logs devtrack-postgres --tail 30
