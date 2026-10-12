@@ -7,7 +7,7 @@ larger than Git: it captures useful command and tool activity from supported cod
 and turns that activity into searchable, self-writing personal command knowledge.
 
 DevTrack Sage is implemented entirely in Go. The Python implementation in
-`D:\git_apps\ai_sessions_skills` is the behavioral reference for the port, not a runtime
+`F:\git_apps\Personal_Projects\ai_sessions_skills` is the behavioral reference for the port, not a runtime
 dependency. The authoritative `tool/` baseline is current reference commit `b85a1ab`. The parity
 matrix must be refreshed whenever that baseline changes; generated personal knowledge content is
 test evidence, not source code to copy.
@@ -180,7 +180,14 @@ Acceptance:
 - Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
   push to a remote.
 
-Implementation status (2026-09-20): the first model-free slice is implemented. Imported events
+Latest implementation checkpoint (2026-10-01): TASK-157 now implements durable queue/publication,
+routing, recoverable merge/refile, skipped-action Markdown, and full-entry search/topic listing.
+Search refreshes from current Markdown and reconciles moved/deleted publication filenames.
+Windows full suite/vet and Linux focused race/vet pass. Details and limits:
+`docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Diagnostics, safe local commits, and final acceptance
+remain open. The following dated entries describe earlier foundations.
+
+Historical checkpoint (2026-09-20): the first model-free slice was implemented. Imported events
 are grouped transactionally by normalized signature into deterministic knowledge records with
 source attribution, command-family topics, occurrence/outcome counts, and an FTS5 index.
 `devtrack sage search <query> [--topic <topic>]` and `devtrack sage topics` render stable Markdown.
@@ -192,7 +199,8 @@ Implementation update (2026-09-21): the first structured-distillation boundary n
 neutral context-aware `internal/llmclient` transport supports Ollama and OpenAI-compatible JSON
 generation, and `internal/sage/distill` validates structured drafts, distinguishes explicit skips
 from retryable failures, and exposes a daemon-owned worker whose `Start` method returns immediately.
-This slice is not yet wired to a durable SQLite distillation queue or Markdown writer.
+This historical slice was later wired to the durable SQLite distillation and Markdown publication
+paths described in the latest checkpoint above.
 
 ### SAGE-004 — Cross-harness expansion
 
@@ -259,12 +267,8 @@ for inspection or export.
 
 ## Immediate next step
 
-SAGE-001 and SAGE-002 are complete. SAGE-003 now has its model-free index/search foundation plus
-the shared LLM transport, validated structured-draft parser, and non-blocking worker boundary.
-After the repository-wide TASK-160 deterministic ticket contract and TASK-159 automatic-time work,
-first reconcile every reference scenario with an exact Go test and explicit status in the parity
-matrix. Then wire that worker to durable SQLite claims and daemon lifecycle and implement
-deterministic topic Markdown, route correction, merge/refile, skipped-action records, safe local
-commits, and retry semantics. Keep the parity matrix executable as each slice lands. Do not expand
-to another harness until one complete capture-to-self-written-knowledge journey passes twice from
-a clean isolated installation.
+SAGE-001 and SAGE-002 are complete. TASK-157 has implemented the SAGE-003 durable queue and daemon
+lifecycle, deterministic Markdown publication, route correction, restart-safe merge/refile,
+skipped-action records, and full-entry search. Reconcile current `dev`, then implement truthful
+diagnostics and safe local knowledge commits, close the executable parity matrix, and run the clean
+capture-to-self-written-knowledge journey twice. Do not expand to another harness before that gate.

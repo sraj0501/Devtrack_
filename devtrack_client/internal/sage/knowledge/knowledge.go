@@ -13,17 +13,19 @@ var queryToken = regexp.MustCompile(`[A-Za-z0-9][A-Za-z0-9._-]*`)
 
 // Entry is the stable, privacy-minimized view returned by Sage search.
 type Entry struct {
-	ID              int64
-	Signature       string
-	Topic           string
-	Command         string
-	ProjectID       string
-	UseCount        int
-	SuccessCount    int
-	FailureCount    int
-	FirstSeen       time.Time
-	LastSeen        time.Time
-	SourceHarnesses []string
+	Filename, Heading, Body string
+	Line                    int
+	ID                      int64
+	Signature               string
+	Topic                   string
+	Command                 string
+	ProjectID               string
+	UseCount                int
+	SuccessCount            int
+	FailureCount            int
+	FirstSeen               time.Time
+	LastSeen                time.Time
+	SourceHarnesses         []string
 }
 
 // Topic summarizes a command family without exposing event payloads.
@@ -65,6 +67,10 @@ func RenderEntries(entries []Entry) string {
 		if i > 0 {
 			out.WriteByte('\n')
 		}
+		if entry.Body != "" {
+			fmt.Fprintf(&out, "%s:%d\n\n%s\n", entry.Filename, entry.Line, strings.TrimRight(entry.Body, "\n"))
+			continue
+		}
 		sources := append([]string(nil), entry.SourceHarnesses...)
 		sort.Strings(sources)
 		fmt.Fprintf(&out, "## %s\n\n", entry.Signature)
@@ -87,6 +93,10 @@ func RenderTopics(topics []Topic) string {
 	var out strings.Builder
 	out.WriteString("# Sage topics\n\n")
 	for _, topic := range topics {
+		if topic.LastSeen.IsZero() {
+			fmt.Fprintf(&out, "- `%s`: %d entries\n", topic.Name, topic.Entries)
+			continue
+		}
 		fmt.Fprintf(&out, "- `%s`: %d entries, %d uses (last %s)\n",
 			topic.Name, topic.Entries, topic.Uses, topic.LastSeen.UTC().Format(time.RFC3339))
 	}

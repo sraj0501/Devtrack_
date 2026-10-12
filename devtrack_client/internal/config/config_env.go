@@ -912,6 +912,14 @@ func GetHTTPTimeoutLong() int {
 	return positiveIntEnv("HTTP_TIMEOUT_LONG", 60)
 }
 
+// GetSageKnowledgeDir resolves the daemon's portable Markdown output directory.
+func GetSageKnowledgeDir(sageRoot string) string {
+	if dir := strings.TrimSpace(os.Getenv("DEVTRACK_SAGE_KNOWLEDGE_DIR")); dir != "" {
+		return dir
+	}
+	return filepath.Join(sageRoot, "knowledge")
+}
+
 // GetSageModelTimeoutSecs bounds one background local-model request. The
 // three-minute default is forgiving for offline models without waiting forever.
 func GetSageModelTimeoutSecs() int {

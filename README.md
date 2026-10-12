@@ -168,11 +168,9 @@ keep coding and check `devtrack doctor`; the Go-native path remains usable and c
 blocked.
 
 > **Current validation status:** The separate TASK-154 server-admin redesign is committed but not
-> integrated into `dev`; review and integrate or retire it before packaged-build acceptance. The
-> merged PR #263/#264 check sets retain historical failed hosted-Windows unit-test jobs; PR #264
-> timed out in SQLite-backed tests while its other Windows lanes passed. PR #265 subsequently
-> passed all 19 hosted checks, including the full Windows test job, restoring a green branch
-> baseline. TASK-158's native-Linux TTY/non-TTY qualification remains separate. The remaining
+> integrated into `dev`; review and integrate or retire it before packaged-build acceptance.
+> TASK-159 and its restart/schema follow-up are merged through PR #273 at `a329b6f`; all post-merge
+> workflows passed and rolling release `dev-a329b6f` matches current `dev`. The remaining
 > release follow-ups also include privacy-reviewed media capture and confirmation of the exact Glama
 > listing path and score badge.
 > See the
@@ -185,11 +183,11 @@ command activity from supported coding harnesses, groups and indexes it locally,
 into searchable, self-writing personal documentation. The Go-native port follows the behavior of
 the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
 
-On the current development branch, the capture pipeline, model-free SQLite search/index slice,
-neutral Go LLM transport, validated structured distiller, and non-blocking background worker are
-implemented. SAGE-003 is not complete or part of the v3.1.1 release: the worker still needs durable
-SQLite claims and daemon lifecycle wiring, followed by deterministic topic Markdown, routing
-corrections, merge/refile, persisted retry diagnostics, and the remaining parity tests. See the
+On the TASK-157 development branch, the capture pipeline, durable SQLite jobs, daemon-owned
+distillation, deterministic Markdown publication, persistent routing, restart-safe merge/refile,
+skipped-action records, and full-entry search are implemented. SAGE-003 is not complete or part of
+the v3.1.1 release: truthful diagnostics, safe local knowledge commits, remaining parity tests, and
+the repeated clean end-to-end acceptance journey remain. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md).
 
@@ -403,15 +401,15 @@ devtrack work report           # EOD narrative in terminal
 devtrack work report --email me@org.com
 ```
 
-In the TASK-159 development implementation, monitored commits produce local time estimates
+On current `dev`, monitored commits produce local time estimates
 without starting a session. `work start|stop|adjust` provides optional explicit timing and
 corrections; `work status` shows the source and confidence. Matching commits attach to an
 explicit session. See [time inference and its limits](docs/WORK_TIME_INFERENCE.md).
 
 ### DevTrack Sage — self-writing command knowledge
 
-The development branch currently supports the capture foundation, model-free retrieval, and the
-model boundary for asynchronous distillation:
+Sage provides silent capture and local command knowledge. The TASK-157 branch adds durable
+background publication, routing/merge corrections, skipped-action records, and full-entry search:
 
 ```bash
 devtrack sage harness list
@@ -423,11 +421,13 @@ devtrack sage topics
 
 Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
 service in the hook path, and it does not block the host coding agent. The daemon imports normalized
-events into SQLite, groups repeated command signatures, and provides FTS-backed search with source
-attribution. A neutral Go LLM client, schema-validated structured distiller, and cancellation-aware
-background worker are also present, with local Ollama as the default. This is an infrastructure
-preview, not a complete Sage release: durable queue claims, daemon lifecycle integration,
-self-written Markdown knowledge, routing/correction, and recovery diagnostics remain SAGE-003 work.
+events into SQLite and groups repeated command signatures. A structured background distiller uses
+local Ollama by default; publication retries do not repeat model work. On the TASK-157 branch,
+search returns complete Markdown entries, matching all literal keywords, and `--topic git` filters
+by topic filename. Search reflects manual edits and topic moves; skipped records are excluded.
+This remains a development preview: diagnostics, safe local commits, remaining reference parity,
+and end-to-end release qualification are open. See
+[the current Sage checkpoint](docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md) for tested behavior and limits.
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;

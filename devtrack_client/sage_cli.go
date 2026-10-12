@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	sageharness "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/harness"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/hooks"
@@ -21,14 +23,56 @@ import (
 // model, daemon, network request, or Git operation.
 func routeSage(args []string) (sub string, rest []string, err error) {
 	if len(args) == 0 {
-		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|doctor|harness")
+		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|routes|route|merge|doctor|harness")
 	}
 	switch args[0] {
-	case "status", "pause", "resume", "doctor", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics":
+	case "status", "pause", "resume", "doctor", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route", "merge":
 		return args[0], args[1:], nil
 	default:
 		return "", nil, fmt.Errorf("unknown Sage command %q", args[0])
 	}
+}
+
+func runSageRoutes(sub string, args []string, output io.Writer) error {
+	if sub == "merge" && (len(args) != 2 || strings.TrimSpace(args[0]) == "" || strings.TrimSpace(args[1]) == "") {
+		return fmt.Errorf("usage: devtrack sage merge <source> <destination>")
+	}
+	if sub == "routes" && len(args) != 0 {
+		return fmt.Errorf("usage: devtrack sage routes")
+	}
+	if sub == "route" && (len(args) != 2 || !sageknowledge.ValidRouteBinary(strings.ToLower(strings.TrimSpace(args[0])))) {
+		return fmt.Errorf("usage: devtrack sage route <binary> <topic>")
+	}
+	root, err := sageRoot()
+	if err != nil {
+		return err
+	}
+	writer := sageknowledge.Writer{Root: config.GetSageKnowledgeDir(root)}
+	if sub == "route" || sub == "merge" {
+		database, err := NewDatabase()
+		if err != nil {
+			return fmt.Errorf("sage knowledge unavailable: %w", err)
+		}
+		defer database.Close()
+		if sub == "merge" {
+			count, err := database.MergeSageTopics(context.Background(), writer, args[0], args[1])
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(output, "moved %d entries: %s -> %s\n", count, sageknowledge.SafeFilename(args[0]), sageknowledge.SafeFilename(args[1]))
+			return err
+		}
+		if err := database.RememberSageRoute(context.Background(), writer, args[0], args[1]); err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(output, "%s -> %s (remembered; existing entries take precedence)\n", strings.ToLower(strings.TrimSpace(args[0])), sageknowledge.SafeFilename(args[1]))
+		return err
+	}
+	routes, err := writer.Routes()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(routes)
 }
 
 func sageRoot() (string, error) {
@@ -165,13 +209,32 @@ type sageKnowledgeStore interface {
 	ListSageTopics() ([]sageknowledge.Topic, error)
 }
 
+// The CLI searches current documented entries; the legacy command-family query
+// remains available to internal capture consumers during the parity transition.
+type sageEntryStore struct {
+	database *db.Database
+	writer   sageknowledge.Writer
+}
+
+func (s sageEntryStore) SearchSageKnowledge(query, topic string, limit int) ([]sageknowledge.Entry, error) {
+	return s.database.SearchSageEntries(context.Background(), s.writer, query, topic, limit)
+}
+
+func (s sageEntryStore) ListSageTopics() ([]sageknowledge.Topic, error) {
+	return s.database.ListSageEntryTopics(context.Background(), s.writer)
+}
+
 func runSageSearch(args []string, output io.Writer) error {
 	database, err := NewDatabase()
 	if err != nil {
 		return fmt.Errorf("sage knowledge unavailable: %w", err)
 	}
 	defer database.Close()
-	return writeSageSearch(database, args, output)
+	root, err := sageRoot()
+	if err != nil {
+		return err
+	}
+	return writeSageSearch(sageEntryStore{database: database, writer: sageknowledge.Writer{Root: config.GetSageKnowledgeDir(root)}}, args, output)
 }
 
 func writeSageSearch(store sageKnowledgeStore, args []string, output io.Writer) error {
@@ -179,7 +242,7 @@ func writeSageSearch(store sageKnowledgeStore, args []string, output io.Writer) 
 	topic := ""
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--topic" {
-			if topic != "" || i+1 >= len(args) {
+			if topic != "" || i+1 >= len(args) || strings.TrimSpace(args[i+1]) == "" {
 				return fmt.Errorf("usage: devtrack sage search <query> [--topic <topic>]")
 			}
 			topic = args[i+1]
@@ -188,7 +251,7 @@ func writeSageSearch(store sageKnowledgeStore, args []string, output io.Writer) 
 		}
 		queryParts = append(queryParts, args[i])
 	}
-	if len(queryParts) == 0 {
+	if len(queryParts) == 0 || strings.TrimSpace(strings.Join(queryParts, " ")) == "" {
 		return fmt.Errorf("usage: devtrack sage search <query> [--topic <topic>]")
 	}
 	entries, err := store.SearchSageKnowledge(strings.Join(queryParts, " "), topic, 20)
@@ -208,7 +271,11 @@ func runSageTopics(args []string, output io.Writer) error {
 		return fmt.Errorf("sage knowledge unavailable: %w", err)
 	}
 	defer database.Close()
-	topics, err := database.ListSageTopics()
+	root, err := sageRoot()
+	if err != nil {
+		return err
+	}
+	topics, err := database.ListSageEntryTopics(context.Background(), sageknowledge.Writer{Root: config.GetSageKnowledgeDir(root)})
 	if err != nil {
 		return err
 	}

@@ -129,6 +129,9 @@ func TestNewBackgroundWorkerUsesBoundedConfig(t *testing.T) {
 	if worker.Distiller.Timeout != 420*time.Second {
 		t.Fatalf("model timeout=%s", worker.Distiller.Timeout)
 	}
+	if transport := worker.Distiller.Client.(llmclient.Config); transport.Timeout != worker.Distiller.Timeout {
+		t.Fatalf("HTTP timeout %s silently caps model budget %s", transport.Timeout, worker.Distiller.Timeout)
+	}
 	if worker.IdleDelay != 125*time.Millisecond {
 		t.Fatalf("idle delay=%s", worker.IdleDelay)
 	}

@@ -1,5 +1,107 @@
 # DevTrack Engineer Log
 
+## 2026-10-01 — TASK-157 recoverable topic merges
+
+- Commit `b6b7f81`: `sage merge`, bounded recovery journal, route repointing, index repair,
+  publication recovery, and edit-conflict/source-note protection. Windows full suite/vet,
+  Fedora WSL2 focused Sage race/vet, ledger consistency, memory boundary, and diff checks pass.
+- Original message: `feat(TASK-157): add recoverable Sage topic merges`. DevTrack kept it unchanged
+  because local Ollama was unavailable; approximately one second, no raw-Git fallback. Ticket
+  auto-link and PM update were not observed. Friction: LOW for commit; sandbox startup still
+  requires escalation. No full acceptance or hosted-CI claim.
+- Routing checkpoint `ae4ac88` and its outcome log `db009e8` were pushed successfully before
+  this slice. The outcome-log commit used `--no-enhance`, completed successfully without prompts,
+  and the combined commit/push command took approximately four seconds.
+- Evidence: `docs/SAGE_MERGE_QUALIFICATION.md`; next work remains on the board and in shared memory.
+
+## 2026-10-01 — TASK-157 persistent routing
+
+- Commit `ae4ac88`: remembered routes, entry precedence, CLI route/list commands, and publication
+  integration. Windows full suite/vet and Fedora WSL2 focused Sage race/vet passed; ledger check
+  reports 22 implemented, 15 partial, 99 pending. Shared-memory and diff checks passed.
+- Original message: `feat(TASK-157): persist Sage routing corrections`. DevTrack kept it unchanged
+  because local Ollama was unavailable. Commit completed in approximately one second with no
+  raw-Git fallback or post-commit questions.
+- Daemon was stopped; started it and confirmed running PID 31068, connected SQLite and Python
+  health. Ticket auto-link and PM update were not observed; workspace reports no PM integration.
+- Friction: sandbox process startup fails before execution; approved escalated commands work.
+  Routing qualification: `docs/SAGE_ROUTING_QUALIFICATION.md`. Full acceptance remains open.
+
+## 2026-09-30 — TASK-157 durable Markdown publication
+
+- Continued from `fe50798` on the existing task branch. Added transactional publication enqueue,
+  legacy draft backfill, safe persistent retries, stable SHA-256 markers, configured output root,
+  and daemon publication lifecycle. Model completion remains distinct from documented state.
+- File/index failure and restart tests pass without duplicate entries or repeated model work.
+  Added a two-handle cancellation regression after review identified that automatic transaction
+  rollback could release the writer lock before file I/O returned.
+- Windows full Go suite/vet passed; the subsequent cancellation regression passed separately.
+  Fedora WSL2 focused Sage database/infra race tests and database/infra/config vet passed.
+- Normal sandbox execution works again. WSL service access and installed CLI user-database
+  initialization required escalation. Installed daemon was running (PID 7080).
+- Qualification: `docs/SAGE_PUBLICATION_QUALIFICATION.md`. No hosted CI or full parity claim.
+- Commit workflow: supplied `feat(TASK-157): publish durable Sage drafts to Markdown`;
+  DevTrack enhanced it to `feat(sage): publish durable drafts to Markdown` and created `e21975e`
+  in approximately 25 seconds. No raw-Git fallback or post-commit questions. Ticket auto-link
+  and PM update were not observed; the configured workspace reports no PM integration.
+
+## 2026-09-30 — TASK-157 deterministic Markdown writer
+
+- Continued from pushed `5c64271` on the existing Sage task branch; inspected pinned reference
+  parsing, rendering, insertion, and routing tests before implementation.
+- Added the Go writer library with structural-injection protection, portable filenames,
+  idempotent signature reuse/attachment, atomic replacement, and index repair on retry.
+- Seven reference scenarios now have matching Go tests. Full Windows Go suite/vet and Linux
+  writer race/fuzz/vet passed; fuzzing completed 164,435 executions without failure.
+- Corrected a fixture's expected command-line count after its first run; production parsing
+  correctly kept forged headings/signatures within the command fence.
+- The sandbox process helper failed at setup; repository commands ran through the approved
+  escalated runner. No repository configuration was changed to bypass that failure.
+- Next: durable draft-to-Markdown publication/recovery. The daemon still stops at a persisted
+  draft; no full Sage completion or hosted-integration claim.
+- Evidence: `docs/SAGE_MARKDOWN_QUALIFICATION.md`.
+
+**Commit outcome:** `f47041f`, created through `devtrack git commit` after about 112 seconds.
+Original message: `feat(TASK-157): add deterministic Sage Markdown writer`.
+DevTrack enhanced it to `feat(sage): Implement deterministic Markdown writer for knowledge base`
+with an explanatory body (its displayed Git subject also included the following summary line).
+The daemon was stopped at pickup and was started for this workflow. The helper emitted no progress
+while enhancing; a fallback was considered, but it completed before any process was stopped.
+No raw commit was used. Ticket auto-link and PM delivery were not reported by this invocation.
+Friction: MEDIUM (silent enhancement delay). The small outcome-log follow-up uses DevTrack's
+`--no-enhance` option. Ledger consistency, eight checker tests, shared-memory validation, and
+diff whitespace checks passed. The first checker-test invocation used an incorrect module import
+path; running `python scripts/test_check_sage_parity.py` passed all eight tests.
+
+## 2026-09-30 — TASK-157 durable queue and daemon integration
+
+- Continued from published parity commit `8008fbe`; no pending local changes at pickup.
+- Added transactional enqueue/backfill, atomic SQLite claims, random fencing tokens, leases,
+  retry timing, sanitized diagnostics, and persistent skip/draft outcomes.
+- Connected the worker to daemon-owned cancellation and pause state; shutdown joins Sage before
+  database closure. Production hooks remain independent of model availability.
+- Full native Windows and Fedora WSL2 Go suites and vet passed. Tests include concurrent claims,
+  restart recovery, stale-token rejection, injected import failure, and real spool-to-draft processing
+  across a simulated outage, malformed output, and daemon-worker restart.
+- Scope remains a persisted draft; deterministic Markdown and the full Sage closure gate remain open.
+- Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`.
+
+## 2026-09-30 — TASK-159 upstream push and TASK-157 parity continuation
+
+- Committed the qualification/script changes through `devtrack git commit` as `2e50763`,
+  message `fix(TASK-159): qualify restart persistence on Windows and Linux`.
+- The daemon was stopped; started it for the commit workflow. Ollama was unreachable, so
+  DevTrack preserved the supplied message and committed successfully. No PM delivery was reported.
+- Pushed `fix/TASK-159-schema-transactions`; `git ls-remote` confirmed upstream at
+  `2e507636031444b0100cd4d4a911390aa9659da4`. GitHub API remains HTTP 401; no hosted/merge claim.
+- Continued on `features/TASK-157-sage-parity`, stacked on that published follow-up.
+- Reconciled 136 reference tests against `b85a1ab` in the user-supplied relocated checkout.
+  Added explicit coverage status, existing test references, planned closure tests, and a checker.
+- Eight checker fault tests pass. The pinned-source check passes; `--require-complete` fails
+  as expected with remaining gaps. Focused Go tests and vet pass on Windows and Fedora WSL2.
+- No Sage runtime behavior changed. Empty model output and uncapped requests now have transport
+  regression coverage. Durable queue/daemon integration and final behavioral parity remain open.
+
 ## 2026-09-30 — TASK-159 qualification and shared-state reconciliation
 
 - Qualified schema transaction commit `3c3fedf` and the existing Windows E2E stdout/stderr
@@ -2863,3 +2965,16 @@ Pre-existing test failure (test_find_related_projects) confirmed unchanged.
 - Blockers encountered: none
 - One thing that still feels rough: `test_skips_pm_sync_when_nlp_returns_none` had quietly encoded the bug as the expected behavior — a reminder that test names asserting a negative ("skips X") deserve extra scrutiny when the surrounding logic changes, since a passing test gave false confidence the old gate was intentional.
 - Ready for PM review: YES
+
+### [2026-10-01 11:02] TASK-157 — skipped-action records and full-entry search
+
+**Original message**: "feat(TASK-157): record skipped actions and search full entries"
+**DevTrack enhanced it to**: unchanged; local Ollama was unavailable and the helper retained the supplied text.
+**Commit**: `9f2281b` on `features/TASK-157-sage-parity`.
+**Ticket auto-linked**: not reported by the helper; TASK-157 is explicit in branch/message.
+**PM system updated**: NO external update observed; workspace platform is none. Local board and feature tracker updated.
+**Time**: ~2 seconds for the commit helper.
+**Friction**: LOW — daemon already running, no prompts, no raw Git commit fallback.
+**Notes**: Explicit skips now publish idempotent private Markdown records with migration/backfill and restart recovery. Search/topics refresh a SQLite cache of complete Markdown entries, preserving literal reference matching and reflecting corrections, merges, edits, moves, and deletion. Windows full Go suite/vet and Fedora WSL2 focused Sage race/vet pass. Ledger/memory validation and whitespace checks pass. Two initial test expectations incorrectly assumed common literal substrings were absent from Markdown; corrected the fixtures without changing reference matching. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending. Full Sage acceptance remains open; next diagnostics and safe local commits.
+
+The accompanying docs-only checkpoint uses `devtrack git commit --no-enhance`; its purpose is to record the implementation hash and validation outcome before the authorized task-branch push. No merge or installed-binary qualification is claimed.

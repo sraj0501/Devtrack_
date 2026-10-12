@@ -3,6 +3,8 @@ package distill
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -81,5 +83,28 @@ func TestDistillerReturnsExplicitSkipWithoutRetry(t *testing.T) {
 	outcome, err := service.Distill(context.Background(), Fact{Command: "pwd"})
 	if err != nil || !outcome.Skipped || outcome.SkipReason != "trivial" {
 		t.Fatalf("outcome=%#v err=%v", outcome, err)
+	}
+}
+
+// A reasoning model may exhaust its budget without producing an answer. That
+// is a retryable transport failure, never a decision to discard captured work.
+func TestDistillerEmptyModelOutputRemainsRetryable(t *testing.T) {
+	for _, provider := range []string{"ollama", "openai"} {
+		t.Run(provider, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if provider == "ollama" {
+					_, _ = w.Write([]byte(`{"message":{"content":""},"done":true,"done_reason":"length"}`))
+				} else {
+					_, _ = w.Write([]byte(`{"choices":[{"message":{"content":""},"finish_reason":"length"}]}`))
+				}
+			}))
+			defer server.Close()
+			service := Distiller{Client: llmclient.Config{Host: server.URL, Provider: provider, Model: "test", Client: server.Client()}}
+			outcome, err := service.Distill(context.Background(), Fact{Command: "git status"})
+			if !IsRetryable(err) || outcome.Skipped || outcome.Draft != nil {
+				t.Fatalf("empty model output became a verdict: outcome=%#v err=%v", outcome, err)
+			}
+		})
 	}
 }

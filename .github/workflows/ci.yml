@@ -16,6 +16,11 @@ jobs:
       - name: Reject agent-specific project memory
         run: python3 scripts/check_agent_memory.py
 
+      - name: Validate Sage parity ledger and its failure checks
+        run: |
+          python3 scripts/check_sage_parity.py
+          python3 -m unittest discover -s scripts -p test_check_sage_parity.py
+
   go-test:
     name: Go build & test
     runs-on: ubuntu-latest

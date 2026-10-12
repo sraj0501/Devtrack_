@@ -1,9 +1,56 @@
 # DevTrack Feature Tracker
 
+## 2026-10-01 — TASK-157 skipped records and full-entry search
+
+Explicit skips publish idempotent `_skipped.md` signatures through the durable publication queue;
+failures retry without repeating the model. Search returns complete current Markdown entries with
+literal AND keywords, topic filters, and reference ranking. Search/topics reconcile manual edits,
+moves, merges, and deletions. Windows full suite/vet and Linux focused race/vet pass. Ledger:
+27 implemented, 1 adapted, 12 partial, 96 pending. Next: diagnostics and safe local commits.
+Evidence and limits: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Full Sage acceptance remains open.
+
+## 2026-10-01 — TASK-157 restart-safe merge/refile
+
+`sage merge` moves entries with their signatures, redirects routes, and repairs the topic index.
+Interrupted writes replay without duplicate entries; later file edits cause an explicit conflict.
+Windows full suite/vet and Linux focused race/vet pass. Ledger: 24 implemented, 15 partial,
+97 pending. Next: diagnostics, skipped-action records, full-entry search, and safe local commits.
+Evidence and limits: `docs/SAGE_MERGE_QUALIFICATION.md`. Full Sage acceptance remains open.
+
+## 2026-10-01 — TASK-157 persistent routing and publication
+
+The task branch publishes durable drafts to Markdown and supports `sage routes` / `sage route`.
+Routes survive restart; existing entries override remembered destinations after manual moves.
+Windows full suite/vet and Linux focused race/vet pass. The reference ledger now has 22 implemented,
+15 partial, and 99 pending scenarios. Next: merge/refile, diagnostics, full-entry search, safe
+local commits, and end-to-end closure. Evidence: `docs/SAGE_ROUTING_QUALIFICATION.md`.
+
+## 2026-09-30 — TASK-157 deterministic Markdown library
+
+The Sage task branch now includes safe topic filenames, deterministic rendering and parsing,
+signature reuse, atomic topic replacement, and a replayable README index. Seven additional
+reference scenarios have executable tests. Windows full Go suite/vet and Linux writer
+race/fuzz/vet passed. Evidence: `docs/SAGE_MARKDOWN_QUALIFICATION.md`. Next connect durable
+publication to the daemon; a persisted draft still does not imply a written knowledge file.
+
+## 2026-09-30 — TASK-157 durable draft processing
+
+The task branch now connects Sage's background worker to SQLite leases, fencing tokens,
+persisted retries/skips/drafts, atomic import enqueue, and daemon cancellation. Full Windows
+and Fedora WSL2 Go suites/vet pass. Integration coverage consumes a real spool event through
+simulated outage and malformed-output recovery, then verifies persistence across restart.
+Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Next: deterministic Markdown writing;
+persisted drafts do not close Sage's self-writing knowledge acceptance gate.
+
 _Last updated: 2026-09-30 (TASK-159 implementation merged; local qualification passed;
 schema/E2E follow-up integration and hosted verification remain open)_
 
 ## 2026-09-30 — TASK-159: local qualification complete
+
+Publication follow-up: `2e50763` is verified on `origin/fix/TASK-159-schema-transactions`.
+TASK-157 parity work continues on stacked branch `features/TASK-157-sage-parity`: 136 scenarios
+reconciled against `b85a1ab`, explicit test/status ledger, CI consistency checks, and transport
+regressions passing on Windows and Fedora WSL2. Durable queue/daemon wiring remains next.
 
 **Status**: All five product acceptance criteria locally qualified. PR #272's merge is
 recorded locally at `94dbc7c`; the schema/E2E follow-up remains separate.
@@ -838,3 +885,9 @@ patched backend.config source due to lazy imports. Full suite: 433 passed.
 **Files**: 22 files across backend/azure/, github/, gitlab/, admin/, server_tui/, rag/, and more
 **Vision check**: PASS
 **Engineer notes**: 50+ new config accessors added to backend/config.py. All os.getenv direct calls replaced across the codebase. .env_sample updated. 397 tests pass.
+# 2026-09-30 — Sage durable publication checkpoint
+
+Saved drafts now reach deterministic Markdown through the daemon with separate durable
+publication retries and documented acknowledgement. Failure/restart/cancellation recovery and
+byte-stable spool-to-Markdown replay pass on Windows; focused Linux race/vet pass.
+See `docs/SAGE_PUBLICATION_QUALIFICATION.md`. Full Sage remains in progress.

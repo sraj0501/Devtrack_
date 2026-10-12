@@ -1,5 +1,12 @@
 ﻿# DevTrack Project Board
 
+_Last reconciled: 2026-10-13 — TASK-159 and its schema/restart follow-up are merged to `dev` through
+PR #273 at `a329b6f`; all post-merge workflows passed and rolling release `dev-a329b6f` is current.
+TASK-157 / SAGE-003 remains active on `features/TASK-157-sage-parity`, now reconciled with current
+`dev` at `a329b6f`. Next: finish diagnostics, safe local knowledge commits, parity closure, and
+repeated end-to-end acceptance. Next unused task
+ID: TASK-163, subject to verification before allocation._
+
 **[2026-09-29] TASK-162 — Align no-send E2E with deterministic ticket contract (complete, P0).**
 **Priority:** P0 CI integration follow-up. **Branch:**
 `fix/TASK-162-align-no-send-e2e-ticket`. **Assigned to:** engineer. **Started:** 2026-09-29.
@@ -192,7 +199,7 @@ The existing upstream task branch (partial commit `aa0d2c0` plus merged TASK-158
 reconciled locally without force; the combined tree passed the full Windows and Ubuntu WSL2 Go
 suite/vet and 75 focused Python contract tests before push.
 
-**[2026-09-21] TASK-159 — Silent automatic time inference (locally qualified; follow-up integration pending, HIGH).**
+**[2026-09-21] TASK-159 — Silent automatic time inference (complete, HIGH).**
 **Priority:** HIGH; paired with TASK-158 and TASK-157 / SAGE-003.
 **Depends on:** TASK-158 native Linux qualification. **Branch:** `features/TASK-159-silent-time-inference`.
 
@@ -212,21 +219,78 @@ keystrokes, window activity, raw command output, or cloud telemetry.
       covered by clock-controlled tests.
 
 **Assigned to:** engineer. **Started:** 2026-09-29.
-**Engineer status:** Implementation merged through PR #272 at `94dbc7c` (verified in local
-Git history). Qualification continues on `fix/TASK-159-schema-transactions`, including schema
-transaction commit `3c3fedf` and the Windows E2E stdout/stderr separation fix. On 2026-09-30,
+**Engineer status:** Implementation merged through PR #272 at `94dbc7c`. The qualification follow-up
+merged through PR #273 at `a329b6f`, including schema transaction commit `3c3fedf` and the Windows
+E2E stdout/stderr separation fix. On 2026-09-30,
 the full native Windows Go suite and vet passed, as did Windows and Fedora WSL2 no-send E2E:
 inferred time, a 45-minute correction surviving daemon restart, explicit start/stop, and MCP
 commit visibility. The Windows restart assertion deliberately crosses a timestamp boundary.
 The full Linux suite and vet also passed after installing the missing PTY utility.
 Both full suites passed uncached with the existing 60-second package timeout; Windows's database
 package completed in 6.915 seconds. All five product acceptance criteria are locally qualified.
-Evidence: `docs/TASK_159_QUALIFICATION.md`. Follow-up integration/hosted verification stays open.
-**PR:** https://github.com/sraj0501/Devtrack_/pull/272
-**Blockers:** Hosted checks and follow-up PR status cannot currently be verified: GitHub CLI
-returns HTTP 401. Local qualification does not establish upstream integration of the follow-up.
+Evidence: `docs/TASK_159_QUALIFICATION.md`. PR #273 merged on 2026-10-07; its general CI, client CI,
+Windows/Linux no-send E2E, PostgreSQL, MCPB, registry, and rolling-release workflows passed.
+**PRs:** https://github.com/sraj0501/Devtrack_/pull/272 and
+https://github.com/sraj0501/Devtrack_/pull/273
+**Blockers:** none.
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
+
+**Latest engineer status (skips/search, 2026-10-01):** Implemented and locally qualified — durable
+skipped-action Markdown records with replay/backfill, whole-entry literal search, topic filtering,
+and reconciliation after edits, moves, merges, deletions, and restart. Windows full suite/vet and
+Linux focused race/vet pass. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending.
+Evidence: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Next: diagnostics and safe local commits.
+Full Sage acceptance remains open.
+
+**Skipped/search implementation commit:** `9f2281b` — record skipped actions and search full entries.
+
+**Latest engineer status (merge/refile, 2026-10-01):** Locally qualified — `sage merge` preserves
+entries/signatures, redirects routes, repairs the index, and recovers interrupted writes without
+duplicates. Conflicting edits and unstructured source notes are preserved through explicit errors.
+Windows full suite/vet and Linux focused race/vet pass. Ledger: 24 implemented, 15 partial,
+97 pending. Evidence: `docs/SAGE_MERGE_QUALIFICATION.md`. Next: diagnostics, skipped-action records,
+full-entry search reconciliation, and safe local knowledge commits. Full acceptance remains open.
+
+**Merge implementation commit:** `b6b7f81` — add recoverable Sage topic merges.
+
+**Engineer status (routing, 2026-10-01):** Implemented and locally qualified — persistent routes,
+existing-entry precedence, route/list commands, and publication integration. Windows full suite/vet
+and Linux focused race/vet pass. Nine more reference scenarios are implemented (22 implemented,
+15 partial, 99 pending). Evidence: `docs/SAGE_ROUTING_QUALIFICATION.md`. Next: merge/refile.
+Full Sage parity and upstream integration remain open.
+**Routing implementation commit:** `ae4ac88` — persist Sage routing corrections.
+
+**Engineer status (publication, 2026-09-30):** Durable drafts now publish through the daemon.
+**Publication implementation commit:** `e21975e` — publish durable drafts to Markdown.
+Separate publication retries survive index failures and interrupted acknowledgement without
+model replay. Windows full suite/vet and Linux focused race/vet pass; restart preserves exact
+Markdown bytes. Evidence: `docs/SAGE_PUBLICATION_QUALIFICATION.md`. Routing, correction/merge,
+safe commits, full-entry search, diagnostics, and full Sage parity remain open.
+**Latest writer checkpoint (2026-09-30):** The deterministic Markdown library is implemented on
+the Sage task branch: portable filenames, parseable entries, existing-signature reuse, atomic
+replacement, and repairable topic index. Seven reference tests are now executable in Go.
+Full Windows Go suite/vet and Linux writer race/fuzz/vet pass. Evidence:
+`docs/SAGE_MARKDOWN_QUALIFICATION.md`. Next connect durable draft publication to the daemon;
+jobs still end at `distilled`. SAGE-003 and upstream integration remain open.
+**Last implementation commit:** `f47041f` — deterministic Sage Markdown writer, 2026-09-30.
+
+**Latest implementation (2026-09-30):** Durable SQLite queue and daemon integration now implemented
+on `features/TASK-157-sage-parity`. Claims have leases/fencing tokens; retries, skips, and drafts
+persist. Import enqueue is atomic, pause prevents new claims, and shutdown cancels background work.
+Full Windows and Fedora WSL2 Go suites/vet pass. Runtime integration test covers spool import,
+model outage, malformed response, persisted draft, and duplicate-free restart using an HTTP fixture.
+Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Next: deterministic Markdown writer.
+SAGE-003 remains open; a persisted draft is not the completed capture-to-knowledge journey.
+
+**Engineer status (2026-09-30):** Resumed on `features/TASK-157-sage-parity`, stacked on the
+published TASK-159 follow-up `2e50763`. Reconciled all 136 reference scenarios with `b85a1ab`
+from `F:\git_apps\Personal_Projects\ai_sessions_skills`; the ledger now names existing Go tests,
+explicit status, and planned closure tests. Added a CI consistency gate with eight fault-injection
+checks and real-HTTP regression tests for retryable empty output and uncapped background requests.
+Focused Go tests/vet passed on Windows and Fedora WSL2. Six scenarios have complete test evidence,
+fifteen are partial, and 115 remain pending. Durable queue/daemon wiring is next; this task is open.
+
 Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and
 removes the legacy Git Sage repository-agent surface. `devtrack sage` now
 rejects ask/do/pr/interactive/git/free-form commands before starting a model, network request, or

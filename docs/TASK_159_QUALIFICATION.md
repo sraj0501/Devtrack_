@@ -66,3 +66,9 @@ Remaining: restore authenticated GitHub access, verify the follow-up PR/hosted
 checks, and integrate the reviewed schema/E2E follow-up into `dev`. Documentation
 and the E2E change remain local until committed and published. Sage is the next
 implementation initiative after that integration gate.
+
+Publication follow-up (2026-09-30): the E2E change and this qualification record were committed
+through DevTrack as `2e50763` and pushed to `origin/fix/TASK-159-schema-transactions`.
+`git ls-remote` confirmed the full upstream hash `2e507636031444b0100cd4d4a911390aa9659da4`.
+GitHub API authentication still fails; hosted checks and integration into `dev` remain unverified.
+Sage parity preparation continues on a branch stacked on this published follow-up.

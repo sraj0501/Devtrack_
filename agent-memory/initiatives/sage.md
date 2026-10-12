@@ -15,7 +15,7 @@ It captures useful command/tool activity from supported coding harnesses and tur
 searchable, deterministic personal documentation.
 
 DevTrack Sage is entirely Go-native. Port required behavior and regression coverage from
-`D:\git_apps\ai_sessions_skills` at authoritative commit `b85a1ab`; production Sage must not
+`F:\git_apps\Personal_Projects\ai_sessions_skills` at authoritative commit `b85a1ab`; production Sage must not
 spawn Python or require a Python environment. Port for behavioral parity rather than copying
 Python-specific process boundaries.
 
@@ -58,15 +58,28 @@ quickly, print nothing, perform no model or network call, and never break an age
   source attribution, command-family topics, FTS5 search, and the `search`/`topics` CLI.
 - PR #263 merged the neutral, context-aware LLM transport, Sage-owned structured distiller, and
   non-blocking background worker into `dev`. Model timeout, idle polling, and retry delay are bounded
-  and configurable for slower offline models. The worker is not yet connected to a durable SQLite
-  queue or the daemon lifecycle.
-- Remaining SAGE-003 work begins with durable queue/daemon integration and deterministic Markdown,
-  then routing/corrections, safe commits, persisted retries, diagnostics, and capture-to-knowledge
-  closure.
+  and configurable for slower offline models.
+- The TASK-157 branch now connects the worker to a durable SQLite queue and daemon lifecycle and
+  implements deterministic Markdown publication, persistent routing, restart-safe merge/refile,
+  skipped-action records, and full-entry search/topic reconciliation.
+- Remaining SAGE-003 work is truthful diagnostics, safe local knowledge commits, the open parity
+  scenarios, and repeated capture-to-knowledge acceptance. The branch now contains current `dev`
+  commit `a329b6f`, including the fully verified TASK-159 follow-up from PR #273.
 
 ## Ordered next steps
 
 ### 1. Make reference parity executable
+
+2026-09-30: `features/TASK-157-sage-parity` reconciles all 136 scenario names and source lines
+against pinned Git objects from the relocated checkout above. Every row names existing evidence
+or an exact planned closure test. `scripts/check_sage_parity.py` validates the ledger and test
+references; `--reference PATH` verifies the baseline and `--require-complete` rejects open rows.
+CI runs ledger validation and eight fault-injection checks. The conservative inventory is six
+implemented, fifteen partial, and 115 pending; these are coverage classifications, not a product
+completion percentage. Missing terminal-transition ordering and full-entry search assertions
+remain partial. New real-HTTP tests cover empty model output remaining retryable and uncapped
+background requests. Focused Go tests/vet passed on Windows and Fedora WSL2. Durable queue/daemon
+wiring is still the next implementation slice; Sage remains open.
 
 Refresh `docs/SAGE_PORT_PARITY_MATRIX.md` against all 136 reference tests at `b85a1ab`. Every row
 must identify the Go owner, exact Go test, status (`implemented`, `partial`, `pending`, or
@@ -74,6 +87,15 @@ must identify the Go owner, exact Go test, status (`implemented`, `partial`, `pe
 completion authority.
 
 ### 2. Connect asynchronous distillation to durable daemon state
+
+Implemented on the TASK-157 branch on 2026-09-30. `sage_jobs` is populated transactionally with
+knowledge insertion; migration backfills older signatures. Atomic claims carry random fencing
+tokens, bounded leases, attempts, and retry times. Expired claims recover after restart; stale
+workers cannot acknowledge replacement claims. Daemon-owned cancellation stops importer/model
+work before the database closes. Pause prevents new claims; an already-running request may finish.
+Only local Ollama configuration is loaded by this daemon path. Valid drafts persist as `distilled`,
+which does not mean Markdown has been written. Error/skip diagnostics use fixed safe categories.
+Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Final Sage parity remains open.
 
 - Wire the merged Sage background worker into daemon startup and shutdown; startup must remain
   non-blocking and cancellation must promptly end polling, retry waits, and in-flight requests.
@@ -87,12 +109,38 @@ completion authority.
 
 ### 3. Write deterministic Markdown knowledge
 
+2026-09-30 checkpoint: the writer library now implements portable filenames, fenced-code-aware
+parsing, deterministic rendering, section insertion, signature reuse/attachment, atomic file
+replacement, and replayable topic-index repair. Seven reference rows now have executable Go tests;
+Windows full suite/vet and Linux writer race/fuzz/vet pass. Evidence:
+`docs/SAGE_MARKDOWN_QUALIFICATION.md`. Durable publication is now wired through a separate
+SQLite publication queue, configurable knowledge root, and stable signature markers. File/index
+failures retry without repeating the model; daemon restart preserves exact Markdown bytes.
+See `docs/SAGE_PUBLICATION_QUALIFICATION.md` for transaction and filesystem limits.
+Do not mark a job documented merely because its draft exists. Routing/action-equivalence and
+fuzzy section matching remain open alongside the later steps below.
+
 Implement stable topic filenames, parseable headings/signatures, atomic replacement, stable entry
 ordering, idempotent insertion, existing-entry reuse, topic-index maintenance, and path traversal
 protection. SQLite owns queue/processing/search state; Markdown topic files are the durable,
 user-visible artifacts. Reprocessing the same events must be byte-stable and duplicate-free.
 
 ### 4. Add routing and correction operations
+
+2026-10-01: persistent routes, `routes`/`route`, existing-entry precedence after manual moves,
+and publication integration are implemented and locally qualified. Windows suite/vet and Linux
+focused race/vet pass. Nine additional reference scenarios are covered (22 implemented, 15 partial,
+99 pending). See `docs/SAGE_ROUTING_QUALIFICATION.md`. Restart-safe merge/refile is now also
+locally qualified (`docs/SAGE_MERGE_QUALIFICATION.md`): journal replay, edit-conflict detection,
+route repointing, and index repair. The ledger is now 24 implemented, 15 partial, 97 pending.
+Skipped-action records and full-entry search are now locally qualified (2026-10-01).
+Terminal skips publish atomic, idempotent `_skipped.md` signatures with a fixed safe reason;
+publication failure never repeats model work. Search and topics transactionally refresh a SQLite
+cache from whole Markdown entries and reconcile moved/deleted publication filenames. Literal AND
+keywords, Unicode case folding, topic filtering, and reference ranking are covered. Windows full
+suite/vet and Linux focused race/vet pass. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending.
+See `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Next: diagnostics and safe local commits.
+Simple-command routing does not close compound-action parsing or action equivalence.
 
 Implement persistent routes, manual correction, merge/refile, skipped-action records, sanitized
 topic/filename handling, and the `routes`, `route`, `merge`, and `log` commands. Existing documented
