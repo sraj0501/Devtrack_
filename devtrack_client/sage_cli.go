@@ -23,10 +23,10 @@ import (
 // model, daemon, network request, or Git operation.
 func routeSage(args []string) (sub string, rest []string, err error) {
 	if len(args) == 0 {
-		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|routes|route|merge|doctor|harness")
+		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|routes|route|merge|doctor|log|harness")
 	}
 	switch args[0] {
-	case "status", "pause", "resume", "doctor", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route", "merge":
+	case "status", "pause", "resume", "doctor", "log", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route", "merge":
 		return args[0], args[1:], nil
 	default:
 		return "", nil, fmt.Errorf("unknown Sage command %q", args[0])
@@ -84,7 +84,75 @@ func sageRoot() (string, error) {
 }
 
 func runSageState(sub string, args []string) error {
+	if sub == "status" || sub == "doctor" || sub == "log" {
+		return runSageDiagnostics(sub, args, os.Stdout)
+	}
 	return writeSageState(sub, args, os.Stdout)
+}
+
+type sageStatus struct {
+	sage.State
+	Pipeline db.SageDiagnostics `json:"pipeline"`
+	Healthy  *bool              `json:"healthy,omitempty"`
+	Problems []string           `json:"problems,omitempty"`
+}
+
+func runSageDiagnostics(sub string, args []string, output io.Writer) error {
+	root, err := sageRoot()
+	if err != nil {
+		return err
+	}
+	database, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("sage diagnostics unavailable: %w", err)
+	}
+	defer database.Close()
+	return writeSageDiagnostics(database, root, sub, args, output, time.Now())
+}
+
+func writeSageDiagnostics(database *db.Database, root, sub string, args []string, output io.Writer, now time.Time) error {
+	if len(args) != 0 {
+		return fmt.Errorf("sage %s takes no arguments", sub)
+	}
+	if sub == "log" {
+		entries, err := database.SageLog(context.Background(), 50)
+		if err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(output)
+		for _, entry := range entries {
+			if err := encoder.Encode(entry); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	capture, err := sage.ReadState(root)
+	if err != nil {
+		return fmt.Errorf("sage state unavailable: %w", err)
+	}
+	pipeline, err := database.SageDiagnostics(context.Background(), now)
+	if err != nil {
+		return err
+	}
+	status := sageStatus{State: capture, Pipeline: pipeline}
+	if sub == "doctor" {
+		healthy := true
+		if capture.Quarantined > 0 {
+			healthy = false
+			status.Problems = append(status.Problems, "quarantined capture events require inspection")
+		}
+		if pipeline.ExpiredLeases > 0 {
+			healthy = false
+			status.Problems = append(status.Problems, "expired processing leases await recovery")
+		}
+		if pipeline.TerminalFailed > 0 {
+			healthy = false
+			status.Problems = append(status.Problems, "terminal Sage failures require inspection")
+		}
+		status.Healthy = &healthy
+	}
+	return json.NewEncoder(output).Encode(status)
 }
 
 func writeSageState(sub string, args []string, output io.Writer) error {
@@ -192,15 +260,17 @@ func runSageHook(args []string, input io.Reader) error {
 	if err != nil {
 		return nil
 	}
-	event, ok := hooks.NormalizeCodexPostToolUse(raw, time.Now().UTC())
-	if !ok {
+	events := hooks.NormalizeCodexPostToolUseEvents(raw, time.Now().UTC())
+	if len(events) == 0 {
 		return nil
 	}
 	root, err := sageRoot()
 	if err != nil {
 		return nil
 	}
-	_ = sage.WriteEvent(root, event)
+	for _, event := range events {
+		_ = sage.WriteEvent(root, event)
+	}
 	return nil
 }
 

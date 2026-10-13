@@ -69,7 +69,7 @@ func TestOpenAIChatJSONAndCancellation(t *testing.T) {
 	}
 }
 
-func TestBackgroundJSONRequestsDoNotCapOutput(t *testing.T) {
+func TestReferenceShippedOllamaBackendHasNoOutputCap(t *testing.T) {
 	for _, provider := range []string{"ollama", "openai"} {
 		t.Run(provider, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +86,14 @@ func TestBackgroundJSONRequestsDoNotCapOutput(t *testing.T) {
 					if _, exists := options["num_predict"]; exists {
 						t.Error("background generation unexpectedly caps predictions")
 					}
+					if options["temperature"] != float64(0) {
+						t.Errorf("ollama temperature=%v", options["temperature"])
+					}
+				} else if provider == "ollama" {
+					t.Error("ollama request omitted deterministic options")
+				}
+				if provider != "ollama" && request["temperature"] != float64(0) {
+					t.Errorf("openai-compatible temperature=%v", request["temperature"])
 				}
 				if provider == "ollama" {
 					_, _ = w.Write([]byte(`{"message":{"content":"{}"},"done":true}`))

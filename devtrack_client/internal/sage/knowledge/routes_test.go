@@ -135,6 +135,25 @@ func TestReferenceACorrectionOutlivesTheClassifier(t *testing.T) {
 	}
 }
 
+func TestReferenceActionIsDerivedFromTheCommandBlock(t *testing.T) {
+	entries := ParseMarkdown("### Status\n<!-- sig: abcdef01 -->\n\n```bash\ngit status --short\n```\n")
+	if len(entries) != 1 || entryAction(entries[0]) != "git status" {
+		t.Fatalf("entries=%+v action=%q", entries, entryAction(entries[0]))
+	}
+}
+
+func TestReferenceSameActionDifferentFlagsIsAMatch(t *testing.T) {
+	if Action("git status --short") != Action("git status --porcelain=v2") {
+		t.Fatal("flag variants did not match")
+	}
+}
+
+func TestReferenceDifferentSubcommandIsNotAMatch(t *testing.T) {
+	if Action("git status --short") == Action("git log --oneline") {
+		t.Fatal("different subcommands matched")
+	}
+}
+
 func TestSageRoutesValidatePreserveAndAtomicallyReplace(t *testing.T) {
 	w := Writer{Root: t.TempDir()}
 	for _, binary := range []string{"../bad", "bad name", "$(secret)", ""} {

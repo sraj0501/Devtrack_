@@ -27,6 +27,8 @@ const indexEnd = "<!-- sage:topics:end -->"
 // adding another entry. Callers must acknowledge a job only after Write succeeds.
 type Writer struct {
 	Root string
+	// Recorder receives exact before/after bytes for optional safe local commits.
+	Recorder interface{ Record(string, []byte, []byte) }
 	// replace is an internal fault-injection seam, never model supplied.
 	replace func(string, []byte) error
 }
@@ -47,6 +49,9 @@ func (w Writer) Write(topic, signature string, draft distill.Draft) (string, err
 		return "", err
 	}
 	if _, err := w.recoverMerge(); err != nil {
+		return "", err
+	}
+	if err := w.ensureGitignore(); err != nil {
 		return "", err
 	}
 	files, err := w.topics()
@@ -161,7 +166,7 @@ func (w Writer) AddSignature(topic, existing, variant string) (bool, error) {
 
 func insertMarkdown(text, section, body string) string {
 	lines := strings.Split(strings.TrimRight(strings.ReplaceAll(text, "\r\n", "\n"), "\n"), "\n")
-	target, end, fence := -1, len(lines), ""
+	target, nearTarget, end, fence := -1, -1, len(lines), ""
 	for i, line := range lines {
 		trim := strings.TrimSpace(line)
 		if fence != "" {
@@ -179,8 +184,31 @@ func insertMarkdown(text, section, body string) string {
 				end = i
 				break
 			}
-			if strings.EqualFold(strings.TrimSpace(line[3:]), section) {
+			existing := strings.TrimSpace(line[3:])
+			if strings.EqualFold(existing, section) {
 				target = i
+			} else if nearTarget < 0 && nearSection(existing, section) {
+				nearTarget = i
+			}
+		}
+	}
+	if target < 0 && nearTarget >= 0 {
+		target, end, fence = nearTarget, len(lines), ""
+		for i := target + 1; i < len(lines); i++ {
+			trim := strings.TrimSpace(lines[i])
+			if fence != "" {
+				if closesFence(trim, fence) {
+					fence = ""
+				}
+				continue
+			}
+			if f := openingFence(trim); f != "" {
+				fence = f
+				continue
+			}
+			if strings.HasPrefix(lines[i], "## ") {
+				end = i
+				break
 			}
 		}
 	}
@@ -195,6 +223,57 @@ func insertMarkdown(text, section, body string) string {
 		out += "\n" + strings.TrimLeft(strings.Join(lines[end:], "\n"), "\n") + "\n"
 	}
 	return out
+}
+
+func nearSection(left, right string) bool {
+	a, b := strings.Fields(strings.ToLower(prose(left))), strings.Fields(strings.ToLower(prose(right)))
+	if len(a) == 0 || len(a) != len(b) {
+		return false
+	}
+	difference := 0
+	for i := range a {
+		x, y := strings.Trim(a[i], "-_.:,;!?"), strings.Trim(b[i], "-_.:,;!?")
+		if x == y || strings.TrimSuffix(x, "s") == strings.TrimSuffix(y, "s") {
+			continue
+		}
+		if oneEditApart(x, y) {
+			difference++
+			continue
+		}
+		return false
+	}
+	return difference <= 1
+}
+
+func oneEditApart(left, right string) bool {
+	if left == right || len(left)-len(right) > 1 || len(right)-len(left) > 1 {
+		return left == right
+	}
+	i, j, edits := 0, 0, 0
+	for i < len(left) && j < len(right) {
+		if left[i] == right[j] {
+			i++
+			j++
+			continue
+		}
+		edits++
+		if edits > 1 {
+			return false
+		}
+		switch {
+		case len(left) > len(right):
+			i++
+		case len(right) > len(left):
+			j++
+		default:
+			i++
+			j++
+		}
+	}
+	if i < len(left) || j < len(right) {
+		edits++
+	}
+	return edits == 1
 }
 
 func (w Writer) prepare() error {
@@ -218,7 +297,40 @@ func (w Writer) prepare() error {
 			break
 		}
 	}
-	return os.MkdirAll(abs, 0700)
+	if err := os.MkdirAll(abs, 0700); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (w Writer) ensureGitignore() error {
+	const block = "# DevTrack Sage runtime\n.routes.json\n.merge.json\n.sage-*.tmp\n"
+	raw, err := w.read(".gitignore")
+	if err != nil {
+		return err
+	}
+	text := string(raw)
+	missing := make([]string, 0, 3)
+	for _, line := range []string{".routes.json", ".merge.json", ".sage-*.tmp"} {
+		found := false
+		for _, existing := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
+			if strings.TrimSpace(existing) == line {
+				found = true
+				break
+			}
+		}
+		if !found {
+			missing = append(missing, line)
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	if len(raw) == 0 {
+		return w.write(".gitignore", []byte(block))
+	}
+	updated := strings.TrimRight(text, "\r\n") + "\n\n# DevTrack Sage runtime\n" + strings.Join(missing, "\n") + "\n"
+	return w.write(".gitignore", []byte(updated))
 }
 
 func (w Writer) topics() ([]string, error) {
@@ -277,9 +389,28 @@ func (w Writer) write(name string, raw []byte) error {
 		return nil
 	}
 	if w.replace != nil {
-		return w.replace(filepath.Join(w.Root, name), raw)
+		err = w.replace(filepath.Join(w.Root, name), raw)
+	} else {
+		err = atomicReplace(filepath.Join(w.Root, name), raw)
 	}
-	return atomicReplace(filepath.Join(w.Root, name), raw)
+	if err == nil && w.Recorder != nil {
+		w.Recorder.Record(filepath.Join(w.Root, name), old, raw)
+	}
+	return err
+}
+
+func (w Writer) remove(name string) error {
+	old, err := w.read(name)
+	if err != nil || old == nil {
+		return err
+	}
+	if err := os.Remove(filepath.Join(w.Root, name)); err != nil {
+		return err
+	}
+	if w.Recorder != nil {
+		w.Recorder.Record(filepath.Join(w.Root, name), old, nil)
+	}
+	return nil
 }
 
 func (w Writer) writeIndex() error {

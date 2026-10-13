@@ -62,6 +62,21 @@ func TestSageBackgroundTimingDefaultsAndOverrides(t *testing.T) {
 	}
 }
 
+func TestSageAutoCommitDefaultsOnAndHonorsOff(t *testing.T) {
+	t.Setenv("DEVTRACK_SAGE_AUTO_COMMIT", "")
+	if !GetSageAutoCommit() {
+		t.Fatal("Sage auto-commit should default on")
+	}
+	t.Setenv("DEVTRACK_SAGE_AUTO_COMMIT", "false")
+	if GetSageAutoCommit() {
+		t.Fatal("explicit false must disable Sage auto-commit")
+	}
+	t.Setenv("DEVTRACK_SAGE_AUTO_COMMIT", "1")
+	if !GetSageAutoCommit() {
+		t.Fatal("1 should enable Sage auto-commit")
+	}
+}
+
 func TestSageBackgroundTimingRejectsUnboundedValues(t *testing.T) {
 	t.Setenv("DEVTRACK_SAGE_MODEL_TIMEOUT_SECS", "3601")
 	t.Setenv("DEVTRACK_SAGE_IDLE_POLL_MS", "6000")

@@ -22,6 +22,7 @@ func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
 		rest []string
 	}{
 		{[]string{"status"}, "status", nil},
+		{[]string{"log"}, "log", nil},
 		{[]string{"search", "git"}, "search", []string{"git"}},
 		{[]string{"routes"}, "routes", nil},
 		{[]string{"merge", "grep", "shell"}, "merge", []string{"grep", "shell"}},
@@ -54,6 +55,86 @@ func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
 			t.Fatalf("routeSage(%q) accepted a removed or unknown command", args)
 		}
 	}
+}
+
+func TestReferenceStatusReportsBothStates(t *testing.T) {
+	root := t.TempDir()
+	database, err := db.NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	if err := os.MkdirAll(filepath.Join(root, "spool", "pending"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "spool", "pending", "captured.json"), []byte("{}"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.DB().Exec(`INSERT INTO sage_jobs(signature,command,failed) VALUES('status','private',0)`); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := writeSageDiagnostics(database, root, "status", nil, &output, time.Unix(100, 0)); err != nil {
+		t.Fatal(err)
+	}
+	var status sageStatus
+	if err := json.Unmarshal(output.Bytes(), &status); err != nil {
+		t.Fatal(err)
+	}
+	if status.Backlog != 1 || status.Pipeline.Waiting != 1 || status.Healthy != nil {
+		t.Fatalf("status=%+v", status)
+	}
+	output.Reset()
+	if err := writeSageDiagnostics(database, root, "doctor", nil, &output, time.Unix(100, 0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(output.Bytes(), &status); err != nil || status.Healthy == nil || !*status.Healthy {
+		t.Fatalf("doctor=%s err=%v", output.String(), err)
+	}
+	output.Reset()
+	if err := writeSageDiagnostics(database, root, "log", nil, &output, time.Unix(100, 0)); err != nil || !strings.Contains(output.String(), `"state":"waiting"`) {
+		t.Fatalf("log=%q err=%v", output.String(), err)
+	}
+	if err := writeSageDiagnostics(database, root, "status", []string{"unexpected"}, &output, time.Unix(100, 0)); err == nil {
+		t.Fatal("unexpected argument accepted")
+	}
+}
+
+func TestReferenceLogRecordsADecisionPerLine(t *testing.T) {
+	root := t.TempDir()
+	database, err := db.NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	for _, signature := range []string{"private first", "private second"} {
+		if _, err := database.DB().Exec(`INSERT INTO sage_jobs
+			(signature,command,failed,state,attempts,last_error,skip_reason)
+			VALUES(?,?,0,'retrying',1,'CANARY\nprivate error','CANARY skip')`, signature, signature); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var output bytes.Buffer
+	if err := writeSageDiagnostics(database, root, "log", nil, &output, time.Unix(100, 0)); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
+	if len(lines) != 2 || strings.Contains(output.String(), "CANARY") || strings.Contains(output.String(), "private") {
+		t.Fatalf("unsafe log=%q", output.String())
+	}
+	for _, line := range lines {
+		var entry db.SageLogEntry
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("invalid NDJSON line %q: %v", line, err)
+		}
+		if entry.Diagnostic != "processing failure" || entry.SkipReason != "explicit skip" {
+			t.Fatalf("unsanitized entry=%+v", entry)
+		}
+	}
+}
+
+func TestReferenceLogFlattensNewlinesSoOneActionIsOneLine(t *testing.T) {
+	TestReferenceLogRecordsADecisionPerLine(t)
 }
 
 func TestSageRoutesCLIUsesConfiguredKnowledgeAndValidatesBeforeOpeningDatabase(t *testing.T) {

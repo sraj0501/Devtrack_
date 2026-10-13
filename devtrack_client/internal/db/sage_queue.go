@@ -3,13 +3,16 @@ package db
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"time"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/llmclient"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
 // SageQueue persists model work independently from capture and Git operations.
@@ -103,14 +106,70 @@ func (q *SageQueue) Claim(ctx context.Context) (distill.Job, bool, error) {
 	err := q.Database.db.QueryRowContext(ctx, `UPDATE sage_jobs SET
 		state='processing',attempts=attempts+1,claim_token=?,lease_until_ms=?
 		WHERE signature=(SELECT signature FROM sage_jobs
-		 WHERE (state IN ('waiting','retrying') AND next_retry_ms<=?)
-		 OR (state='processing' AND lease_until_ms<=?)
+		 WHERE attempts<? AND ((state IN ('waiting','retrying') AND next_retry_ms<=?)
+		 OR (state='processing' AND lease_until_ms<=?))
 		 ORDER BY next_retry_ms,signature LIMIT 1)
-		RETURNING command,failed`, job.ID, now.Add(lease).UnixMilli(), now.UnixMilli(), now.UnixMilli()).Scan(&job.Fact.Command, &job.Fact.Failed)
+		RETURNING command,failed`, job.ID, now.Add(lease).UnixMilli(), SageMaxAttempts, now.UnixMilli(), now.UnixMilli()).Scan(&job.Fact.Command, &job.Fact.Failed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return distill.Job{}, false, nil
 	}
 	return job, err == nil, err
+}
+
+// ReuseDocumented attaches a new signature variant to an existing action and
+// completes it without a model call. File mutation happens before durable
+// acknowledgement; a lost acknowledgement safely replays the idempotent add.
+func (q *SageQueue) ReuseDocumented(ctx context.Context, writer knowledge.Writer) (bool, error) {
+	now := q.now()
+	var signature, command string
+	err := q.Database.db.QueryRowContext(ctx, `SELECT signature,command FROM sage_jobs
+		WHERE state IN ('waiting','retrying') AND attempts<? AND next_retry_ms<=?
+		ORDER BY next_retry_ms,signature LIMIT 1`, SageMaxAttempts, now.UnixMilli()).Scan(&signature, &command)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	digest := sha256.Sum256([]byte(signature))
+	variant := hex.EncodeToString(digest[:])
+	filename, existing, found, err := writer.ResolveExisting(command, variant)
+	if err != nil || !found {
+		return false, err
+	}
+	if existing != variant {
+		added, err := writer.AddSignature(filename, existing, variant)
+		if err != nil {
+			return true, err
+		}
+		if !added {
+			// A concurrent/manual edit removed the target; let normal distillation
+			// reconsider it instead of claiming completion.
+			return false, nil
+		}
+	}
+	tx, err := q.Database.db.BeginTx(ctx, nil)
+	if err != nil {
+		return true, err
+	}
+	defer tx.Rollback()
+	result, err := tx.ExecContext(ctx, `UPDATE sage_jobs SET state='distilled',draft_json='{}',
+		last_error='',next_retry_ms=0,completed_ms=?,claim_token='',lease_until_ms=0
+		WHERE signature=? AND state IN ('waiting','retrying')`, now.UnixMilli(), signature)
+	if err != nil {
+		return true, err
+	}
+	if changed, err := result.RowsAffected(); err != nil || changed != 1 {
+		if err != nil {
+			return true, err
+		}
+		return false, nil
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE sage_publications SET state='documented',filename=?,
+		completed_ms=?,next_retry_ms=0,last_error='' WHERE signature=?`, filename, now.UnixMilli(), signature); err != nil {
+		return true, err
+	}
+	return true, tx.Commit()
 }
 
 func (q *SageQueue) finish(ctx context.Context, token, state, draft, reason, diagnostic string, retryAt int64) error {
@@ -161,6 +220,8 @@ func (q *SageQueue) Retry(ctx context.Context, token string, cause error) error 
 	diagnostic := "model or persistence failure"
 	if errors.Is(cause, context.DeadlineExceeded) {
 		diagnostic = "model timeout"
+	} else if errors.Is(cause, llmclient.ErrTokenLimit) {
+		diagnostic = "model token limit"
 	}
 	return q.finish(ctx, token, "retrying", "", "", diagnostic, q.now().Add(delay).UnixMilli())
 }

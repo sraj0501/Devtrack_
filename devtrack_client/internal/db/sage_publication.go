@@ -36,8 +36,8 @@ func (q *SageQueue) PublishNext(ctx context.Context, writer SagePublisher) (bool
 	var signature string
 	err = tx.QueryRowContext(ctx, `UPDATE sage_publications SET attempts=attempts+1
 		WHERE signature=(SELECT signature FROM sage_publications
-		WHERE state IN ('waiting','retrying') AND next_retry_ms<=?
-		ORDER BY next_retry_ms,signature LIMIT 1) RETURNING signature`, q.now().UnixMilli()).Scan(&signature)
+		WHERE state IN ('waiting','retrying') AND attempts<? AND next_retry_ms<=?
+		ORDER BY next_retry_ms,signature LIMIT 1) RETURNING signature`, SageMaxAttempts, q.now().UnixMilli()).Scan(&signature)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -53,6 +53,9 @@ func (q *SageQueue) PublishNext(ctx context.Context, writer SagePublisher) (bool
 	var draft distill.Draft
 	if state == "distilled" {
 		err = json.Unmarshal([]byte(raw), &draft)
+		if draft.Topic != "" {
+			topic = draft.Topic
+		}
 	}
 	var filename string
 	if err == nil && ctx.Err() == nil {

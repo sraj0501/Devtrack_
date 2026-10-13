@@ -44,6 +44,9 @@ func (w Writer) Merge(source, destination string) (int, error) {
 	if err != nil || len(raw) == 0 {
 		return 0, err
 	}
+	if err := w.ensureGitignore(); err != nil {
+		return 0, err
+	}
 	dest, err := w.read(dst)
 	if err != nil {
 		return 0, err
@@ -146,7 +149,7 @@ func (w Writer) recoverMerge() (*mergeRecord, error) {
 		return nil, err
 	}
 	// Destination and routes are durable before the source is removed.
-	if err := os.Remove(filepath.Join(w.Root, r.Source)); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := w.remove(r.Source); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 	if err := w.writeIndex(); err != nil {

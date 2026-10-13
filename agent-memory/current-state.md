@@ -7,11 +7,19 @@ type: project
 **Active product initiative:** TASK-157 / SAGE-003 is the Go-native port of the cross-harness,
 self-writing command-knowledge product in `F:\git_apps\Personal_Projects\ai_sessions_skills` at
 `b85a1ab`. The qualified queue, publication, routing, merge/refile, skipped-action, and full-entry
-search slice is integrated into `dev` through PR #275. The 136-scenario ledger currently records
-27 implemented, 1 adapted, 12 partial, and 96 pending scenarios. Next: start a dedicated branch
-from current `origin/dev` for truthful diagnostics and safe local knowledge commits, then close the
-remaining parity ledger and repeated clean capture-to-knowledge acceptance journey. Playback is not
-in scope. `initiatives/sage.md` owns the detailed boundaries and execution order.
+search slice is integrated into `dev` through PR #275. The active closure branch is
+`features/TASK-157-sage-closure`, based on `origin/dev` at `549c430`; its first review slice adds
+truthful diagnostics, bounded retries, privacy-safe NDJSON logs, safe local knowledge commits,
+model-free documented-action reuse, deterministic rendering, and conservative section matching.
+The 136-scenario ledger now records 82 implemented, 1 adapted, 2 partial, and 51 pending scenarios.
+PR #278 is the active review for this closure branch; follow-up commits add quote-aware compound
+command signatures, cross-harness payload normalization, deterministic temperature-zero model
+requests, token-limit diagnostics, and background-only classify-once routing with deterministic
+fallback and existing-section context.
+The full Go suite, `go vet ./...`, parity-ledger consistency check, and whitespace check pass. Next:
+close the remaining parity ledger and repeated clean capture-to-knowledge acceptance journey.
+Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order;
+`sage-resume.md` is the fresh-session handoff with the exact pending groups and acceptance gates.
 
 **Integration state:** PR #275 merged the qualified TASK-157 implementation slice to `dev` at
 `a1777b6`; its CI, client CI, Windows/Linux no-send E2E, PostgreSQL, MCPB, registry, and rolling

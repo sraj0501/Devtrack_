@@ -52,14 +52,35 @@ type fakeClient struct {
 	response string
 	err      error
 	wait     bool
+	messages *[]llmclient.Message
 }
 
-func (f fakeClient) ChatJSONContext(ctx context.Context, _ []llmclient.Message) (string, error) {
+func (f fakeClient) ChatJSONContext(ctx context.Context, messages []llmclient.Message) (string, error) {
+	if f.messages != nil {
+		*f.messages = append([]llmclient.Message(nil), messages...)
+	}
 	if f.wait {
 		<-ctx.Done()
 		return "", ctx.Err()
 	}
 	return f.response, f.err
+}
+
+func TestReferenceExistingSectionsAreOfferedToTheModel(t *testing.T) {
+	var messages []llmclient.Message
+	service := Distiller{Client: fakeClient{
+		messages: &messages,
+		response: `{"worth_documenting":true,"title":"Inspect repository state","section":"Inspecting state","commands":["git status"],"what":"Shows changes.","why":"Checks work.","example":"git status","notes":""}`,
+	}}
+	_, err := service.Distill(context.Background(), Fact{
+		Command: "git status", ExistingSections: []string{"Inspecting state"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(messages) != 2 || !strings.Contains(messages[1].Content, `"existing_sections":["Inspecting state"]`) {
+		t.Fatalf("messages=%+v", messages)
+	}
 }
 
 func TestDistillerMarksModelFailuresRetryable(t *testing.T) {
@@ -88,7 +109,7 @@ func TestDistillerReturnsExplicitSkipWithoutRetry(t *testing.T) {
 
 // A reasoning model may exhaust its budget without producing an answer. That
 // is a retryable transport failure, never a decision to discard captured work.
-func TestDistillerEmptyModelOutputRemainsRetryable(t *testing.T) {
+func TestReferenceTokenLimitWithNoOutputIsAFailureNotAVerdict(t *testing.T) {
 	for _, provider := range []string{"ollama", "openai"} {
 		t.Run(provider, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +123,7 @@ func TestDistillerEmptyModelOutputRemainsRetryable(t *testing.T) {
 			defer server.Close()
 			service := Distiller{Client: llmclient.Config{Host: server.URL, Provider: provider, Model: "test", Client: server.Client()}}
 			outcome, err := service.Distill(context.Background(), Fact{Command: "git status"})
-			if !IsRetryable(err) || outcome.Skipped || outcome.Draft != nil {
+			if !IsRetryable(err) || !errors.Is(err, llmclient.ErrTokenLimit) || outcome.Skipped || outcome.Draft != nil {
 				t.Fatalf("empty model output became a verdict: outcome=%#v err=%v", outcome, err)
 			}
 		})

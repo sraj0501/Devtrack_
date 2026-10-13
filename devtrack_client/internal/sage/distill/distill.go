@@ -18,11 +18,13 @@ import (
 var signatureComment = regexp.MustCompile(`(?i)<!--\s*sig:\s*[0-9a-f]{6,40}\s*-->`)
 
 type Fact struct {
-	Command string
-	Failed  bool
+	Command          string
+	Failed           bool
+	ExistingSections []string
 }
 
 type Draft struct {
+	Topic    string
 	Title    string
 	Section  string
 	Commands []string
@@ -76,7 +78,7 @@ func (d Distiller) Distill(ctx context.Context, fact Fact) (Outcome, error) {
 	requestCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	prompt := entryPrompt(command, fact.Failed)
+	prompt := entryPrompt(command, fact.Failed, fact.ExistingSections)
 	raw, err := d.Client.ChatJSONContext(requestCtx, []llmclient.Message{
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: prompt},
@@ -93,11 +95,12 @@ func (d Distiller) Distill(ctx context.Context, fact Fact) (Outcome, error) {
 
 const systemPrompt = `You write one reusable personal command-reference entry. Return one JSON object only. The object must contain worth_documenting, skip_reason, title, section, commands, what, why, example, and notes. Never emit a signature, filename, route, or Markdown. Replace secrets with <TOKEN> and personal absolute paths with <repo>/... or ~/....`
 
-func entryPrompt(command string, failed bool) string {
+func entryPrompt(command string, failed bool, existingSections []string) string {
 	payload, _ := json.Marshal(struct {
-		Command string `json:"command"`
-		Failed  bool   `json:"failed"`
-	}{Command: command, Failed: failed})
+		Command          string   `json:"command"`
+		Failed           bool     `json:"failed"`
+		ExistingSections []string `json:"existing_sections,omitempty"`
+	}{Command: command, Failed: failed, ExistingSections: existingSections})
 	return "Document this captured fact:\n" + string(payload)
 }
 

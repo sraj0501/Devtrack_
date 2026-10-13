@@ -15,12 +15,16 @@ without an approved board task and a dedicated branch targeting `dev`.
 - PR #275 integrated the qualified TASK-157 implementation slice at `a1777b6`; its post-merge
   workflows passed and the rolling release is `dev-a1777b6`. PR #276 added documentation only;
   its applicable CI and wiki checks passed at `fc3217f`.
-- No dedicated branch exists yet for the remaining SAGE-003 work. Start it from current
-  `origin/dev`; do not continue from the already merged `features/TASK-157-sage-parity` branch.
+- Active closure branch: `features/TASK-157-sage-closure`, created from `origin/dev` at `549c430`
+  after TASK-163 documentation reconciliation. Do not continue from the already merged
+  `features/TASK-157-sage-parity` branch.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
-  skipped-action records, and full-entry search/topic reconciliation.
-- Ledger checkpoint: 27 implemented, 1 adapted, 12 partial, 96 pending.
+  skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded
+  retries, safe local knowledge commits, model-free documented-action reuse, and conservative
+  section matching.
+- Ledger checkpoint: 82 implemented, 1 adapted, 2 partial, 51 pending. Full Go tests, vet, ledger
+  consistency, and whitespace validation pass on the closure branch.
 - Next unused task ID is TASK-164, subject to board verification before allocation.
 
 ## Ordered work

@@ -259,7 +259,7 @@ func (cli *CLI) handleSage() error {
 		return err
 	}
 	switch sub {
-	case "status", "pause", "resume", "doctor":
+	case "status", "pause", "resume", "doctor", "log":
 		return runSageState(sub, args)
 	case "install-hooks":
 		return runSageHookInstall(true, args)

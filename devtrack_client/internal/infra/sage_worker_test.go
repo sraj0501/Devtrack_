@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -84,6 +85,11 @@ func TestSageDaemonSpoolToDurableDraftSurvivesRestart(t *testing.T) {
 	root := filepath.Join(home, "devtrack", "sage")
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if strings.Contains(string(body), "You organise a personal command reference") {
+			_ = json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": `{"file":"git.md","title":"Git"}`}, "done": true})
+			return
+		}
 		switch calls.Add(1) {
 		case 1:
 			http.Error(w, "SECRET_CANARY outage", http.StatusServiceUnavailable)
