@@ -11,8 +11,9 @@ import (
 
 // Job is a durable queue claim handed to the background distillation worker.
 type Job struct {
-	ID   string
-	Fact Fact
+	ID    string
+	Topic string
+	Fact  Fact
 }
 
 // Queue owns durable claim, retry, and completion state. Implementations must
@@ -30,6 +31,7 @@ type Queue interface {
 type Worker struct {
 	Queue      Queue
 	Distiller  Distiller
+	Prepare    func(context.Context, *Job) error
 	IdleDelay  time.Duration
 	RetryDelay time.Duration
 }
@@ -85,6 +87,18 @@ func (w Worker) run(ctx context.Context) {
 			}
 			continue
 		}
+		if w.Prepare != nil {
+			if err := w.Prepare(ctx, &job); err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+				_ = w.Queue.Retry(ctx, job.ID, err)
+				if !wait(ctx, retryDelay(w.RetryDelay)) {
+					return
+				}
+				continue
+			}
+		}
 
 		outcome, err := w.Distiller.Distill(ctx, job.Fact)
 		if err != nil {
@@ -92,11 +106,7 @@ func (w Worker) run(ctx context.Context) {
 				return
 			}
 			_ = w.Queue.Retry(ctx, job.ID, err)
-			retryDelay := w.RetryDelay
-			if retryDelay <= 0 {
-				retryDelay = 2 * time.Second
-			}
-			if !wait(ctx, retryDelay) {
+			if !wait(ctx, retryDelay(w.RetryDelay)) {
 				return
 			}
 			continue
@@ -109,8 +119,16 @@ func (w Worker) run(ctx context.Context) {
 			_ = w.Queue.Retry(ctx, job.ID, errors.New("sage distiller returned no draft or skip verdict"))
 			continue
 		}
+		outcome.Draft.Topic = job.Topic
 		_ = w.Queue.Complete(ctx, job.ID, *outcome.Draft)
 	}
+}
+
+func retryDelay(value time.Duration) time.Duration {
+	if value <= 0 {
+		return 2 * time.Second
+	}
+	return value
 }
 
 func wait(ctx context.Context, delay time.Duration) bool {

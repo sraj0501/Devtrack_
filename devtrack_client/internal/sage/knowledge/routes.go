@@ -87,6 +87,51 @@ func (w Writer) Routes() ([]Route, error) {
 	return w.routes()
 }
 
+// Route returns the effective destination for one binary. Existing entries
+// take precedence over remembered classifier or user choices.
+func (w Writer) Route(binary string) (Route, bool, error) {
+	binary = strings.ToLower(strings.TrimSpace(binary))
+	if !ValidRouteBinary(binary) {
+		return Route{}, false, errors.New("invalid Sage route binary")
+	}
+	routes, err := w.Routes()
+	if err != nil {
+		return Route{}, false, err
+	}
+	for _, route := range routes {
+		if route.Binary == binary {
+			return route, true, nil
+		}
+	}
+	return Route{}, false, nil
+}
+
+// Sections returns the stable section headings in one safe topic file. It is
+// used only as bounded context for distillation; entry content is not exposed.
+func (w Writer) Sections(filename string) ([]string, error) {
+	if SafeFilename(filename) != filename {
+		return nil, errors.New("invalid Sage topic filename")
+	}
+	publicationMu.Lock()
+	defer publicationMu.Unlock()
+	if err := w.prepare(); err != nil {
+		return nil, err
+	}
+	raw, err := w.read(filename)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool)
+	var sections []string
+	for _, entry := range ParseMarkdown(string(raw)) {
+		if entry.Section != "" && !seen[entry.Section] {
+			seen[entry.Section] = true
+			sections = append(sections, entry.Section)
+		}
+	}
+	return sections, nil
+}
+
 func (w Writer) routes() ([]Route, error) {
 	if pending, err := w.read(mergeFile); err != nil {
 		return nil, err

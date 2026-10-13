@@ -262,8 +262,9 @@ https://github.com/sraj0501/Devtrack_/pull/273
 `status`/`doctor`/`log` diagnostics, bounded retries, privacy-safe NDJSON logs, Sage-owned local
 commits, model-free documented-action reuse, deterministic rendering, and conservative section
 matching, quote-aware compound command capture, cross-harness payload normalization, deterministic
-temperature-zero model requests, and token-limit diagnostics. The ledger is now 78 implemented,
-1 adapted, 2 partial, and 55 pending. Full Go tests,
+temperature-zero model requests, token-limit diagnostics, and background classify-once routing with
+sanitized persistent choices, deterministic fallback, and existing-section context. The ledger is
+now 82 implemented, 1 adapted, 2 partial, and 51 pending. Full Go tests,
 `go vet ./...`, parity-ledger consistency, and whitespace checks pass. Ready for review into `dev`;
 TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/278

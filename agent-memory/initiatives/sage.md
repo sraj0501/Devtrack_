@@ -65,8 +65,9 @@ quickly, print nothing, perform no model or network call, and never break an age
 - PR #278 is the active SAGE-003 closure review from `features/TASK-157-sage-closure`. It includes
   truthful diagnostics, bounded retries, safe local knowledge commits, model-free action reuse,
   quote-aware compound command signatures, cross-harness payload normalization, deterministic
-  temperature-zero model requests, and token-limit diagnostics. The ledger is 78 implemented,
-  1 adapted, 2 partial, and 55 pending. Remaining work is the open parity scenarios and repeated
+  temperature-zero model requests, token-limit diagnostics, and background classify-once routing
+  with safe fallback and existing-section context. The ledger is 82 implemented, 1 adapted,
+  2 partial, and 51 pending. Remaining work is the open parity scenarios and repeated
   capture-to-knowledge acceptance; the earlier `features/TASK-157-sage-parity` branch is merged.
 
 ## Ordered next steps

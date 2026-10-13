@@ -11,10 +11,11 @@ search slice is integrated into `dev` through PR #275. The active closure branch
 `features/TASK-157-sage-closure`, based on `origin/dev` at `549c430`; its first review slice adds
 truthful diagnostics, bounded retries, privacy-safe NDJSON logs, safe local knowledge commits,
 model-free documented-action reuse, deterministic rendering, and conservative section matching.
-The 136-scenario ledger now records 78 implemented, 1 adapted, 2 partial, and 55 pending scenarios.
+The 136-scenario ledger now records 82 implemented, 1 adapted, 2 partial, and 51 pending scenarios.
 PR #278 is the active review for this closure branch; follow-up commits add quote-aware compound
 command signatures, cross-harness payload normalization, deterministic temperature-zero model
-requests, and token-limit diagnostics.
+requests, token-limit diagnostics, and background-only classify-once routing with deterministic
+fallback and existing-section context.
 The full Go suite, `go vet ./...`, parity-ledger consistency check, and whitespace check pass. Next:
 close the remaining parity ledger and repeated clean capture-to-knowledge acceptance journey.
 Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order.

@@ -52,14 +52,35 @@ type fakeClient struct {
 	response string
 	err      error
 	wait     bool
+	messages *[]llmclient.Message
 }
 
-func (f fakeClient) ChatJSONContext(ctx context.Context, _ []llmclient.Message) (string, error) {
+func (f fakeClient) ChatJSONContext(ctx context.Context, messages []llmclient.Message) (string, error) {
+	if f.messages != nil {
+		*f.messages = append([]llmclient.Message(nil), messages...)
+	}
 	if f.wait {
 		<-ctx.Done()
 		return "", ctx.Err()
 	}
 	return f.response, f.err
+}
+
+func TestReferenceExistingSectionsAreOfferedToTheModel(t *testing.T) {
+	var messages []llmclient.Message
+	service := Distiller{Client: fakeClient{
+		messages: &messages,
+		response: `{"worth_documenting":true,"title":"Inspect repository state","section":"Inspecting state","commands":["git status"],"what":"Shows changes.","why":"Checks work.","example":"git status","notes":""}`,
+	}}
+	_, err := service.Distill(context.Background(), Fact{
+		Command: "git status", ExistingSections: []string{"Inspecting state"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(messages) != 2 || !strings.Contains(messages[1].Content, `"existing_sections":["Inspecting state"]`) {
+		t.Fatalf("messages=%+v", messages)
+	}
 }
 
 func TestDistillerMarksModelFailuresRetryable(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge/gitcommit"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/routing"
 )
 
 type pausedSageQueue struct {
@@ -43,7 +44,13 @@ func (im *IntegratedMonitor) startSageDistillation(ctx context.Context, root str
 		Lease:      (time.Duration(config.GetSageModelTimeoutSecs()) + 30) * time.Second,
 		RetryDelay: time.Duration(config.GetSageRetryDelaySecs()) * time.Second,
 	}, root: root, knowledgeRoot: knowledgeRoot}
-	modelDone := distill.NewBackgroundWorker(queue, client).Start(ctx)
+	worker := distill.NewBackgroundWorker(queue, client)
+	worker.Prepare = (routing.Preparer{
+		Writer:  knowledge.Writer{Root: knowledgeRoot},
+		Client:  client,
+		Timeout: time.Duration(config.GetSageModelTimeoutSecs()) * time.Second,
+	}).Prepare
+	modelDone := worker.Start(ctx)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)

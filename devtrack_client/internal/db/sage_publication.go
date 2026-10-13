@@ -53,6 +53,9 @@ func (q *SageQueue) PublishNext(ctx context.Context, writer SagePublisher) (bool
 	var draft distill.Draft
 	if state == "distilled" {
 		err = json.Unmarshal([]byte(raw), &draft)
+		if draft.Topic != "" {
+			topic = draft.Topic
+		}
 	}
 	var filename string
 	if err == nil && ctx.Err() == nil {
