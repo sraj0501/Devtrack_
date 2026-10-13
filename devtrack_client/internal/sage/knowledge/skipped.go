@@ -22,6 +22,9 @@ func (w Writer) WriteSkipped(signature string) (string, error) {
 	if _, err := w.recoverMerge(); err != nil {
 		return "", err
 	}
+	if err := w.ensureGitignore(); err != nil {
+		return "", err
+	}
 	raw, err := w.read(skippedFile)
 	if err != nil {
 		return "", err

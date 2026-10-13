@@ -85,3 +85,42 @@ func TestSafeCodexCommandDropsValues(t *testing.T) {
 		t.Fatal("path escaped into display command")
 	}
 }
+
+func TestReferenceSameActionDifferentValuesCollapses(t *testing.T) {
+	_, left, okLeft := safeCodexCommand("go test ./first/package -race")
+	_, right, okRight := safeCodexCommand("go test ./second/package -race")
+	if !okLeft || !okRight || left != "go test" || right != left {
+		t.Fatalf("left=%q right=%q ok=%v/%v", left, right, okLeft, okRight)
+	}
+}
+
+func TestReferenceNamesDoNotLeakIntoSignatures(t *testing.T) {
+	command, signature, ok := safeCodexCommand("git checkout private-customer-branch")
+	if !ok || signature != "git checkout" || strings.Contains(command, "private-customer") || strings.Contains(signature, "private-customer") {
+		t.Fatalf("command=%q signature=%q ok=%v", command, signature, ok)
+	}
+}
+
+func TestReferenceRealSubcommandsStillSplit(t *testing.T) {
+	_, status, okStatus := safeCodexCommand("git status --short")
+	_, logSignature, okLog := safeCodexCommand("git log --oneline")
+	if !okStatus || !okLog || status == logSignature {
+		t.Fatalf("status=%q log=%q", status, logSignature)
+	}
+}
+
+func TestReferenceDistinctActionsStayDistinct(t *testing.T) {
+	_, gitSignature, okGit := safeCodexCommand("git status")
+	_, goSignature, okGo := safeCodexCommand("go test ./...")
+	if !okGit || !okGo || gitSignature == goSignature {
+		t.Fatalf("git=%q go=%q", gitSignature, goSignature)
+	}
+}
+
+func TestReferenceTrivialCommandsAreIgnored(t *testing.T) {
+	for _, command := range []string{"pwd", "ls", "echo hello", "cd project"} {
+		if event, signature, ok := safeCodexCommand(command); ok {
+			t.Fatalf("trivial command accepted: %q %q %q", command, event, signature)
+		}
+	}
+}

@@ -2,7 +2,10 @@ package db
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -11,6 +14,7 @@ import (
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
 func queueEvent(t *testing.T, d *Database, id, signature string) {
@@ -18,6 +22,62 @@ func queueEvent(t *testing.T, d *Database, id, signature string) {
 	_, err := d.InsertSageEvent(sage.Event{SchemaVersion: 1, EventID: id, Harness: "codex", SessionID: "session", EventType: "command", Tool: "shell", OccurredAt: time.Now(), Command: signature, Signature: signature})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestReferenceSecondVariantMergesWithoutCallingTheModel(t *testing.T) {
+	database, err := NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	w := knowledge.Writer{Root: t.TempDir()}
+	draft := distill.Draft{Title: "Status", Section: "Git", Commands: []string{"git status --short"}, What: "Shows changes", Why: "Review", Example: "Before commit"}
+	if _, err := w.Write("git", "abcdef21", draft); err != nil {
+		t.Fatal(err)
+	}
+	queueEvent(t, database, "variant", "git status --porcelain=v2")
+	q := SageQueue{Database: database, Now: func() time.Time { return time.Unix(100, 0) }}
+	reused, err := q.ReuseDocumented(context.Background(), w)
+	if err != nil || !reused {
+		t.Fatalf("reused=%v err=%v", reused, err)
+	}
+	if _, found, err := q.Claim(context.Background()); err != nil || found {
+		t.Fatalf("variant reached model queue: found=%v err=%v", found, err)
+	}
+	raw, err := os.ReadFile(filepath.Join(w.Root, "git.md"))
+	if err != nil || len(knowledge.ParseMarkdown(string(raw))[0].Signatures) != 2 {
+		t.Fatalf("variant not attached: %s err=%v", raw, err)
+	}
+	var state, filename string
+	if err := database.DB().QueryRow(`SELECT j.state,p.filename FROM sage_jobs j JOIN sage_publications p USING(signature)`).Scan(&state, &filename); err != nil || state != "distilled" || filename != "git.md" {
+		t.Fatalf("state=%s filename=%s err=%v", state, filename, err)
+	}
+}
+
+func TestReferenceAlreadyDocumentedSigIsUntouched(t *testing.T) {
+	database, err := NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	w := knowledge.Writer{Root: t.TempDir()}
+	signature := "git status --short"
+	digest := sha256.Sum256([]byte(signature))
+	hashed := hex.EncodeToString(digest[:])
+	draft := distill.Draft{Title: "Status", Section: "Git", Commands: []string{signature}, What: "Shows changes", Why: "Review", Example: "Before commit"}
+	if _, err := w.Write("git", hashed, draft); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := os.ReadFile(filepath.Join(w.Root, "git.md"))
+	queueEvent(t, database, "same", signature)
+	q := SageQueue{Database: database, Now: func() time.Time { return time.Unix(100, 0) }}
+	if reused, err := q.ReuseDocumented(context.Background(), w); err != nil || !reused {
+		t.Fatalf("reused=%v err=%v", reused, err)
+	}
+	after, _ := os.ReadFile(filepath.Join(w.Root, "git.md"))
+	if string(before) != string(after) {
+		t.Fatal("already documented entry was rewritten")
 	}
 }
 

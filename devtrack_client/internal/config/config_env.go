@@ -920,6 +920,14 @@ func GetSageKnowledgeDir(sageRoot string) string {
 	return filepath.Join(sageRoot, "knowledge")
 }
 
+// GetSageAutoCommit controls local knowledge-only commits. Sage never pushes.
+// It defaults on to match the self-writing reference; an explicit false or 0
+// keeps publication entirely in the working tree.
+func GetSageAutoCommit() bool {
+	value := strings.TrimSpace(os.Getenv("DEVTRACK_SAGE_AUTO_COMMIT"))
+	return value == "" || strings.EqualFold(value, "true") || value == "1"
+}
+
 // GetSageModelTimeoutSecs bounds one background local-model request. The
 // three-minute default is forgiving for offline models without waiting forever.
 func GetSageModelTimeoutSecs() int {

@@ -399,7 +399,7 @@ func (cli *CLI) printUsage() {
 	fmt.Println("  devtrack git <cmd>               Pass-through to git (add, push, pull, …)")
 	fmt.Println()
 	fmt.Println("SAGE:")
-	fmt.Println("  devtrack sage status|pause|resume|doctor     Local capture state")
+	fmt.Println("  devtrack sage status|pause|resume|doctor|log Local capture and pipeline state")
 	fmt.Println("  devtrack sage search <query> [--topic name]  Search command knowledge")
 	fmt.Println("  devtrack sage topics                         List knowledge topics")
 	fmt.Println("  devtrack sage routes                         List effective routes and their source")

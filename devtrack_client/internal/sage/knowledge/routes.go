@@ -38,6 +38,9 @@ func (w Writer) RememberRoute(binary, topic string) error {
 	if _, err := w.recoverMerge(); err != nil {
 		return err
 	}
+	if err := w.ensureGitignore(); err != nil {
+		return err
+	}
 	routes, err := w.loadRoutes()
 	if err != nil {
 		return err
@@ -134,14 +137,9 @@ func (w Writer) routes() ([]Route, error) {
 // The capture adapter currently accepts simple commands. Shell wrappers and
 // compound-command action parsing are a separate parity boundary.
 func entryBinary(entry MarkdownEntry) string {
-	for _, command := range entry.Commands {
-		fields := strings.Fields(command)
-		if len(fields) > 0 {
-			binary := strings.ToLower(fields[0])
-			if ValidRouteBinary(binary) {
-				return binary
-			}
-		}
+	action := entryAction(entry)
+	if action != "" {
+		return strings.Fields(action)[0]
 	}
 	return ""
 }
