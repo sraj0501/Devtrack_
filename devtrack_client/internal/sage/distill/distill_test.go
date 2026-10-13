@@ -48,6 +48,20 @@ func TestParseDistinguishesSkipFromMalformed(t *testing.T) {
 	}
 }
 
+func TestReferenceAgentPromptUsesSeparateRuntimeFolder(t *testing.T) {
+	runtimeRoot := `C:\private\sage\.runtime`
+	prompt := entryPrompt("git status --short", false, []string{"Inspecting state"})
+
+	// The reference agent prompt names a batch file in a separate runtime
+	// directory. Go's stronger adaptation sends only sanitized fact JSON: no
+	// queue, database, runtime, or knowledge path is exposed to the model.
+	for _, forbidden := range []string{runtimeRoot, ".runtime", "batch.jsonl", "devtrack.db"} {
+		if strings.Contains(prompt, forbidden) {
+			t.Fatalf("prompt exposed private runtime path %q: %s", forbidden, prompt)
+		}
+	}
+}
+
 type fakeClient struct {
 	response string
 	err      error

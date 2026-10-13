@@ -186,8 +186,8 @@ the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
 
 On rolling `dev`, the capture pipeline, durable SQLite jobs, daemon-owned distillation,
 deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped-action
-records, and full-entry search are implemented. SAGE-003 is not complete or part of the v3.1.1
-stable release: truthful diagnostics, safe local knowledge commits, remaining parity tests, and the
+records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
+SAGE-003 is not complete or part of the v3.1.1 stable release: remaining parity tests and the
 repeated clean end-to-end acceptance journey remain. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md).
@@ -418,6 +418,8 @@ devtrack sage harness install codex
 devtrack sage status
 devtrack sage search "rebase"
 devtrack sage topics
+devtrack sage doctor
+devtrack sage routes
 ```
 
 Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
@@ -426,9 +428,12 @@ events into SQLite and groups repeated command signatures. A structured backgrou
 local Ollama by default; publication retries do not repeat model work. On rolling `dev`, search
 returns complete Markdown entries, matching all literal keywords, and `--topic git` filters by
 topic filename. Search reflects manual edits and topic moves; skipped records are excluded.
-This remains a development preview: diagnostics, safe local commits, remaining reference parity,
-and end-to-end release qualification are open. See
-[the current Sage checkpoint](docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md) for tested behavior and limits.
+Set `DEVTRACK_SAGE_RUNTIME_DIR` to relocate private queue/state/log storage and
+`DEVTRACK_SAGE_KNOWLEDGE_DIR` to relocate portable Markdown independently; relative values resolve
+from the stable Sage data root, not the shell's working directory. This remains a development
+preview: remaining reference parity and end-to-end release qualification are open. See
+[the runtime-isolation qualification](docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md) and the
+[current Sage checkpoint](docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md) for tested behavior and limits.
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;

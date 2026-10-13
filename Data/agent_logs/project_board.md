@@ -1,13 +1,12 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-13 — TASK-157 / SAGE-003 closure is active in PR #278 from
-`features/TASK-157-sage-closure`, based on `origin/dev` at `549c430`. The branch has completed and
-locally qualified diagnostics, bounded retries, privacy-safe logs, Sage-owned local commits,
-model-free action reuse, compound-command and cross-harness normalization, deterministic model
-requests, token-limit diagnostics, and classify-once persistent routing. The executable parity
-ledger is 82 implemented, 1 adapted, 2 partial, and 51 pending. Next: close the remaining parity
-scenarios, run the complete capture-to-knowledge journey twice on Windows and Linux, and integrate
-PR #278 through `dev`. Next unused task ID: TASK-164, subject to verification before allocation._
+_Last reconciled: 2026-10-13 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
+`dev` at `a6a75b0`; required and post-merge workflows passed. The active follow-up branch is
+`features/TASK-157-sage-backend-isolation`, which isolates private runtime state from knowledge
+placement and tracks the repaired reference checkout at `ea2e067`. The executable parity ledger is
+84 implemented, 2 adapted, 2 partial, and 48 pending. Next: review this slice, close backend/provider
+behavior, then continue platform/lifecycle parity and repeated Windows/Linux acceptance. Next unused
+task ID: TASK-164, subject to verification before allocation._
 
 **[2026-10-13] TASK-163 — Post-Sage integration documentation reconciliation (complete).**
 **Priority:** Documentation integrity. **Branch:** `docs/TASK-163-post-sage-reconciliation`.
@@ -257,19 +256,20 @@ https://github.com/sraj0501/Devtrack_/pull/273
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 
-**Engineer status (2026-10-13):** First closure slice is locally qualified on
-`features/TASK-157-sage-closure`, based on `origin/dev` at `549c430`. It adds truthful
+**Engineer status (2026-10-13):** PR #278 merged the first closure slice to `dev` at `a6a75b0`.
+The active `features/TASK-157-sage-backend-isolation` follow-up adds stable runtime and knowledge
+path resolution, including explicit and relative overrides. The integrated slice adds truthful
 `status`/`doctor`/`log` diagnostics, bounded retries, privacy-safe NDJSON logs, Sage-owned local
 commits, model-free documented-action reuse, deterministic rendering, and conservative section
 matching, quote-aware compound command capture, cross-harness payload normalization, deterministic
 temperature-zero model requests, token-limit diagnostics, and background classify-once routing with
 sanitized persistent choices, deterministic fallback, and existing-section context. The ledger is
-now 82 implemented, 1 adapted, 2 partial, and 51 pending. Full Go tests,
-`go vet ./...`, parity-ledger consistency, and whitespace checks pass. Ready for review into `dev`;
-TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
+now 84 implemented, 2 adapted, 2 partial, and 48 pending. Full Go tests, `go vet ./...`,
+parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
+locally. TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/278
 
-**Done in the active closure branch:**
+**Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
       NDJSON diagnostics.
 - [x] Local commits restricted to Sage-owned knowledge paths, preserving unrelated Git state and
@@ -280,21 +280,20 @@ TASK-157 remains open for the remaining parity closure and repeated end-to-end j
 - [x] Deterministic temperature-zero model requests and token-limit diagnostics.
 - [x] Classify unknown binaries once, sanitize and persist the selected route, fall back safely
       when classification is unavailable, and provide existing section context to distillation.
+- [x] Keep queue/state/log runtime paths independent from Markdown knowledge overrides, anchor
+      relative paths to the Sage root, and keep runtime/knowledge paths out of model prompts.
 - [x] Full Go tests, `go vet ./...`, parity-ledger validation, parity-checker tests, shared-memory
       validation, and whitespace checks pass locally.
 
 **Pending before TASK-157 can close:**
-- [ ] Resolve the 51 pending and 2 partial rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
+- [ ] Resolve the 48 pending and 2 partial rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
       Go tests or an explicit, justified adaptation; make `--require-complete` pass.
-- [ ] Close backend/provider behavior and keep the knowledge directory isolated from runtime
-      queue, state, and log storage, including configured overrides.
+- [ ] Close backend/provider behavior.
 - [ ] Complete platform-root, installer, launcher/shim, harness lifecycle, and remaining
       Codex-history parity scenarios across supported operating systems.
 - [ ] Run the clean capture-to-self-written-knowledge journey twice on Windows and Linux, including
       silent capture, retry recovery, publication, search, route correction, merge/refile, privacy
       canaries, unrelated-Git-state preservation, and safe uninstall.
-- [ ] Obtain all required PR #278 checks and review, merge through `dev`, and reconcile the board,
-      parity ledger, and shared memory from the integrated commit.
 
 **Latest engineer status (skips/search, 2026-10-01):** Implemented and locally qualified — durable
 skipped-action Markdown records with replay/backfill, whole-entry literal search, topic filtering,
@@ -303,13 +302,12 @@ Linux focused race/vet pass. Ledger: 27 implemented, 1 adapted, 12 partial, 96 p
 Evidence: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Next: diagnostics and safe local commits.
 Full Sage acceptance remains open.
 
-**Integration status (2026-10-13):** PR #275 merged the qualified durable queue, publication,
-routing, merge/refile, skipped-action, and search slice to `dev` at `a1777b6`; all associated
-post-merge workflows passed. PR #276 merged its local Docker evaluation documentation at
-`fc3217f`, and PR #277 merged the post-integration documentation reconciliation at `549c430`.
-Diagnostics, safe local knowledge commits, and the next routing/capture/model-request parity slice
-are now implemented on PR #278 but are not yet integrated into `dev`. TASK-157 remains in progress
-until the remaining parity and repeated end-to-end acceptance gates above are complete.
+**Integration status (2026-10-13):** PR #275 merged the durable queue-to-knowledge slice at
+`a1777b6`; PR #276 added Docker evaluation docs at `fc3217f`; PR #277 reconciled documentation at
+`549c430`; and PR #278 merged diagnostics, safe local commits, and routing/capture/model-request
+parity at `a6a75b0`. All required PR #278 checks and applicable post-merge workflows passed.
+TASK-157 remains in progress until the remaining parity and repeated end-to-end acceptance gates
+above are complete.
 
 **Skipped/search implementation commit:** `9f2281b` — record skipped actions and search full entries.
 
@@ -353,7 +351,7 @@ SAGE-003 remains open; a persisted draft is not the completed capture-to-knowled
 
 **Engineer status (2026-09-30):** Resumed on `features/TASK-157-sage-parity`, stacked on the
 published TASK-159 follow-up `2e50763`. Reconciled all 136 reference scenarios with `b85a1ab`
-from `F:\git_apps\Personal_Projects\ai_sessions_skills`; the ledger now names existing Go tests,
+from `C:\Work\git_apps\ai_sessions_skills`; the ledger now names existing Go tests,
 explicit status, and planned closure tests. Added a CI consistency gate with eight fault-injection
 checks and real-HTTP regression tests for retryable empty output and uncapped background requests.
 Focused Go tests/vet passed on Windows and Fedora WSL2. Six scenarios have complete test evidence,

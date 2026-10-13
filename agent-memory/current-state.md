@@ -5,31 +5,27 @@ type: project
 ---
 
 **Active product initiative:** TASK-157 / SAGE-003 is the Go-native port of the cross-harness,
-self-writing command-knowledge product in `F:\git_apps\Personal_Projects\ai_sessions_skills` at
-`b85a1ab`. The qualified queue, publication, routing, merge/refile, skipped-action, and full-entry
-search slice is integrated into `dev` through PR #275. The active closure branch is
-`features/TASK-157-sage-closure`, based on `origin/dev` at `549c430`; its first review slice adds
-truthful diagnostics, bounded retries, privacy-safe NDJSON logs, safe local knowledge commits,
-model-free documented-action reuse, deterministic rendering, and conservative section matching.
-The 136-scenario ledger now records 82 implemented, 1 adapted, 2 partial, and 51 pending scenarios.
-PR #278 is the active review for this closure branch; follow-up commits add quote-aware compound
-command signatures, cross-harness payload normalization, deterministic temperature-zero model
-requests, token-limit diagnostics, and background-only classify-once routing with deterministic
-fallback and existing-section context.
-The full Go suite, `go vet ./...`, parity-ledger consistency check, and whitespace check pass. Next:
-close the remaining parity ledger and repeated clean capture-to-knowledge acceptance journey.
+self-writing command-knowledge product in `C:\Work\git_apps\ai_sessions_skills` at
+`ea2e067`. Changes after `b85a1ab` affect generated reference knowledge only; the 136-scenario
+behavioral corpus is unchanged. PR #278 merged the latest qualified closure slice to `dev` at
+`a6a75b0`; its required checks and the post-merge CI, client CI, no-send end-to-end, and
+development-release workflows passed. The active follow-up branch is
+`features/TASK-157-sage-backend-isolation`, based on that merge. It separates the stable Sage
+runtime root from portable Markdown knowledge overrides and anchors relative overrides to the Sage
+configuration root rather than the caller's working directory. The 136-scenario ledger now records
+84 implemented, 2 adapted, 2 partial, and 48 pending scenarios. Full Go tests, `go vet ./...`,
+parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
+pass locally. Next: review this isolation slice, then close backend/provider behavior.
 Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order;
 `sage-resume.md` is the fresh-session handoff with the exact pending groups and acceptance gates.
 
-**Integration state:** PR #275 merged the qualified TASK-157 implementation slice to `dev` at
-`a1777b6`; its CI, client CI, Windows/Linux no-send E2E, PostgreSQL, MCPB, registry, and rolling
-release workflows passed. PR #276 then merged the local Docker evaluation documentation at
-`fc3217f`; its applicable CI and wiki checks passed. `origin/dev` is therefore `fc3217f`. The
+**Integration state:** PR #278 merged to `dev` at `a6a75b0` on 2026-10-13. All required PR checks
+passed, including the hosted Windows suite, and all applicable post-merge workflows passed. The
 superseded PR #274 was closed without merge and is no longer a workflow risk.
 
 **Distribution state:** Stable v3.1.1 remains the latest public stable release. The rolling `dev`
-release is `dev-a1777b6`, built from the TASK-157 implementation merge; current `origin/dev`
-contains the later documentation-only merge at `fc3217f`. `main` and `dev` have diverged in Git
+release is `dev-a6a75b0`, built by the successful post-merge development-release workflow; current
+`origin/dev` is `a6a75b0`. `main` and `dev` have diverged in Git
 ancestry and require deliberate reconciliation before a future promotion; do not assume a simple
 fast-forward.
 

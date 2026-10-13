@@ -37,8 +37,7 @@ func (q pausedSageQueue) Claim(ctx context.Context) (distill.Job, bool, error) {
 	return q.SageQueue.Claim(ctx)
 }
 
-func (im *IntegratedMonitor) startSageDistillation(ctx context.Context, root string, client llmclient.Config) <-chan struct{} {
-	knowledgeRoot := config.GetSageKnowledgeDir(root)
+func (im *IntegratedMonitor) startSageDistillation(ctx context.Context, root, knowledgeRoot string, client llmclient.Config) <-chan struct{} {
 	queue := pausedSageQueue{SageQueue: &db.SageQueue{
 		Database:   im.database,
 		Lease:      (time.Duration(config.GetSageModelTimeoutSecs()) + 30) * time.Second,

@@ -49,7 +49,7 @@ func TestSageDaemonWorkerPauseAndInflightCancellation(t *testing.T) {
 	im := &IntegratedMonitor{database: d}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	done := im.startSageDistillation(ctx, root, llmclient.Config{Host: server.URL, Model: "local", Client: server.Client()})
+	done := im.startSageDistillation(ctx, root, filepath.Join(root, "knowledge"), llmclient.Config{Host: server.URL, Model: "local", Client: server.Client()})
 	select {
 	case <-entered:
 		t.Fatal("model called while paused")

@@ -43,11 +43,11 @@ func runSageRoutes(sub string, args []string, output io.Writer) error {
 	if sub == "route" && (len(args) != 2 || !sageknowledge.ValidRouteBinary(strings.ToLower(strings.TrimSpace(args[0])))) {
 		return fmt.Errorf("usage: devtrack sage route <binary> <topic>")
 	}
-	root, err := sageRoot()
+	knowledgeRoot, err := sageKnowledgeRoot()
 	if err != nil {
 		return err
 	}
-	writer := sageknowledge.Writer{Root: config.GetSageKnowledgeDir(root)}
+	writer := sageknowledge.Writer{Root: knowledgeRoot}
 	if sub == "route" || sub == "merge" {
 		database, err := NewDatabase()
 		if err != nil {
@@ -76,6 +76,22 @@ func runSageRoutes(sub string, args []string, output io.Writer) error {
 }
 
 func sageRoot() (string, error) {
+	baseRoot, err := sageBaseRoot()
+	if err != nil {
+		return "", err
+	}
+	return config.GetSageRuntimeDir(baseRoot), nil
+}
+
+func sageKnowledgeRoot() (string, error) {
+	baseRoot, err := sageBaseRoot()
+	if err != nil {
+		return "", err
+	}
+	return config.GetSageKnowledgeDir(baseRoot), nil
+}
+
+func sageBaseRoot() (string, error) {
 	dataHome, err := config.DevtrackDataHome()
 	if err != nil {
 		return "", fmt.Errorf("sage data directory unavailable: %w", err)
@@ -300,11 +316,11 @@ func runSageSearch(args []string, output io.Writer) error {
 		return fmt.Errorf("sage knowledge unavailable: %w", err)
 	}
 	defer database.Close()
-	root, err := sageRoot()
+	knowledgeRoot, err := sageKnowledgeRoot()
 	if err != nil {
 		return err
 	}
-	return writeSageSearch(sageEntryStore{database: database, writer: sageknowledge.Writer{Root: config.GetSageKnowledgeDir(root)}}, args, output)
+	return writeSageSearch(sageEntryStore{database: database, writer: sageknowledge.Writer{Root: knowledgeRoot}}, args, output)
 }
 
 func writeSageSearch(store sageKnowledgeStore, args []string, output io.Writer) error {
@@ -341,11 +357,11 @@ func runSageTopics(args []string, output io.Writer) error {
 		return fmt.Errorf("sage knowledge unavailable: %w", err)
 	}
 	defer database.Close()
-	root, err := sageRoot()
+	knowledgeRoot, err := sageKnowledgeRoot()
 	if err != nil {
 		return err
 	}
-	topics, err := database.ListSageEntryTopics(context.Background(), sageknowledge.Writer{Root: config.GetSageKnowledgeDir(root)})
+	topics, err := database.ListSageEntryTopics(context.Background(), sageknowledge.Writer{Root: knowledgeRoot})
 	if err != nil {
 		return err
 	}

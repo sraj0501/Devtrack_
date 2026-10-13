@@ -184,13 +184,15 @@ func (im *IntegratedMonitor) startSageCapture(ctx context.Context) {
 		log.Printf("Sage disabled: data directory unavailable")
 		return
 	}
-	root := filepath.Join(dataHome, "sage")
+	baseRoot := filepath.Join(dataHome, "sage")
+	root := config.GetSageRuntimeDir(baseRoot)
+	knowledgeRoot := config.GetSageKnowledgeDir(baseRoot)
 	if err := sage.EnsureSpool(root); err != nil {
 		log.Printf("Sage disabled: %v", err)
 		return
 	}
 	ctx, im.sageCancel = context.WithCancel(ctx)
-	workerDone := im.startSageDistillation(ctx, root, llmclient.LoadOllamaConfig())
+	workerDone := im.startSageDistillation(ctx, root, knowledgeRoot, llmclient.LoadOllamaConfig())
 	done := make(chan struct{})
 	im.sageDone = done
 	poller := codexhistory.Poller{Root: root}

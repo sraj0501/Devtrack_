@@ -15,7 +15,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 MATRIX = ROOT / "docs/SAGE_PORT_PARITY_MATRIX.md"
-BASELINE = "b85a1ab"
+BASELINE = "ea2e067"
 REFERENCE_FILES = ("tool/tests/test_ide_capture.py", "tool/tests/test_portable.py")
 SCENARIO = re.compile(r"`([^`]+):(\d+)` `(test_\w+)`")
 GO_TEST = re.compile(r"`([^`]+_test\.go)#(Test\w+)`")
@@ -91,7 +91,7 @@ def check_reference(text: str, repository: Path) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--reference", type=Path, help="checkout containing Git commit b85a1ab")
+    parser.add_argument("--reference", type=Path, help=f"checkout containing Git commit {BASELINE}")
     parser.add_argument("--require-complete", action="store_true", help="fail while any scenarios remain open")
     args = parser.parse_args()
     text = MATRIX.read_text(encoding="utf-8")
@@ -110,7 +110,7 @@ def main() -> int:
         + ", ".join(f"{status}={counts[status]}" for status in ("implemented", "adapted", "partial", "pending"))
     )
     if not args.reference:
-        print("Reference source not checked; use --reference PATH to reconcile b85a1ab.")
+        print(f"Reference source not checked; use --reference PATH to reconcile {BASELINE}.")
     if not errors:
         print("PASS: ledger consistency only; run Go tests separately for behavioral evidence.")
     return bool(errors)

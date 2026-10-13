@@ -15,7 +15,7 @@ It captures useful command/tool activity from supported coding harnesses and tur
 searchable, deterministic personal documentation.
 
 DevTrack Sage is entirely Go-native. Port required behavior and regression coverage from
-`F:\git_apps\Personal_Projects\ai_sessions_skills` at authoritative commit `b85a1ab`; production Sage must not
+`C:\Work\git_apps\ai_sessions_skills` at authoritative commit `ea2e067`; production Sage must not
 spawn Python or require a Python environment. Port for behavioral parity rather than copying
 Python-specific process boundaries.
 
@@ -62,13 +62,16 @@ quickly, print nothing, perform no model or network call, and never break an age
 - PR #275 integrated the TASK-157 durable SQLite queue and daemon lifecycle, deterministic Markdown
   publication, persistent routing, restart-safe merge/refile, skipped-action records, and
   full-entry search/topic reconciliation into `dev` at `a1777b6`.
-- PR #278 is the active SAGE-003 closure review from `features/TASK-157-sage-closure`. It includes
+- PR #278 merged the latest SAGE-003 closure slice to `dev` at `a6a75b0`. It includes
   truthful diagnostics, bounded retries, safe local knowledge commits, model-free action reuse,
   quote-aware compound command signatures, cross-harness payload normalization, deterministic
   temperature-zero model requests, token-limit diagnostics, and background classify-once routing
-  with safe fallback and existing-section context. The ledger is 82 implemented, 1 adapted,
-  2 partial, and 51 pending. Remaining work is the open parity scenarios and repeated
-  capture-to-knowledge acceptance; the earlier `features/TASK-157-sage-parity` branch is merged.
+  with safe fallback and existing-section context. Required PR checks and all applicable post-merge
+  workflows passed.
+- The active follow-up branch isolates private runtime state from portable knowledge placement and
+  anchors relative overrides to the stable Sage root. The ledger is 84 implemented, 2 adapted,
+  2 partial, and 48 pending. Remaining work is the open parity scenarios and repeated
+  capture-to-knowledge acceptance.
 
 ## Ordered next steps
 
@@ -85,7 +88,7 @@ remain partial. New real-HTTP tests cover empty model output remaining retryable
 background requests. Focused Go tests/vet passed on Windows and Fedora WSL2. Durable queue/daemon
 wiring is still the next implementation slice; Sage remains open.
 
-Refresh `docs/SAGE_PORT_PARITY_MATRIX.md` against all 136 reference tests at `b85a1ab`. Every row
+Refresh `docs/SAGE_PORT_PARITY_MATRIX.md` against all 136 reference tests at `ea2e067`. Every row
 must identify the Go owner, exact Go test, status (`implemented`, `partial`, `pending`, or
 `adapted`), and the reason for any Go-specific adaptation. The matrix, not file presence, is the
 completion authority.

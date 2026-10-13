@@ -912,12 +912,30 @@ func GetHTTPTimeoutLong() int {
 	return positiveIntEnv("HTTP_TIMEOUT_LONG", 60)
 }
 
+// GetSageRuntimeDir resolves Sage's private queue, state, and diagnostic root.
+// Relative overrides are anchored to the default Sage root rather than the
+// process working directory so daemon and CLI invocations agree.
+func GetSageRuntimeDir(sageRoot string) string {
+	if dir := strings.TrimSpace(os.Getenv("DEVTRACK_SAGE_RUNTIME_DIR")); dir != "" {
+		if filepath.IsAbs(dir) {
+			return filepath.Clean(dir)
+		}
+		return filepath.Clean(filepath.Join(sageRoot, dir))
+	}
+	return filepath.Clean(sageRoot)
+}
+
 // GetSageKnowledgeDir resolves the daemon's portable Markdown output directory.
+// An explicit relative directory is anchored to the stable Sage configuration root,
+// never to the caller's current working directory.
 func GetSageKnowledgeDir(sageRoot string) string {
 	if dir := strings.TrimSpace(os.Getenv("DEVTRACK_SAGE_KNOWLEDGE_DIR")); dir != "" {
-		return dir
+		if filepath.IsAbs(dir) {
+			return filepath.Clean(dir)
+		}
+		return filepath.Clean(filepath.Join(sageRoot, dir))
 	}
-	return filepath.Join(sageRoot, "knowledge")
+	return filepath.Clean(filepath.Join(sageRoot, "knowledge"))
 }
 
 // GetSageAutoCommit controls local knowledge-only commits. Sage never pushes.
