@@ -1,11 +1,32 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-13 — TASK-159 and its schema/restart follow-up are merged to `dev` through
-PR #273 at `a329b6f`; all post-merge workflows passed and rolling release `dev-a329b6f` is current.
-TASK-157 / SAGE-003 remains active on `features/TASK-157-sage-parity`, now reconciled with current
-`dev` at `a329b6f`. Next: finish diagnostics, safe local knowledge commits, parity closure, and
-repeated end-to-end acceptance. Next unused task
-ID: TASK-163, subject to verification before allocation._
+_Last reconciled: 2026-10-13 — PR #275 merged the qualified TASK-157 pipeline slice to `dev` at
+`a1777b6`; its post-merge workflows passed and rolling release `dev-a1777b6` is current. PR #276
+then merged the local Docker evaluation documentation at `fc3217f`, with applicable CI and wiki
+checks passing. PR #274 was closed without merge and is no longer a workflow risk. TASK-157 / SAGE-003
+remains active, but its next diagnostics and safe-local-commit slice must start from current
+`origin/dev`, not the merged `features/TASK-157-sage-parity` branch. Next: diagnostics, safe local
+knowledge commits, parity closure, and repeated end-to-end acceptance. TASK-163 is allocated below;
+next unused task ID: TASK-164, subject to verification before allocation._
+
+**[2026-10-13] TASK-163 — Post-Sage integration documentation reconciliation (complete).**
+**Priority:** Documentation integrity. **Branch:** `docs/TASK-163-post-sage-reconciliation`.
+**Assigned to:** documentation engineer.
+
+Reconcile canonical memory, the project board and feature tracker, README, wiki, and Sage plan with
+the verified PR #275/#276 integration state. Remove stale branch-only and pre-publication claims
+without changing application source or stable-release boundaries.
+
+**Acceptance criteria:**
+- [x] Current documentation records `origin/dev` at `fc3217f`, rolling release `dev-a1777b6`, and
+      stable release v3.1.1 without conflating those boundaries.
+- [x] PR #274 is recorded as closed without merge; no documentation presents it as an open risk.
+- [x] TASK-157 remains active only for diagnostics, safe local commits, parity closure, and repeated
+      end-to-end acceptance; the merged parity branch is not presented as the next work branch.
+- [x] Shared-memory validation, wiki inline-script validation, and whitespace checks pass.
+
+**Engineer status:** COMPLETE locally after two reconciliation passes; ready for review into `dev`.
+No application source, release, or external publication is included.
 
 **[2026-09-29] TASK-162 — Align no-send E2E with deterministic ticket contract (complete, P0).**
 **Priority:** P0 CI integration follow-up. **Branch:**
@@ -242,6 +263,13 @@ and reconciliation after edits, moves, merges, deletions, and restart. Windows f
 Linux focused race/vet pass. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending.
 Evidence: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Next: diagnostics and safe local commits.
 Full Sage acceptance remains open.
+
+**Integration status (2026-10-13):** PR #275 merged the qualified durable queue, publication,
+routing, merge/refile, skipped-action, and search slice to `dev` at `a1777b6`; all associated
+post-merge workflows passed. PR #276 merged its local Docker evaluation documentation at
+`fc3217f`. TASK-157 remains in progress because diagnostics, safe local knowledge commits, parity
+closure, and repeated end-to-end acceptance are not complete. Continue on a new branch from
+current `origin/dev`.
 
 **Skipped/search implementation commit:** `9f2281b` — record skipped actions and search full entries.
 

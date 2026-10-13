@@ -6,21 +6,22 @@ type: project
 
 **Active product initiative:** TASK-157 / SAGE-003 is the Go-native port of the cross-harness,
 self-writing command-knowledge product in `F:\git_apps\Personal_Projects\ai_sessions_skills` at
-`b85a1ab`. The active branch is `features/TASK-157-sage-parity`. It implements durable
-SQLite claims, daemon lifecycle ownership, deterministic Markdown publication, persistent routing,
-restart-safe merge/refile, skipped-action records, and full-entry search. The 136-scenario ledger
-currently records 27 implemented, 1 adapted, 12 partial, and 96 pending scenarios. Next: truthful
-diagnostics, safe local knowledge commits, remaining parity closure, and the repeated clean
-capture-to-knowledge acceptance journey. Playback is not in scope. `initiatives/sage.md` owns the
-detailed boundaries and execution order.
+`b85a1ab`. The qualified queue, publication, routing, merge/refile, skipped-action, and full-entry
+search slice is integrated into `dev` through PR #275. The 136-scenario ledger currently records
+27 implemented, 1 adapted, 12 partial, and 96 pending scenarios. Next: start a dedicated branch
+from current `origin/dev` for truthful diagnostics and safe local knowledge commits, then close the
+remaining parity ledger and repeated clean capture-to-knowledge acceptance journey. Playback is not
+in scope. `initiatives/sage.md` owns the detailed boundaries and execution order.
 
-**Integration state:** The TASK-157 branch now contains current `dev` at `a329b6f`, including the
-TASK-159 schema/restart follow-up merged through PR #273 on 2026-10-07. Its general CI, client CI,
-Windows/Linux no-send E2E, PostgreSQL, MCPB, registry, and rolling-release checks passed. Do not
-describe TASK-159 verification as pending.
+**Integration state:** PR #275 merged the qualified TASK-157 implementation slice to `dev` at
+`a1777b6`; its CI, client CI, Windows/Linux no-send E2E, PostgreSQL, MCPB, registry, and rolling
+release workflows passed. PR #276 then merged the local Docker evaluation documentation at
+`fc3217f`; its applicable CI and wiki checks passed. `origin/dev` is therefore `fc3217f`. The
+superseded PR #274 was closed without merge and is no longer a workflow risk.
 
 **Distribution state:** Stable v3.1.1 remains the latest public stable release. The rolling `dev`
-release is `dev-a329b6f`, matching current `origin/dev`. `main` and `dev` have diverged in Git
+release is `dev-a1777b6`, built from the TASK-157 implementation merge; current `origin/dev`
+contains the later documentation-only merge at `fc3217f`. `main` and `dev` have diverged in Git
 ancestry and require deliberate reconciliation before a future promotion; do not assume a simple
 fast-forward.
 
@@ -28,10 +29,6 @@ fast-forward.
 `feat/TASK-154-server-admin-ui` at `54ceb05` and is not integrated into current `dev`. Review and
 reconcile it against current templates/routes or explicitly retire it before packaged-build
 qualification and media capture. `initiatives/server-ui.md` owns the integration gate.
-
-**Current workflow risk:** Open PR #274 (`cursor/cloud-agent-env-b914`) targets `main` directly.
-Project policy requires feature branches to target `dev`; it must be retargeted or replaced before
-merge consideration.
 
 **Unresolved release follow-ups:** packaged-build acceptance; privacy-reviewed media; exact Glama
 listing path and score-badge update on awesome-mcp-servers PR #13608.

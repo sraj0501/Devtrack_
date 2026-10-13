@@ -180,12 +180,14 @@ Acceptance:
 - Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
   push to a remote.
 
-Latest implementation checkpoint (2026-10-01): TASK-157 now implements durable queue/publication,
-routing, recoverable merge/refile, skipped-action Markdown, and full-entry search/topic listing.
-Search refreshes from current Markdown and reconciles moved/deleted publication filenames.
-Windows full suite/vet and Linux focused race/vet pass. Details and limits:
-`docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Diagnostics, safe local commits, and final acceptance
-remain open. The following dated entries describe earlier foundations.
+Latest integration checkpoint (2026-10-13): PR #275 merged TASK-157's durable queue/publication,
+routing, recoverable merge/refile, skipped-action Markdown, and full-entry search/topic listing to
+`dev` at `a1777b6`. Search refreshes from current Markdown and reconciles moved/deleted publication
+filenames. All post-merge workflows passed and rolling release `dev-a1777b6` contains the slice.
+PR #276 then added the local Docker evaluation documentation at current `dev` commit `fc3217f`.
+Details and limits: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Diagnostics, safe local commits,
+parity closure, and final acceptance remain open. The following dated entries describe earlier
+foundations.
 
 Historical checkpoint (2026-09-20): the first model-free slice was implemented. Imported events
 are grouped transactionally by normalized signature into deterministic knowledge records with
@@ -269,6 +271,7 @@ for inspection or export.
 
 SAGE-001 and SAGE-002 are complete. TASK-157 has implemented the SAGE-003 durable queue and daemon
 lifecycle, deterministic Markdown publication, route correction, restart-safe merge/refile,
-skipped-action records, and full-entry search. Reconcile current `dev`, then implement truthful
-diagnostics and safe local knowledge commits, close the executable parity matrix, and run the clean
+skipped-action records, and full-entry search; that slice is integrated into `dev` through PR #275.
+Start the next dedicated branch from current `origin/dev`, implement truthful diagnostics and safe
+local knowledge commits, close the executable parity matrix, and run the clean
 capture-to-self-written-knowledge journey twice. Do not expand to another harness before that gate.

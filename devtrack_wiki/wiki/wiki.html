@@ -1636,6 +1636,12 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
+<h2>Current dev — TASK-157 durable Sage knowledge pipeline</h2>
+<ul>
+<li><strong>Integrated pipeline:</strong> PR #275 merged durable SQLite claims, daemon-owned distillation, deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped-action records, and full-entry search to <code>dev</code> at <code>a1777b6</code>.</li>
+<li><strong>Verified rolling build:</strong> all post-merge workflows passed and rolling release <code>dev-a1777b6</code> contains the implementation. PR #276 subsequently added local Docker evaluation documentation at current <code>dev</code> commit <code>fc3217f</code>.</li>
+<li><strong>Remaining milestone work:</strong> SAGE-003 still requires truthful diagnostics, Sage-owned local commits, completion of the 136-scenario parity ledger, and two clean capture-to-knowledge acceptance passes.</li>
+</ul>
 <h2>Current dev — TASK-158 completely silent Git path</h2>
 <ul>
 <li><strong>Merge and release boundary:</strong> PR #264 is merged into <code>dev</code>. Public v3.1.1 still contains the shell-wrapped post-commit prompt regression, so the correction remains unreleased.</li>
@@ -1656,8 +1662,8 @@ devtrack start</code></pre>
 <ul>
 <li><strong>Stable by default:</strong> existing and new installations continue to follow releases from <code>main</code>.</li>
 <li><strong>Explicit rolling opt-in:</strong> TASK-161 adds <code>devtrack upgrade --dev</code>, with <code>--main</code>/<code>--stable</code> to return and <code>--check</code> to inspect without switching.</li>
-<li><strong>Current integration evidence:</strong> <a href="https://github.com/sraj0501/Devtrack_/pull/273" target="_blank" rel="noopener">PR #273</a> merged the TASK-159 restart/schema follow-up to <code>dev</code> at <code>a329b6f</code>; all post-merge workflows passed.</li>
-<li><strong>Published rolling build:</strong> <a href="https://github.com/sraj0501/Devtrack_/releases/tag/dev" target="_blank" rel="noopener"><code>dev-a329b6f</code></a> matches current <code>dev</code>. Stable v3.1.1 remains unchanged.</li>
+<li><strong>Current integration evidence:</strong> <a href="https://github.com/sraj0501/Devtrack_/pull/275" target="_blank" rel="noopener">PR #275</a> merged the qualified TASK-157 pipeline slice to <code>dev</code> at <code>a1777b6</code>; all post-merge workflows passed. <a href="https://github.com/sraj0501/Devtrack_/pull/276" target="_blank" rel="noopener">PR #276</a> then added the local Docker evaluation guide at <code>fc3217f</code>.</li>
+<li><strong>Published rolling build:</strong> <a href="https://github.com/sraj0501/Devtrack_/releases/tag/dev" target="_blank" rel="noopener"><code>dev-a1777b6</code></a> contains the TASK-157 implementation slice. Current <code>dev</code> is <code>fc3217f</code> after the documentation-only merge. Stable v3.1.1 remains unchanged.</li>
 </ul>
 <h2>Current dev — E2E and Windows Admin Acceptance</h2>
 <ul>
@@ -1820,7 +1826,7 @@ devtrack sage harness list
 devtrack sage harness install codex
 devtrack sage search "docker compose" [--topic containers]
 devtrack sage topics</code></pre>
-<p>These unreleased commands manage local capture and query the initial SQLite knowledge index. SAGE-003 remains partial; search results are not yet the reference-compatible structured Markdown knowledge base.</p>
+<p>These unreleased commands manage local capture and query the deterministic Markdown knowledge base integrated through PR #275. Search returns complete entries and reflects route corrections, merges, edits, moves, and deletions. SAGE-003 remains partial because diagnostics, safe local commits, remaining reference parity, and repeated end-to-end acceptance are still open.</p>
 
 <h2>Interfaces, Alerts and Lifecycle</h2>
 <pre><code class="language-bash">devtrack tui
@@ -2719,7 +2725,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   SAGE: `<div class="md-body">
 <h1>DevTrack Sage and the retired Git Sage name</h1>
 <p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
-<blockquote><p><strong>Development status:</strong> Sage is under active development on <code>features/TASK-157-sage-parity</code> and is not part of the latest <code>v3.1.1</code> release. SAGE-001 and SAGE-002 are implemented. SAGE-003 now publishes and searches deterministic local knowledge, but diagnostics, safe local commits, parity closure, and repeated end-to-end acceptance remain open.</p></blockquote>
+<blockquote><p><strong>Development status:</strong> The qualified Sage pipeline slice is available on rolling <code>dev</code> through PR #275 and is not part of the latest stable <code>v3.1.1</code> release. SAGE-001 and SAGE-002 are implemented. SAGE-003 now publishes and searches deterministic local knowledge, but diagnostics, safe local commits, parity closure, and repeated end-to-end acceptance remain open.</p></blockquote>
 
 <h2>What happened to Git Sage?</h2>
 <p>Older DevTrack documentation used <strong>Git Sage</strong> for a repository chat and Git-operation experiment. That product surface has been removed. The current <code>devtrack sage</code> namespace is deliberately narrower and safer: it captures privacy-minimized command events and builds local personal knowledge.</p>

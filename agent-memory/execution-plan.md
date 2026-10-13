@@ -11,26 +11,28 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
-- Active branch: `features/TASK-157-sage-parity`.
-- Current integration branch: `origin/dev` at `a329b6f` after PR #273; all post-merge workflows
-  passed and the rolling release is `dev-a329b6f`.
-- TASK-157 contains current `dev` at `a329b6f`; the branch is ready for an integration PR while
-  remaining SAGE-003 work continues.
+- Current integration branch: `origin/dev` at `fc3217f` after PRs #275 and #276.
+- PR #275 integrated the qualified TASK-157 implementation slice at `a1777b6`; its post-merge
+  workflows passed and the rolling release is `dev-a1777b6`. PR #276 added documentation only;
+  its applicable CI and wiki checks passed at `fc3217f`.
+- No dedicated branch exists yet for the remaining SAGE-003 work. Start it from current
+  `origin/dev`; do not continue from the already merged `features/TASK-157-sage-parity` branch.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, and full-entry search/topic reconciliation.
 - Ledger checkpoint: 27 implemented, 1 adapted, 12 partial, 96 pending.
-- Next unused task ID is TASK-163, subject to board verification before allocation.
+- Next unused task ID is TASK-164, subject to board verification before allocation.
 
 ## Ordered work
 
-### 1. Reconcile the active Sage branch — complete
+### 1. Integrate the qualified Sage pipeline slice — complete
 
-Current `dev` at `a329b6f` is merged into TASK-157 without discarding the qualified branch work.
-Run the focused Sage, database, daemon, parity-ledger, and cross-platform checks on the reconciled
-branch before integration.
+PR #275 merged the qualified durable queue, publication, routing, merge/refile, skipped-action, and
+search slice through `dev` at `a1777b6`. PR #276 merged the supporting local Docker evaluation
+documentation at `fc3217f`. Required hosted checks passed.
 
-Gate: TASK-157 contains PR #273's schema/restart fix and remains cleanly reviewable against `dev`.
+Gate: complete. The integrated slice contains PR #273's schema/restart fix and is published in the
+rolling `dev-a1777b6` build.
 
 ### 2. Finish diagnostics and safe local knowledge commits
 
@@ -63,10 +65,12 @@ preserve unrelated Git state, and uninstall without damaging unrelated configura
 Gate: the resilient journey passes twice on supported Windows and Linux paths with applicable unit,
 golden, fuzz, fault-injection, and race coverage.
 
-### 5. Integrate TASK-157 through `dev`
+### 5. Integrate the remaining SAGE-003 closure through `dev`
 
-Update the board and documentation from verified evidence, then open a reviewable PR targeting
-`dev`. Do not expose raw events through MCP or add another harness before the Codex closure gate.
+Update the board and documentation from verified evidence, then open a new reviewable PR targeting
+`dev`. The earlier PRs integrated only the qualified pipeline slice; TASK-157 remains open until the
+diagnostics, local commits, parity, and end-to-end gates pass. Do not expose raw events through MCP
+or add another harness before the Codex closure gate.
 
 ### 6. Resolve the server-admin UI branch
 

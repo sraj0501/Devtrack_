@@ -1,5 +1,14 @@
 # DevTrack Feature Tracker
 
+## 2026-10-13 — TASK-157 integration reconciliation
+
+PR #275 merged the qualified durable queue, deterministic publication, persistent routing,
+restart-safe merge/refile, skipped-action, and full-entry search slice to `dev` at `a1777b6`; its
+post-merge workflows passed and rolling release `dev-a1777b6` contains it. PR #276 then merged the
+local Docker evaluation documentation at current `dev` commit `fc3217f`; its applicable checks
+passed. TASK-157 remains open for diagnostics, safe local knowledge commits, parity closure, and
+repeated end-to-end acceptance. Continue from current `origin/dev` on a new branch.
+
 ## 2026-10-01 — TASK-157 skipped records and full-entry search
 
 Explicit skips publish idempotent `_skipped.md` signatures through the durable publication queue;
@@ -42,15 +51,16 @@ simulated outage and malformed-output recovery, then verifies persistence across
 Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Next: deterministic Markdown writing;
 persisted drafts do not close Sage's self-writing knowledge acceptance gate.
 
-_Last updated: 2026-09-30 (TASK-159 implementation merged; local qualification passed;
-schema/E2E follow-up integration and hosted verification remain open)_
+_The dated TASK-159 entry below is historical. PR #273 subsequently merged its schema/E2E
+follow-up at `a329b6f`, and all post-merge workflows passed._
 
 ## 2026-09-30 — TASK-159: local qualification complete
 
-Publication follow-up: `2e50763` is verified on `origin/fix/TASK-159-schema-transactions`.
-TASK-157 parity work continues on stacked branch `features/TASK-157-sage-parity`: 136 scenarios
-reconciled against `b85a1ab`, explicit test/status ledger, CI consistency checks, and transport
-regressions passing on Windows and Fedora WSL2. Durable queue/daemon wiring remains next.
+At this checkpoint, publication follow-up `2e50763` was verified on
+`origin/fix/TASK-159-schema-transactions`, and TASK-157 parity work continued on stacked branch
+`features/TASK-157-sage-parity`: 136 scenarios reconciled against `b85a1ab`, an explicit
+test/status ledger, CI consistency checks, and transport regressions passing on Windows and Fedora
+WSL2. Later entries above supersede this branch and next-step status.
 
 **Status**: All five product acceptance criteria locally qualified. PR #272's merge is
 recorded locally at `94dbc7c`; the schema/E2E follow-up remains separate.
