@@ -18,7 +18,8 @@ requests, token-limit diagnostics, and background-only classify-once routing wit
 fallback and existing-section context.
 The full Go suite, `go vet ./...`, parity-ledger consistency check, and whitespace check pass. Next:
 close the remaining parity ledger and repeated clean capture-to-knowledge acceptance journey.
-Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order.
+Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order;
+`sage-resume.md` is the fresh-session handoff with the exact pending groups and acceptance gates.
 
 **Integration state:** PR #275 merged the qualified TASK-157 implementation slice to `dev` at
 `a1777b6`; its CI, client CI, Windows/Linux no-send E2E, PostgreSQL, MCPB, registry, and rolling

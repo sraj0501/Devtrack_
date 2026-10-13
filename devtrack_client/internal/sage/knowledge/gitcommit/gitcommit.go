@@ -104,7 +104,7 @@ func (c Committer) Commit(ctx context.Context, changes []Change) (bool, error) {
 		return false, nil
 	}
 
-	var paths []string
+	selected := make(map[string]Change, len(changes))
 	for _, change := range changes {
 		path, err := filepath.Abs(change.Path)
 		if err != nil {
@@ -132,10 +132,14 @@ func (c Committer) Commit(ctx context.Context, changes []Change) (bool, error) {
 			// A later edit raced with the writer; leave it entirely alone.
 			continue
 		}
-		paths = append(paths, filepath.ToSlash(relRepo))
+		selected[filepath.ToSlash(relRepo)] = change
 	}
-	if len(paths) == 0 {
+	if len(selected) == 0 {
 		return false, nil
+	}
+	paths := make([]string, 0, len(selected))
+	for path := range selected {
+		paths = append(paths, path)
 	}
 	sort.Strings(paths)
 	index, err := os.CreateTemp("", "devtrack-sage-index-*")
@@ -154,9 +158,28 @@ func (c Committer) Commit(ctx context.Context, changes []Change) (bool, error) {
 	if _, err := c.run(ctx, repo, env, "read-tree", "HEAD"); err != nil {
 		return false, err
 	}
-	args := append([]string{"add", "-A", "--"}, paths...)
-	if _, err := c.run(ctx, repo, env, args...); err != nil {
-		return false, err
+	for _, path := range paths {
+		change := selected[path]
+		if change.After == nil {
+			if _, err := c.run(ctx, repo, env, "update-index", "--force-remove", "--", path); err != nil {
+				return false, err
+			}
+			continue
+		}
+		oid, err := c.hashObject(ctx, repo, env, change.After)
+		if err != nil {
+			return false, err
+		}
+		mode, err := c.indexMode(ctx, repo, env, path)
+		if err != nil {
+			return false, err
+		}
+		// Stage the exact bytes already validated above. Using update-index keeps
+		// ambient ignore rules, clean filters, and filesystem monitors from
+		// silently turning a successful `git add` into an empty private index.
+		if _, err := c.run(ctx, repo, env, "update-index", "--add", "--cacheinfo", mode, oid, path); err != nil {
+			return false, err
+		}
 	}
 	command := exec.CommandContext(ctx, c.git(), "diff", "--cached", "--quiet")
 	command.Dir, command.Env = repo, append(os.Environ(), env...)
@@ -180,6 +203,34 @@ func (c Committer) Commit(ctx context.Context, changes []Change) (bool, error) {
 		return true, err
 	}
 	return true, nil
+}
+
+func (c Committer) indexMode(ctx context.Context, repo string, env []string, path string) (string, error) {
+	output, err := c.run(ctx, repo, env, "ls-files", "--stage", "--", path)
+	if err != nil {
+		return "", err
+	}
+	fields := strings.Fields(string(output))
+	if len(fields) > 0 && (fields[0] == "100644" || fields[0] == "100755") {
+		return fields[0], nil
+	}
+	return "100644", nil
+}
+
+func (c Committer) hashObject(ctx context.Context, repo string, env []string, raw []byte) (string, error) {
+	command := exec.CommandContext(ctx, c.git(), "hash-object", "-w", "--stdin")
+	command.Dir = repo
+	command.Env = append(os.Environ(), env...)
+	command.Stdin = bytes.NewReader(raw)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git hash-object: %w", err)
+	}
+	oid := strings.TrimSpace(string(output))
+	if oid == "" {
+		return "", errors.New("git hash-object returned an empty object id")
+	}
+	return oid, nil
 }
 
 func (c Committer) headFile(ctx context.Context, repo, path string) ([]byte, bool, error) {

@@ -170,6 +170,25 @@ func TestReferenceDeletionByWriterIsCommitted(t *testing.T) {
 	}
 }
 
+func TestExistingExecutableModeIsPreserved(t *testing.T) {
+	repo := repository(t)
+	root := filepath.Join(repo, "knowledge")
+	before, after := []byte("# Tool\n"), []byte("# Tool\n\nUpdated.\n")
+	tracked(t, repo, "knowledge/tool.md", before)
+	git(t, repo, "update-index", "--chmod=+x", "knowledge/tool.md")
+	git(t, repo, "commit", "-q", "-m", "mark executable")
+	path := filepath.Join(root, "tool.md")
+	if err := os.WriteFile(path, after, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if !commit(t, root, true, gitcommit.Change{Path: path, Before: before, After: after}) {
+		t.Fatal("expected knowledge commit")
+	}
+	if got := git(t, repo, "ls-tree", "HEAD", "--", "knowledge/tool.md"); !strings.HasPrefix(got, "100755 ") {
+		t.Fatalf("executable mode changed: %q", got)
+	}
+}
+
 func TestReferenceNothingOfOursMakesNoCommit(t *testing.T) {
 	repo := repository(t)
 	before := strings.TrimSpace(git(t, repo, "rev-parse", "HEAD"))
