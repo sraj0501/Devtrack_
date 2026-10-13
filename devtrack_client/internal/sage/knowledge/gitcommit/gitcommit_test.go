@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -74,6 +75,33 @@ func TestReferenceNestedKnowledgeFolderCommitsWithRootRelativePaths(t *testing.T
 		t.Fatal("expected knowledge commit")
 	}
 	if got := git(t, repo, "show", "--name-only", "--format=", "HEAD"); !strings.Contains(filepath.ToSlash(got), "docs/personal knowledge/git.md") {
+		t.Fatalf("committed paths=%q", got)
+	}
+}
+
+func TestKnowledgeRootReachedThroughFilesystemAlias(t *testing.T) {
+	repo := repository(t)
+	alias := filepath.Join(t.TempDir(), "repo-alias")
+	if runtime.GOOS == "windows" {
+		command := exec.Command("cmd", "/c", "mklink", "/J", alias, repo)
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Skipf("filesystem aliases unavailable: %v: %s", err, output)
+		}
+	} else if err := os.Symlink(repo, alias); err != nil {
+		t.Skipf("filesystem aliases unavailable: %v", err)
+	}
+	root := filepath.Join(alias, "knowledge")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path, raw := filepath.Join(root, "git.md"), []byte("# Git\n")
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if !commit(t, root, true, gitcommit.Change{Path: path, After: raw}) {
+		t.Fatal("expected knowledge commit through aliased repository path")
+	}
+	if got := git(t, repo, "show", "--name-only", "--format=", "HEAD"); !strings.Contains(filepath.ToSlash(got), "knowledge/git.md") {
 		t.Fatalf("committed paths=%q", got)
 	}
 }

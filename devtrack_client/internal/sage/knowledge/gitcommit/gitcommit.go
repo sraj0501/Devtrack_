@@ -99,8 +99,12 @@ func (c Committer) Commit(ctx context.Context, changes []Change) (bool, error) {
 		return false, nil
 	}
 	repo := strings.TrimSpace(string(repoRaw))
-	rootRel, err := filepath.Rel(repo, root)
-	if err != nil || escapes(rootRel) {
+	prefixRaw, err := c.run(ctx, root, nil, "rev-parse", "--show-prefix")
+	if err != nil {
+		return false, nil
+	}
+	rootRel := filepath.Clean(filepath.FromSlash(strings.TrimSpace(string(prefixRaw))))
+	if escapes(rootRel) {
 		return false, nil
 	}
 
@@ -114,8 +118,8 @@ func (c Committer) Commit(ctx context.Context, changes []Change) (bool, error) {
 		if err != nil || escapes(relRoot) || !owned(relRoot) {
 			continue
 		}
-		relRepo, err := filepath.Rel(repo, path)
-		if err != nil || escapes(relRepo) {
+		relRepo := filepath.Clean(filepath.Join(rootRel, relRoot))
+		if escapes(relRepo) {
 			continue
 		}
 		baseline, exists, err := c.headFile(ctx, repo, filepath.ToSlash(relRepo))
