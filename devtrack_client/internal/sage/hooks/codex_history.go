@@ -60,31 +60,40 @@ func NormalizeCodexHistoryItem(raw []byte, source, threadID, itemID string, rece
 	seen := make(map[string]bool)
 	events := make([]sage.Event, 0, len(item.CommandActions))
 	for actionIndex, action := range item.CommandActions {
-		if strings.TrimSpace(action.Command) == "" || seen[action.Command] {
+		if strings.TrimSpace(action.Command) == "" {
 			continue
 		}
-		seen[action.Command] = true
-		command, signature, ok := safeCodexCommand(action.Command)
-		if !ok {
+		actions := safeCodexCommands(action.Command)
+		if len(actions) == 0 {
 			continue
 		}
-		event := sage.Event{
-			SchemaVersion: sage.SchemaVersion,
-			EventID:       opaqueID(threadID + "\x00" + itemID + "\x00" + strconv.Itoa(actionIndex)),
-			Harness:       "codex-history",
-			SessionID:     opaqueID(threadID),
-			EventType:     "command",
-			Tool:          "shell",
-			OccurredAt:    receivedAt.UTC(),
-			Command:       command,
-			Signature:     signature,
-			Success:       &success,
-			ExitCode:      &exitCode,
+		for segmentIndex, normalized := range actions {
+			if seen[normalized.Signature] {
+				continue
+			}
+			seen[normalized.Signature] = true
+			identity := threadID + "\x00" + itemID + "\x00" + strconv.Itoa(actionIndex)
+			if len(actions) > 1 {
+				identity += "\x00" + strconv.Itoa(segmentIndex)
+			}
+			event := sage.Event{
+				SchemaVersion: sage.SchemaVersion,
+				EventID:       opaqueID(identity),
+				Harness:       "codex-history",
+				SessionID:     opaqueID(threadID),
+				EventType:     "command",
+				Tool:          "shell",
+				OccurredAt:    receivedAt.UTC(),
+				Command:       normalized.Command,
+				Signature:     normalized.Signature,
+				Success:       &success,
+				ExitCode:      &exitCode,
+			}
+			if item.CWD != "" {
+				event.ProjectID = opaqueID(item.CWD)
+			}
+			events = append(events, event)
 		}
-		if item.CWD != "" {
-			event.ProjectID = opaqueID(item.CWD)
-		}
-		events = append(events, event)
 	}
 	return events
 }

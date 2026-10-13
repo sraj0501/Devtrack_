@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,10 @@ import (
 )
 
 const maxErrorBody = 4096
+
+// ErrTokenLimit identifies a model that exhausted its output budget before
+// producing an answer. Callers may retry and expose only this safe category.
+var ErrTokenLimit = errors.New("model token limit")
 
 type Message struct {
 	Role    string `json:"role"`
@@ -109,23 +114,26 @@ type ollamaRequest struct {
 }
 
 type ollamaOptions struct {
-	NumPredict int `json:"num_predict,omitempty"`
+	Temperature float64 `json:"temperature"`
+	NumPredict  int     `json:"num_predict,omitempty"`
 }
 
 type ollamaChunk struct {
 	Message struct {
 		Content string `json:"content"`
 	} `json:"message"`
-	Done bool `json:"done"`
+	Done       bool   `json:"done"`
+	DoneReason string `json:"done_reason"`
 }
 
 func (cfg Config) chatOllama(ctx context.Context, messages []Message, jsonMode bool, maxTokens int) (string, error) {
-	payload := ollamaRequest{Model: cfg.Model, Messages: messages, Stream: true}
+	payload := ollamaRequest{Model: cfg.Model, Messages: messages, Stream: true,
+		Options: &ollamaOptions{Temperature: 0}}
 	if jsonMode {
 		payload.Format = "json"
 	}
 	if maxTokens > 0 {
-		payload.Options = &ollamaOptions{NumPredict: maxTokens}
+		payload.Options.NumPredict = maxTokens
 	}
 	request, err := cfg.request(ctx, strings.TrimRight(cfg.Host, "/")+"/api/chat", payload)
 	if err != nil {
@@ -140,6 +148,7 @@ func (cfg Config) chatOllama(ctx context.Context, messages []Message, jsonMode b
 		return "", responseError("ollama", response)
 	}
 	var result strings.Builder
+	doneReason := ""
 	decoder := json.NewDecoder(response.Body)
 	for {
 		var chunk ollamaChunk
@@ -151,8 +160,12 @@ func (cfg Config) chatOllama(ctx context.Context, messages []Message, jsonMode b
 		}
 		result.WriteString(chunk.Message.Content)
 		if chunk.Done {
+			doneReason = chunk.DoneReason
 			break
 		}
+	}
+	if strings.TrimSpace(result.String()) == "" && doneReason == "length" {
+		return "", fmt.Errorf("%w: ollama produced no output", ErrTokenLimit)
 	}
 	return nonempty("ollama", result.String())
 }
@@ -163,6 +176,7 @@ type openAIRequest struct {
 	Stream         bool            `json:"stream"`
 	ResponseFormat *responseFormat `json:"response_format,omitempty"`
 	MaxTokens      int             `json:"max_tokens,omitempty"`
+	Temperature    float64         `json:"temperature"`
 }
 
 type responseFormat struct {
@@ -174,6 +188,7 @@ type openAIResponse struct {
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
+		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 }
 
@@ -206,6 +221,9 @@ func (cfg Config) chatOpenAI(ctx context.Context, messages []Message, jsonMode b
 	}
 	if len(result.Choices) == 0 {
 		return "", fmt.Errorf("%s returned empty choices", cfg.Provider)
+	}
+	if strings.TrimSpace(result.Choices[0].Message.Content) == "" && result.Choices[0].FinishReason == "length" {
+		return "", fmt.Errorf("%w: %s produced no output", ErrTokenLimit, cfg.Provider)
 	}
 	return nonempty(cfg.Provider, result.Choices[0].Message.Content)
 }

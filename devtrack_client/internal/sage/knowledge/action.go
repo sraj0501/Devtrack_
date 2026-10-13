@@ -1,27 +1,12 @@
 package knowledge
 
-import "strings"
+import sagecommand "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/command"
 
 // Action identifies the stable command operation while ignoring later flags
 // and values. It intentionally distinguishes real subcommands: git status and
 // git log are separate actions, while their flag variants match.
 func Action(command string) string {
-	fields := strings.Fields(strings.TrimSpace(command))
-	if len(fields) == 0 || !ValidRouteBinary(strings.ToLower(fields[0])) {
-		return ""
-	}
-	binary := strings.ToLower(fields[0])
-	for i := 1; i < len(fields); i++ {
-		field := strings.ToLower(fields[i])
-		if strings.HasPrefix(field, "-") {
-			continue
-		}
-		if field == "|" || field == "&&" || field == ";" {
-			break
-		}
-		return binary + " " + field
-	}
-	return binary
+	return sagecommand.Identity(command)
 }
 
 func entryAction(entry MarkdownEntry) string {

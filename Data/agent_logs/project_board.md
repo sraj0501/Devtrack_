@@ -261,9 +261,12 @@ https://github.com/sraj0501/Devtrack_/pull/273
 `features/TASK-157-sage-closure`, based on `origin/dev` at `549c430`. It adds truthful
 `status`/`doctor`/`log` diagnostics, bounded retries, privacy-safe NDJSON logs, Sage-owned local
 commits, model-free documented-action reuse, deterministic rendering, and conservative section
-matching. The ledger is now 68 implemented, 1 adapted, 4 partial, and 63 pending. Full Go tests,
+matching, quote-aware compound command capture, cross-harness payload normalization, deterministic
+temperature-zero model requests, and token-limit diagnostics. The ledger is now 78 implemented,
+1 adapted, 2 partial, and 55 pending. Full Go tests,
 `go vet ./...`, parity-ledger consistency, and whitespace checks pass. Ready for review into `dev`;
 TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/278
 
 **Latest engineer status (skips/search, 2026-10-01):** Implemented and locally qualified — durable
 skipped-action Markdown records with replay/backfill, whole-entry literal search, topic filtering,

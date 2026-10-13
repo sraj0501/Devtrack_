@@ -10,6 +10,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/llmclient"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
@@ -219,6 +220,8 @@ func (q *SageQueue) Retry(ctx context.Context, token string, cause error) error 
 	diagnostic := "model or persistence failure"
 	if errors.Is(cause, context.DeadlineExceeded) {
 		diagnostic = "model timeout"
+	} else if errors.Is(cause, llmclient.ErrTokenLimit) {
+		diagnostic = "model token limit"
 	}
 	return q.finish(ctx, token, "retrying", "", "", diagnostic, q.now().Add(delay).UnixMilli())
 }

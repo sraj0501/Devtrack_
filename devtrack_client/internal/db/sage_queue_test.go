@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/llmclient"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
@@ -22,6 +24,27 @@ func queueEvent(t *testing.T, d *Database, id, signature string) {
 	_, err := d.InsertSageEvent(sage.Event{SchemaVersion: 1, EventID: id, Harness: "codex", SessionID: "session", EventType: "command", Tool: "shell", OccurredAt: time.Now(), Command: signature, Signature: signature})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSageQueuePersistsTokenLimitCategory(t *testing.T) {
+	database, err := NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	queueEvent(t, database, "limited", "git status")
+	q := SageQueue{Database: database, Now: func() time.Time { return time.Unix(100, 0) }}
+	job, found, err := q.Claim(context.Background())
+	if err != nil || !found {
+		t.Fatalf("claim found=%v err=%v", found, err)
+	}
+	if err := q.Retry(context.Background(), job.ID, fmt.Errorf("wrapped: %w", llmclient.ErrTokenLimit)); err != nil {
+		t.Fatal(err)
+	}
+	var diagnostic string
+	if err := database.db.QueryRow(`SELECT last_error FROM sage_jobs`).Scan(&diagnostic); err != nil || diagnostic != "model token limit" {
+		t.Fatalf("diagnostic=%q err=%v", diagnostic, err)
 	}
 }
 

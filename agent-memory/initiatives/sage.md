@@ -62,9 +62,12 @@ quickly, print nothing, perform no model or network call, and never break an age
 - PR #275 integrated the TASK-157 durable SQLite queue and daemon lifecycle, deterministic Markdown
   publication, persistent routing, restart-safe merge/refile, skipped-action records, and
   full-entry search/topic reconciliation into `dev` at `a1777b6`.
-- Remaining SAGE-003 work is truthful diagnostics, safe local knowledge commits, the open parity
-  scenarios, and repeated capture-to-knowledge acceptance. Start the next slice from current
-  `origin/dev` at `fc3217f`; the earlier `features/TASK-157-sage-parity` branch is merged.
+- PR #278 is the active SAGE-003 closure review from `features/TASK-157-sage-closure`. It includes
+  truthful diagnostics, bounded retries, safe local knowledge commits, model-free action reuse,
+  quote-aware compound command signatures, cross-harness payload normalization, deterministic
+  temperature-zero model requests, and token-limit diagnostics. The ledger is 78 implemented,
+  1 adapted, 2 partial, and 55 pending. Remaining work is the open parity scenarios and repeated
+  capture-to-knowledge acceptance; the earlier `features/TASK-157-sage-parity` branch is merged.
 
 ## Ordered next steps
 

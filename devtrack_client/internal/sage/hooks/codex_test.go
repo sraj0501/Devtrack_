@@ -24,7 +24,7 @@ func TestNormalizeCodexPostToolUseMinimizesPrivateInput(t *testing.T) {
 	raw := codexFixture(t)
 	when := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
 	event, ok := NormalizeCodexPostToolUse(raw, when)
-	if !ok || event.Command != "git status --short" || event.Signature != "git status" {
+	if !ok || event.Command != "git status --short" || event.Signature != "git status --short" {
 		t.Fatalf("unexpected normalized event: %+v, %t", event, ok)
 	}
 	if event.Success != nil || event.ExitCode != nil {
@@ -64,8 +64,8 @@ func TestNormalizeCodexPostToolUseFailsClosed(t *testing.T) {
 		"missing tool id": bytes.Replace(fixture, []byte(`example-tool-001`), []byte(``), 1),
 		"credential":      bytes.Replace(fixture, []byte(`git status --short`), []byte(`git status --token=PRIVATE`), 1),
 		"private path":    bytes.Replace(fixture, []byte(`git status --short`), []byte(`git status /home/alice`), 1),
-		"shell operator":  bytes.Replace(fixture, []byte(`git status --short`), []byte(`git status; echo private`), 1),
-		"unknown action":  bytes.Replace(fixture, []byte(`git status --short`), []byte(`curl example.test`), 1),
+		"shell expansion": bytes.Replace(fixture, []byte(`git status --short`), []byte(`git status; echo $private`), 1),
+		"redirection":     bytes.Replace(fixture, []byte(`git status --short`), []byte(`git status > private`), 1),
 	}
 	for name, raw := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestNormalizeCodexPostToolUseFailsClosed(t *testing.T) {
 
 func TestSafeCodexCommandDropsValues(t *testing.T) {
 	command, signature, ok := safeCodexCommand("go test ./... -race")
-	if !ok || command != "go test -race" || signature != "go test" {
+	if !ok || command != "go test -race" || signature != "go test -race" {
 		t.Fatalf("unexpected safe command: %q, %q, %t", command, signature, ok)
 	}
 	if strings.Contains(command, "./...") {
@@ -89,8 +89,16 @@ func TestSafeCodexCommandDropsValues(t *testing.T) {
 func TestReferenceSameActionDifferentValuesCollapses(t *testing.T) {
 	_, left, okLeft := safeCodexCommand("go test ./first/package -race")
 	_, right, okRight := safeCodexCommand("go test ./second/package -race")
-	if !okLeft || !okRight || left != "go test" || right != left {
+	if !okLeft || !okRight || left != "go test -race" || right != left {
 		t.Fatalf("left=%q right=%q ok=%v/%v", left, right, okLeft, okRight)
+	}
+}
+
+func TestNormalizeCodexPostToolUseEmitsEveryCompoundAction(t *testing.T) {
+	raw := bytes.Replace(codexFixture(t), []byte(`git status --short`), []byte(`git fetch upstream && git merge upstream/dev`), 1)
+	events := NormalizeCodexPostToolUseEvents(raw, time.Now())
+	if len(events) != 2 || events[0].Signature != "git fetch" || events[1].Signature != "git merge" || events[0].EventID == events[1].EventID {
+		t.Fatalf("events=%+v", events)
 	}
 }
 

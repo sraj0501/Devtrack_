@@ -260,15 +260,17 @@ func runSageHook(args []string, input io.Reader) error {
 	if err != nil {
 		return nil
 	}
-	event, ok := hooks.NormalizeCodexPostToolUse(raw, time.Now().UTC())
-	if !ok {
+	events := hooks.NormalizeCodexPostToolUseEvents(raw, time.Now().UTC())
+	if len(events) == 0 {
 		return nil
 	}
 	root, err := sageRoot()
 	if err != nil {
 		return nil
 	}
-	_ = sage.WriteEvent(root, event)
+	for _, event := range events {
+		_ = sage.WriteEvent(root, event)
+	}
 	return nil
 }
 

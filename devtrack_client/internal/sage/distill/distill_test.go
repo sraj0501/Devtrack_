@@ -88,7 +88,7 @@ func TestDistillerReturnsExplicitSkipWithoutRetry(t *testing.T) {
 
 // A reasoning model may exhaust its budget without producing an answer. That
 // is a retryable transport failure, never a decision to discard captured work.
-func TestDistillerEmptyModelOutputRemainsRetryable(t *testing.T) {
+func TestReferenceTokenLimitWithNoOutputIsAFailureNotAVerdict(t *testing.T) {
 	for _, provider := range []string{"ollama", "openai"} {
 		t.Run(provider, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +102,7 @@ func TestDistillerEmptyModelOutputRemainsRetryable(t *testing.T) {
 			defer server.Close()
 			service := Distiller{Client: llmclient.Config{Host: server.URL, Provider: provider, Model: "test", Client: server.Client()}}
 			outcome, err := service.Distill(context.Background(), Fact{Command: "git status"})
-			if !IsRetryable(err) || outcome.Skipped || outcome.Draft != nil {
+			if !IsRetryable(err) || !errors.Is(err, llmclient.ErrTokenLimit) || outcome.Skipped || outcome.Draft != nil {
 				t.Fatalf("empty model output became a verdict: outcome=%#v err=%v", outcome, err)
 			}
 		})

@@ -156,7 +156,7 @@ func (d *Database) SageLog(ctx context.Context, limit int) ([]SageLogEntry, erro
 
 func safeSageDiagnostic(value string) string {
 	switch value {
-	case "", "model timeout", "model or persistence failure", "knowledge publication failure":
+	case "", "model timeout", "model token limit", "model or persistence failure", "knowledge publication failure":
 		return value
 	default:
 		return "processing failure"

@@ -23,7 +23,7 @@ without an approved board task and a dedicated branch targeting `dev`.
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded
   retries, safe local knowledge commits, model-free documented-action reuse, and conservative
   section matching.
-- Ledger checkpoint: 68 implemented, 1 adapted, 4 partial, 63 pending. Full Go tests, vet, ledger
+- Ledger checkpoint: 78 implemented, 1 adapted, 2 partial, 55 pending. Full Go tests, vet, ledger
   consistency, and whitespace validation pass on the closure branch.
 - Next unused task ID is TASK-164, subject to board verification before allocation.
 

@@ -18,7 +18,7 @@ const SchemaVersion = 1
 const MaxEventBytes = 16 * 1024
 
 var identifier = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
-var signature = regexp.MustCompile(`^[a-z0-9][a-z0-9 _.-]{0,127}$`)
+var signature = regexp.MustCompile(`^[a-z0-9][a-z0-9 _.:+-]{0,127}$`)
 var unsafeCommand = regexp.MustCompile(`(?i)(?:password|passwd|api[_-]?key|secret|token|authorization|bearer|ghp_|github_pat_|sk-[a-z0-9]|(?:[a-z]:\\users\\|/home/|/users/))`)
 
 // Event is a deliberately small fact, not a transcript. Command must already
