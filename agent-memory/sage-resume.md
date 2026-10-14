@@ -15,13 +15,13 @@ acting because branch, PR, and CI state can change after this record is updated.
 - Active task: TASK-157 / SAGE-003, Go-native self-writing command knowledge.
 - Integration branch: `origin/dev` at `a6a75b0` after PR #278 merged on 2026-10-13.
 - Active review: PR #279 from `features/TASK-157-sage-backend-isolation` into `dev`; all 19 hosted
-  checks passed, but it remains unmerged. Active stacked branch:
-  `features/TASK-157-sage-platform-installers`, based on PR #280's fully green model-backend head;
-  PR #281 targets `dev` and all 19 hosted checks passed.
+  checks passed, but it remains unmerged. PR #280 and PR #281 are fully green stacked reviews for
+  command-model backends and platform installers. Active stacked branch:
+  `features/TASK-157-sage-lifecycle`, based on PR #281's green head.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.
-- Ledger: 136 scenarios — 105 implemented, 4 adapted, 2 partial, and 25 pending.
+- Ledger: 136 scenarios — 110 implemented, 16 adapted, 2 partial, and 8 pending.
 - Qualification: full Go tests, `go vet ./...`, ledger consistency, parity-checker tests,
   shared-memory validation, and whitespace validation passed locally. All required PR #278 checks
   and applicable post-merge workflows passed, including hosted Windows tests.
@@ -57,6 +57,11 @@ Eleven layout rows and five mutation rows are implemented; two Python script-shi
 explicitly adapted to packaged native Go launchers. Codex remains the only advertised adapter.
 See `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
 
+The active lifecycle branch resolves all 10 daemon/process and 7 CLI lifecycle rows. DevTrack's
+single daemon owns locking, liveness, and background work; Windows native children have no console,
+and Sage start/stop/restart aliases manage persistent capture state without spawning a watcher.
+See `docs/SAGE_LIFECYCLE_QUALIFICATION.md`.
+
 ## Remaining parity work
 
 Every open matrix row must gain an exact Go regression test or an explicit behavioral adaptation.
@@ -64,11 +69,9 @@ The final ledger command must pass with `--require-complete`.
 
 | Group | Pending | Required outcome |
 |---|---:|---|
-| Daemon/process lifecycle | 10 | Cover exclusive and stale locks, no-console helper behavior, piped input, detached execution, and PID/liveness edge cases, adapted to the DevTrack-owned daemon where appropriate. |
 | Configuration, pause, capture, and logging | 4 | Prove installed-adapter pause behavior, fail-open logging, new/known enqueue records, and repeated actions within one command line. |
-| CLI lifecycle | 7 | Cover start/stop/restart, watcher replacement, aliases, loud typo handling, stop reasons, silent hook verbs, and prevention of legacy-shim restart. |
 | Optional IDE adapter | 4 | Cover original-command filtering, pause/reset/checkpoint behavior, and failure handling. Do not add another harness before the resilient Codex journey; explicitly adapt these rows if they are outside the current milestone. |
-| **Total pending** | **25** | All must become implemented or deliberately adapted. |
+| **Total pending** | **8** | All must become implemented or deliberately adapted. |
 
 The two partial rows are:
 
@@ -88,10 +91,9 @@ The two partial rows are:
 
 ## Recommended pickup order
 
-1. Daemon/process and CLI lifecycle adaptations.
-2. Capture, pause, logging, and the two partial Codex-history rows.
-3. Resolve the optional IDE rows without violating the Codex-first sequencing guardrail.
-4. Run the repeated Windows/Linux acceptance journey, close the ledger, and integrate the remaining
+1. Capture, pause, logging, and the two partial Codex-history rows.
+2. Resolve the optional IDE rows without violating the Codex-first sequencing guardrail.
+3. Run the repeated Windows/Linux acceptance journey, close the ledger, and integrate the remaining
    closure through a new PR to `dev`.
 
 At the start of a fresh session, read `agent-memory/INDEX.md`, `current-state.md`,

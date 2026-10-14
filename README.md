@@ -416,6 +416,9 @@ publication, routing/merge corrections, skipped-action records, and full-entry s
 devtrack sage harness list
 devtrack sage harness install codex
 devtrack sage status
+devtrack sage stop "reviewing a client repo"  # aliases: pause, off
+devtrack sage start                            # aliases: resume, on
+devtrack sage restart
 devtrack sage search "rebase"
 devtrack sage topics
 devtrack sage doctor
@@ -440,7 +443,9 @@ preview: remaining reference parity and end-to-end release qualification are ope
 [model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
 limits. Platform-specific harness destinations and additive hook migration are covered by the
 [platform/installer qualification](docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md); Codex remains
-the only currently advertised capture adapter.
+the only currently advertised capture adapter. Daemon locks, process liveness, no-console Windows
+children, capture lifecycle aliases, stop reasons, and legacy-hook safety are covered by the
+[lifecycle qualification](docs/SAGE_LIFECYCLE_QUALIFICATION.md).
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;

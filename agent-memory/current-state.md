@@ -14,14 +14,14 @@ development-release workflows passed. PR #279 is the fully green, unmerged follo
 runtime root from portable Markdown knowledge overrides and anchors relative overrides to the Sage
 configuration root rather than the caller's working directory. PR #280 adds explicit shipped
 command-model providers while retaining Ollama HTTP as the default; all 19 hosted checks passed.
-The active stacked branch is `features/TASK-157-sage-platform-installers`; it closes portable
-harness-layout and additive install/removal parity without advertising another capture adapter.
-PR #281 is the active review for this slice; all 19 hosted checks passed.
-The 136-scenario ledger now records 105 implemented, 4 adapted, 2 partial, and 25 pending scenarios.
+PR #281 closes portable harness layouts and additive install/removal parity; all 19 hosted checks
+passed. The active stacked branch is `features/TASK-157-sage-lifecycle`. It closes all 10
+daemon/process and 7 CLI lifecycle rows without adding a second Sage watcher.
+The 136-scenario ledger now records 110 implemented, 16 adapted, 2 partial, and 8 pending scenarios.
 Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
-pass locally. Next: review and integrate the stacked slices, then close daemon/process and CLI
-lifecycle parity.
+pass locally. The exact lifecycle suite also passes as native Windows executables. Next: review and
+integrate the stacked slices, then close capture/logging, Codex-history, and optional IDE parity.
 Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order;
 `sage-resume.md` is the fresh-session handoff with the exact pending groups and acceptance gates.
 

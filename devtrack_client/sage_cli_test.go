@@ -58,6 +58,145 @@ func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
 	}
 }
 
+func TestReferenceStopAndStartRoundTrip(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	var output bytes.Buffer
+	if err := writeSageState("stop", []string{"testing"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	root, err := sageRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := sage.ReadState(root)
+	if err != nil || !state.Paused {
+		t.Fatalf("stopped state=%+v err=%v", state, err)
+	}
+	output.Reset()
+	if err := writeSageState("start", nil, &output); err != nil {
+		t.Fatal(err)
+	}
+	state, err = sage.ReadState(root)
+	if err != nil || state.Paused {
+		t.Fatalf("started state=%+v err=%v", state, err)
+	}
+}
+
+func TestReferenceRestartReplacesTheWatcherAndStopReleasesIt(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	root, err := sageRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sage.SetPaused(root, true); err != nil {
+		t.Fatal(err)
+	}
+	before, err := sage.CaptureCutoff(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(2 * time.Millisecond)
+	if err := writeSageState("restart", nil, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	state, err := sage.ReadState(root)
+	after, cutoffErr := sage.CaptureCutoff(root)
+	if err != nil || cutoffErr != nil || state.Paused || after <= before {
+		t.Fatalf("restart state=%+v cutoff=%d -> %d err=%v/%v", state, before, after, err, cutoffErr)
+	}
+	if _, err := os.Stat(filepath.Join(root, "watcher.pid")); !os.IsNotExist(err) {
+		t.Fatalf("Sage restart created a second watcher: %v", err)
+	}
+	if err := writeSageState("stop", nil, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	state, err = sage.ReadState(root)
+	if err != nil || !state.Paused {
+		t.Fatalf("stop state=%+v err=%v", state, err)
+	}
+}
+
+func TestReferenceAliasesAllWork(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	root, err := sageRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stop := range []string{"stop", "pause", "off"} {
+		if err := writeSageState(stop, nil, &bytes.Buffer{}); err != nil {
+			t.Fatal(err)
+		}
+		state, err := sage.ReadState(root)
+		if err != nil || !state.Paused {
+			t.Fatalf("%s state=%+v err=%v", stop, state, err)
+		}
+		if err := writeSageState("start", nil, &bytes.Buffer{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, start := range []string{"start", "resume", "on"} {
+		if err := writeSageState("stop", nil, &bytes.Buffer{}); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeSageState(start, nil, &bytes.Buffer{}); err != nil {
+			t.Fatal(err)
+		}
+		state, err := sage.ReadState(root)
+		if err != nil || state.Paused {
+			t.Fatalf("%s state=%+v err=%v", start, state, err)
+		}
+	}
+}
+
+func TestReferenceATypoIsLoudRatherThanASilentNoOp(t *testing.T) {
+	if _, _, err := routeSage([]string{"nonsense"}); err == nil || !strings.Contains(err.Error(), "unknown Sage command") {
+		t.Fatalf("unknown action error=%v", err)
+	}
+}
+
+func TestReferenceStopRecordsItsReason(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	if err := writeSageState("stop", []string{"reviewing", "a", "client", "repo"}, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	root, err := sageRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := sage.ReadState(root)
+	if err != nil || state.PauseReason != "reviewing a client repo" {
+		t.Fatalf("state=%+v err=%v", state, err)
+	}
+}
+
+func TestReferenceHookVerbsAreSilentAndNeverFail(t *testing.T) {
+	for _, verb := range []string{"hook-start", "hook-end"} {
+		var output bytes.Buffer
+		if err := writeSageState(verb, []string{"devin"}, &output); err != nil || output.Len() != 0 {
+			t.Fatalf("%s output=%q err=%v", verb, output.String(), err)
+		}
+	}
+}
+
+func TestReferenceALegacyShimCannotSilentlyRestartCapture(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	if err := writeSageState("stop", nil, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := writeSageState("start", []string{"devin"}, &output); err != nil || output.Len() != 0 {
+		t.Fatalf("legacy shim output=%q err=%v", output.String(), err)
+	}
+	root, err := sageRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := sage.ReadState(root)
+	if err != nil || !state.Paused {
+		t.Fatalf("legacy shim resumed capture: state=%+v err=%v", state, err)
+	}
+}
+
 func TestReferenceStatusReportsBothStates(t *testing.T) {
 	root := t.TempDir()
 	database, err := db.NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
