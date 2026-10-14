@@ -7,7 +7,6 @@ import (
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
-	"github.com/sraj0501/Devtrack_/devtrack_client/internal/llmclient"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
@@ -37,7 +36,7 @@ func (q pausedSageQueue) Claim(ctx context.Context) (distill.Job, bool, error) {
 	return q.SageQueue.Claim(ctx)
 }
 
-func (im *IntegratedMonitor) startSageDistillation(ctx context.Context, root, knowledgeRoot string, client llmclient.Config) <-chan struct{} {
+func (im *IntegratedMonitor) startSageDistillation(ctx context.Context, root, knowledgeRoot string, client distill.Client) <-chan struct{} {
 	queue := pausedSageQueue{SageQueue: &db.SageQueue{
 		Database:   im.database,
 		Lease:      (time.Duration(config.GetSageModelTimeoutSecs()) + 30) * time.Second,

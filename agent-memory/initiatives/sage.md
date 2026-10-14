@@ -68,10 +68,11 @@ quickly, print nothing, perform no model or network call, and never break an age
   temperature-zero model requests, token-limit diagnostics, and background classify-once routing
   with safe fallback and existing-section context. Required PR checks and all applicable post-merge
   workflows passed.
-- The active follow-up branch isolates private runtime state from portable knowledge placement and
-  anchors relative overrides to the stable Sage root. The ledger is 84 implemented, 2 adapted,
-  2 partial, and 48 pending. Remaining work is the open parity scenarios and repeated
-  capture-to-knowledge acceptance.
+- PR #279 isolates private runtime state from portable knowledge placement and anchors relative
+  overrides to the stable Sage root; all 19 hosted checks passed. The active stacked branch adds
+  explicit shipped command-model providers, retaining Ollama HTTP as the default. The ledger is
+  89 implemented, 2 adapted, 2 partial, and 43 pending. Remaining work is the open parity
+  scenarios and repeated capture-to-knowledge acceptance.
 
 ## Ordered next steps
 
@@ -100,9 +101,12 @@ knowledge insertion; migration backfills older signatures. Atomic claims carry r
 tokens, bounded leases, attempts, and retry times. Expired claims recover after restart; stale
 workers cannot acknowledge replacement claims. Daemon-owned cancellation stops importer/model
 work before the database closes. Pause prevents new claims; an already-running request may finish.
-Only local Ollama configuration is loaded by this daemon path. Valid drafts persist as `distilled`,
-which does not mean Markdown has been written. Error/skip diagnostics use fixed safe categories.
-Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Final Sage parity remains open.
+Ollama HTTP remains the default daemon model path. An explicitly configured installed command
+provider can instead run through fixed argv without a shell; missing providers leave durable work
+retryable. Valid drafts persist as `distilled`, which does not mean Markdown has been written.
+Error/skip diagnostics use fixed safe categories. Evidence:
+`docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md` and `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`. Final
+Sage parity remains open.
 
 - Wire the merged Sage background worker into daemon startup and shutdown; startup must remain
   non-blocking and cancellation must promptly end polling, retry waits, and in-flight requests.

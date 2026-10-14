@@ -1,34 +1,19 @@
 # Next Steps — DevTrack Sage
 
-_Updated 2026-09-29. This file lists active work only. Completed delivery and validation history
+_Updated 2026-10-14. This file lists active work only. Completed delivery and validation history
 lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
 ## Immediate repository sequence
 
-TASK-158 merged into `origin/dev` through PR #264. Its implementation restores the silent Git
-contract: normal Git remains native, `devtrack git commit` has no ticket/time/PM/push follow-up,
-observation is silent and fail-open, and database initialization no longer leaks into the commit
-path. Ubuntu WSL2 plus explicit TTY/non-TTY qualification passed on 2026-09-26; this remains
-unreleased development state, not a claim about v3.1.1.
+PR #278 merged the latest TASK-157 closure slice to `dev` at `a6a75b0`. PR #279 contains the
+runtime/knowledge-root isolation slice; all 19 hosted checks passed, but it remains unmerged. The
+active stacked branch, `features/TASK-157-sage-model-backends`, adds explicit command-model
+providers while retaining Ollama HTTP as the default. Its local full Go suite, vet, and Windows
+cross-compile pass.
 
-The PR #263 and PR #264 check sets retain historical failed hosted-Windows unit-test jobs. PR #264's
-job hit the 60-second timeout in SQLite-backed `internal/db` and `internal/mcp` tests. PR #265 later
-passed all 19 hosted checks, including the full Windows test job, re-establishing a green branch
-baseline. TASK-158's later native-Linux TTY/non-TTY qualification is separately complete.
-
-**TASK-160** now passes its local Windows and Ubuntu WSL2 implementation gates for the deterministic
-branch-to-ticket contract defined in `PRODUCT_BIBLE.md`: canonical branch, explicit commit
-prefix/trailer, explicit active ticket, otherwise unlinked. Commit `92c0711` is ready for the
-authorized branch push; PR/integration remains pending. **TASK-159 is next after that integration**, replacing per-commit duration
-entry with bounded, local activity-window inference and optional correction commands. After those
-product-correctness slices, continue TASK-157 / SAGE-003 at its durable distillation-queue boundary.
-Before that implementation slice, reconcile every reference scenario with an exact Go test and
-explicit implementation status in the parity matrix.
-
-TASK-161's rolling `dev` update channel merged through PR #265 at `f6b0ec0` after all 19 hosted
-checks passed. Successful workflow run `36136822555` published `dev-f6b0ec0` with checksums and all
-five platform binaries. The channel flags are supported in that rolling prerelease/current `dev`,
-not in stable v3.1.1; stable `main` remains the default.
+After review and integration, close platform roots/shims and additive installer/removal parity,
+then daemon/CLI lifecycle, capture/history edge cases, and optional IDE adaptations. Run the clean
+capture-to-self-written-knowledge journey twice on Windows and Linux before closing TASK-157.
 
 ## Current product initiative
 
@@ -51,12 +36,11 @@ context is maintained in `agent-memory/initiatives/sage.md`. SAGE-001 establishe
 contract and port boundary as TASK-155. SAGE-002 is complete as TASK-156: the atomic bounded
 spool, append-only SQLite event store, daemon importer, and opt-in read-only Codex history adapter
 are implemented, hook installation/removal is reversible, and the isolated packaged capture
-journey passes. The first SAGE-003 structured-distillation boundary is also merged: shared Go LLM
-transport, validated structured drafts, explicit skip versus retryable failure semantics, and a
-non-blocking worker. Continue by wiring durable SQLite claims and daemon lifecycle, then produce
-deterministic Markdown, routing/correction, merge/refile, skipped-action records, safe local
-commits, and parity closure. SAGE-003 remains incomplete until it produces reference-compatible
-structured Markdown knowledge and passes the refreshed parity matrix.
+journey passes. The SAGE-003 durable distillation, deterministic publication,
+routing/correction, merge/refile, skipped-action records, search, diagnostics, and safe
+local-commit foundation is implemented. Runtime/knowledge isolation is under review in PR #279,
+and explicit model backends are on the active stacked branch. SAGE-003 remains incomplete until
+the remaining parity rows and repeated clean acceptance journeys pass.
 Sanitized observed hook fixtures
 remain an external harness-validation gate.
 The selective harness registry and external plugin boundary are now fixed in
@@ -64,9 +48,9 @@ The selective harness registry and external plugin boundary are now fixed in
 global installer switches or harness-specific storage.
 `Data/agent_logs/project_board.md` remains the task-ID authority.
 
-The parity inventory accounts for all 136 reference test methods at `ea2e067`, including the
-previously omitted explicit CLI-history capture scenario. Every row still needs exact Go-test
-ownership and an implementation status; a reconciled row count alone is not a completion claim.
+The parity inventory accounts for all 136 reference test methods at `ea2e067`: 89 implemented,
+2 adapted, 2 partial, and 43 pending. Every remaining row needs exact Go-test ownership or an
+explicit justified adaptation; a reconciled row count alone is not a completion claim.
 
 ## Open release follow-ups
 

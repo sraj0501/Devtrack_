@@ -269,6 +269,9 @@ func runSageHarness(args []string, output io.Writer) error {
 // runSageHook is deliberately silent and fail-open: malformed input or local
 // storage failure must never interrupt the host agent session.
 func runSageHook(args []string, input io.Reader) error {
+	if config.IsSageCaptureOff() {
+		return nil
+	}
 	if len(args) != 2 || args[0] != "codex" || args[1] != hooks.OwnerMarker {
 		return nil
 	}
