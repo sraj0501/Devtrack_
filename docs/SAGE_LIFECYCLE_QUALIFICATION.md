@@ -42,6 +42,10 @@ adding a competing Sage process.
 - Actual Windows execution passed all 16 applicable exact lifecycle tests, including real
   no-console child execution and stdin preservation. The POSIX-only launch test passed in Linux.
 - `go test ./...` and `go vet ./...` passed in the Go 1.24 Docker toolchain.
+- PR #282 passed all 19 hosted checks, including Windows build/vet, the full Windows unit suite,
+  Windows no-send E2E, and Windows MCPB smoke. An initial Windows E2E runner timed out before its
+  isolated daemon PID appeared; the unchanged rerun passed in 1m49s, consistent with a successful
+  local Windows reproduction.
 - `scripts/check_sage_parity.py --reference C:\Work\git_apps\ai_sessions_skills` passed with
   136 rows: 110 implemented, 16 adapted, 2 partial, and 8 pending.
 

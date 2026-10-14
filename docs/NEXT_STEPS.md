@@ -11,7 +11,7 @@ stacked PR #280 adds explicit command-model providers while retaining Ollama HTT
 it is fully green. PR #281 closes portable roots, harness destinations, native launcher
 adaptations, and additive install/removal behavior; it is also fully green. The active stacked
 branch, `features/TASK-157-sage-lifecycle`, closes daemon/process and CLI lifecycle parity without
-adding a second Sage watcher. PR #282 targets `dev`; hosted checks are running.
+adding a second Sage watcher. PR #282 targets `dev`; all 19 hosted checks passed.
 
 After review and integration, close the four capture/logging rows, two partial Codex-history rows,
 and four optional IDE adaptations. Run the clean

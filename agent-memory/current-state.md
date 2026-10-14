@@ -17,7 +17,7 @@ command-model providers while retaining Ollama HTTP as the default; all 19 hoste
 PR #281 closes portable harness layouts and additive install/removal parity; all 19 hosted checks
 passed. The active stacked branch is `features/TASK-157-sage-lifecycle`. It closes all 10
 daemon/process and 7 CLI lifecycle rows without adding a second Sage watcher. PR #282 targets
-`dev`; hosted checks are running.
+`dev`; all 19 hosted checks passed.
 The 136-scenario ledger now records 110 implemented, 16 adapted, 2 partial, and 8 pending scenarios.
 Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks

@@ -17,8 +17,8 @@ acting because branch, PR, and CI state can change after this record is updated.
 - Active review: PR #279 from `features/TASK-157-sage-backend-isolation` into `dev`; all 19 hosted
   checks passed, but it remains unmerged. PR #280 and PR #281 are fully green stacked reviews for
   command-model backends and platform installers. Active stacked branch:
-  `features/TASK-157-sage-lifecycle`, based on PR #281's green head. PR #282 targets `dev`; hosted
-  checks are running.
+  `features/TASK-157-sage-lifecycle`, based on PR #281's green head. PR #282 targets `dev`; all 19
+  hosted checks passed.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.

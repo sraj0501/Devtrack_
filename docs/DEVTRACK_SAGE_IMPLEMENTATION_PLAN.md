@@ -190,8 +190,8 @@ private runtime root from portable knowledge placement. PR #280 keeps Ollama HTT
 and adds explicit, no-shell command providers with process-local capture suppression; all 19 checks
 passed. PR #281 closes portable platform paths and additive install/removal. The active stacked
 lifecycle branch closes daemon locks/liveness, no-console launches, capture aliases, stop reasons,
-and legacy-hook safety without adding a second watcher. PR #282 targets `dev`; hosted checks are
-running. The ledger is 110 implemented, 16 adapted, 2 partial, and 8 pending. Details:
+and legacy-hook safety without adding a second watcher. PR #282 targets `dev`; all 19 hosted checks
+passed. The ledger is 110 implemented, 16 adapted, 2 partial, and 8 pending. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md` and
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`, and
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`, and
