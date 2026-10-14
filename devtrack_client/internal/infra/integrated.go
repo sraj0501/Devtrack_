@@ -14,9 +14,9 @@ import (
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
-	"github.com/sraj0501/Devtrack_/devtrack_client/internal/llmclient"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/codexhistory"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/worktime"
@@ -192,7 +192,11 @@ func (im *IntegratedMonitor) startSageCapture(ctx context.Context) {
 		return
 	}
 	ctx, im.sageCancel = context.WithCancel(ctx)
-	workerDone := im.startSageDistillation(ctx, root, knowledgeRoot, llmclient.LoadOllamaConfig())
+	client, clientErr := distill.LoadModelClient(root, knowledgeRoot)
+	if clientErr != nil {
+		log.Printf("Sage model backend unavailable: %v", clientErr)
+	}
+	workerDone := im.startSageDistillation(ctx, root, knowledgeRoot, client)
 	done := make(chan struct{})
 	im.sageDone = done
 	poller := codexhistory.Poller{Root: root}

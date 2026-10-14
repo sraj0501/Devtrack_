@@ -425,7 +425,11 @@ devtrack sage routes
 Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
 service in the hook path, and it does not block the host coding agent. The daemon imports normalized
 events into SQLite and groups repeated command signatures. A structured background distiller uses
-local Ollama by default; publication retries do not repeat model work. On rolling `dev`, search
+local Ollama HTTP by default; publication retries do not repeat model work. Set
+`DEVTRACK_SAGE_MODEL_BACKEND` explicitly to `claude`, `devin`, `codex`, `copilot`, or
+`cursor-agent` to use an already-installed command provider, and optionally set
+`DEVTRACK_SAGE_MODEL`. Sage never auto-selects a command provider merely because it is installed.
+On rolling `dev`, search
 returns complete Markdown entries, matching all literal keywords, and `--topic git` filters by
 topic filename. Search reflects manual edits and topic moves; skipped records are excluded.
 Set `DEVTRACK_SAGE_RUNTIME_DIR` to relocate private queue/state/log storage and
@@ -433,7 +437,8 @@ Set `DEVTRACK_SAGE_RUNTIME_DIR` to relocate private queue/state/log storage and
 from the stable Sage data root, not the shell's working directory. This remains a development
 preview: remaining reference parity and end-to-end release qualification are open. See
 [the runtime-isolation qualification](docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md) and the
-[current Sage checkpoint](docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md) for tested behavior and limits.
+[model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
+limits.
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;

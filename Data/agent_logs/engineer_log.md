@@ -2987,3 +2987,12 @@ The accompanying docs-only checkpoint uses `devtrack git commit --no-enhance`; i
 **Time**: qualification and two documentation reconciliation passes completed before commit
 **Friction**: MEDIUM
 **Notes**: The Docker evaluation daemon exited before the commit, but `devtrack git commit` completed successfully. A legacy post-commit hook then reported a missing historical log directory after Git had already committed; no push was attempted by the hook. PR: https://github.com/sraj0501/Devtrack_/pull/279
+
+### [2026-10-14] TASK-157 — Add explicit Sage model backends
+
+**Original message**: "Finish the Sage features one by one, document each change, run docu-agent, and raise a PR after each completed change."
+**Planned commit**: `feat(sage): add explicit model backends` on `features/TASK-157-sage-model-backends`.
+**Ticket auto-linked**: pending commit-helper result; TASK-157 is recorded by the board and branch.
+**PM system updated**: local project board and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Friction**: LOW — host Go and Node are absent, so qualification used disposable Go 1.24 and Node 22 containers.
+**Notes**: Ollama HTTP remains the default. Explicit `claude`, `devin`, `codex`, `copilot`, and `cursor-agent` providers use fixed argv without a shell, declared prompt modes, runtime-local temporary prompts, process-local capture suppression, and Windows no-console flags. The full Go suite and vet passed under Go 1.24; the Windows distillation package cross-compiled. The current `ai_sessions_skills` HEAD is `ea2e067`; the parity ledger passes at 89 implemented, 2 adapted, 2 partial, and 43 pending. Two docu-agent passes reconciled README, wiki, active memory, plans, and board; shared-memory, parity-checker, wiki inline-JavaScript, and whitespace validations pass. PR URL will be recorded after creation.

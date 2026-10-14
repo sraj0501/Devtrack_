@@ -962,6 +962,14 @@ func GetSageRetryDelaySecs() int {
 	return boundedPositiveIntEnv("DEVTRACK_SAGE_RETRY_DELAY_SECS", 2, 1, 60)
 }
 
+// IsSageCaptureOff disables capture only for the current process tree. Model
+// CLI backends set it so their own harness activity cannot feed back into the
+// Sage queue; it never changes the persistent pause marker.
+func IsSageCaptureOff() bool {
+	value := strings.TrimSpace(os.Getenv("DEVTRACK_SAGE_CAPTURE_OFF"))
+	return value == "1" || strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+}
+
 // GetSQLiteBusyTimeoutMS returns how long SQLite waits for a concurrent writer
 // before returning SQLITE_BUSY. Reads SQLITE_BUSY_TIMEOUT_MS; default 5000.
 func GetSQLiteBusyTimeoutMS() int {

@@ -1638,9 +1638,10 @@ devtrack start</code></pre>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
 <h2>Current dev — TASK-157 durable Sage knowledge pipeline</h2>
 <ul>
-<li><strong>Integrated pipeline:</strong> PR #275 merged durable SQLite claims, daemon-owned distillation, deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped-action records, and full-entry search to <code>dev</code> at <code>a1777b6</code>.</li>
-<li><strong>Verified rolling build:</strong> all post-merge workflows passed and rolling release <code>dev-a1777b6</code> contains the implementation. PR #276 subsequently added local Docker evaluation documentation at current <code>dev</code> commit <code>fc3217f</code>.</li>
-<li><strong>Remaining milestone work:</strong> SAGE-003 still requires truthful diagnostics, Sage-owned local commits, completion of the 136-scenario parity ledger, and two clean capture-to-knowledge acceptance passes.</li>
+<li><strong>Integrated pipeline:</strong> PR #278 merged durable distillation/publication, routing and merge/refile, search, truthful diagnostics, bounded retries, safe local knowledge commits, and capture/model-request parity to <code>dev</code> at <code>a6a75b0</code>.</li>
+<li><strong>Active reviews:</strong> PR #279 isolates private runtime state from portable knowledge placement and passed all 19 hosted checks. The stacked model-backend branch retains Ollama HTTP as the default and adds explicit, no-shell command providers with process-local capture suppression.</li>
+<li><strong>Parity checkpoint:</strong> the current <code>ea2e067</code> reference ledger records 89 implemented, 2 adapted, 2 partial, and 43 pending scenarios.</li>
+<li><strong>Remaining milestone work:</strong> SAGE-003 still requires platform/shim and additive installer parity, daemon/CLI lifecycle and capture-history edge cases, optional IDE adaptations, and two clean Windows/Linux capture-to-knowledge acceptance passes.</li>
 </ul>
 <h2>Current dev — TASK-158 completely silent Git path</h2>
 <ul>
@@ -1887,8 +1888,9 @@ devtrack uninstall</code></pre>
 <tr><td>OpenAI</td><td><code>OPENAI_API_KEY</code>, <code>OPENAI_MODEL</code></td><td>Optional cloud provider/fallback.</td></tr>
 <tr><td>Anthropic</td><td><code>ANTHROPIC_API_KEY</code>, <code>ANTHROPIC_MODEL</code></td><td>Optional cloud provider/fallback.</td></tr>
 <tr><td>Groq</td><td><code>GROQ_API_KEY</code>, <code>GROQ_MODEL</code></td><td>Optional OpenAI-compatible fallback.</td></tr>
+<tr><td>Sage command provider</td><td><code>DEVTRACK_SAGE_MODEL_BACKEND</code>, <code>DEVTRACK_SAGE_MODEL</code></td><td>Explicit opt-in to an installed <code>claude</code>, <code>devin</code>, <code>codex</code>, <code>copilot</code>, or <code>cursor-agent</code> executable. Ollama HTTP remains the Sage default.</td></tr>
 </tbody></table></div>
-<p><code>OLLAMA_URL</code> and <code>LMSTUDIO_URL</code> are retired. The current settings are <code>OLLAMA_HOST</code> and <code>LMSTUDIO_HOST</code>. Current <code>dev</code> contains Sage's asynchronous structured-distillation boundary, but it is not yet wired into durable claims or daemon lifecycle. The hook path never calls a model.</p>
+<p><code>OLLAMA_URL</code> and <code>LMSTUDIO_URL</code> are retired. The current settings are <code>OLLAMA_HOST</code> and <code>LMSTUDIO_HOST</code>. Current <code>dev</code> contains Sage's durable daemon-owned distillation path. The hook path never calls a model. Command providers use fixed argv without a shell, are never auto-selected, and suppress recursive Sage capture only in their process tree.</p>
 
 <h2>Timeout and Readiness Settings</h2>
 <p>Setup writes visible defaults for IPC connection/retry, short/normal/long HTTP operations, LLM requests, prompt-bound legacy/optional interfaces and sentiment analysis. Common settings include:</p>
@@ -1901,11 +1903,13 @@ LLM_REQUEST_TIMEOUT_SECS=120
 SQLITE_BUSY_TIMEOUT_MS=5000
 
 # Current dev only; bounded background Sage worker settings
+DEVTRACK_SAGE_MODEL_BACKEND=ollama
+DEVTRACK_SAGE_MODEL=
 DEVTRACK_SAGE_MODEL_TIMEOUT_SECS=180
 DEVTRACK_SAGE_IDLE_POLL_MS=500
 DEVTRACK_SAGE_RETRY_DELAY_SECS=2</code></pre>
 <p>Increase the long/LLM timeouts for a healthy but slow local model. Invalid explicit overrides fail with the setting name instead of silently inventing a value.</p>
-<p>The Sage defaults are bounded in code: model timeout 5–1800 seconds, idle poll 50–5000 ms, and retry delay 1–60 seconds. They configure the worker foundation on <code>dev</code>; they do not imply that durable queue processing is complete.</p>
+<p>The Sage defaults are bounded in code: model timeout 5–1800 seconds, idle poll 50–5000 ms, and retry delay 1–60 seconds. Durable queue processing is daemon-owned; unavailable explicit providers leave claimed work retryable.</p>
 
 <h2>Workspaces and Secrets</h2>
 <p>DevTrack deliberately separates credentials from routing metadata:</p>

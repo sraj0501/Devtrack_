@@ -1,11 +1,11 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-13 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
-`dev` at `a6a75b0`; required and post-merge workflows passed. PR #279 is the active follow-up review
-from `features/TASK-157-sage-backend-isolation`; it isolates private runtime state from knowledge
-placement and tracks the repaired reference checkout at `ea2e067`. The executable parity ledger is
-84 implemented, 2 adapted, 2 partial, and 48 pending. Next: merge this slice, close backend/provider
-behavior, then continue platform/lifecycle parity and repeated Windows/Linux acceptance. Next unused
+_Last reconciled: 2026-10-14 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
+`dev` at `a6a75b0`; required and post-merge workflows passed. PR #279's runtime/knowledge isolation
+review passed all 19 hosted checks and remains unmerged. The active stacked branch is
+`features/TASK-157-sage-model-backends`, using the current reference checkout at `ea2e067`. The
+executable parity ledger is 89 implemented, 2 adapted, 2 partial, and 43 pending. Next: review the
+model-backend slice, then continue platform/lifecycle parity and repeated Windows/Linux acceptance. Next unused
 task ID: TASK-164, subject to verification before allocation._
 
 **[2026-10-13] TASK-163 — Post-Sage integration documentation reconciliation (complete).**
@@ -256,20 +256,28 @@ https://github.com/sraj0501/Devtrack_/pull/273
 
 **[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
 
-**Engineer status (2026-10-13):** PR #278 merged the first closure slice to `dev` at `a6a75b0`.
-The active `features/TASK-157-sage-backend-isolation` follow-up adds stable runtime and knowledge
-path resolution, including explicit and relative overrides. The integrated slice adds truthful
+**Engineer status (2026-10-14):** PR #278 merged the first closure slice to `dev` at `a6a75b0`.
+PR #279 adds stable runtime and knowledge path resolution, including explicit and relative
+overrides; all 19 hosted checks passed. The active `features/TASK-157-sage-model-backends` branch
+adds explicit Go-native command-model providers while retaining Ollama HTTP as the default. The
+integrated slice adds truthful
 `status`/`doctor`/`log` diagnostics, bounded retries, privacy-safe NDJSON logs, Sage-owned local
 commits, model-free documented-action reuse, deterministic rendering, and conservative section
 matching, quote-aware compound command capture, cross-harness payload normalization, deterministic
 temperature-zero model requests, token-limit diagnostics, and background classify-once routing with
 sanitized persistent choices, deterministic fallback, and existing-section context. The ledger is
-now 84 implemented, 2 adapted, 2 partial, and 48 pending. Full Go tests, `go vet ./...`,
+now 89 implemented, 2 adapted, 2 partial, and 43 pending. Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
 locally. TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
 **Implementation commit:** `5317d4a` — isolate Sage runtime and knowledge roots.
 **PRs:** https://github.com/sraj0501/Devtrack_/pull/278 and
 https://github.com/sraj0501/Devtrack_/pull/279
+
+**Backend/provider status (2026-10-14):** Locally qualified on
+`features/TASK-157-sage-model-backends`: explicit `claude`, `devin`, `codex`, `copilot`, and
+`cursor-agent` transports use validated prompt modes, late prompt substitution, missing-binary
+handling, direct argv execution, process-local capture suppression, and Windows no-console flags.
+Ollama HTTP remains the default. Evidence: `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
@@ -284,13 +292,14 @@ https://github.com/sraj0501/Devtrack_/pull/279
       when classification is unavailable, and provide existing section context to distillation.
 - [x] Keep queue/state/log runtime paths independent from Markdown knowledge overrides, anchor
       relative paths to the Sage root, and keep runtime/knowledge paths out of model prompts.
+- [x] Support explicitly selected shipped command-model providers without shell execution or
+      implicit cloud-provider selection; prevent recursive capture in the provider subprocess.
 - [x] Full Go tests, `go vet ./...`, parity-ledger validation, parity-checker tests, shared-memory
       validation, and whitespace checks pass locally.
 
 **Pending before TASK-157 can close:**
-- [ ] Resolve the 48 pending and 2 partial rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
+- [ ] Resolve the 43 pending and 2 partial rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
       Go tests or an explicit, justified adaptation; make `--require-complete` pass.
-- [ ] Close backend/provider behavior.
 - [ ] Complete platform-root, installer, launcher/shim, harness lifecycle, and remaining
       Codex-history parity scenarios across supported operating systems.
 - [ ] Run the clean capture-to-self-written-knowledge journey twice on Windows and Linux, including

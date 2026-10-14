@@ -12,6 +12,7 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/hooks"
 	sageknowledge "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
@@ -217,6 +218,40 @@ func TestPackagedCodexHookPathWritesOneSilentSpoolEvent(t *testing.T) {
 	}
 	if bytes.Contains(raw, []byte("CANARY")) || bytes.Contains(raw, []byte("C:/private")) {
 		t.Fatalf("private payload leaked: %s", raw)
+	}
+}
+
+func TestReferenceEnvSwitchIsProcessLocal(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	payload := `{"session_id":"thread","cwd":"C:/private/project","hook_event_name":"PostToolUse","tool_name":"Bash","tool_use_id":"call","tool_input":{"command":"git status --short"},"tool_response":"CANARY"}`
+	t.Setenv("DEVTRACK_SAGE_CAPTURE_OFF", "1")
+	if err := runSageHook([]string{"codex", hooks.OwnerMarker}, strings.NewReader(payload)); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(dataHome, "devtrack", "sage")
+	state, err := sage.ReadState(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Paused {
+		t.Fatal("process-local capture switch changed persistent pause state")
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "spool", "pending"))
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("capture-off process wrote %d event(s)", len(entries))
+	}
+
+	t.Setenv("DEVTRACK_SAGE_CAPTURE_OFF", "")
+	if err := runSageHook([]string{"codex", hooks.OwnerMarker}, strings.NewReader(payload)); err != nil {
+		t.Fatal(err)
+	}
+	entries, err = os.ReadDir(filepath.Join(root, "spool", "pending"))
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("capture after process-local switch: entries=%d err=%v", len(entries), err)
 	}
 }
 

@@ -21,7 +21,8 @@ The `devtrack sage` namespace belongs exclusively to this cross-harness command-
 A user can install one supported harness adapter, work normally, and later find a useful,
 self-written command entry through `devtrack sage search`. The hook never blocks the harness,
 calls a model, or sends raw activity off the machine. Distillation happens asynchronously and
-defaults to a local model; unavailable models leave work retryable.
+defaults to local Ollama HTTP. An installed command provider may be selected explicitly with
+`DEVTRACK_SAGE_MODEL_BACKEND`; unavailable models leave work retryable.
 
 Visible-reasoning capture, automatic cloud synchronization, and autonomous command execution are
 not part of this product plan.
@@ -182,14 +183,14 @@ Acceptance:
 - Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
   push to a remote.
 
-Latest integration checkpoint (2026-10-13): PR #275 merged TASK-157's durable queue/publication,
-routing, recoverable merge/refile, skipped-action Markdown, and full-entry search/topic listing to
-`dev` at `a1777b6`. Search refreshes from current Markdown and reconciles moved/deleted publication
-filenames. All post-merge workflows passed and rolling release `dev-a1777b6` contains the slice.
-PR #276 then added the local Docker evaluation documentation at current `dev` commit `fc3217f`.
-Details and limits: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Diagnostics, safe local commits,
-parity closure, and final acceptance remain open. The following dated entries describe earlier
-foundations.
+Latest checkpoint (2026-10-14): PR #278 merged diagnostics, safe local commits, command capture,
+and routing/model-request parity to `dev` at `a6a75b0`. PR #279's fully green review isolates the
+private runtime root from portable knowledge placement. The active stacked model-backend branch
+keeps Ollama HTTP as the default and adds explicit, no-shell command providers with process-local
+capture suppression. The ledger is 89 implemented, 2 adapted, 2 partial, and 43 pending. Details:
+`docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md` and
+`docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`. Parity closure and final acceptance remain open. The
+following dated entries describe earlier foundations.
 
 Historical checkpoint (2026-09-20): the first model-free slice was implemented. Imported events
 are grouped transactionally by normalized signature into deterministic knowledge records with
@@ -273,7 +274,8 @@ for inspection or export.
 
 SAGE-001 and SAGE-002 are complete. TASK-157 has implemented the SAGE-003 durable queue and daemon
 lifecycle, deterministic Markdown publication, route correction, restart-safe merge/refile,
-skipped-action records, and full-entry search; that slice is integrated into `dev` through PR #275.
-Start the next dedicated branch from current `origin/dev`, implement truthful diagnostics and safe
-local knowledge commits, close the executable parity matrix, and run the clean
-capture-to-self-written-knowledge journey twice. Do not expand to another harness before that gate.
+skipped-action records, full-entry search, truthful diagnostics, safe local commits, isolated
+runtime/knowledge roots, and explicit model backends. Review the active stacked branch, then close
+platform roots, shims, additive install/remove, and the remaining executable parity rows before
+running the clean capture-to-self-written-knowledge journey twice. Do not expand to another harness
+before that gate.
