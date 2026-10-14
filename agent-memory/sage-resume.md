@@ -16,11 +16,11 @@ acting because branch, PR, and CI state can change after this record is updated.
 - Integration branch: `origin/dev` at `a6a75b0` after PR #278 merged on 2026-10-13.
 - Active review: PR #279 from `features/TASK-157-sage-backend-isolation` into `dev`; all 19 hosted
   checks passed, but it remains unmerged. Active stacked branch:
-  `features/TASK-157-sage-model-backends`; PR #280 targets `dev` and all 19 hosted checks passed.
+  `features/TASK-157-sage-platform-installers`, based on PR #280's fully green model-backend head.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.
-- Ledger: 136 scenarios — 89 implemented, 2 adapted, 2 partial, and 43 pending.
+- Ledger: 136 scenarios — 105 implemented, 4 adapted, 2 partial, and 25 pending.
 - Qualification: full Go tests, `go vet ./...`, ledger consistency, parity-checker tests,
   shared-memory validation, and whitespace validation passed locally. All required PR #278 checks
   and applicable post-merge workflows passed, including hosted Windows tests.
@@ -51,6 +51,11 @@ suppression. Ollama HTTP remains the default; installed command providers are ex
 use direct argv with declared prompt modes, and cannot recursively capture their own subprocess.
 See `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`.
 
+The active stacked branch resolves all 18 platform-layout and additive installer/removal rows.
+Eleven layout rows and five mutation rows are implemented; two Python script-shim rows are
+explicitly adapted to packaged native Go launchers. Codex remains the only advertised adapter.
+See `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
+
 ## Remaining parity work
 
 Every open matrix row must gain an exact Go regression test or an explicit behavioral adaptation.
@@ -58,13 +63,11 @@ The final ledger command must pass with `--require-complete`.
 
 | Group | Pending | Required outcome |
 |---|---:|---|
-| Platform roots and shims | 13 | Correct Windows `APPDATA`/home fallback, Linux XDG/default, macOS, Devin/OpenCode, skill destinations, and Windows/POSIX launcher behavior. |
-| Additive install/remove | 5 | Reinstall without duplicate hooks, preserve foreign settings, remove only Sage-owned configuration, purge the known legacy layout, and report a missing target correctly. |
 | Daemon/process lifecycle | 10 | Cover exclusive and stale locks, no-console helper behavior, piped input, detached execution, and PID/liveness edge cases, adapted to the DevTrack-owned daemon where appropriate. |
 | Configuration, pause, capture, and logging | 4 | Prove installed-adapter pause behavior, fail-open logging, new/known enqueue records, and repeated actions within one command line. |
 | CLI lifecycle | 7 | Cover start/stop/restart, watcher replacement, aliases, loud typo handling, stop reasons, silent hook verbs, and prevention of legacy-shim restart. |
 | Optional IDE adapter | 4 | Cover original-command filtering, pause/reset/checkpoint behavior, and failure handling. Do not add another harness before the resilient Codex journey; explicitly adapt these rows if they are outside the current milestone. |
-| **Total pending** | **43** | All must become implemented or deliberately adapted. |
+| **Total pending** | **25** | All must become implemented or deliberately adapted. |
 
 The two partial rows are:
 
@@ -84,11 +87,10 @@ The two partial rows are:
 
 ## Recommended pickup order
 
-1. Platform roots, shims, and additive installer/removal behavior.
-2. Daemon/process and CLI lifecycle adaptations.
-3. Capture, pause, logging, and the two partial Codex-history rows.
-4. Resolve the optional IDE rows without violating the Codex-first sequencing guardrail.
-5. Run the repeated Windows/Linux acceptance journey, close the ledger, and integrate the remaining
+1. Daemon/process and CLI lifecycle adaptations.
+2. Capture, pause, logging, and the two partial Codex-history rows.
+3. Resolve the optional IDE rows without violating the Codex-first sequencing guardrail.
+4. Run the repeated Windows/Linux acceptance journey, close the ledger, and integrate the remaining
    closure through a new PR to `dev`.
 
 At the start of a fresh session, read `agent-memory/INDEX.md`, `current-state.md`,

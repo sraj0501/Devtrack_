@@ -438,7 +438,9 @@ from the stable Sage data root, not the shell's working directory. This remains 
 preview: remaining reference parity and end-to-end release qualification are open. See
 [the runtime-isolation qualification](docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md) and the
 [model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
-limits.
+limits. Platform-specific harness destinations and additive hook migration are covered by the
+[platform/installer qualification](docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md); Codex remains
+the only currently advertised capture adapter.
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;

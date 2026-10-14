@@ -1639,9 +1639,10 @@ devtrack start</code></pre>
 <h2>Current dev — TASK-157 durable Sage knowledge pipeline</h2>
 <ul>
 <li><strong>Integrated pipeline:</strong> PR #278 merged durable distillation/publication, routing and merge/refile, search, truthful diagnostics, bounded retries, safe local knowledge commits, and capture/model-request parity to <code>dev</code> at <code>a6a75b0</code>.</li>
-<li><strong>Active reviews:</strong> PR #279 isolates private runtime state from portable knowledge placement and passed all 19 hosted checks. The stacked model-backend branch retains Ollama HTTP as the default and adds explicit, no-shell command providers with process-local capture suppression.</li>
-<li><strong>Parity checkpoint:</strong> the current <code>ea2e067</code> reference ledger records 89 implemented, 2 adapted, 2 partial, and 43 pending scenarios.</li>
-<li><strong>Remaining milestone work:</strong> SAGE-003 still requires platform/shim and additive installer parity, daemon/CLI lifecycle and capture-history edge cases, optional IDE adaptations, and two clean Windows/Linux capture-to-knowledge acceptance passes.</li>
+<li><strong>Active reviews:</strong> PR #279 isolates private runtime state from portable knowledge placement and passed all 19 hosted checks. PR #280 retains Ollama HTTP as the default, adds explicit no-shell command providers with process-local capture suppression, and also passed all 19 checks. The active stacked branch closes platform-layout and additive installer/removal parity.</li>
+<li><strong>Portable installation:</strong> Windows <code>APPDATA</code>, Linux XDG, macOS, home-relative harness roots, OpenCode discovery, and every reference skill destination resolve deterministically. Native Go executables replace Python hook shims. Codex reinstall preserves foreign settings, removes owned/known-legacy entries only, and reports missing targets.</li>
+<li><strong>Parity checkpoint:</strong> the current <code>ea2e067</code> reference ledger records 105 implemented, 4 adapted, 2 partial, and 25 pending scenarios.</li>
+<li><strong>Remaining milestone work:</strong> SAGE-003 still requires daemon/CLI lifecycle and capture-history edge cases, optional IDE adaptations, and two clean Windows/Linux capture-to-knowledge acceptance passes.</li>
 </ul>
 <h2>Current dev — TASK-158 completely silent Git path</h2>
 <ul>

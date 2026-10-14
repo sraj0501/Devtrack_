@@ -12,14 +12,15 @@ behavioral corpus is unchanged. PR #278 merged the latest qualified closure slic
 development-release workflows passed. PR #279 is the fully green, unmerged follow-up review from
 `features/TASK-157-sage-backend-isolation`, based on that merge. It separates the stable Sage
 runtime root from portable Markdown knowledge overrides and anchors relative overrides to the Sage
-configuration root rather than the caller's working directory. The active stacked branch is
-`features/TASK-157-sage-model-backends`; it adds explicit shipped command-model providers while
-retaining Ollama HTTP as the default. PR #280 is the active review for that stacked branch; all 19
-hosted checks passed. The 136-scenario ledger now records 89 implemented,
-2 adapted, 2 partial, and 43 pending scenarios. Full Go tests, `go vet ./...`,
+configuration root rather than the caller's working directory. PR #280 adds explicit shipped
+command-model providers while retaining Ollama HTTP as the default; all 19 hosted checks passed.
+The active stacked branch is `features/TASK-157-sage-platform-installers`; it closes portable
+harness-layout and additive install/removal parity without advertising another capture adapter.
+The 136-scenario ledger now records 105 implemented, 4 adapted, 2 partial, and 25 pending scenarios.
+Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
-pass locally. Next: review and integrate the isolation and model-backend slices, then close
-platform roots, shims, and additive installer/removal parity.
+pass locally. Next: review and integrate the stacked slices, then close daemon/process and CLI
+lifecycle parity.
 Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order;
 `sage-resume.md` is the fresh-session handoff with the exact pending groups and acceptance gates.
 

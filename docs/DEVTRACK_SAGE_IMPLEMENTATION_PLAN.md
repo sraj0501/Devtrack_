@@ -185,11 +185,13 @@ Acceptance:
 
 Latest checkpoint (2026-10-14): PR #278 merged diagnostics, safe local commits, command capture,
 and routing/model-request parity to `dev` at `a6a75b0`. PR #279's fully green review isolates the
-private runtime root from portable knowledge placement. The active stacked model-backend branch
-keeps Ollama HTTP as the default and adds explicit, no-shell command providers with process-local
-capture suppression. The ledger is 89 implemented, 2 adapted, 2 partial, and 43 pending. Details:
+private runtime root from portable knowledge placement. PR #280 keeps Ollama HTTP as the default
+and adds explicit, no-shell command providers with process-local capture suppression; all 19 checks
+passed. The active stacked branch closes portable platform paths and additive install/removal. The
+ledger is 105 implemented, 4 adapted, 2 partial, and 25 pending. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md` and
-`docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`. Parity closure and final acceptance remain open. The
+`docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`, and
+`docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`. Parity closure and final acceptance remain open. The
 following dated entries describe earlier foundations.
 
 Historical checkpoint (2026-09-20): the first model-free slice was implemented. Imported events
@@ -275,7 +277,8 @@ for inspection or export.
 SAGE-001 and SAGE-002 are complete. TASK-157 has implemented the SAGE-003 durable queue and daemon
 lifecycle, deterministic Markdown publication, route correction, restart-safe merge/refile,
 skipped-action records, full-entry search, truthful diagnostics, safe local commits, isolated
-runtime/knowledge roots, and explicit model backends. Review the active stacked branch, then close
-platform roots, shims, additive install/remove, and the remaining executable parity rows before
+runtime/knowledge roots, explicit model backends, portable layouts, and additive installer
+mutation. Review the active stacked branch, then close daemon/CLI lifecycle and the remaining
+executable parity rows before
 running the clean capture-to-self-written-knowledge journey twice. Do not expand to another harness
 before that gate.

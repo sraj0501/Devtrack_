@@ -3,9 +3,10 @@
 _Last reconciled: 2026-10-14 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
 `dev` at `a6a75b0`; required and post-merge workflows passed. PR #279's runtime/knowledge isolation
 review passed all 19 hosted checks and remains unmerged. The active stacked branch is
-`features/TASK-157-sage-model-backends`, using the current reference checkout at `ea2e067`. The
-executable parity ledger is 89 implemented, 2 adapted, 2 partial, and 43 pending. Next: review the
-model-backend slice, then continue platform/lifecycle parity and repeated Windows/Linux acceptance. Next unused
+`features/TASK-157-sage-platform-installers`, stacked on fully green PR #280 and using the current
+reference checkout at `ea2e067`. The executable parity ledger is 105 implemented, 4 adapted,
+2 partial, and 25 pending. Next: review this slice, then continue daemon/CLI lifecycle parity and
+repeated Windows/Linux acceptance. Next unused
 task ID: TASK-164, subject to verification before allocation._
 
 **[2026-10-13] TASK-163 — Post-Sage integration documentation reconciliation (complete).**
@@ -258,15 +259,17 @@ https://github.com/sraj0501/Devtrack_/pull/273
 
 **Engineer status (2026-10-14):** PR #278 merged the first closure slice to `dev` at `a6a75b0`.
 PR #279 adds stable runtime and knowledge path resolution, including explicit and relative
-overrides; all 19 hosted checks passed. The active `features/TASK-157-sage-model-backends` branch
-adds explicit Go-native command-model providers while retaining Ollama HTTP as the default. The
+overrides; all 19 hosted checks passed. PR #280 adds explicit Go-native command-model providers
+while retaining Ollama HTTP as the default; all 19 hosted checks passed. The active
+`features/TASK-157-sage-platform-installers` branch closes platform layout and additive installer
+parity. The
 integrated slice adds truthful
 `status`/`doctor`/`log` diagnostics, bounded retries, privacy-safe NDJSON logs, Sage-owned local
 commits, model-free documented-action reuse, deterministic rendering, and conservative section
 matching, quote-aware compound command capture, cross-harness payload normalization, deterministic
 temperature-zero model requests, token-limit diagnostics, and background classify-once routing with
 sanitized persistent choices, deterministic fallback, and existing-section context. The ledger is
-now 89 implemented, 2 adapted, 2 partial, and 43 pending. Full Go tests, `go vet ./...`,
+now 105 implemented, 4 adapted, 2 partial, and 25 pending. Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
 locally. TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
 **Implementation commits:** `5317d4a` — isolate Sage runtime and knowledge roots; `80bb76f` — add
@@ -283,6 +286,12 @@ Ollama HTTP remains the default. Evidence: `docs/SAGE_MODEL_BACKEND_QUALIFICATIO
 PR #280 targets `dev` and is stacked on the still-unmerged PR #279. All 19 hosted checks passed,
 including Windows build/vet, tests, no-send E2E, and MCPB smoke.
 
+**Platform/installer status (2026-10-14):** Locally qualified on
+`features/TASK-157-sage-platform-installers`: portable Windows/Linux/macOS roots and all reference
+harness destinations are deterministic; native Go launchers explicitly adapt the Python shim pair;
+Codex reinstall is idempotent, preserves foreign settings, removes only owned/known-legacy entries,
+and reports missing removal targets. Evidence: `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
+
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
       NDJSON diagnostics.
@@ -298,13 +307,15 @@ including Windows build/vet, tests, no-send E2E, and MCPB smoke.
       relative paths to the Sage root, and keep runtime/knowledge paths out of model prompts.
 - [x] Support explicitly selected shipped command-model providers without shell execution or
       implicit cloud-provider selection; prevent recursive capture in the provider subprocess.
+- [x] Resolve reference platform roots and harness destinations, use native Go launchers, and make
+      hook installation/removal additive, idempotent, legacy-aware, and outcome-reporting.
 - [x] Full Go tests, `go vet ./...`, parity-ledger validation, parity-checker tests, shared-memory
       validation, and whitespace checks pass locally.
 
 **Pending before TASK-157 can close:**
-- [ ] Resolve the 43 pending and 2 partial rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
+- [ ] Resolve the 25 pending and 2 partial rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
       Go tests or an explicit, justified adaptation; make `--require-complete` pass.
-- [ ] Complete platform-root, installer, launcher/shim, harness lifecycle, and remaining
+- [ ] Complete daemon/process, CLI lifecycle, capture/logging, optional IDE, and remaining
       Codex-history parity scenarios across supported operating systems.
 - [ ] Run the clean capture-to-self-written-knowledge journey twice on Windows and Linux, including
       silent capture, retry recovery, publication, search, route correction, merge/refile, privacy
