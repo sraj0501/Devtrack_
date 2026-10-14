@@ -273,10 +273,11 @@ now 105 implemented, 4 adapted, 2 partial, and 25 pending. Full Go tests, `go ve
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
 locally. TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
 **Implementation commits:** `5317d4a` — isolate Sage runtime and knowledge roots; `80bb76f` — add
-explicit Sage model backends.
+explicit Sage model backends; `24c28f8` — port platform layouts and additive installers.
 **PRs:** https://github.com/sraj0501/Devtrack_/pull/278 and
 https://github.com/sraj0501/Devtrack_/pull/279 and
-https://github.com/sraj0501/Devtrack_/pull/280
+https://github.com/sraj0501/Devtrack_/pull/280 and
+https://github.com/sraj0501/Devtrack_/pull/281
 
 **Backend/provider status (2026-10-14):** Locally qualified on
 `features/TASK-157-sage-model-backends`: explicit `claude`, `devin`, `codex`, `copilot`, and
@@ -291,6 +292,7 @@ including Windows build/vet, tests, no-send E2E, and MCPB smoke.
 harness destinations are deterministic; native Go launchers explicitly adapt the Python shim pair;
 Codex reinstall is idempotent, preserves foreign settings, removes only owned/known-legacy entries,
 and reports missing removal targets. Evidence: `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
+PR #281 targets `dev` and is stacked on the still-unmerged PRs #279 and #280.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
