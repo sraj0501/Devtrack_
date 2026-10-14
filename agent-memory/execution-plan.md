@@ -20,7 +20,7 @@ without an approved board task and a dedicated branch targeting `dev`.
   `features/TASK-157-sage-model-backends` into `dev`; all 19 hosted checks passed.
 - Active implementation branch: `features/TASK-157-sage-platform-installers`, stacked on PR #280.
   PR #281 targets `dev`; it closes portable harness paths, native-launcher adaptations, and
-  additive install/removal.
+  additive install/removal. All 19 hosted checks passed.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded

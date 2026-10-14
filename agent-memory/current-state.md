@@ -16,7 +16,7 @@ configuration root rather than the caller's working directory. PR #280 adds expl
 command-model providers while retaining Ollama HTTP as the default; all 19 hosted checks passed.
 The active stacked branch is `features/TASK-157-sage-platform-installers`; it closes portable
 harness-layout and additive install/removal parity without advertising another capture adapter.
-PR #281 is the active review for this slice.
+PR #281 is the active review for this slice; all 19 hosted checks passed.
 The 136-scenario ledger now records 105 implemented, 4 adapted, 2 partial, and 25 pending scenarios.
 Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks

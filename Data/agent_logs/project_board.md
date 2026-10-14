@@ -293,6 +293,7 @@ harness destinations are deterministic; native Go launchers explicitly adapt the
 Codex reinstall is idempotent, preserves foreign settings, removes only owned/known-legacy entries,
 and reports missing removal targets. Evidence: `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
 PR #281 targets `dev` and is stacked on the still-unmerged PRs #279 and #280.
+All 19 hosted checks passed, including Windows build/vet, tests, no-send E2E, and MCPB smoke.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
