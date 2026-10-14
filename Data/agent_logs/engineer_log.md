@@ -2997,3 +2997,13 @@ The accompanying docs-only checkpoint uses `devtrack git commit --no-enhance`; i
 **Friction**: LOW — host Go and Node are absent, so qualification used disposable Go 1.24 and Node 22 containers.
 **Notes**: Ollama HTTP remains the default. Explicit `claude`, `devin`, `codex`, `copilot`, and `cursor-agent` providers use fixed argv without a shell, declared prompt modes, runtime-local temporary prompts, process-local capture suppression, and Windows no-console flags. The full Go suite and vet passed under Go 1.24; the Windows distillation package cross-compiled. The current `ai_sessions_skills` HEAD is `ea2e067`; the parity ledger passes at 89 implemented, 2 adapted, 2 partial, and 43 pending. Two docu-agent passes reconciled README, wiki, active memory, plans, and board; shared-memory, parity-checker, wiki inline-JavaScript, and whitespace validations pass. PR: https://github.com/sraj0501/Devtrack_/pull/280 (stacked on fully green, unmerged PR #279).
 All 19 PR #280 checks passed, including hosted Windows build/vet, tests, no-send E2E, and the Windows MCPB smoke.
+
+### [2026-10-14] TASK-157 — Port Sage platform layouts and additive installers
+
+**Original message**: "List out all the Sage features of DevTrack. Finish them one by one, document each change, run docu-agent, and raise a PR after each completed change. Then move on to the next one."
+**Commit**: `24c28f8` (`feat(sage): port platform layouts and installers`) on `features/TASK-157-sage-platform-installers`.
+**Ticket auto-linked**: NO — the commit message omitted TASK-157; the task remains explicit in branch and project records.
+**PM system updated**: local board, feature tracker, and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Friction**: LOW — the Python reference's `.cmd`/`.sh` pair required an explicit Go-native adaptation rather than copying its runtime architecture.
+**Notes**: Pure target-layout resolution now covers Windows `APPDATA`, Linux XDG, macOS, Devin/OpenCode, home-relative dot directories, and every reference skill destination. The selective registry still advertises Codex only. Recursive marker removal preserves foreign settings, migrates known `ai_sessions_skills` paths, is idempotent, and distinguishes created/updated/unchanged/missing outcomes. Full Go tests and vet pass under Go 1.24 Docker; hooks cross-compile for Windows/amd64. Current-reference parity passes at 105 implemented, 4 adapted, 2 partial, and 25 pending. Two docu-agent passes completed. PR: https://github.com/sraj0501/Devtrack_/pull/281 (stacked on fully green, unmerged PRs #279 and #280).
+All 19 PR #281 checks passed, including hosted Windows build/vet, tests, no-send E2E, and Windows MCPB smoke.

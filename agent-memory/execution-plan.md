@@ -18,12 +18,15 @@ without an approved board task and a dedicated branch targeting `dev`.
   current `origin/dev`. It contains the runtime/knowledge path-isolation slice and is fully green
   but unmerged. PR #280 is the active stacked review from
   `features/TASK-157-sage-model-backends` into `dev`; all 19 hosted checks passed.
+- Active implementation branch: `features/TASK-157-sage-platform-installers`, stacked on PR #280.
+  PR #281 targets `dev`; it closes portable harness paths, native-launcher adaptations, and
+  additive install/removal. All 19 hosted checks passed.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded
   retries, safe local knowledge commits, model-free documented-action reuse, and conservative
   section matching.
-- Ledger checkpoint: 89 implemented, 2 adapted, 2 partial, 43 pending. Full Go tests, vet, ledger
+- Ledger checkpoint: 105 implemented, 4 adapted, 2 partial, 25 pending. Full Go tests, vet, ledger
   consistency, parity-checker tests, shared-memory validation, and whitespace validation pass on
   the active branch.
 - Next unused task ID is TASK-164, subject to board verification before allocation.
@@ -47,7 +50,16 @@ process tree.
 
 Gate: the five backend/process-local rows have exact Go evidence and hosted Windows checks pass.
 
-### 3. Close the parity ledger
+### 3. Integrate platform layouts and additive installers
+
+Review the active stacked branch and integrate it through `dev`. The layout layer must remain pure
+and must not advertise an unqualified adapter. Installer mutation is restricted to owned or known
+legacy entries, preserves foreign settings, is idempotent, and reports missing targets.
+
+Gate: all 18 platform/installer rows have exact Go evidence, full tests/vet and Windows cross-build
+pass, and the native-launcher adaptations remain explicit.
+
+### 4. Close the parity ledger
 
 Use `docs/SAGE_PORT_PARITY_MATRIX.md` as the completion authority. Implement or explicitly adapt
 the remaining reference scenarios with exact Go tests and rationale. Keep the matrix checker and
@@ -55,7 +67,7 @@ fault-injection lane green.
 
 Gate: all 136 scenarios are implemented or deliberately adapted; `--require-complete` passes.
 
-### 4. Close SAGE-003 end to end
+### 5. Close SAGE-003 end to end
 
 Run the clean Codex capture-to-self-written-knowledge journey twice: install capture, capture a
 useful command silently, import once, distill, publish deterministic Markdown, search it, correct
@@ -65,20 +77,20 @@ preserve unrelated Git state, and uninstall without damaging unrelated configura
 Gate: the resilient journey passes twice on supported Windows and Linux paths with applicable unit,
 golden, fuzz, fault-injection, and race coverage.
 
-### 5. Integrate the remaining SAGE-003 closure through `dev`
+### 6. Integrate the remaining SAGE-003 closure through `dev`
 
 Update the board and documentation from verified evidence, then open a new reviewable PR targeting
 `dev`. PR #278 integrated diagnostics and safe local commits, but TASK-157 remains open until the
 remaining parity and end-to-end gates pass. Do not expose raw events through MCP or add another
 harness before the Codex closure gate.
 
-### 6. Resolve the server-admin UI branch
+### 7. Resolve the server-admin UI branch
 
 Review `feat/TASK-154-server-admin-ui` against current `dev`, reconcile template/route/test/CSS
 drift, rerun functional/accessibility/responsive checks, and integrate through `dev` or explicitly
 retire it.
 
-### 7. Close release follow-ups
+### 8. Close release follow-ups
 
 1. Qualify packaged artifacts rather than a source checkout.
 2. Capture and approve privacy-reviewed media from integrated packaged behavior.

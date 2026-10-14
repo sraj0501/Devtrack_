@@ -1,5 +1,15 @@
 # DevTrack Feature Tracker
 
+## 2026-10-14 — TASK-157 portable layouts and additive installers
+
+The active `features/TASK-157-sage-platform-installers` branch closes all 18 reference rows for
+platform configuration roots, harness destinations, launcher behavior, and additive hook
+installation/removal. Eleven layout rows and five mutation rows are implemented; the two Python
+script-shim rows are explicitly adapted to packaged native Go executables. Codex remains the only
+advertised capture adapter. Full Go tests/vet, Windows hooks cross-compile, and current-reference
+ledger validation pass. Ledger: 105 implemented, 4 adapted, 2 partial, 25 pending. Evidence:
+`docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`. Next: daemon/process and CLI lifecycle parity.
+
 ## 2026-10-13 — TASK-157 integration reconciliation
 
 PR #275 merged the qualified durable queue, deterministic publication, persistent routing,

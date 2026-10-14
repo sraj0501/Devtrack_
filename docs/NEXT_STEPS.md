@@ -9,10 +9,12 @@ PR #278 merged the latest TASK-157 closure slice to `dev` at `a6a75b0`. PR #279 
 runtime/knowledge-root isolation slice; all 19 hosted checks passed, but it remains unmerged. The
 active stacked branch, `features/TASK-157-sage-model-backends`, adds explicit command-model
 providers while retaining Ollama HTTP as the default. Its local full Go suite, vet, and Windows
-cross-compile pass.
+cross-compile pass; PR #280 is fully green. The next stacked branch,
+`features/TASK-157-sage-platform-installers`, closes portable roots, harness destinations, native
+launcher adaptations, and additive install/removal behavior.
 
-After review and integration, close platform roots/shims and additive installer/removal parity,
-then daemon/CLI lifecycle, capture/history edge cases, and optional IDE adaptations. Run the clean
+After review and integration, close daemon/CLI lifecycle, capture/history edge cases, and optional
+IDE adaptations. Run the clean
 capture-to-self-written-knowledge journey twice on Windows and Linux before closing TASK-157.
 
 ## Current product initiative
@@ -48,8 +50,8 @@ The selective harness registry and external plugin boundary are now fixed in
 global installer switches or harness-specific storage.
 `Data/agent_logs/project_board.md` remains the task-ID authority.
 
-The parity inventory accounts for all 136 reference test methods at `ea2e067`: 89 implemented,
-2 adapted, 2 partial, and 43 pending. Every remaining row needs exact Go-test ownership or an
+The parity inventory accounts for all 136 reference test methods at `ea2e067`: 105 implemented,
+4 adapted, 2 partial, and 25 pending. Every remaining row needs exact Go-test ownership or an
 explicit justified adaptation; a reconciled row count alone is not a completion claim.
 
 ## Open release follow-ups
