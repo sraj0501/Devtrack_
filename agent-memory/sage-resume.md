@@ -14,8 +14,8 @@ acting because branch, PR, and CI state can change after this record is updated.
 
 - Active task: TASK-157 / SAGE-003, Go-native self-writing command knowledge.
 - Integration branch: `origin/dev` at `a6a75b0` after PR #278 merged on 2026-10-13.
-- Active branch: `features/TASK-157-sage-backend-isolation`, based on that merge; no PR was open at
-  this checkpoint.
+- Active review: PR #279 from `features/TASK-157-sage-backend-isolation` into `dev`, based on that
+  merge.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.

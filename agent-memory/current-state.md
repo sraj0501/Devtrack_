@@ -9,13 +9,13 @@ self-writing command-knowledge product in `C:\Work\git_apps\ai_sessions_skills` 
 `ea2e067`. Changes after `b85a1ab` affect generated reference knowledge only; the 136-scenario
 behavioral corpus is unchanged. PR #278 merged the latest qualified closure slice to `dev` at
 `a6a75b0`; its required checks and the post-merge CI, client CI, no-send end-to-end, and
-development-release workflows passed. The active follow-up branch is
+development-release workflows passed. PR #279 is the active follow-up review from
 `features/TASK-157-sage-backend-isolation`, based on that merge. It separates the stable Sage
 runtime root from portable Markdown knowledge overrides and anchors relative overrides to the Sage
 configuration root rather than the caller's working directory. The 136-scenario ledger now records
 84 implemented, 2 adapted, 2 partial, and 48 pending scenarios. Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
-pass locally. Next: review this isolation slice, then close backend/provider behavior.
+pass locally. Next: merge this isolation slice, then close backend/provider behavior.
 Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order;
 `sage-resume.md` is the fresh-session handoff with the exact pending groups and acceptance gates.
 

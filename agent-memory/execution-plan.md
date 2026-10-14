@@ -14,9 +14,9 @@ without an approved board task and a dedicated branch targeting `dev`.
 - Current integration branch: `origin/dev` at `a6a75b0` after PR #278.
 - PR #278 integrated the latest qualified TASK-157 closure slice. Required PR checks and the
   applicable post-merge workflows passed; the rolling release is `dev-a6a75b0`.
-- Active follow-up branch: `features/TASK-157-sage-backend-isolation`, created from current
-  `origin/dev`. It contains the runtime/knowledge path-isolation slice and reference-baseline
-  reconciliation; do not continue from either merged TASK-157 branch.
+- Active follow-up review: PR #279 from `features/TASK-157-sage-backend-isolation`, created from
+  current `origin/dev`. It contains the runtime/knowledge path-isolation slice and
+  reference-baseline reconciliation; do not continue from either merged TASK-157 branch.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded

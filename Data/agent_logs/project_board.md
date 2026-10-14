@@ -1,10 +1,10 @@
 ﻿# DevTrack Project Board
 
 _Last reconciled: 2026-10-13 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
-`dev` at `a6a75b0`; required and post-merge workflows passed. The active follow-up branch is
-`features/TASK-157-sage-backend-isolation`, which isolates private runtime state from knowledge
+`dev` at `a6a75b0`; required and post-merge workflows passed. PR #279 is the active follow-up review
+from `features/TASK-157-sage-backend-isolation`; it isolates private runtime state from knowledge
 placement and tracks the repaired reference checkout at `ea2e067`. The executable parity ledger is
-84 implemented, 2 adapted, 2 partial, and 48 pending. Next: review this slice, close backend/provider
+84 implemented, 2 adapted, 2 partial, and 48 pending. Next: merge this slice, close backend/provider
 behavior, then continue platform/lifecycle parity and repeated Windows/Linux acceptance. Next unused
 task ID: TASK-164, subject to verification before allocation._
 
@@ -267,7 +267,9 @@ sanitized persistent choices, deterministic fallback, and existing-section conte
 now 84 implemented, 2 adapted, 2 partial, and 48 pending. Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
 locally. TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
-**PR:** https://github.com/sraj0501/Devtrack_/pull/278
+**Implementation commit:** `5317d4a` — isolate Sage runtime and knowledge roots.
+**PRs:** https://github.com/sraj0501/Devtrack_/pull/278 and
+https://github.com/sraj0501/Devtrack_/pull/279
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe

@@ -2978,3 +2978,12 @@ Pre-existing test failure (test_find_related_projects) confirmed unchanged.
 **Notes**: Explicit skips now publish idempotent private Markdown records with migration/backfill and restart recovery. Search/topics refresh a SQLite cache of complete Markdown entries, preserving literal reference matching and reflecting corrections, merges, edits, moves, and deletion. Windows full Go suite/vet and Fedora WSL2 focused Sage race/vet pass. Ledger/memory validation and whitespace checks pass. Two initial test expectations incorrectly assumed common literal substrings were absent from Markdown; corrected the fixtures without changing reference matching. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending. Full Sage acceptance remains open; next diagnostics and safe local commits.
 
 The accompanying docs-only checkpoint uses `devtrack git commit --no-enhance`; its purpose is to record the implementation hash and validation outcome before the authorized task-branch push. No merge or installed-binary qualification is claimed.
+### [2026-10-14] TASK-157 — Isolate Sage runtime and knowledge roots
+
+**Original message**: "Finish the Sage features one by one, document each change, run docu-agent, and raise a PR after each completed change."
+**DevTrack enhanced it to**: Enhancement unavailable; Ollama returned an empty response, so DevTrack preserved `feat(sage): isolate runtime and knowledge roots`.
+**Ticket auto-linked**: NO — the commit message did not include the TASK-157 key.
+**PM system updated**: YES — the local project board records commit `5317d4a` and PR #279.
+**Time**: qualification and two documentation reconciliation passes completed before commit
+**Friction**: MEDIUM
+**Notes**: The Docker evaluation daemon exited before the commit, but `devtrack git commit` completed successfully. A legacy post-commit hook then reported a missing historical log directory after Git had already committed; no push was attempted by the hook. PR: https://github.com/sraj0501/Devtrack_/pull/279
