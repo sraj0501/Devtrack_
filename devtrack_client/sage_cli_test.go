@@ -277,6 +277,36 @@ func TestReferenceLogFlattensNewlinesSoOneActionIsOneLine(t *testing.T) {
 	TestReferenceLogRecordsADecisionPerLine(t)
 }
 
+func TestSageLogIncludesPrivacySafeCaptureDecisions(t *testing.T) {
+	root := t.TempDir()
+	database, err := db.NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	success, exitCode := true, 0
+	event := sage.Event{
+		SchemaVersion: sage.SchemaVersion, EventID: "capture-log", Harness: "codex",
+		SessionID: "session", EventType: "command", Tool: "shell",
+		OccurredAt: time.Unix(10, 0).UTC(), Command: "git status --short",
+		Signature: "git status --short", Success: &success, ExitCode: &exitCode,
+	}
+	if err := sage.WriteEvent(root, event); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := writeSageDiagnostics(database, root, "log", nil, &output, time.Unix(100, 0)); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(output.String(), event.Command) || strings.Contains(output.String(), event.Signature) {
+		t.Fatalf("capture content leaked: %q", output.String())
+	}
+	var entry sage.CaptureLogEntry
+	if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &entry); err != nil || entry.State != "new" || entry.Stage != "capture" || entry.ID == "" {
+		t.Fatalf("entry=%+v output=%q err=%v", entry, output.String(), err)
+	}
+}
+
 func TestSageRoutesCLIUsesConfiguredKnowledgeAndValidatesBeforeOpeningDatabase(t *testing.T) {
 	for _, args := range [][]string{nil, {"source"}, {"source", ""}, {"a", "b", "c"}} {
 		var output bytes.Buffer
@@ -391,6 +421,53 @@ func TestReferenceEnvSwitchIsProcessLocal(t *testing.T) {
 	entries, err = os.ReadDir(filepath.Join(root, "spool", "pending"))
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("capture after process-local switch: entries=%d err=%v", len(entries), err)
+	}
+}
+
+func TestReferencePausedStopsCapture(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("CODEX_HOME", t.TempDir())
+	var installOutput bytes.Buffer
+	if err := runSageHarness([]string{"install", "codex"}, &installOutput); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(dataHome, "devtrack", "sage")
+	if _, err := sage.SetPaused(root, true); err != nil {
+		t.Fatal(err)
+	}
+	payload := `{"session_id":"thread","hook_event_name":"PostToolUse","tool_name":"Bash","tool_use_id":"paused-call","tool_input":{"command":"git status --short"}}`
+	if err := runSageHook([]string{"codex", hooks.OwnerMarker}, strings.NewReader(payload)); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "spool", "pending"))
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("paused installed adapter wrote %d event(s)", len(entries))
+	}
+	logEntries, err := sage.ReadCaptureLog(root, 10)
+	if err != nil || len(logEntries) != 0 {
+		t.Fatalf("paused capture log=%+v err=%v", logEntries, err)
+	}
+}
+
+func TestReferenceRepeatWithinOneCommandLineIsMarked(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	payload := `{"session_id":"thread","hook_event_name":"PostToolUse","tool_name":"Bash","tool_use_id":"compound-call","tool_input":{"command":"tail -5 && tail -5"}}`
+	if err := runSageHook([]string{"codex", hooks.OwnerMarker}, strings.NewReader(payload)); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(dataHome, "devtrack", "sage")
+	entries, err := sage.ReadCaptureLog(root, 10)
+	if err != nil || len(entries) != 2 || entries[0].State != "new" || entries[1].State != "repeat" || entries[0].ID != entries[1].ID {
+		t.Fatalf("capture decisions=%+v err=%v", entries, err)
+	}
+	files, err := os.ReadDir(filepath.Join(root, "spool", "pending"))
+	if err != nil || len(files) != 1 {
+		t.Fatalf("pending=%d err=%v", len(files), err)
 	}
 }
 

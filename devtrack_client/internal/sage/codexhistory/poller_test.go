@@ -94,3 +94,75 @@ func TestPollTracksInProgressItemUntilTerminal(t *testing.T) {
 		t.Fatalf("terminal: %d, %v", count, err)
 	}
 }
+
+func TestReferenceInProgressCommandIsCollectedWhenItFinishes(t *testing.T) {
+	root, home := t.TempDir(), t.TempDir()
+	index, history := createHistoryDatabases(t, home)
+	index.Close()
+	now := time.UnixMilli(3_000_000).UTC()
+	poller := Poller{Root: root, CodexHome: home, Now: func() time.Time { return now }}
+	if count, err := poller.Poll(context.Background()); err != nil || count != 0 {
+		t.Fatalf("initialize: %d, %v", count, err)
+	}
+	slow := `{"type":"commandExecution","status":"inProgress","exitCode":0,"commandActions":[{"command":"go test ./..."}]}`
+	fast := `{"type":"commandExecution","status":"completed","exitCode":0,"commandActions":[{"command":"git status --short"}]}`
+	if _, err := history.Exec(`INSERT INTO thread_items VALUES (?,?,?,?,?,?),(?,?,?,?,?,?)`,
+		"cli-thread", "slow", 1, "commandExecution", now.Add(time.Millisecond).UnixMilli(), slow,
+		"cli-thread", "fast", 2, "commandExecution", now.Add(2*time.Millisecond).UnixMilli(), fast); err != nil {
+		t.Fatal(err)
+	}
+	history.Close()
+	if count, err := poller.Poll(context.Background()); err != nil || count != 1 {
+		t.Fatalf("fast poll: %d, %v", count, err)
+	}
+	writeDB, err := sql.Open("sqlite", filepath.Join(home, "thread_history_1.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	terminal := `{"type":"commandExecution","status":"completed","exitCode":0,"commandActions":[{"command":"go test ./..."}]}`
+	if _, err := writeDB.Exec(`UPDATE thread_items SET item_json=? WHERE item_id='slow'`, terminal); err != nil {
+		t.Fatal(err)
+	}
+	writeDB.Close()
+	if count, err := poller.Poll(context.Background()); err != nil || count != 1 {
+		t.Fatalf("slow terminal poll: %d, %v", count, err)
+	}
+	if count, err := poller.Poll(context.Background()); err != nil || count != 0 {
+		t.Fatalf("repeat poll: %d, %v", count, err)
+	}
+	var imported []sage.Event
+	result, err := sage.ImportSpool(root, 10, func(event sage.Event) (bool, error) {
+		imported = append(imported, event)
+		return true, nil
+	})
+	if err != nil || result.Imported != 2 || len(imported) != 2 {
+		t.Fatalf("import=%+v events=%d err=%v", result, len(imported), err)
+	}
+}
+
+func TestReferenceFailedCommandPreservesExitStatus(t *testing.T) {
+	root, home := t.TempDir(), t.TempDir()
+	index, history := createHistoryDatabases(t, home)
+	index.Close()
+	now := time.UnixMilli(4_000_000).UTC()
+	poller := Poller{Root: root, CodexHome: home, Now: func() time.Time { return now }}
+	if _, err := poller.Poll(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	failed := `{"type":"commandExecution","status":"failed","exitCode":7,"commandActions":[{"command":"git status"}]}`
+	if _, err := history.Exec(`INSERT INTO thread_items VALUES (?,?,?,?,?,?)`, "cli-thread", "failed", 1, "commandExecution", now.Add(time.Millisecond).UnixMilli(), failed); err != nil {
+		t.Fatal(err)
+	}
+	history.Close()
+	if count, err := poller.Poll(context.Background()); err != nil || count != 1 {
+		t.Fatalf("poll: %d, %v", count, err)
+	}
+	var captured sage.Event
+	result, err := sage.ImportSpool(root, 10, func(event sage.Event) (bool, error) {
+		captured = event
+		return true, nil
+	})
+	if err != nil || result.Imported != 1 || captured.Success == nil || *captured.Success || captured.ExitCode == nil || *captured.ExitCode != 7 {
+		t.Fatalf("result=%+v event=%+v err=%v", result, captured, err)
+	}
+}

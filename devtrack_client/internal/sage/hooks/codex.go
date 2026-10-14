@@ -59,12 +59,7 @@ func NormalizeCodexPostToolUseEvents(raw []byte, receivedAt time.Time) []sage.Ev
 		return nil
 	}
 	events := make([]sage.Event, 0, len(actions))
-	seen := make(map[string]bool, len(actions))
 	for index, action := range actions {
-		if seen[action.Signature] {
-			continue
-		}
-		seen[action.Signature] = true
 		identity := input.SessionID + "\x00" + input.ToolUseID
 		if len(actions) > 1 {
 			identity += "\x00" + strconv.Itoa(index)

@@ -131,11 +131,20 @@ func writeSageDiagnostics(database *db.Database, root, sub string, args []string
 		return fmt.Errorf("sage %s takes no arguments", sub)
 	}
 	if sub == "log" {
+		captureEntries, err := sage.ReadCaptureLog(root, 50)
+		if err != nil {
+			return err
+		}
 		entries, err := database.SageLog(context.Background(), 50)
 		if err != nil {
 			return err
 		}
 		encoder := json.NewEncoder(output)
+		for _, entry := range captureEntries {
+			if err := encoder.Encode(entry); err != nil {
+				return err
+			}
+		}
 		for _, entry := range entries {
 			if err := encoder.Encode(entry); err != nil {
 				return err
@@ -296,9 +305,7 @@ func runSageHook(args []string, input io.Reader) error {
 	if err != nil {
 		return nil
 	}
-	for _, event := range events {
-		_ = sage.WriteEvent(root, event)
-	}
+	_, _ = sage.WriteEvents(root, events)
 	return nil
 }
 

@@ -22,6 +22,12 @@ type ImportResult struct {
 	Remaining   int
 }
 
+type CaptureResult struct {
+	New    int
+	Known  int
+	Repeat int
+}
+
 func pendingDir(root string) string    { return filepath.Join(root, "spool", "pending") }
 func quarantineDir(root string) string { return filepath.Join(root, "spool", "quarantine") }
 
@@ -35,59 +41,97 @@ func EnsureSpool(root string) error {
 // WriteEvent durably publishes one immutable, normalized event. Repeated
 // deliveries resolve to the same filename and are successful no-ops.
 func WriteEvent(root string, event Event) error {
+	_, err := WriteEvents(root, []Event{event})
+	return err
+}
+
+// WriteEvents publishes one hook payload as a batch. It records a bounded,
+// privacy-safe decision for every valid event, suppressing repeated actions
+// within the batch while retaining later, distinct uses for occurrence counts.
+func WriteEvents(root string, events []Event) (CaptureResult, error) {
+	var result CaptureResult
+	if len(events) == 0 {
+		return result, nil
+	}
 	state, err := ReadState(root)
 	if err != nil {
-		return errors.New("sage capture state unavailable")
+		return result, errors.New("sage capture state unavailable")
 	}
 	if state.Paused {
-		return nil
-	}
-	raw, err := json.Marshal(event)
-	if err != nil {
-		return errors.New("sage event encoding failed")
-	}
-	if _, err := DecodeEvent(raw); err != nil {
-		return err
+		return result, nil
 	}
 	dir := pendingDir(root)
 	if err := os.MkdirAll(dir, 0700); err != nil {
-		return errors.New("sage spool unavailable")
+		return result, errors.New("sage spool unavailable")
 	}
-	final := filepath.Join(dir, event.DeliveryKey()+".json")
-	if _, err := os.Stat(final); err == nil {
-		return nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return errors.New("sage spool unavailable")
+	batch := make(map[string]bool, len(events))
+	for _, event := range events {
+		raw, err := json.Marshal(event)
+		if err != nil {
+			return result, errors.New("sage event encoding failed")
+		}
+		if _, err := DecodeEvent(raw); err != nil {
+			return result, err
+		}
+		final := filepath.Join(dir, event.DeliveryKey()+".json")
+		if _, err := os.Stat(final); err == nil {
+			result.Known++
+			recordCaptureDecision(root, "known", event)
+			continue
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return result, errors.New("sage spool unavailable")
+		}
+		if batch[event.Signature] {
+			result.Repeat++
+			recordCaptureDecision(root, "repeat", event)
+			continue
+		}
+		published, err := publishEvent(dir, final, raw)
+		if err != nil {
+			return result, err
+		}
+		if !published {
+			result.Known++
+			recordCaptureDecision(root, "known", event)
+			continue
+		}
+		batch[event.Signature] = true
+		result.New++
+		recordCaptureDecision(root, "new", event)
 	}
+	return result, nil
+}
+
+func publishEvent(dir, final string, raw []byte) (bool, error) {
 	tmp, err := os.CreateTemp(dir, ".event-*.tmp")
 	if err != nil {
-		return errors.New("sage spool unavailable")
+		return false, errors.New("sage spool unavailable")
 	}
 	tmpPath := tmp.Name()
 	defer os.Remove(tmpPath)
 	if err := tmp.Chmod(0600); err != nil {
 		tmp.Close()
-		return errors.New("sage spool unavailable")
+		return false, errors.New("sage spool unavailable")
 	}
 	if _, err := tmp.Write(raw); err != nil {
 		tmp.Close()
-		return errors.New("sage spool write failed")
+		return false, errors.New("sage spool write failed")
 	}
 	if err := tmp.Sync(); err != nil {
 		tmp.Close()
-		return errors.New("sage spool write failed")
+		return false, errors.New("sage spool write failed")
 	}
 	if err := tmp.Close(); err != nil {
-		return errors.New("sage spool write failed")
+		return false, errors.New("sage spool write failed")
 	}
 	// A hard link atomically publishes without replacing an existing delivery.
 	if err := os.Link(tmpPath, final); err != nil {
 		if _, statErr := os.Stat(final); statErr == nil {
-			return nil
+			return false, nil
 		}
-		return errors.New("sage spool publish failed")
+		return false, errors.New("sage spool publish failed")
 	}
-	return nil
+	return true, nil
 }
 
 // ImportSpool processes at most limit immutable files. Invalid files are
