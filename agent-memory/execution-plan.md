@@ -21,7 +21,8 @@ without an approved board task and a dedicated branch targeting `dev`.
 - PR #281 closes portable harness paths, native-launcher adaptations, and additive
   install/removal; all 19 hosted checks passed. Active implementation branch:
   `features/TASK-157-sage-lifecycle`, stacked on PR #281. It closes daemon/process and CLI
-  lifecycle parity without adding a second Sage watcher.
+  lifecycle parity without adding a second Sage watcher. PR #282 targets `dev`; hosted checks are
+  running.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded

@@ -5,7 +5,8 @@ _Last reconciled: 2026-10-14 — PR #278 merged the latest TASK-157 / SAGE-003 c
 review passed all 19 hosted checks and remains unmerged. The active stacked branch is
 `features/TASK-157-sage-lifecycle`, stacked on fully green PRs #280 and #281 and using the current
 reference checkout at `ea2e067`. The executable parity ledger is 110 implemented, 16 adapted,
-2 partial, and 8 pending. Next: review this slice, then continue capture/history/IDE parity and
+2 partial, and 8 pending. PR #282 targets `dev`; hosted checks are running. Next: review this
+slice, then continue capture/history/IDE parity and
 repeated Windows/Linux acceptance. Next unused
 task ID: TASK-164, subject to verification before allocation._
 
@@ -278,7 +279,8 @@ explicit Sage model backends; `24c28f8` — port platform layouts and additive i
 **PRs:** https://github.com/sraj0501/Devtrack_/pull/278 and
 https://github.com/sraj0501/Devtrack_/pull/279 and
 https://github.com/sraj0501/Devtrack_/pull/280 and
-https://github.com/sraj0501/Devtrack_/pull/281
+https://github.com/sraj0501/Devtrack_/pull/281 and
+https://github.com/sraj0501/Devtrack_/pull/282
 
 **Backend/provider status (2026-10-14):** Locally qualified on
 `features/TASK-157-sage-model-backends`: explicit `claude`, `devin`, `codex`, `copilot`, and
@@ -303,6 +305,8 @@ start/stop/restart aliases and reasons, loud typos, silent hook compatibility, a
 safety. Exact Windows and Linux lifecycle tests, the full Go suite/vet, and the reference parity
 checker pass. Evidence: `docs/SAGE_LIFECYCLE_QUALIFICATION.md`.
 **Latest lifecycle commit:** `2711882` — `feat(sage): port daemon and CLI lifecycle`.
+**Lifecycle PR:** https://github.com/sraj0501/Devtrack_/pull/282 targets `dev`; hosted checks are
+running.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
