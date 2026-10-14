@@ -15,6 +15,7 @@ type State struct {
 	SchemaVersion int    `json:"schema_version"`
 	Capture       string `json:"capture"`
 	Paused        bool   `json:"paused"`
+	PauseReason   string `json:"pause_reason,omitempty"`
 	Ready         bool   `json:"ready"`
 	Backlog       int    `json:"backlog"`
 	Quarantined   int    `json:"quarantined"`
@@ -28,9 +29,11 @@ const codexHistoryMarker = "codex-history-enabled"
 func ReadState(root string) (State, error) {
 	state := State{SchemaVersion: SchemaVersion, Capture: "not_installed"}
 	state.CodexHistory = CodexHistoryEnabled(root)
-	_, err := os.Stat(filepath.Join(root, pauseMarker))
+	pausePath := filepath.Join(root, pauseMarker)
+	pauseNote, err := os.ReadFile(pausePath)
 	if err == nil {
 		state.Paused = true
+		state.PauseReason = strings.TrimSpace(string(pauseNote))
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return State{}, err
 	}
@@ -59,19 +62,19 @@ func ReadState(root string) (State, error) {
 
 // SetPaused is idempotent. The marker is local and never synchronised.
 func SetPaused(root string, paused bool) (State, error) {
+	return SetPausedWithReason(root, paused, "")
+}
+
+// SetPausedWithReason persists an optional local explanation for a pause.
+// The marker remains private runtime state and is never synchronised.
+func SetPausedWithReason(root string, paused bool, reason string) (State, error) {
 	path := filepath.Join(root, pauseMarker)
 	if paused {
 		if err := os.MkdirAll(root, 0700); err != nil {
 			return State{}, err
 		}
-		file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-		if err != nil && !errors.Is(err, os.ErrExist) {
+		if err := os.WriteFile(path, []byte(strings.TrimSpace(reason)), 0600); err != nil {
 			return State{}, err
-		}
-		if err == nil {
-			if closeErr := file.Close(); closeErr != nil {
-				return State{}, closeErr
-			}
 		}
 	} else if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return State{}, err

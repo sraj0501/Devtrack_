@@ -1639,10 +1639,11 @@ devtrack start</code></pre>
 <h2>Current dev — TASK-157 durable Sage knowledge pipeline</h2>
 <ul>
 <li><strong>Integrated pipeline:</strong> PR #278 merged durable distillation/publication, routing and merge/refile, search, truthful diagnostics, bounded retries, safe local knowledge commits, and capture/model-request parity to <code>dev</code> at <code>a6a75b0</code>.</li>
-<li><strong>Active reviews:</strong> PR #279 isolates private runtime state from portable knowledge placement and passed all 19 hosted checks. PR #280 retains Ollama HTTP as the default, adds explicit no-shell command providers with process-local capture suppression, and also passed all 19 checks. The active stacked branch closes platform-layout and additive installer/removal parity.</li>
+<li><strong>Active reviews:</strong> PR #279 isolates private runtime state from portable knowledge placement and passed all 19 hosted checks. PR #280 adds explicit no-shell command providers, PR #281 closes platform-layout and additive installer/removal parity, and PR #282 closes daemon/process and CLI lifecycle parity; all four reviews are fully green.</li>
 <li><strong>Portable installation:</strong> Windows <code>APPDATA</code>, Linux XDG, macOS, home-relative harness roots, OpenCode discovery, and every reference skill destination resolve deterministically. Native Go executables replace Python hook shims. Codex reinstall preserves foreign settings, removes owned/known-legacy entries only, and reports missing targets.</li>
-<li><strong>Parity checkpoint:</strong> the current <code>ea2e067</code> reference ledger records 105 implemented, 4 adapted, 2 partial, and 25 pending scenarios.</li>
-<li><strong>Remaining milestone work:</strong> SAGE-003 still requires daemon/CLI lifecycle and capture-history edge cases, optional IDE adaptations, and two clean Windows/Linux capture-to-knowledge acceptance passes.</li>
+<li><strong>Lifecycle safety:</strong> the single DevTrack daemon now owns exclusive locks and liveness; Windows children run without a console, capture aliases persist stop reasons, typos fail loudly, and legacy hook shims cannot resume capture.</li>
+<li><strong>Parity checkpoint:</strong> the current <code>ea2e067</code> reference ledger records 110 implemented, 16 adapted, 2 partial, and 8 pending scenarios.</li>
+<li><strong>Remaining milestone work:</strong> SAGE-003 still requires capture/logging and Codex-history edge cases, optional IDE adaptations, and two clean Windows/Linux capture-to-knowledge acceptance passes.</li>
 </ul>
 <h2>Current dev — TASK-158 completely silent Git path</h2>
 <ul>
@@ -2760,8 +2761,9 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <h2>Current TASK-157 commands</h2>
 <pre><code class="language-bash"># Capture state and lifecycle
 devtrack sage status
-devtrack sage pause
-devtrack sage resume
+devtrack sage stop "reviewing a client repo"  # aliases: pause, off
+devtrack sage start                            # aliases: resume, on
+devtrack sage restart
 
 # Harness registration
 devtrack sage harness list
@@ -2775,7 +2777,7 @@ devtrack sage topics
 devtrack sage doctor
 devtrack sage log
 devtrack sage routes</code></pre>
-<p>Capture is local and hooks are silent and fail-open. Search refreshes its SQLite cache from current Markdown knowledge entries, including supported manual edits and topic moves. <code>DEVTRACK_SAGE_RUNTIME_DIR</code> relocates private queue/state/log storage and <code>DEVTRACK_SAGE_KNOWLEDGE_DIR</code> relocates portable Markdown independently; relative values resolve from the stable Sage data root.</p>
+<p>Capture is local and hooks are silent and fail-open. Sage lifecycle commands change persistent capture state without spawning or stopping a second watcher; the DevTrack daemon remains the single background owner. Search refreshes its SQLite cache from current Markdown knowledge entries, including supported manual edits and topic moves. <code>DEVTRACK_SAGE_RUNTIME_DIR</code> relocates private queue/state/log storage and <code>DEVTRACK_SAGE_KNOWLEDGE_DIR</code> relocates portable Markdown independently; relative values resolve from the stable Sage data root.</p>
 
 <h2>What remains before SAGE-003 is complete</h2>
 <ul>

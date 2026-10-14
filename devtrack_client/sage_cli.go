@@ -23,10 +23,10 @@ import (
 // model, daemon, network request, or Git operation.
 func routeSage(args []string) (sub string, rest []string, err error) {
 	if len(args) == 0 {
-		return "", nil, fmt.Errorf("usage: devtrack sage status|pause|resume|search|topics|routes|route|merge|doctor|log|harness")
+		return "", nil, fmt.Errorf("usage: devtrack sage status|start|stop|restart|pause|resume|search|topics|routes|route|merge|doctor|log|harness")
 	}
 	switch args[0] {
-	case "status", "pause", "resume", "doctor", "log", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route", "merge":
+	case "status", "start", "stop", "restart", "pause", "resume", "on", "off", "hook-start", "hook-end", "end", "doctor", "log", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route", "merge":
 		return args[0], args[1:], nil
 	default:
 		return "", nil, fmt.Errorf("unknown Sage command %q", args[0])
@@ -172,7 +172,16 @@ func writeSageDiagnostics(database *db.Database, root, sub string, args []string
 }
 
 func writeSageState(sub string, args []string, output io.Writer) error {
-	if len(args) != 0 {
+	// Reference hook shims are deliberately silent and fail-open. Older shims
+	// used `start <harness>` / `end <harness>`; those must never change the
+	// user's persistent capture state.
+	if sub == "hook-start" || sub == "hook-end" || ((sub == "start" || sub == "end") && len(args) > 0) {
+		return nil
+	}
+	if sub == "end" {
+		return fmt.Errorf("unknown Sage command %q", sub)
+	}
+	if sub != "stop" && sub != "pause" && sub != "off" && len(args) != 0 {
 		return fmt.Errorf("sage %s takes no arguments", sub)
 	}
 	root, err := sageRoot()
@@ -181,9 +190,9 @@ func writeSageState(sub string, args []string, output io.Writer) error {
 	}
 	var state sage.State
 	switch sub {
-	case "pause":
-		state, err = sage.SetPaused(root, true)
-	case "resume":
+	case "stop", "pause", "off":
+		state, err = sage.SetPausedWithReason(root, true, strings.Join(args, " "))
+	case "start", "resume", "on", "restart":
 		state, err = sage.SetPaused(root, false)
 	default:
 		state, err = sage.ReadState(root)

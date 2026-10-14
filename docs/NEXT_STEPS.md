@@ -7,14 +7,14 @@ lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
 PR #278 merged the latest TASK-157 closure slice to `dev` at `a6a75b0`. PR #279 contains the
 runtime/knowledge-root isolation slice; all 19 hosted checks passed, but it remains unmerged. The
-active stacked branch, `features/TASK-157-sage-model-backends`, adds explicit command-model
-providers while retaining Ollama HTTP as the default. Its local full Go suite, vet, and Windows
-cross-compile pass; PR #280 is fully green. The next stacked branch,
-`features/TASK-157-sage-platform-installers`, closes portable roots, harness destinations, native
-launcher adaptations, and additive install/removal behavior.
+stacked PR #280 adds explicit command-model providers while retaining Ollama HTTP as the default;
+it is fully green. PR #281 closes portable roots, harness destinations, native launcher
+adaptations, and additive install/removal behavior; it is also fully green. The active stacked
+branch, `features/TASK-157-sage-lifecycle`, closes daemon/process and CLI lifecycle parity without
+adding a second Sage watcher. PR #282 targets `dev`; all 19 hosted checks passed.
 
-After review and integration, close daemon/CLI lifecycle, capture/history edge cases, and optional
-IDE adaptations. Run the clean
+After review and integration, close the four capture/logging rows, two partial Codex-history rows,
+and four optional IDE adaptations. Run the clean
 capture-to-self-written-knowledge journey twice on Windows and Linux before closing TASK-157.
 
 ## Current product initiative
@@ -41,7 +41,8 @@ are implemented, hook installation/removal is reversible, and the isolated packa
 journey passes. The SAGE-003 durable distillation, deterministic publication,
 routing/correction, merge/refile, skipped-action records, search, diagnostics, and safe
 local-commit foundation is implemented. Runtime/knowledge isolation is under review in PR #279,
-and explicit model backends are on the active stacked branch. SAGE-003 remains incomplete until
+explicit model backends, platform installers, and lifecycle parity are on stacked branches.
+SAGE-003 remains incomplete until
 the remaining parity rows and repeated clean acceptance journeys pass.
 Sanitized observed hook fixtures
 remain an external harness-validation gate.
@@ -50,8 +51,8 @@ The selective harness registry and external plugin boundary are now fixed in
 global installer switches or harness-specific storage.
 `Data/agent_logs/project_board.md` remains the task-ID authority.
 
-The parity inventory accounts for all 136 reference test methods at `ea2e067`: 105 implemented,
-4 adapted, 2 partial, and 25 pending. Every remaining row needs exact Go-test ownership or an
+The parity inventory accounts for all 136 reference test methods at `ea2e067`: 110 implemented,
+16 adapted, 2 partial, and 8 pending. Every remaining row needs exact Go-test ownership or an
 explicit justified adaptation; a reconciled row count alone is not a completion claim.
 
 ## Open release follow-ups

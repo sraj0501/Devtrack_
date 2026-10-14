@@ -18,15 +18,17 @@ without an approved board task and a dedicated branch targeting `dev`.
   current `origin/dev`. It contains the runtime/knowledge path-isolation slice and is fully green
   but unmerged. PR #280 is the active stacked review from
   `features/TASK-157-sage-model-backends` into `dev`; all 19 hosted checks passed.
-- Active implementation branch: `features/TASK-157-sage-platform-installers`, stacked on PR #280.
-  PR #281 targets `dev`; it closes portable harness paths, native-launcher adaptations, and
-  additive install/removal. All 19 hosted checks passed.
+- PR #281 closes portable harness paths, native-launcher adaptations, and additive
+  install/removal; all 19 hosted checks passed. Active implementation branch:
+  `features/TASK-157-sage-lifecycle`, stacked on PR #281. It closes daemon/process and CLI
+  lifecycle parity without adding a second Sage watcher. PR #282 targets `dev`; all 19 hosted
+  checks passed.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded
   retries, safe local knowledge commits, model-free documented-action reuse, and conservative
   section matching.
-- Ledger checkpoint: 105 implemented, 4 adapted, 2 partial, 25 pending. Full Go tests, vet, ledger
+- Ledger checkpoint: 110 implemented, 16 adapted, 2 partial, 8 pending. Full Go tests, vet, ledger
   consistency, parity-checker tests, shared-memory validation, and whitespace validation pass on
   the active branch.
 - Next unused task ID is TASK-164, subject to board verification before allocation.

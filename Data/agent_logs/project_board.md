@@ -3,9 +3,10 @@
 _Last reconciled: 2026-10-14 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
 `dev` at `a6a75b0`; required and post-merge workflows passed. PR #279's runtime/knowledge isolation
 review passed all 19 hosted checks and remains unmerged. The active stacked branch is
-`features/TASK-157-sage-platform-installers`, stacked on fully green PR #280 and using the current
-reference checkout at `ea2e067`. The executable parity ledger is 105 implemented, 4 adapted,
-2 partial, and 25 pending. Next: review this slice, then continue daemon/CLI lifecycle parity and
+`features/TASK-157-sage-lifecycle`, stacked on fully green PRs #280 and #281 and using the current
+reference checkout at `ea2e067`. The executable parity ledger is 110 implemented, 16 adapted,
+2 partial, and 8 pending. PR #282 targets `dev`; all 19 hosted checks passed. Next: review this
+slice, then continue capture/history/IDE parity and
 repeated Windows/Linux acceptance. Next unused
 task ID: TASK-164, subject to verification before allocation._
 
@@ -261,23 +262,25 @@ https://github.com/sraj0501/Devtrack_/pull/273
 PR #279 adds stable runtime and knowledge path resolution, including explicit and relative
 overrides; all 19 hosted checks passed. PR #280 adds explicit Go-native command-model providers
 while retaining Ollama HTTP as the default; all 19 hosted checks passed. The active
-`features/TASK-157-sage-platform-installers` branch closes platform layout and additive installer
-parity. The
+`features/TASK-157-sage-lifecycle` branch closes daemon/process and CLI lifecycle parity after
+fully green PR #281 closed platform layout and additive installer parity. The
 integrated slice adds truthful
 `status`/`doctor`/`log` diagnostics, bounded retries, privacy-safe NDJSON logs, Sage-owned local
 commits, model-free documented-action reuse, deterministic rendering, and conservative section
 matching, quote-aware compound command capture, cross-harness payload normalization, deterministic
 temperature-zero model requests, token-limit diagnostics, and background classify-once routing with
 sanitized persistent choices, deterministic fallback, and existing-section context. The ledger is
-now 105 implemented, 4 adapted, 2 partial, and 25 pending. Full Go tests, `go vet ./...`,
+now 110 implemented, 16 adapted, 2 partial, and 8 pending. Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
 locally. TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
 **Implementation commits:** `5317d4a` — isolate Sage runtime and knowledge roots; `80bb76f` — add
-explicit Sage model backends; `24c28f8` — port platform layouts and additive installers.
+explicit Sage model backends; `24c28f8` — port platform layouts and additive installers;
+`2711882` — port daemon and CLI lifecycle.
 **PRs:** https://github.com/sraj0501/Devtrack_/pull/278 and
 https://github.com/sraj0501/Devtrack_/pull/279 and
 https://github.com/sraj0501/Devtrack_/pull/280 and
-https://github.com/sraj0501/Devtrack_/pull/281
+https://github.com/sraj0501/Devtrack_/pull/281 and
+https://github.com/sraj0501/Devtrack_/pull/282
 
 **Backend/provider status (2026-10-14):** Locally qualified on
 `features/TASK-157-sage-model-backends`: explicit `claude`, `devin`, `codex`, `copilot`, and
@@ -294,6 +297,16 @@ Codex reinstall is idempotent, preserves foreign settings, removes only owned/kn
 and reports missing removal targets. Evidence: `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
 PR #281 targets `dev` and is stacked on the still-unmerged PRs #279 and #280.
 All 19 hosted checks passed, including Windows build/vet, tests, no-send E2E, and MCPB smoke.
+
+**Lifecycle status (2026-10-14):** Locally qualified on
+`features/TASK-157-sage-lifecycle`: exclusive/releasable OS locks, stale-artifact recovery,
+conservative liveness, actual Windows no-console child execution with intact stdin, persistent
+start/stop/restart aliases and reasons, loud typos, silent hook compatibility, and legacy-shim
+safety. Exact Windows and Linux lifecycle tests, the full Go suite/vet, and the reference parity
+checker pass. Evidence: `docs/SAGE_LIFECYCLE_QUALIFICATION.md`.
+**Latest lifecycle commit:** `2711882` — `feat(sage): port daemon and CLI lifecycle`.
+**Lifecycle PR:** https://github.com/sraj0501/Devtrack_/pull/282 targets `dev`; all 19 hosted checks
+passed, including Windows tests, no-send E2E, and MCPB smoke.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
@@ -316,10 +329,12 @@ All 19 hosted checks passed, including Windows build/vet, tests, no-send E2E, an
       validation, and whitespace checks pass locally.
 
 **Pending before TASK-157 can close:**
-- [ ] Resolve the 25 pending and 2 partial rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
+- [ ] Resolve the 8 pending and 2 partial rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
       Go tests or an explicit, justified adaptation; make `--require-complete` pass.
-- [ ] Complete daemon/process, CLI lifecycle, capture/logging, optional IDE, and remaining
-      Codex-history parity scenarios across supported operating systems.
+- [x] Complete daemon/process and CLI lifecycle parity across supported operating systems without
+      adding a second Sage watcher.
+- [ ] Complete capture/logging, optional IDE, and remaining Codex-history parity scenarios across
+      supported operating systems.
 - [ ] Run the clean capture-to-self-written-knowledge journey twice on Windows and Linux, including
       silent capture, retry recovery, publication, search, route correction, merge/refile, privacy
       canaries, unrelated-Git-state preservation, and safe uninstall.
