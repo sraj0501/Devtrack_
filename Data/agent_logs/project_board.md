@@ -280,7 +280,8 @@ https://github.com/sraj0501/Devtrack_/pull/280
 `cursor-agent` transports use validated prompt modes, late prompt substitution, missing-binary
 handling, direct argv execution, process-local capture suppression, and Windows no-console flags.
 Ollama HTTP remains the default. Evidence: `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`.
-PR #280 targets `dev` and is stacked on the still-unmerged PR #279; hosted checks are running.
+PR #280 targets `dev` and is stacked on the still-unmerged PR #279. All 19 hosted checks passed,
+including Windows build/vet, tests, no-send E2E, and MCPB smoke.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe

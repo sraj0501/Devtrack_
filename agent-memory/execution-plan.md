@@ -17,7 +17,7 @@ without an approved board task and a dedicated branch targeting `dev`.
 - Active follow-up review: PR #279 from `features/TASK-157-sage-backend-isolation`, created from
   current `origin/dev`. It contains the runtime/knowledge path-isolation slice and is fully green
   but unmerged. PR #280 is the active stacked review from
-  `features/TASK-157-sage-model-backends` into `dev`.
+  `features/TASK-157-sage-model-backends` into `dev`; all 19 hosted checks passed.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded
