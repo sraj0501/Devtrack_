@@ -273,8 +273,8 @@ now 110 implemented, 16 adapted, 2 partial, and 8 pending. Full Go tests, `go ve
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
 locally. TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
 **Implementation commits:** `5317d4a` — isolate Sage runtime and knowledge roots; `80bb76f` — add
-explicit Sage model backends; `24c28f8` — port platform layouts and additive installers. The
-lifecycle slice is locally qualified and awaiting its implementation commit.
+explicit Sage model backends; `24c28f8` — port platform layouts and additive installers;
+`2711882` — port daemon and CLI lifecycle.
 **PRs:** https://github.com/sraj0501/Devtrack_/pull/278 and
 https://github.com/sraj0501/Devtrack_/pull/279 and
 https://github.com/sraj0501/Devtrack_/pull/280 and
@@ -302,6 +302,7 @@ conservative liveness, actual Windows no-console child execution with intact std
 start/stop/restart aliases and reasons, loud typos, silent hook compatibility, and legacy-shim
 safety. Exact Windows and Linux lifecycle tests, the full Go suite/vet, and the reference parity
 checker pass. Evidence: `docs/SAGE_LIFECYCLE_QUALIFICATION.md`.
+**Latest lifecycle commit:** `2711882` — `feat(sage): port daemon and CLI lifecycle`.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe

@@ -3007,3 +3007,14 @@ All 19 PR #280 checks passed, including hosted Windows build/vet, tests, no-send
 **Friction**: LOW — the Python reference's `.cmd`/`.sh` pair required an explicit Go-native adaptation rather than copying its runtime architecture.
 **Notes**: Pure target-layout resolution now covers Windows `APPDATA`, Linux XDG, macOS, Devin/OpenCode, home-relative dot directories, and every reference skill destination. The selective registry still advertises Codex only. Recursive marker removal preserves foreign settings, migrates known `ai_sessions_skills` paths, is idempotent, and distinguishes created/updated/unchanged/missing outcomes. Full Go tests and vet pass under Go 1.24 Docker; hooks cross-compile for Windows/amd64. Current-reference parity passes at 105 implemented, 4 adapted, 2 partial, and 25 pending. Two docu-agent passes completed. PR: https://github.com/sraj0501/Devtrack_/pull/281 (stacked on fully green, unmerged PRs #279 and #280).
 All 19 PR #281 checks passed, including hosted Windows build/vet, tests, no-send E2E, and Windows MCPB smoke.
+
+### [2026-10-14] TASK-157 — Port Sage daemon and CLI lifecycle
+
+**Original message**: "List out all the Sage features of DevTrack. Finish them one by one, document each change, run docu-agent, and raise a PR after each completed change. Then move on to the next one."
+**Commit**: `2711882` (`feat(sage): port daemon and CLI lifecycle`) on `features/TASK-157-sage-lifecycle`.
+**DevTrack enhanced it to**: unchanged; Ollama returned an empty response, so the helper retained the supplied message.
+**Ticket auto-linked**: NO — the message omitted TASK-157; the task is explicit in the branch and project board.
+**PM system updated**: local project board and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Time**: implementation, cross-platform qualification, and two docu-agent passes completed before commit.
+**Friction**: LOW — host Go and Node are absent, so the Go 1.24 and Node 22 Docker toolchains supplied the missing build tools.
+**Notes**: The single DevTrack daemon now owns Sage locks, liveness, and lifecycle; no detached Sage watcher was added. Windows children request no console, access-denied liveness is conservative, capture supports start/stop/restart aliases and local stop reasons, typos fail loudly, and legacy hook shims cannot resume capture. The full Linux Go suite/vet, actual Windows lifecycle executables, full Windows test-tree cross-compilation, current-reference parity, parity-checker tests, shared-memory validation, wiki inline JavaScript, and whitespace checks pass. Ledger: 110 implemented, 16 adapted, 2 partial, 8 pending. The helper committed successfully despite the known legacy post-commit log-path warning.
