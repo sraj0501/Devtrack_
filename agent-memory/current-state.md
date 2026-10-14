@@ -14,7 +14,8 @@ development-release workflows passed. PR #279 is the fully green, unmerged follo
 runtime root from portable Markdown knowledge overrides and anchors relative overrides to the Sage
 configuration root rather than the caller's working directory. The active stacked branch is
 `features/TASK-157-sage-model-backends`; it adds explicit shipped command-model providers while
-retaining Ollama HTTP as the default. The 136-scenario ledger now records 89 implemented,
+retaining Ollama HTTP as the default. PR #280 is the active review for that stacked branch. The
+136-scenario ledger now records 89 implemented,
 2 adapted, 2 partial, and 43 pending scenarios. Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
 pass locally. Next: review and integrate the isolation and model-backend slices, then close

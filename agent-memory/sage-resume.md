@@ -16,7 +16,7 @@ acting because branch, PR, and CI state can change after this record is updated.
 - Integration branch: `origin/dev` at `a6a75b0` after PR #278 merged on 2026-10-13.
 - Active review: PR #279 from `features/TASK-157-sage-backend-isolation` into `dev`; all 19 hosted
   checks passed, but it remains unmerged. Active stacked branch:
-  `features/TASK-157-sage-model-backends`.
+  `features/TASK-157-sage-model-backends`; PR #280 targets `dev` and its hosted checks are running.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.

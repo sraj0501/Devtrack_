@@ -269,15 +269,18 @@ sanitized persistent choices, deterministic fallback, and existing-section conte
 now 89 implemented, 2 adapted, 2 partial, and 43 pending. Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
 locally. TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
-**Implementation commit:** `5317d4a` — isolate Sage runtime and knowledge roots.
+**Implementation commits:** `5317d4a` — isolate Sage runtime and knowledge roots; `80bb76f` — add
+explicit Sage model backends.
 **PRs:** https://github.com/sraj0501/Devtrack_/pull/278 and
-https://github.com/sraj0501/Devtrack_/pull/279
+https://github.com/sraj0501/Devtrack_/pull/279 and
+https://github.com/sraj0501/Devtrack_/pull/280
 
 **Backend/provider status (2026-10-14):** Locally qualified on
 `features/TASK-157-sage-model-backends`: explicit `claude`, `devin`, `codex`, `copilot`, and
 `cursor-agent` transports use validated prompt modes, late prompt substitution, missing-binary
 handling, direct argv execution, process-local capture suppression, and Windows no-console flags.
 Ollama HTTP remains the default. Evidence: `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`.
+PR #280 targets `dev` and is stacked on the still-unmerged PR #279; hosted checks are running.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
