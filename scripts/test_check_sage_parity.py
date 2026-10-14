@@ -49,7 +49,7 @@ class ParityGateTests(unittest.TestCase):
             errors = parity.check_reference(self.text, Path("reference"))
         self.assertTrue(any("reference scenario missing" in error for error in errors))
         self.assertTrue(any("matrix scenario absent" in error for error in errors))
-        self.assertTrue(all("b85a1ab:" in call.args[0][-1] for call in run.call_args_list))
+        self.assertTrue(all("ea2e067:" in call.args[0][-1] for call in run.call_args_list))
 
 
 if __name__ == "__main__":

@@ -13,14 +13,16 @@ acting because branch, PR, and CI state can change after this record is updated.
 ## Current checkpoint
 
 - Active task: TASK-157 / SAGE-003, Go-native self-writing command knowledge.
-- Active branch: `features/TASK-157-sage-closure`, based on `origin/dev` at `549c430`.
-- Active review: PR #278, `features/TASK-157-sage-closure` into `dev`.
-- Board reconciliation checkpoint: `a49643d`; always re-read branch HEAD before continuing.
-- Pinned behavioral reference: `sraj0501/ai_sessions_skills` commit `b85a1ab`.
-- Ledger: 136 scenarios — 82 implemented, 1 adapted, 2 partial, and 51 pending.
-- Local qualification: full Go tests, `go vet ./...`, ledger consistency, parity-checker tests,
-  shared-memory validation, and whitespace validation passed for the current implementation slice.
-  Hosted checks must be re-read from PR #278 rather than assumed from this snapshot.
+- Integration branch: `origin/dev` at `a6a75b0` after PR #278 merged on 2026-10-13.
+- Active review: PR #279 from `features/TASK-157-sage-backend-isolation` into `dev`, based on that
+  merge.
+- Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
+- Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
+  Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.
+- Ledger: 136 scenarios — 84 implemented, 2 adapted, 2 partial, and 48 pending.
+- Qualification: full Go tests, `go vet ./...`, ledger consistency, parity-checker tests,
+  shared-memory validation, and whitespace validation passed locally. All required PR #278 checks
+  and applicable post-merge workflows passed, including hosted Windows tests.
 
 ## What is already done
 
@@ -29,7 +31,7 @@ immutable spool/import, SQLite events and durable jobs, leases and fencing, daem
 deterministic Markdown publication, persistent routes, recoverable merge/refile, explicit skipped
 records, and full-entry search/topic reconciliation.
 
-PR #278 adds the current closure slice: truthful `status`/`doctor`/`log` diagnostics, bounded
+PR #278 integrated the latest closure slice: truthful `status`/`doctor`/`log` diagnostics, bounded
 retries, privacy-safe NDJSON logs, Sage-owned local commits that preserve unrelated Git state and
 never push, including an isolated private-index path that stages the exact validated knowledge
 bytes without depending on ambient Git filters or filesystem monitors; model-free documented-action
@@ -37,6 +39,11 @@ reuse; deterministic rendering; conservative section matching; quote-aware compo
 capture; cross-harness payload normalization;
 temperature-zero model requests, token-limit diagnostics, and background-only classify-once
 routing with sanitized persistence, deterministic fallback, and existing-section context.
+
+The active follow-up resolves all three runtime/knowledge isolation rows: relative runtime and
+knowledge overrides resolve from the stable Sage root, an explicit knowledge directory cannot move
+private runtime state, and the Go prompt is explicitly path-free rather than exposing a runtime
+batch path. See `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md`.
 
 ## Remaining parity work
 
@@ -46,14 +53,13 @@ The final ledger command must pass with `--require-complete`.
 | Group | Pending | Required outcome |
 |---|---:|---|
 | Backend and provider behavior | 4 | Render backend placeholders, drop empty model values, handle missing executables, declare prompt modes, and preserve prompt-file failure semantics without adding Python to the Sage runtime. |
-| Runtime/knowledge isolation | 3 | Keep knowledge files separate from queue/state/log runtime storage, including relative configuration and explicit knowledge-root overrides. |
 | Platform roots and shims | 13 | Correct Windows `APPDATA`/home fallback, Linux XDG/default, macOS, Devin/OpenCode, skill destinations, and Windows/POSIX launcher behavior. |
 | Additive install/remove | 5 | Reinstall without duplicate hooks, preserve foreign settings, remove only Sage-owned configuration, purge the known legacy layout, and report a missing target correctly. |
 | Daemon/process lifecycle | 10 | Cover exclusive and stale locks, no-console helper behavior, piped input, detached execution, and PID/liveness edge cases, adapted to the DevTrack-owned daemon where appropriate. |
 | Configuration, pause, capture, and logging | 5 | Prove process-local configuration, installed-adapter pause behavior, fail-open logging, new/known enqueue records, and repeated actions within one command line. |
 | CLI lifecycle | 7 | Cover start/stop/restart, watcher replacement, aliases, loud typo handling, stop reasons, silent hook verbs, and prevention of legacy-shim restart. |
 | Optional IDE adapter | 4 | Cover original-command filtering, pause/reset/checkpoint behavior, and failure handling. Do not add another harness before the resilient Codex journey; explicitly adapt these rows if they are outside the current milestone. |
-| **Total pending** | **51** | All must become implemented or deliberately adapted. |
+| **Total pending** | **48** | All must become implemented or deliberately adapted. |
 
 The two partial rows are:
 
@@ -70,27 +76,25 @@ The two partial rows are:
    preservation of unrelated staged/unstaged Git state, and safe uninstall.
 2. Keep applicable unit, golden, fuzz, fault-injection, and race coverage green.
 3. Make `scripts/check_sage_parity.py --require-complete` pass.
-4. Obtain required PR #278 checks and review, merge through `dev`, and reconcile the board, parity
-   matrix, execution plan, and active memory from the integrated commit.
 
 ## Recommended pickup order
 
-1. Backend/provider selection and runtime/knowledge isolation.
+1. Backend/provider selection.
 2. Platform roots, shims, and additive installer/removal behavior.
 3. Daemon/process and CLI lifecycle adaptations.
 4. Capture, pause, logging, and the two partial Codex-history rows.
 5. Resolve the optional IDE rows without violating the Codex-first sequencing guardrail.
-6. Run the repeated Windows/Linux acceptance journey, close the ledger, and integrate PR #278.
+6. Run the repeated Windows/Linux acceptance journey, close the ledger, and integrate the remaining
+   closure through a new PR to `dev`.
 
 At the start of a fresh session, read `agent-memory/INDEX.md`, `current-state.md`,
 `execution-plan.md`, `initiatives/sage.md`, this file, and the active TASK-157 board entry. Then run:
 
 ```text
 git status --short --branch
-git log -6 --oneline --decorate
+git log -6 --oneline --decorate origin/dev
 python scripts/check_sage_parity.py
 python scripts/check_agent_memory.py
-gh pr checks 278
 ```
 
 The current machine does not have host Go. Use the documented Docker-based Go 1.24 workflow when

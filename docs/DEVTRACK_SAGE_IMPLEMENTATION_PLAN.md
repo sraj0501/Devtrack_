@@ -7,8 +7,10 @@ larger than Git: it captures useful command and tool activity from supported cod
 and turns that activity into searchable, self-writing personal command knowledge.
 
 DevTrack Sage is implemented entirely in Go. The Python implementation in
-`F:\git_apps\Personal_Projects\ai_sessions_skills` is the behavioral reference for the port, not a runtime
-dependency. The authoritative `tool/` baseline is current reference commit `b85a1ab`. The parity
+`C:\Work\git_apps\ai_sessions_skills` is the behavioral reference checkout for the port, not a runtime
+dependency. The authoritative baseline is current reference commit `ea2e067`. Its changes after
+`b85a1ab` are generated knowledge route/content fixes; the `tool/` behavior and test corpus are
+unchanged. The parity
 matrix must be refreshed whenever that baseline changes; generated personal knowledge content is
 test evidence, not source code to copy.
 

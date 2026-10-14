@@ -1,14 +1,16 @@
 # DevTrack Sage reference parity matrix
 
-Authoritative baseline: `ai_sessions_skills` commit `b85a1ab`.
-Local reference checkout: `F:\git_apps\Personal_Projects\ai_sessions_skills`.
+Authoritative baseline: `ai_sessions_skills` commit `ea2e067`.
+Local reference checkout: `C:\Work\git_apps\ai_sessions_skills`.
+The two commits after `b85a1ab` update generated knowledge routes/content only; reference code,
+prompts, and the 136-test behavioral corpus are unchanged.
 All 136 scenarios below were reconciled with the pinned Git objects on 2026-09-30.
 Go paths are relative to `devtrack_client/`. Existing tests are evidence for only the
 behavior stated in the rationale; planned closure tests do not exist yet.
 `partial` and `pending` rows remain open. `adapted` requires an explicit behavioral rationale.
 
 Run `uv run --no-project python scripts/check_sage_parity.py` for ledger consistency.
-Add `--reference <checkout>` to compare names and source lines against `b85a1ab`,
+Add `--reference <checkout>` to compare names and source lines against `ea2e067`,
 or `--require-complete` for the final parity gate. A passing ledger check does not run Go tests
 or establish behavioral parity. Python is development tooling only, never a Sage runtime dependency.
 
@@ -146,7 +148,7 @@ or establish behavioral parity. Python is development tooling only, never a Sage
 | `tool/tests/test_portable.py:1174` `test_classifier_choice_is_sanitised` | `internal/sage/knowledge + distill` | SAGE-003 | implemented | `internal/sage/routing/routing_test.go#TestReferenceClassifierChoiceIsSanitised` | — | Classifier filenames pass through the portable filename boundary and cannot escape the knowledge root |
 | `tool/tests/test_portable.py:1190` `test_unreachable_classifier_falls_back_to_its_own_file` | `internal/sage/knowledge + distill` | SAGE-003 | implemented | `internal/sage/routing/routing_test.go#TestReferenceUnreachableClassifierFallsBackToItsOwnFile` | — | Classifier failure remembers the binary's own file, so unavailable models are not queried repeatedly |
 | `tool/tests/test_portable.py:1202` `test_existing_sections_are_offered_to_the_model` | `internal/sage/knowledge + distill` | SAGE-003 | implemented | `internal/sage/distill/distill_test.go#TestReferenceExistingSectionsAreOfferedToTheModel`; `internal/sage/routing/routing_test.go#TestPrepareOffersExistingTopicSections` | — | Stable headings from the effective routed topic are supplied as bounded distillation context |
-| `tool/tests/test_portable.py:1215` `test_agent_prompt_uses_separate_runtime_folder` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceAgentPromptUsesSeparateRuntimeFolder` | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1225` `test_runtime_setting_is_relative_to_config` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceRuntimeSettingIsRelativeToConfig` | Port knowledge processing and search |
-| `tool/tests/test_portable.py:1230` `test_explicit_kb_override_keeps_runtime_isolated` | `internal/sage/knowledge + distill` | SAGE-003 | pending | — | `TestReferenceExplicitKbOverrideKeepsRuntimeIsolated` | Port knowledge processing and search |
+| `tool/tests/test_portable.py:1215` `test_agent_prompt_uses_separate_runtime_folder` | `internal/sage/knowledge + distill` | SAGE-003 | adapted | `internal/sage/distill/distill_test.go#TestReferenceAgentPromptUsesSeparateRuntimeFolder` | — | Adaptation: the Go model receives sanitized fact JSON and existing section names only; queue, database, runtime, and knowledge paths never enter the prompt, which is stronger than naming a separate runtime batch file |
+| `tool/tests/test_portable.py:1225` `test_runtime_setting_is_relative_to_config` | `internal/sage/knowledge + distill` | SAGE-003 | implemented | `internal/config/sage_paths_test.go#TestReferenceRuntimeSettingIsRelativeToConfig` | — | Relative runtime overrides resolve from the stable Sage configuration root rather than the daemon or CLI working directory |
+| `tool/tests/test_portable.py:1230` `test_explicit_kb_override_keeps_runtime_isolated` | `internal/sage/knowledge + distill` | SAGE-003 | implemented | `internal/config/sage_paths_test.go#TestReferenceExplicitKbOverrideKeepsRuntimeIsolated` | — | An explicit knowledge root changes only Markdown placement; private runtime state remains at the independently resolved Sage root |
 | `tool/tests/test_portable.py:1234` `test_keyword_search_matches_whole_entries_and_filters_topics` | `internal/sage/knowledge + db` | SAGE-003 | implemented | `internal/db/sage_search_test.go#TestReferenceKeywordSearchMatchesWholeEntriesAndFiltersTopics`; `internal/db/sage_search_test.go#TestSageEntrySearchReconcilesMovesEditsDeletesAndRestart`; `internal/db/sage_search_test.go#TestSageEntrySearchRankingAndFailedSnapshot`; `sage_cli_test.go#TestSageSearchRendersCompleteCurrentEntry` | — | Whole-entry literal AND substrings with Unicode case folding, topic filename filter, reference ranking, and current Markdown reconciliation; skipped/index files excluded |

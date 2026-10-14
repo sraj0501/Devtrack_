@@ -38,7 +38,7 @@ and searchable personal knowledge across coding-agent harnesses.
 
 The `devtrack sage` namespace is exclusively for the cross-harness command-knowledge product.
 Implement the product behavior in the authoritative reference repository
-`D:\git_apps\ai_sessions_skills` at commit `b85a1ab` as a Go-native DevTrack subsystem.
+`C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067` as a Go-native DevTrack subsystem.
 
 The active milestone is complete only when reliable local capture becomes self-writing command
 knowledge: normalized signatures, deduplication, routing, local-model structured distillation,
@@ -64,7 +64,7 @@ The selective harness registry and external plugin boundary are now fixed in
 global installer switches or harness-specific storage.
 `Data/agent_logs/project_board.md` remains the task-ID authority.
 
-The parity inventory accounts for all 136 reference test methods at `b85a1ab`, including the
+The parity inventory accounts for all 136 reference test methods at `ea2e067`, including the
 previously omitted explicit CLI-history capture scenario. Every row still needs exact Go-test
 ownership and an implementation status; a reconciled row count alone is not a completion claim.
 
@@ -87,7 +87,7 @@ and failure-isolated. Raw harness payloads never enter PostgreSQL, telemetry, or
 synchronization.
 
 The implementation is a complete Go port of the required behavior and tests from the authoritative
-`b85a1ab` Python
+`ea2e067` Python
 reference. Python is development evidence only: shipped Sage code must not invoke it or depend on
 its environment. Port completion is tracked by behavioral parity, including edge cases, rather
 than by translating files line-for-line.

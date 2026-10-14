@@ -173,6 +173,29 @@ func TestSageRoutesCLIUsesConfiguredKnowledgeAndValidatesBeforeOpeningDatabase(t
 	}
 }
 
+func TestSageCLIRuntimeOverrideDoesNotMoveKnowledgeRoot(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("DEVTRACK_SAGE_RUNTIME_DIR", ".runtime")
+	t.Setenv("DEVTRACK_SAGE_KNOWLEDGE_DIR", "")
+
+	base := filepath.Join(dataHome, "devtrack", "sage")
+	runtimeRoot, err := sageRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	knowledgeRoot, err := sageKnowledgeRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtimeRoot != filepath.Join(base, ".runtime") {
+		t.Fatalf("runtime root = %q", runtimeRoot)
+	}
+	if knowledgeRoot != filepath.Join(base, "knowledge") {
+		t.Fatalf("knowledge root = %q", knowledgeRoot)
+	}
+}
+
 func TestPackagedCodexHookPathWritesOneSilentSpoolEvent(t *testing.T) {
 	dataHome := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", dataHome)
