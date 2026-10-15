@@ -189,17 +189,22 @@ runtime/knowledge isolation, explicit no-shell command providers, portable platf
 additive installation, and single-daemon lifecycle safety. PRs #283–#285 are clean, fully green
 reviews carrying fail-open capture/history closure, the complete parity ledger, and the twice-run
 Windows/Linux end-to-end journey. The ledger is complete at 119 implemented, 17 adapted, 0 partial,
-and 0 pending; `--require-complete` passes. TASK-164 is the first SAGE-004 slice and adds an
-independently managed Claude Code adapter with additive `PostToolUse`/`PostToolUseFailure` hooks,
-privacy-minimized normalization, and exact Linux/Windows evidence. Details:
-`docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md` and
-`docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`, and
-`docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`, and
-`docs/SAGE_LIFECYCLE_QUALIFICATION.md`, and
+and 0 pending; `--require-complete` passes. TASK-164 adds an independently managed Claude Code
+adapter with additive `PostToolUse`/`PostToolUseFailure` hooks, privacy-minimized normalization,
+and exact Linux/Windows evidence; its green PR #286 targets `dev`. TASK-165 adds GitHub Copilot CLI
+with one additive version-1 `postToolUse` entry, portable Bash/PowerShell commands, and the same
+bounded native endpoint. Details:
+`docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md`,
+`docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`,
+`docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`,
+`docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md`, and
+`docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md`,
+`docs/SAGE_LIFECYCLE_QUALIFICATION.md`,
 `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`, and
 `docs/SAGE_IDE_PARITY_QUALIFICATION.md`. The repeated native Windows/Linux journey also passes;
-see `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Claude adapter evidence is in
-`docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md`. The following dated entries describe earlier
+see `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Adapter evidence is in
+`docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md` and
+`docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md`. The following dated entries describe earlier
 foundations.
 
 Historical checkpoint (2026-09-20): the first model-free slice was implemented. Imported events
@@ -225,7 +230,8 @@ inferred.
 
 Current sequence: Claude Code (TASK-164), Copilot CLI (TASK-165), OpenCode (TASK-166), Cursor
 (TASK-167), and Devin CLI (TASK-168). TASK-164 implements Bash/search/edit success capture and
-Bash failure capture without adding a second watcher.
+Bash failure capture. TASK-165 implements Copilot shell/search/edit capture through one owned
+`postToolUse` entry. Neither adapter adds a second watcher.
 
 Acceptance:
 
@@ -287,7 +293,8 @@ for inspection or export.
 ## Immediate next step
 
 SAGE-001 and SAGE-002 are complete, and SAGE-003 is qualified end to end. PRs #279–#282 are merged;
-review and integrate green PRs #283–#285. Complete TASK-164's Claude adapter review, then implement
-TASK-165 through TASK-168 one adapter and PR at a time. After those adapters, TASK-169 adds
+review and integrate green PRs #283–#286 only with explicit authorization. Complete TASK-165's
+Copilot adapter review, then implement TASK-166 through TASK-168 one adapter and PR at a time.
+After those adapters, TASK-169 adds
 read-only Sage MCP retrieval and diagnostics, and TASK-170 adds retention, quarantine inspection,
 deterministic rebuild/repair, and Markdown export/import.

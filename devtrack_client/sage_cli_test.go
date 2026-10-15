@@ -410,6 +410,26 @@ func TestPackagedClaudeHookPathWritesPrivacySafeEvents(t *testing.T) {
 	}
 }
 
+func TestPackagedCopilotHookPathWritesPrivacySafeEvents(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	payload := `{"hookEventName":"PostToolUse","sessionId":"private-thread","cwd":"C:/private/project","toolCallId":"private-call","toolName":"grep","toolArgs":{"pattern":"PRIVATE_PATTERN","outputMode":"count"},"toolResult":{"resultType":"success","output":"PRIVATE_OUTPUT"}}`
+	if err := runSageHook([]string{"copilot", hooks.OwnerMarker}, strings.NewReader(payload)); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(filepath.Join(dataHome, "devtrack", "sage", "spool", "pending"))
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("spool files=%d err=%v", len(entries), err)
+	}
+	raw, err := os.ReadFile(filepath.Join(dataHome, "devtrack", "sage", "spool", "pending", entries[0].Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(bytes.ToUpper(raw), []byte("PRIVATE")) || !bytes.Contains(raw, []byte(`"harness":"copilot"`)) {
+		t.Fatalf("Copilot spool payload is unsafe: %s", raw)
+	}
+}
+
 func TestReferenceEnvSwitchIsProcessLocal(t *testing.T) {
 	dataHome := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", dataHome)
@@ -505,7 +525,9 @@ func TestSelectiveHarnessCLIListsInstallsAndRemovesCodex(t *testing.T) {
 		ID        string `json:"id"`
 		Installed bool   `json:"installed"`
 	}
-	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || len(listed) != 2 || listed[0].ID != "claude" || listed[0].Installed || listed[1].ID != "codex" || listed[1].Installed {
+	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || len(listed) != 3 ||
+		listed[0].ID != "claude" || listed[0].Installed || listed[1].ID != "codex" || listed[1].Installed ||
+		listed[2].ID != "copilot" || listed[2].Installed {
 		t.Fatalf("list=%+v err=%v", listed, err)
 	}
 	output.Reset()
@@ -516,7 +538,7 @@ func TestSelectiveHarnessCLIListsInstallsAndRemovesCodex(t *testing.T) {
 	if err := runSageHarness([]string{"list"}, &output); err != nil {
 		t.Fatal(err)
 	}
-	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || listed[0].Installed || !listed[1].Installed {
+	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || listed[0].Installed || !listed[1].Installed || listed[2].Installed {
 		t.Fatalf("installed list=%+v err=%v", listed, err)
 	}
 	if err := runSageHarness([]string{"uninstall", "codex"}, &bytes.Buffer{}); err != nil {
@@ -550,7 +572,7 @@ func TestSelectiveHarnessCLIInstallsAndRemovesClaude(t *testing.T) {
 		ID        string `json:"id"`
 		Installed bool   `json:"installed"`
 	}
-	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || len(listed) != 2 || !listed[0].Installed || listed[1].Installed {
+	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || len(listed) != 3 || !listed[0].Installed || listed[1].Installed || listed[2].Installed {
 		t.Fatalf("list=%+v err=%v", listed, err)
 	}
 	if err := runSageHarness([]string{"uninstall", "claude"}, &bytes.Buffer{}); err != nil {
@@ -559,6 +581,46 @@ func TestSelectiveHarnessCLIInstallsAndRemovesClaude(t *testing.T) {
 	raw, _ = os.ReadFile(settings)
 	if strings.Contains(string(raw), hooks.OwnerMarker) {
 		t.Fatalf("Claude hook remained: %s", raw)
+	}
+}
+
+func TestSelectiveHarnessCLIInstallsAndRemovesCopilot(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("CODEX_HOME", t.TempDir())
+	userHome := t.TempDir()
+	t.Setenv("HOME", userHome)
+	t.Setenv("USERPROFILE", userHome)
+	var output bytes.Buffer
+	if err := runSageHarness([]string{"install", "copilot"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	hookPath := filepath.Join(userHome, ".copilot", "hooks", "ai-session-skills.json")
+	raw, err := os.ReadFile(hookPath)
+	if err != nil || strings.Count(string(raw), hooks.OwnerMarker) != 2 {
+		t.Fatalf("Copilot hooks=%s err=%v", raw, err)
+	}
+	for _, unrelated := range []string{filepath.Join(userHome, ".claude", "settings.json"), filepath.Join(os.Getenv("CODEX_HOME"), "hooks.json")} {
+		if _, err := os.Stat(unrelated); !os.IsNotExist(err) {
+			t.Fatalf("Copilot install mutated %s: %v", unrelated, err)
+		}
+	}
+	output.Reset()
+	if err := runSageHarness([]string{"list"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	var listed []struct {
+		ID        string `json:"id"`
+		Installed bool   `json:"installed"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || len(listed) != 3 || listed[0].Installed || listed[1].Installed || !listed[2].Installed {
+		t.Fatalf("list=%+v err=%v", listed, err)
+	}
+	if err := runSageHarness([]string{"uninstall", "copilot"}, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ = os.ReadFile(hookPath)
+	if strings.Contains(string(raw), hooks.OwnerMarker) {
+		t.Fatalf("Copilot hook remained: %s", raw)
 	}
 }
 

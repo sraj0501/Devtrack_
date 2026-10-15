@@ -43,6 +43,7 @@ The pre-push enhancement hook never blocks a push.
 ```bash
 devtrack sage harness install codex
 devtrack sage harness install claude
+devtrack sage harness install copilot
 devtrack sage status
 devtrack sage search "undo commit"
 devtrack sage topics

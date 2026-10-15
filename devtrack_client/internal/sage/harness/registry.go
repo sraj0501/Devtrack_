@@ -92,3 +92,12 @@ func (c Claude) Descriptor() Descriptor {
 func (c Claude) Install() (hooks.Installation, error)   { return c.Installer.Install() }
 func (c Claude) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
 func (c Claude) Status() (hooks.Installation, error)    { return c.Installer.Status() }
+
+type Copilot struct{ Installer hooks.CopilotInstaller }
+
+func (c Copilot) Descriptor() Descriptor {
+	return Descriptor{ID: "copilot", DisplayName: "GitHub Copilot CLI", BuiltIn: true}
+}
+func (c Copilot) Install() (hooks.Installation, error)   { return c.Installer.Install() }
+func (c Copilot) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
+func (c Copilot) Status() (hooks.Installation, error)    { return c.Installer.Status() }

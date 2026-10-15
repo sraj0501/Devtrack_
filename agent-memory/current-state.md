@@ -4,15 +4,15 @@ description: Active implementation work, integration state, and unresolved relea
 type: project
 ---
 
-**Active product initiative:** TASK-164 / SAGE-004 adds Claude Code as the second independently
-managed Sage capture adapter on `features/TASK-164-sage-claude-adapter`. The authoritative
-reference is `C:\Work\git_apps\ai_sessions_skills` at current clean HEAD `ea2e067`; its newer HEAD
-is intentional and includes the reference bug fixes. Claude installs additive owned
-`PostToolUse` hooks for Bash/search/edit tools and `PostToolUseFailure` for Bash, preserves foreign
-settings, and normalizes only bounded privacy-minimal events. Focused Linux and native Windows
-tests, the full Go suite, vet, and modified-package race coverage pass locally. Commit `1107d3d`
-is pushed and mergeable PR #286 targets `dev`; all 19 hosted checks pass after a transient Windows
-E2E PID-file timeout passed on rerun. TASK-165 Copilot CLI is the next implementation slice.
+**Active product initiative:** TASK-165 / SAGE-004 adds GitHub Copilot CLI as the third
+independently managed Sage capture adapter on `features/TASK-165-sage-copilot-adapter`. The
+authoritative reference is `C:\Work\git_apps\ai_sessions_skills` at current clean HEAD `ea2e067`;
+its newer HEAD is intentional and includes the reference bug fixes. Copilot installs one additive
+owned version-1 `postToolUse` entry with portable Bash/PowerShell commands,
+`AI_SKILLS_HARNESS=copilot`, and a ten-second timeout. It preserves foreign hooks and normalizes
+only bounded privacy-minimal shell/search/edit events. Focused Linux and native Windows tests, the
+full Go suite, vet, and modified-package race coverage pass locally. PR #286 remains the green
+Claude adapter review; TASK-165 documentation and PR review are the active gates.
 
 **Sage integration state:** PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are
 clean, fully green reviews carrying capture/history closure, the complete 136-row parity ledger
