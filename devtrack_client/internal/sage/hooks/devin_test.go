@@ -109,7 +109,7 @@ func TestDevinInstallerUsesPlatformConfigurationRoot(t *testing.T) {
 	}{
 		{"windows-appdata", "windows", map[string]string{"APPDATA": filepath.Join("C:", "Users", "person", "AppData", "Roaming")}, filepath.Join("C:", "Users", "person", "AppData", "Roaming", "devin", "config.json")},
 		{"linux-xdg", "linux", map[string]string{"XDG_CONFIG_HOME": filepath.Join(home, ".xdg")}, filepath.Join(home, ".xdg", "devin", "config.json")},
-		{"linux-fallback", "linux", nil, filepath.Join(home, ".config", "devin", "config.json")},
+		{"linux-fallback", "linux", map[string]string{}, filepath.Join(home, ".config", "devin", "config.json")},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
