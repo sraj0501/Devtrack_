@@ -30,8 +30,9 @@ install/uninstall idempotent and pure subtraction, and never add a second watche
       passes complete locally.
 - [ ] A dedicated PR to `dev` is open and its required checks pass.
 
-**Engineer status:** implementation and two documentation passes complete locally; commit, push,
-PR creation, and hosted checks remain.
+**Engineer status:** implementation and two documentation passes complete in commit `1107d3d`;
+PR #286 targets `dev`. Hosted checks remain.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/286
 **Blockers:** none.
 
 **Planned Sage sequence after TASK-164:**

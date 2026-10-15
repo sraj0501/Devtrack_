@@ -78,8 +78,8 @@ race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.
 
 ## Recommended pickup order
 
-1. Finish TASK-164 documentation reconciliation, commit through DevTrack, push, and open its PR to
-   `dev`; verify hosted checks.
+1. Verify TASK-164 PR #286 hosted checks and address review findings; do not merge without explicit
+   user authorization.
 2. Implement TASK-165 Copilot CLI, TASK-166 OpenCode, TASK-167 Cursor, and TASK-168 Devin one at a
    time, with documentation and a dedicated PR after each.
 3. Implement TASK-169 read-only MCP retrieval/diagnostics, then TASK-170 operational closure.

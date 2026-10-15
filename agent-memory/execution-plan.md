@@ -22,8 +22,8 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Current ordered work
 
-1. Complete TASK-164 documentation reconciliation, commit through DevTrack, push, open a PR to
-   `dev`, and verify hosted checks.
+1. Verify TASK-164 PR #286 hosted checks, address review findings if any, and integrate only with
+   explicit user authorization.
 2. Implement TASK-165 through TASK-168 one adapter and PR at a time, preserving the shared silence,
    privacy, fail-open, additive-install, and cross-platform acceptance gates.
 3. Implement TASK-169 read-only Sage MCP search/topics/status/entry and adapter diagnostics.
