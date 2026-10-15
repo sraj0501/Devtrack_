@@ -110,3 +110,12 @@ func (o OpenCode) Descriptor() Descriptor {
 func (o OpenCode) Install() (hooks.Installation, error)   { return o.Installer.Install() }
 func (o OpenCode) Uninstall() (hooks.Installation, error) { return o.Installer.Uninstall() }
 func (o OpenCode) Status() (hooks.Installation, error)    { return o.Installer.Status() }
+
+type Cursor struct{ Installer hooks.CursorInstaller }
+
+func (c Cursor) Descriptor() Descriptor {
+	return Descriptor{ID: "cursor", DisplayName: "Cursor", BuiltIn: true}
+}
+func (c Cursor) Install() (hooks.Installation, error)   { return c.Installer.Install() }
+func (c Cursor) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
+func (c Cursor) Status() (hooks.Installation, error)    { return c.Installer.Status() }

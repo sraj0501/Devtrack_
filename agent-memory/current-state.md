@@ -4,17 +4,16 @@ description: Active implementation work, integration state, and unresolved relea
 type: project
 ---
 
-**Active product initiative:** TASK-166 / SAGE-004 adds OpenCode as the fourth independently
-managed Sage capture adapter on `features/TASK-166-sage-opencode-adapter`; TASK-167 Cursor is the
-next implementation slice. The
+**Active product initiative:** TASK-168 / SAGE-004 adds Devin after the five qualified independent
+Sage capture adapters. TASK-167 completed Cursor on `features/TASK-167-sage-cursor-adapter`. The
 authoritative reference is `C:\Work\git_apps\ai_sessions_skills` at current clean HEAD `ea2e067`;
-its newer HEAD is intentional and includes the reference bug fixes. OpenCode installs one owned
-user plugin that observes `tool.execute.before` and `tool.execute.after`, directly invokes the
-packaged Go endpoint, preserves unknown plugin content, and adds no session process. It normalizes
-only bounded privacy-minimal shell/search/edit events. Generated-plugin syntax, focused Linux and
-native Windows tests, the full Go suite, vet, and modified-package race coverage pass locally.
-TASK-165 PR #287 is mergeable and all 19 final-head checks pass at `2568b72`. TASK-166 PR #288
-targets `dev`, is mergeable, and all 19 hosted checks pass on reviewed head `fd4e762`.
+its newer HEAD is intentional and includes the reference bug fixes. Cursor merges owned
+`afterShellExecution` and matched `postToolUse` entries into the home-relative version-1 hook file,
+preserves foreign content, and adds no session process. Bounded shell/write payloads become
+privacy-minimal events with deterministic cross-hook identity. Focused Linux and native Windows
+tests, the full Go suite, vet, modified-package race coverage, and two documentation reconciliation
+passes succeed locally. TASK-167 PR #289 targets `dev`, is mergeable, and all 19 hosted checks
+pass on reviewed head `88bf9f0`. TASK-168 Devin is the next implementation slice.
 
 **Sage integration state:** PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are
 clean, fully green reviews carrying capture/history closure, the complete 136-row parity ledger
