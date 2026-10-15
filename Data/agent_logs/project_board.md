@@ -9,7 +9,7 @@ implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. 
 Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
 verification before allocation._
 
-**[2026-10-15] TASK-164 / SAGE-004 — Claude Code capture adapter (in progress).**
+**[2026-10-15] TASK-164 / SAGE-004 — Claude Code capture adapter (complete).**
 **Priority:** High. **Branch:** `features/TASK-164-sage-claude-adapter`.
 **Assigned to:** engineer. **Depends on:** green TASK-157 PR #285.
 
@@ -28,10 +28,12 @@ install/uninstall idempotent and pure subtraction, and never add a second watche
       reports missing targets without creating files.
 - [x] Exact Windows/Linux tests, full Go tests/vet, privacy checks, and two docu-agent reconciliation
       passes complete locally.
-- [ ] A dedicated PR to `dev` is open and its required checks pass.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
 
 **Engineer status:** implementation and two documentation passes complete in commit `1107d3d`;
-PR #286 targets `dev`. Hosted checks remain.
+PR #286 targets `dev`, is mergeable, and all 19 latest-head hosted checks pass. The first Windows
+no-send E2E attempt hit a transient PID-file observation timeout and passed on rerun; the separate
+Windows build/test and native MCPB smoke also passed.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/286
 **Blockers:** none.
 

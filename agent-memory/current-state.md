@@ -11,7 +11,8 @@ is intentional and includes the reference bug fixes. Claude installs additive ow
 `PostToolUse` hooks for Bash/search/edit tools and `PostToolUseFailure` for Bash, preserves foreign
 settings, and normalizes only bounded privacy-minimal events. Focused Linux and native Windows
 tests, the full Go suite, vet, and modified-package race coverage pass locally. Commit `1107d3d`
-is pushed and PR #286 targets `dev`; verify its hosted checks before starting TASK-165.
+is pushed and mergeable PR #286 targets `dev`; all 19 hosted checks pass after a transient Windows
+E2E PID-file timeout passed on rerun. TASK-165 Copilot CLI is the next implementation slice.
 
 **Sage integration state:** PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are
 clean, fully green reviews carrying capture/history closure, the complete 136-row parity ledger

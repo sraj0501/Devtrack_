@@ -22,8 +22,7 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Current ordered work
 
-1. Verify TASK-164 PR #286 hosted checks, address review findings if any, and integrate only with
-   explicit user authorization.
+1. Review/integrate green TASK-164 PR #286 only with explicit user authorization.
 2. Implement TASK-165 through TASK-168 one adapter and PR at a time, preserving the shared silence,
    privacy, fail-open, additive-install, and cross-platform acceptance gates.
 3. Implement TASK-169 read-only Sage MCP search/topics/status/entry and adapter diagnostics.
