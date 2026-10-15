@@ -66,5 +66,5 @@ The TASK-167 implementation passes:
   tests;
 - the full Go suite, `go vet ./...`, and race tests for the changed Sage packages.
 
-Hosted PR checks remain the final integration gate. Stable-release claims must wait for a later
-release qualification and promotion.
+PR #289 targets `dev`; hosted final-head checks remain the integration gate. Stable-release claims
+must wait for a later release qualification and promotion.

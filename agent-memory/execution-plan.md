@@ -15,8 +15,8 @@ without an approved board task and a dedicated branch targeting `dev`.
 - PRs #283–#285 are clean and fully green. The 136-scenario ledger is complete at 119 implemented,
   17 adapted, 0 partial, and 0 pending; repeated Windows/Linux acceptance passes.
 - Active task and branch: TASK-167 on `features/TASK-167-sage-cursor-adapter`. Implementation and
-  local cross-platform/documentation gates pass; a dedicated PR remains. TASK-166 PR #288 is
-  mergeable and all 19 final-head checks pass at `adca3e7`.
+  local cross-platform/documentation gates pass. PR #289 targets `dev`; hosted final-head checks
+  remain. TASK-166 PR #288 is mergeable and all 19 final-head checks pass at `adca3e7`.
 - Current reference checkout: `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`.
 - Planned Sage tasks after the active Cursor slice are TASK-168 Devin, TASK-169 read-only MCP
   retrieval/diagnostics, and TASK-170 operational closure.
@@ -24,7 +24,7 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Current ordered work
 
-1. Open and qualify TASK-167's dedicated PR.
+1. Require green final-head checks on TASK-167 PR #289.
 2. Implement TASK-168 Devin, preserving the shared silence, privacy, fail-open, additive-install,
    and cross-platform acceptance gates.
 3. Review/integrate green PRs #286–#288 only with explicit user authorization.

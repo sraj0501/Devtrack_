@@ -13,7 +13,8 @@ preserves foreign content, and adds no session process. Bounded shell/write payl
 privacy-minimal events with deterministic cross-hook identity. Focused Linux and native Windows
 tests, the full Go suite, vet, modified-package race coverage, and two documentation reconciliation
 passes succeed locally. TASK-166 PR #288 targets `dev`, is mergeable, and all 19 hosted checks
-pass on final head `adca3e7`.
+pass on final head `adca3e7`. TASK-167 commit `4807937` is pushed in PR #289 targeting `dev`;
+hosted final-head checks are the active gate.
 
 **Sage integration state:** PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are
 clean, fully green reviews carrying capture/history closure, the complete 136-row parity ledger
