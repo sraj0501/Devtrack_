@@ -26,7 +26,7 @@ func NormalizeCopilotEvents(raw []byte, receivedAt time.Time) []sage.Event {
 	}
 	sessionID := stringField(payload, "sessionId", "sessionID", "session_id")
 	toolName := stringField(payload, "toolName", "tool_name", "tool")
-	if sessionID == "" || !copilotToolAllowed(toolName) {
+	if sessionID == "" || !harnessToolAllowed(toolName) {
 		return nil
 	}
 	records := capture.RecordsFromPayload(payload, "copilot")
@@ -81,7 +81,7 @@ func stringField(payload map[string]any, keys ...string) string {
 	return ""
 }
 
-func copilotToolAllowed(tool string) bool {
+func harnessToolAllowed(tool string) bool {
 	tool = strings.ToLower(strings.ReplaceAll(tool, "-", "_"))
 	allowed := map[string]bool{
 		"exec": true, "bash": true, "shell": true, "run": true, "runcommand": true,

@@ -4,16 +4,17 @@ description: Active implementation work, integration state, and unresolved relea
 type: project
 ---
 
-**Active product initiative:** TASK-165 / SAGE-004 adds GitHub Copilot CLI as the third
-independently managed Sage capture adapter on `features/TASK-165-sage-copilot-adapter`. The
+**Active product initiative:** TASK-166 / SAGE-004 adds OpenCode as the fourth independently
+managed Sage capture adapter on `features/TASK-166-sage-opencode-adapter`; TASK-167 Cursor is the
+next implementation slice. The
 authoritative reference is `C:\Work\git_apps\ai_sessions_skills` at current clean HEAD `ea2e067`;
-its newer HEAD is intentional and includes the reference bug fixes. Copilot installs one additive
-owned version-1 `postToolUse` entry with portable Bash/PowerShell commands,
-`AI_SKILLS_HARNESS=copilot`, and a ten-second timeout. It preserves foreign hooks and normalizes
-only bounded privacy-minimal shell/search/edit events. Focused Linux and native Windows tests, the
-full Go suite, vet, and modified-package race coverage pass locally. PR #286 remains the green
-Claude adapter review. TASK-165 PR #287 targets `dev`, is mergeable, and all 19 hosted checks pass
-on reviewed head `197428e`. TASK-166 OpenCode is the next implementation slice.
+its newer HEAD is intentional and includes the reference bug fixes. OpenCode installs one owned
+user plugin that observes `tool.execute.before` and `tool.execute.after`, directly invokes the
+packaged Go endpoint, preserves unknown plugin content, and adds no session process. It normalizes
+only bounded privacy-minimal shell/search/edit events. Generated-plugin syntax, focused Linux and
+native Windows tests, the full Go suite, vet, and modified-package race coverage pass locally.
+TASK-165 PR #287 is mergeable and all 19 final-head checks pass at `2568b72`. TASK-166 PR #288
+targets `dev`, is mergeable, and all 19 hosted checks pass on reviewed head `fd4e762`.
 
 **Sage integration state:** PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are
 clean, fully green reviews carrying capture/history closure, the complete 136-row parity ledger

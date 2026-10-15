@@ -3,13 +3,44 @@
 _Last reconciled: 2026-10-15 — PRs #279–#282 merged the runtime isolation, model backends,
 platform installers, and lifecycle slices to `dev` at `f07bb97`. PRs #283–#285 are clean, fully
 green reviews carrying capture/history closure, the complete parity ledger, and repeated
-cross-platform acceptance. PR #286 is the green Claude adapter review, and PR #287 is the green
-Copilot adapter review. The active branch is
-`features/TASK-165-sage-copilot-adapter`, using
+cross-platform acceptance. PRs #286–#288 are the green Claude, Copilot, and OpenCode adapter
+reviews; OpenCode passed all 19 hosted checks on reviewed head `fd4e762`. The active branch is
+`features/TASK-166-sage-opencode-adapter`, with TASK-167 next, using
 the current reference checkout at `ea2e067`. The executable parity ledger is complete at 119
 implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. The repeated clean
 Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
 verification before allocation._
+
+**[2026-10-15] TASK-166 / SAGE-004 — OpenCode plugin capture adapter (complete).**
+**Priority:** High. **Branch:** `features/TASK-166-sage-opencode-adapter`.
+**Assigned to:** engineer. **Depends on:** green TASK-165 PR #287.
+
+Add one independently managed built-in OpenCode adapter using its user plugin directory and the
+existing native DevTrack hook endpoint. Preserve an unowned file at the dedicated plugin path,
+keep both before/after capture fail-open, and do not add session lifecycle processes or Python.
+
+**Acceptance criteria:**
+- [x] `devtrack sage harness list|install|uninstall opencode` reports truthful independent state
+      and never mutates Codex, Claude, or Copilot configuration.
+- [x] Installation writes one owned cross-platform plugin at the reference-resolved path, invokes
+      the packaged executable without a shell, and wires `tool.execute.before` plus
+      `tool.execute.after` without `session.idle` lifecycle work.
+- [x] Install/reinstall/uninstall is atomic, byte-stable, and pure subtraction; unknown content at
+      the dedicated path is preserved and known legacy content can be replaced safely.
+- [x] The hidden endpoint accepts bounded OpenCode payloads silently and emits only validated,
+      privacy-minimized shell/search/edit events; unsupported/session events are ignored and
+      identical before/after successes deduplicate deterministically.
+- [x] Exact Linux and native Windows tests, generated-plugin syntax, full Go tests/vet, privacy and
+      race checks pass locally.
+- [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
+      validation.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** implementation, cross-platform local verification, and two documentation
+passes complete against current reference HEAD `ea2e067`. PR #288 targets `dev`, is mergeable,
+and all 19 hosted checks pass on reviewed head `fd4e762`.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/288
+**Blockers:** none.
 
 **[2026-10-15] TASK-165 / SAGE-004 — GitHub Copilot CLI capture adapter (complete).**
 **Priority:** High. **Branch:** `features/TASK-165-sage-copilot-adapter`.
@@ -35,7 +66,7 @@ silent and fail-open, and do not add session lifecycle processes or a Python shi
 
 **Engineer status:** implementation, cross-platform local verification, and two documentation
 passes complete against current reference HEAD `ea2e067`. PR #287 targets `dev`, is mergeable, and
-all 19 hosted checks pass on reviewed head `197428e`.
+all 19 hosted checks pass on final head `2568b72`.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/287
 **Blockers:** none.
 

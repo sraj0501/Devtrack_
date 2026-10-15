@@ -24,6 +24,7 @@ devtrack sage harness list
 devtrack sage harness install codex
 devtrack sage harness install claude
 devtrack sage harness install copilot
+devtrack sage harness install opencode
 devtrack sage status
 ```
 
@@ -33,7 +34,8 @@ adapter to avoid console-host compatibility problems. Claude Code uses owned `Po
 for Bash/search/edit tools and a Bash-only `PostToolUseFailure` hook while preserving unrelated
 `~/.claude/settings.json` entries. GitHub Copilot CLI uses one owned version-1 `postToolUse` entry
 with portable Bash and PowerShell commands while preserving foreign entries in
-`~/.copilot/hooks/ai-session-skills.json`.
+`~/.copilot/hooks/ai-session-skills.json`. OpenCode uses one owned user plugin that observes both
+`tool.execute.before` and `tool.execute.after` without adding session lifecycle work.
 
 Pause or remove capture without changing unrelated harness configuration:
 
@@ -43,6 +45,7 @@ devtrack sage resume
 devtrack sage harness uninstall codex
 devtrack sage harness uninstall claude
 devtrack sage harness uninstall copilot
+devtrack sage harness uninstall opencode
 ```
 
 ## Search local knowledge

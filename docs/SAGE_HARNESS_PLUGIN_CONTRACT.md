@@ -14,6 +14,8 @@ devtrack sage harness install claude
 devtrack sage harness uninstall claude
 devtrack sage harness install copilot
 devtrack sage harness uninstall copilot
+devtrack sage harness install opencode
+devtrack sage harness uninstall opencode
 ```
 
 Installing one adapter must not install, enable, or edit configuration for another harness. The
@@ -23,7 +25,7 @@ legacy `install-hooks --harness codex` form remains a compatibility alias.
 
 Every built-in adapter implements the Go `harness.Adapter` interface: descriptor, status, install,
 and uninstall. Payload normalizers remain separately testable pure functions. Codex, Claude Code,
-and GitHub Copilot CLI are registered adapters. OpenCode, Cursor, and Devin can be added without
+GitHub Copilot CLI, and OpenCode are registered adapters. Cursor and Devin can be added without
 changing Sage's spool, database, importer, or search layers.
 
 ## External extension direction

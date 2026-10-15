@@ -189,9 +189,9 @@ deterministic Markdown publication, persistent routing, restart-safe merge/refil
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
 PRs #279–#282 are integrated into `dev`. PRs #283–#285 are green reviews carrying capture/history
 closure, the complete 136-row parity ledger, and the twice-run Windows/Linux acceptance journey.
-The active SAGE-004 work adds independently managed harness adapters. Codex and Claude Code are
-qualified, and TASK-165 adds GitHub Copilot CLI as the third adapter; none of this work is part of
-the v3.1.1 stable release. See the
+The active SAGE-004 work adds independently managed harness adapters. Codex, Claude Code,
+GitHub Copilot CLI, and OpenCode are qualified; TASK-167 Cursor is next. None of this
+work is part of the v3.1.1 stable release. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).
 
@@ -420,6 +420,7 @@ devtrack sage harness list
 devtrack sage harness install codex
 devtrack sage harness install claude
 devtrack sage harness install copilot
+devtrack sage harness install opencode
 devtrack sage status
 devtrack sage stop "reviewing a client repo"  # aliases: pause, off
 devtrack sage start                            # aliases: resume, on
@@ -452,9 +453,10 @@ the stacked reviews and new adapters still require integration. See
 [model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
 limits. Platform-specific harness destinations and additive hook migration are covered by the
 [platform/installer qualification](docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md). Codex, Claude
-Code, and GitHub Copilot CLI are currently advertised capture adapters. Adapter-specific events
-and privacy limits are in the [Claude adapter qualification](docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md)
-and [Copilot adapter qualification](docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md). Daemon locks,
+Code, GitHub Copilot CLI, and OpenCode are currently advertised capture adapters. Adapter-specific
+events and privacy limits are in the [Claude adapter qualification](docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md),
+[Copilot adapter qualification](docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md), and
+[OpenCode adapter qualification](docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md). Daemon locks,
 process liveness, no-console Windows children, capture lifecycle aliases, stop reasons, and
 legacy-hook safety are covered by the
 [lifecycle qualification](docs/SAGE_LIFECYCLE_QUALIFICATION.md). Capture-decision and read-only
