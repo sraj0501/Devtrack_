@@ -14,6 +14,7 @@ acting because branch, PR, and CI state can change after this record is updated.
 
 - Active task: TASK-165 / SAGE-004 GitHub Copilot CLI capture adapter on
   `features/TASK-165-sage-copilot-adapter`.
+- Commit `1d34088` is pushed in PR #287 targeting `dev`; hosted final-head checks are pending.
 - Integration branch: `origin/dev` at `f07bb97` after PR #282. PRs #279–#282 are merged.
 - PRs #283–#285 are clean, fully green stacked reviews for capture/history closure, the completed
   parity ledger, and the twice-run Windows/Linux acceptance journey.
@@ -78,7 +79,7 @@ race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.
 
 ## Recommended pickup order
 
-1. Finish TASK-165's two documentation passes, dedicated PR to `dev`, and final-head CI review.
+1. Require green final-head checks on TASK-165 PR #287.
 2. Review/integrate green TASK-164 PR #286 or TASK-165 only with explicit user authorization.
 3. Implement TASK-166 OpenCode, TASK-167 Cursor, and TASK-168 Devin one at a time, with
    documentation and a dedicated PR after each.

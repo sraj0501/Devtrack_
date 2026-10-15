@@ -33,7 +33,9 @@ silent and fail-open, and do not add session lifecycle processes or a Python shi
 - [ ] A dedicated PR to `dev` is open and its required checks pass.
 
 **Engineer status:** implementation, cross-platform local verification, and two documentation
-passes complete against current reference HEAD `ea2e067`; the dedicated PR is the remaining gate.
+passes complete against current reference HEAD `ea2e067`. Commit `1d34088` is pushed and PR #287
+targets `dev`; hosted final-head checks are the remaining gate.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/287
 **Blockers:** none.
 
 **[2026-10-15] TASK-164 / SAGE-004 — Claude Code capture adapter (complete).**
