@@ -14,7 +14,8 @@ Reference: `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`
   `~/.config/opencode` directory before creating an AppData location.
 - Every reference harness has a deterministic Markdown skill destination and frontmatter style.
   These paths do not advertise an adapter: the selective harness registry remains the authority
-  for currently installable integrations, and Codex remains the only shipped capture adapter.
+  for currently installable integrations. Codex was the only adapter advertised by this
+  qualification slice; TASK-164 later adds Claude Code independently.
 - DevTrack's packaged Go executable replaces the reference Python `.cmd` and `.sh` hook shims.
   Windows uses `devtrack.exe`; Linux and macOS use `devtrack`. This preserves native execution
   without adding Python to the Sage runtime.

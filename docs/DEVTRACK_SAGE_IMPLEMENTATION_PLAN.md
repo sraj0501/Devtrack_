@@ -184,26 +184,23 @@ Acceptance:
 - Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
   push to a remote.
 
-Latest checkpoint (2026-10-15): PR #278 merged diagnostics, safe local commits, command capture,
-and routing/model-request parity to `dev` at `a6a75b0`. PR #279's fully green review isolates the
-private runtime root from portable knowledge placement. PR #280 keeps Ollama HTTP as the default
-and adds explicit, no-shell command providers with process-local capture suppression; all 19 checks
-passed. PR #281 closes portable platform paths and additive install/removal. PR #282 closes daemon
-locks/liveness, no-console launches, capture aliases, stop reasons, and legacy-hook safety without
-adding a second watcher; all 19 hosted checks passed. PR #283 carries fail-open, privacy-safe
-capture decisions, installed pause enforcement, interleaved terminal history collection, and
-failed-exit preservation; all 19 hosted checks passed and the review is clean. PR #284 carries the
-IDE-parity slice, which resolves the last four rows without advertising another harness; hosted
-validation is in progress. The ledger is complete at 119 implemented,
-17 adapted, 0 partial, and 0 pending; `--require-complete` passes. Details:
+Latest checkpoint (2026-10-15): PRs #279–#282 are integrated into `dev` at `f07bb97`, adding
+runtime/knowledge isolation, explicit no-shell command providers, portable platform paths and
+additive installation, and single-daemon lifecycle safety. PRs #283–#285 are clean, fully green
+reviews carrying fail-open capture/history closure, the complete parity ledger, and the twice-run
+Windows/Linux end-to-end journey. The ledger is complete at 119 implemented, 17 adapted, 0 partial,
+and 0 pending; `--require-complete` passes. TASK-164 is the first SAGE-004 slice and adds an
+independently managed Claude Code adapter with additive `PostToolUse`/`PostToolUseFailure` hooks,
+privacy-minimized normalization, and exact Linux/Windows evidence. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md` and
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`, and
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`, and
 `docs/SAGE_LIFECYCLE_QUALIFICATION.md`, and
 `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`, and
 `docs/SAGE_IDE_PARITY_QUALIFICATION.md`. The repeated native Windows/Linux journey also passes;
-see `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Hosted review and stacked integration remain. The
-following dated entries describe earlier foundations.
+see `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Claude adapter evidence is in
+`docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md`. The following dated entries describe earlier
+foundations.
 
 Historical checkpoint (2026-09-20): the first model-free slice was implemented. Imported events
 are grouped transactionally by normalized signature into deterministic knowledge records with
@@ -225,6 +222,10 @@ paths described in the latest checkpoint above.
 Add adapters one at a time using recorded, sanitized fixtures for each current hook contract.
 Support is declared per event type; missing capabilities degrade explicitly rather than being
 inferred.
+
+Current sequence: Claude Code (TASK-164), Copilot CLI (TASK-165), OpenCode (TASK-166), Cursor
+(TASK-167), and Devin CLI (TASK-168). TASK-164 implements Bash/search/edit success capture and
+Bash failure capture without adding a second watcher.
 
 Acceptance:
 
@@ -285,12 +286,8 @@ for inspection or export.
 
 ## Immediate next step
 
-SAGE-001 and SAGE-002 are complete. TASK-157 has implemented the SAGE-003 durable queue and daemon
-lifecycle, deterministic Markdown publication, route correction, restart-safe merge/refile,
-skipped-action records, full-entry search, truthful diagnostics, safe local commits, isolated
-runtime/knowledge roots, explicit model backends, portable layouts, and additive installer
-mutation. PR #282 also closes daemon/process and CLI lifecycle parity, PR #283 carries
-capture/history parity, PR #284 completes the executable ledger, and the final acceptance branch
-runs the clean capture-to-self-written-knowledge journey twice on Windows and Linux. Review and
-integrate the stacked branches. Do not expand
-to another harness before that gate.
+SAGE-001 and SAGE-002 are complete, and SAGE-003 is qualified end to end. PRs #279–#282 are merged;
+review and integrate green PRs #283–#285. Complete TASK-164's Claude adapter review, then implement
+TASK-165 through TASK-168 one adapter and PR at a time. After those adapters, TASK-169 adds
+read-only Sage MCP retrieval and diagnostics, and TASK-170 adds retention, quarantine inspection,
+deterministic rebuild/repair, and Markdown export/import.

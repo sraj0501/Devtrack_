@@ -228,7 +228,7 @@ func runSageHookInstall(install bool, args []string) error {
 	if err != nil {
 		return fmt.Errorf("devtrack executable unavailable: %w", err)
 	}
-	registry := sageharness.New(sageharness.Codex{Installer: hooks.Installer{Root: root, Executable: executable, GOOS: runtime.GOOS}})
+	registry := sageHarnessRegistry(root, executable)
 	var result hooks.Installation
 	if install {
 		result, err = registry.Install("codex")
@@ -253,7 +253,7 @@ func runSageHarness(args []string, output io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("devtrack executable unavailable: %w", err)
 	}
-	registry := sageharness.New(sageharness.Codex{Installer: hooks.Installer{Root: root, Executable: executable, GOOS: runtime.GOOS}})
+	registry := sageHarnessRegistry(root, executable)
 	encoder := json.NewEncoder(output)
 	switch args[0] {
 	case "list":
@@ -284,20 +284,32 @@ func runSageHarness(args []string, output io.Writer) error {
 	}
 }
 
+func sageHarnessRegistry(root, executable string) *sageharness.Registry {
+	return sageharness.New(
+		sageharness.Codex{Installer: hooks.Installer{Root: root, Executable: executable, GOOS: runtime.GOOS}},
+		sageharness.Claude{Installer: hooks.ClaudeInstaller{Executable: executable}},
+	)
+}
+
 // runSageHook is deliberately silent and fail-open: malformed input or local
 // storage failure must never interrupt the host agent session.
 func runSageHook(args []string, input io.Reader) error {
 	if config.IsSageCaptureOff() {
 		return nil
 	}
-	if len(args) != 2 || args[0] != "codex" || args[1] != hooks.OwnerMarker {
+	if len(args) != 2 || args[1] != hooks.OwnerMarker || (args[0] != "codex" && args[0] != "claude") {
 		return nil
 	}
-	raw, err := io.ReadAll(io.LimitReader(input, hooks.MaxCodexHookBytes+1))
+	raw, err := io.ReadAll(io.LimitReader(input, hooks.MaxHarnessHookBytes+1))
 	if err != nil {
 		return nil
 	}
-	events := hooks.NormalizeCodexPostToolUseEvents(raw, time.Now().UTC())
+	var events []sage.Event
+	if args[0] == "claude" {
+		events = hooks.NormalizeClaudeEvents(raw, time.Now().UTC())
+	} else {
+		events = hooks.NormalizeCodexPostToolUseEvents(raw, time.Now().UTC())
+	}
 	if len(events) == 0 {
 		return nil
 	}

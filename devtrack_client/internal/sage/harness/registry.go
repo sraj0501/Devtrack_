@@ -83,3 +83,12 @@ func (c Codex) Descriptor() Descriptor {
 func (c Codex) Install() (hooks.Installation, error)   { return c.Installer.Install() }
 func (c Codex) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
 func (c Codex) Status() (hooks.Installation, error)    { return c.Installer.Status() }
+
+type Claude struct{ Installer hooks.ClaudeInstaller }
+
+func (c Claude) Descriptor() Descriptor {
+	return Descriptor{ID: "claude", DisplayName: "Claude Code", BuiltIn: true}
+}
+func (c Claude) Install() (hooks.Installation, error)   { return c.Installer.Install() }
+func (c Claude) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
+func (c Claude) Status() (hooks.Installation, error)    { return c.Installer.Status() }

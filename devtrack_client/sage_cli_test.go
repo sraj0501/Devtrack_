@@ -390,6 +390,26 @@ func TestPackagedCodexHookPathWritesOneSilentSpoolEvent(t *testing.T) {
 	}
 }
 
+func TestPackagedClaudeHookPathWritesPrivacySafeEvents(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	payload := `{"session_id":"private-thread","cwd":"C:/private/project","hook_event_name":"PostToolUse","tool_name":"Grep","tool_use_id":"private-call","tool_input":{"pattern":"PRIVATE_PATTERN","output_mode":"count"},"tool_response":"PRIVATE_OUTPUT"}`
+	if err := runSageHook([]string{"claude", hooks.OwnerMarker}, strings.NewReader(payload)); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(filepath.Join(dataHome, "devtrack", "sage", "spool", "pending"))
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("spool files=%d err=%v", len(entries), err)
+	}
+	raw, err := os.ReadFile(filepath.Join(dataHome, "devtrack", "sage", "spool", "pending", entries[0].Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(bytes.ToUpper(raw), []byte("PRIVATE")) || !bytes.Contains(raw, []byte(`"harness":"claude"`)) {
+		t.Fatalf("Claude spool payload is unsafe: %s", raw)
+	}
+}
+
 func TestReferenceEnvSwitchIsProcessLocal(t *testing.T) {
 	dataHome := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", dataHome)
@@ -474,6 +494,9 @@ func TestReferenceRepeatWithinOneCommandLineIsMarked(t *testing.T) {
 func TestSelectiveHarnessCLIListsInstallsAndRemovesCodex(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("CODEX_HOME", t.TempDir())
+	userHome := t.TempDir()
+	t.Setenv("HOME", userHome)
+	t.Setenv("USERPROFILE", userHome)
 	var output bytes.Buffer
 	if err := runSageHarness([]string{"list"}, &output); err != nil {
 		t.Fatal(err)
@@ -482,7 +505,7 @@ func TestSelectiveHarnessCLIListsInstallsAndRemovesCodex(t *testing.T) {
 		ID        string `json:"id"`
 		Installed bool   `json:"installed"`
 	}
-	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || len(listed) != 1 || listed[0].ID != "codex" || listed[0].Installed {
+	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || len(listed) != 2 || listed[0].ID != "claude" || listed[0].Installed || listed[1].ID != "codex" || listed[1].Installed {
 		t.Fatalf("list=%+v err=%v", listed, err)
 	}
 	output.Reset()
@@ -493,7 +516,7 @@ func TestSelectiveHarnessCLIListsInstallsAndRemovesCodex(t *testing.T) {
 	if err := runSageHarness([]string{"list"}, &output); err != nil {
 		t.Fatal(err)
 	}
-	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || !listed[0].Installed {
+	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || listed[0].Installed || !listed[1].Installed {
 		t.Fatalf("installed list=%+v err=%v", listed, err)
 	}
 	if err := runSageHarness([]string{"uninstall", "codex"}, &bytes.Buffer{}); err != nil {
@@ -501,6 +524,41 @@ func TestSelectiveHarnessCLIListsInstallsAndRemovesCodex(t *testing.T) {
 	}
 	if err := runSageHarness([]string{"install", "missing"}, &bytes.Buffer{}); err == nil {
 		t.Fatal("unknown harness must fail")
+	}
+}
+
+func TestSelectiveHarnessCLIInstallsAndRemovesClaude(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("CODEX_HOME", t.TempDir())
+	userHome := t.TempDir()
+	t.Setenv("HOME", userHome)
+	t.Setenv("USERPROFILE", userHome)
+	var output bytes.Buffer
+	if err := runSageHarness([]string{"install", "claude"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	settings := filepath.Join(userHome, ".claude", "settings.json")
+	raw, err := os.ReadFile(settings)
+	if err != nil || strings.Count(string(raw), hooks.OwnerMarker) != 2 {
+		t.Fatalf("Claude settings=%s err=%v", raw, err)
+	}
+	output.Reset()
+	if err := runSageHarness([]string{"list"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	var listed []struct {
+		ID        string `json:"id"`
+		Installed bool   `json:"installed"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &listed); err != nil || len(listed) != 2 || !listed[0].Installed || listed[1].Installed {
+		t.Fatalf("list=%+v err=%v", listed, err)
+	}
+	if err := runSageHarness([]string{"uninstall", "claude"}, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ = os.ReadFile(settings)
+	if strings.Contains(string(raw), hooks.OwnerMarker) {
+		t.Fatalf("Claude hook remained: %s", raw)
 	}
 }
 

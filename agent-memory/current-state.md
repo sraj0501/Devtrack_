@@ -4,42 +4,28 @@ description: Active implementation work, integration state, and unresolved relea
 type: project
 ---
 
-**Active product initiative:** TASK-157 / SAGE-003 is the Go-native port of the cross-harness,
-self-writing command-knowledge product in `C:\Work\git_apps\ai_sessions_skills` at
-`ea2e067`. Changes after `b85a1ab` affect generated reference knowledge only; the 136-scenario
-behavioral corpus is unchanged. PR #278 merged the latest qualified closure slice to `dev` at
-`a6a75b0`; its required checks and the post-merge CI, client CI, no-send end-to-end, and
-development-release workflows passed. PR #279 is the fully green, unmerged follow-up review from
-`features/TASK-157-sage-backend-isolation`, based on that merge. It separates the stable Sage
-runtime root from portable Markdown knowledge overrides and anchors relative overrides to the Sage
-configuration root rather than the caller's working directory. PR #280 adds explicit shipped
-command-model providers while retaining Ollama HTTP as the default; all 19 hosted checks passed.
-PR #281 closes portable harness layouts and additive install/removal parity; all 19 hosted checks
-passed. PR #282 closes all 10 daemon/process and 7 CLI lifecycle rows without adding a second Sage
-watcher; all 19 hosted checks passed. The active stacked branch is
-`features/TASK-157-sage-capture-history`, based on PR #282's green head. Implementation commit
-`215222b` closes four capture/logging rows and both partial Codex-history rows. PR #283 targets
-`dev`; all 19 hosted checks passed and the review is clean. The active stacked branch is
-`features/TASK-157-sage-ide-parity`, based on PR #283's head. Commit `836feb7` resolves the last
-four rows without advertising another harness. PR #284 targets `dev`; all 19 hosted checks pass.
-The 136-scenario ledger now records 119 implemented, 17 adapted, 0 partial, and 0 pending scenarios;
-`--require-complete` passes. PR #285 carries the final two-pass clean journey, which passes on
-native Windows and Linux; all 19 hosted checks pass and the review is clean.
-Full Go tests, `go vet ./...`,
-parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
-pass locally. The four exact IDE-compatibility tests also pass as native Windows executables, and
-the modified packages pass Linux race coverage. Next: review hosted checks and integrate the
-stacked reviews.
-Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order;
-`sage-resume.md` is the fresh-session handoff with the exact pending groups and acceptance gates.
+**Active product initiative:** TASK-164 / SAGE-004 adds Claude Code as the second independently
+managed Sage capture adapter on `features/TASK-164-sage-claude-adapter`. The authoritative
+reference is `C:\Work\git_apps\ai_sessions_skills` at current clean HEAD `ea2e067`; its newer HEAD
+is intentional and includes the reference bug fixes. Claude installs additive owned
+`PostToolUse` hooks for Bash/search/edit tools and `PostToolUseFailure` for Bash, preserves foreign
+settings, and normalizes only bounded privacy-minimal events. Focused Linux and native Windows
+tests, the full Go suite, vet, and modified-package race coverage pass locally. Next: finish the
+two documentation reconciliation passes, commit through DevTrack, push, and open TASK-164's PR to
+`dev`; then start TASK-165 for Copilot CLI.
 
-**Integration state:** PR #278 merged to `dev` at `a6a75b0` on 2026-10-13. All required PR checks
-passed, including the hosted Windows suite, and all applicable post-merge workflows passed. The
-superseded PR #274 was closed without merge and is no longer a workflow risk.
+**Sage integration state:** PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are
+clean, fully green reviews carrying capture/history closure, the complete 136-row parity ledger
+(119 implemented, 17 adapted, 0 partial, 0 pending), and the twice-run native Windows/Linux
+acceptance journey. Playback, visible-reasoning capture, autonomous Git operations, and raw-event
+cloud sync remain out of scope.
+
+**Integration state:** Current `origin/dev` is `f07bb97` after PR #282. PRs #283–#285 remain
+stacked, clean, and green pending integration.
 
 **Distribution state:** Stable v3.1.1 remains the latest public stable release. The rolling `dev`
-release is `dev-a6a75b0`, built by the successful post-merge development-release workflow; current
-`origin/dev` is `a6a75b0`. `main` and `dev` have diverged in Git
+release boundary must be rechecked from GitHub before publication; current `origin/dev` is
+`f07bb97`. `main` and `dev` have diverged in Git
 ancestry and require deliberate reconciliation before a future promotion; do not assume a simple
 fast-forward.
 
