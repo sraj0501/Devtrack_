@@ -1636,10 +1636,11 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
-<h2>Current work — TASK-164 Claude Code capture</h2>
+<h2>Current work — TASK-165 GitHub Copilot CLI capture</h2>
 <ul>
-<li><strong>Independent adapter:</strong> <code>devtrack sage harness install claude</code> adds only DevTrack-owned Claude hooks and preserves unrelated <code>~/.claude/settings.json</code> content and mode.</li>
-<li><strong>Supported events:</strong> successful Bash, Grep, Glob, Edit, MultiEdit, Write, and NotebookEdit calls plus failed Bash calls are normalized into bounded, privacy-minimized Sage events.</li>
+<li><strong>Independent adapter:</strong> <code>devtrack sage harness install copilot</code> adds one DevTrack-owned version-1 <code>postToolUse</code> entry and preserves foreign entries in <code>~/.copilot/hooks/ai-session-skills.json</code>.</li>
+<li><strong>Portable hook:</strong> the entry includes safely quoted Bash and PowerShell commands, <code>AI_SKILLS_HARNESS=copilot</code>, and <code>timeoutSec: 10</code>.</li>
+<li><strong>Supported events:</strong> allowlisted shell, search/glob, and edit/write calls are normalized into bounded, privacy-minimized Sage events; session and unsupported events are ignored.</li>
 <li><strong>Runtime boundary:</strong> the packaged Go executable handles hooks silently and fail-open. No Python shim or second watcher is installed.</li>
 <li><strong>Qualification:</strong> focused Linux and native Windows tests, the full Go suite, vet, race coverage, and privacy-canary checks pass locally.</li>
 </ul>
@@ -1837,9 +1838,10 @@ devtrack sage resume
 devtrack sage harness list
 devtrack sage harness install codex
 devtrack sage harness install claude
+devtrack sage harness install copilot
 devtrack sage search "docker compose" [--topic containers]
 devtrack sage topics</code></pre>
-<p>These unreleased commands manage local capture and query deterministic Markdown knowledge. Codex and Claude Code are independently selected adapters; installing one never installs the other. Search returns complete entries and reflects route corrections, merges, edits, moves, and deletions. All 136 reference rows and repeated Windows/Linux acceptance are qualified.</p>
+<p>These unreleased commands manage local capture and query deterministic Markdown knowledge. Codex, Claude Code, and GitHub Copilot CLI are independently selected adapters; installing one never installs another. Search returns complete entries and reflects route corrections, merges, edits, moves, and deletions. All 136 reference rows and repeated Windows/Linux acceptance are qualified.</p>
 
 <h2>Interfaces, Alerts and Lifecycle</h2>
 <pre><code class="language-bash">devtrack tui
@@ -2728,7 +2730,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
-<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from <code>ai_sessions_skills</code> commit <code>ea2e067</code>. PRs #279–#282 are integrated; PRs #283–#285 are green reviews completing the 136-row ledger and repeated Windows/Linux acceptance. TASK-164 begins SAGE-004 by adding independently managed Claude Code capture beside Codex.</p>
+<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. PRs #279–#282 are integrated; PRs #283–#286 are green reviews through the independently managed Claude Code adapter. TASK-165 adds GitHub Copilot CLI as the third capture adapter.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2741,7 +2743,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   SAGE: `<div class="md-body">
 <h1>DevTrack Sage and the retired Git Sage name</h1>
 <p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
-<blockquote><p><strong>Development status:</strong> The qualified Sage foundation is available on rolling <code>dev</code> through PR #282 and is not part of stable <code>v3.1.1</code>. SAGE-003 publishes, searches, diagnoses, and safely commits deterministic local knowledge; all 136 reference rows and repeated Windows/Linux acceptance are complete on green stacked reviews. TASK-164 adds Claude Code as the second capture adapter.</p></blockquote>
+<blockquote><p><strong>Development status:</strong> The qualified Sage foundation is available on rolling <code>dev</code> through PR #282 and is not part of stable <code>v3.1.1</code>. SAGE-003 publishes, searches, diagnoses, and safely commits deterministic local knowledge; all 136 reference rows and repeated Windows/Linux acceptance are complete on green stacked reviews. TASK-164 adds Claude Code, and active TASK-165 adds GitHub Copilot CLI as the third capture adapter.</p></blockquote>
 
 <h2>What happened to Git Sage?</h2>
 <p>Older DevTrack documentation used <strong>Git Sage</strong> for a repository chat and Git-operation experiment. That product surface has been removed. The current <code>devtrack sage</code> namespace is deliberately narrower and safer: it captures privacy-minimized command events and builds local personal knowledge.</p>
@@ -2753,13 +2755,13 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <p>Removed forms—<code>sage ask</code>, <code>sage do</code>, <code>sage pr</code>, <code>sage interactive</code>, <code>sage git</code>, and free-form Sage questions—fail clearly and do not start a model, network request, or Git operation. Do not use <code>GIT_SAGE_*</code> settings for current Sage; a few Python-server reads remain only as legacy model fallbacks.</p>
 
 <h2>Authoritative behavior</h2>
-<p>The parity baseline is <code>C:\\Work\\git_apps\\ai_sessions_skills</code> at current commit <code>ea2e067</code>. Its changes after <code>b85a1ab</code> affect generated knowledge only; the 136-scenario behavioral corpus is unchanged. DevTrack ports its behavior into the Go client: command/tool capture, normalized signatures, deduplication, topic routing, local-model distillation, structured entries, deterministic Markdown knowledge files, search, corrections, lifecycle controls, diagnostics, and safe local commits.</p>
+<p>The parity baseline is <code>C:\\Work\\git_apps\\ai_sessions_skills</code> at current clean commit <code>ea2e067</code>. That newer HEAD is intentional and includes the reference bug fixes. DevTrack ports its behavior into the Go client: command/tool capture, normalized signatures, deduplication, topic routing, local-model distillation, structured entries, deterministic Markdown knowledge files, search, corrections, lifecycle controls, diagnostics, and safe local commits.</p>
 <p>The <code>devtrack sage</code> namespace is reserved exclusively for this command-knowledge workflow. It is not a repository chat or Git-operation assistant.</p>
 
 <h2>Implemented foundation</h2>
 <ul>
 <li>Versioned, normalized harness-event contract with privacy and size limits.</li>
-<li>Fail-open Codex and Claude Code capture that performs no model or network call on the hook path.</li>
+<li>Fail-open Codex, Claude Code, and GitHub Copilot CLI capture that performs no model or network call on the hook path.</li>
 <li>Atomic local spool, bounded import, malformed-event quarantine, and append-only SQLite storage.</li>
 <li>Pause/resume state and idempotent harness installation that preserves unrelated configuration.</li>
 <li>Deterministic grouping by command signature, FTS5 search, topic aggregation, source-harness attribution, usage/success counts, and idempotent backfill.</li>
@@ -2770,7 +2772,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Read-only Codex history compatibility for <code>vscode</code> and <code>cli</code>, including pause/cutoff safety and retry without checkpoint loss.</li>
 </ul>
 
-<h2>Current TASK-157 commands</h2>
+<h2>Current Sage commands</h2>
 <pre><code class="language-bash"># Capture state and lifecycle
 devtrack sage status
 devtrack sage stop "reviewing a client repo"  # aliases: pause, off
@@ -2783,6 +2785,8 @@ devtrack sage harness install codex
 devtrack sage harness uninstall codex
 devtrack sage harness install claude
 devtrack sage harness uninstall claude
+devtrack sage harness install copilot
+devtrack sage harness uninstall copilot
 
 # Initial SQLite knowledge index
 devtrack sage search "docker compose"
@@ -2796,7 +2800,7 @@ devtrack sage routes</code></pre>
 <h2>What remains on the Sage roadmap</h2>
 <ul>
 <li>Integrate the clean, green SAGE-003 stacked reviews.</li>
-<li>Add Copilot CLI, OpenCode, Cursor, and Devin adapters one at a time.</li>
+<li>Add OpenCode, Cursor, and Devin adapters one at a time after the Copilot review.</li>
 <li>Add read-only Sage MCP retrieval and bounded operational repair/export tooling.</li>
 </ul>
 

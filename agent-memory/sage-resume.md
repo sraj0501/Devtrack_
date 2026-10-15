@@ -12,13 +12,14 @@ acting because branch, PR, and CI state can change after this record is updated.
 
 ## Current checkpoint
 
-- Active task: TASK-164 / SAGE-004 Claude Code capture adapter on
-  `features/TASK-164-sage-claude-adapter`.
+- Latest completed task: TASK-165 / SAGE-004 GitHub Copilot CLI capture adapter on
+  `features/TASK-165-sage-copilot-adapter`. PR #287 targets `dev`, is mergeable, and all 19 hosted
+  checks pass on reviewed head `197428e`.
 - Integration branch: `origin/dev` at `f07bb97` after PR #282. PRs #279–#282 are merged.
 - PRs #283–#285 are clean, fully green stacked reviews for capture/history closure, the completed
   parity ledger, and the twice-run Windows/Linux acceptance journey.
-- Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
-  Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.
+- Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current clean commit `ea2e067`.
+  This newer HEAD is intentional and includes the reference bug fixes.
 - Ledger: 136 scenarios — 119 implemented, 17 adapted, 0 partial, and 0 pending;
   `--require-complete` passes.
 - Qualification: full Go tests, `go vet ./...`, ledger consistency, parity-checker tests,
@@ -53,8 +54,8 @@ See `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`.
 
 PR #281 resolves all 18 platform-layout and additive installer/removal rows.
 Eleven layout rows and five mutation rows are implemented; two Python script-shim rows are
-explicitly adapted to packaged native Go launchers. TASK-164 subsequently adds Claude Code as the
-second advertised adapter.
+explicitly adapted to packaged native Go launchers. TASK-164 subsequently adds Claude Code and
+TASK-165 adds GitHub Copilot CLI as independent advertised adapters.
 See `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
 
 PR #282's lifecycle branch resolves all 10 daemon/process and 7 CLI lifecycle rows. DevTrack's
@@ -78,10 +79,11 @@ race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.
 
 ## Recommended pickup order
 
-1. Review/integrate green TASK-164 PR #286 only with explicit user authorization.
-2. Implement TASK-165 Copilot CLI, TASK-166 OpenCode, TASK-167 Cursor, and TASK-168 Devin one at a
-   time, with documentation and a dedicated PR after each.
-3. Implement TASK-169 read-only MCP retrieval/diagnostics, then TASK-170 operational closure.
+1. Start TASK-166 OpenCode from the green TASK-165 head and give it a dedicated PR to `dev`.
+2. Review/integrate green PRs #286–#287 only with explicit user authorization.
+3. Implement TASK-167 Cursor and TASK-168 Devin one at a time, with
+   documentation and a dedicated PR after each.
+4. Implement TASK-169 read-only MCP retrieval/diagnostics, then TASK-170 operational closure.
 
 At the start of a fresh session, read `agent-memory/INDEX.md`, `current-state.md`,
 `execution-plan.md`, `initiatives/sage.md`, this file, and the active board entry. Then run:

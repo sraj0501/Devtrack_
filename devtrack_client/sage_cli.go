@@ -288,6 +288,7 @@ func sageHarnessRegistry(root, executable string) *sageharness.Registry {
 	return sageharness.New(
 		sageharness.Codex{Installer: hooks.Installer{Root: root, Executable: executable, GOOS: runtime.GOOS}},
 		sageharness.Claude{Installer: hooks.ClaudeInstaller{Executable: executable}},
+		sageharness.Copilot{Installer: hooks.CopilotInstaller{Executable: executable}},
 	)
 }
 
@@ -297,7 +298,8 @@ func runSageHook(args []string, input io.Reader) error {
 	if config.IsSageCaptureOff() {
 		return nil
 	}
-	if len(args) != 2 || args[1] != hooks.OwnerMarker || (args[0] != "codex" && args[0] != "claude") {
+	if len(args) != 2 || args[1] != hooks.OwnerMarker ||
+		(args[0] != "codex" && args[0] != "claude" && args[0] != "copilot") {
 		return nil
 	}
 	raw, err := io.ReadAll(io.LimitReader(input, hooks.MaxHarnessHookBytes+1))
@@ -307,6 +309,8 @@ func runSageHook(args []string, input io.Reader) error {
 	var events []sage.Event
 	if args[0] == "claude" {
 		events = hooks.NormalizeClaudeEvents(raw, time.Now().UTC())
+	} else if args[0] == "copilot" {
+		events = hooks.NormalizeCopilotEvents(raw, time.Now().UTC())
 	} else {
 		events = hooks.NormalizeCodexPostToolUseEvents(raw, time.Now().UTC())
 	}

@@ -23,6 +23,7 @@ as `devtrack git`, while `devtrack sage` now means command capture and personal 
 devtrack sage harness list
 devtrack sage harness install codex
 devtrack sage harness install claude
+devtrack sage harness install copilot
 devtrack sage status
 ```
 
@@ -30,7 +31,9 @@ Installed hooks are silent, bounded, model-free, and fail-open. They omit raw co
 reasoning, messages, and working-directory paths. On Windows, Codex uses an opt-in read-only history
 adapter to avoid console-host compatibility problems. Claude Code uses owned `PostToolUse` hooks
 for Bash/search/edit tools and a Bash-only `PostToolUseFailure` hook while preserving unrelated
-`~/.claude/settings.json` entries.
+`~/.claude/settings.json` entries. GitHub Copilot CLI uses one owned version-1 `postToolUse` entry
+with portable Bash and PowerShell commands while preserving foreign entries in
+`~/.copilot/hooks/ai-session-skills.json`.
 
 Pause or remove capture without changing unrelated harness configuration:
 
@@ -39,6 +42,7 @@ devtrack sage pause
 devtrack sage resume
 devtrack sage harness uninstall codex
 devtrack sage harness uninstall claude
+devtrack sage harness uninstall copilot
 ```
 
 ## Search local knowledge

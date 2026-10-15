@@ -72,9 +72,12 @@ quickly, print nothing, perform no model or network call, and never break an age
 - PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are clean and fully green, carrying
   capture/history closure, the complete 119-implemented/17-adapted ledger, and repeated native
   Windows/Linux acceptance.
-- TASK-164 is the active first SAGE-004 slice. It adds Claude Code beside Codex with independently
-  selected install/uninstall, additive owned hooks, bounded Bash/search/edit normalization, Bash
-  failure capture, and no second watcher. See `docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md`.
+- TASK-164 adds Claude Code beside Codex with independently selected install/uninstall, additive
+  owned hooks, bounded Bash/search/edit normalization, Bash failure capture, and no second watcher;
+  green PR #286 targets `dev`. TASK-165 is active and adds GitHub Copilot CLI through one owned
+  version-1 `postToolUse` entry, portable shell commands, and bounded shell/search/edit
+  normalization. See `docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md` and
+  `docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md`.
 
 ## Ordered next steps
 
@@ -184,8 +187,9 @@ parity scenarios. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`.
 
 ### 8. Expand harness support
 
-Finish Codex first, then add Claude Code, Copilot CLI, OpenCode, Cursor/IDE history, and Devin CLI
-one at a time. Do not advertise an adapter until it passes the shared silence, latency, privacy,
+Codex, Claude Code, and Copilot CLI are implemented as independent adapters. Add OpenCode,
+Cursor/IDE history, and Devin CLI one at a time. Do not advertise an adapter until it passes the
+shared silence, latency, privacy,
 deduplication, fail-open, install/removal, configuration-preservation, and unsupported-event suite.
 
 ### 9. Add read-only integration and operational closure
