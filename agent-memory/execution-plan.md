@@ -14,16 +14,16 @@ without an approved board task and a dedicated branch targeting `dev`.
 - Current integration branch: `origin/dev` at `f07bb97` after PR #282.
 - PRs #283–#285 are clean and fully green. The 136-scenario ledger is complete at 119 implemented,
   17 adapted, 0 partial, and 0 pending; repeated Windows/Linux acceptance passes.
-- Latest completed task and branch: TASK-165 on `features/TASK-165-sage-copilot-adapter`; PR #287
-  is mergeable and all 19 hosted checks pass on reviewed head `197428e`.
+- Active task and branch: TASK-166 on `features/TASK-166-sage-opencode-adapter`. TASK-165 PR #287
+  is mergeable and all 19 final-head checks pass at `2568b72`.
 - Current reference checkout: `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`.
-- Planned Sage tasks after the active Copilot slice are TASK-166 OpenCode, TASK-167 Cursor,
-  TASK-168 Devin, TASK-169 read-only MCP retrieval/diagnostics, and TASK-170 operational closure.
+- Planned Sage tasks after the active OpenCode slice are TASK-167 Cursor, TASK-168 Devin,
+  TASK-169 read-only MCP retrieval/diagnostics, and TASK-170 operational closure.
 - Next unused task ID is TASK-171, subject to board verification before allocation.
 
 ## Current ordered work
 
-1. Start TASK-166 OpenCode from the green TASK-165 head and give it a dedicated PR to `dev`.
+1. Finish TASK-166 documentation, open its dedicated PR to `dev`, and require green final-head checks.
 2. Review/integrate green PRs #286–#287 only with explicit user authorization.
 3. Implement TASK-167 and TASK-168 one adapter and PR at a time, preserving the shared silence,
    privacy, fail-open, additive-install, and cross-platform acceptance gates.

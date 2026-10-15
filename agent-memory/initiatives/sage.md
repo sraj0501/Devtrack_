@@ -74,10 +74,14 @@ quickly, print nothing, perform no model or network call, and never break an age
   Windows/Linux acceptance.
 - TASK-164 adds Claude Code beside Codex with independently selected install/uninstall, additive
   owned hooks, bounded Bash/search/edit normalization, Bash failure capture, and no second watcher;
-  green PR #286 targets `dev`. TASK-165 is active and adds GitHub Copilot CLI through one owned
+  green PR #286 targets `dev`. TASK-165 adds GitHub Copilot CLI through one owned
   version-1 `postToolUse` entry, portable shell commands, and bounded shell/search/edit
-  normalization. See `docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md` and
-  `docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md`.
+  normalization; PR #287 is mergeable and all 19 final-head checks pass. See
+  `docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md` and `docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md`.
+- TASK-166 is active and adds
+  OpenCode through one owned user plugin, reference-compatible before/after tool observation,
+  direct native execution, bounded normalization, and no session lifecycle process. See
+  `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md`.
 
 ## Ordered next steps
 
@@ -187,8 +191,8 @@ parity scenarios. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`.
 
 ### 8. Expand harness support
 
-Codex, Claude Code, and Copilot CLI are implemented as independent adapters. Add OpenCode,
-Cursor/IDE history, and Devin CLI one at a time. Do not advertise an adapter until it passes the
+Codex, Claude Code, Copilot CLI, and OpenCode are implemented as independent adapters. Add
+Cursor/IDE history and Devin CLI one at a time. Do not advertise an adapter until it passes the
 shared silence, latency, privacy,
 deduplication, fail-open, install/removal, configuration-preservation, and unsupported-event suite.
 

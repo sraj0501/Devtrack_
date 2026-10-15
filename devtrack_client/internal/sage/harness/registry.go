@@ -101,3 +101,12 @@ func (c Copilot) Descriptor() Descriptor {
 func (c Copilot) Install() (hooks.Installation, error)   { return c.Installer.Install() }
 func (c Copilot) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
 func (c Copilot) Status() (hooks.Installation, error)    { return c.Installer.Status() }
+
+type OpenCode struct{ Installer hooks.OpenCodeInstaller }
+
+func (o OpenCode) Descriptor() Descriptor {
+	return Descriptor{ID: "opencode", DisplayName: "OpenCode", BuiltIn: true}
+}
+func (o OpenCode) Install() (hooks.Installation, error)   { return o.Installer.Install() }
+func (o OpenCode) Uninstall() (hooks.Installation, error) { return o.Installer.Uninstall() }
+func (o OpenCode) Status() (hooks.Installation, error)    { return o.Installer.Status() }

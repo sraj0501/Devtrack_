@@ -197,8 +197,9 @@ bounded native endpoint. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md`,
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`,
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`,
-`docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md`, and
+`docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md`,
 `docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md`,
+`docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md`,
 `docs/SAGE_LIFECYCLE_QUALIFICATION.md`,
 `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`, and
 `docs/SAGE_IDE_PARITY_QUALIFICATION.md`. The repeated native Windows/Linux journey also passes;
@@ -231,7 +232,8 @@ inferred.
 Current sequence: Claude Code (TASK-164), Copilot CLI (TASK-165), OpenCode (TASK-166), Cursor
 (TASK-167), and Devin CLI (TASK-168). TASK-164 implements Bash/search/edit success capture and
 Bash failure capture. TASK-165 implements Copilot shell/search/edit capture through one owned
-`postToolUse` entry. Neither adapter adds a second watcher.
+`postToolUse` entry. TASK-166 implements OpenCode shell/search/edit capture through one owned
+plugin observing `tool.execute.before` and `tool.execute.after`. None adds a second watcher.
 
 Acceptance:
 
@@ -293,8 +295,8 @@ for inspection or export.
 ## Immediate next step
 
 SAGE-001 and SAGE-002 are complete, and SAGE-003 is qualified end to end. PRs #279–#282 are merged;
-review and integrate green PRs #283–#286 only with explicit authorization. Complete TASK-165's
-Copilot adapter review, then implement TASK-166 through TASK-168 one adapter and PR at a time.
+review and integrate green PRs #283–#287 only with explicit authorization. Complete TASK-166's
+OpenCode adapter review, then implement TASK-167 and TASK-168 one adapter and PR at a time.
 After those adapters, TASK-169 adds
 read-only Sage MCP retrieval and diagnostics, and TASK-170 adds retention, quarantine inspection,
 deterministic rebuild/repair, and Markdown export/import.

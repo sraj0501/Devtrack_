@@ -12,9 +12,9 @@ acting because branch, PR, and CI state can change after this record is updated.
 
 ## Current checkpoint
 
-- Latest completed task: TASK-165 / SAGE-004 GitHub Copilot CLI capture adapter on
-  `features/TASK-165-sage-copilot-adapter`. PR #287 targets `dev`, is mergeable, and all 19 hosted
-  checks pass on reviewed head `197428e`.
+- Active task: TASK-166 / SAGE-004 OpenCode plugin capture adapter on
+  `features/TASK-166-sage-opencode-adapter`. TASK-165 PR #287 targets `dev`, is mergeable, and all
+  19 final-head checks pass at `2568b72`.
 - Integration branch: `origin/dev` at `f07bb97` after PR #282. PRs #279–#282 are merged.
 - PRs #283–#285 are clean, fully green stacked reviews for capture/history closure, the completed
   parity ledger, and the twice-run Windows/Linux acceptance journey.
@@ -54,8 +54,8 @@ See `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`.
 
 PR #281 resolves all 18 platform-layout and additive installer/removal rows.
 Eleven layout rows and five mutation rows are implemented; two Python script-shim rows are
-explicitly adapted to packaged native Go launchers. TASK-164 subsequently adds Claude Code and
-TASK-165 adds GitHub Copilot CLI as independent advertised adapters.
+explicitly adapted to packaged native Go launchers. TASK-164 subsequently adds Claude Code,
+TASK-165 adds GitHub Copilot CLI, and TASK-166 adds OpenCode as independent advertised adapters.
 See `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
 
 PR #282's lifecycle branch resolves all 10 daemon/process and 7 CLI lifecycle rows. DevTrack's
@@ -79,7 +79,7 @@ race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.
 
 ## Recommended pickup order
 
-1. Start TASK-166 OpenCode from the green TASK-165 head and give it a dedicated PR to `dev`.
+1. Finish TASK-166's two documentation passes, dedicated PR to `dev`, and final-head CI review.
 2. Review/integrate green PRs #286–#287 only with explicit user authorization.
 3. Implement TASK-167 Cursor and TASK-168 Devin one at a time, with
    documentation and a dedicated PR after each.
