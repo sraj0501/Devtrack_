@@ -190,7 +190,8 @@ records, full-entry search, truthful diagnostics, and safe local knowledge commi
 PRs #279–#282 are integrated into `dev`. PRs #283–#285 are green reviews carrying capture/history
 closure, the complete 136-row parity ledger, and the twice-run Windows/Linux acceptance journey.
 The active SAGE-004 work adds independently managed harness adapters. Codex, Claude Code,
-GitHub Copilot CLI, OpenCode, and Cursor are qualified; TASK-168 Devin is next. None of this
+GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are locally qualified. TASK-169 read-only MCP
+retrieval and diagnostics is next. None of this
 work is part of the v3.1.1 stable release. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).
@@ -453,12 +454,13 @@ the stacked reviews and new adapters still require integration. See
 [model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
 limits. Platform-specific harness destinations and additive hook migration are covered by the
 [platform/installer qualification](docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md). Codex, Claude
-Code, GitHub Copilot CLI, OpenCode, and Cursor are currently advertised capture adapters.
+Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are currently advertised capture adapters.
 Adapter-specific events and privacy limits are in the
 [Claude adapter qualification](docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md),
 [Copilot adapter qualification](docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md),
 [OpenCode adapter qualification](docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md), and
-[Cursor adapter qualification](docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md). Daemon locks,
+[Cursor adapter qualification](docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md), and
+[Devin adapter qualification](docs/SAGE_DEVIN_ADAPTER_QUALIFICATION.md). Daemon locks,
 process liveness, no-console Windows children, capture lifecycle aliases, stop reasons, and
 legacy-hook safety are covered by the
 [lifecycle qualification](docs/SAGE_LIFECYCLE_QUALIFICATION.md). Capture-decision and read-only
