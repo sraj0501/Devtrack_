@@ -3,14 +3,15 @@
 _Last reconciled: 2026-10-15 — PRs #279–#282 merged the runtime isolation, model backends,
 platform installers, and lifecycle slices to `dev` at `f07bb97`. PRs #283–#285 are clean, fully
 green reviews carrying capture/history closure, the complete parity ledger, and repeated
-cross-platform acceptance. PR #286 is the green Claude adapter review. The active branch is
+cross-platform acceptance. PR #286 is the green Claude adapter review, and PR #287 is the green
+Copilot adapter review. The active branch is
 `features/TASK-165-sage-copilot-adapter`, using
 the current reference checkout at `ea2e067`. The executable parity ledger is complete at 119
 implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. The repeated clean
 Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
 verification before allocation._
 
-**[2026-10-15] TASK-165 / SAGE-004 — GitHub Copilot CLI capture adapter (in progress).**
+**[2026-10-15] TASK-165 / SAGE-004 — GitHub Copilot CLI capture adapter (complete).**
 **Priority:** High. **Branch:** `features/TASK-165-sage-copilot-adapter`.
 **Assigned to:** engineer. **Depends on:** green TASK-164 PR #286.
 
@@ -30,11 +31,11 @@ silent and fail-open, and do not add session lifecycle processes or a Python shi
 - [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
 - [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
       validation.
-- [ ] A dedicated PR to `dev` is open and its required checks pass.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
 
 **Engineer status:** implementation, cross-platform local verification, and two documentation
-passes complete against current reference HEAD `ea2e067`. Commit `1d34088` is pushed and PR #287
-targets `dev`; hosted final-head checks are the remaining gate.
+passes complete against current reference HEAD `ea2e067`. PR #287 targets `dev`, is mergeable, and
+all 19 hosted checks pass on reviewed head `197428e`.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/287
 **Blockers:** none.
 
@@ -66,8 +67,7 @@ Windows build/test and native MCPB smoke also passed.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/286
 **Blockers:** none.
 
-**Planned Sage sequence after TASK-164:**
-- TASK-165 — GitHub Copilot CLI capture adapter.
+**Planned Sage sequence after TASK-165:**
 - TASK-166 — OpenCode plugin capture adapter.
 - TASK-167 — Cursor capture adapter.
 - TASK-168 — Devin CLI capture adapter.

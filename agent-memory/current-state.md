@@ -12,8 +12,8 @@ owned version-1 `postToolUse` entry with portable Bash/PowerShell commands,
 `AI_SKILLS_HARNESS=copilot`, and a ten-second timeout. It preserves foreign hooks and normalizes
 only bounded privacy-minimal shell/search/edit events. Focused Linux and native Windows tests, the
 full Go suite, vet, and modified-package race coverage pass locally. PR #286 remains the green
-Claude adapter review. TASK-165 commit `1d34088` is pushed in PR #287 targeting `dev`; hosted
-final-head checks are the active gate.
+Claude adapter review. TASK-165 PR #287 targets `dev`, is mergeable, and all 19 hosted checks pass
+on reviewed head `197428e`. TASK-166 OpenCode is the next implementation slice.
 
 **Sage integration state:** PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are
 clean, fully green reviews carrying capture/history closure, the complete 136-row parity ledger
