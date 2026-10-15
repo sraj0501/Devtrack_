@@ -80,8 +80,11 @@ quickly, print nothing, perform no model or network call, and never break an age
   `docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md` and `docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md`.
 - TASK-166 adds OpenCode through one owned user plugin, reference-compatible before/after tool
   observation, direct native execution, bounded normalization, and no session lifecycle process.
-  PR #288 is mergeable and all 19 hosted checks pass on reviewed head `fd4e762`; TASK-167 Cursor is
-  next. See `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md`.
+  PR #288 is mergeable and all 19 hosted checks pass on final head `adca3e7`. TASK-167 adds Cursor
+  through merged `afterShellExecution` and matched `postToolUse` entries, bounded shell/write
+  normalization, deterministic cross-hook identity, and no session process. Its implementation and
+  local cross-platform gates pass. See `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md` and
+  `docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md`.
 
 ## Ordered next steps
 
@@ -191,8 +194,8 @@ parity scenarios. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`.
 
 ### 8. Expand harness support
 
-Codex, Claude Code, Copilot CLI, and OpenCode are implemented as independent adapters. Add
-Cursor/IDE history and Devin CLI one at a time. Do not advertise an adapter until it passes the
+Codex, Claude Code, Copilot CLI, OpenCode, and Cursor are implemented as independent adapters. Add
+Devin CLI next. Do not advertise an adapter until it passes the
 shared silence, latency, privacy,
 deduplication, fail-open, install/removal, configuration-preservation, and unsupported-event suite.
 

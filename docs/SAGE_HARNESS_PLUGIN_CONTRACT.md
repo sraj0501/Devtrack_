@@ -25,7 +25,7 @@ legacy `install-hooks --harness codex` form remains a compatibility alias.
 
 Every built-in adapter implements the Go `harness.Adapter` interface: descriptor, status, install,
 and uninstall. Payload normalizers remain separately testable pure functions. Codex, Claude Code,
-GitHub Copilot CLI, and OpenCode are registered adapters. Cursor and Devin can be added without
+GitHub Copilot CLI, OpenCode, and Cursor are registered adapters. Devin can be added without
 changing Sage's spool, database, importer, or search layers.
 
 ## External extension direction

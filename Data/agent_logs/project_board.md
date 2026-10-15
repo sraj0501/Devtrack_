@@ -30,12 +30,12 @@ or Python.
 - [x] The hidden endpoint accepts bounded Cursor shell/write payloads silently and emits only
       validated privacy-minimized events with deterministic duplicate identity.
 - [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
-- [ ] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
+- [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
       validation.
 - [ ] A dedicated PR to `dev` is open and its required checks pass.
 
-**Engineer status:** implementation and cross-platform local verification complete against current
-reference HEAD `ea2e067`; documentation reconciliation is next.
+**Engineer status:** implementation, cross-platform local verification, and two documentation
+passes complete against current reference HEAD `ea2e067`; commit, push, and PR review are next.
 **PR:** pending.
 **Blockers:** none.
 

@@ -1636,13 +1636,13 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
-<h2>Qualified review — TASK-166 OpenCode capture</h2>
+<h2>Current work — TASK-167 Cursor capture</h2>
 <ul>
-<li><strong>Independent adapter:</strong> <code>devtrack sage harness install opencode</code> adds one DevTrack-owned user plugin and never overwrites unknown content at its dedicated path.</li>
-<li><strong>Portable plugin:</strong> the generated JavaScript observes <code>tool.execute.before</code> and <code>tool.execute.after</code>, invokes the packaged Go executable directly through Bun or Node, and hides Windows child windows.</li>
-<li><strong>Supported events:</strong> allowlisted shell, search/glob, and edit/write calls are normalized into bounded, privacy-minimized Sage events; session and unsupported events are ignored.</li>
-<li><strong>Runtime boundary:</strong> the packaged Go executable handles hooks silently and fail-open. No Python shim or second watcher is installed.</li>
-<li><strong>Qualification:</strong> generated-plugin syntax, focused Linux and native Windows tests, the full Go suite, vet, race coverage, and privacy-canary checks pass locally.</li>
+<li><strong>Independent adapter:</strong> <code>devtrack sage harness install cursor</code> merges only DevTrack-owned entries into Cursor's version-1 user hook file and never mutates another harness.</li>
+<li><strong>Capture surfaces:</strong> one <code>afterShellExecution</code> entry and one <code>postToolUse</code> entry matched to <code>Shell|Write</code> invoke the packaged Go endpoint.</li>
+<li><strong>Privacy and deduplication:</strong> bounded shell/write events omit output, paths, identifiers, and file content; equivalent shell observations share a deterministic delivery key.</li>
+<li><strong>Runtime boundary:</strong> no session hooks, Python shim, or second process are installed because the DevTrack daemon owns lifecycle.</li>
+<li><strong>Qualification:</strong> focused Linux and native Windows tests, the full Go suite, vet, race coverage, and privacy-canary checks pass locally.</li>
 </ul>
 <h2>Current dev — TASK-157 durable Sage knowledge pipeline</h2>
 <ul>
@@ -1840,9 +1840,10 @@ devtrack sage harness install codex
 devtrack sage harness install claude
 devtrack sage harness install copilot
 devtrack sage harness install opencode
+devtrack sage harness install cursor
 devtrack sage search "docker compose" [--topic containers]
 devtrack sage topics</code></pre>
-<p>These unreleased commands manage local capture and query deterministic Markdown knowledge. Codex, Claude Code, GitHub Copilot CLI, and OpenCode are independently selected adapters; installing one never installs another. Search returns complete entries and reflects route corrections, merges, edits, moves, and deletions. All 136 reference rows and repeated Windows/Linux acceptance are qualified.</p>
+<p>These unreleased commands manage local capture and query deterministic Markdown knowledge. Codex, Claude Code, GitHub Copilot CLI, OpenCode, and Cursor are independently selected adapters; installing one never installs another. Search returns complete entries and reflects route corrections, merges, edits, moves, and deletions. All 136 reference rows and repeated Windows/Linux acceptance are qualified.</p>
 
 <h2>Interfaces, Alerts and Lifecycle</h2>
 <pre><code class="language-bash">devtrack tui
@@ -2731,7 +2732,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
-<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. PRs #279–#282 are integrated; PRs #283–#288 are green reviews through the independently managed OpenCode adapter. TASK-167 Cursor is next.</p>
+<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. PRs #279–#282 are integrated; PRs #283–#288 are green reviews through the independently managed OpenCode adapter. TASK-167 adds Cursor as the fifth capture adapter.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2744,7 +2745,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   SAGE: `<div class="md-body">
 <h1>DevTrack Sage and the retired Git Sage name</h1>
 <p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
-<blockquote><p><strong>Development status:</strong> The qualified Sage foundation is available on rolling <code>dev</code> through PR #282 and is not part of stable <code>v3.1.1</code>. SAGE-003 publishes, searches, diagnoses, and safely commits deterministic local knowledge; all 136 reference rows and repeated Windows/Linux acceptance are complete on green stacked reviews. TASK-164 adds Claude Code, TASK-165 adds GitHub Copilot CLI, and TASK-166 adds OpenCode as the fourth capture adapter; TASK-167 Cursor is next.</p></blockquote>
+<blockquote><p><strong>Development status:</strong> The qualified Sage foundation is available on rolling <code>dev</code> through PR #282 and is not part of stable <code>v3.1.1</code>. SAGE-003 publishes, searches, diagnoses, and safely commits deterministic local knowledge; all 136 reference rows and repeated Windows/Linux acceptance are complete on green stacked reviews. TASK-164 adds Claude Code, TASK-165 adds GitHub Copilot CLI, TASK-166 adds OpenCode, and TASK-167 adds Cursor as the fifth capture adapter.</p></blockquote>
 
 <h2>What happened to Git Sage?</h2>
 <p>Older DevTrack documentation used <strong>Git Sage</strong> for a repository chat and Git-operation experiment. That product surface has been removed. The current <code>devtrack sage</code> namespace is deliberately narrower and safer: it captures privacy-minimized command events and builds local personal knowledge.</p>
@@ -2762,7 +2763,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <h2>Implemented foundation</h2>
 <ul>
 <li>Versioned, normalized harness-event contract with privacy and size limits.</li>
-<li>Fail-open Codex, Claude Code, GitHub Copilot CLI, and OpenCode capture that performs no model or network call on the hook path.</li>
+<li>Fail-open Codex, Claude Code, GitHub Copilot CLI, OpenCode, and Cursor capture that performs no model or network call on the hook path.</li>
 <li>Atomic local spool, bounded import, malformed-event quarantine, and append-only SQLite storage.</li>
 <li>Pause/resume state and idempotent harness installation that preserves unrelated configuration.</li>
 <li>Deterministic grouping by command signature, FTS5 search, topic aggregation, source-harness attribution, usage/success counts, and idempotent backfill.</li>
@@ -2790,6 +2791,8 @@ devtrack sage harness install copilot
 devtrack sage harness uninstall copilot
 devtrack sage harness install opencode
 devtrack sage harness uninstall opencode
+devtrack sage harness install cursor
+devtrack sage harness uninstall cursor
 
 # Initial SQLite knowledge index
 devtrack sage search "docker compose"
@@ -2803,7 +2806,7 @@ devtrack sage routes</code></pre>
 <h2>What remains on the Sage roadmap</h2>
 <ul>
 <li>Integrate the clean, green SAGE-003 stacked reviews.</li>
-<li>Add Cursor and Devin adapters one at a time, beginning with TASK-167 Cursor.</li>
+<li>Add Devin as the next independently qualified adapter.</li>
 <li>Add read-only Sage MCP retrieval and bounded operational repair/export tooling.</li>
 </ul>
 
