@@ -12,7 +12,8 @@ its newer HEAD is intentional and includes the reference bug fixes. Devin merges
 session process. Bounded shell/search/glob/edit/write/patch payloads become privacy-minimal events
 with deterministic opaque identity. Focused Linux and native Windows tests, the full Go suite,
 vet, modified-package race coverage, and two documentation reconciliation passes succeed locally.
-Hosted review is the remaining TASK-168 gate. TASK-167 PR #289 is green on final head `a4142e6`.
+Commit `ccc0dfa` is pushed in PR #290 targeting `dev`; hosted final-head checks are the remaining
+TASK-168 gate. TASK-167 PR #289 is green on final head `a4142e6`.
 
 **Sage integration state:** PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are
 clean, fully green reviews carrying capture/history closure, the complete 136-row parity ledger

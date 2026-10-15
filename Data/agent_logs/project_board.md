@@ -38,7 +38,9 @@ matched `PostToolUse` events, and do not add session lifecycle processes or Pyth
 - [ ] A dedicated PR to `dev` is open and its required checks pass.
 
 **Engineer status:** implementation, cross-platform local verification, and two documentation
-passes complete against current clean reference HEAD `ea2e067`; hosted review remains.
+passes complete against current clean reference HEAD `ea2e067`. Commit `ccc0dfa` is pushed and
+PR #290 targets `dev`; hosted final-head checks remain.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/290
 **Blockers:** none.
 
 **[2026-10-15] TASK-167 / SAGE-004 — Cursor capture adapter (complete).**

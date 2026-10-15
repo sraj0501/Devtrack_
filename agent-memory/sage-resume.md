@@ -14,8 +14,8 @@ acting because branch, PR, and CI state can change after this record is updated.
 
 - Active task: TASK-168 / SAGE-004 Devin CLI capture adapter on
   `features/TASK-168-sage-devin-adapter`. Implementation, local cross-platform gates, and two
-  documentation reconciliation passes succeed; hosted review remains. TASK-167 PR #289 is green
-  on final head `a4142e6`.
+  documentation reconciliation passes succeed. Commit `ccc0dfa` is pushed in PR #290 targeting
+  `dev`; hosted final-head checks remain. TASK-167 PR #289 is green on final head `a4142e6`.
 - Integration branch: `origin/dev` at `f07bb97` after PR #282. PRs #279–#282 are merged.
 - PRs #283–#285 are clean, fully green stacked reviews for capture/history closure, the completed
   parity ledger, and the twice-run Windows/Linux acceptance journey.
@@ -81,7 +81,7 @@ race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.
 
 ## Recommended pickup order
 
-1. Open TASK-168's dedicated PR and require green final-head hosted checks.
+1. Require green final-head hosted checks on TASK-168 PR #290.
 2. Review/integrate green PRs #286–#289 only with explicit user authorization.
 3. Implement TASK-169 read-only MCP retrieval/diagnostics, then TASK-170 operational closure.
 

@@ -86,7 +86,8 @@ quickly, print nothing, perform no model or network call, and never break an age
   local cross-platform gates pass; PR #289 is mergeable and all 19 hosted checks pass on reviewed
   head `a4142e6`. TASK-168 adds Devin through one platform-root `PostToolUse` hook with bounded
   shell/search/glob/edit/write/patch normalization and no session process. Local cross-platform
-  gates and two documentation passes succeed; hosted review remains. See `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md`,
+  gates and two documentation passes succeed; PR #290 targets `dev` and hosted review remains.
+  See `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md`,
   `docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md`, and `docs/SAGE_DEVIN_ADAPTER_QUALIFICATION.md`.
 
 ## Ordered next steps

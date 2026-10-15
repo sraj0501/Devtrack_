@@ -16,7 +16,7 @@ without an approved board task and a dedicated branch targeting `dev`.
   17 adapted, 0 partial, and 0 pending; repeated Windows/Linux acceptance passes.
 - Active task and branch: TASK-168 on `features/TASK-168-sage-devin-adapter`. Implementation,
   local cross-platform gates, and two documentation reconciliation passes succeed; hosted review
-  remains.
+  remains in PR #290 targeting `dev`.
 - Current reference checkout: `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`.
 - TASK-167 PR #289 is green on final head `a4142e6`. TASK-169 read-only MCP
   retrieval/diagnostics follows TASK-168, then TASK-170 operational closure.
@@ -24,7 +24,7 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Current ordered work
 
-1. Open TASK-168's dedicated PR and require green final-head hosted checks.
+1. Require green final-head hosted checks on TASK-168 PR #290.
 2. Review/integrate green PRs #286–#289 only with explicit user authorization.
 3. Implement TASK-169 read-only Sage MCP search/topics/status/entry and adapter diagnostics.
 4. Implement TASK-170 retention/deletion, quarantine inspection, deterministic rebuild/repair,
