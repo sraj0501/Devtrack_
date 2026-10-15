@@ -1,17 +1,17 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-15 — PRs #279–#282 merged the runtime isolation, model backends,
+_Last reconciled: 2026-10-16 — PRs #279–#282 merged the runtime isolation, model backends,
 platform installers, and lifecycle slices to `dev` at `f07bb97`. PRs #283–#285 are clean, fully
 green reviews carrying capture/history closure, the complete parity ledger, and repeated
-cross-platform acceptance. PRs #286–#288 are the green Claude, Copilot, and OpenCode adapter
-reviews; OpenCode passed all 19 hosted checks on final head `adca3e7`. The active branch is
-`features/TASK-167-sage-cursor-adapter`, using
+cross-platform acceptance. PRs #286–#289 are the green Claude, Copilot, OpenCode, and Cursor
+adapter reviews; Cursor passed all 19 hosted checks on reviewed head `88bf9f0`. TASK-168 Devin is
+the next Sage slice, using
 the current reference checkout at `ea2e067`. The executable parity ledger is complete at 119
 implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. The repeated clean
 Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
 verification before allocation._
 
-**[2026-10-15] TASK-167 / SAGE-004 — Cursor capture adapter (in progress).**
+**[2026-10-15] TASK-167 / SAGE-004 — Cursor capture adapter (complete).**
 **Priority:** High. **Branch:** `features/TASK-167-sage-cursor-adapter`.
 **Assigned to:** engineer. **Depends on:** green TASK-166 PR #288.
 
@@ -32,11 +32,11 @@ or Python.
 - [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
 - [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
       validation.
-- [ ] A dedicated PR to `dev` is open and its required checks pass.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
 
 **Engineer status:** implementation, cross-platform local verification, and two documentation
-passes complete against current reference HEAD `ea2e067`. Commit `4807937` is pushed and PR #289
-targets `dev`; hosted final-head checks are the remaining gate.
+passes complete against current reference HEAD `ea2e067`. PR #289 targets `dev`, is mergeable,
+and all 19 hosted checks pass on reviewed head `88bf9f0`.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/289
 **Blockers:** none.
 

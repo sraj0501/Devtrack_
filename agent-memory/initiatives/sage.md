@@ -83,7 +83,8 @@ quickly, print nothing, perform no model or network call, and never break an age
   PR #288 is mergeable and all 19 hosted checks pass on final head `adca3e7`. TASK-167 adds Cursor
   through merged `afterShellExecution` and matched `postToolUse` entries, bounded shell/write
   normalization, deterministic cross-hook identity, and no session process. Its implementation and
-  local cross-platform gates pass. See `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md` and
+  local cross-platform gates pass; PR #289 is mergeable and all 19 hosted checks pass on reviewed
+  head `88bf9f0`. TASK-168 Devin is next. See `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md` and
   `docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md`.
 
 ## Ordered next steps

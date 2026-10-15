@@ -12,11 +12,10 @@ acting because branch, PR, and CI state can change after this record is updated.
 
 ## Current checkpoint
 
-- Active task: TASK-167 / SAGE-004 Cursor capture adapter on
+- Latest completed task: TASK-167 / SAGE-004 Cursor capture adapter on
   `features/TASK-167-sage-cursor-adapter`. Implementation and local cross-platform gates pass;
-  two documentation passes are complete. Commit `4807937` is pushed in PR #289 targeting `dev`;
-  hosted final-head checks remain. TASK-166 PR #288 targets `dev`, is mergeable, and all
-  19 final-head checks pass at `adca3e7`.
+  two documentation passes are complete. PR #289 targets `dev`, is mergeable, and all 19 hosted
+  checks pass on reviewed head `88bf9f0`. TASK-168 Devin is next.
 - Integration branch: `origin/dev` at `f07bb97` after PR #282. PRs #279–#282 are merged.
 - PRs #283–#285 are clean, fully green stacked reviews for capture/history closure, the completed
   parity ledger, and the twice-run Windows/Linux acceptance journey.
@@ -82,10 +81,9 @@ race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.
 
 ## Recommended pickup order
 
-1. Require green final-head checks on TASK-167 PR #289.
-2. Implement TASK-168 Devin with documentation and a dedicated PR.
-3. Review/integrate green PRs #286–#288 only with explicit user authorization.
-4. Implement TASK-169 read-only MCP retrieval/diagnostics, then TASK-170 operational closure.
+1. Implement TASK-168 Devin with documentation and a dedicated PR.
+2. Review/integrate green PRs #286–#289 only with explicit user authorization.
+3. Implement TASK-169 read-only MCP retrieval/diagnostics, then TASK-170 operational closure.
 
 At the start of a fresh session, read `agent-memory/INDEX.md`, `current-state.md`,
 `execution-plan.md`, `initiatives/sage.md`, this file, and the active board entry. Then run:
