@@ -42,6 +42,7 @@ adapter boundary.
 - `scripts/check_sage_parity.py --reference C:\Work\git_apps\ai_sessions_skills` passes with
   136 rows: 116 implemented, 16 adapted, 0 partial, and 4 pending.
 
-TASK-157 remains open for the four optional IDE rows and the repeated clean Windows/Linux
-capture-to-knowledge acceptance journey. PR #283 carries this slice into `dev`; hosted checks are
-running.
+The later IDE-parity slice closes the final four rows; see `SAGE_IDE_PARITY_QUALIFICATION.md`.
+TASK-157 remains open for the repeated clean Windows/Linux capture-to-knowledge acceptance journey.
+PR #283 carries this capture/history slice into `dev`; all 19 hosted checks passed and the review
+is clean.

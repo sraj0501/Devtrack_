@@ -1,5 +1,15 @@
 # DevTrack Feature Tracker
 
+## 2026-10-15 — TASK-157 executable Sage parity complete
+
+The active `features/TASK-157-sage-ide-parity` branch resolves the last four ledger rows through
+the existing opt-in Codex history adapter. Pause, cutoff reset, failure retry, first-use exclusion,
+and repeat-poll behavior have exact tests. One explicit adaptation enables both stable Codex
+sources and preserves DevTrack's privacy-minimized command contract; no new harness is advertised.
+Full Go tests/vet, focused Linux race coverage, and native Windows exact tests pass. Ledger:
+119 implemented, 17 adapted, 0 partial, 0 pending; `--require-complete` passes. Evidence:
+`docs/SAGE_IDE_PARITY_QUALIFICATION.md`. Next: repeated Windows/Linux end-to-end acceptance.
+
 ## 2026-10-14 — TASK-157 capture decisions and Codex-history closure
 
 The active `features/TASK-157-sage-capture-history` branch closes four capture/logging rows and

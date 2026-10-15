@@ -1,6 +1,6 @@
 ---
 name: Sage fresh-session handoff
-description: Exact resume context, remaining parity groups, and completion gates for TASK-157 / SAGE-003
+description: Exact resume context and remaining acceptance gates for TASK-157 / SAGE-003
 type: project
 ---
 
@@ -19,11 +19,14 @@ acting because branch, PR, and CI state can change after this record is updated.
   command-model backends and platform installers. Active stacked branch:
   `features/TASK-157-sage-capture-history`, based on PR #282's green lifecycle head. PR #282
   targets `dev`; all 19 hosted checks passed. Commit `215222b` closes capture/logging and the two
-  partial Codex-history rows. PR #283 targets `dev`; hosted checks are running.
+  partial Codex-history rows. PR #283 targets `dev`; all 19 hosted checks passed and the review is
+  clean. The active stacked branch is `features/TASK-157-sage-ide-parity`; commit `836feb7`
+  resolves the final four rows. PR #284 targets `dev`; hosted validation is in progress.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.
-- Ledger: 136 scenarios — 116 implemented, 16 adapted, 0 partial, and 4 pending.
+- Ledger: 136 scenarios — 119 implemented, 17 adapted, 0 partial, and 0 pending;
+  `--require-complete` passes.
 - Qualification: full Go tests, `go vet ./...`, ledger consistency, parity-checker tests,
   shared-memory validation, and whitespace validation passed locally. All required PR #278 checks
   and applicable post-merge workflows passed, including hosted Windows tests.
@@ -64,18 +67,11 @@ single daemon owns locking, liveness, and background work; Windows native childr
 and Sage start/stop/restart aliases manage persistent capture state without spawning a watcher.
 See `docs/SAGE_LIFECYCLE_QUALIFICATION.md`.
 
-## Remaining parity work
+## Parity ledger
 
-Every open matrix row must gain an exact Go regression test or an explicit behavioral adaptation.
-The final ledger command must pass with `--require-complete`.
-
-| Group | Pending | Required outcome |
-|---|---:|---|
-| Optional IDE adapter | 4 | Cover original-command filtering, pause/reset/checkpoint behavior, and failure handling. Do not add another harness before the resilient Codex journey; explicitly adapt these rows if they are outside the current milestone. |
-| **Total pending** | **4** | All must become implemented or deliberately adapted. |
-
-There are no partial rows. Capture/logging and Codex-history edge cases are closed on the active
-branch; see `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.
+All 136 rows have exact Go evidence or an explicit behavioral adaptation. The existing opt-in
+Codex history adapter closes the four optional IDE rows without advertising another harness; see
+`docs/SAGE_IDE_PARITY_QUALIFICATION.md`. There are no partial or pending rows.
 
 ## Acceptance still required
 
@@ -84,14 +80,13 @@ branch; see `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.
    search, route correction, merge/refile, model-failure recovery, privacy-canary checks,
    preservation of unrelated staged/unstaged Git state, and safe uninstall.
 2. Keep applicable unit, golden, fuzz, fault-injection, and race coverage green.
-3. Make `scripts/check_sage_parity.py --require-complete` pass.
+3. Keep `scripts/check_sage_parity.py --require-complete` passing.
 
 ## Recommended pickup order
 
-1. Review and integrate the capture/history slice.
-2. Resolve the optional IDE rows without violating the Codex-first sequencing guardrail.
-3. Run the repeated Windows/Linux acceptance journey, close the ledger, and integrate the remaining
-   closure through a new PR to `dev`.
+1. Review and integrate IDE-parity PR #284 after its hosted checks pass.
+2. Run the repeated Windows/Linux acceptance journey and integrate the remaining closure through a
+   new PR to `dev`.
 
 At the start of a fresh session, read `agent-memory/INDEX.md`, `current-state.md`,
 `execution-plan.md`, `initiatives/sage.md`, this file, and the active TASK-157 board entry. Then run:

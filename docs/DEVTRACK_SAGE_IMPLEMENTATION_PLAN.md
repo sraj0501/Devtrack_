@@ -184,22 +184,24 @@ Acceptance:
 - Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
   push to a remote.
 
-Latest checkpoint (2026-10-14): PR #278 merged diagnostics, safe local commits, command capture,
+Latest checkpoint (2026-10-15): PR #278 merged diagnostics, safe local commits, command capture,
 and routing/model-request parity to `dev` at `a6a75b0`. PR #279's fully green review isolates the
 private runtime root from portable knowledge placement. PR #280 keeps Ollama HTTP as the default
 and adds explicit, no-shell command providers with process-local capture suppression; all 19 checks
 passed. PR #281 closes portable platform paths and additive install/removal. PR #282 closes daemon
 locks/liveness, no-console launches, capture aliases, stop reasons, and legacy-hook safety without
-adding a second watcher; all 19 hosted checks passed. The active capture/history branch adds
-fail-open, privacy-safe capture decisions, installed
-pause enforcement, interleaved terminal history collection, and failed-exit preservation. The
-ledger is 116 implemented, 16 adapted, 0 partial, and 4 pending. PR #283 targets `dev`; hosted
-checks are running. Details:
+adding a second watcher; all 19 hosted checks passed. PR #283 carries fail-open, privacy-safe
+capture decisions, installed pause enforcement, interleaved terminal history collection, and
+failed-exit preservation; all 19 hosted checks passed and the review is clean. PR #284 carries the
+IDE-parity slice, which resolves the last four rows without advertising another harness; hosted
+validation is in progress. The ledger is complete at 119 implemented,
+17 adapted, 0 partial, and 0 pending; `--require-complete` passes. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md` and
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`, and
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`, and
 `docs/SAGE_LIFECYCLE_QUALIFICATION.md`, and
-`docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`. Optional IDE parity and final acceptance remain open. The
+`docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`, and
+`docs/SAGE_IDE_PARITY_QUALIFICATION.md`. Final acceptance remains open. The
 following dated entries describe earlier foundations.
 
 Historical checkpoint (2026-09-20): the first model-free slice was implemented. Imported events
@@ -286,8 +288,7 @@ SAGE-001 and SAGE-002 are complete. TASK-157 has implemented the SAGE-003 durabl
 lifecycle, deterministic Markdown publication, route correction, restart-safe merge/refile,
 skipped-action records, full-entry search, truthful diagnostics, safe local commits, isolated
 runtime/knowledge roots, explicit model backends, portable layouts, and additive installer
-mutation. PR #282 also closes daemon/process and CLI lifecycle parity, while the active stacked
-branch closes capture/history parity. Review the stacked branches, then close optional IDE parity and the remaining
-executable parity rows before
-running the clean capture-to-self-written-knowledge journey twice. Do not expand to another harness
-before that gate.
+mutation. PR #282 also closes daemon/process and CLI lifecycle parity, PR #283 carries
+capture/history parity, and PR #284 completes the executable ledger. Review the
+stacked branches, then run the clean capture-to-self-written-knowledge journey twice. Do not expand
+to another harness before that gate.

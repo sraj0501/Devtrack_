@@ -188,9 +188,9 @@ On rolling `dev`, the capture pipeline, durable SQLite jobs, daemon-owned distil
 deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped-action
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
 The active follow-up adds fail-open privacy-safe capture decisions and closes Codex-history
-terminal/failure edge cases. SAGE-003 is not complete or part of the v3.1.1 stable release: four
-optional IDE parity rows and the
-repeated clean end-to-end acceptance journey remain. See the
+terminal/failure edge cases. The stacked IDE-parity slice completes all 136 reference rows without
+advertising another harness. SAGE-003 is not complete or part of the v3.1.1 stable release: the
+repeated clean end-to-end acceptance journey remains. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md).
 
@@ -443,7 +443,8 @@ topic filename. Search reflects manual edits and topic moves; skipped records ar
 Set `DEVTRACK_SAGE_RUNTIME_DIR` to relocate private queue/state/log storage and
 `DEVTRACK_SAGE_KNOWLEDGE_DIR` to relocate portable Markdown independently; relative values resolve
 from the stable Sage data root, not the shell's working directory. This remains a development
-preview: remaining reference parity and end-to-end release qualification are open. See
+preview: the executable parity ledger is complete, while repeated end-to-end release qualification
+is open. See
 [the runtime-isolation qualification](docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md) and the
 [model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
 limits. Platform-specific harness destinations and additive hook migration are covered by the
@@ -452,7 +453,8 @@ the only currently advertised capture adapter. Daemon locks, process liveness, n
 children, capture lifecycle aliases, stop reasons, and legacy-hook safety are covered by the
 [lifecycle qualification](docs/SAGE_LIFECYCLE_QUALIFICATION.md). Capture-decision and read-only
 Codex-history edge cases are covered by the
-[capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md).
+[capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md); the final optional
+IDE rows are covered by the [IDE parity qualification](docs/SAGE_IDE_PARITY_QUALIFICATION.md).
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;
@@ -900,7 +902,7 @@ Key references in this repo:
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [shared role playbooks](agent-memory/roles/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
-| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md) |
+| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md) · [IDE parity qualification](docs/SAGE_IDE_PARITY_QUALIFICATION.md) |
 
 ---
 
