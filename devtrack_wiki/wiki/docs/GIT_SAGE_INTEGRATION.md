@@ -22,12 +22,15 @@ as `devtrack git`, while `devtrack sage` now means command capture and personal 
 ```bash
 devtrack sage harness list
 devtrack sage harness install codex
+devtrack sage harness install claude
 devtrack sage status
 ```
 
-The installed hook is silent, bounded, model-free, and fail-open. It omits raw command output,
+Installed hooks are silent, bounded, model-free, and fail-open. They omit raw command output,
 reasoning, messages, and working-directory paths. On Windows, Codex uses an opt-in read-only history
-adapter to avoid console-host compatibility problems.
+adapter to avoid console-host compatibility problems. Claude Code uses owned `PostToolUse` hooks
+for Bash/search/edit tools and a Bash-only `PostToolUseFailure` hook while preserving unrelated
+`~/.claude/settings.json` entries.
 
 Pause or remove capture without changing unrelated harness configuration:
 
@@ -35,6 +38,7 @@ Pause or remove capture without changing unrelated harness configuration:
 devtrack sage pause
 devtrack sage resume
 devtrack sage harness uninstall codex
+devtrack sage harness uninstall claude
 ```
 
 ## Search local knowledge

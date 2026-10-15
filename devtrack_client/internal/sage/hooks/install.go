@@ -182,16 +182,16 @@ func readHookDocument(path string) (map[string]any, os.FileMode, error) {
 		return map[string]any{}, 0600, os.ErrNotExist
 	}
 	if err != nil {
-		return nil, 0, errors.New("codex hook configuration unavailable")
+		return nil, 0, errors.New("harness hook configuration unavailable")
 	}
 	raw = bytes.TrimPrefix(raw, []byte{0xef, 0xbb, 0xbf})
 	var document map[string]any
 	if err := json.Unmarshal(raw, &document); err != nil || document == nil {
-		return nil, 0, errors.New("codex hook configuration is invalid")
+		return nil, 0, errors.New("harness hook configuration is invalid")
 	}
 	info, err := os.Stat(path)
 	if err != nil {
-		return nil, 0, errors.New("codex hook configuration unavailable")
+		return nil, 0, errors.New("harness hook configuration unavailable")
 	}
 	return document, info.Mode().Perm(), nil
 }
@@ -285,7 +285,7 @@ func containsOwned(document map[string]any) bool {
 
 func writeHookDocument(path string, document map[string]any, mode os.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return errors.New("codex hook configuration unavailable")
+		return errors.New("harness hook configuration unavailable")
 	}
 	raw, err := json.MarshalIndent(document, "", "  ")
 	if err != nil {
@@ -294,7 +294,7 @@ func writeHookDocument(path string, document map[string]any, mode os.FileMode) e
 	raw = append(raw, '\n')
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".hooks-*.tmp")
 	if err != nil {
-		return errors.New("codex hook configuration unavailable")
+		return errors.New("harness hook configuration unavailable")
 	}
 	tmpPath := tmp.Name()
 	defer os.Remove(tmpPath)
@@ -314,7 +314,7 @@ func writeHookDocument(path string, document map[string]any, mode os.FileMode) e
 		return err
 	}
 	if err := os.Rename(tmpPath, path); err != nil {
-		return fmt.Errorf("publish codex hook configuration: %w", err)
+		return fmt.Errorf("publish harness hook configuration: %w", err)
 	}
 	return nil
 }

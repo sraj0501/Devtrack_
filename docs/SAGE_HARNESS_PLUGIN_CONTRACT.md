@@ -10,6 +10,8 @@ Harness capture is opt-in and independently managed:
 devtrack sage harness list
 devtrack sage harness install codex
 devtrack sage harness uninstall codex
+devtrack sage harness install claude
+devtrack sage harness uninstall claude
 ```
 
 Installing one adapter must not install, enable, or edit configuration for another harness. The
@@ -18,9 +20,9 @@ legacy `install-hooks --harness codex` form remains a compatibility alias.
 ## In-process registry
 
 Every built-in adapter implements the Go `harness.Adapter` interface: descriptor, status, install,
-and uninstall. Payload normalizers remain separately testable pure functions. Codex is the first
-registered adapter; Claude Code, OpenCode, Gemini CLI, Cursor, Copilot, Pi, and Hermes can be added
-without changing Sage's spool, database, importer, or search layers.
+and uninstall. Payload normalizers remain separately testable pure functions. Codex and Claude
+Code are registered adapters. Copilot CLI, OpenCode, Cursor, and Devin can be added without
+changing Sage's spool, database, importer, or search layers.
 
 ## External extension direction
 

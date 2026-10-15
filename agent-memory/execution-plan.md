@@ -1,6 +1,6 @@
 ---
 name: Active execution plan
-description: Ordered pickup sequence for TASK-157, UI integration, and release gates
+description: Ordered pickup sequence for active Sage adapters, UI integration, and release gates
 type: project
 ---
 
@@ -11,86 +11,31 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Pickup checkpoint
 
-- Current integration branch: `origin/dev` at `a6a75b0` after PR #278.
-- PR #278 integrated the latest qualified TASK-157 closure slice. Required PR checks and the
-  applicable post-merge workflows passed; the rolling release is `dev-a6a75b0`.
-- Active follow-up review: PR #279 from `features/TASK-157-sage-backend-isolation`, created from
-  current `origin/dev`. It contains the runtime/knowledge path-isolation slice and is fully green
-  but unmerged. PR #280 is the active stacked review from
-  `features/TASK-157-sage-model-backends` into `dev`; all 19 hosted checks passed.
-- PR #281 closes portable harness paths, native-launcher adaptations, and additive
-  install/removal; all 19 hosted checks passed. PR #282 closes daemon/process and CLI lifecycle
-  parity without adding a second Sage watcher; all 19 hosted checks passed. Active implementation
-  branch: `features/TASK-157-sage-capture-history`, stacked on PR #282. Commit `215222b` closes
-  capture/logging and the remaining Codex-history rows. PR #283 targets `dev`; all 19 hosted checks
-  passed and the review is clean. The active stacked branch is
-  `features/TASK-157-sage-ide-parity`; commit `836feb7`
-  resolves the last four ledger rows without advertising another harness. PR #284 targets `dev`;
-  all 19 hosted checks pass. PR #285 carries the final repeated cross-platform acceptance gate;
-  all 19 hosted checks pass and the review is clean.
-- Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
-  lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
-  skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded
-  retries, safe local knowledge commits, model-free documented-action reuse, and conservative
-  section matching.
-- Ledger checkpoint: 119 implemented, 17 adapted, 0 partial, 0 pending. Full Go tests, vet, ledger
-  consistency, parity-checker tests, shared-memory validation, and whitespace validation pass on
-  the active branch. `scripts/check_sage_parity.py --require-complete` passes.
-- Next unused task ID is TASK-164, subject to board verification before allocation.
+- Current integration branch: `origin/dev` at `f07bb97` after PR #282.
+- PRs #283–#285 are clean and fully green. The 136-scenario ledger is complete at 119 implemented,
+  17 adapted, 0 partial, and 0 pending; repeated Windows/Linux acceptance passes.
+- Active task and branch: TASK-164 on `features/TASK-164-sage-claude-adapter`.
+- Current reference checkout: `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`.
+- Planned Sage tasks are TASK-165 Copilot CLI, TASK-166 OpenCode, TASK-167 Cursor, TASK-168 Devin,
+  TASK-169 read-only MCP retrieval/diagnostics, and TASK-170 operational closure.
+- Next unused task ID is TASK-171, subject to board verification before allocation.
 
-## Ordered work
+## Current ordered work
 
-### 1. Integrate runtime and knowledge-root isolation
+1. Review/integrate green TASK-164 PR #286 only with explicit user authorization.
+2. Implement TASK-165 through TASK-168 one adapter and PR at a time, preserving the shared silence,
+   privacy, fail-open, additive-install, and cross-platform acceptance gates.
+3. Implement TASK-169 read-only Sage MCP search/topics/status/entry and adapter diagnostics.
+4. Implement TASK-170 retention/deletion, quarantine inspection, deterministic rebuild/repair,
+   and Markdown export/import.
+5. Resolve the server-admin UI branch, then close packaged-build, media, and Glama follow-ups.
 
-Review the active branch and merge it through `dev` after hosted checks pass. Relative runtime and
-knowledge overrides must be stable across daemon and CLI working directories; an explicit knowledge
-override must not move private queue, state, or log storage.
+## Historical SAGE-003 integration record
 
-Gate: the three isolation rows have exact Go evidence and the focused/full Go suites remain green.
-
-### 2. Integrate explicit model backends
-
-Review the active stacked branch and integrate it through `dev`. Ollama HTTP remains the default;
-installed command providers are explicit opt-ins, execute fixed argv without a shell, defer prompt
-substitution per request, fail safely when missing, and suppress recursive capture only in their
-process tree.
-
-Gate: the five backend/process-local rows have exact Go evidence and hosted Windows checks pass.
-
-### 3. Integrate platform layouts and additive installers
-
-Review the active stacked branch and integrate it through `dev`. The layout layer must remain pure
-and must not advertise an unqualified adapter. Installer mutation is restricted to owned or known
-legacy entries, preserves foreign settings, is idempotent, and reports missing targets.
-
-Gate: all 18 platform/installer rows have exact Go evidence, full tests/vet and Windows cross-build
-pass, and the native-launcher adaptations remain explicit.
-
-### 4. Close the parity ledger
-
-Completed on the active IDE-parity branch. The existing opt-in Codex history adapter owns the four
-reference scenarios; no additional harness is advertised. Three rows map directly and the
-raw-command/source-default difference is an explicit privacy-preserving adaptation.
-
-Gate: all 136 scenarios are implemented or deliberately adapted; `--require-complete` passes.
-
-### 5. Close SAGE-003 end to end
-
-Completed locally on `features/TASK-157-sage-acceptance`. The clean Codex
-capture-to-self-written-knowledge journey runs twice: install capture, capture a
-useful command silently, import once, distill, publish deterministic Markdown, search it, correct
-its route, merge/refile it, recover from a model failure, verify privacy canaries are absent,
-preserve unrelated Git state, and uninstall without damaging unrelated configuration.
-
-Gate: the resilient journey passes twice on supported Windows and Linux paths with applicable unit,
-golden, fuzz, fault-injection, and race coverage.
-
-### 6. Integrate the remaining SAGE-003 closure through `dev`
-
-Update the board and documentation from verified evidence, then open a new reviewable PR targeting
-`dev`. PR #278 integrated diagnostics and safe local commits; the repeated end-to-end gate passes,
-but TASK-157 remains open until the stacked reviews integrate. Do not expose raw events through
-MCP or add another harness before the Codex closure gate.
+PRs #279–#282 integrated runtime isolation, model backends, portable installers, and lifecycle.
+PRs #283–#285 contain the remaining green SAGE-003 capture/history, ledger, and acceptance slices.
+The detailed historical evidence remains in Git, the project board, and the qualification docs;
+it is not active pickup work.
 
 ### 7. Resolve the server-admin UI branch
 
@@ -118,7 +63,7 @@ retire it.
 ## Resume procedure
 
 1. Read `INDEX.md`, `current-state.md`, this file, `initiatives/sage.md`, and the board's active
-   TASK-157 entry.
+   task entry.
 2. Inspect Git status and preserve all pre-existing work.
 3. Verify task authorization and the next task ID before editing the board or implementation.
 4. Start with the earliest incomplete gate above.

@@ -52,8 +52,9 @@ quickly, print nothing, perform no model or network call, and never break an age
 
 ## Current state
 
-- `dev` contains the event contract, silent Codex capture, atomic spool, bounded
-  importer/quarantine, SQLite events, pause/resume, and idempotent harness lifecycle.
+- `dev` through PR #282 contains the event contract, silent Codex capture, atomic spool, bounded
+  importer/quarantine, SQLite events, the complete durable knowledge pipeline, pause/resume, and
+  idempotent harness lifecycle.
 - The current SAGE-003 slice is model-free: deterministic grouping by normalized signature,
   source attribution, command-family topics, FTS5 search, and the `search`/`topics` CLI.
 - PR #263 merged the neutral, context-aware LLM transport, Sage-owned structured distiller, and
@@ -68,21 +69,12 @@ quickly, print nothing, perform no model or network call, and never break an age
   temperature-zero model requests, token-limit diagnostics, and background classify-once routing
   with safe fallback and existing-section context. Required PR checks and all applicable post-merge
   workflows passed.
-- PR #279 isolates private runtime state from portable knowledge placement and anchors relative
-  overrides to the stable Sage root; all 19 hosted checks passed. PR #280 adds explicit shipped
-  command-model providers, retaining Ollama HTTP as the default; all 19 hosted checks passed. The
-  PR #281 closes pure platform layouts and additive installer/removal behavior while keeping Codex
-  as the only advertised adapter. PR #282's lifecycle branch closes OS locks, liveness,
-  no-console process launch, persistent capture aliases/reasons, and legacy-hook safety without a
-  second watcher; PR #282 targets `dev` and all 19 hosted checks passed. The active capture/history
-  branch adds fail-open privacy-safe `new`/`known`/`repeat` decisions, installed-adapter pause
-  coverage, interleaved terminal history collection, and failed-exit preservation. The ledger is
-  complete on the active IDE-parity branch at 119 implemented, 17 adapted, 0 partial, and 0
-  pending; `--require-complete` passes. PR #283 targets `dev`; all 19 hosted checks passed and the
-  review is clean. PR #284 carries the completed parity ledger into `dev`; all 19 hosted checks
-  pass. PR #285 carries the final repeated capture-to-knowledge acceptance gate, which passes twice
-  on native Windows and Linux; all 19 hosted checks pass and the review is clean. Remaining work is
-  integration of the stacked reviews.
+- PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are clean and fully green, carrying
+  capture/history closure, the complete 119-implemented/17-adapted ledger, and repeated native
+  Windows/Linux acceptance.
+- TASK-164 is the active first SAGE-004 slice. It adds Claude Code beside Codex with independently
+  selected install/uninstall, additive owned hooks, bounded Bash/search/edit normalization, Bash
+  failure capture, and no second watcher. See `docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md`.
 
 ## Ordered next steps
 

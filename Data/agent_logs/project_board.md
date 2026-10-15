@@ -1,16 +1,50 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-15 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
-`dev` at `a6a75b0`; required and post-merge workflows passed. PR #279's runtime/knowledge isolation
-review passed all 19 hosted checks and remains unmerged. PR #283 carries capture/history closure;
-all 19 hosted checks passed and the review is clean. PR #284 carries the complete parity ledger and
-all 19 hosted checks pass. Final stacked PR #285 carries the repeated acceptance gate; all 19
-hosted checks pass and the review is clean. The active branch is
-`features/TASK-157-sage-acceptance`, using
+_Last reconciled: 2026-10-15 — PRs #279–#282 merged the runtime isolation, model backends,
+platform installers, and lifecycle slices to `dev` at `f07bb97`. PRs #283–#285 are clean, fully
+green reviews carrying capture/history closure, the complete parity ledger, and repeated
+cross-platform acceptance. The active branch is `features/TASK-164-sage-claude-adapter`, using
 the current reference checkout at `ea2e067`. The executable parity ledger is complete at 119
 implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. The repeated clean
-Windows/Linux acceptance passes locally. Next: hosted review and stacked integration. Next unused
-task ID: TASK-164, subject to verification before allocation._
+Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
+verification before allocation._
+
+**[2026-10-15] TASK-164 / SAGE-004 — Claude Code capture adapter (complete).**
+**Priority:** High. **Branch:** `features/TASK-164-sage-claude-adapter`.
+**Assigned to:** engineer. **Depends on:** green TASK-157 PR #285.
+
+Add one independently managed built-in Claude Code adapter using the existing native DevTrack hook
+endpoint and privacy-safe shared normalizer. Preserve foreign Claude settings and hooks, make
+install/uninstall idempotent and pure subtraction, and never add a second watcher or Python shim.
+
+**Acceptance criteria:**
+- [x] `devtrack sage harness list|install|uninstall claude` exposes only the explicitly selected
+      adapter and reports truthful mode/outcomes.
+- [x] Installation writes owned `PostToolUse` and `PostToolUseFailure` entries to the resolved
+      Claude settings path, preserves unrelated JSON and file mode, and handles spaces safely.
+- [x] The hidden hook endpoint accepts Claude payloads silently, emits bounded privacy-minimized
+      Sage events for supported shell/search/edit shapes, and remains fail-open.
+- [x] Reinstall is byte-stable; uninstall removes only DevTrack-owned or known legacy entries and
+      reports missing targets without creating files.
+- [x] Exact Windows/Linux tests, full Go tests/vet, privacy checks, and two docu-agent reconciliation
+      passes complete locally.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** implementation and two documentation passes complete in commit `1107d3d`;
+PR #286 targets `dev`, is mergeable, and all 19 latest-head hosted checks pass. The first Windows
+no-send E2E attempt hit a transient PID-file observation timeout and passed on rerun; the separate
+Windows build/test and native MCPB smoke also passed.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/286
+**Blockers:** none.
+
+**Planned Sage sequence after TASK-164:**
+- TASK-165 — GitHub Copilot CLI capture adapter.
+- TASK-166 — OpenCode plugin capture adapter.
+- TASK-167 — Cursor capture adapter.
+- TASK-168 — Devin CLI capture adapter.
+- TASK-169 — read-only Sage MCP search/topics/status/entry and adapter diagnostics.
+- TASK-170 — retention/deletion, quarantine inspection, deterministic rebuild/repair, and Markdown
+  export/import.
 
 **[2026-10-13] TASK-163 — Post-Sage integration documentation reconciliation (complete).**
 **Priority:** Documentation integrity. **Branch:** `docs/TASK-163-post-sage-reconciliation`.

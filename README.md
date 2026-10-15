@@ -179,19 +179,18 @@ blocked.
 
 ### Current product focus: DevTrack Sage
 
-**DevTrack Sage** is the planned local, cross-harness command-knowledge product. It captures useful
-command activity from supported coding harnesses, groups and indexes it locally, and will turn it
+**DevTrack Sage** is the local, cross-harness command-knowledge product. It captures useful
+command activity from supported coding harnesses, groups and indexes it locally, and turns it
 into searchable, self-writing personal documentation. The Go-native port follows the behavior of
 the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
 
 On rolling `dev`, the capture pipeline, durable SQLite jobs, daemon-owned distillation,
 deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped-action
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
-The active follow-up adds fail-open privacy-safe capture decisions and closes Codex-history
-terminal/failure edge cases. The stacked IDE-parity slice completes all 136 reference rows without
-advertising another harness. The final stacked acceptance slice runs the complete clean journey
-twice on Windows and Linux; SAGE-003 is locally complete but not yet integrated or part of the
-v3.1.1 stable release. See the
+PRs #279–#282 are integrated into `dev`. PRs #283–#285 are green reviews carrying capture/history
+closure, the complete 136-row parity ledger, and the twice-run Windows/Linux acceptance journey.
+The active SAGE-004 work adds independently managed harness adapters, beginning with Claude Code;
+none of this work is part of the v3.1.1 stable release. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).
 
@@ -418,6 +417,7 @@ publication, routing/merge corrections, skipped-action records, and full-entry s
 ```bash
 devtrack sage harness list
 devtrack sage harness install codex
+devtrack sage harness install claude
 devtrack sage status
 devtrack sage stop "reviewing a client repo"  # aliases: pause, off
 devtrack sage start                            # aliases: resume, on
@@ -444,14 +444,16 @@ topic filename. Search reflects manual edits and topic moves; skipped records ar
 Set `DEVTRACK_SAGE_RUNTIME_DIR` to relocate private queue/state/log storage and
 `DEVTRACK_SAGE_KNOWLEDGE_DIR` to relocate portable Markdown independently; relative values resolve
 from the stable Sage data root, not the shell's working directory. This remains a development
-preview: the executable parity ledger is complete, while repeated end-to-end release qualification
-is open. See
+preview: the executable parity ledger and repeated end-to-end qualification are complete, while
+the stacked reviews and new adapters still require integration. See
 [the runtime-isolation qualification](docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md) and the
 [model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
 limits. Platform-specific harness destinations and additive hook migration are covered by the
-[platform/installer qualification](docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md); Codex remains
-the only currently advertised capture adapter. Daemon locks, process liveness, no-console Windows
-children, capture lifecycle aliases, stop reasons, and legacy-hook safety are covered by the
+[platform/installer qualification](docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md). Codex and Claude
+Code are currently advertised capture adapters; Claude's supported events and privacy limits are
+in the [Claude adapter qualification](docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md). Daemon locks,
+process liveness, no-console Windows children, capture lifecycle aliases, stop reasons, and
+legacy-hook safety are covered by the
 [lifecycle qualification](docs/SAGE_LIFECYCLE_QUALIFICATION.md). Capture-decision and read-only
 Codex-history edge cases are covered by the
 [capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md); the final optional
@@ -903,7 +905,7 @@ Key references in this repo:
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [shared role playbooks](agent-memory/roles/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
-| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md) · [IDE parity qualification](docs/SAGE_IDE_PARITY_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
+| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Claude adapter qualification](docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
 
 ---
 

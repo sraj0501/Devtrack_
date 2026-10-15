@@ -1,6 +1,6 @@
 ---
 name: Sage fresh-session handoff
-description: Exact resume context and remaining acceptance gates for TASK-157 / SAGE-003
+description: Exact resume context and remaining acceptance gates for active Sage roadmap work
 type: project
 ---
 
@@ -12,18 +12,11 @@ acting because branch, PR, and CI state can change after this record is updated.
 
 ## Current checkpoint
 
-- Active task: TASK-157 / SAGE-003, Go-native self-writing command knowledge.
-- Integration branch: `origin/dev` at `a6a75b0` after PR #278 merged on 2026-10-13.
-- Active review: PR #279 from `features/TASK-157-sage-backend-isolation` into `dev`; all 19 hosted
-  checks passed, but it remains unmerged. PR #280 and PR #281 are fully green stacked reviews for
-  command-model backends and platform installers. Active stacked branch:
-  `features/TASK-157-sage-capture-history`, based on PR #282's green lifecycle head. PR #282
-  targets `dev`; all 19 hosted checks passed. Commit `215222b` closes capture/logging and the two
-  partial Codex-history rows. PR #283 targets `dev`; all 19 hosted checks passed and the review is
-  clean. The active stacked branch is `features/TASK-157-sage-ide-parity`; commit `836feb7`
-  resolves the final four rows. PR #284 targets `dev`; all 19 hosted checks pass. PR #285 carries
-  the twice-run Windows/Linux acceptance gate; all 19 hosted checks pass and the review is clean.
-- Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
+- Active task: TASK-164 / SAGE-004 Claude Code capture adapter on
+  `features/TASK-164-sage-claude-adapter`.
+- Integration branch: `origin/dev` at `f07bb97` after PR #282. PRs #279–#282 are merged.
+- PRs #283–#285 are clean, fully green stacked reviews for capture/history closure, the completed
+  parity ledger, and the twice-run Windows/Linux acceptance journey.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.
 - Ledger: 136 scenarios — 119 implemented, 17 adapted, 0 partial, and 0 pending;
@@ -48,19 +41,20 @@ capture; cross-harness payload normalization;
 temperature-zero model requests, token-limit diagnostics, and background-only classify-once
 routing with sanitized persistence, deterministic fallback, and existing-section context.
 
-The active follow-up resolves all three runtime/knowledge isolation rows: relative runtime and
+PR #279 resolves all three runtime/knowledge isolation rows: relative runtime and
 knowledge overrides resolve from the stable Sage root, an explicit knowledge directory cannot move
 private runtime state, and the Go prompt is explicitly path-free rather than exposing a runtime
 batch path. See `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md`.
 
-The active stacked branch resolves the four backend/provider rows plus process-local capture
+PR #280 resolves the four backend/provider rows plus process-local capture
 suppression. Ollama HTTP remains the default; installed command providers are explicit opt-ins,
 use direct argv with declared prompt modes, and cannot recursively capture their own subprocess.
 See `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`.
 
-The active stacked branch resolves all 18 platform-layout and additive installer/removal rows.
+PR #281 resolves all 18 platform-layout and additive installer/removal rows.
 Eleven layout rows and five mutation rows are implemented; two Python script-shim rows are
-explicitly adapted to packaged native Go launchers. Codex remains the only advertised adapter.
+explicitly adapted to packaged native Go launchers. TASK-164 subsequently adds Claude Code as the
+second advertised adapter.
 See `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
 
 PR #282's lifecycle branch resolves all 10 daemon/process and 7 CLI lifecycle rows. DevTrack's
@@ -84,11 +78,13 @@ race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.
 
 ## Recommended pickup order
 
-1. Review and integrate IDE-parity PR #284 after its hosted checks pass.
-2. Review the acceptance slice and integrate the remaining stacked closure through `dev`.
+1. Review/integrate green TASK-164 PR #286 only with explicit user authorization.
+2. Implement TASK-165 Copilot CLI, TASK-166 OpenCode, TASK-167 Cursor, and TASK-168 Devin one at a
+   time, with documentation and a dedicated PR after each.
+3. Implement TASK-169 read-only MCP retrieval/diagnostics, then TASK-170 operational closure.
 
 At the start of a fresh session, read `agent-memory/INDEX.md`, `current-state.md`,
-`execution-plan.md`, `initiatives/sage.md`, this file, and the active TASK-157 board entry. Then run:
+`execution-plan.md`, `initiatives/sage.md`, this file, and the active board entry. Then run:
 
 ```text
 git status --short --branch
@@ -110,6 +106,5 @@ model endpoint.
 - Sage may commit only Sage-owned knowledge files locally and never pushes.
 - Playback, visible-reasoning capture, autonomous Git operations, and raw-activity cloud sync are
   out of scope.
-- Additional full harness adapters, read-only MCP knowledge exposure, retention/deletion controls,
-  repair tools, and Markdown import/export are post-core roadmap work, not TASK-157 closure gates
-  unless the board explicitly changes the milestone.
+- Remaining full harness adapters, read-only MCP knowledge exposure, retention/deletion controls,
+  repair tools, and Markdown import/export are the active SAGE-004/SAGE-005 roadmap.
