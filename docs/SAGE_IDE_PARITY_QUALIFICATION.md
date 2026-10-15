@@ -38,4 +38,4 @@ owns the compatible `vscode` and `cli` behavior.
 
 The parity ledger is complete. The later repeated clean Windows/Linux capture-to-knowledge journey
 passes; TASK-157 remains open only for hosted review and integration of the stacked reviews.
-PR #284 carries this slice into `dev`; hosted validation is in progress.
+PR #284 carries this slice into `dev`; all 19 hosted checks pass.

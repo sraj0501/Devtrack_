@@ -8,8 +8,8 @@ passes and both Linux passes cover additive install, silent privacy-minimized ca
 import, model outage and malformed-output recovery, deterministic publication, search, route
 correction, merge/refile, restart stability, knowledge-only Git commits, unrelated Git-state
 preservation, privacy canaries, and safe uninstall. Full Go tests/vet and focused Linux race
-coverage pass. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Next: hosted review and integration
-of stacked PR #285 after fully green parent PR #284.
+coverage and all 19 hosted checks pass. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Next:
+integration of clean PR #285 after fully green parent PR #284.
 
 ## 2026-10-15 — TASK-157 executable Sage parity complete
 

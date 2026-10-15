@@ -81,8 +81,8 @@ quickly, print nothing, perform no model or network call, and never break an age
   pending; `--require-complete` passes. PR #283 targets `dev`; all 19 hosted checks passed and the
   review is clean. PR #284 carries the completed parity ledger into `dev`; all 19 hosted checks
   pass. PR #285 carries the final repeated capture-to-knowledge acceptance gate, which passes twice
-  on native Windows and Linux; its hosted checks are in progress. Remaining work is hosted review
-  and integration of the stacked reviews.
+  on native Windows and Linux; all 19 hosted checks pass and the review is clean. Remaining work is
+  integration of the stacked reviews.
 
 ## Ordered next steps
 

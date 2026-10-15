@@ -22,7 +22,7 @@ acting because branch, PR, and CI state can change after this record is updated.
   partial Codex-history rows. PR #283 targets `dev`; all 19 hosted checks passed and the review is
   clean. The active stacked branch is `features/TASK-157-sage-ide-parity`; commit `836feb7`
   resolves the final four rows. PR #284 targets `dev`; all 19 hosted checks pass. PR #285 carries
-  the twice-run Windows/Linux acceptance gate; hosted validation is in progress.
+  the twice-run Windows/Linux acceptance gate; all 19 hosted checks pass and the review is clean.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.

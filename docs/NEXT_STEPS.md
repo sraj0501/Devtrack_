@@ -14,11 +14,11 @@ branch, `features/TASK-157-sage-capture-history`, is stacked on fully green life
 Implementation commit `215222b` closes capture/logging and the two partial Codex-history rows.
 PR #283 targets `dev`; all 19 hosted checks passed and the review is clean. PR #284 carries the
 stacked `features/TASK-157-sage-ide-parity` slice, which resolves the final four ledger rows without
-advertising another harness; hosted validation is in progress.
+advertising another harness; all 19 hosted checks pass.
 
-PR #284 is fully green. Final stacked PR #285 now runs the clean
-capture-to-self-written-knowledge journey twice on Windows and Linux. Review its hosted checks and
-integrate the stacked PRs before closing TASK-157.
+PR #284 is fully green. Final stacked PR #285 runs the clean
+capture-to-self-written-knowledge journey twice on Windows and Linux; all 19 hosted checks pass and
+the review is clean. Integrate the stacked PRs before closing TASK-157.
 
 ## Current product initiative
 

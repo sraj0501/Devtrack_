@@ -24,7 +24,7 @@ watcher; all 19 hosted checks passed. The active stacked branch is
 four rows without advertising another harness. PR #284 targets `dev`; all 19 hosted checks pass.
 The 136-scenario ledger now records 119 implemented, 17 adapted, 0 partial, and 0 pending scenarios;
 `--require-complete` passes. PR #285 carries the final two-pass clean journey, which passes on
-native Windows and Linux; its hosted checks are in progress.
+native Windows and Linux; all 19 hosted checks pass and the review is clean.
 Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
 pass locally. The four exact IDE-compatibility tests also pass as native Windows executables, and
