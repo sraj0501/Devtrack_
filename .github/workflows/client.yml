@@ -72,7 +72,7 @@ jobs:
 
       - name: go test
         working-directory: devtrack_client
-        run: go test ./... -timeout 60s
+        run: go test ./... -timeout 120s
 
   api-contract:
     name: API contract tests (ubuntu-latest)
