@@ -119,3 +119,12 @@ func (c Cursor) Descriptor() Descriptor {
 func (c Cursor) Install() (hooks.Installation, error)   { return c.Installer.Install() }
 func (c Cursor) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
 func (c Cursor) Status() (hooks.Installation, error)    { return c.Installer.Status() }
+
+type Devin struct{ Installer hooks.DevinInstaller }
+
+func (d Devin) Descriptor() Descriptor {
+	return Descriptor{ID: "devin", DisplayName: "Devin CLI", BuiltIn: true}
+}
+func (d Devin) Install() (hooks.Installation, error)   { return d.Installer.Install() }
+func (d Devin) Uninstall() (hooks.Installation, error) { return d.Installer.Uninstall() }
+func (d Devin) Status() (hooks.Installation, error)    { return d.Installer.Status() }

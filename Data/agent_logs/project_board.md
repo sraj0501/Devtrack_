@@ -11,6 +11,36 @@ implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. 
 Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
 verification before allocation._
 
+**[2026-10-16] TASK-168 / SAGE-004 — Devin CLI capture adapter (in progress).**
+**Priority:** High. **Branch:** `features/TASK-168-sage-devin-adapter`.
+**Assigned to:** engineer. **Depends on:** green TASK-167 PR #289.
+
+Add one independently managed built-in Devin CLI adapter using the platform configuration root and
+the existing native DevTrack hook endpoint. Preserve foreign settings and hook entries, capture
+matched `PostToolUse` events, and do not add session lifecycle processes or Python.
+
+**Acceptance criteria:**
+- [x] `devtrack sage harness list|install|uninstall devin` reports truthful independent state and
+      never mutates Codex, Claude, Copilot, Cursor, or OpenCode configuration.
+- [x] Windows resolves `%APPDATA%\devin\config.json`; Unix resolves
+      `$XDG_CONFIG_HOME/devin/config.json` with the documented home fallback.
+- [x] Installation merges one owned `PostToolUse` entry matched to
+      `^(exec|grep|glob|edit|write|apply_patch)$`, invokes the packaged executable, and adds no
+      session lifecycle hooks.
+- [x] Install/reinstall/uninstall is atomic, byte-stable, preserves file mode and foreign content,
+      replaces known legacy entries, and makes missing uninstall a no-op.
+- [x] The hidden endpoint accepts bounded Devin shell/search/glob/edit/write/apply-patch payloads
+      silently and emits only validated privacy-minimized events with deterministic duplicate
+      identity.
+- [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
+- [ ] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
+      validation.
+- [ ] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** implementation and cross-platform local verification complete against current
+clean reference HEAD `ea2e067`; documentation reconciliation and hosted review remain.
+**Blockers:** none.
+
 **[2026-10-15] TASK-167 / SAGE-004 — Cursor capture adapter (complete).**
 **Priority:** High. **Branch:** `features/TASK-167-sage-cursor-adapter`.
 **Assigned to:** engineer. **Depends on:** green TASK-166 PR #288.

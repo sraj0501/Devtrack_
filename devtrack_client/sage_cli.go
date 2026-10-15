@@ -290,6 +290,7 @@ func sageHarnessRegistry(root, executable string) *sageharness.Registry {
 		sageharness.Claude{Installer: hooks.ClaudeInstaller{Executable: executable}},
 		sageharness.Copilot{Installer: hooks.CopilotInstaller{Executable: executable}},
 		sageharness.Cursor{Installer: hooks.CursorInstaller{Executable: executable}},
+		sageharness.Devin{Installer: hooks.DevinInstaller{Executable: executable}},
 		sageharness.OpenCode{Installer: hooks.OpenCodeInstaller{Executable: executable}},
 	)
 }
@@ -301,7 +302,7 @@ func runSageHook(args []string, input io.Reader) error {
 		return nil
 	}
 	if len(args) != 2 || args[1] != hooks.OwnerMarker ||
-		(args[0] != "codex" && args[0] != "claude" && args[0] != "copilot" && args[0] != "cursor" && args[0] != "opencode") {
+		(args[0] != "codex" && args[0] != "claude" && args[0] != "copilot" && args[0] != "cursor" && args[0] != "devin" && args[0] != "opencode") {
 		return nil
 	}
 	raw, err := io.ReadAll(io.LimitReader(input, hooks.MaxHarnessHookBytes+1))
@@ -317,6 +318,8 @@ func runSageHook(args []string, input io.Reader) error {
 		events = hooks.NormalizeOpenCodeEvents(raw, time.Now().UTC())
 	} else if args[0] == "cursor" {
 		events = hooks.NormalizeCursorEvents(raw, time.Now().UTC())
+	} else if args[0] == "devin" {
+		events = hooks.NormalizeDevinEvents(raw, time.Now().UTC())
 	} else {
 		events = hooks.NormalizeCodexPostToolUseEvents(raw, time.Now().UTC())
 	}
