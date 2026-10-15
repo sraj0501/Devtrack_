@@ -3019,3 +3019,14 @@ All 19 PR #281 checks passed, including hosted Windows build/vet, tests, no-send
 **Friction**: LOW — host Go and Node are absent, so the Go 1.24 and Node 22 Docker toolchains supplied the missing build tools.
 **Notes**: The single DevTrack daemon now owns Sage locks, liveness, and lifecycle; no detached Sage watcher was added. Windows children request no console, access-denied liveness is conservative, capture supports start/stop/restart aliases and local stop reasons, typos fail loudly, and legacy hook shims cannot resume capture. The full Linux Go suite/vet, actual Windows lifecycle executables, full Windows test-tree cross-compilation, current-reference parity, parity-checker tests, shared-memory validation, wiki inline JavaScript, and whitespace checks pass. Ledger: 110 implemented, 16 adapted, 2 partial, 8 pending. The helper committed successfully despite the known legacy post-commit log-path warning.
 **PR**: https://github.com/sraj0501/Devtrack_/pull/282 (targets `dev`, stacked on unmerged PRs #279-#281). All 19 hosted checks passed. The first Windows no-send E2E attempt timed out waiting for its isolated daemon PID; the identical rerun passed in 1m49s, matching the successful local Windows reproduction and hosted Windows unit suite.
+
+### [2026-10-14] TASK-157 — Close Sage capture and Codex-history parity
+
+**Original message**: "List out all the Sage features of DevTrack. Finish them one by one, document each change, run docu-agent, and raise a PR after each completed change. Then move on to the next one."
+**Commit**: `215222b` (`feat(sage): close capture and history parity`) on `features/TASK-157-sage-capture-history`.
+**DevTrack enhanced it to**: unchanged; the helper retained the supplied message.
+**Ticket auto-linked**: NO — the message omitted TASK-157; the task is explicit in the branch and project board.
+**PM system updated**: local project board, feature tracker, and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Time**: implementation and cross-platform qualification completed before the implementation commit.
+**Friction**: LOW — the first helper invocation completed after its command wrapper stopped returning output; the commit was verified before continuing, and no raw Git commit fallback was used.
+**Notes**: Installed Codex capture now honors persistent pause state; bounded content-free capture decisions distinguish `new`, `known`, and same-payload `repeat`; logging is fail-open; interleaved Codex-history items are collected exactly when terminal; and failed items preserve exact exit status. The full Go suite/vet passes in Go 1.24 Docker, and all six exact parity tests pass as native Windows binaries. Ledger: 116 implemented, 16 adapted, 0 partial, 4 pending. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.

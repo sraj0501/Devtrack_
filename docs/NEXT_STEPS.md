@@ -10,11 +10,11 @@ runtime/knowledge-root isolation slice; all 19 hosted checks passed, but it rema
 stacked PR #280 adds explicit command-model providers while retaining Ollama HTTP as the default;
 it is fully green. PR #281 closes portable roots, harness destinations, native launcher
 adaptations, and additive install/removal behavior; it is also fully green. The active stacked
-branch, `features/TASK-157-sage-lifecycle`, closes daemon/process and CLI lifecycle parity without
-adding a second Sage watcher. PR #282 targets `dev`; all 19 hosted checks passed.
+branch, `features/TASK-157-sage-capture-history`, is stacked on fully green lifecycle PR #282.
+Implementation commit `215222b` closes capture/logging and the two partial Codex-history rows.
 
-After review and integration, close the four capture/logging rows, two partial Codex-history rows,
-and four optional IDE adaptations. Run the clean
+After review and integration, resolve the four optional IDE rows without advertising another
+harness before the Codex closure gate. Run the clean
 capture-to-self-written-knowledge journey twice on Windows and Linux before closing TASK-157.
 
 ## Current product initiative
@@ -41,8 +41,8 @@ are implemented, hook installation/removal is reversible, and the isolated packa
 journey passes. The SAGE-003 durable distillation, deterministic publication,
 routing/correction, merge/refile, skipped-action records, search, diagnostics, and safe
 local-commit foundation is implemented. Runtime/knowledge isolation is under review in PR #279,
-explicit model backends, platform installers, and lifecycle parity are on stacked branches.
-SAGE-003 remains incomplete until
+explicit model backends, platform installers, lifecycle parity, and capture/history closure are on
+stacked branches. SAGE-003 remains incomplete until
 the remaining parity rows and repeated clean acceptance journeys pass.
 Sanitized observed hook fixtures
 remain an external harness-validation gate.
@@ -51,8 +51,8 @@ The selective harness registry and external plugin boundary are now fixed in
 global installer switches or harness-specific storage.
 `Data/agent_logs/project_board.md` remains the task-ID authority.
 
-The parity inventory accounts for all 136 reference test methods at `ea2e067`: 110 implemented,
-16 adapted, 2 partial, and 8 pending. Every remaining row needs exact Go-test ownership or an
+The parity inventory accounts for all 136 reference test methods at `ea2e067`: 116 implemented,
+16 adapted, 0 partial, and 4 pending. Every remaining row needs exact Go-test ownership or an
 explicit justified adaptation; a reconciled row count alone is not a completion claim.
 
 ## Open release follow-ups

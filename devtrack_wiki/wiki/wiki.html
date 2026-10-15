@@ -1642,8 +1642,9 @@ devtrack start</code></pre>
 <li><strong>Active reviews:</strong> PR #279 isolates private runtime state from portable knowledge placement and passed all 19 hosted checks. PR #280 adds explicit no-shell command providers, PR #281 closes platform-layout and additive installer/removal parity, and PR #282 closes daemon/process and CLI lifecycle parity; all four reviews are fully green.</li>
 <li><strong>Portable installation:</strong> Windows <code>APPDATA</code>, Linux XDG, macOS, home-relative harness roots, OpenCode discovery, and every reference skill destination resolve deterministically. Native Go executables replace Python hook shims. Codex reinstall preserves foreign settings, removes owned/known-legacy entries only, and reports missing targets.</li>
 <li><strong>Lifecycle safety:</strong> the single DevTrack daemon now owns exclusive locks and liveness; Windows children run without a console, capture aliases persist stop reasons, typos fail loudly, and legacy hook shims cannot resume capture.</li>
-<li><strong>Parity checkpoint:</strong> the current <code>ea2e067</code> reference ledger records 110 implemented, 16 adapted, 2 partial, and 8 pending scenarios.</li>
-<li><strong>Remaining milestone work:</strong> SAGE-003 still requires capture/logging and Codex-history edge cases, optional IDE adaptations, and two clean Windows/Linux capture-to-knowledge acceptance passes.</li>
+<li><strong>Capture/history closure:</strong> the active stacked branch adds fail-open, content-free <code>new</code>/<code>known</code>/<code>repeat</code> decisions, installed-adapter pause enforcement, interleaved terminal history collection, and exact failed-exit preservation.</li>
+<li><strong>Parity checkpoint:</strong> the current <code>ea2e067</code> reference ledger records 116 implemented, 16 adapted, 0 partial, and 4 pending scenarios.</li>
+<li><strong>Remaining milestone work:</strong> SAGE-003 still requires four optional IDE adaptations and two clean Windows/Linux capture-to-knowledge acceptance passes.</li>
 </ul>
 <h2>Current dev — TASK-158 completely silent Git path</h2>
 <ul>
@@ -2718,7 +2719,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
-<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from <code>ai_sessions_skills</code> commit <code>ea2e067</code>. TASK-157 implements capture, durable SQLite jobs, daemon-owned distillation, deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped records, full-entry search, diagnostics, and safe local commits. Remaining parity coverage and repeated end-to-end acceptance are still in progress.</p>
+<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from <code>ai_sessions_skills</code> commit <code>ea2e067</code>. TASK-157 implements capture, durable SQLite jobs, daemon-owned distillation, deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped records, full-entry search, diagnostics, safe local commits, privacy-safe capture decisions, and Codex-history terminal handling. Four optional IDE rows and repeated end-to-end acceptance are still in progress.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2756,6 +2757,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Neutral Go LLM transport with bounded HTTP behavior, structured drafts with required title/what/why/example fields and optional notes, explicit skip verdicts, and a non-blocking worker.</li>
 <li>Durable SQLite claims and leases, daemon lifecycle ownership, deterministic Markdown publication, persistent routes, restart-safe merge/refile, skipped-action records, and whole-entry search.</li>
 <li>Truthful pipeline diagnostics, privacy-safe logs, Sage-owned local commits that never push, and independent runtime/knowledge placement.</li>
+<li>Fail-open capture decisions that expose only <code>new</code>, <code>known</code>, or same-payload <code>repeat</code> with opaque identifiers; commands and raw signatures are excluded.</li>
 </ul>
 
 <h2>Current TASK-157 commands</h2>
@@ -2777,11 +2779,11 @@ devtrack sage topics
 devtrack sage doctor
 devtrack sage log
 devtrack sage routes</code></pre>
-<p>Capture is local and hooks are silent and fail-open. Sage lifecycle commands change persistent capture state without spawning or stopping a second watcher; the DevTrack daemon remains the single background owner. Search refreshes its SQLite cache from current Markdown knowledge entries, including supported manual edits and topic moves. <code>DEVTRACK_SAGE_RUNTIME_DIR</code> relocates private queue/state/log storage and <code>DEVTRACK_SAGE_KNOWLEDGE_DIR</code> relocates portable Markdown independently; relative values resolve from the stable Sage data root.</p>
+<p>Capture is local and hooks are silent and fail-open. <code>devtrack sage log</code> includes bounded capture decisions without commands, raw signatures, paths, output, prompts, or reasoning. Sage lifecycle commands change persistent capture state without spawning or stopping a second watcher; the DevTrack daemon remains the single background owner. Search refreshes its SQLite cache from current Markdown knowledge entries, including supported manual edits and topic moves. <code>DEVTRACK_SAGE_RUNTIME_DIR</code> relocates private queue/state/log storage and <code>DEVTRACK_SAGE_KNOWLEDGE_DIR</code> relocates portable Markdown independently; relative values resolve from the stable Sage data root.</p>
 
 <h2>What remains before SAGE-003 is complete</h2>
 <ul>
-<li>The remaining reference parity scenarios and the repeated clean Codex end-to-end journey.</li>
+<li>Four optional IDE parity scenarios and the repeated clean Codex end-to-end journey.</li>
 <li>Additional harness adapters only after the Codex closure gate passes.</li>
 </ul>
 
@@ -3360,7 +3362,7 @@ function renderHome() {
         { id:'PM_AGENT',        icon:'🗂️', title:'PM Agent',            desc:'AI decomposes problems into Epic → Story → Task hierarchies.' },
         { id:'PROJECT_PLANNING',icon:'📋', title:'AI Project Planning', desc:'Use explicit <code>devtrack plan</code> and optional <code>devtrack boardroom</code> CLI flows. The legacy Python Telegram <code>/newproject</code> prototype is not part of the current Go bot.' },
         // ── AI & Personalization ──────────────────────────────────────────────
-        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'Current command-knowledge product and Git Sage migration guide: local capture, SQLite search, and the structured-distillation foundation exist on <code>dev</code>; durable worker orchestration and Markdown knowledge remain.' },
+        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'Current command-knowledge product and Git Sage migration guide: local capture, durable distillation, deterministic Markdown, search, corrections, diagnostics, and safe local commits are implemented; optional IDE parity and repeated acceptance remain.' },
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
         { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'Maintained <code>devtrack voice</code> routes seed from local Git, manual examples, and supported PM content. Teams/Outlook communication learning and legacy learning controls remain unavailable pending adapter repair.' },
         // ── System Integration ────────────────────────────────────────────────

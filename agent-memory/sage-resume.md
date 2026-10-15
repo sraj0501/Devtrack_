@@ -17,12 +17,13 @@ acting because branch, PR, and CI state can change after this record is updated.
 - Active review: PR #279 from `features/TASK-157-sage-backend-isolation` into `dev`; all 19 hosted
   checks passed, but it remains unmerged. PR #280 and PR #281 are fully green stacked reviews for
   command-model backends and platform installers. Active stacked branch:
-  `features/TASK-157-sage-lifecycle`, based on PR #281's green head. PR #282 targets `dev`; all 19
-  hosted checks passed.
+  `features/TASK-157-sage-capture-history`, based on PR #282's green lifecycle head. PR #282
+  targets `dev`; all 19 hosted checks passed. Commit `215222b` closes capture/logging and the two
+  partial Codex-history rows; its PR is not yet open.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.
-- Ledger: 136 scenarios — 110 implemented, 16 adapted, 2 partial, and 8 pending.
+- Ledger: 136 scenarios — 116 implemented, 16 adapted, 0 partial, and 4 pending.
 - Qualification: full Go tests, `go vet ./...`, ledger consistency, parity-checker tests,
   shared-memory validation, and whitespace validation passed locally. All required PR #278 checks
   and applicable post-merge workflows passed, including hosted Windows tests.
@@ -58,7 +59,7 @@ Eleven layout rows and five mutation rows are implemented; two Python script-shi
 explicitly adapted to packaged native Go launchers. Codex remains the only advertised adapter.
 See `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
 
-The active lifecycle branch resolves all 10 daemon/process and 7 CLI lifecycle rows. DevTrack's
+PR #282's lifecycle branch resolves all 10 daemon/process and 7 CLI lifecycle rows. DevTrack's
 single daemon owns locking, liveness, and background work; Windows native children have no console,
 and Sage start/stop/restart aliases manage persistent capture state without spawning a watcher.
 See `docs/SAGE_LIFECYCLE_QUALIFICATION.md`.
@@ -70,16 +71,11 @@ The final ledger command must pass with `--require-complete`.
 
 | Group | Pending | Required outcome |
 |---|---:|---|
-| Configuration, pause, capture, and logging | 4 | Prove installed-adapter pause behavior, fail-open logging, new/known enqueue records, and repeated actions within one command line. |
 | Optional IDE adapter | 4 | Cover original-command filtering, pause/reset/checkpoint behavior, and failure handling. Do not add another harness before the resilient Codex journey; explicitly adapt these rows if they are outside the current milestone. |
-| **Total pending** | **8** | All must become implemented or deliberately adapted. |
+| **Total pending** | **4** | All must become implemented or deliberately adapted. |
 
-The two partial rows are:
-
-1. Codex history terminal collection: add interleaved fast/slow command coverage and repeat-poll
-   deduplication.
-2. Failed-command exit status: normalization is covered, but the reference-specific history path
-   still needs exact parity evidence or an explicit adaptation.
+There are no partial rows. Capture/logging and Codex-history edge cases are closed on the active
+branch; see `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.
 
 ## Acceptance still required
 
@@ -92,7 +88,7 @@ The two partial rows are:
 
 ## Recommended pickup order
 
-1. Capture, pause, logging, and the two partial Codex-history rows.
+1. Review and integrate the capture/history slice.
 2. Resolve the optional IDE rows without violating the Codex-first sequencing guardrail.
 3. Run the repeated Windows/Linux acceptance journey, close the ledger, and integrate the remaining
    closure through a new PR to `dev`.

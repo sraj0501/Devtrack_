@@ -188,14 +188,17 @@ Latest checkpoint (2026-10-14): PR #278 merged diagnostics, safe local commits, 
 and routing/model-request parity to `dev` at `a6a75b0`. PR #279's fully green review isolates the
 private runtime root from portable knowledge placement. PR #280 keeps Ollama HTTP as the default
 and adds explicit, no-shell command providers with process-local capture suppression; all 19 checks
-passed. PR #281 closes portable platform paths and additive install/removal. The active stacked
-lifecycle branch closes daemon locks/liveness, no-console launches, capture aliases, stop reasons,
-and legacy-hook safety without adding a second watcher. PR #282 targets `dev`; all 19 hosted checks
-passed. The ledger is 110 implemented, 16 adapted, 2 partial, and 8 pending. Details:
+passed. PR #281 closes portable platform paths and additive install/removal. PR #282 closes daemon
+locks/liveness, no-console launches, capture aliases, stop reasons, and legacy-hook safety without
+adding a second watcher; all 19 hosted checks passed. The active capture/history branch adds
+fail-open, privacy-safe capture decisions, installed
+pause enforcement, interleaved terminal history collection, and failed-exit preservation. The
+ledger is 116 implemented, 16 adapted, 0 partial, and 4 pending. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md` and
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`, and
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`, and
-`docs/SAGE_LIFECYCLE_QUALIFICATION.md`. Parity closure and final acceptance remain open. The
+`docs/SAGE_LIFECYCLE_QUALIFICATION.md`, and
+`docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`. Optional IDE parity and final acceptance remain open. The
 following dated entries describe earlier foundations.
 
 Historical checkpoint (2026-09-20): the first model-free slice was implemented. Imported events
@@ -282,8 +285,8 @@ SAGE-001 and SAGE-002 are complete. TASK-157 has implemented the SAGE-003 durabl
 lifecycle, deterministic Markdown publication, route correction, restart-safe merge/refile,
 skipped-action records, full-entry search, truthful diagnostics, safe local commits, isolated
 runtime/knowledge roots, explicit model backends, portable layouts, and additive installer
-mutation. The active stacked branch also closes daemon/process and CLI lifecycle parity. Review
-the stacked branches, then close capture/logging, Codex-history, optional IDE, and the remaining
+mutation. PR #282 also closes daemon/process and CLI lifecycle parity, while the active stacked
+branch closes capture/history parity. Review the stacked branches, then close optional IDE parity and the remaining
 executable parity rows before
 running the clean capture-to-self-written-knowledge journey twice. Do not expand to another harness
 before that gate.

@@ -1,12 +1,12 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-14 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
+_Last reconciled: 2026-10-15 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
 `dev` at `a6a75b0`; required and post-merge workflows passed. PR #279's runtime/knowledge isolation
 review passed all 19 hosted checks and remains unmerged. The active stacked branch is
-`features/TASK-157-sage-lifecycle`, stacked on fully green PRs #280 and #281 and using the current
-reference checkout at `ea2e067`. The executable parity ledger is 110 implemented, 16 adapted,
-2 partial, and 8 pending. PR #282 targets `dev`; all 19 hosted checks passed. Next: review this
-slice, then continue capture/history/IDE parity and
+`features/TASK-157-sage-capture-history`, stacked on fully green PRs #280-#282 and using the current
+reference checkout at `ea2e067`. The executable parity ledger is 116 implemented, 16 adapted,
+0 partial, and 4 pending. Commit `215222b` closes capture/logging and Codex-history parity. Next:
+review this slice, then resolve optional IDE parity and
 repeated Windows/Linux acceptance. Next unused
 task ID: TASK-164, subject to verification before allocation._
 
@@ -262,20 +262,20 @@ https://github.com/sraj0501/Devtrack_/pull/273
 PR #279 adds stable runtime and knowledge path resolution, including explicit and relative
 overrides; all 19 hosted checks passed. PR #280 adds explicit Go-native command-model providers
 while retaining Ollama HTTP as the default; all 19 hosted checks passed. The active
-`features/TASK-157-sage-lifecycle` branch closes daemon/process and CLI lifecycle parity after
-fully green PR #281 closed platform layout and additive installer parity. The
+`features/TASK-157-sage-capture-history` branch closes capture/logging and Codex-history parity
+after fully green PRs #281 and #282 closed platform/installer and lifecycle parity. The
 integrated slice adds truthful
 `status`/`doctor`/`log` diagnostics, bounded retries, privacy-safe NDJSON logs, Sage-owned local
 commits, model-free documented-action reuse, deterministic rendering, and conservative section
 matching, quote-aware compound command capture, cross-harness payload normalization, deterministic
 temperature-zero model requests, token-limit diagnostics, and background classify-once routing with
 sanitized persistent choices, deterministic fallback, and existing-section context. The ledger is
-now 110 implemented, 16 adapted, 2 partial, and 8 pending. Full Go tests, `go vet ./...`,
+now 116 implemented, 16 adapted, 0 partial, and 4 pending. Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
 locally. TASK-157 remains open for the remaining parity closure and repeated end-to-end journey.
 **Implementation commits:** `5317d4a` — isolate Sage runtime and knowledge roots; `80bb76f` — add
 explicit Sage model backends; `24c28f8` — port platform layouts and additive installers;
-`2711882` — port daemon and CLI lifecycle.
+`2711882` — port daemon and CLI lifecycle; `215222b` — close capture and Codex-history parity.
 **PRs:** https://github.com/sraj0501/Devtrack_/pull/278 and
 https://github.com/sraj0501/Devtrack_/pull/279 and
 https://github.com/sraj0501/Devtrack_/pull/280 and
@@ -308,6 +308,14 @@ checker pass. Evidence: `docs/SAGE_LIFECYCLE_QUALIFICATION.md`.
 **Lifecycle PR:** https://github.com/sraj0501/Devtrack_/pull/282 targets `dev`; all 19 hosted checks
 passed, including Windows tests, no-send E2E, and MCPB smoke.
 
+**Capture/history status (2026-10-14):** Locally qualified on
+`features/TASK-157-sage-capture-history`: installed Codex capture respects persistent pause state;
+bounded privacy-safe decisions distinguish `new`, `known`, and same-payload `repeat` without
+storing commands or raw signatures; logging is fail-open; interleaved fast/slow Codex-history
+items are collected once when terminal; and failed items preserve their exact non-zero exit code.
+All six exact tests pass in Linux Go 1.24 Docker and as native Windows binaries. The full Go suite
+and vet pass. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.
+
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
       NDJSON diagnostics.
@@ -329,12 +337,14 @@ passed, including Windows tests, no-send E2E, and MCPB smoke.
       validation, and whitespace checks pass locally.
 
 **Pending before TASK-157 can close:**
-- [ ] Resolve the 8 pending and 2 partial rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
+- [ ] Resolve the 4 pending optional IDE rows in `docs/SAGE_PORT_PARITY_MATRIX.md`, using exact
       Go tests or an explicit, justified adaptation; make `--require-complete` pass.
 - [x] Complete daemon/process and CLI lifecycle parity across supported operating systems without
       adding a second Sage watcher.
-- [ ] Complete capture/logging, optional IDE, and remaining Codex-history parity scenarios across
-      supported operating systems.
+- [x] Complete capture/logging and remaining Codex-history parity scenarios across supported
+      operating systems.
+- [ ] Resolve the four optional IDE parity scenarios without advertising another harness before
+      the Codex end-to-end closure gate.
 - [ ] Run the clean capture-to-self-written-knowledge journey twice on Windows and Linux, including
       silent capture, retry recovery, publication, search, route correction, merge/refile, privacy
       canaries, unrelated-Git-state preservation, and safe uninstall.

@@ -1,5 +1,15 @@
 # DevTrack Feature Tracker
 
+## 2026-10-14 — TASK-157 capture decisions and Codex-history closure
+
+The active `features/TASK-157-sage-capture-history` branch closes four capture/logging rows and
+both partial Codex-history rows. Capture decisions are bounded, fail-open, and privacy-safe;
+installed pause state is enforced; repeated actions inside one command line are marked without
+double-spooling; and history polling covers interleaved terminal transitions plus exact failure
+status. The full Go suite/vet and native Windows exact tests pass. Ledger: 116 implemented,
+16 adapted, 0 partial, 4 pending. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`. Next:
+resolve the four optional IDE rows, then run repeated Windows/Linux acceptance.
+
 ## 2026-10-14 — TASK-157 portable layouts and additive installers
 
 The active `features/TASK-157-sage-platform-installers` branch closes all 18 reference rows for
