@@ -22,16 +22,18 @@ without an approved board task and a dedicated branch targeting `dev`.
   install/removal; all 19 hosted checks passed. PR #282 closes daemon/process and CLI lifecycle
   parity without adding a second Sage watcher; all 19 hosted checks passed. Active implementation
   branch: `features/TASK-157-sage-capture-history`, stacked on PR #282. Commit `215222b` closes
-  capture/logging and the remaining Codex-history rows. PR #283 targets `dev`; hosted checks are
-  running.
+  capture/logging and the remaining Codex-history rows. PR #283 targets `dev`; all 19 hosted checks
+  passed and the review is clean. The active stacked branch is
+  `features/TASK-157-sage-ide-parity`; commit `836feb7`
+  resolves the last four ledger rows without advertising another harness.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded
   retries, safe local knowledge commits, model-free documented-action reuse, and conservative
   section matching.
-- Ledger checkpoint: 116 implemented, 16 adapted, 0 partial, 4 pending. Full Go tests, vet, ledger
+- Ledger checkpoint: 119 implemented, 17 adapted, 0 partial, 0 pending. Full Go tests, vet, ledger
   consistency, parity-checker tests, shared-memory validation, and whitespace validation pass on
-  the active branch.
+  the active branch. `scripts/check_sage_parity.py --require-complete` passes.
 - Next unused task ID is TASK-164, subject to board verification before allocation.
 
 ## Ordered work
@@ -64,9 +66,9 @@ pass, and the native-launcher adaptations remain explicit.
 
 ### 4. Close the parity ledger
 
-Use `docs/SAGE_PORT_PARITY_MATRIX.md` as the completion authority. Implement or explicitly adapt
-the four optional IDE scenarios with exact Go tests and rationale, without advertising another
-harness before the Codex acceptance gate. Keep the matrix checker and fault-injection lane green.
+Completed on the active IDE-parity branch. The existing opt-in Codex history adapter owns the four
+reference scenarios; no additional harness is advertised. Three rows map directly and the
+raw-command/source-default difference is an explicit privacy-preserving adaptation.
 
 Gate: all 136 scenarios are implemented or deliberately adapted; `--require-complete` passes.
 
@@ -84,8 +86,8 @@ golden, fuzz, fault-injection, and race coverage.
 
 Update the board and documentation from verified evidence, then open a new reviewable PR targeting
 `dev`. PR #278 integrated diagnostics and safe local commits, but TASK-157 remains open until the
-remaining parity and end-to-end gates pass. Do not expose raw events through MCP or add another
-harness before the Codex closure gate.
+repeated end-to-end gate passes and the stacked reviews integrate. Do not expose raw events through
+MCP or add another harness before the Codex closure gate.
 
 ### 7. Resolve the server-admin UI branch
 

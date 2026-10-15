@@ -49,6 +49,6 @@ adding a competing Sage process.
 - `scripts/check_sage_parity.py --reference C:\Work\git_apps\ai_sessions_skills` passed with
   136 rows: 110 implemented, 16 adapted, 2 partial, and 8 pending.
 
-The later capture/history slice closes the four capture/logging scenarios and both partial
-Codex-history scenarios; see `SAGE_CAPTURE_HISTORY_QUALIFICATION.md`. Four optional IDE scenarios
-and repeated clean Windows/Linux capture-to-knowledge acceptance remain before SAGE-003 can close.
+The later capture/history and IDE-parity slices close all remaining ledger scenarios; see
+`SAGE_CAPTURE_HISTORY_QUALIFICATION.md` and `SAGE_IDE_PARITY_QUALIFICATION.md`. Repeated clean
+Windows/Linux capture-to-knowledge acceptance remains before SAGE-003 can close.

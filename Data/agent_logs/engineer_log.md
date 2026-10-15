@@ -3030,4 +3030,14 @@ All 19 PR #281 checks passed, including hosted Windows build/vet, tests, no-send
 **Time**: implementation and cross-platform qualification completed before the implementation commit.
 **Friction**: LOW — the first helper invocation completed after its command wrapper stopped returning output; the commit was verified before continuing, and no raw Git commit fallback was used.
 **Notes**: Installed Codex capture now honors persistent pause state; bounded content-free capture decisions distinguish `new`, `known`, and same-payload `repeat`; logging is fail-open; interleaved Codex-history items are collected exactly when terminal; and failed items preserve exact exit status. The full Go suite/vet passes in Go 1.24 Docker, and all six exact parity tests pass as native Windows binaries. Ledger: 116 implemented, 16 adapted, 0 partial, 4 pending. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.
-**PR**: https://github.com/sraj0501/Devtrack_/pull/283 (targets `dev`, stacked on fully green PR #282); hosted checks are running.
+**PR**: https://github.com/sraj0501/Devtrack_/pull/283 (targets `dev`, stacked on fully green PR #282); all 19 hosted checks passed and the review is clean.
+
+### [2026-10-15] TASK-157 — Close optional IDE parity
+
+**Original message**: "List out all the Sage features of DevTrack. Finish them one by one, document each change, run docu-agent, and raise a PR after each completed change. Then move on to the next one."
+**Commit**: `836feb7` (`test(sage): close optional IDE parity`) on `features/TASK-157-sage-ide-parity`.
+**DevTrack enhanced it to**: unchanged; Ollama returned an empty response, so the helper retained the supplied message.
+**Ticket auto-linked**: NO — the message omitted TASK-157; the task is explicit in the branch and project board.
+**PM system updated**: local project board, feature tracker, and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Friction**: LOW — one test expectation was aligned with the existing deterministic ripgrep flag normalization after the first focused run exposed `rg -c -i -n`.
+**Notes**: The existing opt-in Codex history adapter now has exact reference-named coverage for first-use exclusion and repeat polling, pause without database access or checkpoint mutation, pause/resume cutoff reset, and enqueue-failure retry. One explicit adaptation retains both `vscode` and `cli` sources and privacy-minimized commands; no harness was added. Full Go tests/vet, focused Linux race coverage, and native Windows exact tests pass. Ledger: 119 implemented, 17 adapted, 0 partial, 0 pending; `--require-complete` passes. Evidence: `docs/SAGE_IDE_PARITY_QUALIFICATION.md`.
