@@ -3,11 +3,13 @@
 _Last reconciled: 2026-10-15 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
 `dev` at `a6a75b0`; required and post-merge workflows passed. PR #279's runtime/knowledge isolation
 review passed all 19 hosted checks and remains unmerged. PR #283 carries capture/history closure;
-all 19 hosted checks passed and the review is clean. The active stacked branch is
-`features/TASK-157-sage-ide-parity`, using
+all 19 hosted checks passed and the review is clean. PR #284 carries the complete parity ledger and
+all 19 hosted checks pass. Final stacked PR #285 carries the repeated acceptance gate; all 19
+hosted checks pass and the review is clean. The active branch is
+`features/TASK-157-sage-acceptance`, using
 the current reference checkout at `ea2e067`. The executable parity ledger is complete at 119
-implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. Next: review this
-slice, then run repeated Windows/Linux acceptance. Next unused
+implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. The repeated clean
+Windows/Linux acceptance passes locally. Next: hosted review and stacked integration. Next unused
 task ID: TASK-164, subject to verification before allocation._
 
 **[2026-10-13] TASK-163 — Post-Sage integration documentation reconciliation (complete).**
@@ -330,7 +332,10 @@ covered through the existing opt-in Codex history adapter. One explicit adaptati
 advertised. The four exact tests pass in Linux Go 1.24 Docker and as native Windows binaries; the
 full Go suite/vet and focused Linux race test pass. Evidence: `docs/SAGE_IDE_PARITY_QUALIFICATION.md`.
 **IDE parity PR:** https://github.com/sraj0501/Devtrack_/pull/284 targets `dev`; hosted checks are
-in progress.
+all green.
+
+**End-to-end acceptance PR:** https://github.com/sraj0501/Devtrack_/pull/285 targets `dev`; all 19
+hosted checks pass and the review is clean.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
@@ -361,22 +366,23 @@ in progress.
       operating systems.
 - [x] Resolve the four optional IDE parity scenarios without advertising another harness before
       the Codex end-to-end closure gate.
-- [ ] Run the clean capture-to-self-written-knowledge journey twice on Windows and Linux, including
+- [x] Run the clean capture-to-self-written-knowledge journey twice on Windows and Linux, including
       silent capture, retry recovery, publication, search, route correction, merge/refile, privacy
       canaries, unrelated-Git-state preservation, and safe uninstall.
+- [ ] Integrate the fully reviewed stacked Sage pull requests into `dev` and verify post-merge CI.
 
 **Latest engineer status (skips/search, 2026-10-01):** Implemented and locally qualified — durable
 skipped-action Markdown records with replay/backfill, whole-entry literal search, topic filtering,
 and reconciliation after edits, moves, merges, deletions, and restart. Windows full suite/vet and
 Linux focused race/vet pass. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending.
 Evidence: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Next: diagnostics and safe local commits.
-Full Sage acceptance remains open.
+The later acceptance slice closes the full journey; see `docs/SAGE_END_TO_END_ACCEPTANCE.md`.
 
 **Integration status (2026-10-13):** PR #275 merged the durable queue-to-knowledge slice at
 `a1777b6`; PR #276 added Docker evaluation docs at `fc3217f`; PR #277 reconciled documentation at
 `549c430`; and PR #278 merged diagnostics, safe local commits, and routing/capture/model-request
 parity at `a6a75b0`. All required PR #278 checks and applicable post-merge workflows passed.
-TASK-157 remains in progress until the repeated end-to-end acceptance gate above is complete.
+TASK-157 remains in progress only for hosted review and integration of the stacked closure.
 
 **Skipped/search implementation commit:** `9f2281b` — record skipped actions and search full entries.
 

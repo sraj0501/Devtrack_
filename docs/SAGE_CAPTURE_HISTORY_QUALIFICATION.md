@@ -43,6 +43,6 @@ adapter boundary.
   136 rows: 116 implemented, 16 adapted, 0 partial, and 4 pending.
 
 The later IDE-parity slice closes the final four rows; see `SAGE_IDE_PARITY_QUALIFICATION.md`.
-TASK-157 remains open for the repeated clean Windows/Linux capture-to-knowledge acceptance journey.
+The later repeated clean Windows/Linux journey passes; see `SAGE_END_TO_END_ACCEPTANCE.md`.
 PR #283 carries this capture/history slice into `dev`; all 19 hosted checks passed and the review
 is clean.

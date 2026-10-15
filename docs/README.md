@@ -16,6 +16,7 @@ records. Use this map before treating a document as current implementation guida
 | Sage executable parity inventory | [`SAGE_PORT_PARITY_MATRIX.md`](SAGE_PORT_PARITY_MATRIX.md) |
 | Sage capture/logging and Codex-history qualification | [`SAGE_CAPTURE_HISTORY_QUALIFICATION.md`](SAGE_CAPTURE_HISTORY_QUALIFICATION.md) |
 | Sage optional IDE parity qualification | [`SAGE_IDE_PARITY_QUALIFICATION.md`](SAGE_IDE_PARITY_QUALIFICATION.md) |
+| Sage end-to-end acceptance qualification | [`SAGE_END_TO_END_ACCEPTANCE.md`](SAGE_END_TO_END_ACCEPTANCE.md) |
 | Sage event and harness contracts | [`SAGE_EVENT_CONTRACT_V1.md`](SAGE_EVENT_CONTRACT_V1.md), [`SAGE_HARNESS_EVALUATION.md`](SAGE_HARNESS_EVALUATION.md), and [`SAGE_HARNESS_PLUGIN_CONTRACT.md`](SAGE_HARNESS_PLUGIN_CONTRACT.md) |
 | Release-facing MCP listing copy | [`REGISTRY_SUBMISSION_PACKAGE.md`](REGISTRY_SUBMISSION_PACKAGE.md) |
 | Public user documentation | [`../devtrack_wiki/wiki/wiki.html`](../devtrack_wiki/wiki/wiki.html) and [`../devtrack_wiki/wiki/docs/`](../devtrack_wiki/wiki/docs/) |

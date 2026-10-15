@@ -1,5 +1,16 @@
 # DevTrack Feature Tracker
 
+## 2026-10-15 — TASK-157 repeated end-to-end acceptance complete locally
+
+The stacked `features/TASK-157-sage-acceptance` branch adds one isolated executable journey that
+runs twice per operating system in the existing Windows/Linux client matrix. Both native Windows
+passes and both Linux passes cover additive install, silent privacy-minimized capture, exactly-once
+import, model outage and malformed-output recovery, deterministic publication, search, route
+correction, merge/refile, restart stability, knowledge-only Git commits, unrelated Git-state
+preservation, privacy canaries, and safe uninstall. Full Go tests/vet and focused Linux race
+coverage and all 19 hosted checks pass. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Next:
+integration of clean PR #285 after fully green parent PR #284.
+
 ## 2026-10-15 — TASK-157 executable Sage parity complete
 
 The active `features/TASK-157-sage-ide-parity` branch resolves the last four ledger rows through
@@ -8,7 +19,7 @@ and repeat-poll behavior have exact tests. One explicit adaptation enables both 
 sources and preserves DevTrack's privacy-minimized command contract; no new harness is advertised.
 Full Go tests/vet, focused Linux race coverage, and native Windows exact tests pass. Ledger:
 119 implemented, 17 adapted, 0 partial, 0 pending; `--require-complete` passes. Evidence:
-`docs/SAGE_IDE_PARITY_QUALIFICATION.md`. Next: repeated Windows/Linux end-to-end acceptance.
+`docs/SAGE_IDE_PARITY_QUALIFICATION.md`. The later acceptance slice closes the repeated journey.
 
 ## 2026-10-14 — TASK-157 capture decisions and Codex-history closure
 

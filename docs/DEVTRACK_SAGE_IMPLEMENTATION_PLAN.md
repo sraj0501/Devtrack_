@@ -201,7 +201,8 @@ validation is in progress. The ledger is complete at 119 implemented,
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`, and
 `docs/SAGE_LIFECYCLE_QUALIFICATION.md`, and
 `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`, and
-`docs/SAGE_IDE_PARITY_QUALIFICATION.md`. Final acceptance remains open. The
+`docs/SAGE_IDE_PARITY_QUALIFICATION.md`. The repeated native Windows/Linux journey also passes;
+see `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Hosted review and stacked integration remain. The
 following dated entries describe earlier foundations.
 
 Historical checkpoint (2026-09-20): the first model-free slice was implemented. Imported events
@@ -289,6 +290,7 @@ lifecycle, deterministic Markdown publication, route correction, restart-safe me
 skipped-action records, full-entry search, truthful diagnostics, safe local commits, isolated
 runtime/knowledge roots, explicit model backends, portable layouts, and additive installer
 mutation. PR #282 also closes daemon/process and CLI lifecycle parity, PR #283 carries
-capture/history parity, and PR #284 completes the executable ledger. Review the
-stacked branches, then run the clean capture-to-self-written-knowledge journey twice. Do not expand
+capture/history parity, PR #284 completes the executable ledger, and the final acceptance branch
+runs the clean capture-to-self-written-knowledge journey twice on Windows and Linux. Review and
+integrate the stacked branches. Do not expand
 to another harness before that gate.

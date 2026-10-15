@@ -26,7 +26,8 @@ without an approved board task and a dedicated branch targeting `dev`.
   passed and the review is clean. The active stacked branch is
   `features/TASK-157-sage-ide-parity`; commit `836feb7`
   resolves the last four ledger rows without advertising another harness. PR #284 targets `dev`;
-  hosted validation is in progress.
+  all 19 hosted checks pass. PR #285 carries the final repeated cross-platform acceptance gate;
+  all 19 hosted checks pass and the review is clean.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded
@@ -75,7 +76,8 @@ Gate: all 136 scenarios are implemented or deliberately adapted; `--require-comp
 
 ### 5. Close SAGE-003 end to end
 
-Run the clean Codex capture-to-self-written-knowledge journey twice: install capture, capture a
+Completed locally on `features/TASK-157-sage-acceptance`. The clean Codex
+capture-to-self-written-knowledge journey runs twice: install capture, capture a
 useful command silently, import once, distill, publish deterministic Markdown, search it, correct
 its route, merge/refile it, recover from a model failure, verify privacy canaries are absent,
 preserve unrelated Git state, and uninstall without damaging unrelated configuration.
@@ -86,8 +88,8 @@ golden, fuzz, fault-injection, and race coverage.
 ### 6. Integrate the remaining SAGE-003 closure through `dev`
 
 Update the board and documentation from verified evidence, then open a new reviewable PR targeting
-`dev`. PR #278 integrated diagnostics and safe local commits, but TASK-157 remains open until the
-repeated end-to-end gate passes and the stacked reviews integrate. Do not expose raw events through
+`dev`. PR #278 integrated diagnostics and safe local commits; the repeated end-to-end gate passes,
+but TASK-157 remains open until the stacked reviews integrate. Do not expose raw events through
 MCP or add another harness before the Codex closure gate.
 
 ### 7. Resolve the server-admin UI branch

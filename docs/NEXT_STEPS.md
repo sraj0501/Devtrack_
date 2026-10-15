@@ -14,10 +14,11 @@ branch, `features/TASK-157-sage-capture-history`, is stacked on fully green life
 Implementation commit `215222b` closes capture/logging and the two partial Codex-history rows.
 PR #283 targets `dev`; all 19 hosted checks passed and the review is clean. PR #284 carries the
 stacked `features/TASK-157-sage-ide-parity` slice, which resolves the final four ledger rows without
-advertising another harness; hosted validation is in progress.
+advertising another harness; all 19 hosted checks pass.
 
-After review and integration, run the clean
-capture-to-self-written-knowledge journey twice on Windows and Linux before closing TASK-157.
+PR #284 is fully green. Final stacked PR #285 runs the clean
+capture-to-self-written-knowledge journey twice on Windows and Linux; all 19 hosted checks pass and
+the review is clean. Integrate the stacked PRs before closing TASK-157.
 
 ## Current product initiative
 
@@ -43,9 +44,9 @@ are implemented, hook installation/removal is reversible, and the isolated packa
 journey passes. The SAGE-003 durable distillation, deterministic publication,
 routing/correction, merge/refile, skipped-action records, search, diagnostics, and safe
 local-commit foundation is implemented. Runtime/knowledge isolation is under review in PR #279,
-explicit model backends, platform installers, lifecycle parity, capture/history closure, and the
-completed parity ledger are on stacked branches. SAGE-003 remains incomplete until the repeated
-clean acceptance journeys pass.
+explicit model backends, platform installers, lifecycle parity, capture/history closure, the
+completed parity ledger, and the twice-run cross-platform acceptance gate are on stacked branches.
+SAGE-003 is locally complete; integration remains.
 Sanitized observed hook fixtures
 remain an external harness-validation gate.
 The selective harness registry and external plugin boundary are now fixed in
@@ -54,8 +55,8 @@ global installer switches or harness-specific storage.
 `Data/agent_logs/project_board.md` remains the task-ID authority.
 
 The parity inventory accounts for all 136 reference test methods at `ea2e067`: 119 implemented,
-17 adapted, 0 partial, and 0 pending. `scripts/check_sage_parity.py --require-complete` passes;
-the repeated cross-platform journey remains a separate completion gate.
+17 adapted, 0 partial, and 0 pending. `scripts/check_sage_parity.py --require-complete` passes, and
+the repeated cross-platform journey passes twice on both Windows and Linux.
 
 ## Open release follow-ups
 
