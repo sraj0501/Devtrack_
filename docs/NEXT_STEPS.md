@@ -12,9 +12,9 @@ it is fully green. PR #281 closes portable roots, harness destinations, native l
 adaptations, and additive install/removal behavior; it is also fully green. The active stacked
 branch, `features/TASK-157-sage-capture-history`, is stacked on fully green lifecycle PR #282.
 Implementation commit `215222b` closes capture/logging and the two partial Codex-history rows.
-PR #283 targets `dev`; all 19 hosted checks passed and the review is clean. The active stacked branch,
-`features/TASK-157-sage-ide-parity`, resolves the final four ledger rows without advertising
-another harness.
+PR #283 targets `dev`; all 19 hosted checks passed and the review is clean. PR #284 carries the
+stacked `features/TASK-157-sage-ide-parity` slice, which resolves the final four ledger rows without
+advertising another harness; hosted validation is in progress.
 
 After review and integration, run the clean
 capture-to-self-written-knowledge journey twice on Windows and Linux before closing TASK-157.

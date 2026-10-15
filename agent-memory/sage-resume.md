@@ -21,7 +21,7 @@ acting because branch, PR, and CI state can change after this record is updated.
   targets `dev`; all 19 hosted checks passed. Commit `215222b` closes capture/logging and the two
   partial Codex-history rows. PR #283 targets `dev`; all 19 hosted checks passed and the review is
   clean. The active stacked branch is `features/TASK-157-sage-ide-parity`; commit `836feb7`
-  resolves the final four rows.
+  resolves the final four rows. PR #284 targets `dev`; hosted validation is in progress.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.
@@ -84,7 +84,7 @@ Codex history adapter closes the four optional IDE rows without advertising anot
 
 ## Recommended pickup order
 
-1. Document, review, and integrate the IDE-parity slice after PR #283.
+1. Review and integrate IDE-parity PR #284 after its hosted checks pass.
 2. Run the repeated Windows/Linux acceptance journey and integrate the remaining closure through a
    new PR to `dev`.
 

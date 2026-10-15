@@ -25,7 +25,8 @@ without an approved board task and a dedicated branch targeting `dev`.
   capture/logging and the remaining Codex-history rows. PR #283 targets `dev`; all 19 hosted checks
   passed and the review is clean. The active stacked branch is
   `features/TASK-157-sage-ide-parity`; commit `836feb7`
-  resolves the last four ledger rows without advertising another harness.
+  resolves the last four ledger rows without advertising another harness. PR #284 targets `dev`;
+  hosted validation is in progress.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded

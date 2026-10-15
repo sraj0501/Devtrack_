@@ -283,7 +283,8 @@ https://github.com/sraj0501/Devtrack_/pull/279 and
 https://github.com/sraj0501/Devtrack_/pull/280 and
 https://github.com/sraj0501/Devtrack_/pull/281 and
 https://github.com/sraj0501/Devtrack_/pull/282 and
-https://github.com/sraj0501/Devtrack_/pull/283
+https://github.com/sraj0501/Devtrack_/pull/283 and
+https://github.com/sraj0501/Devtrack_/pull/284
 
 **Backend/provider status (2026-10-14):** Locally qualified on
 `features/TASK-157-sage-model-backends`: explicit `claude`, `devin`, `codex`, `copilot`, and
@@ -328,6 +329,8 @@ covered through the existing opt-in Codex history adapter. One explicit adaptati
 `vscode` and `cli` sources enabled and stores privacy-minimized commands. No new harness is
 advertised. The four exact tests pass in Linux Go 1.24 Docker and as native Windows binaries; the
 full Go suite/vet and focused Linux race test pass. Evidence: `docs/SAGE_IDE_PARITY_QUALIFICATION.md`.
+**IDE parity PR:** https://github.com/sraj0501/Devtrack_/pull/284 targets `dev`; hosted checks are
+in progress.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe

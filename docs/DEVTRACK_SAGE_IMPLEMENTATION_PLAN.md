@@ -192,8 +192,9 @@ passed. PR #281 closes portable platform paths and additive install/removal. PR 
 locks/liveness, no-console launches, capture aliases, stop reasons, and legacy-hook safety without
 adding a second watcher; all 19 hosted checks passed. PR #283 carries fail-open, privacy-safe
 capture decisions, installed pause enforcement, interleaved terminal history collection, and
-failed-exit preservation; all 19 hosted checks passed and the review is clean. The active IDE-parity branch resolves the last
-four rows without advertising another harness. The ledger is complete at 119 implemented,
+failed-exit preservation; all 19 hosted checks passed and the review is clean. PR #284 carries the
+IDE-parity slice, which resolves the last four rows without advertising another harness; hosted
+validation is in progress. The ledger is complete at 119 implemented,
 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md` and
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`, and
@@ -288,6 +289,6 @@ lifecycle, deterministic Markdown publication, route correction, restart-safe me
 skipped-action records, full-entry search, truthful diagnostics, safe local commits, isolated
 runtime/knowledge roots, explicit model backends, portable layouts, and additive installer
 mutation. PR #282 also closes daemon/process and CLI lifecycle parity, PR #283 carries
-capture/history parity, and the active stacked branch completes the executable ledger. Review the
+capture/history parity, and PR #284 completes the executable ledger. Review the
 stacked branches, then run the clean capture-to-self-written-knowledge journey twice. Do not expand
 to another harness before that gate.

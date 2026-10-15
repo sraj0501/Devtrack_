@@ -79,8 +79,9 @@ quickly, print nothing, perform no model or network call, and never break an age
   coverage, interleaved terminal history collection, and failed-exit preservation. The ledger is
   complete on the active IDE-parity branch at 119 implemented, 17 adapted, 0 partial, and 0
   pending; `--require-complete` passes. PR #283 targets `dev`; all 19 hosted checks passed and the
-  review is clean. Remaining work is repeated capture-to-knowledge acceptance and integration of
-  the stacked reviews.
+  review is clean. PR #284 carries the completed parity ledger into `dev`; hosted validation is in
+  progress. Remaining work is repeated capture-to-knowledge acceptance and integration of the
+  stacked reviews.
 
 ## Ordered next steps
 

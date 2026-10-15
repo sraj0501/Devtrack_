@@ -38,3 +38,4 @@ owns the compatible `vscode` and `cli` behavior.
 
 The parity ledger is complete. TASK-157 remains open only for the repeated clean Windows/Linux
 capture-to-knowledge acceptance journey and integration of the stacked reviews.
+PR #284 carries this slice into `dev`; hosted validation is in progress.
