@@ -4,12 +4,40 @@ _Last reconciled: 2026-10-15 — PRs #279–#282 merged the runtime isolation, m
 platform installers, and lifecycle slices to `dev` at `f07bb97`. PRs #283–#285 are clean, fully
 green reviews carrying capture/history closure, the complete parity ledger, and repeated
 cross-platform acceptance. PRs #286–#288 are the green Claude, Copilot, and OpenCode adapter
-reviews; OpenCode passed all 19 hosted checks on reviewed head `fd4e762`. The active branch is
-`features/TASK-166-sage-opencode-adapter`, with TASK-167 next, using
+reviews; OpenCode passed all 19 hosted checks on final head `adca3e7`. The active branch is
+`features/TASK-167-sage-cursor-adapter`, using
 the current reference checkout at `ea2e067`. The executable parity ledger is complete at 119
 implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. The repeated clean
 Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
 verification before allocation._
+
+**[2026-10-15] TASK-167 / SAGE-004 — Cursor capture adapter (in progress).**
+**Priority:** High. **Branch:** `features/TASK-167-sage-cursor-adapter`.
+**Assigned to:** engineer. **Depends on:** green TASK-166 PR #288.
+
+Add one independently managed built-in Cursor adapter using its version-1 user hook file and the
+existing native DevTrack hook endpoint. Preserve foreign settings and hook entries, capture
+`afterShellExecution` plus matched `postToolUse` events, and do not add session lifecycle processes
+or Python.
+
+**Acceptance criteria:**
+- [x] `devtrack sage harness list|install|uninstall cursor` reports truthful independent state and
+      never mutates Codex, Claude, Copilot, or OpenCode configuration.
+- [x] Installation merges owned `afterShellExecution` and `postToolUse` entries into the portable
+      Cursor hook path, invokes the packaged executable, and adds no session lifecycle hooks.
+- [x] Install/reinstall/uninstall is atomic, byte-stable, preserves file mode and foreign content,
+      replaces known legacy entries, and makes missing uninstall a no-op.
+- [x] The hidden endpoint accepts bounded Cursor shell/write payloads silently and emits only
+      validated privacy-minimized events with deterministic duplicate identity.
+- [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
+- [ ] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
+      validation.
+- [ ] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** implementation and cross-platform local verification complete against current
+reference HEAD `ea2e067`; documentation reconciliation is next.
+**PR:** pending.
+**Blockers:** none.
 
 **[2026-10-15] TASK-166 / SAGE-004 — OpenCode plugin capture adapter (complete).**
 **Priority:** High. **Branch:** `features/TASK-166-sage-opencode-adapter`.
@@ -38,7 +66,7 @@ keep both before/after capture fail-open, and do not add session lifecycle proce
 
 **Engineer status:** implementation, cross-platform local verification, and two documentation
 passes complete against current reference HEAD `ea2e067`. PR #288 targets `dev`, is mergeable,
-and all 19 hosted checks pass on reviewed head `fd4e762`.
+and all 19 hosted checks pass on final head `adca3e7`.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/288
 **Blockers:** none.
 
