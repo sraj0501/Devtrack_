@@ -23,7 +23,7 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Current ordered work
 
-1. Finish TASK-166 documentation, open its dedicated PR to `dev`, and require green final-head checks.
+1. Require green final-head checks on TASK-166 PR #288.
 2. Review/integrate green PRs #286–#287 only with explicit user authorization.
 3. Implement TASK-167 and TASK-168 one adapter and PR at a time, preserving the shared silence,
    privacy, fail-open, additive-install, and cross-platform acceptance gates.

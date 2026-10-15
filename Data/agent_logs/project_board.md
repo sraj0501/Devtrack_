@@ -37,7 +37,9 @@ keep both before/after capture fail-open, and do not add session lifecycle proce
 - [ ] A dedicated PR to `dev` is open and its required checks pass.
 
 **Engineer status:** implementation, cross-platform local verification, and two documentation
-passes complete against current reference HEAD `ea2e067`; the dedicated PR is the remaining gate.
+passes complete against current reference HEAD `ea2e067`. Commit `ac17e66` is pushed and PR #288
+targets `dev`; hosted final-head checks are the remaining gate.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/288
 **Blockers:** none.
 
 **[2026-10-15] TASK-165 / SAGE-004 — GitHub Copilot CLI capture adapter (complete).**

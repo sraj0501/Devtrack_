@@ -15,6 +15,8 @@ acting because branch, PR, and CI state can change after this record is updated.
 - Active task: TASK-166 / SAGE-004 OpenCode plugin capture adapter on
   `features/TASK-166-sage-opencode-adapter`. TASK-165 PR #287 targets `dev`, is mergeable, and all
   19 final-head checks pass at `2568b72`.
+- TASK-166 commit `ac17e66` is pushed in PR #288 targeting `dev`; hosted final-head checks are
+  pending.
 - Integration branch: `origin/dev` at `f07bb97` after PR #282. PRs #279–#282 are merged.
 - PRs #283–#285 are clean, fully green stacked reviews for capture/history closure, the completed
   parity ledger, and the twice-run Windows/Linux acceptance journey.
@@ -79,7 +81,7 @@ race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.
 
 ## Recommended pickup order
 
-1. Finish TASK-166's two documentation passes, dedicated PR to `dev`, and final-head CI review.
+1. Require green final-head checks on TASK-166 PR #288.
 2. Review/integrate green PRs #286–#287 only with explicit user authorization.
 3. Implement TASK-167 Cursor and TASK-168 Devin one at a time, with
    documentation and a dedicated PR after each.

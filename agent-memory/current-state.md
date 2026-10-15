@@ -13,7 +13,8 @@ packaged Go endpoint, preserves unknown plugin content, and adds no session proc
 only bounded privacy-minimal shell/search/edit events. Generated-plugin syntax, focused Linux and
 native Windows tests, the full Go suite, vet, and modified-package race coverage pass locally.
 TASK-165 PR #287 is mergeable and all 19 final-head checks pass at `2568b72`; TASK-166 docs and PR
-review are active.
+review are complete. TASK-166 commit `ac17e66` is pushed in PR #288 targeting `dev`; hosted
+final-head checks are the active gate.
 
 **Sage integration state:** PRs #279–#282 are merged to `dev` at `f07bb97`. PRs #283–#285 are
 clean, fully green reviews carrying capture/history closure, the complete 136-row parity ledger
