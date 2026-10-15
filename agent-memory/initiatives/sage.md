@@ -84,8 +84,11 @@ quickly, print nothing, perform no model or network call, and never break an age
   through merged `afterShellExecution` and matched `postToolUse` entries, bounded shell/write
   normalization, deterministic cross-hook identity, and no session process. Its implementation and
   local cross-platform gates pass; PR #289 is mergeable and all 19 hosted checks pass on reviewed
-  head `88bf9f0`. TASK-168 Devin is next. See `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md` and
-  `docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md`.
+  head `a4142e6`. TASK-168 adds Devin through one platform-root `PostToolUse` hook with bounded
+  shell/search/glob/edit/write/patch normalization and no session process. Local cross-platform
+  gates and two documentation passes succeed; PR #290 targets `dev` and hosted review remains.
+  See `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md`,
+  `docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md`, and `docs/SAGE_DEVIN_ADAPTER_QUALIFICATION.md`.
 
 ## Ordered next steps
 
@@ -195,8 +198,8 @@ parity scenarios. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`.
 
 ### 8. Expand harness support
 
-Codex, Claude Code, Copilot CLI, OpenCode, and Cursor are implemented as independent adapters. Add
-Devin CLI next. Do not advertise an adapter until it passes the
+Codex, Claude Code, Copilot CLI, OpenCode, Cursor, and Devin CLI are implemented as independent
+adapters. Do not advertise an adapter until it passes the
 shared silence, latency, privacy,
 deduplication, fail-open, install/removal, configuration-preservation, and unsupported-event suite.
 

@@ -234,8 +234,9 @@ Current sequence: Claude Code (TASK-164), Copilot CLI (TASK-165), OpenCode (TASK
 Bash failure capture. TASK-165 implements Copilot shell/search/edit capture through one owned
 `postToolUse` entry. TASK-166 implements OpenCode shell/search/edit capture through one owned
 plugin observing `tool.execute.before` and `tool.execute.after`. TASK-167 implements Cursor shell
-and write capture through merged `afterShellExecution` and matched `postToolUse` entries. None adds
-a second watcher.
+and write capture through merged `afterShellExecution` and matched `postToolUse` entries. TASK-168
+implements Devin shell/search/glob/edit/write/apply-patch capture through one platform-root
+`PostToolUse` hook. None adds a second watcher.
 
 Acceptance:
 
@@ -297,8 +298,7 @@ for inspection or export.
 ## Immediate next step
 
 SAGE-001 and SAGE-002 are complete, and SAGE-003 is qualified end to end. PRs #279–#282 are merged;
-review and integrate green PRs #283–#288 only with explicit authorization. TASK-167's Cursor
-adapter is locally qualified; finish its review, then implement TASK-168 Devin.
-After those adapters, TASK-169 adds
+review and integrate green PRs #283–#289 only with explicit authorization. TASK-168's Devin
+adapter is locally qualified and awaits hosted review. TASK-169 adds
 read-only Sage MCP retrieval and diagnostics, and TASK-170 adds retention, quarantine inspection,
 deterministic rebuild/repair, and Markdown export/import.

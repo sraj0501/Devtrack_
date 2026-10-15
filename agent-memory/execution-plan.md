@@ -14,17 +14,17 @@ without an approved board task and a dedicated branch targeting `dev`.
 - Current integration branch: `origin/dev` at `f07bb97` after PR #282.
 - PRs #283–#285 are clean and fully green. The 136-scenario ledger is complete at 119 implemented,
   17 adapted, 0 partial, and 0 pending; repeated Windows/Linux acceptance passes.
-- Latest completed task and branch: TASK-167 on `features/TASK-167-sage-cursor-adapter`. PR #289
-  targets `dev`, is mergeable, and all 19 hosted checks pass on reviewed head `88bf9f0`.
+- Active task and branch: TASK-168 on `features/TASK-168-sage-devin-adapter`. Implementation,
+  local cross-platform gates, and two documentation reconciliation passes succeed; hosted review
+  remains in PR #290 targeting `dev`.
 - Current reference checkout: `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`.
-- Active next Sage task is TASK-168 Devin, followed by TASK-169 read-only MCP
-  retrieval/diagnostics and TASK-170 operational closure.
+- TASK-167 PR #289 is green on final head `a4142e6`. TASK-169 read-only MCP
+  retrieval/diagnostics follows TASK-168, then TASK-170 operational closure.
 - Next unused task ID is TASK-171, subject to board verification before allocation.
 
 ## Current ordered work
 
-1. Implement TASK-168 Devin, preserving the shared silence, privacy, fail-open, additive-install,
-   and cross-platform acceptance gates.
+1. Require green final-head hosted checks on TASK-168 PR #290.
 2. Review/integrate green PRs #286–#289 only with explicit user authorization.
 3. Implement TASK-169 read-only Sage MCP search/topics/status/entry and adapter diagnostics.
 4. Implement TASK-170 retention/deletion, quarantine inspection, deterministic rebuild/repair,
