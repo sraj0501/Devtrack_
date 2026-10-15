@@ -26,6 +26,7 @@ without an approved board task and a dedicated branch targeting `dev`.
   passed and the review is clean. The active stacked branch is
   `features/TASK-157-sage-ide-parity`; commit `836feb7`
   resolves the last four ledger rows without advertising another harness. PR #284 targets `dev`;
+  all 19 hosted checks pass. PR #285 carries the final repeated cross-platform acceptance gate;
   hosted validation is in progress.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,

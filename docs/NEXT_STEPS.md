@@ -16,7 +16,7 @@ PR #283 targets `dev`; all 19 hosted checks passed and the review is clean. PR #
 stacked `features/TASK-157-sage-ide-parity` slice, which resolves the final four ledger rows without
 advertising another harness; hosted validation is in progress.
 
-The final `features/TASK-157-sage-acceptance` slice now runs the clean
+PR #284 is fully green. Final stacked PR #285 now runs the clean
 capture-to-self-written-knowledge journey twice on Windows and Linux. Review its hosted checks and
 integrate the stacked PRs before closing TASK-157.
 

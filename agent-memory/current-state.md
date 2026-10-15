@@ -21,11 +21,10 @@ watcher; all 19 hosted checks passed. The active stacked branch is
 `215222b` closes four capture/logging rows and both partial Codex-history rows. PR #283 targets
 `dev`; all 19 hosted checks passed and the review is clean. The active stacked branch is
 `features/TASK-157-sage-ide-parity`, based on PR #283's head. Commit `836feb7` resolves the last
-four rows without advertising another harness. PR #284 targets `dev`; its hosted checks are in
-progress.
+four rows without advertising another harness. PR #284 targets `dev`; all 19 hosted checks pass.
 The 136-scenario ledger now records 119 implemented, 17 adapted, 0 partial, and 0 pending scenarios;
-`--require-complete` passes. The stacked `features/TASK-157-sage-acceptance` branch adds the final
-two-pass clean journey, which passes on native Windows and Linux.
+`--require-complete` passes. PR #285 carries the final two-pass clean journey, which passes on
+native Windows and Linux; its hosted checks are in progress.
 Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
 pass locally. The four exact IDE-compatibility tests also pass as native Windows executables, and

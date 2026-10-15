@@ -3,9 +3,9 @@
 _Last reconciled: 2026-10-15 — PR #278 merged the latest TASK-157 / SAGE-003 closure slice to
 `dev` at `a6a75b0`; required and post-merge workflows passed. PR #279's runtime/knowledge isolation
 review passed all 19 hosted checks and remains unmerged. PR #283 carries capture/history closure;
-all 19 hosted checks passed and the review is clean. PR #284 carries the complete parity ledger;
-its refreshed Windows suite is rerunning with a corrected timeout budget. The active stacked branch
-is `features/TASK-157-sage-acceptance`, using
+all 19 hosted checks passed and the review is clean. PR #284 carries the complete parity ledger and
+all 19 hosted checks pass. Final stacked PR #285 carries the repeated acceptance gate; its hosted
+checks are in progress. The active branch is `features/TASK-157-sage-acceptance`, using
 the current reference checkout at `ea2e067`. The executable parity ledger is complete at 119
 implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. The repeated clean
 Windows/Linux acceptance passes locally. Next: hosted review and stacked integration. Next unused
@@ -331,7 +331,10 @@ covered through the existing opt-in Codex history adapter. One explicit adaptati
 advertised. The four exact tests pass in Linux Go 1.24 Docker and as native Windows binaries; the
 full Go suite/vet and focused Linux race test pass. Evidence: `docs/SAGE_IDE_PARITY_QUALIFICATION.md`.
 **IDE parity PR:** https://github.com/sraj0501/Devtrack_/pull/284 targets `dev`; hosted checks are
-in progress.
+all green.
+
+**End-to-end acceptance PR:** https://github.com/sraj0501/Devtrack_/pull/285 targets `dev`; hosted
+checks are in progress.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe

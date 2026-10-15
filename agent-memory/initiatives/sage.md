@@ -79,10 +79,10 @@ quickly, print nothing, perform no model or network call, and never break an age
   coverage, interleaved terminal history collection, and failed-exit preservation. The ledger is
   complete on the active IDE-parity branch at 119 implemented, 17 adapted, 0 partial, and 0
   pending; `--require-complete` passes. PR #283 targets `dev`; all 19 hosted checks passed and the
-  review is clean. PR #284 carries the completed parity ledger into `dev`; hosted validation is in
-  progress. The final repeated capture-to-knowledge acceptance gate passes twice on native Windows
-  and Linux on `features/TASK-157-sage-acceptance`. Remaining work is hosted review and integration
-  of the stacked reviews.
+  review is clean. PR #284 carries the completed parity ledger into `dev`; all 19 hosted checks
+  pass. PR #285 carries the final repeated capture-to-knowledge acceptance gate, which passes twice
+  on native Windows and Linux; its hosted checks are in progress. Remaining work is hosted review
+  and integration of the stacked reviews.
 
 ## Ordered next steps
 

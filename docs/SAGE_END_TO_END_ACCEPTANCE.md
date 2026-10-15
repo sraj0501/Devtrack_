@@ -34,3 +34,5 @@ Each pass proves:
 
 TASK-157 remains open only for hosted review and integration of the stacked Sage pull requests into
 `dev`; no SAGE-003 behavior or acceptance gate remains unimplemented.
+PR #285 carries this final acceptance slice; hosted validation is in progress. Parent parity PR
+#284 is fully green with all 19 checks passing.

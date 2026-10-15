@@ -9,7 +9,7 @@ import, model outage and malformed-output recovery, deterministic publication, s
 correction, merge/refile, restart stability, knowledge-only Git commits, unrelated Git-state
 preservation, privacy canaries, and safe uninstall. Full Go tests/vet and focused Linux race
 coverage pass. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Next: hosted review and integration
-of the stacked Sage PRs.
+of stacked PR #285 after fully green parent PR #284.
 
 ## 2026-10-15 — TASK-157 executable Sage parity complete
 
