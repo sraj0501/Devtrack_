@@ -189,8 +189,8 @@ deterministic Markdown publication, persistent routing, restart-safe merge/refil
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
 PRs #279–#282 are integrated into `dev`. PRs #283–#285 are green reviews carrying capture/history
 closure, the complete 136-row parity ledger, and the twice-run Windows/Linux acceptance journey.
-The active SAGE-004 work adds independently managed harness adapters. Codex, Claude Code, and
-GitHub Copilot CLI are qualified, and TASK-166 adds OpenCode as the fourth adapter; none of this
+The active SAGE-004 work adds independently managed harness adapters. Codex, Claude Code,
+GitHub Copilot CLI, and OpenCode are qualified; TASK-167 Cursor is next. None of this
 work is part of the v3.1.1 stable release. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).

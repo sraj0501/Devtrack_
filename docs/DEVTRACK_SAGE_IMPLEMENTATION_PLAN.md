@@ -295,8 +295,8 @@ for inspection or export.
 ## Immediate next step
 
 SAGE-001 and SAGE-002 are complete, and SAGE-003 is qualified end to end. PRs #279–#282 are merged;
-review and integrate green PRs #283–#287 only with explicit authorization. Complete TASK-166's
-OpenCode adapter review, then implement TASK-167 and TASK-168 one adapter and PR at a time.
+review and integrate green PRs #283–#288 only with explicit authorization. TASK-166's OpenCode
+adapter review is green; implement TASK-167 and TASK-168 one adapter and PR at a time.
 After those adapters, TASK-169 adds
 read-only Sage MCP retrieval and diagnostics, and TASK-170 adds retention, quarantine inspection,
 deterministic rebuild/repair, and Markdown export/import.

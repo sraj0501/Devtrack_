@@ -14,8 +14,9 @@ without an approved board task and a dedicated branch targeting `dev`.
 - Current integration branch: `origin/dev` at `f07bb97` after PR #282.
 - PRs #283–#285 are clean and fully green. The 136-scenario ledger is complete at 119 implemented,
   17 adapted, 0 partial, and 0 pending; repeated Windows/Linux acceptance passes.
-- Active task and branch: TASK-166 on `features/TASK-166-sage-opencode-adapter`. TASK-165 PR #287
-  is mergeable and all 19 final-head checks pass at `2568b72`.
+- Latest completed task and current branch: TASK-166 on
+  `features/TASK-166-sage-opencode-adapter`. PR #288 is mergeable and all 19 hosted checks pass on
+  reviewed head `fd4e762`; TASK-167 Cursor is next.
 - Current reference checkout: `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`.
 - Planned Sage tasks after the active OpenCode slice are TASK-167 Cursor, TASK-168 Devin,
   TASK-169 read-only MCP retrieval/diagnostics, and TASK-170 operational closure.
@@ -23,14 +24,13 @@ without an approved board task and a dedicated branch targeting `dev`.
 
 ## Current ordered work
 
-1. Require green final-head checks on TASK-166 PR #288.
-2. Review/integrate green PRs #286–#287 only with explicit user authorization.
-3. Implement TASK-167 and TASK-168 one adapter and PR at a time, preserving the shared silence,
+1. Implement TASK-167 and TASK-168 one adapter and PR at a time, preserving the shared silence,
    privacy, fail-open, additive-install, and cross-platform acceptance gates.
-4. Implement TASK-169 read-only Sage MCP search/topics/status/entry and adapter diagnostics.
-5. Implement TASK-170 retention/deletion, quarantine inspection, deterministic rebuild/repair,
+2. Review/integrate green PRs #286–#288 only with explicit user authorization.
+3. Implement TASK-169 read-only Sage MCP search/topics/status/entry and adapter diagnostics.
+4. Implement TASK-170 retention/deletion, quarantine inspection, deterministic rebuild/repair,
    and Markdown export/import.
-6. Resolve the server-admin UI branch, then close packaged-build, media, and Glama follow-ups.
+5. Resolve the server-admin UI branch, then close packaged-build, media, and Glama follow-ups.
 
 ## Historical SAGE-003 integration record
 

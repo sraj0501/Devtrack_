@@ -78,10 +78,10 @@ quickly, print nothing, perform no model or network call, and never break an age
   version-1 `postToolUse` entry, portable shell commands, and bounded shell/search/edit
   normalization; PR #287 is mergeable and all 19 final-head checks pass. See
   `docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md` and `docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md`.
-- TASK-166 is active and adds
-  OpenCode through one owned user plugin, reference-compatible before/after tool observation,
-  direct native execution, bounded normalization, and no session lifecycle process. See
-  `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md`.
+- TASK-166 adds OpenCode through one owned user plugin, reference-compatible before/after tool
+  observation, direct native execution, bounded normalization, and no session lifecycle process.
+  PR #288 is mergeable and all 19 hosted checks pass on reviewed head `fd4e762`; TASK-167 Cursor is
+  next. See `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md`.
 
 ## Ordered next steps
 
