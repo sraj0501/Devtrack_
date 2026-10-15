@@ -11,6 +11,14 @@ class ParityGateTests(unittest.TestCase):
     def setUp(self):
         self.text = parity.MATRIX.read_text(encoding="utf-8")
 
+    def mutate_first_row(self, **updates):
+        row = next(line for line in self.text.splitlines() if line.startswith("| `tool/tests/"))
+        cells = [cell.strip() for cell in row.strip("|").split("|")]
+        indexes = {"status": 3, "test": 4, "planned": 5, "note": 6}
+        for name, value in updates.items():
+            cells[indexes[name]] = value
+        return self.text.replace(row, "| " + " | ".join(cells) + " |", 1)
+
     def test_current_ledger_has_all_scenarios_and_resolvable_evidence(self):
         errors, counts = parity.check(self.text)
         self.assertEqual(errors, [])
@@ -32,15 +40,19 @@ class ParityGateTests(unittest.TestCase):
         self.assertTrue(any("missing Go test TestMissingParityEvidence" in error for error in errors))
 
     def test_status_cannot_claim_completion_without_evidence(self):
-        errors, _ = parity.check(self.text.replace("| pending |", "| implemented |", 1))
+        errors, _ = parity.check(
+            self.mutate_first_row(status="implemented", test="—", planned="—")
+        )
         self.assertTrue(any("requires existing Go test evidence" in error for error in errors))
 
     def test_missing_planned_closure_test_fails(self):
-        errors, _ = parity.check(self.text.replace("`TestReferenceCapturesOriginalCommandOnceAndExcludesCliAndOldHistory`", "—"))
+        errors, _ = parity.check(
+            self.mutate_first_row(status="pending", test="—", planned="—")
+        )
         self.assertTrue(any("missing exact planned" in error for error in errors))
 
     def test_adaptation_requires_rationale(self):
-        errors, _ = parity.check(self.text.replace("| implemented |", "| adapted |", 1))
+        errors, _ = parity.check(self.mutate_first_row(status="adapted", note="missing rationale"))
         self.assertTrue(any("missing rationale" in error for error in errors))
 
     def test_pinned_source_mismatch_fails(self):
