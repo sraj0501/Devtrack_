@@ -36,6 +36,6 @@ owns the compatible `vscode` and `cli` behavior.
 - `scripts/check_sage_parity.py --reference C:\Work\git_apps\ai_sessions_skills
   --require-complete` passes with 136 rows: 119 implemented, 17 adapted, 0 partial, and 0 pending.
 
-The parity ledger is complete. TASK-157 remains open only for the repeated clean Windows/Linux
-capture-to-knowledge acceptance journey and integration of the stacked reviews.
+The parity ledger is complete. The later repeated clean Windows/Linux capture-to-knowledge journey
+passes; TASK-157 remains open only for hosted review and integration of the stacked reviews.
 PR #284 carries this slice into `dev`; hosted validation is in progress.

@@ -51,4 +51,5 @@ adding a competing Sage process.
 
 The later capture/history and IDE-parity slices close all remaining ledger scenarios; see
 `SAGE_CAPTURE_HISTORY_QUALIFICATION.md` and `SAGE_IDE_PARITY_QUALIFICATION.md`. Repeated clean
-Windows/Linux capture-to-knowledge acceptance remains before SAGE-003 can close.
+The later Windows/Linux capture-to-knowledge acceptance passes; see
+`SAGE_END_TO_END_ACCEPTANCE.md`.

@@ -75,7 +75,8 @@ Gate: all 136 scenarios are implemented or deliberately adapted; `--require-comp
 
 ### 5. Close SAGE-003 end to end
 
-Run the clean Codex capture-to-self-written-knowledge journey twice: install capture, capture a
+Completed locally on `features/TASK-157-sage-acceptance`. The clean Codex
+capture-to-self-written-knowledge journey runs twice: install capture, capture a
 useful command silently, import once, distill, publish deterministic Markdown, search it, correct
 its route, merge/refile it, recover from a model failure, verify privacy canaries are absent,
 preserve unrelated Git state, and uninstall without damaging unrelated configuration.
@@ -86,8 +87,8 @@ golden, fuzz, fault-injection, and race coverage.
 ### 6. Integrate the remaining SAGE-003 closure through `dev`
 
 Update the board and documentation from verified evidence, then open a new reviewable PR targeting
-`dev`. PR #278 integrated diagnostics and safe local commits, but TASK-157 remains open until the
-repeated end-to-end gate passes and the stacked reviews integrate. Do not expose raw events through
+`dev`. PR #278 integrated diagnostics and safe local commits; the repeated end-to-end gate passes,
+but TASK-157 remains open until the stacked reviews integrate. Do not expose raw events through
 MCP or add another harness before the Codex closure gate.
 
 ### 7. Resolve the server-admin UI branch

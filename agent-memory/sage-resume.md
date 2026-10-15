@@ -73,20 +73,18 @@ All 136 rows have exact Go evidence or an explicit behavioral adaptation. The ex
 Codex history adapter closes the four optional IDE rows without advertising another harness; see
 `docs/SAGE_IDE_PARITY_QUALIFICATION.md`. There are no partial or pending rows.
 
-## Acceptance still required
+## Acceptance status
 
-1. Run one clean, resilient Codex capture-to-self-written-knowledge journey twice on Windows and
-   twice on Linux: install, silent capture, one import, distillation, deterministic publication,
-   search, route correction, merge/refile, model-failure recovery, privacy-canary checks,
-   preservation of unrelated staged/unstaged Git state, and safe uninstall.
-2. Keep applicable unit, golden, fuzz, fault-injection, and race coverage green.
-3. Keep `scripts/check_sage_parity.py --require-complete` passing.
+The clean, resilient Codex capture-to-self-written-knowledge journey passes twice on native Windows
+and twice on Linux. It covers install, silent capture, one import, model outage and malformed-output
+recovery, deterministic publication, search, route correction, merge/refile, restart stability,
+privacy canaries, unrelated Git-state preservation, and safe uninstall. Applicable full-suite, vet,
+race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.md`.
 
 ## Recommended pickup order
 
 1. Review and integrate IDE-parity PR #284 after its hosted checks pass.
-2. Run the repeated Windows/Linux acceptance journey and integrate the remaining closure through a
-   new PR to `dev`.
+2. Review the acceptance slice and integrate the remaining stacked closure through `dev`.
 
 At the start of a fresh session, read `agent-memory/INDEX.md`, `current-state.md`,
 `execution-plan.md`, `initiatives/sage.md`, this file, and the active TASK-157 board entry. Then run:

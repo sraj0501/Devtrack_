@@ -1,6 +1,7 @@
 # Sage merge/refile qualification
 
-TASK-157 checkpoint, 2026-10-01. Local implementation evidence; full Sage acceptance remains open.
+TASK-157 checkpoint, 2026-10-01. Local implementation evidence; the later full Sage acceptance is
+recorded in `SAGE_END_TO_END_ACCEPTANCE.md`.
 
 ## Behavior
 
@@ -49,4 +50,5 @@ later publication follows the merged destination. CLI tests cover dispatch and a
 
 Two pinned reference scenarios now have executable merge tests. The ledger contains
 24 implemented, 15 partial, and 97 pending scenarios. Hosted CI, packaged binaries, and the
-complete twice-run capture-to-knowledge acceptance journey have not been qualified here.
+complete twice-run capture-to-knowledge acceptance journey were qualified later in
+`SAGE_END_TO_END_ACCEPTANCE.md`.

@@ -189,10 +189,11 @@ deterministic Markdown publication, persistent routing, restart-safe merge/refil
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
 The active follow-up adds fail-open privacy-safe capture decisions and closes Codex-history
 terminal/failure edge cases. The stacked IDE-parity slice completes all 136 reference rows without
-advertising another harness. SAGE-003 is not complete or part of the v3.1.1 stable release: the
-repeated clean end-to-end acceptance journey remains. See the
+advertising another harness. The final stacked acceptance slice runs the complete clean journey
+twice on Windows and Linux; SAGE-003 is locally complete but not yet integrated or part of the
+v3.1.1 stable release. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
-[port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md).
+[end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).
 
 ### Update an existing installation
 
@@ -902,7 +903,7 @@ Key references in this repo:
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [shared role playbooks](agent-memory/roles/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
-| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md) · [IDE parity qualification](docs/SAGE_IDE_PARITY_QUALIFICATION.md) |
+| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md) · [IDE parity qualification](docs/SAGE_IDE_PARITY_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
 
 ---
 

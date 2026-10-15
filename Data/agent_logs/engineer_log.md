@@ -1,5 +1,17 @@
 # DevTrack Engineer Log
 
+## 2026-10-15 — TASK-157 repeated Sage acceptance
+
+- Commit `f38f14f` adds the two-pass isolated capture-to-knowledge acceptance gate.
+- Native Windows and Linux Go 1.24 runs pass twice from clean state. The full Linux suite and vet,
+  focused acceptance race test, parity checker, memory boundary, wiki JavaScript, and whitespace
+  checks pass.
+- PR #284's unrelated hosted Windows suite timeout was reproduced as timeout pressure rather than
+  a product failure: the named database test passed five native Windows repetitions in under 0.1s
+  each. Commit `812555c` gives the full hosted suite the existing 120-second allowance.
+- Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Remaining TASK-157 work is hosted review and
+  integration of the stacked PRs.
+
 ## 2026-10-01 — TASK-157 recoverable topic merges
 
 - Commit `b6b7f81`: `sage merge`, bounded recovery journal, route repointing, index repair,

@@ -63,4 +63,5 @@ oversized topics return an error without truncation.
 
 Reference fuzzy section matching, action-derived variant matching, route correction commands,
 merge/refile, skipped-action files, full-entry search indexing, local commits, and operational
-diagnostics remain open. Full Sage parity and the end-to-end acceptance gate remain open.
+diagnostics were open at this checkpoint. Full Sage parity and end-to-end acceptance were qualified
+later; see `SAGE_END_TO_END_ACCEPTANCE.md`.

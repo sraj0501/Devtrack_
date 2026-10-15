@@ -24,12 +24,13 @@ watcher; all 19 hosted checks passed. The active stacked branch is
 four rows without advertising another harness. PR #284 targets `dev`; its hosted checks are in
 progress.
 The 136-scenario ledger now records 119 implemented, 17 adapted, 0 partial, and 0 pending scenarios;
-`--require-complete` passes.
+`--require-complete` passes. The stacked `features/TASK-157-sage-acceptance` branch adds the final
+two-pass clean journey, which passes on native Windows and Linux.
 Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
 pass locally. The four exact IDE-compatibility tests also pass as native Windows executables, and
-the modified package passes Linux race coverage. Next: document and review the active slice,
-integrate the stacked reviews, then run repeated Windows/Linux acceptance.
+the modified packages pass Linux race coverage. Next: review hosted checks and integrate the
+stacked reviews.
 Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order;
 `sage-resume.md` is the fresh-session handoff with the exact pending groups and acceptance gates.
 

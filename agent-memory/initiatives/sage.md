@@ -80,8 +80,9 @@ quickly, print nothing, perform no model or network call, and never break an age
   complete on the active IDE-parity branch at 119 implemented, 17 adapted, 0 partial, and 0
   pending; `--require-complete` passes. PR #283 targets `dev`; all 19 hosted checks passed and the
   review is clean. PR #284 carries the completed parity ledger into `dev`; hosted validation is in
-  progress. Remaining work is repeated capture-to-knowledge acceptance and integration of the
-  stacked reviews.
+  progress. The final repeated capture-to-knowledge acceptance gate passes twice on native Windows
+  and Linux on `features/TASK-157-sage-acceptance`. Remaining work is hosted review and integration
+  of the stacked reviews.
 
 ## Ordered next steps
 
@@ -181,12 +182,13 @@ recover abandoned leases without loss or duplication.
 
 ### 7. Close SAGE-003
 
-Run the clean capture-to-self-written-knowledge journey twice: install Codex capture, capture a
+Completed locally on 2026-10-15. The clean capture-to-self-written-knowledge journey runs twice on
+native Windows and Linux: install Codex capture, capture a
 useful command silently, import once, distill, write deterministic Markdown, index/search it,
 correct its route, merge/refile it, recover from a model failure, verify privacy canaries are
 absent, preserve unrelated Git state, and uninstall without damaging unrelated configuration.
 Require unit, golden, fuzz, fault-injection, race, Windows, and Linux coverage for the applicable
-parity scenarios.
+parity scenarios. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`.
 
 ### 8. Expand harness support
 
