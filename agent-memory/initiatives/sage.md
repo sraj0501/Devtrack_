@@ -72,12 +72,13 @@ quickly, print nothing, perform no model or network call, and never break an age
   overrides to the stable Sage root; all 19 hosted checks passed. PR #280 adds explicit shipped
   command-model providers, retaining Ollama HTTP as the default; all 19 hosted checks passed. The
   PR #281 closes pure platform layouts and additive installer/removal behavior while keeping Codex
-  as the only advertised adapter. The active lifecycle branch closes OS locks, liveness,
+  as the only advertised adapter. PR #282's lifecycle branch closes OS locks, liveness,
   no-console process launch, persistent capture aliases/reasons, and legacy-hook safety without a
-  second watcher; PR #282 targets `dev` and all 19 hosted checks passed. The ledger is 110
-  implemented, 16 adapted, 2 partial, and 8 pending. Remaining
-  work is capture/logging, Codex-history, optional IDE parity, and repeated
-  capture-to-knowledge acceptance.
+  second watcher; PR #282 targets `dev` and all 19 hosted checks passed. The active capture/history
+  branch adds fail-open privacy-safe `new`/`known`/`repeat` decisions, installed-adapter pause
+  coverage, interleaved terminal history collection, and failed-exit preservation. The ledger is
+  116 implemented, 16 adapted, 0 partial, and 4 pending. PR #283 targets `dev`; hosted checks are
+  running. Remaining work is optional IDE parity and repeated capture-to-knowledge acceptance.
 
 ## Ordered next steps
 

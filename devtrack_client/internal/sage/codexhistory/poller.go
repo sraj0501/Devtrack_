@@ -212,12 +212,12 @@ func (p Poller) pollThread(ctx context.Context, history *sql.DB, since int64, th
 			continue
 		}
 		delete(pending, item.itemID)
-		for _, event := range hooks.NormalizeCodexHistoryItem(item.raw, source, threadID, item.itemID, time.UnixMilli(item.created).UTC()) {
-			if err := sage.WriteEvent(p.Root, event); err != nil {
-				return count, current, err
-			}
-			count++
+		events := hooks.NormalizeCodexHistoryItem(item.raw, source, threadID, item.itemID, time.UnixMilli(item.created).UTC())
+		result, err := sage.WriteEvents(p.Root, events)
+		if err != nil {
+			return count, current, err
 		}
+		count += result.New
 	}
 	current.Pending = current.Pending[:0]
 	for id := range pending {

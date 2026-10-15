@@ -103,3 +103,51 @@ func TestPausedSpoolDropsNewEventsAndDoesNotImportBacklog(t *testing.T) {
 		t.Fatalf("paused import: %+v, %v", result, err)
 	}
 }
+
+func TestReferenceLogNeverRaises(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(root, []byte("occupied"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	recordCaptureDecision(root, "new", spoolEvent("log-failure"))
+}
+
+func TestReferenceEnqueueLogsNewThenKnown(t *testing.T) {
+	root := t.TempDir()
+	event := spoolEvent("same-record")
+	first, err := WriteEvents(root, []Event{event})
+	if err != nil || first.New != 1 || first.Known != 0 {
+		t.Fatalf("first=%+v err=%v", first, err)
+	}
+	second, err := WriteEvents(root, []Event{event})
+	if err != nil || second.New != 0 || second.Known != 1 {
+		t.Fatalf("second=%+v err=%v", second, err)
+	}
+	entries, err := ReadCaptureLog(root, 10)
+	if err != nil || len(entries) != 2 || entries[0].State != "new" || entries[1].State != "known" {
+		t.Fatalf("entries=%+v err=%v", entries, err)
+	}
+	for _, entry := range entries {
+		if entry.ID == "" || entry.Harness != event.Harness || entry.Stage != "capture" {
+			t.Fatalf("unsafe or incomplete entry=%+v", entry)
+		}
+	}
+}
+
+func TestWriteEventsMarksRepeatWithinBatch(t *testing.T) {
+	root := t.TempDir()
+	first := spoolEvent("compound-1")
+	second := spoolEvent("compound-2")
+	result, err := WriteEvents(root, []Event{first, second})
+	if err != nil || result.New != 1 || result.Repeat != 1 || result.Known != 0 {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	entries, err := ReadCaptureLog(root, 10)
+	if err != nil || len(entries) != 2 || entries[0].State != "new" || entries[1].State != "repeat" || entries[0].ID != entries[1].ID {
+		t.Fatalf("entries=%+v err=%v", entries, err)
+	}
+	files, err := os.ReadDir(pendingDir(root))
+	if err != nil || len(files) != 1 {
+		t.Fatalf("pending=%d err=%v", len(files), err)
+	}
+}

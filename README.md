@@ -187,7 +187,9 @@ the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
 On rolling `dev`, the capture pipeline, durable SQLite jobs, daemon-owned distillation,
 deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped-action
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
-SAGE-003 is not complete or part of the v3.1.1 stable release: remaining parity tests and the
+The active follow-up adds fail-open privacy-safe capture decisions and closes Codex-history
+terminal/failure edge cases. SAGE-003 is not complete or part of the v3.1.1 stable release: four
+optional IDE parity rows and the
 repeated clean end-to-end acceptance journey remain. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md).
@@ -422,12 +424,15 @@ devtrack sage restart
 devtrack sage search "rebase"
 devtrack sage topics
 devtrack sage doctor
+devtrack sage log
 devtrack sage routes
 ```
 
 Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
 service in the hook path, and it does not block the host coding agent. The daemon imports normalized
-events into SQLite and groups repeated command signatures. A structured background distiller uses
+events into SQLite and groups repeated command signatures. A bounded local decision log records
+only `new`, `known`, or same-payload `repeat` plus an opaque ID and harness; it excludes commands,
+raw signatures, paths, output, prompts, and reasoning. A structured background distiller uses
 local Ollama HTTP by default; publication retries do not repeat model work. Set
 `DEVTRACK_SAGE_MODEL_BACKEND` explicitly to `claude`, `devin`, `codex`, `copilot`, or
 `cursor-agent` to use an already-installed command provider, and optionally set
@@ -445,7 +450,9 @@ limits. Platform-specific harness destinations and additive hook migration are c
 [platform/installer qualification](docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md); Codex remains
 the only currently advertised capture adapter. Daemon locks, process liveness, no-console Windows
 children, capture lifecycle aliases, stop reasons, and legacy-hook safety are covered by the
-[lifecycle qualification](docs/SAGE_LIFECYCLE_QUALIFICATION.md).
+[lifecycle qualification](docs/SAGE_LIFECYCLE_QUALIFICATION.md). Capture-decision and read-only
+Codex-history edge cases are covered by the
+[capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md).
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;
@@ -893,7 +900,7 @@ Key references in this repo:
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [shared role playbooks](agent-memory/roles/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
-| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) |
+| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md) |
 
 ---
 

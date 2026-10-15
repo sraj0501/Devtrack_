@@ -15,14 +15,17 @@ runtime root from portable Markdown knowledge overrides and anchors relative ove
 configuration root rather than the caller's working directory. PR #280 adds explicit shipped
 command-model providers while retaining Ollama HTTP as the default; all 19 hosted checks passed.
 PR #281 closes portable harness layouts and additive install/removal parity; all 19 hosted checks
-passed. The active stacked branch is `features/TASK-157-sage-lifecycle`. It closes all 10
-daemon/process and 7 CLI lifecycle rows without adding a second Sage watcher. PR #282 targets
-`dev`; all 19 hosted checks passed.
-The 136-scenario ledger now records 110 implemented, 16 adapted, 2 partial, and 8 pending scenarios.
+passed. PR #282 closes all 10 daemon/process and 7 CLI lifecycle rows without adding a second Sage
+watcher; all 19 hosted checks passed. The active stacked branch is
+`features/TASK-157-sage-capture-history`, based on PR #282's green head. Implementation commit
+`215222b` closes four capture/logging rows and both partial Codex-history rows. PR #283 targets
+`dev`; hosted checks are running.
+The 136-scenario ledger now records 116 implemented, 16 adapted, 0 partial, and 4 pending scenarios.
 Full Go tests, `go vet ./...`,
 parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks
-pass locally. The exact lifecycle suite also passes as native Windows executables. Next: review and
-integrate the stacked slices, then close capture/logging, Codex-history, and optional IDE parity.
+pass locally. The six exact capture/history tests also pass as native Windows executables. Next:
+document and review the active slice, integrate the stacked reviews, then resolve optional IDE
+parity and repeated Windows/Linux acceptance.
 Playback is not in scope. `initiatives/sage.md` owns the detailed boundaries and execution order;
 `sage-resume.md` is the fresh-session handoff with the exact pending groups and acceptance gates.
 

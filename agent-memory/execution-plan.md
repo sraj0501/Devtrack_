@@ -19,16 +19,17 @@ without an approved board task and a dedicated branch targeting `dev`.
   but unmerged. PR #280 is the active stacked review from
   `features/TASK-157-sage-model-backends` into `dev`; all 19 hosted checks passed.
 - PR #281 closes portable harness paths, native-launcher adaptations, and additive
-  install/removal; all 19 hosted checks passed. Active implementation branch:
-  `features/TASK-157-sage-lifecycle`, stacked on PR #281. It closes daemon/process and CLI
-  lifecycle parity without adding a second Sage watcher. PR #282 targets `dev`; all 19 hosted
-  checks passed.
+  install/removal; all 19 hosted checks passed. PR #282 closes daemon/process and CLI lifecycle
+  parity without adding a second Sage watcher; all 19 hosted checks passed. Active implementation
+  branch: `features/TASK-157-sage-capture-history`, stacked on PR #282. Commit `215222b` closes
+  capture/logging and the remaining Codex-history rows. PR #283 targets `dev`; hosted checks are
+  running.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded
   retries, safe local knowledge commits, model-free documented-action reuse, and conservative
   section matching.
-- Ledger checkpoint: 110 implemented, 16 adapted, 2 partial, 8 pending. Full Go tests, vet, ledger
+- Ledger checkpoint: 116 implemented, 16 adapted, 0 partial, 4 pending. Full Go tests, vet, ledger
   consistency, parity-checker tests, shared-memory validation, and whitespace validation pass on
   the active branch.
 - Next unused task ID is TASK-164, subject to board verification before allocation.
@@ -64,8 +65,8 @@ pass, and the native-launcher adaptations remain explicit.
 ### 4. Close the parity ledger
 
 Use `docs/SAGE_PORT_PARITY_MATRIX.md` as the completion authority. Implement or explicitly adapt
-the remaining reference scenarios with exact Go tests and rationale. Keep the matrix checker and
-fault-injection lane green.
+the four optional IDE scenarios with exact Go tests and rationale, without advertising another
+harness before the Codex acceptance gate. Keep the matrix checker and fault-injection lane green.
 
 Gate: all 136 scenarios are implemented or deliberately adapted; `--require-complete` passes.
 
