@@ -5,8 +5,8 @@ _Last reconciled: 2026-10-15 — PR #278 merged the latest TASK-157 / SAGE-003 c
 review passed all 19 hosted checks and remains unmerged. The active stacked branch is
 `features/TASK-157-sage-capture-history`, stacked on fully green PRs #280-#282 and using the current
 reference checkout at `ea2e067`. The executable parity ledger is 116 implemented, 16 adapted,
-0 partial, and 4 pending. Commit `215222b` closes capture/logging and Codex-history parity. Next:
-review this slice, then resolve optional IDE parity and
+0 partial, and 4 pending. PR #283 targets `dev` with the capture/history closure; hosted checks are
+running. Next: review this slice, then resolve optional IDE parity and
 repeated Windows/Linux acceptance. Next unused
 task ID: TASK-164, subject to verification before allocation._
 
@@ -280,7 +280,8 @@ explicit Sage model backends; `24c28f8` — port platform layouts and additive i
 https://github.com/sraj0501/Devtrack_/pull/279 and
 https://github.com/sraj0501/Devtrack_/pull/280 and
 https://github.com/sraj0501/Devtrack_/pull/281 and
-https://github.com/sraj0501/Devtrack_/pull/282
+https://github.com/sraj0501/Devtrack_/pull/282 and
+https://github.com/sraj0501/Devtrack_/pull/283
 
 **Backend/provider status (2026-10-14):** Locally qualified on
 `features/TASK-157-sage-model-backends`: explicit `claude`, `devin`, `codex`, `copilot`, and
@@ -315,6 +316,8 @@ storing commands or raw signatures; logging is fail-open; interleaved fast/slow 
 items are collected once when terminal; and failed items preserve their exact non-zero exit code.
 All six exact tests pass in Linux Go 1.24 Docker and as native Windows binaries. The full Go suite
 and vet pass. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.
+**Capture/history PR:** https://github.com/sraj0501/Devtrack_/pull/283 targets `dev`; hosted checks
+are running.
 
 **Done through PR #278 and the active isolation follow-up:**
 - [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe

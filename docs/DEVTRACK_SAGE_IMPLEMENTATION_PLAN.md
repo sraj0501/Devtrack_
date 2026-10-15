@@ -193,7 +193,8 @@ locks/liveness, no-console launches, capture aliases, stop reasons, and legacy-h
 adding a second watcher; all 19 hosted checks passed. The active capture/history branch adds
 fail-open, privacy-safe capture decisions, installed
 pause enforcement, interleaved terminal history collection, and failed-exit preservation. The
-ledger is 116 implemented, 16 adapted, 0 partial, and 4 pending. Details:
+ledger is 116 implemented, 16 adapted, 0 partial, and 4 pending. PR #283 targets `dev`; hosted
+checks are running. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md` and
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`, and
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`, and

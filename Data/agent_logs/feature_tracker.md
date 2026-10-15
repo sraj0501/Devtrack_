@@ -8,7 +8,8 @@ installed pause state is enforced; repeated actions inside one command line are 
 double-spooling; and history polling covers interleaved terminal transitions plus exact failure
 status. The full Go suite/vet and native Windows exact tests pass. Ledger: 116 implemented,
 16 adapted, 0 partial, 4 pending. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`. Next:
-resolve the four optional IDE rows, then run repeated Windows/Linux acceptance.
+review PR #283 into `dev`, resolve the four optional IDE rows, then run repeated Windows/Linux
+acceptance.
 
 ## 2026-10-14 — TASK-157 portable layouts and additive installers
 

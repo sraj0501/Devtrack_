@@ -12,6 +12,7 @@ it is fully green. PR #281 closes portable roots, harness destinations, native l
 adaptations, and additive install/removal behavior; it is also fully green. The active stacked
 branch, `features/TASK-157-sage-capture-history`, is stacked on fully green lifecycle PR #282.
 Implementation commit `215222b` closes capture/logging and the two partial Codex-history rows.
+PR #283 targets `dev`; hosted checks are running.
 
 After review and integration, resolve the four optional IDE rows without advertising another
 harness before the Codex closure gate. Run the clean

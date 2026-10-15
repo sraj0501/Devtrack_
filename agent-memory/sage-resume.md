@@ -19,7 +19,7 @@ acting because branch, PR, and CI state can change after this record is updated.
   command-model backends and platform installers. Active stacked branch:
   `features/TASK-157-sage-capture-history`, based on PR #282's green lifecycle head. PR #282
   targets `dev`; all 19 hosted checks passed. Commit `215222b` closes capture/logging and the two
-  partial Codex-history rows; its PR is not yet open.
+  partial Codex-history rows. PR #283 targets `dev`; hosted checks are running.
 - Integrated implementation head: `4bb74f6`; merge commit: `a6a75b0`.
 - Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current commit `ea2e067`.
   Its post-`b85a1ab` changes affect generated knowledge only; the 136 reference tests are unchanged.

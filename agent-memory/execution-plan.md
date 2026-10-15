@@ -22,7 +22,8 @@ without an approved board task and a dedicated branch targeting `dev`.
   install/removal; all 19 hosted checks passed. PR #282 closes daemon/process and CLI lifecycle
   parity without adding a second Sage watcher; all 19 hosted checks passed. Active implementation
   branch: `features/TASK-157-sage-capture-history`, stacked on PR #282. Commit `215222b` closes
-  capture/logging and the remaining Codex-history rows.
+  capture/logging and the remaining Codex-history rows. PR #283 targets `dev`; hosted checks are
+  running.
 - Qualified TASK-157 slices: executable 136-scenario ledger, durable SQLite queue/leases, daemon
   lifecycle, deterministic Markdown writer/publication, persistent routes, restart-safe merge/refile,
   skipped-action records, full-entry search/topic reconciliation, truthful diagnostics, bounded

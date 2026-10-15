@@ -77,8 +77,8 @@ quickly, print nothing, perform no model or network call, and never break an age
   second watcher; PR #282 targets `dev` and all 19 hosted checks passed. The active capture/history
   branch adds fail-open privacy-safe `new`/`known`/`repeat` decisions, installed-adapter pause
   coverage, interleaved terminal history collection, and failed-exit preservation. The ledger is
-  116 implemented, 16 adapted, 0 partial, and 4 pending. Remaining work is optional IDE parity and
-  repeated capture-to-knowledge acceptance.
+  116 implemented, 16 adapted, 0 partial, and 4 pending. PR #283 targets `dev`; hosted checks are
+  running. Remaining work is optional IDE parity and repeated capture-to-knowledge acceptance.
 
 ## Ordered next steps
 

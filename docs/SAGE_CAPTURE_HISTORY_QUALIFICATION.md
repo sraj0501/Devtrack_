@@ -43,4 +43,5 @@ adapter boundary.
   136 rows: 116 implemented, 16 adapted, 0 partial, and 4 pending.
 
 TASK-157 remains open for the four optional IDE rows and the repeated clean Windows/Linux
-capture-to-knowledge acceptance journey.
+capture-to-knowledge acceptance journey. PR #283 carries this slice into `dev`; hosted checks are
+running.
