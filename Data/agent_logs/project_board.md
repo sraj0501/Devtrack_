@@ -35,7 +35,9 @@ snapshot and SQLite state; never expose raw capture events or add a remote trans
 - [ ] A dedicated PR to `dev` is open and its required checks pass.
 
 **Engineer status:** implementation, cross-platform qualification, and two documentation
-reconciliation passes complete from integrated `origin/dev` at `1b87ee6`; dedicated review remains.
+reconciliation passes complete from integrated `origin/dev` at `1b87ee6`; PR #291 targets `dev`
+and hosted checks are running.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/291
 **Blockers:** none.
 
 **[2026-10-16] TASK-168 / SAGE-004 — Devin CLI capture adapter (complete).**

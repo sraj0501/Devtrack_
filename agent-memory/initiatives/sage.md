@@ -18,7 +18,7 @@ independent advertised adapters.
 TASK-169 is active on `features/TASK-169-sage-mcp-readonly`. Commit `122c06e` adds four annotated
 read-only MCP tools: bounded search, current topics, exact topic/line retrieval, and bounded
 capture/pipeline/adapter status. Local Linux, race, native Windows, and two documentation
-reconciliation gates pass. Hosted review remains.
+reconciliation gates pass. PR #291 targets `dev`; hosted final-head checks remain.
 
 After TASK-169 integrates, TASK-170 closes the approved roadmap with retention/deletion controls,
 quarantine inspection, deterministic index rebuild/repair, and Markdown export/import.

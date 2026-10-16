@@ -43,4 +43,4 @@ The following gates passed on 2026-10-16:
   edit/move/delete reconciliation, privacy canaries, adapter errors, invalid inputs, cancellation,
   and preservation of the existing tool surface.
 
-Hosted review is still required before TASK-169 is integrated into `dev`.
+PR #291 targets `dev`. Hosted final-head review is still required before TASK-169 is integrated.
