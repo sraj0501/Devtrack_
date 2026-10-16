@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -162,5 +163,40 @@ func TestSageEntrySearchRankingAndFailedSnapshot(t *testing.T) {
 	var count int
 	if err := d.DB().QueryRow(`SELECT count(*) FROM sage_entries`).Scan(&count); err != nil || count != 3 {
 		t.Fatalf("failed scan changed cache: %d %v", count, err)
+	}
+}
+
+func TestGetSageEntryUsesExactCurrentTopicAndLine(t *testing.T) {
+	d, err := NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	w := knowledge.Writer{Root: t.TempDir()}
+	if _, err := w.Write("git", "abcdef01", distill.Draft{
+		Title: "Exact entry", Section: "Review", Commands: []string{"git status"},
+		What: "exactneedle", Why: "Verify current Markdown", Example: "Before work",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	matches, err := d.SearchSageEntries(ctx, w, "exactneedle", "git", 1)
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("search: %#v, %v", matches, err)
+	}
+	entry, err := d.GetSageEntry(ctx, w, "git.md", matches[0].Line)
+	if err != nil || entry == nil || entry.Body != matches[0].Body {
+		t.Fatalf("exact entry: %#v, %v", entry, err)
+	}
+	if entry, err := d.GetSageEntry(ctx, w, "git", matches[0].Line+1); err != nil || entry != nil {
+		t.Fatalf("non-exact line matched: %#v, %v", entry, err)
+	}
+	if _, err := d.GetSageEntry(ctx, w, "", matches[0].Line); err == nil {
+		t.Fatal("empty topic accepted")
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := d.GetSageEntry(cancelled, w, "git", matches[0].Line); !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancellation, got %v", err)
 	}
 }

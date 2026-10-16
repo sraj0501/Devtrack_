@@ -11,7 +11,37 @@ implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. 
 Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
 verification before allocation._
 
-**[2026-10-16] TASK-168 / SAGE-004 — Devin CLI capture adapter (in progress).**
+**[2026-10-16] TASK-169 / SAGE-005 — Read-only Sage MCP retrieval and diagnostics (in progress).**
+**Priority:** High. **Branch:** `features/TASK-169-sage-mcp-readonly`.
+**Assigned to:** engineer. **Depends on:** merged TASK-168 PR #290.
+
+Extend the existing local stdio MCP server with read-only Sage knowledge search, topic listing,
+exact entry retrieval, status, and installed-adapter diagnostics. Reuse the deterministic Markdown
+snapshot and SQLite state; never expose raw capture events or add a remote transport.
+
+**Acceptance criteria:**
+- [x] `tools/list` advertises `sage_search`, `sage_topics`, `sage_get_entry`, and `sage_status`
+      with read-only, non-destructive, idempotent, closed-world annotations.
+- [x] Search supports a bounded literal query, optional topic, and bounded limit, returning complete
+      deterministic knowledge entries without model or network access.
+- [x] Topics and exact topic/line entry retrieval reconcile current Markdown moves, edits, and
+      deletions through the existing snapshot path.
+- [x] Status reports capture/pipeline state and all independently managed adapter installation
+      modes without mutating configuration or exposing raw events, logs, prompts, or reasoning.
+- [x] Invalid types, missing required arguments, oversized values, missing entries, and cancelled
+      contexts fail safely with bounded errors.
+- [x] Existing six MCP tools, packaging metadata, stdio behavior, and native platform smoke tests
+      remain compatible.
+- [x] Full Go tests/vet, focused race coverage, Linux and native Windows tests pass locally.
+- [ ] Two docu-agent reconciliation passes complete with memory, wiki, README, and whitespace
+      validation.
+- [ ] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** implementation and cross-platform qualification complete from integrated
+`origin/dev` at `1b87ee6`; documentation reconciliation and dedicated review remain.
+**Blockers:** none.
+
+**[2026-10-16] TASK-168 / SAGE-004 — Devin CLI capture adapter (complete).**
 **Priority:** High. **Branch:** `features/TASK-168-sage-devin-adapter`.
 **Assigned to:** engineer. **Depends on:** green TASK-167 PR #289.
 
@@ -35,11 +65,10 @@ matched `PostToolUse` events, and do not add session lifecycle processes or Pyth
 - [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
 - [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
       validation.
-- [ ] A dedicated PR to `dev` is open and its required checks pass.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
 
-**Engineer status:** implementation, cross-platform local verification, and two documentation
-passes complete against current clean reference HEAD `ea2e067`. Commit `ccc0dfa` is pushed and
-PR #290 targets `dev`; hosted final-head checks remain.
+**Engineer status:** complete and integrated. All 19 hosted checks passed on final head `077369c`;
+PR #290 merged to `dev` at `1b87ee6`.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/290
 **Blockers:** none.
 
