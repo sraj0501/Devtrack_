@@ -1,15 +1,12 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-16 — PRs #279–#282 merged the runtime isolation, model backends,
-platform installers, and lifecycle slices to `dev` at `f07bb97`. PRs #283–#285 are clean, fully
-green reviews carrying capture/history closure, the complete parity ledger, and repeated
-cross-platform acceptance. PRs #286–#289 are the green Claude, Copilot, OpenCode, and Cursor
-adapter reviews; Cursor passed all 19 hosted checks on final head `a4142e6`. TASK-168 Devin is
-the next Sage slice, using
-the current reference checkout at `ea2e067`. The executable parity ledger is complete at 119
-implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. The repeated clean
-Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
-verification before allocation._
+_Last reconciled: 2026-10-16 — PRs #279–#290 are integrated into `dev` at `1b87ee6`, including
+runtime isolation, model backends, platform installers, lifecycle, capture/history closure, the
+complete parity ledger, repeated cross-platform acceptance, and all six capture adapters. TASK-169
+read-only Sage MCP retrieval is implemented and locally qualified on commit `122c06e`; two
+documentation passes are complete and hosted review remains. The authoritative reference checkout is `ea2e067`.
+The ledger is complete at 119 implemented, 17 adapted, 0 partial, and 0 pending. Next unused task
+ID: TASK-171, subject to verification before allocation._
 
 **[2026-10-16] TASK-169 / SAGE-005 — Read-only Sage MCP retrieval and diagnostics (in progress).**
 **Priority:** High. **Branch:** `features/TASK-169-sage-mcp-readonly`.
@@ -33,12 +30,12 @@ snapshot and SQLite state; never expose raw capture events or add a remote trans
 - [x] Existing six MCP tools, packaging metadata, stdio behavior, and native platform smoke tests
       remain compatible.
 - [x] Full Go tests/vet, focused race coverage, Linux and native Windows tests pass locally.
-- [ ] Two docu-agent reconciliation passes complete with memory, wiki, README, and whitespace
+- [x] Two docu-agent reconciliation passes complete with memory, wiki, README, and whitespace
       validation.
 - [ ] A dedicated PR to `dev` is open and its required checks pass.
 
-**Engineer status:** implementation and cross-platform qualification complete from integrated
-`origin/dev` at `1b87ee6`; documentation reconciliation and dedicated review remain.
+**Engineer status:** implementation, cross-platform qualification, and two documentation
+reconciliation passes complete from integrated `origin/dev` at `1b87ee6`; dedicated review remains.
 **Blockers:** none.
 
 **[2026-10-16] TASK-168 / SAGE-004 — Devin CLI capture adapter (complete).**
