@@ -162,3 +162,36 @@ func (d *Database) ListSageEntryTopics(ctx context.Context, writer knowledge.Wri
 	}
 	return topics, nil
 }
+
+// GetSageEntry returns one exact current Markdown entry. The topic and line are
+// identifiers previously returned by SearchSageEntries; the snapshot refresh
+// ensures moved, edited, or deleted files are reflected before lookup.
+func (d *Database) GetSageEntry(ctx context.Context, writer knowledge.Writer, topic string, line int) (*knowledge.Entry, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	topic = strings.TrimSpace(strings.TrimSuffix(topic, ".md"))
+	if topic == "" || len(topic) > 256 || line <= 0 {
+		return nil, errors.New("invalid Sage entry identifier")
+	}
+	filename := knowledge.SafeFilename(topic)
+	var entry *knowledge.Entry
+	err := d.refreshSageEntries(ctx, writer, func(tx *sql.Tx) error {
+		var found knowledge.Entry
+		err := tx.QueryRowContext(ctx, `SELECT filename,line,heading,body,commands FROM sage_entries WHERE filename=? AND line=?`, filename, line).
+			Scan(&found.Filename, &found.Line, &found.Heading, &found.Body, &found.Command)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		found.Topic = strings.TrimSuffix(found.Filename, ".md")
+		entry = &found
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return entry, nil
+}

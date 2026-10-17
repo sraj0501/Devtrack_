@@ -16,7 +16,8 @@ In managed mode, `doctor` must distinguish immediately available Go capabilities
 PostgreSQL, and LLM readiness. A degraded optional capability must not be reported as a broken Git
 workflow.
 
-`devtrack mcp test` must list and call all six read-only tools. It uses the configured SQLite
+`devtrack mcp test` must list all ten read-only tools and call representative context and Sage
+status tools. It uses the configured SQLite
 database when available and a disposable one when setup has not run, so the protocol smoke test is
 valid from a fresh checkout. Once the daemon has observed work, confirm MCP's `today_commits` count
 uses the user's local calendar date.

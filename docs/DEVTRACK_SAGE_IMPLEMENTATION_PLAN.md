@@ -184,22 +184,23 @@ Acceptance:
 - Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
   push to a remote.
 
-Latest checkpoint (2026-10-15): PRs #279–#282 are integrated into `dev` at `f07bb97`, adding
-runtime/knowledge isolation, explicit no-shell command providers, portable platform paths and
-additive installation, and single-daemon lifecycle safety. PRs #283–#285 are clean, fully green
-reviews carrying fail-open capture/history closure, the complete parity ledger, and the twice-run
-Windows/Linux end-to-end journey. The ledger is complete at 119 implemented, 17 adapted, 0 partial,
-and 0 pending; `--require-complete` passes. TASK-164 adds an independently managed Claude Code
-adapter with additive `PostToolUse`/`PostToolUseFailure` hooks, privacy-minimized normalization,
-and exact Linux/Windows evidence; its green PR #286 targets `dev`. TASK-165 adds GitHub Copilot CLI
-with one additive version-1 `postToolUse` entry, portable Bash/PowerShell commands, and the same
-bounded native endpoint. Details:
+Latest checkpoint (2026-10-16): PRs #279–#290 are integrated into `dev` at `1b87ee6`. They carry
+runtime/knowledge isolation, model backends, platform installers, lifecycle safety, capture/history
+closure, the complete 119-implemented/17-adapted parity ledger, repeated Windows/Linux acceptance,
+and independently managed Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI
+adapters. TASK-169 now implements four annotated, read-only Sage MCP tools on its feature branch:
+bounded whole-entry search, current topics, exact topic/line retrieval, and privacy-safe
+capture/pipeline/adapter status. Linux full tests/vet, focused race coverage, and native Windows
+tests pass; documentation and hosted review remain. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md`,
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`,
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`,
 `docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md`,
 `docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md`,
 `docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md`,
+`docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md`,
+`docs/SAGE_DEVIN_ADAPTER_QUALIFICATION.md`,
+`docs/SAGE_MCP_READONLY_QUALIFICATION.md`,
 `docs/SAGE_LIFECYCLE_QUALIFICATION.md`,
 `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`, and
 `docs/SAGE_IDE_PARITY_QUALIFICATION.md`. The repeated native Windows/Linux journey also passes;
@@ -247,12 +248,15 @@ Acceptance:
 
 ### SAGE-005 — Read-only integration and operational closure
 
-Expose knowledge search and status to the existing MCP server and add bounded retention/repair
-tooling.
+TASK-169 exposes knowledge search, topic listing, exact entry retrieval, and bounded status through
+the existing local stdio MCP server. TASK-170 adds retention/repair tooling after TASK-169 is
+integrated.
 
 Acceptance:
 
-- MCP additions remain read-only and do not expose raw event payloads.
+- TASK-169 MCP additions are implemented and locally qualified as read-only, non-destructive,
+  idempotent, and closed-world. They do not expose raw events, logs, prompts, output, reasoning, or
+  adapter configuration paths.
 - Corrupt spool files are quarantined with sanitized diagnostics; healthy work continues.
 - Search/index repair can rebuild from deterministic knowledge records without model calls.
 
@@ -297,8 +301,7 @@ for inspection or export.
 
 ## Immediate next step
 
-SAGE-001 and SAGE-002 are complete, and SAGE-003 is qualified end to end. PRs #279–#282 are merged;
-review and integrate green PRs #283–#289 only with explicit authorization. TASK-168's Devin
-adapter is locally qualified and awaits hosted review. TASK-169 adds
-read-only Sage MCP retrieval and diagnostics, and TASK-170 adds retention, quarantine inspection,
-deterministic rebuild/repair, and Markdown export/import.
+PRs #279–#290 are integrated into `dev` at `1b87ee6`. Complete TASK-169 documentation and hosted
+review for the locally qualified read-only MCP retrieval/diagnostics slice. Then implement TASK-170
+retention, quarantine inspection, deterministic rebuild/repair, and Markdown export/import from
+the updated `dev` base.

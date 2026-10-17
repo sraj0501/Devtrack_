@@ -1,112 +1,50 @@
 ---
 name: Sage fresh-session handoff
-description: Exact resume context and remaining acceptance gates for active Sage roadmap work
+description: Exact resume context and remaining gates for the active Sage roadmap
 type: project
 ---
 
 # Sage fresh-session handoff
 
-Use this record when resuming Sage from a new session. The project board owns task status and IDs;
-`docs/SAGE_PORT_PARITY_MATRIX.md` owns scenario-level completion. Recheck Git and GitHub before
-acting because branch, PR, and CI state can change after this record is updated.
+The project board owns task state and IDs. Recheck Git and GitHub because branch, PR, and CI state
+can change after this record.
 
 ## Current checkpoint
 
-- Active task: TASK-168 / SAGE-004 Devin CLI capture adapter on
-  `features/TASK-168-sage-devin-adapter`. Implementation, local cross-platform gates, and two
-  documentation reconciliation passes succeed. Commit `ccc0dfa` is pushed in PR #290 targeting
-  `dev`; hosted final-head checks remain. TASK-167 PR #289 is green on final head `a4142e6`.
-- Integration branch: `origin/dev` at `f07bb97` after PR #282. PRs #279–#282 are merged.
-- PRs #283–#285 are clean, fully green stacked reviews for capture/history closure, the completed
-  parity ledger, and the twice-run Windows/Linux acceptance journey.
-- Behavioral reference: `C:\Work\git_apps\ai_sessions_skills` at current clean commit `ea2e067`.
-  This newer HEAD is intentional and includes the reference bug fixes.
-- Ledger: 136 scenarios — 119 implemented, 17 adapted, 0 partial, and 0 pending;
-  `--require-complete` passes.
-- Qualification: full Go tests, `go vet ./...`, ledger consistency, parity-checker tests,
-  shared-memory validation, and whitespace validation passed locally. All required PR #278 checks
-  and applicable post-merge workflows passed, including hosted Windows tests.
+- Active task: TASK-169 / SAGE-005 on `features/TASK-169-sage-mcp-readonly`.
+- Implementation commit: `122c06e` (`feat(sage): add read-only MCP retrieval`).
+- Integration base: `origin/dev` at `1b87ee6`, after merged PR #290. PRs #279–#290 are integrated.
+- Implemented MCP tools: `sage_search`, `sage_topics`, `sage_get_entry`, and `sage_status`, alongside
+  the existing six tools. All are read-only, non-destructive, idempotent, and closed-world.
+- Search/topics/exact retrieval refresh from current deterministic Markdown. Status exposes bounded
+  capture/pipeline/adapter state, not raw activity or local adapter paths.
+- Local evidence: full Go suite and vet in Go 1.24 Linux; focused MCP/database race tests; native
+  Windows MCP, Sage database, and main-package registration tests.
+- PR #291 targets `dev`; all 19 hosted checks pass on head `8ba7dca`. Integration remains and must
+  not be performed without explicit authorization.
+- Next approved task: TASK-170 operational closure after TASK-169 integration.
+- Reference: `C:\Work\git_apps\ai_sessions_skills` at authoritative clean HEAD `ea2e067`.
 
-## What is already done
-
-The following queue-to-knowledge foundation is integrated into `dev`: silent Codex capture,
-immutable spool/import, SQLite events and durable jobs, leases and fencing, daemon lifecycle,
-deterministic Markdown publication, persistent routes, recoverable merge/refile, explicit skipped
-records, and full-entry search/topic reconciliation.
-
-PR #278 integrated the latest closure slice: truthful `status`/`doctor`/`log` diagnostics, bounded
-retries, privacy-safe NDJSON logs, Sage-owned local commits that preserve unrelated Git state and
-never push, including an isolated private-index path that stages the exact validated knowledge
-bytes without depending on ambient Git filters or filesystem monitors; model-free documented-action
-reuse; deterministic rendering; conservative section matching; quote-aware compound-command
-capture; cross-harness payload normalization;
-temperature-zero model requests, token-limit diagnostics, and background-only classify-once
-routing with sanitized persistence, deterministic fallback, and existing-section context.
-
-PR #279 resolves all three runtime/knowledge isolation rows: relative runtime and
-knowledge overrides resolve from the stable Sage root, an explicit knowledge directory cannot move
-private runtime state, and the Go prompt is explicitly path-free rather than exposing a runtime
-batch path. See `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md`.
-
-PR #280 resolves the four backend/provider rows plus process-local capture
-suppression. Ollama HTTP remains the default; installed command providers are explicit opt-ins,
-use direct argv with declared prompt modes, and cannot recursively capture their own subprocess.
-See `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`.
-
-PR #281 resolves all 18 platform-layout and additive installer/removal rows.
-Eleven layout rows and five mutation rows are implemented; two Python script-shim rows are
-explicitly adapted to packaged native Go launchers. TASK-164 subsequently adds Claude Code,
-TASK-165 adds GitHub Copilot CLI, TASK-166 adds OpenCode, TASK-167 adds Cursor, and TASK-168 adds
-Devin CLI as independent advertised adapters.
-See `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
-
-PR #282's lifecycle branch resolves all 10 daemon/process and 7 CLI lifecycle rows. DevTrack's
-single daemon owns locking, liveness, and background work; Windows native children have no console,
-and Sage start/stop/restart aliases manage persistent capture state without spawning a watcher.
-See `docs/SAGE_LIFECYCLE_QUALIFICATION.md`.
-
-## Parity ledger
-
-All 136 rows have exact Go evidence or an explicit behavioral adaptation. The existing opt-in
-Codex history adapter closes the four optional IDE rows without advertising another harness; see
-`docs/SAGE_IDE_PARITY_QUALIFICATION.md`. There are no partial or pending rows.
-
-## Acceptance status
-
-The clean, resilient Codex capture-to-self-written-knowledge journey passes twice on native Windows
-and twice on Linux. It covers install, silent capture, one import, model outage and malformed-output
-recovery, deterministic publication, search, route correction, merge/refile, restart stability,
-privacy canaries, unrelated Git-state preservation, and safe uninstall. Applicable full-suite, vet,
-race, and `--require-complete` gates pass. See `docs/SAGE_END_TO_END_ACCEPTANCE.md`.
-
-## Recommended pickup order
-
-1. Require green final-head hosted checks on TASK-168 PR #290.
-2. Review/integrate green PRs #286–#289 only with explicit user authorization.
-3. Implement TASK-169 read-only MCP retrieval/diagnostics, then TASK-170 operational closure.
-
-At the start of a fresh session, read `agent-memory/INDEX.md`, `current-state.md`,
-`execution-plan.md`, `initiatives/sage.md`, this file, and the active board entry. Then run:
+## Resume commands
 
 ```text
 git status --short --branch
 git log -6 --oneline --decorate origin/dev
-python scripts/check_sage_parity.py
+python scripts/check_sage_parity.py --require-complete
 python scripts/check_agent_memory.py
 ```
 
-The current machine does not have host Go. Use the documented Docker-based Go 1.24 workflow when
-that remains true, and keep Ollama on the host unless a test specifically requires a containerized
-model endpoint.
+This machine has no host Go. Use the documented Docker Go 1.24 workflow; use cross-compiled native
+Windows test binaries for Windows qualification. Keep host Ollama outside Docker unless a test
+specifically needs an isolated endpoint.
 
 ## Scope boundaries
 
-- Sage production remains Go-native; Python is development tooling only.
-- Hooks stay silent, bounded, fail-open, and detached from model/network/database availability.
-- Never capture raw output, user messages, reasoning, or private argument values unnecessarily.
+- Sage production is Go-native; Python is development tooling only.
+- Hooks are silent, bounded, fail-open, and detached from model/network/database availability.
 - SQLite owns runtime state; deterministic Markdown is the user-visible knowledge artifact.
+- MCP remains local read-only stdio and excludes raw events, logs, prompts, output, reasoning, and
+  adapter configuration paths.
 - Sage may commit only Sage-owned knowledge files locally and never pushes.
 - Playback, visible-reasoning capture, autonomous Git operations, and raw-activity cloud sync are
   out of scope.
-- Remaining full harness adapters, read-only MCP knowledge exposure, retention/deletion controls,
-  repair tools, and Markdown import/export are the active SAGE-004/SAGE-005 roadmap.

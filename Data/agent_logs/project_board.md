@@ -1,17 +1,45 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-16 — PRs #279–#282 merged the runtime isolation, model backends,
-platform installers, and lifecycle slices to `dev` at `f07bb97`. PRs #283–#285 are clean, fully
-green reviews carrying capture/history closure, the complete parity ledger, and repeated
-cross-platform acceptance. PRs #286–#289 are the green Claude, Copilot, OpenCode, and Cursor
-adapter reviews; Cursor passed all 19 hosted checks on final head `a4142e6`. TASK-168 Devin is
-the next Sage slice, using
-the current reference checkout at `ea2e067`. The executable parity ledger is complete at 119
-implemented, 17 adapted, 0 partial, and 0 pending; `--require-complete` passes. The repeated clean
-Windows/Linux acceptance and hosted checks pass. Next unused task ID: TASK-171, subject to
-verification before allocation._
+_Last reconciled: 2026-10-17 — PRs #279–#290 are integrated into `dev` at `1b87ee6`, including
+runtime isolation, model backends, platform installers, lifecycle, capture/history closure, the
+complete parity ledger, repeated cross-platform acceptance, and all six capture adapters. TASK-169
+read-only Sage MCP retrieval is implemented, locally qualified, and green in PR #291 at head
+`8ba7dca`; two documentation passes are complete. The authoritative reference checkout is `ea2e067`.
+The ledger is complete at 119 implemented, 17 adapted, 0 partial, and 0 pending. Next unused task
+ID: TASK-171, subject to verification before allocation._
 
-**[2026-10-16] TASK-168 / SAGE-004 — Devin CLI capture adapter (in progress).**
+**[2026-10-16] TASK-169 / SAGE-005 — Read-only Sage MCP retrieval and diagnostics (in progress).**
+**Priority:** High. **Branch:** `features/TASK-169-sage-mcp-readonly`.
+**Assigned to:** engineer. **Depends on:** merged TASK-168 PR #290.
+
+Extend the existing local stdio MCP server with read-only Sage knowledge search, topic listing,
+exact entry retrieval, status, and installed-adapter diagnostics. Reuse the deterministic Markdown
+snapshot and SQLite state; never expose raw capture events or add a remote transport.
+
+**Acceptance criteria:**
+- [x] `tools/list` advertises `sage_search`, `sage_topics`, `sage_get_entry`, and `sage_status`
+      with read-only, non-destructive, idempotent, closed-world annotations.
+- [x] Search supports a bounded literal query, optional topic, and bounded limit, returning complete
+      deterministic knowledge entries without model or network access.
+- [x] Topics and exact topic/line entry retrieval reconcile current Markdown moves, edits, and
+      deletions through the existing snapshot path.
+- [x] Status reports capture/pipeline state and all independently managed adapter installation
+      modes without mutating configuration or exposing raw events, logs, prompts, or reasoning.
+- [x] Invalid types, missing required arguments, oversized values, missing entries, and cancelled
+      contexts fail safely with bounded errors.
+- [x] Existing six MCP tools, packaging metadata, stdio behavior, and native platform smoke tests
+      remain compatible.
+- [x] Full Go tests/vet, focused race coverage, Linux and native Windows tests pass locally.
+- [x] Two docu-agent reconciliation passes complete with memory, wiki, README, and whitespace
+      validation.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** complete and ready for review. All 19 hosted checks pass on PR #291 head
+`8ba7dca`, including the corrected ten-tool Glama and five-platform MCPB gates.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/291
+**Blockers:** none.
+
+**[2026-10-16] TASK-168 / SAGE-004 — Devin CLI capture adapter (complete).**
 **Priority:** High. **Branch:** `features/TASK-168-sage-devin-adapter`.
 **Assigned to:** engineer. **Depends on:** green TASK-167 PR #289.
 
@@ -35,11 +63,10 @@ matched `PostToolUse` events, and do not add session lifecycle processes or Pyth
 - [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
 - [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
       validation.
-- [ ] A dedicated PR to `dev` is open and its required checks pass.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
 
-**Engineer status:** implementation, cross-platform local verification, and two documentation
-passes complete against current clean reference HEAD `ea2e067`. Commit `ccc0dfa` is pushed and
-PR #290 targets `dev`; hosted final-head checks remain.
+**Engineer status:** complete and integrated. All 19 hosted checks passed on final head `077369c`;
+PR #290 merged to `dev` at `1b87ee6`.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/290
 **Blockers:** none.
 

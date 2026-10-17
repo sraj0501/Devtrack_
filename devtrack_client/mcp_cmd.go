@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,8 @@ import (
 	cfg "github.com/sraj0501/Devtrack_/devtrack_client/internal/config"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/mcp"
+	sageharness "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/harness"
+	sageknowledge "github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
 )
 
 // handleMCPCommand handles the `devtrack mcp` command and subcommands.
@@ -19,7 +22,7 @@ import (
 //	devtrack mcp           -> start MCP server in stdio mode (blocks; used by Claude Code)
 //	devtrack mcp setup     -> write .mcp.json in current directory (or --dir <path>)
 //	devtrack mcp status    -> print server info
-//	devtrack mcp test      -> run a self-test: initialize + tools/list + get_active_context
+//	devtrack mcp test      -> run a self-test: initialize + tools/list + representative calls
 func handleMCPCommand(args []string) {
 	sub := ""
 	if len(args) > 0 {
@@ -49,7 +52,8 @@ func runMCPServer(args []string) {
 	// The Python server does NOT need to be running; all tools are SQLite-backed.
 	srv := mcp.New(Version) // Version is the package-level var in version.go
 
-	// Open SQLite database and register all 6 read-only MCP tools (TASK-099).
+	// Open SQLite and register the original DevTrack tools plus Sage's local,
+	// read-only retrieval and diagnostics surface.
 	databasePath, err := mcpDatabasePath(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "mcp: %v\n", err)
@@ -67,9 +71,32 @@ func runMCPServer(args []string) {
 	}
 	defer database.Close()
 
-	mcp.RegisterDevTrackTools(srv, database)
+	if err := registerMCPTools(srv, database); err != nil {
+		fmt.Fprintf(os.Stderr, "mcp: %v\n", err)
+		os.Exit(1)
+	}
 
 	srv.Start(context.Background())
+}
+
+func registerMCPTools(srv *mcp.Server, database *db.Database) error {
+	mcp.RegisterDevTrackTools(srv, database)
+	sageRuntimeRoot, err := sageRoot()
+	if err != nil {
+		return err
+	}
+	sageKnowledgeDir, err := sageKnowledgeRoot()
+	if err != nil {
+		return err
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		return errors.New("executable unavailable")
+	}
+	mcp.RegisterSageTools(srv, database, sageRuntimeRoot, sageknowledge.Writer{Root: sageKnowledgeDir}, func() ([]sageharness.Descriptor, error) {
+		return sageHarnessRegistry(sageRuntimeRoot, executable).List()
+	})
+	return nil
 }
 
 func mcpDatabasePath(args []string) (string, error) {
@@ -102,9 +129,10 @@ func printMCPStatus() {
 	fmt.Println("DevTrack MCP Server")
 	fmt.Println("  Protocol:  MCP handshake through 2025-11-25 (2026-07-28 not yet supported)")
 	fmt.Println("  Transport: stdio")
-	fmt.Println("  Tools:     6 registered")
+	fmt.Println("  Tools:     10 registered")
 	fmt.Println("             get_active_context, get_today_commits, get_pending_actions,")
 	fmt.Println("             get_voice_profile, get_ticket_context, get_eod_summary")
+	fmt.Println("             sage_search, sage_topics, sage_get_entry, sage_status")
 	fmt.Println("  Note:      MCP server runs on-demand when spawned by Claude Code.")
 	fmt.Println("             No background process needed.")
 }
@@ -234,13 +262,17 @@ func runMCPTest(args []string) {
 		return
 	}
 	defer database.Close()
-	mcp.RegisterDevTrackTools(srv, database)
+	if err := registerMCPTools(srv, database); err != nil {
+		fmt.Fprintf(os.Stderr, "mcp test: %v\n", err)
+		return
+	}
 
-	// Build the three test messages
+	// Build the protocol smoke-test messages.
 	messages := []string{
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
 		`{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`,
 		`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_active_context","arguments":{}}}`,
+		`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"sage_status","arguments":{}}}`,
 		`{"jsonrpc":"2.0","id":99,"method":"shutdown"}`,
 	}
 	input := strings.Join(messages, "\n") + "\n"
@@ -265,7 +297,7 @@ func runMCPTest(args []string) {
 	// Print results
 	fmt.Println("=== devtrack mcp test ===")
 	lines := strings.Split(strings.TrimSpace(outBuf.String()), "\n")
-	labels := []string{"initialize", "tools/list", "get_active_context", "shutdown"}
+	labels := []string{"initialize", "tools/list", "get_active_context", "sage_status", "shutdown"}
 	for i, line := range lines {
 		label := "response"
 		if i < len(labels) {

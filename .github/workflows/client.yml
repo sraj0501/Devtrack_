@@ -108,7 +108,8 @@ jobs:
             printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"glama-ci","version":"1.0"}}}'
             printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}'
             printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-            printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"shutdown"}'
+            printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"sage_status","arguments":{}}}'
+            printf '%s\n' '{"jsonrpc":"2.0","id":4,"method":"shutdown"}'
           } | docker run --rm --interactive devtrack-mcp:ci)"
           RESPONSES="$responses" python - <<'PY'
           import json
@@ -117,9 +118,15 @@ jobs:
           messages = [json.loads(line) for line in os.environ["RESPONSES"].splitlines()]
           assert messages[0]["result"]["serverInfo"]["name"] == "devtrack"
           tools = messages[1]["result"]["tools"]
-          assert len(tools) == 6, f"expected 6 tools, got {len(tools)}"
+          expected = {
+              "get_active_context", "get_today_commits", "get_pending_actions",
+              "get_voice_profile", "get_ticket_context", "get_eod_summary",
+              "sage_search", "sage_topics", "sage_get_entry", "sage_status",
+          }
+          assert {tool["name"] for tool in tools} == expected
           assert all(tool["annotations"]["readOnlyHint"] for tool in tools)
-          assert messages[2]["result"] is None
+          assert "error" not in messages[2]
+          assert messages[3]["result"] is None
           PY
 
   mcpb-package:

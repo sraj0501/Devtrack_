@@ -71,7 +71,7 @@ Managed mode requires a PostgreSQL URL for the Python service; Ollama remains th
 can finish preparing in the background.
 
 ```bash
-devtrack mcp status           # must report six registered tools
+devtrack mcp status           # stable v3.1.1: six tools; TASK-169 branch: ten
 cd /path/to/the/repo/to/watch
 devtrack setup
 ```
@@ -187,11 +187,10 @@ the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
 On rolling `dev`, the capture pipeline, durable SQLite jobs, daemon-owned distillation,
 deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped-action
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
-PRs #279–#282 are integrated into `dev`. PRs #283–#285 are green reviews carrying capture/history
-closure, the complete 136-row parity ledger, and the twice-run Windows/Linux acceptance journey.
-The active SAGE-004 work adds independently managed harness adapters. Codex, Claude Code,
-GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are locally qualified. TASK-169 read-only MCP
-retrieval and diagnostics is next. None of this
+PRs #279–#290 are integrated into `dev`, including capture/history closure, the complete 136-row
+parity ledger, repeated Windows/Linux acceptance, and independent Codex, Claude Code, GitHub
+Copilot CLI, OpenCode, Cursor, and Devin CLI adapters. TASK-169 now adds four local read-only MCP
+tools for Sage knowledge and diagnostics on its feature branch; hosted review remains. None of this
 work is part of the v3.1.1 stable release. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).
@@ -467,6 +466,8 @@ legacy-hook safety are covered by the
 Codex-history edge cases are covered by the
 [capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md); the final optional
 IDE rows are covered by the [IDE parity qualification](docs/SAGE_IDE_PARITY_QUALIFICATION.md).
+The four development-only MCP tools and their privacy boundary are covered by the
+[read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md).
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;
@@ -671,9 +672,13 @@ DevTrack exposes a Model Context Protocol (MCP) server so Claude Code automatica
 - **`devtrack mcp setup`** — writes `.mcp.json` in the current directory so Claude Code discovers the server automatically on next launch
 - **`devtrack mcp status`** — shows the registered tools and server info
 - **`devtrack mcp test`** — runs an in-process smoke test without starting a full server
-- Six SQLite-backed tools: `get_active_context`, `get_today_commits`, `get_pending_actions`,
-  `get_voice_profile`, `get_ticket_context`, `get_eod_summary`. Each declares a title and read-only,
-  non-destructive, idempotent safety annotations.
+- Stable v3.1.1 has six SQLite-backed context tools: `get_active_context`, `get_today_commits`,
+  `get_pending_actions`, `get_voice_profile`, `get_ticket_context`, and `get_eod_summary`.
+- The TASK-169 development branch adds `sage_search`, `sage_topics`, `sage_get_entry`, and
+  `sage_status`. These read current deterministic Markdown and bounded local diagnostics; they do
+  not expose raw capture events, logs, prompts, output, reasoning, or adapter configuration paths.
+- All ten development-branch tools declare read-only, non-destructive, idempotent, and closed-world
+  safety annotations.
 - The stdio handshake negotiates finalized MCP versions through `2025-11-25`, retaining older-client
   compatibility. The newer `2026-07-28` per-request protocol is not supported yet.
 - Reproducible MCPB 0.3 bundles ship for Windows amd64, macOS amd64/arm64, and Linux amd64/arm64.
@@ -914,7 +919,7 @@ Key references in this repo:
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [shared role playbooks](agent-memory/roles/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
-| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Claude adapter qualification](docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
+| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
 
 ---
 

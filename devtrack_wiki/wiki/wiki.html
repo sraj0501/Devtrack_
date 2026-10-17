@@ -1636,22 +1636,30 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
-<h2>Current work — TASK-168 Devin CLI capture</h2>
+<h2>Current work — TASK-169 read-only Sage MCP</h2>
+<ul>
+<li><strong>Four local tools:</strong> <code>sage_search</code>, <code>sage_topics</code>, <code>sage_get_entry</code>, and <code>sage_status</code> extend the existing stdio server without adding a remote transport.</li>
+<li><strong>Current knowledge:</strong> search, topics, and exact topic/line retrieval reconcile deterministic Markdown edits, moves, and deletions before responding.</li>
+<li><strong>Bounded diagnostics:</strong> status reports capture state, durable pipeline counts, and adapter installation modes without raw events, logs, prompts, output, reasoning, or configuration paths.</li>
+<li><strong>Safety:</strong> all four tools are read-only, non-destructive, idempotent, and closed-world; schemas reject undeclared or out-of-range inputs.</li>
+<li><strong>Qualification:</strong> the full Linux Go suite, vet, focused race coverage, and native Windows MCP/database tests pass locally on commit <code>122c06e</code>; hosted review remains.</li>
+</ul>
+<h2>Integrated — TASK-168 Devin CLI capture</h2>
 <ul>
 <li><strong>Independent adapter:</strong> <code>devtrack sage harness install devin</code> merges only one DevTrack-owned entry into Devin's platform user configuration and never mutates another harness.</li>
 <li><strong>Portable location:</strong> Windows uses <code>%APPDATA%\devin\config.json</code>; Unix uses <code>$XDG_CONFIG_HOME/devin/config.json</code> with the documented home fallback.</li>
 <li><strong>Capture surface:</strong> one <code>PostToolUse</code> entry matched to <code>exec|grep|glob|edit|write|apply_patch</code> invokes the packaged Go endpoint.</li>
 <li><strong>Privacy and deduplication:</strong> bounded events omit output, paths, identifiers, patterns, patch text, and file content while retaining deterministic opaque identity.</li>
 <li><strong>Runtime boundary:</strong> no session hooks, Python shim, or second process are installed because the DevTrack daemon owns lifecycle.</li>
-<li><strong>Qualification:</strong> focused Linux and native Windows tests, the full Go suite, vet, race coverage, and privacy-canary checks pass locally; hosted review remains.</li>
+<li><strong>Qualification:</strong> focused Linux and native Windows tests, the full Go suite, vet, race coverage, and privacy-canary checks passed; all 19 hosted checks passed and PR #290 merged into <code>dev</code> at <code>1b87ee6</code>.</li>
 </ul>
 <h2>Current dev — TASK-157 durable Sage knowledge pipeline</h2>
 <ul>
 <li><strong>Integrated pipeline:</strong> PR #278 merged durable distillation/publication, routing and merge/refile, search, truthful diagnostics, bounded retries, safe local knowledge commits, and capture/model-request parity to <code>dev</code> at <code>a6a75b0</code>.</li>
-<li><strong>Integration:</strong> PRs #279–#282 are merged into <code>dev</code> at <code>f07bb97</code>. PRs #283–#285 are clean, fully green reviews carrying capture/history closure, the completed parity ledger, and repeated acceptance.</li>
+<li><strong>Integration:</strong> PRs #279–#290 are merged into <code>dev</code> at <code>1b87ee6</code>, carrying capture/history closure, the completed parity ledger, repeated acceptance, and six independent capture adapters.</li>
 <li><strong>Portable installation:</strong> Windows <code>APPDATA</code>, Linux XDG, macOS, home-relative harness roots, OpenCode discovery, and every reference skill destination resolve deterministically. Native Go executables replace Python hook shims. Codex reinstall preserves foreign settings, removes owned/known-legacy entries only, and reports missing targets.</li>
 <li><strong>Lifecycle safety:</strong> the single DevTrack daemon now owns exclusive locks and liveness; Windows children run without a console, capture aliases persist stop reasons, typos fail loudly, and legacy hook shims cannot resume capture.</li>
-<li><strong>Capture/history closure:</strong> the active stacked branch adds fail-open, content-free <code>new</code>/<code>known</code>/<code>repeat</code> decisions, installed-adapter pause enforcement, interleaved terminal history collection, and exact failed-exit preservation.</li>
+<li><strong>Capture/history closure:</strong> integrated fail-open, content-free <code>new</code>/<code>known</code>/<code>repeat</code> decisions, installed-adapter pause enforcement, interleaved terminal history collection, and exact failed-exit preservation.</li>
 <li><strong>IDE parity closure:</strong> the existing opt-in Codex history adapter now covers first-use exclusion, repeat polling, pause/cutoff behavior, and failure retry. Both stable Codex sources remain enabled and commands remain privacy-minimized; no new harness is advertised.</li>
 <li><strong>Parity checkpoint:</strong> the current <code>ea2e067</code> reference ledger is complete at 119 implemented, 17 adapted, 0 partial, and 0 pending scenarios.</li>
 <li><strong>Acceptance closure:</strong> the complete capture-to-knowledge journey now passes twice from clean state on native Windows and Linux. Parent parity PR #284 and final acceptance PR #285 are both clean with all 19 hosted checks passing.</li>
@@ -2733,7 +2741,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
-<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. PRs #279–#282 are integrated; PRs #283–#289 are green reviews through Cursor. TASK-168 adds Devin CLI as the sixth independent adapter and awaits hosted review.</p>
+<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. PRs #279–#290 are integrated into <code>dev</code> at <code>1b87ee6</code>. TASK-169 adds four locally qualified read-only Sage MCP tools and awaits hosted review.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2746,7 +2754,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   SAGE: `<div class="md-body">
 <h1>DevTrack Sage and the retired Git Sage name</h1>
 <p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
-<blockquote><p><strong>Development status:</strong> The qualified Sage foundation is available on rolling <code>dev</code> through PR #282 and is not part of stable <code>v3.1.1</code>. SAGE-003 publishes, searches, diagnoses, and safely commits deterministic local knowledge; all 136 reference rows and repeated Windows/Linux acceptance are complete on green stacked reviews. TASK-164 adds Claude Code, TASK-165 adds GitHub Copilot CLI, TASK-166 adds OpenCode, TASK-167 adds Cursor, and TASK-168 locally qualifies Devin CLI as the sixth capture adapter.</p></blockquote>
+<blockquote><p><strong>Development status:</strong> PRs #279–#290 are integrated on rolling <code>dev</code> at <code>1b87ee6</code> and are not part of stable <code>v3.1.1</code>. SAGE-003 publishes, searches, diagnoses, and safely commits deterministic local knowledge; all 136 reference rows and repeated Windows/Linux acceptance are complete. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are independent adapters. TASK-169 locally qualifies four read-only Sage MCP tools and awaits hosted review.</p></blockquote>
 
 <h2>What happened to Git Sage?</h2>
 <p>Older DevTrack documentation used <strong>Git Sage</strong> for a repository chat and Git-operation experiment. That product surface has been removed. The current <code>devtrack sage</code> namespace is deliberately narrower and safer: it captures privacy-minimized command events and builds local personal knowledge.</p>
@@ -2764,7 +2772,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <h2>Implemented foundation</h2>
 <ul>
 <li>Versioned, normalized harness-event contract with privacy and size limits.</li>
-<li>Fail-open Codex, Claude Code, GitHub Copilot CLI, OpenCode, and Cursor capture that performs no model or network call on the hook path.</li>
+<li>Fail-open Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI capture that performs no model or network call on the hook path.</li>
 <li>Atomic local spool, bounded import, malformed-event quarantine, and append-only SQLite storage.</li>
 <li>Pause/resume state and idempotent harness installation that preserves unrelated configuration.</li>
 <li>Deterministic grouping by command signature, FTS5 search, topic aggregation, source-harness attribution, usage/success counts, and idempotent backfill.</li>
@@ -2773,6 +2781,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Truthful pipeline diagnostics, privacy-safe logs, Sage-owned local commits that never push, and independent runtime/knowledge placement.</li>
 <li>Fail-open capture decisions that expose only <code>new</code>, <code>known</code>, or same-payload <code>repeat</code> with opaque identifiers; commands and raw signatures are excluded.</li>
 <li>Read-only Codex history compatibility for <code>vscode</code> and <code>cli</code>, including pause/cutoff safety and retry without checkpoint loss.</li>
+<li>Four local read-only MCP tools for current knowledge search/topics/exact retrieval and bounded capture/pipeline/adapter status.</li>
 </ul>
 
 <h2>Current Sage commands</h2>
@@ -2794,6 +2803,8 @@ devtrack sage harness install opencode
 devtrack sage harness uninstall opencode
 devtrack sage harness install cursor
 devtrack sage harness uninstall cursor
+devtrack sage harness install devin
+devtrack sage harness uninstall devin
 
 # Initial SQLite knowledge index
 devtrack sage search "docker compose"
@@ -2806,9 +2817,8 @@ devtrack sage routes</code></pre>
 
 <h2>What remains on the Sage roadmap</h2>
 <ul>
-<li>Integrate the clean, green SAGE-003 stacked reviews.</li>
-<li>Complete hosted review for the Devin adapter, then add read-only Sage MCP retrieval and diagnostics.</li>
-<li>Add read-only Sage MCP retrieval and bounded operational repair/export tooling.</li>
+<li>Complete documentation and hosted review for TASK-169's locally qualified read-only Sage MCP tools.</li>
+<li>Implement TASK-170 retention/deletion, quarantine inspection, deterministic rebuild/repair, and Markdown export/import.</li>
 </ul>
 
 <h2>Privacy and failure behavior</h2>
@@ -3090,8 +3100,8 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 </tbody></table></div>
 
 <h2>Important Safety Boundary</h2>
-<p>All six MCP tools are <strong>read-only</strong>. Their declarations include human-readable titles plus read-only, non-destructive, idempotent, and no-open-world safety hints. They expose selected local context but cannot approve a queue item, post a comment, change a ticket, push Git, edit the database, or start and stop the daemon. Outbound work still uses DevTrack's pending-actions queue and normal CLI review commands.</p>
-<p>The MCP process reads the same local SQLite database as the Go client. It does not contact the Python server, PostgreSQL, Ollama, a PM platform or a cloud API. However, the MCP host can see the tool response, so only configure DevTrack in assistants you trust with the displayed ticket metadata, commit messages and action previews.</p>
+<p>Stable v3.1.1 has six MCP tools. TASK-169 adds four development-only Sage tools, for ten total. Every declaration includes a human-readable title plus read-only, non-destructive, idempotent, and no-open-world safety hints. They expose selected local context and published knowledge but cannot approve a queue item, post a comment, change a ticket, push Git, edit source data, or start and stop the daemon. Outbound work still uses DevTrack's pending-actions queue and normal CLI review commands.</p>
+<p>The MCP process reads the same local SQLite database as the Go client. On the TASK-169 branch, Sage knowledge calls also reconcile the local deterministic Markdown directory before answering. It does not contact the Python server, PostgreSQL, Ollama, a PM platform or a cloud API. However, the MCP host can see the tool response, so only configure DevTrack in assistants you trust with the displayed ticket metadata, commit messages, action previews, and published Sage knowledge.</p>
 
 <h2>How the Connection Works</h2>
 <ol>
@@ -3116,7 +3126,7 @@ devtrack mcp  ---- read only ----> local DevTrack SQLite
 <h3>1. Confirm the Installed Release</h3>
 <pre><code class="language-bash">devtrack version
 devtrack mcp status</code></pre>
-<p><code>status</code> should report handshake support through <code>2025-11-25</code>, stdio transport, and six registered tools. The per-request protocol introduced in <code>2026-07-28</code> is not yet supported.</p>
+<p>Stable v3.1.1 reports six tools. The TASK-169 development branch reports ten. Both use stdio and negotiate handshake support through <code>2025-11-25</code>; the per-request protocol introduced in <code>2026-07-28</code> is not yet supported.</p>
 
 <h3>2. Create the Project Configuration</h3>
 <pre><code class="language-bash">cd /path/to/the/project
@@ -3146,12 +3156,12 @@ devtrack mcp setup</code></pre>
 
 <h3>5. Run the Built-In Self-Test</h3>
 <pre><code class="language-bash">devtrack mcp test</code></pre>
-<p>The test opens the real local database when available, starts an in-process MCP server, sends <code>initialize</code>, <code>tools/list</code>, <code>get_active_context</code> and <code>shutdown</code>, then prints each response. <code>=== PASS ===</code> proves the protocol loop completed; inspect warnings separately if the database could not be opened.</p>
+<p>The test opens the real local database when available, starts an in-process MCP server, sends <code>initialize</code>, <code>tools/list</code>, <code>get_active_context</code>, <code>sage_status</code>, and <code>shutdown</code>, then prints each response. <code>=== PASS ===</code> proves the protocol loop completed; inspect warnings separately if the database could not be opened.</p>
 
 <h3>6. Reload the AI Host</h3>
 <p>Close and reopen, or reload, the MCP-capable assistant in that project so it notices <code>.mcp.json</code>. The server should appear under the name <code>devtrack</code>. No background MCP process should be visible before the assistant invokes it.</p>
 
-<h2>The Six Tools in Detail</h2>
+<h2>The Ten Development-Branch Tools in Detail</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>Tool</th><th>When an assistant should use it</th><th>Input</th><th>Returned facts</th></tr></thead>
 <tbody>
@@ -3161,6 +3171,10 @@ devtrack mcp setup</code></pre>
 <tr><td><code>get_voice_profile</code></td><td>Before drafting text that should sound like the developer.</td><td>Optional context: <code>commit</code>, <code>comment</code>, <code>report</code>, <code>task</code> or <code>ticket_mapping</code></td><td>Local style inferences with confidence/source and learned skills with evidence counts.</td></tr>
 <tr><td><code>get_ticket_context</code></td><td>When discussing a named ticket.</td><td>Required <code>ticket_id</code>, such as <code>PROJ-123</code></td><td>Up to ten recent linked commits, actions targeting that ticket and last activity time.</td></tr>
 <tr><td><code>get_eod_summary</code></td><td>For a fast standup or end-of-day factual baseline.</td><td>None</td><td>Today's date label, tickets touched, commit count, per-ticket messages and a template narrative. It is not an LLM-generated report.</td></tr>
+<tr><td><code>sage_search</code></td><td>When an assistant needs reusable local command knowledge.</td><td>Required literal <code>query</code>; optional <code>topic</code> and limit 1–100</td><td>Complete current Markdown entries with topic, filename, line, heading, body, and command.</td></tr>
+<tr><td><code>sage_topics</code></td><td>Before narrowing a knowledge search.</td><td>None</td><td>Current topic names and entry counts after Markdown reconciliation.</td></tr>
+<tr><td><code>sage_get_entry</code></td><td>To retrieve one exact search result again.</td><td>Required <code>topic</code> and positive <code>line</code></td><td>One complete current entry, or a bounded not-found error after a move or deletion.</td></tr>
+<tr><td><code>sage_status</code></td><td>To inspect local Sage health without raw activity.</td><td>None</td><td>Capture state, durable pipeline counts, and installed-adapter modes.</td></tr>
 </tbody></table></div>
 
 <h2>Example Questions and Tool Flow</h2>

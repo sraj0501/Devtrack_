@@ -181,7 +181,7 @@ The client is organised into acyclic layers:
 | `tui` | Bubbletea TUI (overview, activity, alerts, workspaces) — visibility only, no feature difference vs headless |
 | `alerts`, `notify`, `telegram` | Go-native ticket alert poller; Terminal/Telegram/Slack/OS notifiers; Telegram bot |
 | `ticket`, `match` | Ticket-ID extraction from branch names (Phase 2) and ticket matching |
-| `mcp` | MCP server core — JSON-RPC 2.0 over stdio; six read-only SQLite-backed tools (Phase 8) |
+| `mcp` | MCP server core — JSON-RPC 2.0 over stdio; ten read-only local tools, including four Sage knowledge/status tools |
 | `reviewer` | PR review loop — fix-commit-push orchestration and escalation (Phase 7) |
 
 The pending-actions queue (Phase 1) is the trust primitive: outbound actions are staged in the
@@ -828,7 +828,7 @@ task state is tracked in `Data/agent_logs/project_board.md`.
 | **4 — EOD pipeline** | Commits grouped by ticket into an end-of-day report (`devtrack eod`) |
 | **5–6 — Voice & dialectic learning** | Writing-voice training; FTS5 inference store, adaptive thresholds, skill emergence |
 | **7 — PR puppet master** | Fix-commit-push review loop with escalation and completion notifications |
-| **8 — MCP server** | JSON-RPC 2.0 stdio server exposing six read-only SQLite-backed tools to Claude Code |
+| **8 — MCP server** | JSON-RPC 2.0 stdio server exposing ten read-only local context and Sage tools to compatible hosts |
 
 ### Phase 9 — Adoption Gate (complete)
 Current product planning focuses on **DevTrack Sage**, the broader local cross-harness capture and

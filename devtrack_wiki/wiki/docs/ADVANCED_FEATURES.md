@@ -16,7 +16,7 @@ Go client retains local activity and the pending queue in SQLite.
 
 ## Agent context
 
-`devtrack mcp setup` configures the JSON-RPC 2.0 stdio server. Its six read-only tools expose active
+`devtrack mcp setup` configures the JSON-RPC 2.0 stdio server. Its ten read-only tools expose active
 work, recent activity, pending actions, ticket context, work history, and the EOD roll-up from local
 SQLite without requiring Python or a network request.
 
