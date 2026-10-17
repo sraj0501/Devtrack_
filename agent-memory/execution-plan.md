@@ -19,7 +19,7 @@ target PRs to `dev`, never `main`.
 
 ## Ordered work
 
-1. Require all final-head hosted checks to pass on TASK-169 PR #291.
+1. Review and integrate green TASK-169 PR #291 only with explicit authorization.
 2. After TASK-169 is integrated, create TASK-170 from current `origin/dev`: retention/deletion,
    quarantine inspection, deterministic rebuild/repair, and Markdown export/import.
 3. Resolve or retire the server-admin UI branch.

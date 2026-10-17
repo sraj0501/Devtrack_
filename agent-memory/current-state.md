@@ -8,7 +8,8 @@ type: project
 on `features/TASK-169-sage-mcp-readonly`. Commit `122c06e` implements `sage_search`, `sage_topics`,
 `sage_get_entry`, and `sage_status` alongside the existing six local context tools. Linux full
 tests/vet, focused race coverage, native Windows MCP/database tests, and two documentation
-reconciliation passes succeed. PR #291 targets `dev`; hosted final-head checks remain.
+reconciliation passes succeed. All 19 hosted checks pass on PR #291 head `8ba7dca`; integration
+into `dev` remains.
 
 **Sage integration state:** `origin/dev` is `1b87ee6` after PR #290. PRs #279–#290 are integrated,
 including the complete 136-row parity ledger (119 implemented, 17 adapted), repeated clean

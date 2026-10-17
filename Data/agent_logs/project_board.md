@@ -1,10 +1,10 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-16 — PRs #279–#290 are integrated into `dev` at `1b87ee6`, including
+_Last reconciled: 2026-10-17 — PRs #279–#290 are integrated into `dev` at `1b87ee6`, including
 runtime isolation, model backends, platform installers, lifecycle, capture/history closure, the
 complete parity ledger, repeated cross-platform acceptance, and all six capture adapters. TASK-169
-read-only Sage MCP retrieval is implemented and locally qualified on commit `122c06e`; two
-documentation passes are complete and hosted review remains. The authoritative reference checkout is `ea2e067`.
+read-only Sage MCP retrieval is implemented, locally qualified, and green in PR #291 at head
+`8ba7dca`; two documentation passes are complete. The authoritative reference checkout is `ea2e067`.
 The ledger is complete at 119 implemented, 17 adapted, 0 partial, and 0 pending. Next unused task
 ID: TASK-171, subject to verification before allocation._
 
@@ -32,11 +32,10 @@ snapshot and SQLite state; never expose raw capture events or add a remote trans
 - [x] Full Go tests/vet, focused race coverage, Linux and native Windows tests pass locally.
 - [x] Two docu-agent reconciliation passes complete with memory, wiki, README, and whitespace
       validation.
-- [ ] A dedicated PR to `dev` is open and its required checks pass.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
 
-**Engineer status:** implementation, cross-platform qualification, and two documentation
-reconciliation passes complete from integrated `origin/dev` at `1b87ee6`; PR #291 targets `dev`
-and hosted checks are running.
+**Engineer status:** complete and ready for review. All 19 hosted checks pass on PR #291 head
+`8ba7dca`, including the corrected ten-tool Glama and five-platform MCPB gates.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/291
 **Blockers:** none.
 

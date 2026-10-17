@@ -43,4 +43,6 @@ The following gates passed on 2026-10-16:
   edit/move/delete reconciliation, privacy canaries, adapter errors, invalid inputs, cancellation,
   and preservation of the existing tool surface.
 
-PR #291 targets `dev`. Hosted final-head review is still required before TASK-169 is integrated.
+PR #291 targets `dev`. All 19 hosted checks pass on head `8ba7dca`, including Glama container
+introspection, five native MCPB platforms, and MCP Registry metadata validation. Integration still
+requires explicit authorization.

@@ -20,7 +20,8 @@ can change after this record.
   capture/pipeline/adapter state, not raw activity or local adapter paths.
 - Local evidence: full Go suite and vet in Go 1.24 Linux; focused MCP/database race tests; native
   Windows MCP, Sage database, and main-package registration tests.
-- PR #291 targets `dev`. Remaining TASK-169 gate: require all final-head hosted checks to pass.
+- PR #291 targets `dev`; all 19 hosted checks pass on head `8ba7dca`. Integration remains and must
+  not be performed without explicit authorization.
 - Next approved task: TASK-170 operational closure after TASK-169 integration.
 - Reference: `C:\Work\git_apps\ai_sessions_skills` at authoritative clean HEAD `ea2e067`.
 
