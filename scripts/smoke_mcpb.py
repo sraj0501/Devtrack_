@@ -21,6 +21,10 @@ EXPECTED_TOOLS = {
     "get_voice_profile",
     "get_ticket_context",
     "get_eod_summary",
+    "sage_search",
+    "sage_topics",
+    "sage_get_entry",
+    "sage_status",
 }
 SYSTEMS = {"darwin": "Darwin", "linux": "Linux", "win32": "Windows"}
 
@@ -102,6 +106,12 @@ def main() -> None:
                 "method": "tools/call",
                 "params": {"name": "get_active_context", "arguments": {}},
             },
+            {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {"name": "sage_status", "arguments": {}},
+            },
             {"jsonrpc": "2.0", "id": 99, "method": "shutdown"},
         ]
         payload = "\n".join(json.dumps(item) for item in requests) + "\n"
@@ -118,14 +128,14 @@ def main() -> None:
 
         responses = [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
         by_id = {response.get("id"): response for response in responses}
-        if set(by_id) != {1, 2, 3, 99}:
+        if set(by_id) != {1, 2, 3, 4, 99}:
             raise SystemExit(f"unexpected MCP response IDs: {sorted(by_id)}")
         if any("error" in response for response in responses):
             raise SystemExit(f"MCP smoke test returned an error: {responses}")
 
         tools = by_id[2]["result"]["tools"]
         if {tool["name"] for tool in tools} != EXPECTED_TOOLS:
-            raise SystemExit("MCP bundle did not expose the expected six tools")
+            raise SystemExit("MCP bundle did not expose the expected ten tools")
         for tool in tools:
             annotations = tool.get("annotations", {})
             if not tool.get("title") or annotations.get("readOnlyHint") is not True:
