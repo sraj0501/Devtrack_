@@ -4,19 +4,16 @@ description: Active implementation work, integration state, and unresolved relea
 type: project
 ---
 
-**Active product initiative:** TASK-170 / SAGE-005 closes local Sage operations on
-`features/TASK-170-sage-operational-closure`, stacked from fully green TASK-169 head `bf963dd`.
-Retention dry-runs by default; quarantine inspection is opaque and bounded; exact deletion,
-repair/cache rebuilding, and validated Markdown export/import are implemented. Full Linux Go
-tests/vet, focused race/fault coverage, native Windows focused tests, and two documentation passes
-pass locally. All 19 hosted checks pass on PR #292; integration remains and requires explicit
-authorization.
+**Sage product state:** The approved SAGE-001–SAGE-005 roadmap is complete and integrated into
+`dev` at `77e2f5b`. PR #291 merged read-only MCP retrieval at `34aafb8`; PR #292 merged dry-run
+retention, bounded opaque quarantine controls, exact deletion, deterministic repair/cache rebuild,
+and validated Markdown export/import after all 19 hosted checks passed.
 
-**Sage integration state:** `origin/dev` is `1b87ee6` after PR #290. PRs #279–#290 are integrated,
+**Sage integration state:** `origin/dev` is `77e2f5b` after PR #292. PRs #279–#292 are integrated,
 including the complete 136-row parity ledger (119 implemented, 17 adapted), repeated clean
 Windows/Linux acceptance, and all six independent capture adapters. The authoritative reference is
 `C:\Work\git_apps\ai_sessions_skills` at clean HEAD `ea2e067`; its newer bug fixes are intentional.
-TASK-169 PR #291 remains open/mergeable. TASK-170 is the final approved Sage roadmap slice.
+No approved Sage implementation slice remains pending.
 
 **Distribution state:** Stable v3.1.1 remains the latest public stable release. Recheck the rolling
 `dev` release boundary from GitHub before publication. `main` and `dev` have diverged in ancestry;

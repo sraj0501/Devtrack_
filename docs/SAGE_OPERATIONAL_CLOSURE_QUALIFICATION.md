@@ -1,8 +1,8 @@
 # Sage operational closure qualification
 
-TASK-170 completes the approved local Sage operations surface on
-`features/TASK-170-sage-operational-closure`. The branch is stacked on the fully green TASK-169
-head `bf963dd`; it targets `dev` and is not part of stable v3.1.1.
+TASK-170 completes the approved local Sage operations surface. PR #292 merged the qualified branch
+into `dev` at `77e2f5b`, after TASK-169 PR #291 merged at `34aafb8`. This work is not part of stable
+v3.1.1.
 
 ## Command contract
 
@@ -62,4 +62,4 @@ The following gates pass from the current branch with Go 1.24 in `golang:1.24-bo
 
 Two docu-agent reconciliation passes cover the board, canonical memory, README, wiki, and
 qualification record. All 19 hosted checks pass on PR #292, including both Windows jobs and all
-five native MCPB smokes. Integration requires explicit authorization.
+five native MCPB smokes. PR #292 is integrated into `dev` at `77e2f5b`.

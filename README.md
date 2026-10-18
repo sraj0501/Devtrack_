@@ -189,10 +189,10 @@ deterministic Markdown publication, persistent routing, restart-safe merge/refil
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
 PRs #279–#290 are integrated into `dev`, including capture/history closure, the complete 136-row
 parity ledger, repeated Windows/Linux acceptance, and independent Codex, Claude Code, GitHub
-Copilot CLI, OpenCode, Cursor, and Devin CLI adapters. TASK-169 adds four local read-only MCP tools
-for Sage knowledge and diagnostics, and TASK-170 locally qualifies retention, quarantine,
-repair/deletion, and Markdown portability controls on its stacked feature branch. None of this work
-is part of the v3.1.1 stable release. See the
+Copilot CLI, OpenCode, Cursor, and Devin CLI adapters. PR #291 adds four local read-only MCP tools
+for Sage knowledge and diagnostics, and PR #292 adds retention, quarantine, repair/deletion, and
+Markdown portability controls. The approved Sage roadmap is integrated into rolling `dev` at
+`77e2f5b`; none of this work is part of the v3.1.1 stable release. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).
 
@@ -458,7 +458,7 @@ local Ollama HTTP by default; publication retries do not repeat model work. Set
 On rolling `dev`, search
 returns complete Markdown entries, matching all literal keywords, and `--topic git` filters by
 topic filename. Search reflects manual edits and topic moves; skipped records are excluded.
-TASK-170's stacked branch adds model-free lifecycle controls: retention previews by default and
+Rolling `dev` adds model-free lifecycle controls: retention previews by default and
 deletes only normalized source events when `--apply` is explicit; quarantine listing exposes only
 bounded opaque metadata; and destructive purge/delete operations require `--yes`. Repair,
 delete-topic, export, and import require paused capture. They reject links, traversal, overlapping
@@ -468,8 +468,8 @@ validates the complete source before adding only missing, non-conflicting files.
 Set `DEVTRACK_SAGE_RUNTIME_DIR` to relocate private queue/state/log storage and
 `DEVTRACK_SAGE_KNOWLEDGE_DIR` to relocate portable Markdown independently; relative values resolve
 from the stable Sage data root, not the shell's working directory. This remains a development
-preview: the executable parity ledger and repeated end-to-end qualification are complete, while
-the stacked reviews and new adapters still require integration. See
+preview: the executable parity ledger, repeated end-to-end qualification, six adapters, read-only
+MCP integration, and operational closure are integrated. See
 [the runtime-isolation qualification](docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md) and the
 [model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
 limits. Platform-specific harness destinations and additive hook migration are covered by the

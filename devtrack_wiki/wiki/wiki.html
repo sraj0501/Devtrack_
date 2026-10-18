@@ -1636,14 +1636,14 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
-<h2>Current work — TASK-170 Sage operational closure</h2>
+<h2>Integrated — TASK-170 Sage operational closure</h2>
 <ul>
 <li><strong>Lifecycle controls:</strong> retention previews by default and deletes only old normalized source events when <code>--apply</code> is explicit; summarized knowledge and Markdown remain.</li>
 <li><strong>Private quarantine inspection:</strong> listing is bounded and returns opaque IDs plus fixed reasons only. Purge requires <code>--yes</code> and removes links without following them.</li>
 <li><strong>Deterministic repair:</strong> confirmed exact-topic deletion and repair update routes/indexes and rebuild the derived SQLite retrieval cache from bounded Markdown without a model or network call.</li>
 <li><strong>Portable snapshots:</strong> export creates a new Markdown-only directory; import validates every source file before adding only missing, non-conflicting content. Exact repeats are no-ops.</li>
 <li><strong>Safety:</strong> filesystem changes require paused capture, serialize with publication, reject traversal, links, overlaps, and conflicts, and roll back partial delete/import writes under injected faults.</li>
-<li><strong>Qualification:</strong> the full Linux Go suite, vet, focused race/fault coverage, and native Windows focused tests pass locally on the stacked TASK-170 branch; hosted PR review remains.</li>
+<li><strong>Qualification:</strong> the full Linux Go suite, vet, focused race/fault coverage, native Windows focused tests, and all 19 hosted checks passed; PR #292 merged into <code>dev</code> at <code>77e2f5b</code>.</li>
 </ul>
 <h2>Current work — TASK-169 read-only Sage MCP</h2>
 <ul>
@@ -1665,7 +1665,7 @@ devtrack start</code></pre>
 <h2>Current dev — TASK-157 durable Sage knowledge pipeline</h2>
 <ul>
 <li><strong>Integrated pipeline:</strong> PR #278 merged durable distillation/publication, routing and merge/refile, search, truthful diagnostics, bounded retries, safe local knowledge commits, and capture/model-request parity to <code>dev</code> at <code>a6a75b0</code>.</li>
-<li><strong>Integration:</strong> PRs #279–#290 are merged into <code>dev</code> at <code>1b87ee6</code>, carrying capture/history closure, the completed parity ledger, repeated acceptance, and six independent capture adapters.</li>
+<li><strong>Integration:</strong> PRs #279–#292 are merged into <code>dev</code> at <code>77e2f5b</code>, carrying capture/history closure, the completed parity ledger, repeated acceptance, six independent capture adapters, read-only MCP, and operational closure.</li>
 <li><strong>Portable installation:</strong> Windows <code>APPDATA</code>, Linux XDG, macOS, home-relative harness roots, OpenCode discovery, and every reference skill destination resolve deterministically. Native Go executables replace Python hook shims. Codex reinstall preserves foreign settings, removes owned/known-legacy entries only, and reports missing targets.</li>
 <li><strong>Lifecycle safety:</strong> the single DevTrack daemon now owns exclusive locks and liveness; Windows children run without a console, capture aliases persist stop reasons, typos fail loudly, and legacy hook shims cannot resume capture.</li>
 <li><strong>Capture/history closure:</strong> integrated fail-open, content-free <code>new</code>/<code>known</code>/<code>repeat</code> decisions, installed-adapter pause enforcement, interleaved terminal history collection, and exact failed-exit preservation.</li>
@@ -1687,7 +1687,7 @@ devtrack start</code></pre>
 <li><strong>Capture foundation:</strong> SAGE-001 and SAGE-002 provide the versioned event contract, fail-open Codex capture, atomic local spool, bounded import/quarantine, append-only SQLite events, pause/resume state, and harness installation management.</li>
 <li><strong>Searchable knowledge slice:</strong> repeated command signatures are grouped deterministically in SQLite, indexed with FTS5, attributed to source harnesses, backfilled idempotently, and exposed through <code>devtrack sage search</code> and <code>devtrack sage topics</code>.</li>
 <li><strong>Distillation foundation:</strong> PR #263 adds a neutral Go LLM client, structured title/what/why/example/notes drafts with required-field validation and explicit skip verdicts, and a non-blocking worker with bounded model calls.</li>
-<li><strong>Integration status:</strong> SAGE-003 is locally complete. Durable claims, daemon lifecycle, Markdown publication, routing, merge/refile, skipped records, full-entry search, truthful diagnostics, and safe local knowledge commits are integrated through PR #278. Runtime/knowledge isolation, all 136 reference rows, and repeated Windows/Linux acceptance are qualified on stacked follow-ups; hosted review and integration remain.</li>
+<li><strong>Integration status:</strong> SAGE-001–SAGE-005 are integrated through PR #292. Durable claims, daemon lifecycle, Markdown publication, routing, merge/refile, skipped records, full-entry search, truthful diagnostics, safe local knowledge commits, six adapters, read-only MCP, and operational maintenance are on rolling <code>dev</code>.</li>
 </ul>
 <h2>TASK-161 merged — rolling update channels</h2>
 <ul>
@@ -2758,7 +2758,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
-<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. PRs #279–#290 are integrated into <code>dev</code> at <code>1b87ee6</code>. TASK-169 is fully green in PR #291; TASK-170 locally qualifies the final retention, quarantine, repair/deletion, and Markdown portability slice on its stacked branch.</p>
+<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. The approved SAGE-001–SAGE-005 roadmap is integrated into <code>dev</code> at <code>77e2f5b</code> through PR #292. Stable <code>v3.1.1</code> remains unchanged.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2771,7 +2771,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   SAGE: `<div class="md-body">
 <h1>DevTrack Sage and the retired Git Sage name</h1>
 <p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
-<blockquote><p><strong>Development status:</strong> PRs #279–#290 are integrated on rolling <code>dev</code> at <code>1b87ee6</code> and are not part of stable <code>v3.1.1</code>. SAGE-003 publishes, searches, diagnoses, and safely commits deterministic local knowledge; all 136 reference rows and repeated Windows/Linux acceptance are complete. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are independent adapters. TASK-169 is fully green in PR #291. TASK-170 locally qualifies the final approved retention, quarantine, repair/deletion, and Markdown portability slice on its stacked branch.</p></blockquote>
+<blockquote><p><strong>Development status:</strong> PRs #279–#292 are integrated on rolling <code>dev</code> at <code>77e2f5b</code> and are not part of stable <code>v3.1.1</code>. The approved SAGE-001–SAGE-005 roadmap is complete: deterministic local knowledge, all 136 reference rows, repeated Windows/Linux acceptance, six independent adapters, four read-only MCP tools, and operational maintenance.</p></blockquote>
 
 <h2>What happened to Git Sage?</h2>
 <p>Older DevTrack documentation used <strong>Git Sage</strong> for a repository chat and Git-operation experiment. That product surface has been removed. The current <code>devtrack sage</code> namespace is deliberately narrower and safer: it captures privacy-minimized command events and builds local personal knowledge.</p>
@@ -2849,10 +2849,7 @@ devtrack sage resume</code></pre>
 <p>Capture is local and hooks are silent and fail-open. <code>devtrack sage log</code> includes bounded capture decisions without commands, raw signatures, paths, output, prompts, or reasoning. Sage lifecycle commands change persistent capture state without spawning or stopping a second watcher; the DevTrack daemon remains the single background owner. Search refreshes its SQLite cache from current Markdown knowledge entries, including supported manual edits and topic moves. Filesystem-changing maintenance requires paused capture; it is bounded, model-free, serialized with publication, and rejects traversal, links, overlapping roots, and import conflicts. <code>DEVTRACK_SAGE_RUNTIME_DIR</code> relocates private queue/state/log storage and <code>DEVTRACK_SAGE_KNOWLEDGE_DIR</code> relocates portable Markdown independently; relative values resolve from the stable Sage data root.</p>
 
 <h2>What remains on the Sage roadmap</h2>
-<ul>
-<li>Review and integrate TASK-169 PR #291 only with explicit authorization.</li>
-<li>Open TASK-170's dedicated stacked PR to <code>dev</code> and complete its final-head hosted checks; merge only with explicit authorization.</li>
-</ul>
+<p>No approved Sage implementation slice remains pending. Future additions require a new board task and acceptance contract.</p>
 
 <h2>Privacy and failure behavior</h2>
 <ul>
@@ -3433,7 +3430,7 @@ function renderHome() {
         { id:'PM_AGENT',        icon:'🗂️', title:'PM Agent',            desc:'AI decomposes problems into Epic → Story → Task hierarchies.' },
         { id:'PROJECT_PLANNING',icon:'📋', title:'AI Project Planning', desc:'Use explicit <code>devtrack plan</code> and optional <code>devtrack boardroom</code> CLI flows. The legacy Python Telegram <code>/newproject</code> prototype is not part of the current Go bot.' },
         // ── AI & Personalization ──────────────────────────────────────────────
-        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'Current command-knowledge product and Git Sage migration guide: local capture, durable distillation, deterministic Markdown, search, corrections, diagnostics, safe local commits, all 136 parity rows, and repeated cross-platform acceptance are complete on stacked reviews.' },
+        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'Current command-knowledge product and Git Sage migration guide: local capture, durable distillation, deterministic Markdown, search, corrections, diagnostics, safe local commits, all 136 parity rows, read-only MCP, and operational maintenance are integrated on rolling <code>dev</code>.' },
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
         { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'Maintained <code>devtrack voice</code> routes seed from local Git, manual examples, and supported PM content. Teams/Outlook communication learning and legacy learning controls remain unavailable pending adapter repair.' },
         // ── System Integration ────────────────────────────────────────────────
