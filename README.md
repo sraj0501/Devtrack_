@@ -189,9 +189,10 @@ deterministic Markdown publication, persistent routing, restart-safe merge/refil
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
 PRs #279–#290 are integrated into `dev`, including capture/history closure, the complete 136-row
 parity ledger, repeated Windows/Linux acceptance, and independent Codex, Claude Code, GitHub
-Copilot CLI, OpenCode, Cursor, and Devin CLI adapters. TASK-169 now adds four local read-only MCP
-tools for Sage knowledge and diagnostics on its feature branch; hosted review remains. None of this
-work is part of the v3.1.1 stable release. See the
+Copilot CLI, OpenCode, Cursor, and Devin CLI adapters. TASK-169 adds four local read-only MCP tools
+for Sage knowledge and diagnostics, and TASK-170 locally qualifies retention, quarantine,
+repair/deletion, and Markdown portability controls on its stacked feature branch. None of this work
+is part of the v3.1.1 stable release. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).
 
@@ -430,6 +431,19 @@ devtrack sage topics
 devtrack sage doctor
 devtrack sage log
 devtrack sage routes
+
+# Operational maintenance (pause capture before filesystem changes)
+devtrack sage retention --days 90              # dry run
+devtrack sage retention --days 90 --apply
+devtrack sage quarantine list
+devtrack sage quarantine purge <opaque-id> --yes
+devtrack sage quarantine purge --all --yes
+devtrack sage pause "maintenance"
+devtrack sage repair
+devtrack sage delete-topic git --yes
+devtrack sage export ./sage-snapshot
+devtrack sage import ./sage-snapshot
+devtrack sage resume
 ```
 
 Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
@@ -444,6 +458,13 @@ local Ollama HTTP by default; publication retries do not repeat model work. Set
 On rolling `dev`, search
 returns complete Markdown entries, matching all literal keywords, and `--topic git` filters by
 topic filename. Search reflects manual edits and topic moves; skipped records are excluded.
+TASK-170's stacked branch adds model-free lifecycle controls: retention previews by default and
+deletes only normalized source events when `--apply` is explicit; quarantine listing exposes only
+bounded opaque metadata; and destructive purge/delete operations require `--yes`. Repair,
+delete-topic, export, and import require paused capture. They reject links, traversal, overlapping
+roots, and conflicts; repair/delete/import reconcile the derived SQLite retrieval cache from the
+authoritative bounded Markdown snapshot. Export creates a new Markdown-only directory, while import
+validates the complete source before adding only missing, non-conflicting files.
 Set `DEVTRACK_SAGE_RUNTIME_DIR` to relocate private queue/state/log storage and
 `DEVTRACK_SAGE_KNOWLEDGE_DIR` to relocate portable Markdown independently; relative values resolve
 from the stable Sage data root, not the shell's working directory. This remains a development
@@ -467,7 +488,8 @@ Codex-history edge cases are covered by the
 [capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md); the final optional
 IDE rows are covered by the [IDE parity qualification](docs/SAGE_IDE_PARITY_QUALIFICATION.md).
 The four development-only MCP tools and their privacy boundary are covered by the
-[read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md).
+[read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md) and
+[operational-closure qualification](docs/SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md).
 
 Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
 That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;
@@ -919,7 +941,7 @@ Key references in this repo:
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [shared role playbooks](agent-memory/roles/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
-| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
+| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md) · [Operational closure qualification](docs/SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
 
 ---
 

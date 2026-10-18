@@ -1636,6 +1636,15 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
+<h2>Current work — TASK-170 Sage operational closure</h2>
+<ul>
+<li><strong>Lifecycle controls:</strong> retention previews by default and deletes only old normalized source events when <code>--apply</code> is explicit; summarized knowledge and Markdown remain.</li>
+<li><strong>Private quarantine inspection:</strong> listing is bounded and returns opaque IDs plus fixed reasons only. Purge requires <code>--yes</code> and removes links without following them.</li>
+<li><strong>Deterministic repair:</strong> confirmed exact-topic deletion and repair update routes/indexes and rebuild the derived SQLite retrieval cache from bounded Markdown without a model or network call.</li>
+<li><strong>Portable snapshots:</strong> export creates a new Markdown-only directory; import validates every source file before adding only missing, non-conflicting content. Exact repeats are no-ops.</li>
+<li><strong>Safety:</strong> filesystem changes require paused capture, serialize with publication, reject traversal, links, overlaps, and conflicts, and roll back partial delete/import writes under injected faults.</li>
+<li><strong>Qualification:</strong> the full Linux Go suite, vet, focused race/fault coverage, and native Windows focused tests pass locally on the stacked TASK-170 branch; hosted PR review remains.</li>
+</ul>
 <h2>Current work — TASK-169 read-only Sage MCP</h2>
 <ul>
 <li><strong>Four local tools:</strong> <code>sage_search</code>, <code>sage_topics</code>, <code>sage_get_entry</code>, and <code>sage_status</code> extend the existing stdio server without adding a remote transport.</li>
@@ -1850,9 +1859,17 @@ devtrack sage harness install claude
 devtrack sage harness install copilot
 devtrack sage harness install opencode
 devtrack sage harness install cursor
+devtrack sage harness install devin
 devtrack sage search "docker compose" [--topic containers]
-devtrack sage topics</code></pre>
-<p>These unreleased commands manage local capture and query deterministic Markdown knowledge. Codex, Claude Code, GitHub Copilot CLI, OpenCode, and Cursor are independently selected adapters; installing one never installs another. Search returns complete entries and reflects route corrections, merges, edits, moves, and deletions. All 136 reference rows and repeated Windows/Linux acceptance are qualified.</p>
+devtrack sage topics
+devtrack sage retention --days 90 [--apply]
+devtrack sage quarantine list
+devtrack sage quarantine purge &lt;opaque-id&gt; --yes
+devtrack sage repair
+devtrack sage delete-topic &lt;topic&gt; --yes
+devtrack sage export &lt;new-directory&gt;
+devtrack sage import &lt;directory&gt;</code></pre>
+<p>These unreleased commands manage local capture and query deterministic Markdown knowledge. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are independently selected adapters; installing one never installs another. Search returns complete entries and reflects route corrections, merges, edits, moves, and deletions. Retention previews by default; filesystem-changing repair, delete, export, import, and quarantine purge require paused capture, and destructive commands require the documented explicit confirmation. All 136 reference rows and repeated Windows/Linux acceptance are qualified.</p>
 
 <h2>Interfaces, Alerts and Lifecycle</h2>
 <pre><code class="language-bash">devtrack tui
@@ -2741,7 +2758,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
-<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. PRs #279–#290 are integrated into <code>dev</code> at <code>1b87ee6</code>. TASK-169 adds four locally qualified read-only Sage MCP tools and awaits hosted review.</p>
+<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. PRs #279–#290 are integrated into <code>dev</code> at <code>1b87ee6</code>. TASK-169 is fully green in PR #291; TASK-170 locally qualifies the final retention, quarantine, repair/deletion, and Markdown portability slice on its stacked branch.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2754,7 +2771,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   SAGE: `<div class="md-body">
 <h1>DevTrack Sage and the retired Git Sage name</h1>
 <p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
-<blockquote><p><strong>Development status:</strong> PRs #279–#290 are integrated on rolling <code>dev</code> at <code>1b87ee6</code> and are not part of stable <code>v3.1.1</code>. SAGE-003 publishes, searches, diagnoses, and safely commits deterministic local knowledge; all 136 reference rows and repeated Windows/Linux acceptance are complete. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are independent adapters. TASK-169 locally qualifies four read-only Sage MCP tools and awaits hosted review.</p></blockquote>
+<blockquote><p><strong>Development status:</strong> PRs #279–#290 are integrated on rolling <code>dev</code> at <code>1b87ee6</code> and are not part of stable <code>v3.1.1</code>. SAGE-003 publishes, searches, diagnoses, and safely commits deterministic local knowledge; all 136 reference rows and repeated Windows/Linux acceptance are complete. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are independent adapters. TASK-169 is fully green in PR #291. TASK-170 locally qualifies the final approved retention, quarantine, repair/deletion, and Markdown portability slice on its stacked branch.</p></blockquote>
 
 <h2>What happened to Git Sage?</h2>
 <p>Older DevTrack documentation used <strong>Git Sage</strong> for a repository chat and Git-operation experiment. That product surface has been removed. The current <code>devtrack sage</code> namespace is deliberately narrower and safer: it captures privacy-minimized command events and builds local personal knowledge.</p>
@@ -2782,6 +2799,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <li>Fail-open capture decisions that expose only <code>new</code>, <code>known</code>, or same-payload <code>repeat</code> with opaque identifiers; commands and raw signatures are excluded.</li>
 <li>Read-only Codex history compatibility for <code>vscode</code> and <code>cli</code>, including pause/cutoff safety and retry without checkpoint loss.</li>
 <li>Four local read-only MCP tools for current knowledge search/topics/exact retrieval and bounded capture/pipeline/adapter status.</li>
+<li>Dry-run/apply source-event retention, bounded opaque quarantine inspection and confirmed purge, exact topic deletion, deterministic repair/cache rebuilding, and additive Markdown export/import.</li>
 </ul>
 
 <h2>Current Sage commands</h2>
@@ -2812,13 +2830,28 @@ devtrack sage search "docker compose" --topic containers
 devtrack sage topics
 devtrack sage doctor
 devtrack sage log
-devtrack sage routes</code></pre>
-<p>Capture is local and hooks are silent and fail-open. <code>devtrack sage log</code> includes bounded capture decisions without commands, raw signatures, paths, output, prompts, or reasoning. Sage lifecycle commands change persistent capture state without spawning or stopping a second watcher; the DevTrack daemon remains the single background owner. Search refreshes its SQLite cache from current Markdown knowledge entries, including supported manual edits and topic moves. <code>DEVTRACK_SAGE_RUNTIME_DIR</code> relocates private queue/state/log storage and <code>DEVTRACK_SAGE_KNOWLEDGE_DIR</code> relocates portable Markdown independently; relative values resolve from the stable Sage data root.</p>
+devtrack sage routes
+
+# Retention is a dry run unless --apply is present
+devtrack sage retention --days 90
+devtrack sage retention --days 90 --apply
+devtrack sage quarantine list
+devtrack sage quarantine purge &lt;opaque-id&gt; --yes
+devtrack sage quarantine purge --all --yes
+
+# Pause before filesystem-changing maintenance
+devtrack sage pause "maintenance"
+devtrack sage repair
+devtrack sage delete-topic git --yes
+devtrack sage export ./sage-snapshot
+devtrack sage import ./sage-snapshot
+devtrack sage resume</code></pre>
+<p>Capture is local and hooks are silent and fail-open. <code>devtrack sage log</code> includes bounded capture decisions without commands, raw signatures, paths, output, prompts, or reasoning. Sage lifecycle commands change persistent capture state without spawning or stopping a second watcher; the DevTrack daemon remains the single background owner. Search refreshes its SQLite cache from current Markdown knowledge entries, including supported manual edits and topic moves. Filesystem-changing maintenance requires paused capture; it is bounded, model-free, serialized with publication, and rejects traversal, links, overlapping roots, and import conflicts. <code>DEVTRACK_SAGE_RUNTIME_DIR</code> relocates private queue/state/log storage and <code>DEVTRACK_SAGE_KNOWLEDGE_DIR</code> relocates portable Markdown independently; relative values resolve from the stable Sage data root.</p>
 
 <h2>What remains on the Sage roadmap</h2>
 <ul>
-<li>Complete documentation and hosted review for TASK-169's locally qualified read-only Sage MCP tools.</li>
-<li>Implement TASK-170 retention/deletion, quarantine inspection, deterministic rebuild/repair, and Markdown export/import.</li>
+<li>Review and integrate TASK-169 PR #291 only with explicit authorization.</li>
+<li>Open TASK-170's dedicated stacked PR to <code>dev</code> and complete its final-head hosted checks; merge only with explicit authorization.</li>
 </ul>
 
 <h2>Privacy and failure behavior</h2>

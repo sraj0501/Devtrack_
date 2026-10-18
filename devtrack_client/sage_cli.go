@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,14 +25,196 @@ import (
 // model, daemon, network request, or Git operation.
 func routeSage(args []string) (sub string, rest []string, err error) {
 	if len(args) == 0 {
-		return "", nil, fmt.Errorf("usage: devtrack sage status|start|stop|restart|pause|resume|search|topics|routes|route|merge|doctor|log|harness")
+		return "", nil, fmt.Errorf("usage: devtrack sage status|start|stop|restart|pause|resume|search|topics|routes|route|merge|retention|quarantine|delete-topic|repair|export|import|doctor|log|harness")
 	}
 	switch args[0] {
-	case "status", "start", "stop", "restart", "pause", "resume", "on", "off", "hook-start", "hook-end", "end", "doctor", "log", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route", "merge":
+	case "status", "start", "stop", "restart", "pause", "resume", "on", "off", "hook-start", "hook-end", "end", "doctor", "log", "harness", "install-hooks", "uninstall-hooks", "hook", "search", "topics", "routes", "route", "merge", "retention", "quarantine", "delete-topic", "repair", "export", "import":
 		return args[0], args[1:], nil
 	default:
 		return "", nil, fmt.Errorf("unknown Sage command %q", args[0])
 	}
+}
+
+func runSageMaintenance(sub string, args []string, output io.Writer) error {
+	runtimeRoot, err := sageRoot()
+	if err != nil {
+		return err
+	}
+	knowledgeRoot, err := sageKnowledgeRoot()
+	if err != nil {
+		return err
+	}
+	database, err := NewDatabase()
+	if err != nil {
+		return fmt.Errorf("sage maintenance unavailable: %w", err)
+	}
+	defer database.Close()
+	return writeSageMaintenance(context.Background(), database, runtimeRoot, knowledgeRoot, sub, args, output, time.Now())
+}
+
+func writeSageMaintenance(ctx context.Context, database *db.Database, runtimeRoot, knowledgeRoot, sub string, args []string, output io.Writer, now time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(output)
+	writer := sageknowledge.Writer{Root: knowledgeRoot}
+	maintenanceCtx := context.WithoutCancel(ctx)
+	requirePaused := func() error {
+		state, err := sage.ReadState(runtimeRoot)
+		if err != nil {
+			return fmt.Errorf("sage state unavailable: %w", err)
+		}
+		if !state.Paused {
+			return errors.New("pause Sage capture before filesystem maintenance")
+		}
+		return nil
+	}
+	runFilesystemMutation := func(operation func() error) error {
+		if err := requirePaused(); err != nil {
+			return err
+		}
+		return database.WithSageMaintenance(maintenanceCtx, operation)
+	}
+
+	switch sub {
+	case "retention":
+		days, apply, err := parseSageRetentionArgs(args)
+		if err != nil {
+			return err
+		}
+		result, err := database.RetainSageEvents(ctx, now.UTC().Add(-time.Duration(days)*24*time.Hour), apply)
+		if err != nil {
+			return err
+		}
+		return encoder.Encode(result)
+	case "quarantine":
+		if len(args) == 1 && args[0] == "list" {
+			result, err := sage.ListQuarantine(runtimeRoot)
+			if err != nil {
+				return err
+			}
+			return encoder.Encode(result)
+		}
+		id, all, err := parseSageQuarantinePurgeArgs(args)
+		if err != nil {
+			return err
+		}
+		var result sage.QuarantinePurge
+		err = runFilesystemMutation(func() error {
+			var purgeErr error
+			result, purgeErr = sage.PurgeQuarantine(runtimeRoot, id, all)
+			return purgeErr
+		})
+		if err != nil {
+			return err
+		}
+		return encoder.Encode(result)
+	case "delete-topic":
+		if len(args) != 2 || args[1] != "--yes" {
+			return errors.New("usage: devtrack sage delete-topic <topic> --yes")
+		}
+		var removed int
+		if err := runFilesystemMutation(func() error {
+			var deleteErr error
+			removed, deleteErr = writer.DeleteTopic(args[0])
+			return deleteErr
+		}); err != nil {
+			return err
+		}
+		if err := database.RebuildSageEntries(maintenanceCtx, writer); err != nil {
+			return err
+		}
+		return encoder.Encode(map[string]any{"topic": strings.TrimSuffix(sageknowledge.SafeFilename(args[0]), ".md"), "removed_entries": removed})
+	case "repair":
+		if len(args) != 0 {
+			return errors.New("usage: devtrack sage repair")
+		}
+		var result sageknowledge.RepairResult
+		if err := runFilesystemMutation(func() error {
+			var repairErr error
+			result, repairErr = writer.Repair()
+			return repairErr
+		}); err != nil {
+			return err
+		}
+		if err := database.RebuildSageEntries(maintenanceCtx, writer); err != nil {
+			return err
+		}
+		return encoder.Encode(result)
+	case "export":
+		if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
+			return errors.New("usage: devtrack sage export <directory>")
+		}
+		var result sageknowledge.ExportResult
+		if err := runFilesystemMutation(func() error {
+			var exportErr error
+			result, exportErr = writer.ExportMarkdown(args[0])
+			return exportErr
+		}); err != nil {
+			return err
+		}
+		return encoder.Encode(result)
+	case "import":
+		if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
+			return errors.New("usage: devtrack sage import <directory>")
+		}
+		var result sageknowledge.ImportResult
+		if err := runFilesystemMutation(func() error {
+			var importErr error
+			result, importErr = writer.ImportMarkdown(args[0])
+			return importErr
+		}); err != nil {
+			return err
+		}
+		if err := database.RebuildSageEntries(maintenanceCtx, writer); err != nil {
+			return err
+		}
+		return encoder.Encode(result)
+	default:
+		return fmt.Errorf("unknown Sage maintenance command %q", sub)
+	}
+}
+
+func parseSageRetentionArgs(args []string) (days int, apply bool, err error) {
+	seenDays := false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--days":
+			if seenDays || i+1 >= len(args) {
+				return 0, false, errors.New("usage: devtrack sage retention --days N [--apply]")
+			}
+			days, err = strconv.Atoi(args[i+1])
+			if err != nil || days < 1 || days > 36500 {
+				return 0, false, errors.New("Sage retention days must be between 1 and 36500")
+			}
+			seenDays = true
+			i++
+		case "--apply":
+			if apply {
+				return 0, false, errors.New("usage: devtrack sage retention --days N [--apply]")
+			}
+			apply = true
+		default:
+			return 0, false, errors.New("usage: devtrack sage retention --days N [--apply]")
+		}
+	}
+	if !seenDays {
+		return 0, false, errors.New("usage: devtrack sage retention --days N [--apply]")
+	}
+	return days, apply, nil
+}
+
+func parseSageQuarantinePurgeArgs(args []string) (id string, all bool, err error) {
+	if len(args) != 3 || args[0] != "purge" || args[2] != "--yes" {
+		return "", false, errors.New("usage: devtrack sage quarantine purge <id>|--all --yes")
+	}
+	if args[1] == "--all" {
+		return "", true, nil
+	}
+	if strings.HasPrefix(args[1], "-") || strings.TrimSpace(args[1]) == "" {
+		return "", false, errors.New("usage: devtrack sage quarantine purge <id>|--all --yes")
+	}
+	return args[1], false, nil
 }
 
 func runSageRoutes(sub string, args []string, output io.Writer) error {

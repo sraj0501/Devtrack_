@@ -12,16 +12,17 @@ target PRs to `dev`, never `main`.
 ## Pickup checkpoint
 
 - Integration base: `origin/dev` at `1b87ee6` after merged PR #290.
-- Active branch: `features/TASK-169-sage-mcp-readonly`; implementation commit `122c06e`.
-- Local TASK-169 gates: full Go tests, vet, focused race coverage, and native Windows tests pass.
+- Active branch: `features/TASK-170-sage-operational-closure`, stacked on TASK-169 head `bf963dd`.
+- Local TASK-170 gates: full Go tests, vet, focused race/fault coverage, and native Windows focused
+  tests pass.
 - Reference: `C:\Work\git_apps\ai_sessions_skills` at authoritative clean HEAD `ea2e067`.
 - Next unused task ID: TASK-171, subject to board verification.
 
 ## Ordered work
 
-1. Review and integrate green TASK-169 PR #291 only with explicit authorization.
-2. After TASK-169 is integrated, create TASK-170 from current `origin/dev`: retention/deletion,
-   quarantine inspection, deterministic rebuild/repair, and Markdown export/import.
+1. Commit/push TASK-170 through DevTrack, open the dedicated stacked PR to `dev`, and wait for all
+   final-head checks.
+2. Review and integrate green TASK-169 PR #291 and TASK-170 only with explicit authorization.
 3. Resolve or retire the server-admin UI branch.
 4. Close packaged-build, privacy-reviewed media, and exact Glama badge follow-ups.
 

@@ -85,6 +85,13 @@ func (d *Database) refreshSageEntries(ctx context.Context, writer knowledge.Writ
 	return tx.Commit()
 }
 
+// RebuildSageEntries deterministically reconciles the derived SQLite search
+// cache and publication locations from the complete current Markdown snapshot.
+// Markdown remains authoritative; no model or network service is involved.
+func (d *Database) RebuildSageEntries(ctx context.Context, writer knowledge.Writer) error {
+	return d.refreshSageEntries(ctx, writer, func(*sql.Tx) error { return nil })
+}
+
 // SearchSageEntries uses literal AND substrings, including punctuation, and
 // reference heading/command ranking. No model or raw-event fallback is involved.
 func (d *Database) SearchSageEntries(ctx context.Context, writer knowledge.Writer, query, topic string, limit int) ([]knowledge.Entry, error) {
