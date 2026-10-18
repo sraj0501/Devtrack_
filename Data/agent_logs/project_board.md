@@ -6,7 +6,7 @@ quarantine, repair/deletion, and Markdown portability at `77e2f5b`, after all 19
 passed. The authoritative clean reference checkout is
 `C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The ledger is complete
 at 119 implemented, 17 adapted, 0 partial, and 0 pending. Next unused task ID: TASK-171, subject to
-verification before allocation._
+verification before allocation. Post-merge documentation reconciliation is open in PR #293._
 
 **[2026-10-17] TASK-170 / SAGE-005 — Operational retention, repair, and portability (complete).**
 **Priority:** High. **Branch:** `features/TASK-170-sage-operational-closure`.
@@ -44,6 +44,7 @@ two docu-agent reconciliation passes pass. Implementation commit: `081ace5`
 (`feat(sage): add operational lifecycle controls`). All 19 hosted checks passed on PR #292,
 including both Windows jobs and all five native MCPB smokes; the PR merged to `dev` at `77e2f5b`.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/292
+**Post-merge docs PR:** https://github.com/sraj0501/Devtrack_/pull/293
 **COMPLETE** — ready for PM review — 2026-10-18
 **Blockers:** none.
 
