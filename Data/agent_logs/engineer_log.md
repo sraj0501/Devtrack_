@@ -3076,7 +3076,7 @@ All 19 PR #281 checks passed, including hosted Windows build/vet, tests, no-send
 **PM system updated**: local board and canonical memory reconciled; no external PM platform is configured.
 **Friction**: LOW — PR #292 merged externally while the completion audit was running, so its post-merge-only delta correctly moved to a separate docs PR instead of touching `dev` directly.
 **Notes**: Two additional docu-agent passes verified GitHub's authoritative merge SHAs (`34aafb8`, `77e2f5b`), removed the obsolete Sage resume handoff, closed stale TASK-157/TASK-170 active claims, and passed memory, 136/136 parity, wiki JavaScript, stale-claim, and whitespace validation.
-**PR**: https://github.com/sraj0501/Devtrack_/pull/293 (targets `dev`).
+**PR**: https://github.com/sraj0501/Devtrack_/pull/293 (post-merge documentation reconciliation).
 
 ### [2026-10-15] TASK-157 — Close optional IDE parity
 

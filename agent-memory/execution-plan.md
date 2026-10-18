@@ -11,7 +11,8 @@ target PRs to `dev`, never `main`.
 
 ## Pickup checkpoint
 
-- Integration base: `origin/dev` at `77e2f5b` after merged PR #292.
+- Sage implementation integration commit: `77e2f5b` after merged PR #292; later documentation-only
+  merges may advance `dev` without changing the implementation boundary.
 - Sage SAGE-001–SAGE-005 is complete; no approved Sage implementation slice remains pending.
 - Reference: `C:\Work\git_apps\ai_sessions_skills` at authoritative clean HEAD `ea2e067`.
 - Next unused task ID: TASK-171, subject to board verification.
