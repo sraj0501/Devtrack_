@@ -3058,13 +3058,25 @@ All 19 PR #281 checks passed, including hosted Windows build/vet, tests, no-send
 
 ## Task Summary — TASK-170: Sage operational retention, repair, and portability — 2026-10-18
 
-- Total commits: 4 (one implementation commit and three documentation/status commits)
+- Total commits: 7 (one implementation commit and six documentation/status commits, including the
+  post-merge reconciliation and its PR record)
 - Acceptance criteria met: 10/10
 - Tickets auto-updated: 0 (no PM platform configured)
 - Estimated daily time saved: operational safety/portability feature; not meaningfully expressed as a daily duration
 - Blockers encountered: none
 - One thing that still feels rough: Windows link-safety tests require developer-mode symlink privilege and skip locally when that privilege is unavailable; the same cases pass in Linux while production rejects links on both platforms.
 - Ready for PM review: YES
+
+### [2026-10-18] TASK-170 — Reconcile merged Sage roadmap state
+
+**Original message**: "Finish the Sage features one by one, document each change, run docu-agent, and raise a PR after each completed change."
+**Commits**: `51f6d31` closes stale roadmap records; `ff1dfee` reconciles the externally merged PR #291/#292 state on `docs/TASK-170-post-merge-reconciliation`.
+**DevTrack enhanced it to**: unchanged; both documentation commits used the explicit `--no-enhance` path.
+**Ticket auto-linked**: NO — documentation-only reconciliation; TASK-170 remains explicit in branch/project records.
+**PM system updated**: local board and canonical memory reconciled; no external PM platform is configured.
+**Friction**: LOW — PR #292 merged externally while the completion audit was running, so its post-merge-only delta correctly moved to a separate docs PR instead of touching `dev` directly.
+**Notes**: Two additional docu-agent passes verified GitHub's authoritative merge SHAs (`34aafb8`, `77e2f5b`), removed the obsolete Sage resume handoff, closed stale TASK-157/TASK-170 active claims, and passed memory, 136/136 parity, wiki JavaScript, stale-claim, and whitespace validation.
+**PR**: https://github.com/sraj0501/Devtrack_/pull/293 (targets `dev`).
 
 ### [2026-10-15] TASK-157 — Close optional IDE parity
 

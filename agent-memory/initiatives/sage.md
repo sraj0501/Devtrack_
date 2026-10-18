@@ -10,18 +10,16 @@ is `docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md`; the executable parity authority 
 
 ## Active state
 
-PRs #279–#290 are integrated into `dev` at `1b87ee6`. The 136-row reference ledger is complete at
+PRs #279–#292 are integrated into `dev` at `77e2f5b`. The 136-row reference ledger is complete at
 119 implemented and 17 adapted, and the clean capture-to-knowledge journey passes repeatedly on
 Windows and Linux. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are
 independent advertised adapters.
 
-TASK-169 is fully green on PR #291 at head `bf963dd`; integration into `dev` remains. TASK-170 is
-active on `features/TASK-170-sage-operational-closure`, stacked from that head. It implements
-dry-run/apply retention, bounded opaque quarantine inspection and confirmed purge, confirmed exact
-topic deletion, deterministic Markdown/index/cache repair, and validated additive Markdown
-export/import. Linux full tests/vet, focused race/fault coverage, and native Windows focused tests
-and both documentation reconciliation passes pass locally. All 19 hosted checks pass on PR #292;
-integration remains and requires explicit authorization.
+TASK-169 PR #291 merged read-only MCP retrieval at `34aafb8`. TASK-170 PR #292 merged dry-run/apply
+retention, bounded opaque quarantine inspection and confirmed purge, confirmed exact topic
+deletion, deterministic Markdown/index/cache repair, and validated additive Markdown export/import
+at `77e2f5b`. Its Linux full tests/vet, focused race/fault coverage, native Windows focused tests,
+two documentation passes, and all 19 hosted checks passed. No approved Sage slice remains pending.
 
 ## Durable product surface
 

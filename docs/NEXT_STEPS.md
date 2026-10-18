@@ -5,12 +5,9 @@ lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
 ## Immediate repository sequence
 
-TASK-169 is fully green on PR #291 at final head `bf963dd`, but remains unmerged. TASK-170 is active
-on `features/TASK-170-sage-operational-closure`, stacked from that head. Its local retention,
-quarantine, exact deletion, deterministic repair/cache rebuild, and Markdown export/import gates
-pass on Linux and native Windows. Complete two documentation reconciliation passes, commit and push
-through DevTrack, open the dedicated PR to `dev`, and wait for all final-head checks. Do not merge
-either PR without explicit authorization.
+The approved Sage roadmap is complete and integrated into `dev` at `77e2f5b` through PR #292.
+No Sage implementation slice remains pending. Resume with the separate server-admin UI decision,
+then packaged-build qualification and the remaining publication follow-ups below.
 
 The authoritative clean behavioral reference is
 `C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The parity inventory

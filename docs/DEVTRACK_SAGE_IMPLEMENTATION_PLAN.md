@@ -184,16 +184,16 @@ Acceptance:
 - Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
   push to a remote.
 
-Latest checkpoint (2026-10-18): PRs #279–#290 are integrated into `dev` at `1b87ee6`. They carry
+Latest checkpoint (2026-10-18): PRs #279–#292 are integrated into `dev` at `77e2f5b`. They carry
 runtime/knowledge isolation, model backends, platform installers, lifecycle safety, capture/history
 closure, the complete 119-implemented/17-adapted parity ledger, repeated Windows/Linux acceptance,
 and independently managed Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI
-adapters. TASK-169 implements four annotated, read-only Sage MCP tools on its feature branch:
+adapters. TASK-169 integrates four annotated, read-only Sage MCP tools:
 bounded whole-entry search, current topics, exact topic/line retrieval, and privacy-safe
 capture/pipeline/adapter status. Linux full tests/vet, focused race coverage, and native Windows
-tests and all hosted checks pass. TASK-170 is locally qualified on its stacked operational-closure
-branch with dry-run retention, opaque quarantine inspection/purge, exact topic deletion,
-deterministic repair/cache rebuilding, and validated Markdown export/import. Details:
+tests and all hosted checks pass. TASK-170 is integrated with dry-run retention, opaque quarantine
+inspection/purge, exact topic deletion, deterministic repair/cache rebuilding, and validated
+Markdown export/import. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md`,
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`,
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`,
@@ -254,7 +254,7 @@ Acceptance:
 TASK-169 exposes knowledge search, topic listing, exact entry retrieval, and bounded status through
 the existing local stdio MCP server. TASK-170 adds locally qualified retention/deletion,
 privacy-safe quarantine controls, deterministic repair/cache rebuilding, and portable Markdown
-export/import on its stacked feature branch.
+export/import on rolling `dev`.
 
 Acceptance:
 
@@ -309,6 +309,6 @@ for inspection or export.
 
 ## Immediate next step
 
-Open and qualify the dedicated TASK-170 PR to `dev` from the locally green stacked branch. Do not
-merge TASK-169 PR #291 or the TASK-170 PR without explicit authorization. After review, return to
-the separate server-admin UI decision and the packaged-build, privacy-media, and Glama follow-ups.
+The approved Sage feature roadmap is complete and integrated into `dev` through PR #292 at
+`77e2f5b`. Return to the separate server-admin UI decision and the packaged-build, privacy-media,
+and Glama follow-ups.

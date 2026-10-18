@@ -1,18 +1,16 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-18 — PRs #279–#290 are integrated into `dev` at `1b87ee6`, including
-runtime isolation, model backends, platform installers, lifecycle, capture/history closure, the
-complete parity ledger, repeated cross-platform acceptance, and all six capture adapters. TASK-169
-read-only Sage MCP retrieval is implemented, locally qualified, and green in PR #291 at final head
-`bf963dd`. TASK-170 operational closure is locally qualified on its stacked branch; documentation
-and PR review remain. The authoritative clean reference checkout is
+_Last reconciled: 2026-10-18 — the approved Sage roadmap is integrated into `dev` at `77e2f5b`.
+PR #291 merged read-only MCP retrieval at `34aafb8`; PR #292 merged operational retention,
+quarantine, repair/deletion, and Markdown portability at `77e2f5b`, after all 19 hosted checks
+passed. The authoritative clean reference checkout is
 `C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The ledger is complete
 at 119 implemented, 17 adapted, 0 partial, and 0 pending. Next unused task ID: TASK-171, subject to
-verification before allocation._
+verification before allocation. Post-merge documentation reconciliation is open in PR #293._
 
-**[2026-10-17] TASK-170 / SAGE-005 — Operational retention, repair, and portability (in progress).**
+**[2026-10-17] TASK-170 / SAGE-005 — Operational retention, repair, and portability (complete).**
 **Priority:** High. **Branch:** `features/TASK-170-sage-operational-closure`.
-**Assigned to:** engineer. **Depends on:** green TASK-169 PR #291.
+**Assigned to:** engineer. **Depends on:** merged TASK-169 PR #291.
 
 Close the approved Sage roadmap with explicit local data-lifecycle controls, privacy-safe
 quarantine inspection, deterministic repair, and portable Markdown export/import. Keep every
@@ -43,10 +41,10 @@ operation local, bounded, model-free, cross-platform, and safe around user-autho
 **Engineer status:** implementation and local qualification complete from fully green TASK-169 head
 `bf963dd`. Full Linux Go tests/vet, focused race/fault coverage, focused native Windows tests, and
 two docu-agent reconciliation passes pass. Implementation commit: `081ace5`
-(`feat(sage): add operational lifecycle controls`). All 19 hosted checks pass on PR #292, including
-both Windows jobs and all five native MCPB smokes. PRs #291 and #292 must not be merged without
-explicit authorization.
+(`feat(sage): add operational lifecycle controls`). All 19 hosted checks passed on PR #292,
+including both Windows jobs and all five native MCPB smokes; the PR merged to `dev` at `77e2f5b`.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/292
+**Post-merge docs PR:** https://github.com/sraj0501/Devtrack_/pull/293
 **COMPLETE** — ready for PM review — 2026-10-18
 **Blockers:** none.
 
@@ -76,8 +74,8 @@ snapshot and SQLite state; never expose raw capture events or add a remote trans
       validation.
 - [x] A dedicated PR to `dev` is open and its required checks pass.
 
-**Engineer status:** complete and ready for review. All 19 hosted checks pass on PR #291 head
-`8ba7dca`, including the corrected ten-tool Glama and five-platform MCPB gates.
+**Engineer status:** complete. All 19 hosted checks passed on PR #291 final head `bf963dd`; the PR
+merged to `dev` at `34aafb8` on 2026-10-17.
 **PR:** https://github.com/sraj0501/Devtrack_/pull/291
 **Blockers:** none.
 
@@ -482,7 +480,7 @@ Windows/Linux no-send E2E, PostgreSQL, MCPB, registry, and rolling-release workf
 https://github.com/sraj0501/Devtrack_/pull/273
 **Blockers:** none.
 
-**[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (in progress).**
+**[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (complete).**
 
 **Engineer status (2026-10-14):** PR #278 merged the first closure slice to `dev` at `a6a75b0`.
 PR #279 adds stable runtime and knowledge path resolution, including explicit and relative
@@ -593,7 +591,9 @@ hosted checks pass and the review is clean.
 - [x] Run the clean capture-to-self-written-knowledge journey twice on Windows and Linux, including
       silent capture, retry recovery, publication, search, route correction, merge/refile, privacy
       canaries, unrelated-Git-state preservation, and safe uninstall.
-- [ ] Integrate the fully reviewed stacked Sage pull requests into `dev` and verify post-merge CI.
+- [x] Integrate the fully reviewed stacked Sage pull requests into `dev` and verify post-merge CI;
+      PRs #279–#285 are integrated, and the later adapter sequence is integrated through PR #290
+      at `1b87ee6`.
 
 **Latest engineer status (skips/search, 2026-10-01):** Implemented and locally qualified — durable
 skipped-action Markdown records with replay/backfill, whole-entry literal search, topic filtering,
@@ -606,7 +606,7 @@ The later acceptance slice closes the full journey; see `docs/SAGE_END_TO_END_AC
 `a1777b6`; PR #276 added Docker evaluation docs at `fc3217f`; PR #277 reconciled documentation at
 `549c430`; and PR #278 merged diagnostics, safe local commits, and routing/capture/model-request
 parity at `a6a75b0`. All required PR #278 checks and applicable post-merge workflows passed.
-TASK-157 remains in progress only for hosted review and integration of the stacked closure.
+TASK-157 is integrated through the completed stacked closure; PRs #279–#290 are in `dev`.
 
 **Skipped/search implementation commit:** `9f2281b` — record skipped actions and search full entries.
 
