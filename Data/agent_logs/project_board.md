@@ -42,7 +42,8 @@ operation local, bounded, model-free, cross-platform, and safe around user-autho
 
 **Engineer status:** implementation and local qualification complete from fully green TASK-169 head
 `bf963dd`. Full Linux Go tests/vet, focused race/fault coverage, focused native Windows tests, and
-two docu-agent reconciliation passes pass. Commit/push, dedicated PR, and final-head hosted checks
+two docu-agent reconciliation passes pass. Implementation commit: `081ace5`
+(`feat(sage): add operational lifecycle controls`). Push, dedicated PR, and final-head hosted checks
 remain. PR #291 remains open/mergeable and must not be merged without explicit authorization.
 **Blockers:** none.
 
