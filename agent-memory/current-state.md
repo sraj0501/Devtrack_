@@ -9,7 +9,8 @@ type: project
 Retention dry-runs by default; quarantine inspection is opaque and bounded; exact deletion,
 repair/cache rebuilding, and validated Markdown export/import are implemented. Full Linux Go
 tests/vet, focused race/fault coverage, native Windows focused tests, and two documentation passes
-pass locally. Commit/push, the dedicated PR, and final-head hosted checks remain.
+pass locally. All 19 hosted checks pass on PR #292; integration remains and requires explicit
+authorization.
 
 **Sage integration state:** `origin/dev` is `1b87ee6` after PR #290. PRs #279–#290 are integrated,
 including the complete 136-row parity ledger (119 implemented, 17 adapted), repeated clean

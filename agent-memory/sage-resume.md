@@ -24,8 +24,8 @@ can change after this record.
   not be performed without explicit authorization.
 - TASK-170 implements retention, opaque quarantine controls, exact topic deletion, deterministic
   repair/cache rebuild, and additive Markdown export/import. Full Linux tests/vet, focused
-  race/fault coverage, native Windows focused tests, and two docu-agent passes pass locally.
-  Commit/push, PR creation, and final-head hosted checks remain.
+  race/fault coverage, native Windows focused tests, and two docu-agent passes pass locally. All 19
+  hosted checks pass on PR #292; integration remains and requires explicit authorization.
 - Reference: `C:\Work\git_apps\ai_sessions_skills` at authoritative clean HEAD `ea2e067`.
 
 ## Resume commands

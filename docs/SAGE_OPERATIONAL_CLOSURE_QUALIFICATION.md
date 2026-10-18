@@ -61,4 +61,5 @@ The following gates pass from the current branch with Go 1.24 in `golang:1.24-bo
   privilege is unavailable, while the same cases pass in Linux
 
 Two docu-agent reconciliation passes cover the board, canonical memory, README, wiki, and
-qualification record. Hosted required checks and PR review remain the final branch gate.
+qualification record. All 19 hosted checks pass on PR #292, including both Windows jobs and all
+five native MCPB smokes. Integration requires explicit authorization.

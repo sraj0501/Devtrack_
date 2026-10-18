@@ -20,8 +20,8 @@ active on `features/TASK-170-sage-operational-closure`, stacked from that head. 
 dry-run/apply retention, bounded opaque quarantine inspection and confirmed purge, confirmed exact
 topic deletion, deterministic Markdown/index/cache repair, and validated additive Markdown
 export/import. Linux full tests/vet, focused race/fault coverage, and native Windows focused tests
-and both documentation reconciliation passes pass locally; commit/push, the dedicated PR, and
-final-head hosted checks remain.
+and both documentation reconciliation passes pass locally. All 19 hosted checks pass on PR #292;
+integration remains and requires explicit authorization.
 
 ## Durable product surface
 

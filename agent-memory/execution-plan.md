@@ -20,11 +20,10 @@ target PRs to `dev`, never `main`.
 
 ## Ordered work
 
-1. Commit/push TASK-170 through DevTrack, open the dedicated stacked PR to `dev`, and wait for all
-   final-head checks.
-2. Review and integrate green TASK-169 PR #291 and TASK-170 only with explicit authorization.
-3. Resolve or retire the server-admin UI branch.
-4. Close packaged-build, privacy-reviewed media, and exact Glama badge follow-ups.
+1. Review and integrate green TASK-169 PR #291 and TASK-170 PR #292 only with explicit
+   authorization.
+2. Resolve or retire the server-admin UI branch.
+3. Close packaged-build, privacy-reviewed media, and exact Glama badge follow-ups.
 
 ## Guardrails
 

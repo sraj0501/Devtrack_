@@ -3054,7 +3054,17 @@ All 19 PR #281 checks passed, including hosted Windows build/vet, tests, no-send
 **Time**: implementation, cross-platform qualification, fault coverage, and two docu-agent passes completed before commit.
 **Friction**: LOW — the only expected warning was the legacy Linux post-commit log path after Git had already committed.
 **Notes**: Retention now previews by default and preserves summarized knowledge; quarantine inspection is bounded and opaque; purge and exact topic deletion require explicit confirmation; repair/delete/import reconcile the derived SQLite cache from authoritative Markdown; export/import are additive, bounded, link-safe, and conflict-safe. Injected delete/import write failures roll back prior filesystem changes. Full Go tests/vet, focused race/fault coverage, native Windows focused binaries, current-reference parity against `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`, shared-memory validation, wiki inline JavaScript, and whitespace checks pass. Two docu-agent passes reconciled README, wiki, plan, next steps, board, and active memory.
-**PR**: https://github.com/sraj0501/Devtrack_/pull/292 (targets `dev`, stacked on fully green PR #291); hosted checks pending.
+**PR**: https://github.com/sraj0501/Devtrack_/pull/292 (targets `dev`, stacked on fully green PR #291); all 19 hosted checks pass, including both Windows jobs and all five native MCPB smokes.
+
+## Task Summary — TASK-170: Sage operational retention, repair, and portability — 2026-10-18
+
+- Total commits: 4 (one implementation commit and three documentation/status commits)
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: 0 (no PM platform configured)
+- Estimated daily time saved: operational safety/portability feature; not meaningfully expressed as a daily duration
+- Blockers encountered: none
+- One thing that still feels rough: Windows link-safety tests require developer-mode symlink privilege and skip locally when that privilege is unavailable; the same cases pass in Linux while production rejects links on both platforms.
+- Ready for PM review: YES
 
 ### [2026-10-15] TASK-157 — Close optional IDE parity
 
