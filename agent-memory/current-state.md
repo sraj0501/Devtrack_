@@ -9,7 +9,8 @@ type: project
 retention, bounded opaque quarantine controls, exact deletion, deterministic repair/cache rebuild,
 and validated Markdown export/import after all 19 hosted checks passed.
 
-**Sage integration state:** `origin/dev` is `77e2f5b` after PR #292. PRs #279–#292 are integrated,
+**Sage integration state:** The Sage implementation integration commit is `77e2f5b` after PR #292;
+post-merge documentation reconciliation followed in PR #293. PRs #279–#292 are integrated,
 including the complete 136-row parity ledger (119 implemented, 17 adapted), repeated clean
 Windows/Linux acceptance, and all six independent capture adapters. The authoritative reference is
 `C:\Work\git_apps\ai_sessions_skills` at clean HEAD `ea2e067`; its newer bug fixes are intentional.
