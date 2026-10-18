@@ -43,8 +43,9 @@ operation local, bounded, model-free, cross-platform, and safe around user-autho
 **Engineer status:** implementation and local qualification complete from fully green TASK-169 head
 `bf963dd`. Full Linux Go tests/vet, focused race/fault coverage, focused native Windows tests, and
 two docu-agent reconciliation passes pass. Implementation commit: `081ace5`
-(`feat(sage): add operational lifecycle controls`). Push, dedicated PR, and final-head hosted checks
+(`feat(sage): add operational lifecycle controls`). PR #292 targets `dev`; final-head hosted checks
 remain. PR #291 remains open/mergeable and must not be merged without explicit authorization.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/292
 **Blockers:** none.
 
 **[2026-10-16] TASK-169 / SAGE-005 — Read-only Sage MCP retrieval and diagnostics (complete).**
