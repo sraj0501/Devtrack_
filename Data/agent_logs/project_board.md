@@ -1,14 +1,56 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-17 — PRs #279–#290 are integrated into `dev` at `1b87ee6`, including
+_Last reconciled: 2026-10-18 — PRs #279–#290 are integrated into `dev` at `1b87ee6`, including
 runtime isolation, model backends, platform installers, lifecycle, capture/history closure, the
 complete parity ledger, repeated cross-platform acceptance, and all six capture adapters. TASK-169
-read-only Sage MCP retrieval is implemented, locally qualified, and green in PR #291 at head
-`8ba7dca`; two documentation passes are complete. The authoritative reference checkout is `ea2e067`.
-The ledger is complete at 119 implemented, 17 adapted, 0 partial, and 0 pending. Next unused task
-ID: TASK-171, subject to verification before allocation._
+read-only Sage MCP retrieval is implemented, locally qualified, and green in PR #291 at final head
+`bf963dd`. TASK-170 operational closure is locally qualified on its stacked branch; documentation
+and PR review remain. The authoritative clean reference checkout is
+`C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The ledger is complete
+at 119 implemented, 17 adapted, 0 partial, and 0 pending. Next unused task ID: TASK-171, subject to
+verification before allocation._
 
-**[2026-10-16] TASK-169 / SAGE-005 — Read-only Sage MCP retrieval and diagnostics (in progress).**
+**[2026-10-17] TASK-170 / SAGE-005 — Operational retention, repair, and portability (in progress).**
+**Priority:** High. **Branch:** `features/TASK-170-sage-operational-closure`.
+**Assigned to:** engineer. **Depends on:** green TASK-169 PR #291.
+
+Close the approved Sage roadmap with explicit local data-lifecycle controls, privacy-safe
+quarantine inspection, deterministic repair, and portable Markdown export/import. Keep every
+operation local, bounded, model-free, cross-platform, and safe around user-authored knowledge.
+
+**Acceptance criteria:**
+- [x] `sage retention --days N` is a dry-run by default and requires `--apply` before deleting old
+      normalized source events; summarized/documented knowledge remains intact.
+- [x] `sage quarantine list` exposes bounded opaque metadata and fixed safe reasons only; purge of
+      one opaque ID or all quarantined files requires explicit `--yes` and never follows links.
+- [x] `sage delete-topic <topic> --yes` deletes only the exact portable topic, removes stale route
+      targets, repairs the topic index, and reconciles SQLite retrieval without resurrection.
+- [x] `sage repair` recovers interrupted merge state, validates all bounded Markdown, repairs the
+      generated topic index, and deterministically rebuilds the SQLite retrieval cache without a
+      model or network call.
+- [x] `sage export <directory>` creates a new deterministic Markdown-only snapshot; `sage import
+      <directory>` validates the whole source first, adds only non-conflicting files, treats exact
+      repeats as no-ops, and repairs the destination index.
+- [x] Mutating filesystem operations require paused capture, reject traversal/symlinks and
+      overlapping roots, preserve foreign/user content, and use bounded reads plus atomic writes.
+- [x] Invalid flags, ranges, paths, conflicts, missing records, and cancelled contexts fail safely;
+      dry runs and retries are deterministic and idempotent.
+- [x] Full Go tests/vet, focused race and fault coverage, Linux and native Windows tests pass.
+- [x] Two docu-agent reconciliation passes complete with board, memory, README, wiki, and
+      whitespace validation.
+- [x] A dedicated stacked PR to `dev` is open and all required final-head checks pass.
+
+**Engineer status:** implementation and local qualification complete from fully green TASK-169 head
+`bf963dd`. Full Linux Go tests/vet, focused race/fault coverage, focused native Windows tests, and
+two docu-agent reconciliation passes pass. Implementation commit: `081ace5`
+(`feat(sage): add operational lifecycle controls`). All 19 hosted checks pass on PR #292, including
+both Windows jobs and all five native MCPB smokes. PRs #291 and #292 must not be merged without
+explicit authorization.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/292
+**COMPLETE** — ready for PM review — 2026-10-18
+**Blockers:** none.
+
+**[2026-10-16] TASK-169 / SAGE-005 — Read-only Sage MCP retrieval and diagnostics (complete).**
 **Priority:** High. **Branch:** `features/TASK-169-sage-mcp-readonly`.
 **Assigned to:** engineer. **Depends on:** merged TASK-168 PR #290.
 

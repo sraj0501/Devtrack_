@@ -275,6 +275,8 @@ func (cli *CLI) handleSage() error {
 		return runSageTopics(args, os.Stdout)
 	case "routes", "route", "merge":
 		return runSageRoutes(sub, args, os.Stdout)
+	case "retention", "quarantine", "delete-topic", "repair", "export", "import":
+		return runSageMaintenance(sub, args, os.Stdout)
 	default:
 		return fmt.Errorf("unknown Sage command %q", sub)
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -30,6 +31,12 @@ func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
 		{[]string{"route", "git", "version-control"}, "route", []string{"git", "version-control"}},
 		{[]string{"harness", "list"}, "harness", []string{"list"}},
 		{[]string{"hook", "codex"}, "hook", []string{"codex"}},
+		{[]string{"retention", "--days", "30"}, "retention", []string{"--days", "30"}},
+		{[]string{"quarantine", "list"}, "quarantine", []string{"list"}},
+		{[]string{"delete-topic", "git", "--yes"}, "delete-topic", []string{"git", "--yes"}},
+		{[]string{"repair"}, "repair", nil},
+		{[]string{"export", "snapshot"}, "export", []string{"snapshot"}},
+		{[]string{"import", "snapshot"}, "import", []string{"snapshot"}},
 	} {
 		sub, rest, err := routeSage(tc.args)
 		if err != nil || sub != tc.sub || len(rest) != len(tc.rest) {
@@ -55,6 +62,100 @@ func TestRouteSageRejectsLegacyAndUnknownCommands(t *testing.T) {
 		if _, _, err := routeSage(args); err == nil {
 			t.Fatalf("routeSage(%q) accepted a removed or unknown command", args)
 		}
+	}
+}
+
+func TestSageMaintenanceArgumentParsingIsStrict(t *testing.T) {
+	for _, tc := range []struct {
+		args  []string
+		days  int
+		apply bool
+	}{
+		{[]string{"--days", "30"}, 30, false},
+		{[]string{"--apply", "--days", "1"}, 1, true},
+	} {
+		days, apply, err := parseSageRetentionArgs(tc.args)
+		if err != nil || days != tc.days || apply != tc.apply {
+			t.Fatalf("retention %q = %d/%t err=%v", tc.args, days, apply, err)
+		}
+	}
+	for _, args := range [][]string{nil, {"--days", "0"}, {"--days", "36501"}, {"--days", "x"}, {"--days", "1", "--days", "2"}, {"--days", "1", "--unknown"}} {
+		if _, _, err := parseSageRetentionArgs(args); err == nil {
+			t.Fatalf("invalid retention args accepted: %q", args)
+		}
+	}
+	if id, all, err := parseSageQuarantinePurgeArgs([]string{"purge", "0123456789abcdef", "--yes"}); err != nil || id == "" || all {
+		t.Fatalf("single purge=%q/%t err=%v", id, all, err)
+	}
+	if id, all, err := parseSageQuarantinePurgeArgs([]string{"purge", "--all", "--yes"}); err != nil || id != "" || !all {
+		t.Fatalf("all purge=%q/%t err=%v", id, all, err)
+	}
+	for _, args := range [][]string{{"list", "--yes"}, {"purge", "--all"}, {"purge", "--other", "--yes"}} {
+		if _, _, err := parseSageQuarantinePurgeArgs(args); err == nil {
+			t.Fatalf("invalid quarantine args accepted: %q", args)
+		}
+	}
+}
+
+func TestSageFilesystemMaintenanceRequiresPauseAndConfirmation(t *testing.T) {
+	runtimeRoot := t.TempDir()
+	knowledgeRoot := t.TempDir()
+	database, err := db.NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	if err := writeSageMaintenance(context.Background(), database, runtimeRoot, knowledgeRoot, "repair", nil, &bytes.Buffer{}, time.Now()); err == nil || !strings.Contains(err.Error(), "pause") {
+		t.Fatalf("unpaused repair err=%v", err)
+	}
+	if _, err := sage.SetPaused(runtimeRoot, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeSageMaintenance(context.Background(), database, runtimeRoot, knowledgeRoot, "quarantine", []string{"purge", "--all"}, &bytes.Buffer{}, time.Now()); err == nil {
+		t.Fatal("unconfirmed quarantine purge accepted")
+	}
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := writeSageMaintenance(cancelled, database, runtimeRoot, knowledgeRoot, "repair", nil, &bytes.Buffer{}, time.Now()); err == nil {
+		t.Fatal("cancelled repair accepted")
+	}
+}
+
+func TestSageRepairAndDeleteTopicReconcileDerivedCache(t *testing.T) {
+	runtimeRoot := t.TempDir()
+	knowledgeRoot := t.TempDir()
+	database, err := db.NewDatabaseAtPath(filepath.Join(t.TempDir(), "sage.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	writer := sageknowledge.Writer{Root: knowledgeRoot}
+	if _, err := writer.Write("git", "abcdef01", distill.Draft{Title: "Status", Section: "Git", Commands: []string{"git status"}, What: "Inspect changes", Why: "Stay safe", Example: "Before commit"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sage.SetPaused(runtimeRoot, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(knowledgeRoot, "README.md")); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := writeSageMaintenance(context.Background(), database, runtimeRoot, knowledgeRoot, "repair", nil, &output, time.Unix(100, 0)); err != nil {
+		t.Fatal(err)
+	}
+	var cached int
+	if err := database.DB().QueryRow(`SELECT COUNT(*) FROM sage_entries`).Scan(&cached); err != nil || cached != 1 {
+		t.Fatalf("repaired cache=%d err=%v", cached, err)
+	}
+	output.Reset()
+	if err := writeSageMaintenance(context.Background(), database, runtimeRoot, knowledgeRoot, "delete-topic", []string{"git", "--yes"}, &output, time.Unix(100, 0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.DB().QueryRow(`SELECT COUNT(*) FROM sage_entries`).Scan(&cached); err != nil || cached != 0 {
+		t.Fatalf("deleted cache=%d err=%v", cached, err)
+	}
+	if _, err := os.Stat(filepath.Join(knowledgeRoot, "git.md")); !os.IsNotExist(err) {
+		t.Fatalf("deleted topic remained: %v", err)
 	}
 }
 

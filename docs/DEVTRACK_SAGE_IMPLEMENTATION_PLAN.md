@@ -184,14 +184,16 @@ Acceptance:
 - Safe local commits include only Sage-owned knowledge changes, preserve unrelated work, and never
   push to a remote.
 
-Latest checkpoint (2026-10-16): PRs #279–#290 are integrated into `dev` at `1b87ee6`. They carry
+Latest checkpoint (2026-10-18): PRs #279–#290 are integrated into `dev` at `1b87ee6`. They carry
 runtime/knowledge isolation, model backends, platform installers, lifecycle safety, capture/history
 closure, the complete 119-implemented/17-adapted parity ledger, repeated Windows/Linux acceptance,
 and independently managed Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI
-adapters. TASK-169 now implements four annotated, read-only Sage MCP tools on its feature branch:
+adapters. TASK-169 implements four annotated, read-only Sage MCP tools on its feature branch:
 bounded whole-entry search, current topics, exact topic/line retrieval, and privacy-safe
 capture/pipeline/adapter status. Linux full tests/vet, focused race coverage, and native Windows
-tests pass; documentation and hosted review remain. Details:
+tests and all hosted checks pass. TASK-170 is locally qualified on its stacked operational-closure
+branch with dry-run retention, opaque quarantine inspection/purge, exact topic deletion,
+deterministic repair/cache rebuilding, and validated Markdown export/import. Details:
 `docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md`,
 `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`,
 `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`,
@@ -201,6 +203,7 @@ tests pass; documentation and hosted review remain. Details:
 `docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md`,
 `docs/SAGE_DEVIN_ADAPTER_QUALIFICATION.md`,
 `docs/SAGE_MCP_READONLY_QUALIFICATION.md`,
+`docs/SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md`,
 `docs/SAGE_LIFECYCLE_QUALIFICATION.md`,
 `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`, and
 `docs/SAGE_IDE_PARITY_QUALIFICATION.md`. The repeated native Windows/Linux journey also passes;
@@ -249,8 +252,9 @@ Acceptance:
 ### SAGE-005 — Read-only integration and operational closure
 
 TASK-169 exposes knowledge search, topic listing, exact entry retrieval, and bounded status through
-the existing local stdio MCP server. TASK-170 adds retention/repair tooling after TASK-169 is
-integrated.
+the existing local stdio MCP server. TASK-170 adds locally qualified retention/deletion,
+privacy-safe quarantine controls, deterministic repair/cache rebuilding, and portable Markdown
+export/import on its stacked feature branch.
 
 Acceptance:
 
@@ -259,6 +263,10 @@ Acceptance:
   adapter configuration paths.
 - Corrupt spool files are quarantined with sanitized diagnostics; healthy work continues.
 - Search/index repair can rebuild from deterministic knowledge records without model calls.
+- Retention previews by default; destructive operations require explicit confirmation and
+  filesystem-changing maintenance requires paused capture.
+- Import/export reject links, traversal, overlap, and conflicts; retries are deterministic and
+  fault tests verify rollback of partial delete/import changes.
 
 ## Test and release strategy
 
@@ -301,7 +309,6 @@ for inspection or export.
 
 ## Immediate next step
 
-PRs #279–#290 are integrated into `dev` at `1b87ee6`. Complete TASK-169 documentation and hosted
-review for the locally qualified read-only MCP retrieval/diagnostics slice. Then implement TASK-170
-retention, quarantine inspection, deterministic rebuild/repair, and Markdown export/import from
-the updated `dev` base.
+Open and qualify the dedicated TASK-170 PR to `dev` from the locally green stacked branch. Do not
+merge TASK-169 PR #291 or the TASK-170 PR without explicit authorization. After review, return to
+the separate server-admin UI decision and the packaged-build, privacy-media, and Glama follow-ups.

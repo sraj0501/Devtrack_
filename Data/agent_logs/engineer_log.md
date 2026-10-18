@@ -3044,6 +3044,28 @@ All 19 PR #281 checks passed, including hosted Windows build/vet, tests, no-send
 **Notes**: Installed Codex capture now honors persistent pause state; bounded content-free capture decisions distinguish `new`, `known`, and same-payload `repeat`; logging is fail-open; interleaved Codex-history items are collected exactly when terminal; and failed items preserve exact exit status. The full Go suite/vet passes in Go 1.24 Docker, and all six exact parity tests pass as native Windows binaries. Ledger: 116 implemented, 16 adapted, 0 partial, 4 pending. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.
 **PR**: https://github.com/sraj0501/Devtrack_/pull/283 (targets `dev`, stacked on fully green PR #282); all 19 hosted checks passed and the review is clean.
 
+### [2026-10-18] TASK-170 — Add Sage operational lifecycle controls
+
+**Original message**: "Finish the Sage features one by one, document each change, run docu-agent, and raise a PR after each completed change."
+**Commit**: `081ace5` (`feat(sage): add operational lifecycle controls`) on `features/TASK-170-sage-operational-closure`.
+**DevTrack enhanced it to**: unchanged; Ollama returned an empty response, so the helper retained the supplied message.
+**Ticket auto-linked**: NO — the message omitted TASK-170; the task is explicit in the branch and project board.
+**PM system updated**: local project board and canonical `agent-memory/` reconciled; no external PM platform is configured.
+**Time**: implementation, cross-platform qualification, fault coverage, and two docu-agent passes completed before commit.
+**Friction**: LOW — the only expected warning was the legacy Linux post-commit log path after Git had already committed.
+**Notes**: Retention now previews by default and preserves summarized knowledge; quarantine inspection is bounded and opaque; purge and exact topic deletion require explicit confirmation; repair/delete/import reconcile the derived SQLite cache from authoritative Markdown; export/import are additive, bounded, link-safe, and conflict-safe. Injected delete/import write failures roll back prior filesystem changes. Full Go tests/vet, focused race/fault coverage, native Windows focused binaries, current-reference parity against `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`, shared-memory validation, wiki inline JavaScript, and whitespace checks pass. Two docu-agent passes reconciled README, wiki, plan, next steps, board, and active memory.
+**PR**: https://github.com/sraj0501/Devtrack_/pull/292 (targets `dev`, stacked on fully green PR #291); all 19 hosted checks pass, including both Windows jobs and all five native MCPB smokes.
+
+## Task Summary — TASK-170: Sage operational retention, repair, and portability — 2026-10-18
+
+- Total commits: 4 (one implementation commit and three documentation/status commits)
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: 0 (no PM platform configured)
+- Estimated daily time saved: operational safety/portability feature; not meaningfully expressed as a daily duration
+- Blockers encountered: none
+- One thing that still feels rough: Windows link-safety tests require developer-mode symlink privilege and skip locally when that privilege is unavailable; the same cases pass in Linux while production rejects links on both platforms.
+- Ready for PM review: YES
+
 ### [2026-10-15] TASK-157 — Close optional IDE parity
 
 **Original message**: "List out all the Sage features of DevTrack. Finish them one by one, document each change, run docu-agent, and raise a PR after each completed change. Then move on to the next one."

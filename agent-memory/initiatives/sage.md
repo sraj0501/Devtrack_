@@ -15,14 +15,13 @@ PRs #279–#290 are integrated into `dev` at `1b87ee6`. The 136-row reference le
 Windows and Linux. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are
 independent advertised adapters.
 
-TASK-169 is active on `features/TASK-169-sage-mcp-readonly`. Commit `122c06e` adds four annotated
-read-only MCP tools: bounded search, current topics, exact topic/line retrieval, and bounded
-capture/pipeline/adapter status. Local Linux, race, native Windows, and two documentation
-reconciliation gates pass. All 19 hosted checks pass on PR #291 head `8ba7dca`; integration into
-`dev` remains.
-
-After TASK-169 integrates, TASK-170 closes the approved roadmap with retention/deletion controls,
-quarantine inspection, deterministic index rebuild/repair, and Markdown export/import.
+TASK-169 is fully green on PR #291 at head `bf963dd`; integration into `dev` remains. TASK-170 is
+active on `features/TASK-170-sage-operational-closure`, stacked from that head. It implements
+dry-run/apply retention, bounded opaque quarantine inspection and confirmed purge, confirmed exact
+topic deletion, deterministic Markdown/index/cache repair, and validated additive Markdown
+export/import. Linux full tests/vet, focused race/fault coverage, and native Windows focused tests
+and both documentation reconciliation passes pass locally. All 19 hosted checks pass on PR #292;
+integration remains and requires explicit authorization.
 
 ## Durable product surface
 
@@ -32,6 +31,7 @@ devtrack sage pause|resume|restart
 devtrack sage search <query> [--topic <topic>]
 devtrack sage topics
 devtrack sage routes|route|merge
+devtrack sage retention|quarantine|delete-topic|repair|export|import
 devtrack sage harness list|install|uninstall
 ```
 
