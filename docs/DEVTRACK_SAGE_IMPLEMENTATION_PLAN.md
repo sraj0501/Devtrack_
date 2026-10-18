@@ -309,6 +309,7 @@ for inspection or export.
 
 ## Immediate next step
 
-Open and qualify the dedicated TASK-170 PR to `dev` from the locally green stacked branch. Do not
-merge TASK-169 PR #291 or the TASK-170 PR without explicit authorization. After review, return to
-the separate server-admin UI decision and the packaged-build, privacy-media, and Glama follow-ups.
+TASK-169 PR #291 and TASK-170 PR #292 are fully green and await integration into `dev`; do not merge
+either without explicit authorization. The approved Sage feature roadmap is otherwise complete.
+After integration review, return to the separate server-admin UI decision and the packaged-build,
+privacy-media, and Glama follow-ups.
