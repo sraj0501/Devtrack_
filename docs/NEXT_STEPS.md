@@ -6,8 +6,9 @@ lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 ## Immediate repository sequence
 
 The approved Sage roadmap is complete and integrated into `dev` at `77e2f5b` through PR #292.
-No Sage implementation slice remains pending. Resume with the separate server-admin UI decision,
-then packaged-build qualification and the remaining publication follow-ups below.
+No Sage implementation slice remains pending. TASK-171 is qualifying the completed development arc
+as v3.2.0, then promoting `dev` through an explicit PR to `main` and verifying the tag-driven
+release plus official MCP Registry publication.
 
 The authoritative clean behavioral reference is
 `C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The parity inventory
@@ -27,12 +28,19 @@ The implementation plan and qualification details are in
 `agent-memory/initiatives/sage.md`. `Data/agent_logs/project_board.md` remains the task-ID and
 status authority.
 
-## Open release follow-ups
+## v3.2.0 release gates
 
-- Review `feat/TASK-154-server-admin-ui` at `54ceb05` against current `dev`, then integrate it or
-  explicitly retire it before packaged-build qualification.
-- Qualify the admin review journey against packaged release artifacts.
-- Capture and privacy-review the approved launch screenshots and video.
+- Reconcile release notes, public version claims, Windows metadata, and RC package metadata.
+- Pass full Go/Python/wiki/privacy validation and all five native packaged MCPB smoke jobs.
+- Integrate the candidate into `dev`, promote `dev` to `main` through a reviewable PR, and tag only
+  the verified `main` commit.
+- Verify GitHub assets, checksums, `server.json`, and official MCP Registry publication.
+
+## Deferred follow-ups
+
+- Reconcile and re-qualify `feat/TASK-154-server-admin-ui` at `54ceb05` as a separate post-v3.2.0
+  task; the old branch is explicitly excluded from this release.
+- Capture and privacy-review launch screenshots and video from tested packaged behavior.
 - Record the exact approved Glama listing path and add its score badge to
   `punkpeye/awesome-mcp-servers` PR #13608.
 

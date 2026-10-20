@@ -1,7 +1,8 @@
 # Getting started
 
-The latest public release is **v3.1.1**. It includes the Phase 9 onboarding, local MCP server,
-privacy-declaring native MCPB bundles, demo path, and runtime-reliability work.
+The **v3.2.0 release candidate** includes DevTrack Sage, deterministic ticket mapping, the ten-tool
+local MCP server, Phase 9 onboarding, privacy-declaring native MCPB bundles, and the silent
+native-Git path. v3.1.1 remains the latest public release until TASK-171 completes.
 
 ## Install and configure
 

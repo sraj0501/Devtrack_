@@ -28,8 +28,8 @@ A background daemon watches your commits and infers everything around them — w
 
 ### And it's the memory your AI agents lack
 
-> **Available since v3.1.0:** Phase 9 onboarding and the local, read-only MCP server ship in the
-> latest public release, v3.1.1. Five native MCPB bundles are available for Windows, macOS, and Linux.
+> **Available in v3.2.0:** Phase 9 onboarding, the local read-only MCP server, and DevTrack Sage
+> ship together. Five native MCPB bundles are available for Windows, macOS, and Linux.
 
 Coding agents are session-based: they exist while invoked, then forget. DevTrack is always on. One command —
 
@@ -50,13 +50,12 @@ you run `devtrack telemetry on`.
 
 ## Ten-minute quickstart
 
-The latest public release is **v3.1.1**. Download the matching platform asset from
-[GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.1), or build from source:
-
-> **Known v3.1.1 regression:** its shell-wrapped commit path can still ask post-commit questions.
-> TASK-158 is merged into `dev`: native Git is no longer routed through DevTrack, generated
-> observation hooks are silent and fail-open, and the explicit helper returns immediately after
-> Git. The correction remains unreleased until it is promoted and included in a later release.
+The **v3.2.0 release candidate** is being qualified; v3.1.1 remains the latest public release until
+the verified candidate is tagged. Use [GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/latest)
+for the current public asset, or build this branch from source. v3.2.0 fixes the v3.1.1
+shell-wrapped post-commit prompt regression: normal Git is no longer
+routed through DevTrack, observation hooks are silent and fail-open, and the explicit enhanced
+commit helper returns immediately after Git succeeds.
 
 ```bash
 git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
@@ -71,7 +70,7 @@ Managed mode requires a PostgreSQL URL for the Python service; Ollama remains th
 can finish preparing in the background.
 
 ```bash
-devtrack mcp status           # stable v3.1.1: six tools; TASK-169 branch: ten
+devtrack mcp status           # stable v3.2.0: ten read-only tools
 cd /path/to/the/repo/to/watch
 devtrack setup
 ```
@@ -167,13 +166,10 @@ The Python service and model preparation are background work. If they are not re
 keep coding and check `devtrack doctor`; the Go-native path remains usable and commits are not
 blocked.
 
-> **Current validation status:** The separate TASK-154 server-admin redesign is committed but not
-> integrated into `dev`; review and integrate or retire it before packaged-build acceptance.
-> The qualified TASK-157 pipeline slice is merged through PR #275 at `a1777b6`; all post-merge
-> workflows passed and rolling release `dev-a1777b6` contains it. PR #276 added the local Docker
-> evaluation guide at current `dev` commit `fc3217f`; its applicable checks passed. The remaining
-> release follow-ups also include privacy-reviewed media capture and confirmation of the exact Glama
-> listing path and score badge.
+> **Release boundary:** v3.2.0 includes the completed Sage roadmap and the existing integrated admin
+> experience. The separate TASK-154 visual redesign is intentionally deferred for drift
+> reconciliation and fresh UI acceptance. Privacy-reviewed media and the exact Glama listing-path
+> badge remain publication follow-ups rather than product-runtime claims.
 > See the
 > [end-to-end validation record](docs/END_TO_END_VALIDATION.md) for current evidence and exit criteria.
 
@@ -184,7 +180,7 @@ command activity from supported coding harnesses, groups and indexes it locally,
 into searchable, self-writing personal documentation. The Go-native port follows the behavior of
 the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
 
-On rolling `dev`, the capture pipeline, durable SQLite jobs, daemon-owned distillation,
+In v3.2.0, the capture pipeline, durable SQLite jobs, daemon-owned distillation,
 deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped-action
 records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
 PRs #279–#290 are integrated into `dev`, including capture/history closure, the complete 136-row
@@ -192,7 +188,7 @@ parity ledger, repeated Windows/Linux acceptance, and independent Codex, Claude 
 Copilot CLI, OpenCode, Cursor, and Devin CLI adapters. PR #291 adds four local read-only MCP tools
 for Sage knowledge and diagnostics, and PR #292 adds retention, quarantine, repair/deletion, and
 Markdown portability controls. The approved Sage roadmap is integrated into rolling `dev` at
-`77e2f5b`; none of this work is part of the v3.1.1 stable release. See the
+`77e2f5b` and ships in v3.2.0. See the
 [implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
 [end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).
 
@@ -203,12 +199,9 @@ devtrack upgrade
 ```
 
 `devtrack upgrade` installs the latest build from the selected update channel. Existing and new
-installations default to stable releases from `main`. TASK-161 merged through
-[PR #265](https://github.com/sraj0501/Devtrack_/pull/265), and current rolling `dev` binaries add
-`devtrack upgrade --dev` as the explicit opt-in path for development builds. The v3.1.1 binary does
-not contain these flags; install a binary from the rolling
-[`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev) (or build `origin/dev`)
-before selecting a channel from the CLI.
+installations default to stable releases from `main`. v3.2.0 includes the persistent channel
+selector: `devtrack upgrade --dev` opts into rolling development builds, while `--main` or
+`--stable` returns to stable releases. `--check` inspects a channel without installing it.
 
 The daemon mines enabled local repositories in Managed mode and builds the voice profile once the
 local AI server is reachable. `devtrack status` and `devtrack doctor` show the persistent result and
@@ -406,14 +399,14 @@ devtrack work report           # EOD narrative in terminal
 devtrack work report --email me@org.com
 ```
 
-On current `dev`, monitored commits produce local time estimates
+In v3.2.0, monitored commits produce local time estimates
 without starting a session. `work start|stop|adjust` provides optional explicit timing and
 corrections; `work status` shows the source and confidence. Matching commits attach to an
 explicit session. See [time inference and its limits](docs/WORK_TIME_INFERENCE.md).
 
 ### DevTrack Sage — self-writing command knowledge
 
-Sage provides silent capture and local command knowledge. Rolling `dev` includes durable background
+Sage provides silent capture and local command knowledge. v3.2.0 includes durable background
 publication, routing/merge corrections, skipped-action records, and full-entry search:
 
 ```bash
@@ -455,10 +448,10 @@ local Ollama HTTP by default; publication retries do not repeat model work. Set
 `DEVTRACK_SAGE_MODEL_BACKEND` explicitly to `claude`, `devin`, `codex`, `copilot`, or
 `cursor-agent` to use an already-installed command provider, and optionally set
 `DEVTRACK_SAGE_MODEL`. Sage never auto-selects a command provider merely because it is installed.
-On rolling `dev`, search
+In v3.2.0, search
 returns complete Markdown entries, matching all literal keywords, and `--topic git` filters by
 topic filename. Search reflects manual edits and topic moves; skipped records are excluded.
-Rolling `dev` adds model-free lifecycle controls: retention previews by default and
+v3.2.0 adds model-free lifecycle controls: retention previews by default and
 deletes only normalized source events when `--apply` is explicit; quarantine listing exposes only
 bounded opaque metadata; and destructive purge/delete operations require `--yes`. Repair,
 delete-topic, export, and import require paused capture. They reject links, traversal, overlapping
@@ -467,9 +460,9 @@ authoritative bounded Markdown snapshot. Export creates a new Markdown-only dire
 validates the complete source before adding only missing, non-conflicting files.
 Set `DEVTRACK_SAGE_RUNTIME_DIR` to relocate private queue/state/log storage and
 `DEVTRACK_SAGE_KNOWLEDGE_DIR` to relocate portable Markdown independently; relative values resolve
-from the stable Sage data root, not the shell's working directory. This remains a development
-preview: the executable parity ledger, repeated end-to-end qualification, six adapters, read-only
-MCP integration, and operational closure are integrated. See
+from the stable Sage data root, not the shell's working directory. The executable parity ledger,
+repeated end-to-end qualification, six adapters, read-only MCP integration, and operational closure
+ship together. See
 [the runtime-isolation qualification](docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md) and the
 [model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
 limits. Platform-specific harness destinations and additive hook migration are covered by the
@@ -634,12 +627,8 @@ The command prints the resolved targets before confirmation. There is no `--dry-
 
 ### Self-update (`devtrack upgrade`)
 
-> **Rolling `dev` feature, not a v3.1.1 command:** `--dev`, `--main`, `--stable`, and persisted
-> update-channel selection merged through [PR #265](https://github.com/sraj0501/Devtrack_/pull/265)
-> and are available in the rolling
-> [`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev). A v3.1.1 installation
-> must first install that development binary manually (or build `origin/dev`); afterward these flags
-> select and persist the desired channel. Plain `devtrack upgrade` remains the stable v3.1.1 path.
+> **Available in v3.2.0:** `--dev`, `--main`, `--stable`, and persisted update-channel selection.
+> Plain `devtrack upgrade` follows the currently selected channel and defaults to stable releases.
 
 ```bash
 devtrack upgrade          # update from the currently selected channel (main by default)
@@ -694,12 +683,12 @@ DevTrack exposes a Model Context Protocol (MCP) server so Claude Code automatica
 - **`devtrack mcp setup`** — writes `.mcp.json` in the current directory so Claude Code discovers the server automatically on next launch
 - **`devtrack mcp status`** — shows the registered tools and server info
 - **`devtrack mcp test`** — runs an in-process smoke test without starting a full server
-- Stable v3.1.1 has six SQLite-backed context tools: `get_active_context`, `get_today_commits`,
+- Stable v3.2.0 has ten SQLite/Markdown-backed context tools. The original six are `get_active_context`, `get_today_commits`,
   `get_pending_actions`, `get_voice_profile`, `get_ticket_context`, and `get_eod_summary`.
-- The TASK-169 development branch adds `sage_search`, `sage_topics`, `sage_get_entry`, and
+- Sage adds `sage_search`, `sage_topics`, `sage_get_entry`, and
   `sage_status`. These read current deterministic Markdown and bounded local diagnostics; they do
   not expose raw capture events, logs, prompts, output, reasoning, or adapter configuration paths.
-- All ten development-branch tools declare read-only, non-destructive, idempotent, and closed-world
+- All ten tools declare read-only, non-destructive, idempotent, and closed-world
   safety annotations.
 - The stdio handshake negotiates finalized MCP versions through `2025-11-25`, retaining older-client
   compatibility. The newer `2026-07-28` per-request protocol is not supported yet.
@@ -941,7 +930,7 @@ Key references in this repo:
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
 | Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [shared role playbooks](agent-memory/roles/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
-| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md) · [Operational closure qualification](docs/SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
+| Use or audit DevTrack Sage | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md) · [Operational closure qualification](docs/SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
 
 ---
 
@@ -990,8 +979,8 @@ sh ./scripts/e2e.sh               # native Linux
 
 These scripts build the current client in temporary storage, observe a real disposable commit, and
 verify its SQLite-backed MCP context. The [`End-to-end` workflow](.github/workflows/e2e.yml) runs the
-Windows and Linux scripts in GitHub Actions; both hosted lanes pass on `dev`. Packaged-build
-acceptance and privacy-reviewed media qualification remain separate release follow-ups.
+Windows and Linux scripts in GitHub Actions. Release candidates also run five native MCPB package
+smokes before promotion; privacy-reviewed media remains a separate publication follow-up.
 
 Python business logic must use `backend.config` typed accessors rather than adding direct environment
 reads. Missing required variables produce a `ConfigError` with the variable name rather than a

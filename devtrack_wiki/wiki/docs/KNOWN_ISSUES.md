@@ -2,9 +2,10 @@
 
 ## Release boundary
 
-The latest public release is v3.1.1. MCP, five native MCPB bundles, and the Phase 9
-onboarding/demo reliability work are included. Older installations must upgrade before following
-the MCP and Phase 9 guides.
+The v3.2.0 release candidate includes DevTrack Sage, ten read-only MCP tools, five native MCPB
+bundles, deterministic ticket mapping, silent time inference, rolling update channels, and the
+Phase 9 onboarding path. v3.1.1 remains public until candidate promotion, tagging, and publication
+complete.
 
 ## Local model latency
 
@@ -19,36 +20,13 @@ downloads happen in the background. They may be temporarily degraded after setup
 `devtrack doctor`, and `devtrack doctor --repair` expose progress and recovery; Go-native features
 remain usable.
 
-## Remaining release qualification
+## Deferred UI and publication work
 
-Clean Windows installation and the full Managed Linux journey were confirmed complete by the owner
-on 2026-09-10. The credential-free core lane also passed locally on native Windows, in a Linux Go
-container, and on GitHub-hosted Windows and Ubuntu runners, covering a real `DEMO-201` commit through
-the daemon, SQLite, and MCP. Those source and environment checks do not close the remaining gates:
-the separate TASK-154 server-admin redesign at `54ceb05` is not integrated into `dev` and must be
-reviewed, integrated, or retired before the packaged build is qualified. Public screenshots/video
-still need privacy review, and the exact Glama listing path must be recorded before its score badge
-is updated.
-
-The merged PR #263 and PR #264 check sets retain historical failed hosted-Windows unit-test jobs. PR
-#264's job timed out after 60 seconds in SQLite-backed `internal/db` and `internal/mcp` tests. PR
-#265 subsequently passed all 19 branch checks, including the full Windows test job, Windows/Ubuntu
-no-send E2E, all five native MCPB smokes, PostgreSQL, wiki, and memory validation. This restores a
-green branch baseline; TASK-158's native-Linux TTY/non-TTY qualification remains separate.
-
-DevTrack Sage development is the active product initiative. Its capture, model-free search, neutral
-Go LLM client, validated structured distiller, and non-blocking worker foundation are on `dev`.
-Durable SQLite claims and daemon wiring, deterministic Markdown, correction routing,
-retry/diagnostic state, safe local commits, and executable parity closure remain incomplete.
-
-TASK-158's completely silent native-Git path is also merged into `dev` but is not in v3.1.1.
-Until a newer public build ships, v3.1.1 users can still encounter its shell-wrapped post-commit
-prompt regression.
-
-Rolling `dev` update-channel support merged through PR #265 and is available in the published
-[`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev). The stable v3.1.1 binary
-does not contain `devtrack upgrade --dev`, `--main`, or `--stable`; install the development binary
-manually (or build current `dev`) before using those flags.
+The separate TASK-154 server-admin visual redesign at `54ceb05` is intentionally excluded from
+v3.2.0. Its old branch requires reconciliation against current routes, canonical project memory,
+and fresh accessibility/responsive acceptance before a later release. The existing integrated
+admin behavior remains available. Public screenshots/video still require privacy review, and the
+exact approved Glama listing path must be copied before updating its score badge.
 
 ## Communication-learning CLI adapter
 
@@ -67,7 +45,8 @@ parity.
 
 ## Registry distribution
 
-`io.github.sraj0501/devtrack` 3.1.1 is active/latest in the official MCP Registry. The DevTrack entry
+`io.github.sraj0501/devtrack` 3.1.1 remains active/latest in the official MCP Registry while the
+3.2.0 candidate is qualified. The DevTrack entry
 in `punkpeye/awesome-mcp-servers` is awaiting maintainer review in
 [PR #13608](https://github.com/punkpeye/awesome-mcp-servers/pull/13608), whose automated submission
 check passed. Glama's admins approved the submitted server on 2026-09-06, but its exact approved

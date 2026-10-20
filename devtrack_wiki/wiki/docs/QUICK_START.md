@@ -3,31 +3,31 @@
 Reach DevTrack's first local value in about two minutes, then let the optional AI service finish
 preparing in the background.
 
-> **Release note:** the latest public release is v3.1.1 and includes the MCP and Phase 9 onboarding
-> flow below. Use the matching release binary, or build the same version from source.
+> **Release candidate:** v3.2.0 includes DevTrack Sage, ten read-only MCP tools, and the Phase 9
+> onboarding flow below. v3.1.1 remains public until TASK-171 completes.
 
 ---
 
 ## 1. Install or build the current client
 
-Download the v3.1.1 asset for your platform from
-[GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.1). Python, PostgreSQL,
-and Ollama are not required for the first MCP-backed local context check. Contributors can instead
-build the tagged source with Go and Git:
+After publication, download the v3.2.0 asset for your platform from
+[GitHub Releases](https://github.com/sraj0501/Devtrack_/releases). Python, PostgreSQL, and Ollama
+are not required for the first MCP-backed local context check. During qualification, contributors
+can build this release branch with Go and Git:
 
 ```bash
-git clone --branch v3.1.1 --single-branch https://github.com/sraj0501/Devtrack_.git
+git clone --branch features/TASK-171-v3.2.0-release --single-branch https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_client
 go build -o devtrack .
 sudo install -m 0755 devtrack /usr/local/bin/devtrack
 
-devtrack mcp status   # should report six registered tools
+devtrack mcp status   # should report ten registered tools
 ```
 
 On Windows PowerShell, build `devtrack.exe` and place it in a directory on `PATH`:
 
 ```powershell
-git clone --branch v3.1.1 --single-branch https://github.com/sraj0501/Devtrack_.git
+git clone --branch v3.2.0 --single-branch https://github.com/sraj0501/Devtrack_.git
 Set-Location Devtrack_/devtrack_client
 go build -o devtrack.exe .
 devtrack.exe mcp status
@@ -74,8 +74,8 @@ Reload Claude Code after `mcp setup`, then ask:
 
 > What am I working on?
 
-The six local tools expose the active context, today's commits, pending actions, voice profile,
-ticket context, and an EOD summary. The self-test uses the configured SQLite database when available
+The ten local tools expose work context, today's commits, pending actions, voice profile, ticket
+context, an EOD summary, and published Sage knowledge/status. The self-test uses the configured SQLite database when available
 and a disposable database when setup has not run, so a fresh checkout can still complete protocol
 introspection. An empty result on that new database is expected. Daily counts use the user's local
 calendar date.

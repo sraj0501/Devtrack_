@@ -12,7 +12,7 @@ records. Use this map before treating a document as current implementation guida
 | Go↔Python HTTP contract | [`HTTP_API.md`](HTTP_API.md) |
 | Installation and modes | [`INSTALLATION.md`](INSTALLATION.md) |
 | Current execution priorities | [`NEXT_STEPS.md`](NEXT_STEPS.md) and [`../agent-memory/execution-plan.md`](../agent-memory/execution-plan.md) |
-| DevTrack Sage scope and remaining work | [`DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md`](DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) |
+| DevTrack Sage scope and completed implementation | [`DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md`](DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) |
 | Sage executable parity inventory | [`SAGE_PORT_PARITY_MATRIX.md`](SAGE_PORT_PARITY_MATRIX.md) |
 | Sage capture/logging and Codex-history qualification | [`SAGE_CAPTURE_HISTORY_QUALIFICATION.md`](SAGE_CAPTURE_HISTORY_QUALIFICATION.md) |
 | Sage optional IDE parity qualification | [`SAGE_IDE_PARITY_QUALIFICATION.md`](SAGE_IDE_PARITY_QUALIFICATION.md) |
@@ -21,9 +21,9 @@ records. Use this map before treating a document as current implementation guida
 | Release-facing MCP listing copy | [`REGISTRY_SUBMISSION_PACKAGE.md`](REGISTRY_SUBMISSION_PACKAGE.md) |
 | Public user documentation | [`../devtrack_wiki/wiki/wiki.html`](../devtrack_wiki/wiki/wiki.html) and [`../devtrack_wiki/wiki/docs/`](../devtrack_wiki/wiki/docs/) |
 
-The latest public release is **v3.1.1**. Newer `dev` work—most notably the DevTrack Sage capture,
-model-free search, and initial structured-distillation boundary plus the TASK-158 silent-Git
-correction—is unreleased and must be labelled as such.
+The v3.2.0 release documentation covers the completed DevTrack Sage roadmap, deterministic ticket
+mapping, silent time inference, rolling update channels, and the TASK-158 silent-Git correction.
+Use [`releases/v3.2.0.md`](releases/v3.2.0.md) for the curated release boundary.
 
 ## Historical records
 
