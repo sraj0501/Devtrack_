@@ -11,13 +11,15 @@ import (
 	"time"
 )
 
+const createNoWindowFlag = 0x08000000
+
 // setSetsid is a Windows stub. On Unix, Setsid creates a new session to detach
 // the daemon from the parent terminal. On Windows the equivalent is
 // CREATE_NEW_PROCESS_GROUP, which prevents the child from receiving Ctrl+C
 // events sent to the parent console.
 func setSetsid(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP | createNoWindowFlag,
 	}
 }
 

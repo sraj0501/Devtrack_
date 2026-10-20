@@ -6,7 +6,7 @@ case "$timeout_secs" in
     ''|*[!0-9]*|0) printf '%s\n' 'DEVTRACK_E2E_TIMEOUT_SECS must be a positive integer.' >&2; exit 2 ;;
 esac
 
-for command_name in go git grep mktemp; do
+for command_name in git grep mktemp; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
         printf 'Missing required command: %s\n' "$command_name" >&2
         exit 1
@@ -35,8 +35,14 @@ trap cleanup EXIT HUP INT TERM
 mkdir -p "$state_root/db" "$state_root/logs" "$state_root/pids" \
     "$state_root/configs" "$state_root/learning" "$workspace" "$(dirname "$binary")"
 
-printf '%s\n' 'Building the Linux DevTrack binary...'
-(cd "$repo_root/devtrack_client" && go build -o "$binary" .)
+if [ -n "${DEVTRACK_E2E_BINARY:-}" ]; then
+    # Allows a Windows-cross-compiled Linux binary to be qualified under WSL.
+    cp -- "$DEVTRACK_E2E_BINARY" "$binary"
+    chmod +x "$binary"
+else
+    printf '%s\n' 'Building the Linux DevTrack binary...'
+    (cd "$repo_root/devtrack_client" && go build -o "$binary" .)
+fi
 
 GIT_NO_DEVTRACK=1 git -C "$workspace" init -q
 GIT_NO_DEVTRACK=1 git -C "$workspace" config user.name 'DevTrack E2E'
@@ -112,10 +118,10 @@ while [ ! -f "$state_root/pids/daemon.pid" ]; do
     sleep 1
 done
 
-GIT_NO_DEVTRACK=1 git -C "$workspace" switch -q -c feature/DEMO-201-automated-e2e
+GIT_NO_DEVTRACK=1 git -C "$workspace" switch -q -c feature/E2E-201-automated-e2e
 printf '%s\n' 'observed by the real daemon' >> "$workspace/README.md"
 GIT_NO_DEVTRACK=1 git -C "$workspace" add README.md
-GIT_NO_DEVTRACK=1 git -C "$workspace" commit -q -m 'DEMO-201: verify automated end-to-end flow'
+GIT_NO_DEVTRACK=1 git -C "$workspace" commit -q -m 'E2E-201: verify automated end-to-end flow'
 commit_hash=$(GIT_NO_DEVTRACK=1 git -C "$workspace" rev-parse --short=12 HEAD)
 
 while ! grep -F "$commit_hash" "$state_root/logs/daemon.log" >/dev/null 2>&1; do
@@ -129,8 +135,48 @@ done
 mcp_output=$(DEVTRACK_ENV_FILE="$env_file" XDG_DATA_HOME="$state_root/xdg" "$binary" mcp test 2>&1)
 printf '%s\n' "$mcp_output"
 printf '%s\n' "$mcp_output" | grep -F '=== PASS ===' >/dev/null
-printf '%s\n' "$mcp_output" | grep -F 'DEMO-201' >/dev/null
+printf '%s\n' "$mcp_output" | grep -F 'E2E-201' >/dev/null
 printf '%s\n' "$mcp_output" | grep -E 'today_commits[^0-9]*[1-9]' >/dev/null
 
-DEVTRACK_ENV_FILE="$env_file" XDG_DATA_HOME="$state_root/xdg" "$binary" queue list
+run_cli() {
+    DEVTRACK_ENV_FILE="$env_file" GIT_NO_DEVTRACK=1 XDG_DATA_HOME="$state_root/xdg" "$binary" "$@"
+}
+
+# Trigger logging precedes the time transaction, so wait for persisted evidence.
+deadline=$(( $(date +%s) + timeout_secs ))
+while :; do
+    work_status=$(run_cli work status)
+    if printf '%s\n' "$work_status" | grep -E '\[inferred, confidence 0\.50\].*E2E-201' >/dev/null; then
+        break
+    fi
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+        printf 'Commit did not produce an inferred work session:\n%s\n' "$work_status" >&2
+        exit 1
+    fi
+    sleep 1
+done
+run_cli work adjust 45
+corrected_status=$(run_cli work status)
+printf '%s\n' "$corrected_status" | grep -E '45m.*\[adjusted\].*E2E-201' >/dev/null
+run_cli stop
+run_cli start
+restarted_status=$(run_cli work status)
+if [ "$restarted_status" != "$corrected_status" ]; then
+    printf 'Work sessions changed across daemon restart:\n%s\n' "$restarted_status" >&2
+    exit 1
+fi
+(
+    cd "$workspace"
+    run_cli work start E2E-202
+    active_status=$(run_cli work status)
+    printf '%s\n' "$active_status" | grep -F 'Active session' >/dev/null
+    printf '%s\n' "$active_status" | grep -F 'Ticket: E2E-202' >/dev/null
+    run_cli work stop
+    stopped_status=$(run_cli work status)
+    printf '%s\n' "$stopped_status" | grep -F 'No active session' >/dev/null
+    printf '%s\n' "$stopped_status" | grep -E '\[explicit,.*E2E-202' >/dev/null
+    printf '%s\n' "$stopped_status" | grep -E '45m.*\[adjusted\].*E2E-201' >/dev/null
+)
+run_cli queue list
+printf '%s\n' 'PASS: automatic time, CLI correction, restart persistence, and explicit start/stop.'
 printf 'PASS: Linux no-send E2E observed %s and exposed it through MCP.\n' "$commit_hash"

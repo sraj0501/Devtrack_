@@ -37,6 +37,29 @@ func TestServerBootstrapFreshManagedCheckoutRunsSparseClone(t *testing.T) {
 	}
 }
 
+func TestServerBootstrapDevChannelChecksOutDev(t *testing.T) {
+	home := t.TempDir()
+	persistUpdateChannel(home, updateChannelDev)
+	projectRoot := filepath.Join(home, "server", "devtrack_server")
+	var calls []string
+	runner := func(dir, name string, args ...string) error {
+		calls = append(calls, name+" "+strings.Join(args, " "))
+		return nil
+	}
+	if err := runServerBootstrap(home, projectRoot, "openai", "", runner); err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(calls, "\n")
+	for _, want := range []string{
+		"git -C " + filepath.Join(home, "server") + " fetch --depth 1 origin dev",
+		"git -C " + filepath.Join(home, "server") + " checkout -B dev FETCH_HEAD",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("dev bootstrap commands missing %q:\n%s", want, joined)
+		}
+	}
+}
+
 func TestServerBootstrapRejectsDuplicateWorker(t *testing.T) {
 	home := t.TempDir()
 	_, lockPath, _ := bootstrapPaths(home)

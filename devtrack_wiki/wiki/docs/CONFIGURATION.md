@@ -27,8 +27,7 @@ Do not copy old configuration blocks from the wiki. The maintained exhaustive sa
 |---|---|
 | `LLM_PROVIDER` | Server primary provider: `ollama`, `openai`, `anthropic`, `groq`, or `lmstudio` |
 | `OLLAMA_HOST` | Ollama base URL; default `http://localhost:11434` |
-| `OLLAMA_MODEL` | Server generation model |
-| `GIT_SAGE_PROVIDER` / `GIT_SAGE_DEFAULT_MODEL` | Go-native git-sage provider and model |
+| `OLLAMA_MODEL` | Local generation model used by server tasks and Go-native commit enhancement |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` | Optional cloud credentials |
 | `LMSTUDIO_HOST` | Local OpenAI-compatible endpoint |
 
@@ -42,8 +41,17 @@ Setup writes `IPC_CONNECT_TIMEOUT_SECS`, `IPC_RETRY_DELAY_MS`, `HTTP_TIMEOUT_SHO
 `SENTIMENT_ANALYSIS_WINDOW_MINUTES`. The Go SQLite concurrency timeout is
 `SQLITE_BUSY_TIMEOUT_MS`.
 
+Current `dev` additionally defines bounded settings for the Sage distillation-worker foundation:
+`DEVTRACK_SAGE_MODEL_TIMEOUT_SECS` (default 180, range 5–1800),
+`DEVTRACK_SAGE_IDLE_POLL_MS` (default 500, range 50–5000), and
+`DEVTRACK_SAGE_RETRY_DELAY_SECS` (default 2, range 1–60). The worker is not yet wired to durable
+SQLite claims or daemon lifecycle, and these variables are not part of v3.1.1.
+
 ## Secrets and workspace metadata
 
 Keep tokens in the environment file. Keep non-secret routing metadata—workspace path, platform,
-organization, project, API URL, user name, ticket pattern, and `skip_issues`—in `workspaces.yaml`.
+organization, project, API URL, user name, `ticket_key`, optional anchored `ticket_pattern`, and
+`skip_issues`—in `workspaces.yaml`. The default convention is
+`<kind>/<ticket-key>-<number>-<slug>`; an advanced pattern must match the full branch and contain
+exactly one named `ticket` capture.
 Never commit real credentials.

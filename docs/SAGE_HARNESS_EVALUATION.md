@@ -1,5 +1,8 @@
 # SAGE-001 harness evaluation
 
+> Historical evaluation record. TASK-164 subsequently qualifies Claude Code as the second built-in
+> adapter; see `docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md` for the current contract and evidence.
+
 Checked against published documentation on 2026-09-14. This is a **provisional** contract
 comparison, not an installed adapter or a live payload validation. Synthetic v1 fixtures do not
 count as observed harness fixtures.

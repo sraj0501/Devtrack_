@@ -110,3 +110,107 @@ func TestHookConfigAcceptsUTF8BOM(t *testing.T) {
 		t.Fatalf("install: %+v, %v", result, err)
 	}
 }
+
+func TestReferenceWindowsPathsDoNotDuplicateHooksOnReinstall(t *testing.T) {
+	root, home := t.TempDir(), t.TempDir()
+	installer := Installer{
+		Root: root, CodexHome: home, Executable: `D:\repo with spaces\devtrack.exe`, GOOS: "linux",
+	}
+	first, err := installer.Install()
+	if err != nil || !first.Changed || first.Outcome != "created" {
+		t.Fatalf("first install: %+v err=%v", first, err)
+	}
+	second, err := installer.Install()
+	if err != nil || second.Changed || second.Outcome != "unchanged" {
+		t.Fatalf("second install: %+v err=%v", second, err)
+	}
+	raw, err := os.ReadFile(filepath.Join(home, "hooks.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(raw), OwnerMarker) != 1 {
+		t.Fatalf("owned hook count != 1: %s", raw)
+	}
+}
+
+func TestReferenceMergePreservesForeignSettingsAndIsIdempotent(t *testing.T) {
+	root, home := t.TempDir(), t.TempDir()
+	path := filepath.Join(home, "hooks.json")
+	original := `{"theme":"dark","hooks":{"PostToolUse":[{"hooks":[{"command":"foreign-tool"}]}]}}`
+	if err := os.WriteFile(path, []byte(original), 0600); err != nil {
+		t.Fatal(err)
+	}
+	installer := Installer{Root: root, CodexHome: home, Executable: "devtrack", GOOS: "linux"}
+	if result, err := installer.Install(); err != nil || !result.Changed || result.Outcome != "updated" {
+		t.Fatalf("install: %+v err=%v", result, err)
+	}
+	first, _ := os.ReadFile(path)
+	if !strings.Contains(string(first), `"theme": "dark"`) || !strings.Contains(string(first), "foreign-tool") {
+		t.Fatalf("foreign settings lost: %s", first)
+	}
+	if result, err := installer.Install(); err != nil || result.Changed || result.Outcome != "unchanged" {
+		t.Fatalf("repeat install: %+v err=%v", result, err)
+	}
+	second, _ := os.ReadFile(path)
+	if string(first) != string(second) {
+		t.Fatal("idempotent install rewrote the settings file")
+	}
+}
+
+func TestReferenceRemoveIsPureSubtraction(t *testing.T) {
+	root, home := t.TempDir(), t.TempDir()
+	path := filepath.Join(home, "hooks.json")
+	document := map[string]any{
+		"theme": "dark",
+		"hooks": map[string]any{"PostToolUse": []any{
+			map[string]any{"hooks": []any{map[string]any{"command": "devtrack sage hook codex " + OwnerMarker}}},
+		}},
+	}
+	raw, _ := json.Marshal(document)
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := (Installer{Root: root, CodexHome: home, GOOS: "linux"}).Uninstall()
+	if err != nil || !result.Changed || result.Outcome != "updated" {
+		t.Fatalf("uninstall: %+v err=%v", result, err)
+	}
+	cleaned, _ := os.ReadFile(path)
+	var got map[string]any
+	if err := json.Unmarshal(cleaned, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got["theme"] != "dark" {
+		t.Fatalf("remove changed foreign settings: %#v", got)
+	}
+}
+
+func TestReferenceLegacyMarkerPurgesOldLayout(t *testing.T) {
+	root, home := t.TempDir(), t.TempDir()
+	path := filepath.Join(home, "hooks.json")
+	legacyCommand := `C:\old\ai_sessions_skills\tool\bin\hook-capture.cmd codex`
+	legacy := map[string]any{"hooks": map[string]any{"PostToolUse": []any{
+		map[string]any{"hooks": []any{map[string]any{"command": legacyCommand}}},
+	}}}
+	raw, _ := json.Marshal(legacy)
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := (Installer{Root: root, CodexHome: home, Executable: "devtrack", GOOS: "linux"}).Install()
+	if err != nil || !result.Changed {
+		t.Fatalf("install: %+v err=%v", result, err)
+	}
+	merged, _ := os.ReadFile(path)
+	if strings.Contains(string(merged), "ai_sessions_skills") || strings.Count(string(merged), OwnerMarker) != 1 {
+		t.Fatalf("legacy hook was not replaced exactly once: %s", merged)
+	}
+}
+
+func TestReferenceMissingFileReportsMissingOnRemove(t *testing.T) {
+	result, err := (Installer{Root: t.TempDir(), CodexHome: t.TempDir(), GOOS: "linux"}).Uninstall()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Changed || result.Outcome != "missing" {
+		t.Fatalf("uninstall missing config: %+v", result)
+	}
+}

@@ -6,8 +6,9 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-09-03 (client-server decoupling complete; PostgreSQL is mandatory server-side;
-Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through TASK-148)._
+_Last updated: 2026-09-26 (client-server decoupling complete; PostgreSQL is mandatory server-side;
+TASK-158 and the first Sage structured-distillation boundary are merged on unreleased `dev`; legacy
+communication-learning adapter gaps are explicit)._
 
 ## Ownership model (intended)
 
@@ -49,9 +50,9 @@ Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through T
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| AI-enhanced commit (A/E/R/Q/C) | `git commit` | Go-native (gitsage → LLM) | Client | git-sage is client-owned; calls Ollama/OpenAI **directly** from the client. ⚠ If you want LLM calls routed via the server, change Owner→Server. |
-| Stage / history / passthrough | `git add`, `git history`, `git <any>` | Go-native | Client | |
-| git-sage agent | `sage ask/do/pr/interactive` | Go-native (`gitsage/`) | Client | No Python dependency; local Ollama or an explicitly configured compatible provider. |
+| AI-enhanced commit (A/E/R/Q/C) | `devtrack git commit` | Go-native (`internal/gitcmd` → LLM) | Client | Explicit helper only; normal `git commit` is never intercepted. Calls the configured Ollama/OpenAI-compatible provider directly from the client. |
+| Stage / history / passthrough | `devtrack git add`, optional `git history`/`git messages` aliases | Go-native | Client | Shell integration leaves native `git add` and `git commit` unchanged. |
+| DevTrack Sage | `sage status/pause/resume/search/topics/doctor/harness` | Go-native (`internal/sage/`) | Client | Local command capture and searchable knowledge; legacy repository chat/autonomous Git commands are removed. |
 | Deferred (offline) commits | `commits pending/review/enhance`, `commit-queue` | Go-native | Client | Durable snapshot + 3-way apply |
 
 ## 3. Ticket management (PM connectors) — Owner: **Client**
@@ -61,9 +62,9 @@ Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through T
 | GitHub issues: check/list/sync/view | `github-check/list/sync/view` | Go-native | Client | `connectors/github` |
 | GitLab issues: check/list/sync/view | `gitlab-check/list/sync/view` | Go-native | Client | `connectors/gitlab` |
 | Azure work items: check/list/sync/view | `azure-check/list/sync/view` | Go-native | Client | `connectors/azure` |
-| Ticket comment / create | (in commit flow) | Go-native | Client | `connectors/*/comment.go`, `create.go` |
-| Offline ticket cache | (in commit flow) | Go-native (SQLite) | Client | `ticket_cache` table |
-| Smart matching + likelihood | (in commit flow) | Go-native (fuzzy + optional Ollama embeddings) | Client | `internal/match` |
+| Ticket comment / create | (background trigger / explicit command) | Go-native | Client | `connectors/*/comment.go`, `create.go`; outbound work stages through `pending_actions`. |
+| Offline ticket cache | (background trigger / explicit command) | Go-native (SQLite) | Client | `ticket_cache` table |
+| Smart matching + likelihood | (background trigger) | Go-native (fuzzy + optional Ollama embeddings) | Client | `internal/match`; TASK-160 stores suggestions separately and keeps them non-authoritative. |
 | Jira | — | **None in client** | Server | ⚠ No Go Jira connector; Jira handled only server-side today |
 | GitHub ticket sync (legacy) | (internal) | Go-native | Client | ✅ Removed Python `github_ticket_sync.py` call (Phase 1b — d5f8f36); routes to Go-native `github-sync` |
 
@@ -92,10 +93,11 @@ Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through T
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Enable / sync learning | `enable-learning`, `learning-sync`, `learning-status` | HTTP → server | Server | `/learning/enable`, `/learning/sync`, `/learning/status` |
-| Cron management | `learning-setup-cron`, `learning-remove-cron`, `learning-cron-status` | HTTP → server | Server | `/learning/cron/*` |
-| Reset | `learning-reset` | HTTP → server | Server | `/learning/reset` |
-| Profile / test response / revoke | `show-profile`, `test-response`, `revoke-consent` | HTTP → server | Server | `/learning/profile`, `/learning/test-response`, `/learning/revoke` |
+| Learning status | `learning-status` | HTTP → server | Server | ⚠ `/learning/status` calls absent `LearningIntegration.get_status`; unavailable until repaired. |
+| Enable / sync learning | `enable-learning`, `learning-sync` | HTTP → server | Server | ⚠ `/learning/enable` and `/learning/sync` call adapter methods absent from `LearningIntegration`; unavailable until repaired. |
+| Cron management | `learning-setup-cron`, `learning-remove-cron`, `learning-cron-status` | HTTP → server | Server | ⚠ `/learning/cron/*` calls adapter methods absent from `LearningIntegration`. |
+| Reset | `learning-reset` | HTTP → server | Server | ⚠ `/learning/reset` calls an adapter method absent from `LearningIntegration`. |
+| Profile / test response / revoke | `show-profile`, `test-response`, `revoke-consent` | HTTP → server | Server | ⚠ Profile calls the existing method before initialization; test/revoke use absent method names. Treat the group as unsupported pending adapter repair. |
 
 ## 7. Reporting — Owner: **Server** (AI-enhanced generation)
 
@@ -139,19 +141,21 @@ Phase 9 and post-Phase-9 readiness work integrated on `main` and `dev` through T
 ## Summary of current mismatches (⚠ = decoupling work)
 
 Phase 1 (remove + convert-to-HTTP) and Phase 2 (port alerts/notify delivery to Go) are both
-**complete**. No known mismatches remain.
+**complete**. Ownership boundaries match, but the communication-learning HTTP adapter has a known
+functional gap: most handlers call methods that `LearningIntegration` does not implement.
 
 | Capability | Intended owner | Status |
 |---|---|---|
 | `server-tui`, `admin-start` | Server | ✅ Removed from client (Phase 1a — d5f8f36) |
 | GitHub ticket sync (`github_ticket_sync.py`) | Client | ✅ Python call removed (Phase 1b — d5f8f36) |
 | Reports (preview/send/save/summary/EOD) | Server | ✅ HTTP → server (Phase 1c) |
-| Learning suite (all `learning-*`, profile, test-response, revoke) | Server | ✅ HTTP → server (Phase 1c) |
+| Legacy learning suite (all `learning-*`, profile, test-response, revoke) | Server | ⚠ HTTP boundary exists, but every path is unavailable pending adapter repair; use the maintained `devtrack voice` routes for Git/manual/PM voice evidence |
 | Cloud/auth/license (`login/logout/whoami/license/terms`) | Server | ✅ HTTP → server (Phase 1c) |
 | Ticket alerts (`alerts`, poller) | Client | ✅ Ported to Go (Phase 2 — `internal/alerts/`) |
 | Telegram / Slack delivery | Client | ✅ Ported to Go (Phase 2 — `internal/telegram/`, `internal/notify/`) |
 
-Everything matches its intended owner.
+Everything matches its intended owner; ownership alignment must not be read as end-to-end feature
+availability for the learning suite.
 
 ## How to change ownership
 

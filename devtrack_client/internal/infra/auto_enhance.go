@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/gitcmd"
 )
 
 // autoEnhanceEnabled reports whether background commit-message enhancement is
@@ -52,7 +52,7 @@ func tryAutoEnhance(repoPath string, commit CommitInfo) (newHash, newMsg string,
 	if !autoEnhanceEnabled() {
 		return "", "", false
 	}
-	if !gitsage.LLMReachable() {
+	if !gitcmd.LLMReachable() {
 		return "", "", false
 	}
 	if isCommitPushed(repoPath, commit.Hash) {
@@ -71,7 +71,7 @@ func tryAutoEnhance(repoPath string, commit CommitInfo) (newHash, newMsg string,
 		return "", "", false
 	}
 
-	enhanced, err := gitsage.EnhanceForDiff(commit.Message, string(diffOut), commit.Branch)
+	enhanced, err := gitcmd.EnhanceForDiff(commit.Message, string(diffOut), commit.Branch)
 	if err != nil {
 		log.Printf("[auto-enhance] LLM error for %s: %v", commit.Hash[:8], err)
 		return "", "", false

@@ -6,6 +6,9 @@ _Generated: 2026-05-24 | TASK-041 | Branch: features/SPLIT-001-monorepo-restruct
 > describe the pre-split repository as it existed during TASK-041. They are not current setup or
 > architecture instructions. Current code lives in `devtrack_client/`, `devtrack_server/`, and
 > `devtrack_wiki/`; GitHub is the sole source of truth and the DevTrack Community License applies.
+> References to `git-sage`, `gitsage/`, and `backend/git_sage/` describe removed prototypes. Current
+> Git helpers live in `devtrack_client/internal/gitcmd/`; current DevTrack Sage command knowledge
+> lives in `devtrack_client/internal/sage/`. See `ARCHITECTURE.md` for current ownership.
 
 This document catalogues every file and directory in the monorepo root and assigns each
 to one of five owners:
@@ -39,7 +42,7 @@ Excluded from this audit per spec: `.git/`, `devtrack_wiki/`, `Data/`, `.claude/
 | `pyproject.toml` | SERVER | Python project manifest; client uses `go.mod` only |
 | `uv.lock` | SERVER | uv lockfile for Python deps; server only |
 | `python_bridge.py` | DELETE | Legacy bridge at repo root; superseded by `backend/webhook_server.py` |
-| `docker-compose.yml` | SERVER | Server backing services: PostgreSQL is required for persistence and server-side events; MongoDB remains optional as a Teams voice-learning source. |
+| `docker-compose.yml` | SERVER | Server backing services: PostgreSQL is required for persistence and server-side events; MongoDB is referenced only by the incomplete optional Teams learning adapter. |
 | `Dockerfile` | SERVER | Builds Python backend image |
 | `Dockerfile.server` | SERVER | Alternate/named server Dockerfile |
 | `devtrack-server` | SERVER | Repository checkout helper script for Python server management; not a release binary |

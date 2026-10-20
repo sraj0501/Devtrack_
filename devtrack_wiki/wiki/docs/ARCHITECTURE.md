@@ -19,7 +19,8 @@ connectors, alerts, TUI  ------------> webhook_server.py
   summaries to the Python server; this keeps PostgreSQL-backed reports complete without enabling
   continuous client-event synchronization.
 - New client/server messages use authenticated HTTP/JSON, not legacy TCP IPC.
-- Go owns PM connectors, alerts, Telegram, MCP, and `gitsage/`.
+- Go owns PM connectors, alerts, Telegram, MCP, explicit Git helpers in `internal/gitcmd/`, and
+  DevTrack Sage capture/search in `internal/sage/`.
 - Python owns LLM enrichment, report generation, personalization, boardroom, and the admin UI.
 - Every non-administrative server capability must remain reachable through `devtrack`.
 

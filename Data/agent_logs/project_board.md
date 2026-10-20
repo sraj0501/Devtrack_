@@ -1,5 +1,674 @@
 ﻿# DevTrack Project Board
 
+_Last reconciled: 2026-10-18 — the approved Sage implementation roadmap landed in `dev` at
+`77e2f5b`.
+PR #291 merged read-only MCP retrieval at `34aafb8`; PR #292 merged operational retention,
+quarantine, repair/deletion, and Markdown portability at `77e2f5b`, after all 19 hosted checks
+passed. The authoritative clean reference checkout is
+`C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The ledger is complete
+at 119 implemented, 17 adapted, 0 partial, and 0 pending. Next unused task ID: TASK-171, subject to
+verification before allocation. Post-merge documentation reconciliation followed in PR #293._
+
+**[2026-10-17] TASK-170 / SAGE-005 — Operational retention, repair, and portability (complete).**
+**Priority:** High. **Branch:** `features/TASK-170-sage-operational-closure`.
+**Assigned to:** engineer. **Depends on:** merged TASK-169 PR #291.
+
+Close the approved Sage roadmap with explicit local data-lifecycle controls, privacy-safe
+quarantine inspection, deterministic repair, and portable Markdown export/import. Keep every
+operation local, bounded, model-free, cross-platform, and safe around user-authored knowledge.
+
+**Acceptance criteria:**
+- [x] `sage retention --days N` is a dry-run by default and requires `--apply` before deleting old
+      normalized source events; summarized/documented knowledge remains intact.
+- [x] `sage quarantine list` exposes bounded opaque metadata and fixed safe reasons only; purge of
+      one opaque ID or all quarantined files requires explicit `--yes` and never follows links.
+- [x] `sage delete-topic <topic> --yes` deletes only the exact portable topic, removes stale route
+      targets, repairs the topic index, and reconciles SQLite retrieval without resurrection.
+- [x] `sage repair` recovers interrupted merge state, validates all bounded Markdown, repairs the
+      generated topic index, and deterministically rebuilds the SQLite retrieval cache without a
+      model or network call.
+- [x] `sage export <directory>` creates a new deterministic Markdown-only snapshot; `sage import
+      <directory>` validates the whole source first, adds only non-conflicting files, treats exact
+      repeats as no-ops, and repairs the destination index.
+- [x] Mutating filesystem operations require paused capture, reject traversal/symlinks and
+      overlapping roots, preserve foreign/user content, and use bounded reads plus atomic writes.
+- [x] Invalid flags, ranges, paths, conflicts, missing records, and cancelled contexts fail safely;
+      dry runs and retries are deterministic and idempotent.
+- [x] Full Go tests/vet, focused race and fault coverage, Linux and native Windows tests pass.
+- [x] Two docu-agent reconciliation passes complete with board, memory, README, wiki, and
+      whitespace validation.
+- [x] A dedicated stacked PR to `dev` is open and all required final-head checks pass.
+
+**Engineer status:** implementation and local qualification complete from fully green TASK-169 head
+`bf963dd`. Full Linux Go tests/vet, focused race/fault coverage, focused native Windows tests, and
+two docu-agent reconciliation passes pass. Implementation commit: `081ace5`
+(`feat(sage): add operational lifecycle controls`). All 19 hosted checks passed on PR #292,
+including both Windows jobs and all five native MCPB smokes; the PR merged to `dev` at `77e2f5b`.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/292
+**Post-merge docs PR:** https://github.com/sraj0501/Devtrack_/pull/293
+**COMPLETE** — ready for PM review — 2026-10-18
+**Blockers:** none.
+
+**[2026-10-16] TASK-169 / SAGE-005 — Read-only Sage MCP retrieval and diagnostics (complete).**
+**Priority:** High. **Branch:** `features/TASK-169-sage-mcp-readonly`.
+**Assigned to:** engineer. **Depends on:** merged TASK-168 PR #290.
+
+Extend the existing local stdio MCP server with read-only Sage knowledge search, topic listing,
+exact entry retrieval, status, and installed-adapter diagnostics. Reuse the deterministic Markdown
+snapshot and SQLite state; never expose raw capture events or add a remote transport.
+
+**Acceptance criteria:**
+- [x] `tools/list` advertises `sage_search`, `sage_topics`, `sage_get_entry`, and `sage_status`
+      with read-only, non-destructive, idempotent, closed-world annotations.
+- [x] Search supports a bounded literal query, optional topic, and bounded limit, returning complete
+      deterministic knowledge entries without model or network access.
+- [x] Topics and exact topic/line entry retrieval reconcile current Markdown moves, edits, and
+      deletions through the existing snapshot path.
+- [x] Status reports capture/pipeline state and all independently managed adapter installation
+      modes without mutating configuration or exposing raw events, logs, prompts, or reasoning.
+- [x] Invalid types, missing required arguments, oversized values, missing entries, and cancelled
+      contexts fail safely with bounded errors.
+- [x] Existing six MCP tools, packaging metadata, stdio behavior, and native platform smoke tests
+      remain compatible.
+- [x] Full Go tests/vet, focused race coverage, Linux and native Windows tests pass locally.
+- [x] Two docu-agent reconciliation passes complete with memory, wiki, README, and whitespace
+      validation.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** complete. All 19 hosted checks passed on PR #291 final head `bf963dd`; the PR
+merged to `dev` at `34aafb8` on 2026-10-17.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/291
+**Blockers:** none.
+
+**[2026-10-16] TASK-168 / SAGE-004 — Devin CLI capture adapter (complete).**
+**Priority:** High. **Branch:** `features/TASK-168-sage-devin-adapter`.
+**Assigned to:** engineer. **Depends on:** green TASK-167 PR #289.
+
+Add one independently managed built-in Devin CLI adapter using the platform configuration root and
+the existing native DevTrack hook endpoint. Preserve foreign settings and hook entries, capture
+matched `PostToolUse` events, and do not add session lifecycle processes or Python.
+
+**Acceptance criteria:**
+- [x] `devtrack sage harness list|install|uninstall devin` reports truthful independent state and
+      never mutates Codex, Claude, Copilot, Cursor, or OpenCode configuration.
+- [x] Windows resolves `%APPDATA%\devin\config.json`; Unix resolves
+      `$XDG_CONFIG_HOME/devin/config.json` with the documented home fallback.
+- [x] Installation merges one owned `PostToolUse` entry matched to
+      `^(exec|grep|glob|edit|write|apply_patch)$`, invokes the packaged executable, and adds no
+      session lifecycle hooks.
+- [x] Install/reinstall/uninstall is atomic, byte-stable, preserves file mode and foreign content,
+      replaces known legacy entries, and makes missing uninstall a no-op.
+- [x] The hidden endpoint accepts bounded Devin shell/search/glob/edit/write/apply-patch payloads
+      silently and emits only validated privacy-minimized events with deterministic duplicate
+      identity.
+- [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
+- [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
+      validation.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** complete and integrated. All 19 hosted checks passed on final head `077369c`;
+PR #290 merged to `dev` at `1b87ee6`.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/290
+**Blockers:** none.
+
+**[2026-10-15] TASK-167 / SAGE-004 — Cursor capture adapter (complete).**
+**Priority:** High. **Branch:** `features/TASK-167-sage-cursor-adapter`.
+**Assigned to:** engineer. **Depends on:** green TASK-166 PR #288.
+
+Add one independently managed built-in Cursor adapter using its version-1 user hook file and the
+existing native DevTrack hook endpoint. Preserve foreign settings and hook entries, capture
+`afterShellExecution` plus matched `postToolUse` events, and do not add session lifecycle processes
+or Python.
+
+**Acceptance criteria:**
+- [x] `devtrack sage harness list|install|uninstall cursor` reports truthful independent state and
+      never mutates Codex, Claude, Copilot, or OpenCode configuration.
+- [x] Installation merges owned `afterShellExecution` and `postToolUse` entries into the portable
+      Cursor hook path, invokes the packaged executable, and adds no session lifecycle hooks.
+- [x] Install/reinstall/uninstall is atomic, byte-stable, preserves file mode and foreign content,
+      replaces known legacy entries, and makes missing uninstall a no-op.
+- [x] The hidden endpoint accepts bounded Cursor shell/write payloads silently and emits only
+      validated privacy-minimized events with deterministic duplicate identity.
+- [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
+- [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
+      validation.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** implementation, cross-platform local verification, and two documentation
+passes complete against current reference HEAD `ea2e067`. PR #289 targets `dev`, is mergeable,
+and all 19 hosted checks pass on final head `a4142e6`.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/289
+**Blockers:** none.
+
+**[2026-10-15] TASK-166 / SAGE-004 — OpenCode plugin capture adapter (complete).**
+**Priority:** High. **Branch:** `features/TASK-166-sage-opencode-adapter`.
+**Assigned to:** engineer. **Depends on:** green TASK-165 PR #287.
+
+Add one independently managed built-in OpenCode adapter using its user plugin directory and the
+existing native DevTrack hook endpoint. Preserve an unowned file at the dedicated plugin path,
+keep both before/after capture fail-open, and do not add session lifecycle processes or Python.
+
+**Acceptance criteria:**
+- [x] `devtrack sage harness list|install|uninstall opencode` reports truthful independent state
+      and never mutates Codex, Claude, or Copilot configuration.
+- [x] Installation writes one owned cross-platform plugin at the reference-resolved path, invokes
+      the packaged executable without a shell, and wires `tool.execute.before` plus
+      `tool.execute.after` without `session.idle` lifecycle work.
+- [x] Install/reinstall/uninstall is atomic, byte-stable, and pure subtraction; unknown content at
+      the dedicated path is preserved and known legacy content can be replaced safely.
+- [x] The hidden endpoint accepts bounded OpenCode payloads silently and emits only validated,
+      privacy-minimized shell/search/edit events; unsupported/session events are ignored and
+      identical before/after successes deduplicate deterministically.
+- [x] Exact Linux and native Windows tests, generated-plugin syntax, full Go tests/vet, privacy and
+      race checks pass locally.
+- [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
+      validation.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** implementation, cross-platform local verification, and two documentation
+passes complete against current reference HEAD `ea2e067`. PR #288 targets `dev`, is mergeable,
+and all 19 hosted checks pass on final head `adca3e7`.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/288
+**Blockers:** none.
+
+**[2026-10-15] TASK-165 / SAGE-004 — GitHub Copilot CLI capture adapter (complete).**
+**Priority:** High. **Branch:** `features/TASK-165-sage-copilot-adapter`.
+**Assigned to:** engineer. **Depends on:** green TASK-164 PR #286.
+
+Add one independently managed built-in GitHub Copilot CLI adapter using Copilot's version-1 hook
+file and the existing native DevTrack hook endpoint. Preserve foreign hook entries, keep the hook
+silent and fail-open, and do not add session lifecycle processes or a Python shim.
+
+**Acceptance criteria:**
+- [x] `devtrack sage harness list|install|uninstall copilot` reports truthful independent state and
+      never mutates Codex or Claude configuration.
+- [x] Installation writes one owned `postToolUse` entry with safe `bash` and `powershell` commands,
+      `timeoutSec`, and the Copilot harness environment to the resolved hook path.
+- [x] Existing JSON, file mode, and foreign hook entries survive install/reinstall/uninstall;
+      reinstall is byte-stable and missing uninstall does not create a file.
+- [x] The hidden endpoint accepts bounded Copilot payloads silently and emits only validated,
+      privacy-minimized shell/search/edit events; unsupported/session events are ignored.
+- [x] Exact Linux and native Windows tests, full Go tests/vet, privacy and race checks pass locally.
+- [x] Two docu-agent reconciliation passes complete with memory, parity, wiki, and whitespace
+      validation.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** implementation, cross-platform local verification, and two documentation
+passes complete against current reference HEAD `ea2e067`. PR #287 targets `dev`, is mergeable, and
+all 19 hosted checks pass on final head `2568b72`.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/287
+**Blockers:** none.
+
+**[2026-10-15] TASK-164 / SAGE-004 — Claude Code capture adapter (complete).**
+**Priority:** High. **Branch:** `features/TASK-164-sage-claude-adapter`.
+**Assigned to:** engineer. **Depends on:** green TASK-157 PR #285.
+
+Add one independently managed built-in Claude Code adapter using the existing native DevTrack hook
+endpoint and privacy-safe shared normalizer. Preserve foreign Claude settings and hooks, make
+install/uninstall idempotent and pure subtraction, and never add a second watcher or Python shim.
+
+**Acceptance criteria:**
+- [x] `devtrack sage harness list|install|uninstall claude` exposes only the explicitly selected
+      adapter and reports truthful mode/outcomes.
+- [x] Installation writes owned `PostToolUse` and `PostToolUseFailure` entries to the resolved
+      Claude settings path, preserves unrelated JSON and file mode, and handles spaces safely.
+- [x] The hidden hook endpoint accepts Claude payloads silently, emits bounded privacy-minimized
+      Sage events for supported shell/search/edit shapes, and remains fail-open.
+- [x] Reinstall is byte-stable; uninstall removes only DevTrack-owned or known legacy entries and
+      reports missing targets without creating files.
+- [x] Exact Windows/Linux tests, full Go tests/vet, privacy checks, and two docu-agent reconciliation
+      passes complete locally.
+- [x] A dedicated PR to `dev` is open and its required checks pass.
+
+**Engineer status:** implementation and two documentation passes complete in commit `1107d3d`;
+PR #286 targets `dev`, is mergeable, and all 19 latest-head hosted checks pass. The first Windows
+no-send E2E attempt hit a transient PID-file observation timeout and passed on rerun; the separate
+Windows build/test and native MCPB smoke also passed.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/286
+**Blockers:** none.
+
+**Planned Sage sequence after TASK-165:**
+- TASK-166 — OpenCode plugin capture adapter.
+- TASK-167 — Cursor capture adapter.
+- TASK-168 — Devin CLI capture adapter.
+- TASK-169 — read-only Sage MCP search/topics/status/entry and adapter diagnostics.
+- TASK-170 — retention/deletion, quarantine inspection, deterministic rebuild/repair, and Markdown
+  export/import.
+
+**[2026-10-13] TASK-163 — Post-Sage integration documentation reconciliation (complete).**
+**Priority:** Documentation integrity. **Branch:** `docs/TASK-163-post-sage-reconciliation`.
+**Assigned to:** documentation engineer.
+
+Reconcile canonical memory, the project board and feature tracker, README, wiki, and Sage plan with
+the verified PR #275/#276 integration state. Remove stale branch-only and pre-publication claims
+without changing application source or stable-release boundaries.
+
+**Acceptance criteria:**
+- [x] Current documentation records `origin/dev` at `fc3217f`, rolling release `dev-a1777b6`, and
+      stable release v3.1.1 without conflating those boundaries.
+- [x] PR #274 is recorded as closed without merge; no documentation presents it as an open risk.
+- [x] TASK-157 remains active only for diagnostics, safe local commits, parity closure, and repeated
+      end-to-end acceptance; the merged parity branch is not presented as the next work branch.
+- [x] Shared-memory validation, wiki inline-script validation, and whitespace checks pass.
+
+**Engineer status:** COMPLETE locally after two reconciliation passes; ready for review into `dev`.
+No application source, release, or external publication is included.
+
+**[2026-09-29] TASK-162 — Align no-send E2E with deterministic ticket contract (complete, P0).**
+**Priority:** P0 CI integration follow-up. **Branch:**
+`fix/TASK-162-align-no-send-e2e-ticket`. **Assigned to:** engineer. **Started:** 2026-09-29.
+
+PR #270 merged TASK-160 into `dev`, but both no-send E2E lanes retained TASK-152's `DEMO-201`
+fixture inside a workspace configured with ticket key `E2E`. The deterministic resolver correctly
+records that mismatched commit as unlinked, so the scripts' old MCP assertion is invalid. Use the
+workspace-valid `E2E-201` canonical branch and explicit commit prefix without weakening the ticket
+contract.
+
+**Acceptance criteria:**
+- [x] Windows and POSIX no-send E2E scripts use the canonical `E2E-201` fixture consistently.
+- [x] Native Windows and the supported disposable Linux fallback observe the commit and expose
+      `E2E-201` through MCP; the installed WSL distribution has no Go toolchain.
+- [x] The full Go suite, `go vet ./...`, shared-memory validation, and `git diff --check` pass.
+- [x] Hosted checks are green after integration.
+
+**Engineer status:** COMPLETE — PR #271 merged to `dev` at `a4a06fb` on 2026-09-29. Native Windows
+and disposable-Linux no-send E2E, the full local Go suite/vet, shared-memory validation, and
+whitespace validation passed. All six hosted checks passed, including Windows and Ubuntu no-send
+E2E. The unrelated untracked `Microsoft/` path remains excluded.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/271
+**Blockers:** none.
+
+---
+
+**[2026-09-25] TASK-161 — Rolling development update channel and state reconciliation (complete, HIGH).**
+**Priority:** HIGH distribution/developer-experience follow-up. **Branch:**
+`features/TASK-161-rolling-dev-channel`. **Assigned to:** engineer. **Started:** 2026-09-25.
+
+Add an explicit, persisted update-channel contract without changing the stable default. Plain
+`devtrack upgrade` follows the saved channel and defaults existing installations to stable `main`;
+`--dev` opts into a rolling `dev` prerelease; `--main`/`--stable` returns to stable; and `--check`
+may inspect either channel without switching. Managed Python-server bootstrap follows the selected
+branch. A `dev`-branch workflow builds five platform assets, publishes or refreshes the rolling
+prerelease, and never changes the stable release. Reconcile README, wiki, shared memory, plans, and
+status records with the verified PR #263/#264, release, CI, learning-adapter, and UI-branch state.
+
+**Acceptance criteria:**
+- [x] Channel flags parse in any order, reject conflicts/unknown flags, and default to stable.
+- [x] A successful explicit channel switch persists atomically; `--check` does not switch it.
+- [x] Stable and rolling GitHub release endpoints are distinct, and the rolling endpoint validates
+      the `dev` prerelease contract before installation.
+- [x] Managed server bootstrap follows `main` or `dev` consistently with the selected channel.
+- [x] The `dev` workflow tests and builds Windows amd64, Linux amd64/arm64, and macOS amd64/arm64,
+      then updates the rolling prerelease without mutating stable tags/releases.
+- [x] Focused update-channel tests pass and documentation validators pass.
+- [x] Full Go suite is green on the task branch or every unrelated/environmental failure is
+      reproduced, recorded, and resolved or explicitly accepted for PR review.
+- [x] PR #265 merged to `dev` without a direct `main` mutation; workflow run `36136822555`
+      published `dev-f6b0ec0` with checksums and all five platform binaries.
+
+**Engineer status:** COMPLETE — PR #265 merged to `dev` at `f6b0ec0`. The full Go suite,
+`go vet ./...`, five focused update-channel tests, shared-memory validation, wiki inline-JavaScript
+validation, and `git diff --check` passed. All 19 hosted checks passed, including the full Windows
+test job, both no-send E2E lanes, all five native MCPB smokes, PostgreSQL, wiki, and shared-memory
+validation. The successful `dev` workflow published `dev-f6b0ec0`; TASK-158's separate post-commit
+silence-test draft remains excluded.
+**PR:** https://github.com/sraj0501/Devtrack_/pull/265
+**Release:** https://github.com/sraj0501/Devtrack_/releases/tag/dev
+**Blockers:** none for TASK-161. Stable v3.1.1 intentionally remains unchanged.
+
+---
+
+**[2026-09-21] TASK-158 — Restore the completely silent Git path (complete, P0).**
+**Priority:** P0 product-correctness regression; execute before the next SAGE-003 implementation
+slice, then resume TASK-157. **Branch:** `fix/TASK-158-silent-git-path`.
+**Assigned to:** engineer. **Started:** 2026-09-21. **Merged:** PR #264 to `dev` at `fe3ad38`.
+
+DevTrack must not ask follow-up questions when a developer commits. The v3.1.1
+`devtrack git commit` post-commit hook still asks for a duration and whether to push, can expose the
+internal `Database initialized` log line, and directly invokes `git push`. That conflicts with the
+North Star: observe normal work silently, infer or record locally, stage outbound actions, and never
+interrupt the developer.
+
+**Spec:**
+- Remove every ticket-picker, time-entry, PM-post, and push question reachable from normal Git
+  interception and post-commit paths. Explicit inspection, setup, correction, and configuration
+  commands may print requested results, but commit completion never leads into another question.
+- Remove post-commit direct push. A developer may issue `git push` explicitly; any future autonomous
+  Git action must honor the pending-actions contract.
+- Keep database initialization details in daemon diagnostics/logs, never commit stdout or stderr.
+- Preserve silent commit observation, ticket inference, persistence, pending-action staging, and
+  fail-open behavior. Missing ticket, PM, database, model, or server context must not block Git.
+- Reconcile CLI help, README/wiki wording, shell integration, and regression tests with the silent
+  installed behavior.
+
+**Acceptance criteria:**
+- [x] Normal `git commit` in a monitored repository produces zero DevTrack questions and zero
+      DevTrack stdout/stderr on Windows and Linux.
+- [x] `devtrack git commit` asks no post-commit questions and offers no direct push; explicit
+      overrides use commands or flags rather than unsolicited follow-up prompts.
+- [x] `Log this work?`, `Push to origin`, and `Database initialized` cannot appear in the
+      user-facing commit path.
+- [x] Commit detection still persists the commit, infers or records an unlinked ticket without
+      blocking, and stages applicable outbound PM work.
+- [x] Automated TTY and non-TTY tests prove silence and fail-open behavior; the full Go suite and
+      `go vet ./...` pass.
+- [x] Product docs describe one silent default path and separate explicit correction/configuration
+      commands from background behavior.
+
+**Engineer status:** COMPLETE — PR #264 merged to `dev` at `fe3ad38` on
+2026-09-21. Normal Git is no longer routed through DevTrack; the explicit AI commit helper has no
+ticket/time/PM/push callbacks; the generated observation hook is silent and fail-open; and the
+database startup banner is removed. The full Go suite, `go vet ./...`, memory validation, wiki
+inline-JS checks, and `git diff --check` passed in the recorded local Windows run before merge.
+PR #264's hosted-Windows unit-test job failed on 60-second SQLite timeouts in `internal/db` and
+`internal/mcp`; Windows build/vet, native MCPB smoke, and no-send E2E passed. PR #265 later passed
+the full hosted-Windows unit-test job, restoring the branch baseline. On 2026-09-26, Ubuntu 24.04.5
+under WSL2 with Go 1.24.4 passed the preserved integration test in both redirected non-TTY and
+`script`-backed pseudo-TTY contexts. Both commits were silent, Git succeeded, and an unavailable log
+destination remained fail-open. The full Linux `go test ./...` suite and `go vet ./...` also passed.
+**Blockers:** none.
+
+**[2026-09-21] TASK-160 — Deterministic branch-to-ticket contract (complete, P0).**
+**Priority:** P0 product contract; execute after TASK-158 native Linux qualification and before
+automatic time inference or the next SAGE-003 implementation slice. **Depends on:** TASK-158.
+**Branch:** `features/TASK-160-deterministic-ticket-contract`.
+**Assigned to:** engineer. **Started:** 2026-09-26.
+
+Ticket assignment must be deterministic by default, not delegated to an LLM. Adopt the canonical
+branch grammar `<kind>/<ticket-key>-<number>-<slug>`, for example `feature/PROJ-123-login`,
+`fix/ADO-456-null-check`, or `hotfix/GH-789-regression`. The `<ticket-id>` must match the workspace's
+configured `ticket_pattern`; setup provides a platform-appropriate default and makes the convention
+visible. Branch mapping wins over every other signal. The finalized product and implementation
+contract is `agent-memory/initiatives/ticket-mapping.md`; PRODUCT_BIBLE.md owns the immutable user
+contract.
+
+**Deterministic precedence:**
+1. Canonical branch ticket ID.
+2. Explicit commit prefix or trailer (`PROJ-123: ...`, `Refs: PROJ-123`).
+3. Explicit active-ticket override set by `devtrack work start PROJ-123`.
+4. Otherwise record the commit as unlinked.
+
+Free-form commit-message scanning and "last mapped ticket" reuse must not silently create an
+authoritative mapping. An LLM may rank or suggest tickets only after deterministic signals fail;
+that suggestion carries explicit confidence, remains reviewable/correctable, and cannot override a
+deterministic mapping or turn an unlinked commit into a final mapping without the pending-action
+trust path.
+
+**Spec:**
+- Anchor branch parsing to the canonical grammar instead of accepting a ticket-like substring at an
+  arbitrary branch position. Keep `ticket_pattern` workspace-specific and validate it at setup and
+  reload.
+- Parse only explicit commit prefixes/trailers as the second deterministic signal; distinguish them
+  from incidental ticket text in a prose commit message.
+- Treat the explicit active ticket as an override signal with recorded provenance. Remove or demote
+  implicit last-ticket reuse to a non-authoritative suggestion.
+- Persist `ticket_id`, mapping source, confidence, and any corrected prior mapping so every decision
+  is explainable and the learning loop has evidence.
+- Store the canonical branch reference separately from the provider-native external ID so `GH-42`,
+  `GL-18`, and `ADO-456` can route to numeric issue/work-item IDs without weakening the convention.
+- Treat multiple same-priority references as ambiguous. A contradictory lower-priority reference
+  cannot override a canonical branch and prevents automatic outbound execution until corrected.
+- Preserve pre-contract mappings as `legacy`; do not reinterpret historical rows with the new
+  resolver during migration.
+- Add a non-blocking convention check to setup/status/doctor. DevTrack remains silent and never
+  blocks a commit: a nonconforming branch is stored as unlinked and surfaced later for correction.
+- Ensure workspace hot reload notices `ticket_pattern` and related ticket-contract changes.
+- Document one cross-platform convention and provider-specific examples in onboarding, README, and
+  the wiki.
+
+**Acceptance criteria:**
+- [x] Canonical branches map deterministically and take precedence over contradictory commit text,
+      active-ticket state, and LLM suggestions.
+- [x] Explicit commit prefix/trailer and explicit active-ticket override work in the documented
+      order when the branch has no ticket.
+- [x] Incidental IDs in prose and the previously mapped ticket do not silently assign a commit.
+- [x] Nonconforming branches remain unlinked without prompting or blocking Git and are visible in
+      status/doctor with a correction path.
+- [x] Mapping records expose source and confidence; corrections preserve the original decision for
+      learning/audit.
+- [x] Canonical and provider-native IDs remain distinct, legacy rows are not reinterpreted, and
+      LLM/recent-ticket candidates are stored separately from the effective mapping.
+- [x] Custom workspace patterns, config reload, merge commits, provider ID normalization, and
+      contradictory-signal cases have deterministic tests.
+
+**Engineer status:** COMPLETE — 7/7 criteria passed; implementation commit `92c0711`
+(`feat(TASK-160): enforce deterministic ticket mapping`) on 2026-09-29. Deterministic resolver/configuration, immutable
+provenance and corrections, effective corrected read models, conflict outbound gating, inspection
+commands, onboarding, and documentation are implemented on
+`features/TASK-160-deterministic-ticket-contract`. Full Windows `go test ./...` and `go vet ./...`,
+Ubuntu WSL2 `go test ./...` and `go vet ./...`, 75 focused Python API/trigger tests, shared-memory
+validation, wiki inline-JavaScript validation, and `git diff --check` pass. The pytest cache warning
+is environmental and did not affect the 75 passing tests.
+**Blockers:** PR #270 merged to `dev` at `a097a0b`. Seventeen hosted checks passed; both no-send E2E
+lanes exposed TASK-152's stale cross-key fixture and are tracked separately by TASK-162.
+TASK-159 implementation must start from a fresh branch after that CI follow-up is integrated.
+The existing upstream task branch (partial commit `aa0d2c0` plus merged TASK-158 PR #267) was
+reconciled locally without force; the combined tree passed the full Windows and Ubuntu WSL2 Go
+suite/vet and 75 focused Python contract tests before push.
+
+**[2026-09-21] TASK-159 — Silent automatic time inference (complete, HIGH).**
+**Priority:** HIGH; paired with TASK-158 and TASK-157 / SAGE-003.
+**Depends on:** TASK-158 native Linux qualification. **Branch:** `features/TASK-159-silent-time-inference`.
+
+Replace per-commit duration entry with passive, local time evidence. Explicit
+`devtrack work start|stop|adjust` remains an optional override/correction surface, not a required
+daily workflow. Define bounded activity windows from local commit/session evidence, with inactivity
+gaps and EOD closure, while preserving raw evidence and user adjustments for audit. Do not capture
+keystrokes, window activity, raw command output, or cloud telemetry.
+
+**Acceptance criteria:**
+- [x] No commit path asks how long work took.
+- [x] Local activity/session evidence produces deterministic per-ticket duration without a manual
+      answer after each commit.
+- [x] Explicit session commands correct inference without discarding the measured value.
+- [x] Inactivity and EOD closure use real last-activity evidence, not just elapsed time from start.
+- [x] The algorithm, defaults, privacy boundary, confidence, and corrections are documented and
+      covered by clock-controlled tests.
+
+**Assigned to:** engineer. **Started:** 2026-09-29.
+**Engineer status:** Implementation merged through PR #272 at `94dbc7c`. The qualification follow-up
+merged through PR #273 at `a329b6f`, including schema transaction commit `3c3fedf` and the Windows
+E2E stdout/stderr separation fix. On 2026-09-30,
+the full native Windows Go suite and vet passed, as did Windows and Fedora WSL2 no-send E2E:
+inferred time, a 45-minute correction surviving daemon restart, explicit start/stop, and MCP
+commit visibility. The Windows restart assertion deliberately crosses a timestamp boundary.
+The full Linux suite and vet also passed after installing the missing PTY utility.
+Both full suites passed uncached with the existing 60-second package timeout; Windows's database
+package completed in 6.915 seconds. All five product acceptance criteria are locally qualified.
+Evidence: `docs/TASK_159_QUALIFICATION.md`. PR #273 merged on 2026-10-07; its general CI, client CI,
+Windows/Linux no-send E2E, PostgreSQL, MCPB, registry, and rolling-release workflows passed.
+**PRs:** https://github.com/sraj0501/Devtrack_/pull/272 and
+https://github.com/sraj0501/Devtrack_/pull/273
+**Blockers:** none.
+
+**[2026-09-21] TASK-157 / SAGE-003 — Self-writing command knowledge (complete).**
+
+**Engineer status (2026-10-14):** PR #278 merged the first closure slice to `dev` at `a6a75b0`.
+PR #279 adds stable runtime and knowledge path resolution, including explicit and relative
+overrides; all 19 hosted checks passed. PR #280 adds explicit Go-native command-model providers
+while retaining Ollama HTTP as the default; all 19 hosted checks passed. The active
+`features/TASK-157-sage-ide-parity` branch completes the executable ledger after fully green PRs
+#281 and #282 closed platform/installer and lifecycle parity and PR #283 carried capture/history.
+The
+integrated slice adds truthful
+`status`/`doctor`/`log` diagnostics, bounded retries, privacy-safe NDJSON logs, Sage-owned local
+commits, model-free documented-action reuse, deterministic rendering, and conservative section
+matching, quote-aware compound command capture, cross-harness payload normalization, deterministic
+temperature-zero model requests, token-limit diagnostics, and background classify-once routing with
+sanitized persistent choices, deterministic fallback, and existing-section context. The ledger is
+now 119 implemented, 17 adapted, 0 partial, and 0 pending. Full Go tests, `go vet ./...`,
+parity-ledger consistency, parity-checker tests, shared-memory validation, and whitespace checks pass
+locally, and `--require-complete` passes. TASK-157 remains open for repeated end-to-end acceptance.
+**Implementation commits:** `5317d4a` — isolate Sage runtime and knowledge roots; `80bb76f` — add
+explicit Sage model backends; `24c28f8` — port platform layouts and additive installers;
+`2711882` — port daemon and CLI lifecycle; `215222b` — close capture and Codex-history parity;
+`836feb7` — close optional IDE parity.
+**PRs:** https://github.com/sraj0501/Devtrack_/pull/278 and
+https://github.com/sraj0501/Devtrack_/pull/279 and
+https://github.com/sraj0501/Devtrack_/pull/280 and
+https://github.com/sraj0501/Devtrack_/pull/281 and
+https://github.com/sraj0501/Devtrack_/pull/282 and
+https://github.com/sraj0501/Devtrack_/pull/283 and
+https://github.com/sraj0501/Devtrack_/pull/284
+
+**Backend/provider status (2026-10-14):** Locally qualified on
+`features/TASK-157-sage-model-backends`: explicit `claude`, `devin`, `codex`, `copilot`, and
+`cursor-agent` transports use validated prompt modes, late prompt substitution, missing-binary
+handling, direct argv execution, process-local capture suppression, and Windows no-console flags.
+Ollama HTTP remains the default. Evidence: `docs/SAGE_MODEL_BACKEND_QUALIFICATION.md`.
+PR #280 targets `dev` and is stacked on the still-unmerged PR #279. All 19 hosted checks passed,
+including Windows build/vet, tests, no-send E2E, and MCPB smoke.
+
+**Platform/installer status (2026-10-14):** Locally qualified on
+`features/TASK-157-sage-platform-installers`: portable Windows/Linux/macOS roots and all reference
+harness destinations are deterministic; native Go launchers explicitly adapt the Python shim pair;
+Codex reinstall is idempotent, preserves foreign settings, removes only owned/known-legacy entries,
+and reports missing removal targets. Evidence: `docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`.
+PR #281 targets `dev` and is stacked on the still-unmerged PRs #279 and #280.
+All 19 hosted checks passed, including Windows build/vet, tests, no-send E2E, and MCPB smoke.
+
+**Lifecycle status (2026-10-14):** Locally qualified on
+`features/TASK-157-sage-lifecycle`: exclusive/releasable OS locks, stale-artifact recovery,
+conservative liveness, actual Windows no-console child execution with intact stdin, persistent
+start/stop/restart aliases and reasons, loud typos, silent hook compatibility, and legacy-shim
+safety. Exact Windows and Linux lifecycle tests, the full Go suite/vet, and the reference parity
+checker pass. Evidence: `docs/SAGE_LIFECYCLE_QUALIFICATION.md`.
+**Latest lifecycle commit:** `2711882` — `feat(sage): port daemon and CLI lifecycle`.
+**Lifecycle PR:** https://github.com/sraj0501/Devtrack_/pull/282 targets `dev`; all 19 hosted checks
+passed, including Windows tests, no-send E2E, and MCPB smoke.
+
+**Capture/history status (2026-10-14):** Locally qualified on
+`features/TASK-157-sage-capture-history`: installed Codex capture respects persistent pause state;
+bounded privacy-safe decisions distinguish `new`, `known`, and same-payload `repeat` without
+storing commands or raw signatures; logging is fail-open; interleaved fast/slow Codex-history
+items are collected once when terminal; and failed items preserve their exact non-zero exit code.
+All six exact tests pass in Linux Go 1.24 Docker and as native Windows binaries. The full Go suite
+and vet pass. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.
+**Capture/history PR:** https://github.com/sraj0501/Devtrack_/pull/283 targets `dev`; all 19 hosted
+checks passed and the review is clean.
+
+**IDE parity status (2026-10-15):** Locally qualified on
+`features/TASK-157-sage-ide-parity`: first-use cutoff and repeat-poll behavior, pause without
+database access or checkpoint advance, pause/resume cutoff reset, and enqueue-failure retry are
+covered through the existing opt-in Codex history adapter. One explicit adaptation keeps both
+`vscode` and `cli` sources enabled and stores privacy-minimized commands. No new harness is
+advertised. The four exact tests pass in Linux Go 1.24 Docker and as native Windows binaries; the
+full Go suite/vet and focused Linux race test pass. Evidence: `docs/SAGE_IDE_PARITY_QUALIFICATION.md`.
+**IDE parity PR:** https://github.com/sraj0501/Devtrack_/pull/284 targets `dev`; hosted checks are
+all green.
+
+**End-to-end acceptance PR:** https://github.com/sraj0501/Devtrack_/pull/285 targets `dev`; all 19
+hosted checks pass and the review is clean.
+
+**Done through PR #278 and the active isolation follow-up:**
+- [x] Truthful `status`, `doctor`, and `log` state reporting, bounded retries, and privacy-safe
+      NDJSON diagnostics.
+- [x] Local commits restricted to Sage-owned knowledge paths, preserving unrelated Git state and
+      never pushing.
+- [x] Model-free reuse of documented actions and deterministic Markdown rendering with
+      conservative section matching.
+- [x] Quote-aware compound-command capture and cross-harness payload normalization.
+- [x] Deterministic temperature-zero model requests and token-limit diagnostics.
+- [x] Classify unknown binaries once, sanitize and persist the selected route, fall back safely
+      when classification is unavailable, and provide existing section context to distillation.
+- [x] Keep queue/state/log runtime paths independent from Markdown knowledge overrides, anchor
+      relative paths to the Sage root, and keep runtime/knowledge paths out of model prompts.
+- [x] Support explicitly selected shipped command-model providers without shell execution or
+      implicit cloud-provider selection; prevent recursive capture in the provider subprocess.
+- [x] Resolve reference platform roots and harness destinations, use native Go launchers, and make
+      hook installation/removal additive, idempotent, legacy-aware, and outcome-reporting.
+- [x] Full Go tests, `go vet ./...`, parity-ledger validation, parity-checker tests, shared-memory
+      validation, and whitespace checks pass locally.
+
+**Pending before TASK-157 can close:**
+- [x] Resolve all 136 rows in `docs/SAGE_PORT_PARITY_MATRIX.md` with exact Go tests or explicit,
+      justified adaptations; `--require-complete` passes.
+- [x] Complete daemon/process and CLI lifecycle parity across supported operating systems without
+      adding a second Sage watcher.
+- [x] Complete capture/logging and remaining Codex-history parity scenarios across supported
+      operating systems.
+- [x] Resolve the four optional IDE parity scenarios without advertising another harness before
+      the Codex end-to-end closure gate.
+- [x] Run the clean capture-to-self-written-knowledge journey twice on Windows and Linux, including
+      silent capture, retry recovery, publication, search, route correction, merge/refile, privacy
+      canaries, unrelated-Git-state preservation, and safe uninstall.
+- [x] Integrate the fully reviewed stacked Sage pull requests into `dev` and verify post-merge CI;
+      PRs #279–#285 are integrated, and the later adapter sequence is integrated through PR #290
+      at `1b87ee6`.
+
+**Latest engineer status (skips/search, 2026-10-01):** Implemented and locally qualified — durable
+skipped-action Markdown records with replay/backfill, whole-entry literal search, topic filtering,
+and reconciliation after edits, moves, merges, deletions, and restart. Windows full suite/vet and
+Linux focused race/vet pass. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending.
+Evidence: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Next: diagnostics and safe local commits.
+The later acceptance slice closes the full journey; see `docs/SAGE_END_TO_END_ACCEPTANCE.md`.
+
+**Integration status (2026-10-13):** PR #275 merged the durable queue-to-knowledge slice at
+`a1777b6`; PR #276 added Docker evaluation docs at `fc3217f`; PR #277 reconciled documentation at
+`549c430`; and PR #278 merged diagnostics, safe local commits, and routing/capture/model-request
+parity at `a6a75b0`. All required PR #278 checks and applicable post-merge workflows passed.
+TASK-157 is integrated through the completed stacked closure; PRs #279–#290 are in `dev`.
+
+**Skipped/search implementation commit:** `9f2281b` — record skipped actions and search full entries.
+
+**Latest engineer status (merge/refile, 2026-10-01):** Locally qualified — `sage merge` preserves
+entries/signatures, redirects routes, repairs the index, and recovers interrupted writes without
+duplicates. Conflicting edits and unstructured source notes are preserved through explicit errors.
+Windows full suite/vet and Linux focused race/vet pass. Ledger: 24 implemented, 15 partial,
+97 pending. Evidence: `docs/SAGE_MERGE_QUALIFICATION.md`. Next: diagnostics, skipped-action records,
+full-entry search reconciliation, and safe local knowledge commits. Full acceptance remains open.
+
+**Merge implementation commit:** `b6b7f81` — add recoverable Sage topic merges.
+
+**Engineer status (routing, 2026-10-01):** Implemented and locally qualified — persistent routes,
+existing-entry precedence, route/list commands, and publication integration. Windows full suite/vet
+and Linux focused race/vet pass. Nine more reference scenarios are implemented (22 implemented,
+15 partial, 99 pending). Evidence: `docs/SAGE_ROUTING_QUALIFICATION.md`. Next: merge/refile.
+Full Sage parity and upstream integration remain open.
+**Routing implementation commit:** `ae4ac88` — persist Sage routing corrections.
+
+**Engineer status (publication, 2026-09-30):** Durable drafts now publish through the daemon.
+**Publication implementation commit:** `e21975e` — publish durable drafts to Markdown.
+Separate publication retries survive index failures and interrupted acknowledgement without
+model replay. Windows full suite/vet and Linux focused race/vet pass; restart preserves exact
+Markdown bytes. Evidence: `docs/SAGE_PUBLICATION_QUALIFICATION.md`. Routing, correction/merge,
+safe commits, full-entry search, diagnostics, and full Sage parity remain open.
+**Latest writer checkpoint (2026-09-30):** The deterministic Markdown library is implemented on
+the Sage task branch: portable filenames, parseable entries, existing-signature reuse, atomic
+replacement, and repairable topic index. Seven reference tests are now executable in Go.
+Full Windows Go suite/vet and Linux writer race/fuzz/vet pass. Evidence:
+`docs/SAGE_MARKDOWN_QUALIFICATION.md`. Next connect durable draft publication to the daemon;
+jobs still end at `distilled`. SAGE-003 and upstream integration remain open.
+**Last implementation commit:** `f47041f` — deterministic Sage Markdown writer, 2026-09-30.
+
+**Latest implementation (2026-09-30):** Durable SQLite queue and daemon integration now implemented
+on `features/TASK-157-sage-parity`. Claims have leases/fencing tokens; retries, skips, and drafts
+persist. Import enqueue is atomic, pause prevents new claims, and shutdown cancels background work.
+Full Windows and Fedora WSL2 Go suites/vet pass. Runtime integration test covers spool import,
+model outage, malformed response, persisted draft, and duplicate-free restart using an HTTP fixture.
+Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Next: deterministic Markdown writer.
+SAGE-003 remains open; a persisted draft is not the completed capture-to-knowledge journey.
+
+**Engineer status (2026-09-30):** Resumed on `features/TASK-157-sage-parity`, stacked on the
+published TASK-159 follow-up `2e50763`. Reconciled all 136 reference scenarios with `b85a1ab`
+from `C:\Work\git_apps\ai_sessions_skills`; the ledger now names existing Go tests,
+explicit status, and planned closure tests. Added a CI consistency gate with eight fault-injection
+checks and real-HTTP regression tests for retryable empty output and uncapped background requests.
+Focused Go tests/vet passed on Windows and Fedora WSL2. Six scenarios have complete test evidence,
+fifteen are partial, and 115 remain pending. Durable queue/daemon wiring is next; this task is open.
+
+Current `dev` includes the SAGE-001/SAGE-002 capture foundation and model-free search slice, and
+removes the legacy Git Sage repository-agent surface. `devtrack sage` now
+rejects ask/do/pr/interactive/git/free-form commands before starting a model, network request, or
+Git operation. Independently used `devtrack git` and commit-enhancement helpers moved to neutral
+`internal/gitcmd` ownership, and the obsolete client-facing `GIT_SAGE_*` configuration surface was
+removed. A few Python-server reads remain only as legacy model fallbacks; they do not restore or
+configure the retired repository agent.
+PR #263 merged the neutral LLM transport, validated structured distiller, and non-blocking Sage
+worker to `dev` at `e4283db`. Remaining SAGE-003 scope begins with durable SQLite claims and daemon
+lifecycle wiring, then deterministic Markdown, routing, merge/refile, safe local commits,
+persisted retries/leases, diagnostics, and executable parity closure.
+
 **[2026-09-15] TASK-156 / SAGE-002 — DevTrack Sage vertical capture slice (complete).**
 Added the Go-native atomic immutable spool, bounded importer, corrupt-file quarantine, append-only
 `sage_events` SQLite migration, and durable delivery-key deduplication. The importer is now owned
@@ -34,9 +703,16 @@ history-item normalizer and synthetic fixture. Warp is not named upstream; its r
 inferred through the CLI source. Remaining SAGE-001 work: collect sanitized observed fixtures and
 verify trust/install safety. SQLite polling belongs to SAGE-002. Next unused task ID: TASK-157.
 
-_Last updated: 2026-09-15 — SAGE-002 capture slice in progress; UI redesign remains on its separate
-branch. Clean Windows installation and full Managed Linux validation are
-owner-confirmed complete; packaged qualification, media, and listing follow-ups remain._
+_Last updated: 2026-09-29 — PR #263 (SAGE distillation foundation), PR #264 (TASK-158 silent Git
+path), and PR #265 (TASK-161 rolling updates) are merged to `dev`; PR #265 passed all 19 checks.
+The earlier PR check sets retain historical failed hosted-Windows unit-test jobs, while PR #265's
+full Windows test pass restores the branch baseline. TASK-158 is fully qualified, and TASK-160 has
+passed local Windows and Ubuntu WSL2 gates but awaits authorized integration before TASK-159.
+TASK-157 / SAGE-003 remains the active product
+initiative, with durable queue/daemon integration next. Workflow run `36136822555` published the
+rolling `dev-f6b0ec0` prerelease; stable v3.1.1 remains the latest stable public release. The UI
+redesign remains on its separate branch; packaged qualification, media, and listing follow-ups
+remain. Next unused task ID: TASK-162._
 
 **[2026-09-10] Environment validation closure.** The owner confirmed that the supported clean
 Windows installation and the full Managed Linux validation journey are complete. These runs were

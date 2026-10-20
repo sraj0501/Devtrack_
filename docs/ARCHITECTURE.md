@@ -12,11 +12,13 @@ Complete overview of DevTrack's system design, components, and data flow.
 
 | Directory | Language | Role |
 |---|---|---|
-| `devtrack_client/` | Go | Binary, git monitor, scheduler, CLI, PM connectors, git-sage — canonical Go source |
+| `devtrack_client/` | Go | Binary, git monitor, scheduler, CLI, PM connectors, DevTrack Sage — canonical Go source |
 | `devtrack_server/` | Python | AI pipeline, webhook server, admin UI — canonical Python source |
 | `devtrack_wiki/` | HTML/Markdown | Website (Netlify → devtrack.cloud) |
 
-Client and server share no compiled artefact. The only interface between them is HTTPS POST over a documented JSON API (the `/trigger/*` endpoints, described below).
+Client and server share no compiled artefact. Their interface is authenticated HTTP/JSON; the
+primary event family is `/trigger/*`, with documented health, report, voice, queue, auth, and
+administrative endpoints where appropriate. See `HTTP_API.md` for the executable contract.
 
 ---
 
@@ -29,7 +31,7 @@ DevTrack is explicitly a **client-server tool** with two independently deployabl
 | **`devtrack` binary** | `devtrack_client/` | Pure Go | ~5 MB | Client / daemon — git monitoring, scheduling, CLI |
 | **Python server** | `devtrack_server/` | Python + uv | separate | Server — LLM enrichment, integrations, reports, admin |
 
-The Go binary contains **no Python whatsoever** — git-sage is Go-native at `devtrack_client/gitsage/`, and the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` starts a non-blocking, stateful sparse-checkout/`uv sync --extra ai` worker) and can run as a local subprocess, a Docker container, or a remote server. Setup, Git monitoring, SQLite, scheduling, and MCP do not wait for that worker; `status` and `doctor` expose its degradation state. Before scheduling a generation-model pull, setup queries Ollama's local inventory and reuses an installed generation model. Managed Ollama setup also prepares `nomic-embed-text` for first-run personalization. If no generation model is ready, an explicitly accepted pre-existing OpenAI/Anthropic key joins the server provider chain behind Ollama, providing a temporary generation fallback while keeping Ollama primary. In Managed mode, a one-time daemon onboarding worker waits for the local server without blocking, then seeds enabled local Git workspaces through `/voice/seed`, generates the profile through `/voice/profile/generate`, and stores only a local completion marker. If managed setup finishes after the daemon started, the worker starts the newly available server without requiring a daemon restart. External mode does not run automatic voice mining, so training data is never implicitly sent to a remote host.
+The Go binary contains **no Python whatsoever**. DevTrack Sage capture/search and the `devtrack git` workflow are Go-native under `internal/sage/` and `internal/gitcmd/`; the client tree contains zero `.py` files. The Python server is installed separately (`devtrack setup` starts a non-blocking, stateful sparse-checkout/`uv sync --extra ai` worker) and can run as a local subprocess, a Docker container, or a remote server. Setup, Git monitoring, SQLite, scheduling, Sage capture, and MCP do not wait for that worker; `status` and `doctor` expose its degradation state. Before scheduling a generation-model pull, setup queries Ollama's local inventory and reuses an installed generation model. Managed Ollama setup also prepares `nomic-embed-text` for first-run personalization. If no generation model is ready, an explicitly accepted pre-existing OpenAI/Anthropic key joins the server provider chain behind Ollama, providing a temporary generation fallback while keeping Ollama primary. In Managed mode, a one-time daemon onboarding worker waits for the local server without blocking, then seeds enabled local Git workspaces through `/voice/seed`, generates the profile through `/voice/profile/generate`, and stores only a local completion marker. If managed setup finishes after the daemon started, the worker starts the newly available server without requiring a daemon restart. External mode does not run automatic voice mining, so training data is never implicitly sent to a remote host.
 
 ### Server Modes
 
@@ -62,8 +64,9 @@ docker run -p 8089:8089 --env-file .env devtrack-server
 The Go binary on the host then connects via `DEVTRACK_SERVER_MODE=external`.
 
 `devtrack_server/docker-compose.yml` provides backing services for the Python server. PostgreSQL is
-required for server persistence and server-side events (`POSTGRES_URL`); MongoDB remains optional
-and is used only as a Microsoft Teams voice-learning source. The Go client does not require either:
+required for server persistence and server-side events (`POSTGRES_URL`); MongoDB is referenced only
+by the incomplete optional Microsoft Teams voice-learning adapter and is not part of the maintained
+local Git/manual/PM voice paths. The Go client does not require either:
 its local-first observation, queue, MCP, and replay path remains SQLite-backed and works offline.
 Server startup validates PostgreSQL connectivity and advances the schema to Alembic head before
 accepting requests. Compose waits for its bundled PostgreSQL health check; managed installs require
@@ -75,9 +78,12 @@ latest-state snapshots for `triggers`, `task_updates`, `work_sessions`, and clie
 `POST /trigger/client_events`. PostgreSQL deduplicates replays by `(client_id, event_id)` and rejects
 stale revisions; an unreachable server leaves the outbox intact for the next queue poll.
 
-### `devtrack install`
+### Installation entry point
 
-Running `devtrack install` prints setup instructions for the client-server architecture — it does **not** extract or bundle Python. Use the printed instructions to set up the Python backend in whichever mode suits your environment.
+There is no `devtrack install` command. Install a published binary or build the Go client, then run
+`devtrack setup`. In managed mode, setup registers the environment immediately and starts the
+stateful background worker that prepares the Python server and optional local models. Use
+`devtrack doctor` to inspect or repair that bootstrap.
 
 ### Binary Releases
 
@@ -127,8 +133,8 @@ The Go binary (~5 MB, no Python) is published to **GitHub Releases** (`github.co
         ┌────────────────┼────────────────┬─────────────────┐
         │                │                │                 │
         ▼                ▼                ▼                 ▼
-    Azure DevOps      GitHub          Teams              Outlook
-    Work Items        Issues/PRs      Notifications      Email
+    Azure DevOps      GitHub          Teams learning     Outlook
+    Work Items        Issues/PRs      (adapter gap)      Email delivery
 ```
 
 ---
@@ -175,7 +181,7 @@ The client is organised into acyclic layers:
 | `tui` | Bubbletea TUI (overview, activity, alerts, workspaces) — visibility only, no feature difference vs headless |
 | `alerts`, `notify`, `telegram` | Go-native ticket alert poller; Terminal/Telegram/Slack/OS notifiers; Telegram bot |
 | `ticket`, `match` | Ticket-ID extraction from branch names (Phase 2) and ticket matching |
-| `mcp` | MCP server core — JSON-RPC 2.0 over stdio; six read-only SQLite-backed tools (Phase 8) |
+| `mcp` | MCP server core — JSON-RPC 2.0 over stdio; ten read-only local tools, including four Sage knowledge/status tools |
 | `reviewer` | PR review loop — fix-commit-push orchestration and escalation (Phase 7) |
 
 The pending-actions queue (Phase 1) is the trust primitive: outbound actions are staged in the
@@ -246,7 +252,7 @@ Each workspace entry in `workspaces.yaml` carries:
 - `pm_org` — Azure org name, or GitHub/GitLab owner/org
 - `pm_username` — assignee filter (GitHub login / GitLab username / Azure email)
 - `pm_api_url` — optional self-hosted URL override (GitHub Enterprise, self-hosted GitLab, etc.)
-- `skip_issues` — `true` marks the workspace as code-only; excluded from `devtrack issues`, `SyncAllTickets`, `PushCachedTickets`, and the commit-time ticket picker. Use when one repo is tracked in two platforms (e.g. GitHub for code, Azure DevOps for PM) to prevent duplicate ticket lists. `ResolveWorkspaceForPath` prefers non-skip workspaces at equal path depth so PM-authoritative entries win commit routing.
+- `skip_issues` — `true` marks the workspace as code-only; excluded from `devtrack issues`, `SyncAllTickets`, and `PushCachedTickets`. Use when one repo is tracked in two platforms (e.g. GitHub for code, Azure DevOps for PM) to prevent duplicate ticket lists. `ResolveWorkspaceForPath` prefers non-skip workspaces at equal path depth so PM-authoritative entries win ticket routing.
 
 All connector constructors (`pm.NewGitHubClient(ws)`, `pm.NewGitLabClient(ws)`, `pm.NewAzureClient(ws)`) take an explicit workspace struct and never read non-secret config from env.
 
@@ -288,9 +294,9 @@ The smart processing engine that handles LLM enrichment and integrations.
 | **backend/llm/ollama_provider.py** | Local Ollama integration |
 | **backend/llm/openai_provider.py** | OpenAI GPT-4 integration |
 | **backend/llm/anthropic_provider.py** | Anthropic Claude integration |
-| **backend/personalized_ai.py** | AI learning from user communications (`ai` tier) |
+| **backend/personalized_ai.py** | Legacy communication-personalization engine (`ai` tier); its top-level HTTP adapter is incomplete |
 | **backend/rag/** | ChromaDB-backed RAG few-shot examples for personalization (`ai` tier) |
-| **backend/learning_integration.py** | Learning consent and profile handling |
+| **backend/learning_integration.py** | Legacy consent/profile adapter; current HTTP callers reference missing or prematurely initialized methods |
 
 #### User Interaction & Reporting
 
@@ -308,20 +314,14 @@ The smart processing engine that handles LLM enrichment and integrations.
 | **backend/commit_message_enhancer.py** | AI-powered iterative commit message refinement |
 | **backend/git_diff_analyzer.py** | Analyzes staged changes for context |
 
-> **git-sage is client-side and Go-native.** The Python `backend/git_sage/` package was removed
-> during the client-server decoupling; it does not exist in `devtrack_server/`. The only git-sage
-> is `devtrack_client/gitsage/` and it runs without the Python server in every operating mode.
+> The retired Git Sage repository agent and its Python predecessor no longer exist. Git workflow
+> helpers that remain independently useful are isolated from DevTrack Sage.
 
-| Go module (`devtrack_client/gitsage/`) | Purpose |
+| Go module | Purpose |
 |--------|---------|
-| **agent.go** | Agentic loop for autonomous git operations (plan → execute → observe → rollback) |
-| **llm.go** | Ollama and OpenAI-compatible LLM backends (JSON mode) |
-| **context.go** | Git repository state collection |
-| **config.go** | git-sage configuration management |
-| **git_ops.go** | Advanced git operations (branches, commits, merges, blame, stash) |
-| **conflict.go** | Intelligent conflict analysis and resolution |
-| **pr_finder.go** | PR/MR utilities and analysis |
-| **commit.go**, **cli.go** | `devtrack git` entry point — AI-enhanced commit/add/history + pass-through |
+| **`internal/gitcmd/`** | `devtrack git` add/commit/history/pass-through and commit-message enhancement |
+| **`internal/sage/`** | Silent harness capture, spool/import state, and local command knowledge |
+| **`sage_cli.go`** | Sage lifecycle, harness, search, and topics commands |
 
 #### External Integrations
 
@@ -332,7 +332,7 @@ The smart processing engine that handles LLM enrichment and integrations.
 | **backend/gitlab/client.py** | GitLab issue fetching, commenting, creating |
 | **backend/github/client.py** | GitHub issue fetching, commenting, creating (GHE-ready) |
 | **backend/jira/client.py** | Jira REST API client |
-| **backend/msgraph_python/** | Microsoft Graph integration (Teams, Outlook) |
+| **backend/msgraph_python/** | Microsoft Graph modules (Teams learning is not end-to-end available; Outlook email is a separate delivery path) |
 
 ---
 
@@ -410,10 +410,10 @@ When `DEVTRACK_AUTO_ENHANCE=true`, the daemon enhances every detected commit's m
 ```env
 DEVTRACK_AUTO_ENHANCE=true   # opt-in (default: false)
 
-# The LLM used is whichever SAGE_PROVIDER points to (default: ollama)
-GIT_SAGE_PROVIDER=ollama
+# Commit enhancement uses the shared provider configuration (default: ollama)
+LLM_PROVIDER=ollama
 OLLAMA_HOST=http://localhost:11434
-GIT_SAGE_DEFAULT_MODEL=llama3.2
+OLLAMA_MODEL=llama3.2
 ```
 
 ### 2. Timer Trigger Flow
@@ -467,30 +467,29 @@ Description Enhancer (AI)
 └─ Categorize work (feature, bug, doc, etc.)
          │
          ▼
-Task Matcher
-├─ Fuzzy match to known tasks
-├─ Semantic match using sentence-transformers
-└─ Verify against project management system
+Optional candidate enrichment
+├─ Runs outside the Git command path
+├─ Cannot override the Go-resolved ticket
+└─ Degrades without blocking when optional services are unavailable
          │
          ▼
-Create task_update message
+Persist the local trigger and create a pending-action draft
 {
   "task_id": "PR-123",
   "status": "in progress",
   "description": "Fixed authentication bug in OAuth flow",
-  "time_spent_hours": 2,
   "category": "bug fix"
 }
          │
          ▼
-Send to project management APIs
-├─ Azure DevOps: Update work item
-├─ GitHub: Update PR/Issue
-├─ Teams: Post status update
-└─ Log in local database
+Return from background processing
+├─ No question is sent back to the Git command
+├─ No direct Git push occurs
+├─ Outbound PM/email work remains in pending_actions
+└─ Optional failures remain visible in diagnostics
          │
          ▼
-Acknowledge to user: "Updated PR #123 with 2 hours of work"
+User inspects or corrects later through queue/status/TUI/notification channels
 ```
 
 ---
@@ -550,21 +549,25 @@ All configuration flows from a single `.env` file with **no hardcoded defaults**
 2. **Python layer** (`backend/`):
    - Loads `.env` via `python-dotenv`
    - Accesses via `backend/config.py` functions
-   - All modules use `get()`, `get_int()`, `get_bool()`, `get_path()`
-   - No `os.getenv()` calls in business logic
+   - New configuration should use `get()`, `get_int()`, `get_bool()`, or `get_path()`.
+   - A small number of compatibility and process-entry modules still read the environment directly;
+     treat those as migration debt, not the preferred pattern.
 
-3. **Override mechanism**:
-   - `DEVTRACK_ENV_FILE` env var overrides default `.env` location
-   - If `DEVTRACK_ENV_FILE` not set, looks for `.env` in working directory
-   - If neither found, exits with explicit error message
+3. **Environment loading**:
+   - Existing process variables always win.
+   - `DEVTRACK_ENV_FILE` selects an explicit environment file.
+   - Otherwise the client follows `~/.devtrack/devtrack.conf`, which `devtrack setup` writes with
+     the generated XDG data-home environment path.
+   - The final compatibility fallback is `.env` beside the executable, not an arbitrary working
+     directory file.
 
 ### Key Environment Variables
 
 | Variable | Layer | Purpose | Example |
 |----------|-------|---------|---------|
-| `PROJECT_ROOT` | Both | Path to repository | `/home/user/automation_tools` |
-| `WORKSPACES_FILE` | Client | Path to the authoritative repository list | `$PROJECT_ROOT/workspaces.yaml` |
-| `DATA_DIR` | Both | Runtime data location | `${PROJECT_ROOT}/Data` |
+| `PROJECT_ROOT` | Both | Resolved DevTrack source/install root; not a monitored-repository selector | `/home/user/.local/share/devtrack/server/devtrack_server` |
+| `WORKSPACES_FILE` | Client | Path to the authoritative monitored-repository list | `/home/user/.local/share/devtrack/workspaces.yaml` |
+| `DATA_DIR` | Both | Runtime data location generated by setup | `/home/user/.local/share/devtrack/data` |
 | `IPC_HOST` | Both | IPC server host | `127.0.0.1` |
 | `IPC_PORT` | Both | IPC server port | `35893` |
 | `LLM_PROVIDER` | Python | Primary AI provider | `ollama` or `openai` or `anthropic` |
@@ -760,7 +763,7 @@ PostgreSQL numeric IDs as the same action. Transport failures leave the local ro
 
 ### Health Monitoring
 
-The daemon checks 6 services every 30 seconds:
+The daemon checks five services every 30 seconds:
 
 | Service | Check Method | Auto-Restart |
 |---------|-------------|--------------|
@@ -825,13 +828,14 @@ task state is tracked in `Data/agent_logs/project_board.md`.
 | **4 — EOD pipeline** | Commits grouped by ticket into an end-of-day report (`devtrack eod`) |
 | **5–6 — Voice & dialectic learning** | Writing-voice training; FTS5 inference store, adaptive thresholds, skill emergence |
 | **7 — PR puppet master** | Fix-commit-push review loop with escalation and completion notifications |
-| **8 — MCP server** | JSON-RPC 2.0 stdio server exposing six read-only SQLite-backed tools to Claude Code |
+| **8 — MCP server** | JSON-RPC 2.0 stdio server exposing ten read-only local context and Sage tools to compatible hosts |
 
 ### Phase 9 — Adoption Gate (complete)
 Current product planning focuses on **DevTrack Sage**, the broader local cross-harness capture and
 personal command-knowledge layer described in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md). The existing
-Git-oriented Sage commands remain a compatibility surface during planning. Packaged-build acceptance
-and privacy-reviewed media remain release follow-ups tracked in
+legacy repository-chat and autonomous-Git Sage commands have been removed; independently useful Git
+helpers remain under `devtrack git`. Packaged-build acceptance and privacy-reviewed media remain
+release follow-ups tracked in
 [`docs/END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md).
 
 > **Not planned, ever:** NATS/Redis/external message queues, Kubernetes, or multi-tenancy.

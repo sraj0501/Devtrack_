@@ -1,6 +1,169 @@
 # DevTrack Feature Tracker
 
-_Last updated: 2026-09-06 (cross-platform core E2E passes locally and in hosted CI; Glama approved; full gates pending)_
+## 2026-10-15 — TASK-157 repeated end-to-end acceptance complete locally
+
+The stacked `features/TASK-157-sage-acceptance` branch adds one isolated executable journey that
+runs twice per operating system in the existing Windows/Linux client matrix. Both native Windows
+passes and both Linux passes cover additive install, silent privacy-minimized capture, exactly-once
+import, model outage and malformed-output recovery, deterministic publication, search, route
+correction, merge/refile, restart stability, knowledge-only Git commits, unrelated Git-state
+preservation, privacy canaries, and safe uninstall. Full Go tests/vet and focused Linux race
+coverage and all 19 hosted checks pass. Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Next:
+integration of clean PR #285 after fully green parent PR #284.
+
+## 2026-10-15 — TASK-157 executable Sage parity complete
+
+The active `features/TASK-157-sage-ide-parity` branch resolves the last four ledger rows through
+the existing opt-in Codex history adapter. Pause, cutoff reset, failure retry, first-use exclusion,
+and repeat-poll behavior have exact tests. One explicit adaptation enables both stable Codex
+sources and preserves DevTrack's privacy-minimized command contract; no new harness is advertised.
+Full Go tests/vet, focused Linux race coverage, and native Windows exact tests pass. Ledger:
+119 implemented, 17 adapted, 0 partial, 0 pending; `--require-complete` passes. Evidence:
+`docs/SAGE_IDE_PARITY_QUALIFICATION.md`. The later acceptance slice closes the repeated journey.
+
+## 2026-10-14 — TASK-157 capture decisions and Codex-history closure
+
+The active `features/TASK-157-sage-capture-history` branch closes four capture/logging rows and
+both partial Codex-history rows. Capture decisions are bounded, fail-open, and privacy-safe;
+installed pause state is enforced; repeated actions inside one command line are marked without
+double-spooling; and history polling covers interleaved terminal transitions plus exact failure
+status. The full Go suite/vet and native Windows exact tests pass. Ledger: 116 implemented,
+16 adapted, 0 partial, 4 pending. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`. Next:
+review PR #283 into `dev`, resolve the four optional IDE rows, then run repeated Windows/Linux
+acceptance.
+
+## 2026-10-14 — TASK-157 portable layouts and additive installers
+
+The active `features/TASK-157-sage-platform-installers` branch closes all 18 reference rows for
+platform configuration roots, harness destinations, launcher behavior, and additive hook
+installation/removal. Eleven layout rows and five mutation rows are implemented; the two Python
+script-shim rows are explicitly adapted to packaged native Go executables. Codex remains the only
+advertised capture adapter. Full Go tests/vet, Windows hooks cross-compile, and current-reference
+ledger validation pass. Ledger: 105 implemented, 4 adapted, 2 partial, 25 pending. Evidence:
+`docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md`. Next: daemon/process and CLI lifecycle parity.
+
+## 2026-10-13 — TASK-157 integration reconciliation
+
+PR #275 merged the qualified durable queue, deterministic publication, persistent routing,
+restart-safe merge/refile, skipped-action, and full-entry search slice to `dev` at `a1777b6`; its
+post-merge workflows passed and rolling release `dev-a1777b6` contains it. PR #276 then merged the
+local Docker evaluation documentation at current `dev` commit `fc3217f`; its applicable checks
+passed. TASK-157 remains open for diagnostics, safe local knowledge commits, parity closure, and
+repeated end-to-end acceptance. Continue from current `origin/dev` on a new branch.
+
+## 2026-10-01 — TASK-157 skipped records and full-entry search
+
+Explicit skips publish idempotent `_skipped.md` signatures through the durable publication queue;
+failures retry without repeating the model. Search returns complete current Markdown entries with
+literal AND keywords, topic filters, and reference ranking. Search/topics reconcile manual edits,
+moves, merges, and deletions. Windows full suite/vet and Linux focused race/vet pass. Ledger:
+27 implemented, 1 adapted, 12 partial, 96 pending. Next: diagnostics and safe local commits.
+Evidence and limits: `docs/SAGE_SKIPPED_SEARCH_QUALIFICATION.md`. Full Sage acceptance remains open.
+
+## 2026-10-01 — TASK-157 restart-safe merge/refile
+
+`sage merge` moves entries with their signatures, redirects routes, and repairs the topic index.
+Interrupted writes replay without duplicate entries; later file edits cause an explicit conflict.
+Windows full suite/vet and Linux focused race/vet pass. Ledger: 24 implemented, 15 partial,
+97 pending. Next: diagnostics, skipped-action records, full-entry search, and safe local commits.
+Evidence and limits: `docs/SAGE_MERGE_QUALIFICATION.md`. Full Sage acceptance remains open.
+
+## 2026-10-01 — TASK-157 persistent routing and publication
+
+The task branch publishes durable drafts to Markdown and supports `sage routes` / `sage route`.
+Routes survive restart; existing entries override remembered destinations after manual moves.
+Windows full suite/vet and Linux focused race/vet pass. The reference ledger now has 22 implemented,
+15 partial, and 99 pending scenarios. Next: merge/refile, diagnostics, full-entry search, safe
+local commits, and end-to-end closure. Evidence: `docs/SAGE_ROUTING_QUALIFICATION.md`.
+
+## 2026-09-30 — TASK-157 deterministic Markdown library
+
+The Sage task branch now includes safe topic filenames, deterministic rendering and parsing,
+signature reuse, atomic topic replacement, and a replayable README index. Seven additional
+reference scenarios have executable tests. Windows full Go suite/vet and Linux writer
+race/fuzz/vet passed. Evidence: `docs/SAGE_MARKDOWN_QUALIFICATION.md`. Next connect durable
+publication to the daemon; a persisted draft still does not imply a written knowledge file.
+
+## 2026-09-30 — TASK-157 durable draft processing
+
+The task branch now connects Sage's background worker to SQLite leases, fencing tokens,
+persisted retries/skips/drafts, atomic import enqueue, and daemon cancellation. Full Windows
+and Fedora WSL2 Go suites/vet pass. Integration coverage consumes a real spool event through
+simulated outage and malformed-output recovery, then verifies persistence across restart.
+Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`. Next: deterministic Markdown writing;
+persisted drafts do not close Sage's self-writing knowledge acceptance gate.
+
+_The dated TASK-159 entry below is historical. PR #273 subsequently merged its schema/E2E
+follow-up at `a329b6f`, and all post-merge workflows passed._
+
+## 2026-09-30 — TASK-159: local qualification complete
+
+At this checkpoint, publication follow-up `2e50763` was verified on
+`origin/fix/TASK-159-schema-transactions`, and TASK-157 parity work continued on stacked branch
+`features/TASK-157-sage-parity`: 136 scenarios reconciled against `b85a1ab`, an explicit
+test/status ledger, CI consistency checks, and transport regressions passing on Windows and Fedora
+WSL2. Later entries above supersede this branch and next-step status.
+
+**Status**: All five product acceptance criteria locally qualified. PR #272's merge is
+recorded locally at `94dbc7c`; the schema/E2E follow-up remains separate.
+
+Full Windows and Fedora WSL2 Go suites passed uncached with the 60-second package timeout;
+vet and both isolated no-send E2E lanes passed. Real-daemon checks verified inferred time,
+45-minute correction persistence after restart, explicit start/stop, and MCP visibility.
+Schema rollback/retry and clock-controlled inference/correction tests passed.
+Evidence: `docs/TASK_159_QUALIFICATION.md`.
+
+**Remaining**: verify hosted checks and integrate the follow-up on
+`fix/TASK-159-schema-transactions`. GitHub CLI currently returns HTTP 401.
+TASK-157 / SAGE-003 remains the next implementation initiative.
+
+The dated reconciliation below is historical; this entry and the project board supersede
+its pre-integration TASK-159/TASK-160 status statements.
+
+---
+
+## 2026-09-25 — Active development reconciliation (TASK-154–161)
+
+**Phase**: Post-v3.1.1 product correction and DevTrack Sage
+
+**Status**: IN PROGRESS
+
+**Current evidence**:
+
+- **TASK-154 — server-admin UI:** committed at `54ceb05` on
+  `feat/TASK-154-server-admin-ui`; not integrated into `dev`. Review and integrate or explicitly
+  retire it before packaged-build qualification and media capture.
+- **TASK-155 / SAGE-001 and TASK-156 / SAGE-002:** the Go-native Sage contract, Codex capture,
+  atomic spool/import, SQLite event storage, harness lifecycle, and model-free search foundation are
+  integrated into `dev`.
+- **TASK-157 / SAGE-003:** PR #263 merged the neutral Go LLM client, validated structured distiller,
+  explicit skip/retry semantics, and non-blocking worker at `e4283db`. Durable SQLite claims,
+  daemon lifecycle wiring, deterministic Markdown, routing/corrections, safe local commits,
+  diagnostics, and executable parity closure remain.
+- **TASK-158:** PR #264 merged the completely silent native-Git correction at `fe3ad38`. Ubuntu
+  24.04.5 under WSL2 subsequently passed redirected non-TTY and pseudo-TTY silence/fail-open tests,
+  the full Go suite, and `go vet ./...` on 2026-09-26. PR #264's hosted-Windows unit-test job timed
+  out in SQLite-backed `internal/db` and
+  `internal/mcp`, although Windows build/vet, native MCPB smoke, and no-send E2E passed. The
+  correction is not part of public v3.1.1.
+- **TASK-160:** passed its Windows and Ubuntu WSL2 implementation gates on 2026-09-29. Canonical
+  branch, explicit prefix/trailer, explicit active ticket, otherwise unlinked; immutable provenance,
+  corrections, provider IDs, conflict gating, health reporting, and documentation are implemented.
+  Implementation commit `92c0711` is ready for the owner-authorized branch push; integration remains pending.
+- **TASK-159:** next after TASK-160 integration. Infer bounded local work windows without per-commit prompts,
+  retaining auditable explicit corrections.
+- **TASK-161:** the rolling `dev` update-channel implementation merged through PR #265 at
+  `f6b0ec0`. The full Go suite, vet, focused tests, documentation checks, and all 19 hosted checks
+  passed, including full Windows tests, both no-send E2E lanes, all five native MCPB smokes,
+  PostgreSQL, wiki, and shared-memory validation. Successful workflow run `36136822555` published
+  `dev-f6b0ec0` with checksums and all five platform binaries. Stable v3.1.1 remains unchanged, and
+  the separate TASK-158 validation draft remains excluded.
+
+**External state checked 2026-09-26**: PRs #263, #264, and #265 are merged to `dev`; PR #265 passed
+all 19 checks, and its successful `dev` workflow published the rolling `dev-f6b0ec0` prerelease.
+v3.1.1 remains the latest stable public release. The earlier PR check sets retain their historical
+failed hosted-Windows unit-test jobs, superseded as the current baseline by PR #265's successful
+Windows test.
 
 ---
 
@@ -774,3 +937,9 @@ patched backend.config source due to lazy imports. Full suite: 433 passed.
 **Files**: 22 files across backend/azure/, github/, gitlab/, admin/, server_tui/, rag/, and more
 **Vision check**: PASS
 **Engineer notes**: 50+ new config accessors added to backend/config.py. All os.getenv direct calls replaced across the codebase. .env_sample updated. 397 tests pass.
+# 2026-09-30 — Sage durable publication checkpoint
+
+Saved drafts now reach deterministic Markdown through the daemon with separate durable
+publication retries and documented acknowledgement. Failure/restart/cancellation recovery and
+byte-stable spool-to-Markdown replay pass on Windows; focused Linux race/vet pass.
+See `docs/SAGE_PUBLICATION_QUALIFICATION.md`. Full Sage remains in progress.

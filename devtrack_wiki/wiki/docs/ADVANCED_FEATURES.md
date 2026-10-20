@@ -8,14 +8,15 @@ They are not separate interactive product flows.
 - `devtrack eod generate` stages an end-of-day report with explicit confidence.
 - `devtrack work report` previews the current work session on demand.
 - `devtrack voice seed|profile|add|sync|status` manages local voice evidence.
-- `devtrack learning-status`, `learning-sync`, and `learning-reset` manage personalization.
+- `devtrack learning-status`, `learning-sync`, and `learning-reset` are the intended personalization
+  controls, but their current server adapter is incomplete; treat them as unavailable until repaired.
 
 The Python server generates reports and profiles and persists server-owned data in PostgreSQL. The
 Go client retains local activity and the pending queue in SQLite.
 
 ## Agent context
 
-`devtrack mcp setup` configures the JSON-RPC 2.0 stdio server. Its six read-only tools expose active
+`devtrack mcp setup` configures the JSON-RPC 2.0 stdio server. Its ten read-only tools expose active
 work, recent activity, pending actions, ticket context, work history, and the EOD roll-up from local
 SQLite without requiring Python or a network request.
 

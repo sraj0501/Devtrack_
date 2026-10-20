@@ -4,7 +4,7 @@
 
 **Never write a standup again.**
 
-*You commit. Tickets update, EOD reports write themselves — silently, in your voice, entirely on your machine.*
+*You commit. Tickets update, EOD reports write themselves — silently, in your voice, with a local-first default and explicit opt-in integrations.*
 
 `devtrack` — a single Go binary. Local-first. Offline by default.
 
@@ -22,7 +22,7 @@
 
 You write code. DevTrack handles the rest.
 
-A background daemon watches your commits and infers everything around them — which ticket you're on (from the branch name), what you did today, what the standup should say. It drafts the ticket comment and the EOD report **in your writing voice**, learned from your own git history. Your only obligation: name branches with ticket IDs.
+A background daemon watches your commits and infers everything around them — which ticket you're on (from the branch name), what you did today, what the standup should say. It drafts the ticket comment and the EOD report **in your writing voice**, learned from your own git history. Your only obligation: follow the workspace branch convention, `<kind>/<ticket-key>-<number>-<slug>`.
 
 **Nothing is sent behind your back.** Every outbound action — a Jira comment, a ticket transition, an email — is *staged* in a review queue first. You approve it, or you let it earn auto-approve over time. The daemon never prompts you, never blocks a commit, and never interrupts.
 
@@ -53,6 +53,11 @@ you run `devtrack telemetry on`.
 The latest public release is **v3.1.1**. Download the matching platform asset from
 [GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/tag/v3.1.1), or build from source:
 
+> **Known v3.1.1 regression:** its shell-wrapped commit path can still ask post-commit questions.
+> TASK-158 is merged into `dev`: native Git is no longer routed through DevTrack, generated
+> observation hooks are silent and fail-open, and the explicit helper returns immediately after
+> Git. The correction remains unreleased until it is promoted and included in a later release.
+
 ```bash
 git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_client
@@ -66,7 +71,7 @@ Managed mode requires a PostgreSQL URL for the Python service; Ollama remains th
 can finish preparing in the background.
 
 ```bash
-devtrack mcp status           # must report six registered tools
+devtrack mcp status           # stable v3.1.1: six tools; TASK-169 branch: ten
 cd /path/to/the/repo/to/watch
 devtrack setup
 ```
@@ -162,18 +167,34 @@ The Python service and model preparation are background work. If they are not re
 keep coding and check `devtrack doctor`; the Go-native path remains usable and commits are not
 blocked.
 
-> **Current validation status:** The remaining release follow-ups are packaged-build acceptance,
-> privacy-reviewed media capture, and confirmation of the exact Glama listing path and score badge.
+> **Current validation status:** The separate TASK-154 server-admin redesign is committed but not
+> integrated into `dev`; review and integrate or retire it before packaged-build acceptance.
+> The qualified TASK-157 pipeline slice is merged through PR #275 at `a1777b6`; all post-merge
+> workflows passed and rolling release `dev-a1777b6` contains it. PR #276 added the local Docker
+> evaluation guide at current `dev` commit `fc3217f`; its applicable checks passed. The remaining
+> release follow-ups also include privacy-reviewed media capture and confirmation of the exact Glama
+> listing path and score badge.
 > See the
 > [end-to-end validation record](docs/END_TO_END_VALIDATION.md) for current evidence and exit criteria.
 
 ### Current product focus: DevTrack Sage
 
-Planning has begun for **DevTrack Sage**, a broader local knowledge and session-memory layer that is
-not restricted to Git workflows. This is a planning direction, not a claim that the broader
-capability is implemented. The currently shipped `devtrack sage ask` and `devtrack sage do`
-commands remain Git-focused. See the
-[implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md).
+**DevTrack Sage** is the local, cross-harness command-knowledge product. It captures useful
+command activity from supported coding harnesses, groups and indexes it locally, and turns it
+into searchable, self-writing personal documentation. The Go-native port follows the behavior of
+the pinned `ai_sessions_skills` reference; it is not a Git-operation agent.
+
+On rolling `dev`, the capture pipeline, durable SQLite jobs, daemon-owned distillation,
+deterministic Markdown publication, persistent routing, restart-safe merge/refile, skipped-action
+records, full-entry search, truthful diagnostics, and safe local knowledge commits are implemented.
+PRs #279–#290 are integrated into `dev`, including capture/history closure, the complete 136-row
+parity ledger, repeated Windows/Linux acceptance, and independent Codex, Claude Code, GitHub
+Copilot CLI, OpenCode, Cursor, and Devin CLI adapters. PR #291 adds four local read-only MCP tools
+for Sage knowledge and diagnostics, and PR #292 adds retention, quarantine, repair/deletion, and
+Markdown portability controls. The approved Sage roadmap is integrated into rolling `dev` at
+`77e2f5b`; none of this work is part of the v3.1.1 stable release. See the
+[implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) and
+[end-to-end qualification](docs/SAGE_END_TO_END_ACCEPTANCE.md).
 
 ### Update an existing installation
 
@@ -181,8 +202,13 @@ commands remain Git-focused. See the
 devtrack upgrade
 ```
 
-`devtrack upgrade` installs the latest public release, including the Phase 9 onboarding and MCP
-commands introduced in v3.1.0.
+`devtrack upgrade` installs the latest build from the selected update channel. Existing and new
+installations default to stable releases from `main`. TASK-161 merged through
+[PR #265](https://github.com/sraj0501/Devtrack_/pull/265), and current rolling `dev` binaries add
+`devtrack upgrade --dev` as the explicit opt-in path for development builds. The v3.1.1 binary does
+not contain these flags; install a binary from the rolling
+[`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev) (or build `origin/dev`)
+before selecting a channel from the CLI.
 
 The daemon mines enabled local repositories in Managed mode and builds the voice profile once the
 local AI server is reachable. `devtrack status` and `devtrack doctor` show the persistent result and
@@ -203,16 +229,10 @@ primary and automatically takes over when the local model becomes available.
 
 #### Moving to a new machine?
 
-Project memory and agent logs are committed to the repo (`.claude/memory/`, `Data/agent_logs/`). After cloning, wire up Claude Code's memory system with one command:
-
-```bash
-# Replace <path-key> with the absolute repo path, slashes replaced by hyphens
-# e.g. repo at /home/sraj/devtrack → -home-sraj-devtrack
-mkdir -p ~/.claude/projects/<path-key>/
-ln -s $(pwd)/.claude/memory ~/.claude/projects/<path-key>/memory
-```
-
-Claude Code will then read and write memory directly to the repo, keeping it in sync with git.
+Shared project memory and agent logs are committed to the repository under `agent-memory/` and
+`Data/agent_logs/`. Claude, Codex, and Copilot discovery adapters are checked in, so no symlink or
+tool-specific memory copy is required after cloning. All agents read `agent-memory/INDEX.md`; no
+durable project memory belongs in an agent-specific directory.
 
 ---
 
@@ -251,16 +271,21 @@ devtrack eod                    # preview today's EOD report
 
 ### Optional: AI-enhanced commits
 
-Separately, `devtrack git commit` is an **interactive** wrapper that refines your commit message with AI, offers a ticket picker, and can log time. It is opt-in and never part of the silent daemon path:
+Normal `git commit` always runs as normal Git. DevTrack observes the completed commit asynchronously;
+it does not replace the command or ask follow-up questions.
+
+For an explicitly requested AI-refined message, run:
 
 ```bash
-eval "$(devtrack shell-init)"    # add to ~/.zshrc or ~/.bashrc — done once
-devtrack enable-git              # opt this repo in
+devtrack git commit -m "short message"
+devtrack git commit -m "short message" --dry-run
+devtrack git commit -m "short message" --no-enhance
 ```
 
-After that, `git commit` routes through DevTrack for monitored repos. Everything else (`git push`, `git pull`, `git status`) goes straight to real git, unmodified. Escape hatch: `GIT_NO_DEVTRACK=1 git commit -m "skip"`.
-
-> AI commit enhancement is only active when the daemon is running. If you stop it, `git commit` passes through with zero delay and no errors.
+This explicit helper may refine the commit message before Git runs. After a successful commit it
+returns immediately: no ticket picker, duration question, PM-post question, or push offer. Ticket
+resolution and outbound staging belong to the background daemon. `devtrack shell-init` is retained
+only for the optional `git history`/`git messages` aliases and never intercepts `git commit`.
 
 ---
 
@@ -272,11 +297,11 @@ After that, `git commit` routes through DevTrack for monitored repos. Everything
 | **GitHub** | Comment on issues/PRs, sync recent activity, alert on review requests |
 | **GitLab** | Comment on issues; list, view, create, and sync issues through the Go connector |
 | **Jira** | Server-side webhook and PM support; Go-client connector parity is part of the staged rollout |
-| **Microsoft Teams** | Learn your communication style for personalized AI output |
+| **Microsoft Teams** | Communication-learning adapter code exists, but the end-to-end Teams learning path is currently unavailable pending adapter repair |
 | **Outlook / MS Graph** | Send EOD reports by email |
 | **Telegram** | Go-native daemon control, logs, queue review/corrections, and notifications |
 | **Slack** | Outbound alert notifications through an incoming webhook |
-| **Ollama / OpenAI / Anthropic / Groq** | AI commit messages, reports, conflict resolution, git-sage agent |
+| **Ollama / OpenAI / Anthropic / Groq** | AI commit messages, reports, and conflict resolution |
 
 ---
 
@@ -330,25 +355,45 @@ workspaces:
   - name: my-api-github
     path: ~/work/my-api
     pm_platform: github
+    ticket_key: GH
     pm_org: acme-corp
     pm_username: sraj0501
     skip_issues: true          # code-only: excluded from devtrack issues + ticket sync
   - name: my-api-ado
     path: ~/work/my-api
     pm_platform: azure
+    ticket_key: ADO
     pm_org: acme-corp
     pm_username: jane@acme.com
 ```
 
 Per-workspace PM overrides (`pm_assignee`, `pm_iteration_path`, `pm_area_path`, `pm_milestone`) are applied when DevTrack creates work items or issues for that repo — Azure uses `assigned_to`/`area_path`/`iteration_path`, GitHub/GitLab use `assignees` and `milestone`. Omit any field to use the global default.
 
-`skip_issues: true` marks a workspace as code-only — it is excluded from `devtrack issues`, ticket sync, and the commit-time ticket picker. Use this when the same repo is tracked in two PM platforms (e.g. GitHub for code review, Azure DevOps for sprint planning) to prevent duplicate ticket lists.
+`skip_issues: true` marks a workspace as code-only — it is excluded from `devtrack issues` and ticket
+sync. Use this when the same repo is tracked in two PM platforms (e.g. GitHub for code review, Azure
+DevOps for sprint planning) to prevent duplicate ticket lists.
 
 ```bash
 devtrack workspace list
-devtrack workspace add my-project ~/code/project --pm github
+devtrack workspace add my-project ~/code/project --pm github --ticket-key GH
 devtrack workspace install-hooks   # push post-commit hooks to all enabled workspaces
 ```
+
+Each workspace has an uppercase `ticket_key`. Setup chooses a visible default (`GH`, `GL`, `ADO`,
+or a key derived from the workspace name). The canonical branch grammar is
+`<kind>/<ticket-key>-<number>-<slug>` and is matched against the complete branch name. Resolution is
+deterministic: canonical branch, explicit first-line commit prefix or `Refs:` trailer, explicit
+`devtrack work start`, otherwise unlinked. Incidental IDs in prose, the previously mapped ticket,
+and LLM suggestions never become authoritative mappings. Inspect or correct mappings explicitly:
+
+```bash
+devtrack ticket convention
+devtrack ticket check feature/GH-42-fix-timeout
+devtrack ticket link abc1234 GH-42
+```
+
+Contradictory evidence is retained as a conflict and cannot stage outbound PM work until corrected.
+Nonconforming branches remain silent and never block Git.
 
 > **Empty repositories**: If a monitored workspace has no commits yet, the daemon watches the folder silently and begins triggering normally once the first commit arrives — no log spam or errors during the empty-repo period.
 
@@ -361,35 +406,127 @@ devtrack work report           # EOD narrative in terminal
 devtrack work report --email me@org.com
 ```
 
-Every `git commit` while a session is active automatically attaches its hash — no manual logging.
+On current `dev`, monitored commits produce local time estimates
+without starting a session. `work start|stop|adjust` provides optional explicit timing and
+corrections; `work status` shows the source and confidence. Matching commits attach to an
+explicit session. See [time inference and its limits](docs/WORK_TIME_INFERENCE.md).
 
-### Sage commands — current Git-focused agent
+### DevTrack Sage — self-writing command knowledge
 
-![git-sage standup demo](devtrack_wiki/wiki/assets/standup-demo.gif)
+Sage provides silent capture and local command knowledge. Rolling `dev` includes durable background
+publication, routing/merge corrections, skipped-action records, and full-entry search:
 
 ```bash
-devtrack sage do "squash my last 5 commits"
-devtrack sage ask "how do I rebase onto main?"
+devtrack sage harness list
+devtrack sage harness install codex
+devtrack sage harness install claude
+devtrack sage harness install copilot
+devtrack sage harness install opencode
+devtrack sage status
+devtrack sage stop "reviewing a client repo"  # aliases: pause, off
+devtrack sage start                            # aliases: resume, on
+devtrack sage restart
+devtrack sage search "rebase"
+devtrack sage topics
+devtrack sage doctor
+devtrack sage log
+devtrack sage routes
+
+# Operational maintenance (pause capture before filesystem changes)
+devtrack sage retention --days 90              # dry run
+devtrack sage retention --days 90 --apply
+devtrack sage quarantine list
+devtrack sage quarantine purge <opaque-id> --yes
+devtrack sage quarantine purge --all --yes
+devtrack sage pause "maintenance"
+devtrack sage repair
+devtrack sage delete-topic git --yes
+devtrack sage export ./sage-snapshot
+devtrack sage import ./sage-snapshot
+devtrack sage resume
 ```
 
-Runs an agentic loop: plans operations, executes them, reads output, handles failures with rollback, only asks when genuinely ambiguous. Session approval dialog (auto / review / suggest-only), step history, and interactive undo built in.
+Harness capture is silent, bounded, local, and fail-open: it does not call a model or network
+service in the hook path, and it does not block the host coding agent. The daemon imports normalized
+events into SQLite and groups repeated command signatures. A bounded local decision log records
+only `new`, `known`, or same-payload `repeat` plus an opaque ID and harness; it excludes commands,
+raw signatures, paths, output, prompts, and reasoning. A structured background distiller uses
+local Ollama HTTP by default; publication retries do not repeat model work. Set
+`DEVTRACK_SAGE_MODEL_BACKEND` explicitly to `claude`, `devin`, `codex`, `copilot`, or
+`cursor-agent` to use an already-installed command provider, and optionally set
+`DEVTRACK_SAGE_MODEL`. Sage never auto-selects a command provider merely because it is installed.
+On rolling `dev`, search
+returns complete Markdown entries, matching all literal keywords, and `--topic git` filters by
+topic filename. Search reflects manual edits and topic moves; skipped records are excluded.
+Rolling `dev` adds model-free lifecycle controls: retention previews by default and
+deletes only normalized source events when `--apply` is explicit; quarantine listing exposes only
+bounded opaque metadata; and destructive purge/delete operations require `--yes`. Repair,
+delete-topic, export, and import require paused capture. They reject links, traversal, overlapping
+roots, and conflicts; repair/delete/import reconcile the derived SQLite retrieval cache from the
+authoritative bounded Markdown snapshot. Export creates a new Markdown-only directory, while import
+validates the complete source before adding only missing, non-conflicting files.
+Set `DEVTRACK_SAGE_RUNTIME_DIR` to relocate private queue/state/log storage and
+`DEVTRACK_SAGE_KNOWLEDGE_DIR` to relocate portable Markdown independently; relative values resolve
+from the stable Sage data root, not the shell's working directory. This remains a development
+preview: the executable parity ledger, repeated end-to-end qualification, six adapters, read-only
+MCP integration, and operational closure are integrated. See
+[the runtime-isolation qualification](docs/SAGE_RUNTIME_ISOLATION_QUALIFICATION.md) and the
+[model-backend qualification](docs/SAGE_MODEL_BACKEND_QUALIFICATION.md) for tested behavior and
+limits. Platform-specific harness destinations and additive hook migration are covered by the
+[platform/installer qualification](docs/SAGE_PLATFORM_INSTALLER_QUALIFICATION.md). Codex, Claude
+Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are currently advertised capture adapters.
+Adapter-specific events and privacy limits are in the
+[Claude adapter qualification](docs/SAGE_CLAUDE_ADAPTER_QUALIFICATION.md),
+[Copilot adapter qualification](docs/SAGE_COPILOT_ADAPTER_QUALIFICATION.md),
+[OpenCode adapter qualification](docs/SAGE_OPENCODE_ADAPTER_QUALIFICATION.md), and
+[Cursor adapter qualification](docs/SAGE_CURSOR_ADAPTER_QUALIFICATION.md), and
+[Devin adapter qualification](docs/SAGE_DEVIN_ADAPTER_QUALIFICATION.md). Daemon locks,
+process liveness, no-console Windows children, capture lifecycle aliases, stop reasons, and
+legacy-hook safety are covered by the
+[lifecycle qualification](docs/SAGE_LIFECYCLE_QUALIFICATION.md). Capture-decision and read-only
+Codex-history edge cases are covered by the
+[capture/history qualification](docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md); the final optional
+IDE rows are covered by the [IDE parity qualification](docs/SAGE_IDE_PARITY_QUALIFICATION.md).
+The four development-only MCP tools and their privacy boundary are covered by the
+[read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md) and
+[operational-closure qualification](docs/SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md).
+
+Older documentation called a different repository chat/Git-operation experiment **Git Sage**.
+That client surface is removed. Do not use its `GIT_SAGE_*` settings to configure current Sage;
+the Python server may still read a few of those names as legacy model fallbacks. Use `devtrack git`
+for explicit enhanced commits and normal Git pass-through; use `devtrack sage` only for local
+command capture and knowledge. `sage ask`, `sage do`, `sage pr`, `sage interactive`, `sage git`,
+and free-form Sage questions are not supported.
 
 ### Personalized AI ("Talk Like You")
 
 ```bash
-devtrack enable-learning        # opt in
-devtrack learning-sync          # mine your git history
-devtrack show-profile           # view your inferred writing style
-devtrack test-response "Completed auth module"
+devtrack voice seed             # seed from local Git history
+devtrack voice add "example"    # add an explicit writing sample
+devtrack voice sync             # sync supported PM descriptions/comments
+devtrack voice profile          # generate the local profile.md
+devtrack voice status           # inspect corpus/profile state
 ```
 
-Learns your writing voice from **your own git history** — local, automatic, no external service. It combines a style profile with ChromaDB RAG (real examples of how you write) to personalize every commit message, ticket comment, and report the system generates.
+> **Current `dev` limitation:** automatic Git-history voice seeding runs through the managed
+> onboarding worker, but the HTTP adapters behind several communication-learning CLI commands are
+> incomplete. Treat `learning-status`, `enable-learning`, `learning-sync`, reset/cron operations,
+> profile display, response testing, and consent revocation as unavailable until the server adapter
+> is repaired.
+
+DevTrack can learn writing evidence from **your own Git history**—local, automatic, and without a
+communication service. It combines a generated profile with optional ChromaDB examples. Python
+generators that explicitly load this context can use it; the profile is not injected into every AI
+request automatically.
 
 On a fresh Managed installation, the daemon automatically seeds Tier 0 voice data from enabled local Git
 workspaces and generates the first profile in the background. Completion is saved locally in
 `first-run-profile.json`; no PM action is sent and daemon startup never waits for the profile.
 
-Microsoft Teams is an **optional** extra signal (`TEAMS_ENABLED`), not a requirement — the local git-history path is the default and works entirely offline.
+Microsoft Teams is designed as an **optional** extra signal when Microsoft Graph authentication is
+available and the user grants learning consent. That end-to-end communication-learning adapter is
+currently incomplete and must not be treated as available. Local Git-history seeding is the working
+default and can run without Teams or another communication source.
 
 ### Ticket alerter
 
@@ -459,8 +596,9 @@ What it does:
 - In Managed mode, writes and validates the required PostgreSQL connection configuration
 - Creates the `~/.devtrack/` configuration directory and writes `workspaces.yaml` there
 - Writes `WORKSPACES_FILE` into the generated environment file, pointing at the workspace file
-- Registers shell integration automatically in `.bashrc` or `.zshrc` on Unix and the PowerShell
-  profile on Windows
+- Registers optional shell aliases in `.bashrc` or `.zshrc` on Unix and the PowerShell profile on
+  Windows; these aliases add `git history`/`git messages` only and do not intercept `git add` or
+  `git commit`
 - Writes `~/.devtrack/devtrack.conf` pointing at the generated environment file
 
 After `devtrack setup` completes, run `devtrack start` — no manual `source .env` needed. Git
@@ -496,13 +634,26 @@ The command prints the resolved targets before confirmation. There is no `--dry-
 
 ### Self-update (`devtrack upgrade`)
 
+> **Rolling `dev` feature, not a v3.1.1 command:** `--dev`, `--main`, `--stable`, and persisted
+> update-channel selection merged through [PR #265](https://github.com/sraj0501/Devtrack_/pull/265)
+> and are available in the rolling
+> [`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev). A v3.1.1 installation
+> must first install that development binary manually (or build `origin/dev`); afterward these flags
+> select and persist the desired channel. Plain `devtrack upgrade` remains the stable v3.1.1 path.
+
 ```bash
-devtrack upgrade          # download and install the latest release binary
+devtrack upgrade          # update from the currently selected channel (main by default)
+devtrack upgrade --dev    # switch to rolling builds from the dev branch
+devtrack upgrade --main   # switch back to stable releases from main (--stable also works)
 sudo devtrack upgrade     # use when the binary is in a root-owned directory (e.g. /usr/local/bin)
 ```
 
+The selected channel is saved after a successful switch. Subsequent `devtrack upgrade` commands
+stay on that channel until you explicitly choose `--dev` or `--main`. `--check` can be combined
+with either flag to inspect a channel without switching to it.
+
 What happens on upgrade:
-1. Downloads the latest binary for your OS/arch from **GitHub Releases** (`sraj0501/Devtrack_`) — Linux/macOS use `.tar.gz`; Windows uses a direct `.exe`
+1. Downloads the latest binary for your OS/arch from **GitHub Releases** (`sraj0501/Devtrack_`) — stable releases come from `main`, while the rolling `dev` prerelease comes from the `dev` branch; Linux/macOS use `.tar.gz` and Windows uses a direct `.exe`
 2. Applies all versioned migrations that have not yet run (schema changes, config file moves, etc.)
 3. Auto-restarts the daemon so the new binary takes effect immediately
 4. On Unix: falls back to `sudo cp` automatically if the target directory is root-owned and the command wasn't run as root
@@ -528,7 +679,7 @@ The Go daemon spawns `backend.webhook_server` as a subprocess in the default man
 cd devtrack_server && uv run python -m backend.webhook_server
 ```
 
-All trigger endpoints require the `X-DevTrack-API-Key` header (set `DEVTRACK_API_KEY` in `.env`). Webhook signature verification uses source-specific secrets (`AZURE_WEBHOOK_SECRET`, `GITHUB_WEBHOOK_SECRET`, etc.). GitLab webhooks are registered automatically at startup when `GITLAB_WEBHOOK_URL` is configured.
+All trigger endpoints require the `X-DevTrack-API-Key` header when `DEVTRACK_API_KEY` is configured. Azure DevOps webhooks use `WEBHOOK_AZURE_USERNAME` and `WEBHOOK_AZURE_PASSWORD`; GitHub and GitLab use `WEBHOOK_GITHUB_SECRET` and `WEBHOOK_GITLAB_SECRET`. GitLab webhook auto-registration additionally requires `GITLAB_PAT`, `GITLAB_PROJECT_IDS`, and `DEVTRACK_WEBHOOK_PUBLIC_URL`.
 
 The stable request and response shapes, authentication rules, and matching Go/Python contract tests
 are documented in [the HTTP API contract](docs/HTTP_API.md).
@@ -543,9 +694,13 @@ DevTrack exposes a Model Context Protocol (MCP) server so Claude Code automatica
 - **`devtrack mcp setup`** — writes `.mcp.json` in the current directory so Claude Code discovers the server automatically on next launch
 - **`devtrack mcp status`** — shows the registered tools and server info
 - **`devtrack mcp test`** — runs an in-process smoke test without starting a full server
-- Six SQLite-backed tools: `get_active_context`, `get_today_commits`, `get_pending_actions`,
-  `get_voice_profile`, `get_ticket_context`, `get_eod_summary`. Each declares a title and read-only,
-  non-destructive, idempotent safety annotations.
+- Stable v3.1.1 has six SQLite-backed context tools: `get_active_context`, `get_today_commits`,
+  `get_pending_actions`, `get_voice_profile`, `get_ticket_context`, and `get_eod_summary`.
+- The TASK-169 development branch adds `sage_search`, `sage_topics`, `sage_get_entry`, and
+  `sage_status`. These read current deterministic Markdown and bounded local diagnostics; they do
+  not expose raw capture events, logs, prompts, output, reasoning, or adapter configuration paths.
+- All ten development-branch tools declare read-only, non-destructive, idempotent, and closed-world
+  safety annotations.
 - The stdio handshake negotiates finalized MCP versions through `2025-11-25`, retaining older-client
   compatibility. The newer `2026-07-28` per-request protocol is not supported yet.
 - Reproducible MCPB 0.3 bundles ship for Windows amd64, macOS amd64/arm64, and Linux amd64/arm64.
@@ -568,25 +723,26 @@ Source: `devtrack_client/internal/mcp/` (server core) and `devtrack_client/mcp_c
 
 ### Development-agent playbooks
 
-The repository retains five historical Claude role definitions under
-[`.claude/agents/_archive/`](.claude/agents/_archive/) and keeps the current role, memory, and
-authorization contract in
-[`.claude/memory/project_local_agents.md`](.claude/memory/project_local_agents.md). These are
-project-maintenance assets, not `devtrack` CLI commands, and the archived files are not advertised
-as automatically installed Claude slash commands. A contributor's Codex or agent environment may
-install adapters for the same roles separately.
+The repository keeps six tool-neutral role playbooks under
+[`agent-memory/roles/`](agent-memory/roles/) and the shared role, memory, and authorization contract
+in [`agent-memory/operations/agent-system.md`](agent-memory/operations/agent-system.md). Every
+repository agent can discover these playbooks through [`agent-memory/INDEX.md`](agent-memory/INDEX.md).
+They are project-maintenance assets, not `devtrack` CLI commands, automatically installed agent
+commands, or permission grants.
 
 | Role | Responsibility |
 |------|----------------|
 | **project-vision** | Break plans into board tasks and enforce vision and authorization boundaries |
 | **devtrack-engineer** | Implement an approved `TASK-NNN` on a task branch and record engineering evidence |
 | **git-agent** | Perform explicitly authorized Git plumbing without expanding the requested scope |
+| **docu-agent** | Synchronize the wiki, shared memory, and README with verified repository state |
 | **memory-compactor** | Reconcile durable project memory without discarding still-relevant decisions |
 | **post-generator** | Turn engineer-log evidence into held dev.to, Hacker News, and LinkedIn drafts under `Data/agent_logs/posts/` |
 
-The documentation-maintenance workflow is checked in at
-[`.claude/commands/docu-agent.md`](.claude/commands/docu-agent.md); how a contributor invokes it
-depends on their local agent environment. The planning and
+The documentation-maintenance workflow is available to every repository agent at
+[`agent-memory/roles/docu-agent.md`](agent-memory/roles/docu-agent.md); how a contributor invokes it
+depends on their local agent environment. Shared agent configuration lives in
+[`agent-memory/project-config.md`](agent-memory/project-config.md). The planning and
 engineering roles use `Data/agent_logs/project_board.md` as their durable contract, while verified
 implementation history is recorded in `Data/agent_logs/engineer_log.md`. Role names alone do not
 authorize commits, pushes, PR operations, releases, publication, or deployment.
@@ -620,6 +776,7 @@ Sign in with `ADMIN_USERNAME` / `ADMIN_PASSWORD` (set in `.env`). The dashboard 
 | Page | What you can do |
 |------|----------------|
 | **Dashboard** | Health overview, trigger throughput stats, quick links |
+| **Pending Actions** | Inspect server-side queued actions and reject still-pending rows with an audited, race-safe review token |
 | **Users** | Create/delete users, change roles (`admin` / `viewer`), disable/enable accounts, reset passwords |
 | **API Keys** | Generate and revoke per-user API keys |
 | **License** | View current license tier, seat count, and terms acceptance status |
@@ -691,9 +848,10 @@ no backend is reachable.
 
 > DevTrack runs **natively** — a Go binary plus a `uv`-managed Python server. The Go client keeps its
 > offline source of truth in local SQLite and does not connect to a database server. PostgreSQL is
-> mandatory for Python-server persistence and server-side events; MongoDB remains optional as a
-> Teams voice-learning source. Server startup validates PostgreSQL and advances the Alembic schema
-> before accepting traffic; there is no server-side SQLite fallback.
+> mandatory for Python-server persistence and server-side events; MongoDB is referenced only by the
+> incomplete optional Teams voice-learning adapter and is not required. Server startup validates
+> PostgreSQL and advances the Alembic schema before accepting traffic; there is no server-side
+> SQLite fallback.
 
 ### Python AI server
 
@@ -707,6 +865,37 @@ soon as the model is ready. The wizard does not wait for these steps;
 **External mode** (server on a separate host): clone the repo on that host,
 `cd devtrack_server && uv sync --extra ai && uv run python -m backend.webhook_server`.
 Set `DEVTRACK_SERVER_URL` on the client machine.
+
+### Resume the local Windows Docker evaluation stack
+
+This checkout may have an ignored `Data/docker-local/` evaluation workspace created during local
+setup. It keeps PostgreSQL and the Python AI server in Docker while the Go client runs natively so
+Windows filesystem monitoring, hooks, autostart, and IPC can still be exercised. From the repository
+root, restart it after Docker Desktop and Ollama are available:
+
+```powershell
+docker compose -f .\Data\docker-local\compose.yml up -d
+
+$env:DEVTRACK_ENV_FILE = (Resolve-Path .\Data\docker-local\client.env)
+$env:XDG_DATA_HOME = (Resolve-Path .\Data\docker-local\client\xdg)
+.\Data\docker-local\bin\devtrack.exe start
+.\Data\docker-local\bin\devtrack.exe status
+```
+
+The server health endpoint is `http://127.0.0.1:8089/health`, and the embedded admin console is at
+`http://127.0.0.1:8089/admin/`. The ignored `.env` files hold local credentials; never commit them.
+To stop the stack without deleting its PostgreSQL volume:
+
+```powershell
+$env:DEVTRACK_ENV_FILE = (Resolve-Path .\Data\docker-local\client.env)
+$env:XDG_DATA_HOME = (Resolve-Path .\Data\docker-local\client\xdg)
+.\Data\docker-local\bin\devtrack.exe stop
+docker compose -f .\Data\docker-local\compose.yml stop
+```
+
+These paths describe the generated evaluation workspace on this machine, not files supplied by a
+fresh clone. For a reproducible repository Compose deployment, use the instructions in
+[Installation](docs/INSTALLATION.md#full-local-compose-deployment).
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the full setup walkthrough.
 
@@ -736,6 +925,7 @@ Key references in this repo:
 
 | I want to… | Go to |
 |-----------|-------|
+| Find the current documentation source for a topic | [Documentation map](docs/README.md) |
 | Understand where the product is going | [**PRODUCT_BIBLE.md**](PRODUCT_BIBLE.md) — the source of truth |
 | Install it | [Installation](docs/INSTALLATION.md) |
 | Verify the real local workflow | [End-to-end validation](docs/END_TO_END_VALIDATION.md) · [Demo storyboard](docs/DEMO_STORYBOARD.md) |
@@ -749,8 +939,9 @@ Key references in this repo:
 | Deploy only the Python backend on a server | [Python AI server](#python-ai-server) |
 | Manage users, licenses, and API keys in a browser | [Admin Console](#admin-console-cs-3) |
 | Update / remove DevTrack | [`devtrack upgrade`](#self-update-devtrack-upgrade) · [`devtrack uninstall`](#uninstall-devtrack-uninstall) |
-| Understand the development-agent roles and authorization boundaries | [Agent role contract](.claude/memory/project_local_agents.md) · [archived Claude definitions](.claude/agents/_archive/) |
+| Understand the development-agent roles and authorization boundaries | [Agent role contract](agent-memory/operations/agent-system.md) · [shared role playbooks](agent-memory/roles/) |
 | Connect Claude Code via MCP (Phase 8) | [MCP Integration](#claude-code--mcp-integration-phase-8) |
+| Follow DevTrack Sage development | [Sage implementation plan](docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) · [Port-parity matrix](docs/SAGE_PORT_PARITY_MATRIX.md) · [Read-only MCP qualification](docs/SAGE_MCP_READONLY_QUALIFICATION.md) · [Operational closure qualification](docs/SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md) · [End-to-end acceptance](docs/SAGE_END_TO_END_ACCEPTANCE.md) |
 
 ---
 
@@ -760,8 +951,8 @@ The canonical release pipeline is [`.github/workflows/release.yml`](.github/work
 It runs when an authorized maintainer pushes a semantic-version tag:
 
 ```bash
-GIT_NO_DEVTRACK=1 git tag -a vX.Y.Z -m "Release vX.Y.Z"
-GIT_NO_DEVTRACK=1 git push origin vX.Y.Z
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 GitHub Actions runs the Go tests, cross-compiles Linux amd64/arm64, macOS amd64/arm64, and Windows
@@ -818,9 +1009,11 @@ services receive the minimum context required for the operation you enabled.
   enable a cloud provider if that conflicts with project policy.
 - **Nothing is posted without review.** All outbound actions are staged in the pending-actions queue until you approve them.
 - **Telemetry is opt-in** and off by default (`devtrack telemetry status`). No pings are sent unless you run `devtrack telemetry on`.
-- **Voice learning is local in managed mode by default.** Git-history seeding is local; Teams and
-  external-server learning sources require explicit configuration. Learning data can be wiped with
-  `devtrack learning-reset`.
+- **Voice learning is local in managed mode by default.** Git-history seeding is local. Teams and
+  Outlook communication learning are not currently end-to-end available. The legacy
+  `learning-*`, profile/test, and consent-reset commands depend on an incomplete adapter; do not rely
+  on `devtrack learning-reset` as a deletion control until that adapter is repaired. A normal
+  uninstall removes DevTrack data unless `--keep-data` is supplied.
 
 ---
 

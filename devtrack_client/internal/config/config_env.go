@@ -912,6 +912,64 @@ func GetHTTPTimeoutLong() int {
 	return positiveIntEnv("HTTP_TIMEOUT_LONG", 60)
 }
 
+// GetSageRuntimeDir resolves Sage's private queue, state, and diagnostic root.
+// Relative overrides are anchored to the default Sage root rather than the
+// process working directory so daemon and CLI invocations agree.
+func GetSageRuntimeDir(sageRoot string) string {
+	if dir := strings.TrimSpace(os.Getenv("DEVTRACK_SAGE_RUNTIME_DIR")); dir != "" {
+		if filepath.IsAbs(dir) {
+			return filepath.Clean(dir)
+		}
+		return filepath.Clean(filepath.Join(sageRoot, dir))
+	}
+	return filepath.Clean(sageRoot)
+}
+
+// GetSageKnowledgeDir resolves the daemon's portable Markdown output directory.
+// An explicit relative directory is anchored to the stable Sage configuration root,
+// never to the caller's current working directory.
+func GetSageKnowledgeDir(sageRoot string) string {
+	if dir := strings.TrimSpace(os.Getenv("DEVTRACK_SAGE_KNOWLEDGE_DIR")); dir != "" {
+		if filepath.IsAbs(dir) {
+			return filepath.Clean(dir)
+		}
+		return filepath.Clean(filepath.Join(sageRoot, dir))
+	}
+	return filepath.Clean(filepath.Join(sageRoot, "knowledge"))
+}
+
+// GetSageAutoCommit controls local knowledge-only commits. Sage never pushes.
+// It defaults on to match the self-writing reference; an explicit false or 0
+// keeps publication entirely in the working tree.
+func GetSageAutoCommit() bool {
+	value := strings.TrimSpace(os.Getenv("DEVTRACK_SAGE_AUTO_COMMIT"))
+	return value == "" || strings.EqualFold(value, "true") || value == "1"
+}
+
+// GetSageModelTimeoutSecs bounds one background local-model request. The
+// three-minute default is forgiving for offline models without waiting forever.
+func GetSageModelTimeoutSecs() int {
+	return boundedPositiveIntEnv("DEVTRACK_SAGE_MODEL_TIMEOUT_SECS", 180, 5, 1800)
+}
+
+// GetSageIdlePollMS keeps new queued work responsive without a busy loop.
+func GetSageIdlePollMS() int {
+	return boundedPositiveIntEnv("DEVTRACK_SAGE_IDLE_POLL_MS", 500, 50, 5000)
+}
+
+// GetSageRetryDelaySecs prevents a failing offline model from spinning.
+func GetSageRetryDelaySecs() int {
+	return boundedPositiveIntEnv("DEVTRACK_SAGE_RETRY_DELAY_SECS", 2, 1, 60)
+}
+
+// IsSageCaptureOff disables capture only for the current process tree. Model
+// CLI backends set it so their own harness activity cannot feed back into the
+// Sage queue; it never changes the persistent pause marker.
+func IsSageCaptureOff() bool {
+	value := strings.TrimSpace(os.Getenv("DEVTRACK_SAGE_CAPTURE_OFF"))
+	return value == "1" || strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+}
+
 // GetSQLiteBusyTimeoutMS returns how long SQLite waits for a concurrent writer
 // before returning SQLITE_BUSY. Reads SQLITE_BUSY_TIMEOUT_MS; default 5000.
 func GetSQLiteBusyTimeoutMS() int {
@@ -926,6 +984,18 @@ func positiveIntEnv(name string, fallback int) int {
 	parsed, err := strconv.Atoi(val)
 	if err != nil || parsed <= 0 {
 		fmt.Fprintf(os.Stderr, "WARNING: invalid %s %q — using default %d\n", name, val, fallback)
+		return fallback
+	}
+	return parsed
+}
+
+func boundedPositiveIntEnv(name string, fallback, minimum, maximum int) int {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < minimum || parsed > maximum {
 		return fallback
 	}
 	return parsed

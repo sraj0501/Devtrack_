@@ -16,16 +16,19 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/db"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/codexhistory"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/worktime"
 )
 
 // WorkspaceMonitor pairs a GitMonitor with its workspace routing metadata
 type WorkspaceMonitor struct {
-	gitMonitor    *GitMonitor
-	workspaceName string
-	pmPlatform    string
-	pmProject     string
+	workspaceConfig config.WorkspaceConfig // last valid config, including ticket identity
+	gitMonitor      *GitMonitor
+	workspaceName   string
+	pmPlatform      string
+	pmProject       string
 	// Per-workspace PM settings
 	pmAssignee      string
 	pmIterationPath string
@@ -33,8 +36,9 @@ type WorkspaceMonitor struct {
 	pmMilestone     int
 	// Filtering
 	ignoreBranches []string // commits on these branches are silently skipped
-	// ticketPattern is a custom regex used to extract ticket IDs from branch
-	// names/commit messages for this workspace; empty = use default patterns.
+	// Ticket convention fields are part of the hot-reload identity.
+	ticketKey     string
+	ticketKinds   []string
 	ticketPattern string
 	// inProgressLabel is the GitHub/GitLab in-progress label convention
 	// (TASK-129); "" = default, "none" = disabled.
@@ -56,6 +60,8 @@ type IntegratedMonitor struct {
 	// queueExecutor is stored so callers can wire in a late-bound NotifyFn
 	// (e.g. the Telegram bot) after Start() has been called.
 	queueExecutor *QueueExecutor
+	sageCancel    context.CancelFunc
+	sageDone      <-chan struct{}
 }
 
 // NewIntegratedMonitor creates a new integrated monitoring system.
@@ -90,6 +96,7 @@ func NewIntegratedMonitor(_ string) (*IntegratedMonitor, error) {
 				continue
 			}
 			workspaceMonitors = append(workspaceMonitors, &WorkspaceMonitor{
+				workspaceConfig: ws,
 				gitMonitor:      gm,
 				workspaceName:   ws.Name,
 				pmPlatform:      ws.PMPlatform,
@@ -99,6 +106,8 @@ func NewIntegratedMonitor(_ string) (*IntegratedMonitor, error) {
 				pmAreaPath:      ws.PMAreaPath,
 				pmMilestone:     ws.PMMilestone,
 				ignoreBranches:  ws.IgnoreBranches,
+				ticketKey:       ws.TicketKey,
+				ticketKinds:     ws.TicketKinds,
 				ticketPattern:   ws.TicketPattern,
 				inProgressLabel: ws.InProgressLabel,
 			})
@@ -175,11 +184,21 @@ func (im *IntegratedMonitor) startSageCapture(ctx context.Context) {
 		log.Printf("Sage disabled: data directory unavailable")
 		return
 	}
-	root := filepath.Join(dataHome, "sage")
+	baseRoot := filepath.Join(dataHome, "sage")
+	root := config.GetSageRuntimeDir(baseRoot)
+	knowledgeRoot := config.GetSageKnowledgeDir(baseRoot)
 	if err := sage.EnsureSpool(root); err != nil {
 		log.Printf("Sage disabled: %v", err)
 		return
 	}
+	ctx, im.sageCancel = context.WithCancel(ctx)
+	client, clientErr := distill.LoadModelClient(root, knowledgeRoot)
+	if clientErr != nil {
+		log.Printf("Sage model backend unavailable: %v", clientErr)
+	}
+	workerDone := im.startSageDistillation(ctx, root, knowledgeRoot, client)
+	done := make(chan struct{})
+	im.sageDone = done
 	poller := codexhistory.Poller{Root: root}
 	run := func() {
 		if codexhistory.Enabled(root) {
@@ -197,6 +216,8 @@ func (im *IntegratedMonitor) startSageCapture(ctx context.Context) {
 		}
 	}
 	go func() {
+		defer close(done)
+		defer func() { <-workerDone }()
 		run()
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
@@ -244,6 +265,10 @@ func (im *IntegratedMonitor) Database() *db.Database { return im.database }
 // Stop stops all monitoring
 func (im *IntegratedMonitor) Stop() {
 	log.Println("Stopping integrated monitoring system...")
+	if im.sageCancel != nil {
+		im.sageCancel()
+		<-im.sageDone
+	}
 
 	// Notify Python of graceful shutdown (best-effort).
 	// Skip when using an external server — we don't own it and must not shut it down.
@@ -274,10 +299,19 @@ func (im *IntegratedMonitor) Stop() {
 // workspaceKey returns a string that uniquely identifies a workspace's config.
 // If the key changes, the monitor must be restarted.
 func workspaceKey(ws config.WorkspaceConfig) string {
-	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%d|%s",
+	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%s|%d|%s|%s|%s|%s",
 		ws.Name, ws.Path, ws.PMPlatform, ws.PMProject,
-		ws.PMAssignee, ws.PMIterationPath, ws.PMMilestone,
-		strings.Join(ws.IgnoreBranches, ","))
+		ws.PMAssignee, ws.PMIterationPath, ws.PMAreaPath, ws.PMMilestone,
+		strings.Join(ws.IgnoreBranches, ","), ws.TicketKey,
+		strings.Join(ws.TicketKinds, ","), ws.TicketPattern)
+}
+
+func workspaceMonitorKey(wm *WorkspaceMonitor) string {
+	return fmt.Sprintf("%s|%s|%s|%s|%s|%s|%s|%d|%s|%s|%s|%s",
+		wm.workspaceName, wm.gitMonitor.repoPath, wm.pmPlatform, wm.pmProject,
+		wm.pmAssignee, wm.pmIterationPath, wm.pmAreaPath, wm.pmMilestone,
+		strings.Join(wm.ignoreBranches, ","), wm.ticketKey,
+		strings.Join(wm.ticketKinds, ","), wm.ticketPattern)
 }
 
 // ReloadWorkspaces hot-reloads the workspace configuration.
@@ -310,10 +344,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 	// Stop monitors for removed or changed workspaces
 	for name, wm := range oldByName {
 		ws, stillWanted := desiredByName[name]
-		if !stillWanted || workspaceKey(ws) != fmt.Sprintf("%s|%s|%s|%s|%s|%s|%d|%s",
-			wm.workspaceName, wm.gitMonitor.repoPath, wm.pmPlatform, wm.pmProject,
-			wm.pmAssignee, wm.pmIterationPath, wm.pmMilestone,
-			strings.Join(wm.ignoreBranches, ",")) {
+		if !stillWanted || workspaceKey(ws) != workspaceMonitorKey(wm) {
 			log.Printf("Stopping monitor for workspace %q", name)
 			wm.gitMonitor.Stop()
 			delete(oldByName, name)
@@ -337,6 +368,7 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 			continue
 		}
 		wm := &WorkspaceMonitor{
+			workspaceConfig: ws,
 			gitMonitor:      gm,
 			workspaceName:   ws.Name,
 			pmPlatform:      ws.PMPlatform,
@@ -346,6 +378,8 @@ func (im *IntegratedMonitor) ReloadWorkspaces() {
 			pmAreaPath:      ws.PMAreaPath,
 			pmMilestone:     ws.PMMilestone,
 			ignoreBranches:  ws.IgnoreBranches,
+			ticketKey:       ws.TicketKey,
+			ticketKinds:     ws.TicketKinds,
 			ticketPattern:   ws.TicketPattern,
 			inProgressLabel: ws.InProgressLabel,
 		}
@@ -402,45 +436,22 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 	im.lastActiveWorkspace = ws
 	im.lastActiveWorkspaceMu.Unlock()
 
-	// Phase 2 ticket extraction: attempt to map this commit to a ticket ID.
-	// Three strategies, in order — never blocks or errors the trigger:
-	//   1. Branch name (e.g. feat/PROJ-123-add-login)
-	//   2. Commit message scan (TASK-069 strategy 2)
-	//   3. Active-ticket fallback — last successfully matched ticket for this
-	//      repo (TASK-069 strategy 3)
-	// If all three fail, ticketID stays "" and the trigger is logged unlinked.
-	// TASK-128: the extraction strategy that produced the ticket ID is the
-	// confidence signal for every action staged downstream (bible: "confidence
-	// is always explicit"). Branch names are the developer contract (highest);
-	// message scan is strong; the active-ticket fallback is a guess (lowest —
-	// lands in the 15-minute review tier, per the <0.70 timeout mapping).
-	ext, _ := ticket.NewExtractor(ws.ticketPattern) // falls back to defaults on ""
-	ticketConfidence := 0.0
-	ticketID := ext.Extract(commit.Branch)
-	if ticketID != "" {
-		ticketConfidence = 0.95
-	}
-
-	if ticketID == "" {
-		ticketID = ext.Extract(commit.Message)
-		if ticketID != "" {
-			ticketConfidence = 0.85
-			log.Printf("trigger commit: hash=%s ticket_id=%q (from commit message)", commit.Hash[:8], ticketID)
-		}
-	}
-
-	if ticketID == "" && im.database != nil {
-		if last, err := im.database.GetLastTicketID(ws.gitMonitor.repoPath); err == nil && last != "" {
-			ticketID = last
-			ticketConfidence = 0.60
-			log.Printf("trigger commit: hash=%s ticket_id=%q (active-ticket fallback)", commit.Hash[:8], ticketID)
-		}
+	// TASK-160 deterministic resolution: canonical branch, explicit prefix or
+	// trailer, explicit active work-session ticket, otherwise unlinked. Prior
+	// mappings and incidental prose never become authoritative.
+	resolution := im.resolveCommitMapping(ws, &ticket.ResolveInput{
+		Branch: commit.Branch, CommitMessage: commit.Message, IsMerge: commit.IsMerge,
+	})
+	ticketID := resolution.TicketID
+	ticketConfidence := resolution.Confidence
+	if resolution.Conflict {
+		log.Printf("trigger commit: hash=%s ticket conflict: %s", commit.Hash[:8], resolution.Reason)
 	}
 
 	// TASK-126: a merge commit landing on the default branch signals the ticket's
 	// work is done ("merged to main → Done"). The ticket ID for a merge commit
-	// comes from the merge subject ("Merge branch 'fix/PROJ-123-x'") via the
-	// message-scan strategy above — the branch itself is the default branch.
+	// comes from a canonical source branch in the merge subject; the branch
+	// itself is the default branch.
 	isMergeToDefault := false
 	if commit.IsMerge && commit.Branch != "" {
 		if def := ws.gitMonitor.DefaultBranch(); def != "" && strings.EqualFold(commit.Branch, def) {
@@ -466,6 +477,10 @@ func (im *IntegratedMonitor) handleCommitForWorkspace(commit CommitInfo, ws *Wor
 		PMInProgressLabel: ws.inProgressLabel,
 		TicketID:          ticketID,
 		TicketConfidence:  ticketConfidence,
+		TicketSource:      string(resolution.Source),
+		TicketState:       string(resolution.State),
+		TicketConflict:    resolution.Conflict,
+		SuppressOutbound:  resolution.Conflict,
 		IsMergeToDefault:  isMergeToDefault,
 	}
 	im.handleTrigger(event)
@@ -524,7 +539,11 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 				FilesChanged:           commit.Files,
 				Branch:                 commit.Branch,
 				TicketID:               event.TicketID,
+				TicketExternalID:       ticket.ExternalID(event.TicketID, event.PMPlatform),
 				TicketConfidence:       event.TicketConfidence,
+				TicketSource:           event.TicketSource,
+				TicketState:            event.TicketState,
+				TicketConflict:         event.TicketConflict,
 				IsFirstCommitForTicket: isFirstCommitForTicket,
 				IsMergeToDefault:       event.IsMergeToDefault,
 				WorkspaceName:          event.WorkspaceName,
@@ -539,15 +558,22 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 			commitData = &cd
 
 			triggerRecord = db.TriggerRecord{
-				TriggerType:   "commit",
-				Timestamp:     event.Timestamp,
-				Source:        "git",
-				RepoPath:      event.RepoPath,
-				CommitHash:    commit.Hash,
-				CommitMessage: commit.Message,
-				Author:        commit.Author,
-				Processed:     false,
-				TicketID:      event.TicketID,
+				TriggerType:        "commit",
+				Timestamp:          event.Timestamp,
+				Source:             "git",
+				RepoPath:           event.RepoPath,
+				CommitHash:         commit.Hash,
+				CommitMessage:      commit.Message,
+				Author:             commit.Author,
+				Processed:          false,
+				TicketID:           event.TicketID,
+				TicketCanonicalRef: event.TicketID,
+				TicketExternalID:   ticket.ExternalID(event.TicketID, event.PMPlatform),
+				TicketSource:       event.TicketSource,
+				TicketConfidence:   event.TicketConfidence,
+				TicketState:        event.TicketState,
+				TicketBranch:       strings.TrimSpace(commit.Branch),
+				TicketConflict:     event.TicketConflict,
 			}
 		}
 
@@ -601,11 +627,24 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 		}
 	}
 
+	// Time evidence is local and independent of model/server availability.
+	if im.database != nil && event.Type == TriggerTypeCommit {
+		if commit, ok := event.Data.(CommitInfo); ok {
+			_, _, err := im.database.RecordWorkActivity(db.WorkActivity{
+				SourceKind: "commit", SourceID: commit.Hash, OccurredAt: commit.Timestamp.In(time.Local),
+				TicketRef: event.TicketID, RepoPath: event.RepoPath, WorkspaceName: event.WorkspaceName,
+			}, worktime.DefaultPolicy())
+			if err != nil {
+				log.Printf("record local work activity: %v", err)
+			}
+		}
+	}
+
 	// Route trigger to Python backend via HTTPS POST (CS-1: always HTTP).
 	httpClient := trigger.NewHTTPTriggerClient()
 	var sendErr error
 	switch {
-	case commitData != nil:
+	case shouldSendCommitOutbound(commitData, event):
 		sendErr = httpClient.SendCommitTrigger(*commitData)
 	case timerData != nil:
 		sendErr = httpClient.SendTimerTrigger(*timerData)
@@ -613,6 +652,10 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 	if sendErr != nil {
 		log.Printf("Warning: HTTP trigger failed (%v) — trigger not delivered", sendErr)
 	}
+}
+
+func shouldSendCommitOutbound(commitData *trigger.CommitTriggerData, event TriggerEvent) bool {
+	return commitData != nil && !event.SuppressOutbound && !event.TicketConflict
 }
 
 // GetStatus returns the current monitoring status

@@ -188,7 +188,8 @@ best-effort notification or optional enrichment → graceful.
 ## OllamaFailureAnalyzer
 
 Wired automatically at startup when `OLLAMA_HOST` is set and reachable (2-second ping
-to `/api/tags`). Uses `GIT_SAGE_DEFAULT_MODEL` (same model as git-sage) for consistency.
+to `/api/tags`). `GIT_SAGE_DEFAULT_MODEL` remains a legacy fallback name; prefer the current
+general model configuration for new deployments.
 
 ```python
 OllamaFailureAnalyzer(
@@ -219,7 +220,7 @@ the event — the rest of the `FailureOccurred` event is still emitted.
 | `NARRATIVE_LOG_PATH` | `$LOG_DIR/narrative.log` | Override log file location |
 | `NARRATIVE_RENDERER` | _(unset)_ | Set to `console` to add `ConsoleRenderer` alongside JSON (dev mode; requires `PYTHONIOENCODING=utf-8` on Windows) |
 | `OLLAMA_HOST` | _(unset)_ | If set and reachable, wires `OllamaFailureAnalyzer` automatically |
-| `GIT_SAGE_DEFAULT_MODEL` | `llama3.2` | Model used by `OllamaFailureAnalyzer` |
+| `GIT_SAGE_DEFAULT_MODEL` | `llama3.2` | Legacy fallback model name read by `OllamaFailureAnalyzer` |
 | `PYTHONIOENCODING` | _(system default)_ | **Must be `utf-8` on Windows** when `NARRATIVE_RENDERER=console` — `ConsoleRenderer` uses Unicode glyphs that crash `cp1252` |
 
 ---

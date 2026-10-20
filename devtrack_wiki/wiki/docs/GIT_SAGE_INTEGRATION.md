@@ -1,139 +1,82 @@
-# Using git-sage
+# DevTrack Sage and the retired Git Sage name
 
-git-sage is the Go-native AI git agent bundled with the `devtrack` binary. It understands repository context, can execute approved git operations, resolve suitable conflicts, and answer git questions in plain English. Its public entry point is `devtrack sage`.
+DevTrack Sage is the Go-native, local command-knowledge subsystem bundled with `devtrack`. It
+captures privacy-minimized command activity from supported coding harnesses, imports it into local
+SQLite, and makes repeated command knowledge searchable. It is not a repository chat agent and it
+does not execute Git operations.
 
-git-sage is client-owned — it runs on your machine alongside the `devtrack` binary, using your local Ollama instance (or any configured LLM). No server required.
+Older documentation used **Git Sage** for a different repository-agent experiment. That surface is
+retired: `sage ask`, `sage do`, `sage pr`, `sage interactive`, `sage git`, and free-form questions
+no longer exist. Do not use `GIT_SAGE_*` settings for current Sage; a few Python-server reads remain
+only as legacy model fallbacks. The independently useful enhanced-commit workflow remains available
+as `devtrack git`, while `devtrack sage` now means command capture and personal knowledge.
 
----
-
-## Modes
-
-### Ask Mode
-
-Get explanations and command suggestions without executing anything:
-
-```bash
-devtrack sage ask "how do I undo my last commit but keep the changes"
-devtrack sage ask "what's the difference between rebase and merge"
-devtrack sage ask "how do I squash my last 5 commits"
-```
-
-### Do Mode (Agentic)
-
-Execute git operations autonomously. git-sage plans the steps, runs them, reads the output, and handles failures:
-
-```bash
-devtrack sage do "squash my last 5 commits into one with a clean message"
-devtrack sage do "merge feature-auth into main and resolve any conflicts"
-devtrack sage do "my last push broke things, revert to the previous state"
-devtrack sage do "clean up my branch — rebase onto main, fix conflicts"
-```
-
-Before the first command executes, you'll see an approval dialog with three options:
-- **auto** — run all steps without interruption
-- **review** — confirm each step before it runs
-- **suggest-only** — plan only, no execution
-
-### Interactive Shell
-
-```bash
-devtrack sage
-sage> do merge feature-x into main
-sage> ask what is cherry-pick
-sage> context
-sage> undo
-sage> quit
-```
-
-Use `undo [N]` to roll back the last N steps. Up to 5 follow-up questions or tasks can be asked in the same session context.
-
----
-
-## Configuration
-
-Key environment variables are read by the embedded agent:
-
-| Variable | Description |
+| Need | Current command |
 |---|---|
-| `GIT_SAGE_DEFAULT_MODEL` | Model for git-sage (e.g. `llama3`, `mistral`) |
-| `OLLAMA_HOST` | Ollama server URL |
-| `GIT_SAGE_PROVIDER` | LLM provider (`ollama`, `openai`, `groq`) |
-| `GROQ_API_KEY` | Groq API key (if using Groq) |
-| `GROQ_MODEL` | Groq model name |
+| Commit-message assistance or Git pass-through | `devtrack git ...` |
+| Silent command capture and local knowledge search | `devtrack sage ...` |
+| Repository questions or autonomous Git actions | Not provided |
 
----
-
-## Integration with DevTrack
-
-git-sage is automatically invoked by the DevTrack daemon for:
-
-### Commit Enhancement
-
-When you run `devtrack git commit`, git-sage analyzes your staged changes and the current git context (branch, recent commits, related PRs) to generate a well-structured commit message:
+## Install capture
 
 ```bash
-devtrack git commit -m "initial message"
-# DevTrack enhances it using git-sage context before committing
+devtrack sage harness list
+devtrack sage harness install codex
+devtrack sage harness install claude
+devtrack sage harness install copilot
+devtrack sage harness install opencode
+devtrack sage status
 ```
 
-### Conflict Auto-Resolution
+Installed hooks are silent, bounded, model-free, and fail-open. They omit raw command output,
+reasoning, messages, and working-directory paths. On Windows, Codex uses an opt-in read-only history
+adapter to avoid console-host compatibility problems. Claude Code uses owned `PostToolUse` hooks
+for Bash/search/edit tools and a Bash-only `PostToolUseFailure` hook while preserving unrelated
+`~/.claude/settings.json` entries. GitHub Copilot CLI uses one owned version-1 `postToolUse` entry
+with portable Bash and PowerShell commands while preserving foreign entries in
+`~/.copilot/hooks/ai-session-skills.json`. OpenCode uses one owned user plugin that observes both
+`tool.execute.before` and `tool.execute.after` without adding session lifecycle work.
 
-After a merge or rebase that leaves conflicts, DevTrack can automatically invoke git-sage to resolve them. Conflicts that can be resolved safely are handled; those requiring human judgment are reported clearly.
-
-Check logs to see what was resolved:
+Pause or remove capture without changing unrelated harness configuration:
 
 ```bash
-devtrack logs | grep -i conflict
+devtrack sage pause
+devtrack sage resume
+devtrack sage harness uninstall codex
+devtrack sage harness uninstall claude
+devtrack sage harness uninstall copilot
+devtrack sage harness uninstall opencode
 ```
 
-### Work Update Context Enrichment
-
-When the silent scheduler fires, DevTrack injects current branch, recent commit, and linked PR context into the enrichment pipeline without prompting in the main flow.
-
----
-
-## How It Handles Failures
-
-git-sage takes HEAD snapshots before each step. If a step fails:
-1. It reads the error output and adjusts the plan
-2. It attempts a recovery strategy (e.g. `git reset --soft HEAD~1`)
-3. If it cannot recover, it reports which step failed and what the repo state is
-
-It never uses `git rebase -i` (interactive editor blocks the agent loop). Squash operations always use `git reset --soft HEAD~N && git commit`.
-
----
-
-## Troubleshooting
-
-**Agent does nothing then says Done**
-
-The LLM is returning prose instead of JSON. Check the model:
-```bash
-devtrack sage ask "hello"   # test with a simple request
-```
-Switch to a model with reliable JSON output: `llama3`, `mistral`, or `llama-3.3-70b-versatile` on Groq.
-
-**Agent loops or takes too long**
+## Search local knowledge
 
 ```bash
-# Interrupt with Ctrl+C, then check repo state
-git status
-git log --oneline -5
+devtrack sage search "rebase"
+devtrack sage search "status command" --topic git
+devtrack sage topics
+devtrack sage doctor
 ```
 
-**Groq 403 error**
+The current development milestone includes capture, deterministic signatures, grouping, source
+attribution, topics, SQLite FTS search, a neutral Go LLM transport, structured drafts with required
+`title`/`what`/`why`/`example` fields and optional `notes`, and a non-blocking distillation worker. Durable SQLite
+claims, daemon lifecycle wiring, deterministic Markdown topic files, correction-stable routing,
+merge/refile, retries, and safe local knowledge commits remain in progress until SAGE-003 closes.
 
-Make sure `openai` SDK is installed: `uv add openai` in the client directory. The Groq provider uses the OpenAI SDK to avoid Cloudflare blocks.
+Current `dev` also defines bounded worker settings:
 
-**Conflicts not resolving**
+```bash
+DEVTRACK_SAGE_MODEL_TIMEOUT_SECS=180  # allowed: 5–1800 seconds
+DEVTRACK_SAGE_IDLE_POLL_MS=500        # allowed: 50–5000 ms
+DEVTRACK_SAGE_RETRY_DELAY_SECS=2      # allowed: 1–60 seconds
+```
 
-Some conflicts genuinely require human judgment — git-sage will tell you which files it could not resolve and why. Fix those manually, then `git add` and continue.
+These tune the worker foundation only; they do not mean durable queue claims or daemon wiring are
+complete.
 
----
+## Git workflows
 
-## Limitations
-
-- git-sage does not push to remotes unless you explicitly ask it to (`devtrack sage do "push this branch"`)
-- It will not force-push without being told explicitly
-- It will not delete branches on remotes without explicit instruction
-- Interactive rebase (`git rebase -i`) is not supported — use `devtrack sage do "squash my last N commits"` instead
+Use normal Git commands for repository operations. `devtrack git commit` remains an explicit,
+separate enhanced-commit workflow and uses the shared `LLM_PROVIDER`, `OLLAMA_HOST`, and
+`OLLAMA_MODEL` settings. Removed `sage ask`, `sage do`, `sage pr`, `sage interactive`, `sage git`,
+and free-form Sage questions fail clearly instead of starting a model or Git operation.

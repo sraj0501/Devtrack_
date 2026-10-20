@@ -51,18 +51,20 @@ The supplemental Windows compatibility seam accepts completed or failed Codex
 original command from `commandActions`, preserves a consistent exit status, deduplicates repeated
 actions within an item, and applies the same command minimization. Output, cwd, thread IDs, and
 item IDs are never copied. This shape is derived from the Python reference compatibility fix at
-`b85a1ab`; the Go code does not yet open Codex SQLite databases. `cli` covers terminal-launched
-Codex sessions generally. The repository contains no Warp-specific branch or identifier.
+`b85a1ab`. The opt-in Go history poller now opens Codex history databases read-only, starts from the
+current high-water mark on first use, revisits in-progress items, and imports only supported active
+`vscode` and `cli` threads. `cli` covers terminal-launched Codex sessions generally. The repository
+contains no Warp-specific branch or identifier.
 
 ## CLI compatibility and exit behavior
 
 `devtrack sage status`, `pause`, `resume`, and `doctor` return a single JSON state object on
 stdout. The object reports capture readiness, pause state, Codex history mode, backlog, and
 quarantine count. Pause/resume are idempotent and persist locally. Success exits 0;
-invalid arguments and state I/O errors exit nonzero. The old `sage ask|do|pr|interactive` forms
-continue to work and emit a migration notice on stderr. `sage git ask|do|pr|interactive` are
-the explicit aliases. `install-hooks` and `uninstall-hooks` return a machine-readable installation
-result; `search` and `topics` still fail clearly rather than silently launching the old Git agent.
+invalid arguments and state I/O errors exit nonzero. Removed repository-agent forms
+(`sage ask|do|pr|interactive`, `sage git`, and free-form questions) fail clearly and never start a
+model, network request, or Git operation. `install-hooks` and `uninstall-hooks` remain compatibility
+aliases for the selective harness installer. `search` and `topics` query the local SQLite index.
 
 ## Open SAGE-001 work
 

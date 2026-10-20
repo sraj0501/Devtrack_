@@ -33,8 +33,10 @@ devtrack work report
 devtrack queue list
 ```
 
-Use a branch containing a ticket ID, such as `feature/PROJ-123-description`. DevTrack observes
-normal commits, resolves the ticket, and stages outbound work with explicit confidence.
+Use the full canonical branch grammar, such as `feature/PROJ-123-description`. Arbitrary branches
+that merely contain a ticket-looking substring do not map. DevTrack observes normal commits,
+resolves the ticket deterministically, and stages non-conflicting outbound work with explicit
+confidence. Run `devtrack ticket convention` to see the workspace rule.
 
 See [Installation](INSTALLATION.md), [Configuration](CONFIGURATION.md), and
 [Troubleshooting](TROUBLESHOOTING.md) for details.

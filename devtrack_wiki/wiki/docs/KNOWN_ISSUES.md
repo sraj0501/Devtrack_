@@ -19,17 +19,45 @@ downloads happen in the background. They may be temporarily degraded after setup
 `devtrack doctor`, and `devtrack doctor --repair` expose progress and recovery; Go-native features
 remain usable.
 
-## End-to-end validation hold
+## Remaining release qualification
 
-Roadmap feature work is paused while clean-machine installation, full Linux Managed-demo parity,
-admin-queue review, and privacy-reviewed screenshot/video capture are completed. The Windows
-local-user Managed workflow has passed twice with real commit detection, `DEMO-101` mapping,
-confidence-bearing staging, EOD generation, six-tool MCP introspection, and disposable-workspace
-cleanup. A separate credential-free core lane has passed locally on native Windows, in a Linux Go
+Clean Windows installation and the full Managed Linux journey were confirmed complete by the owner
+on 2026-09-10. The credential-free core lane also passed locally on native Windows, in a Linux Go
 container, and on GitHub-hosted Windows and Ubuntu runners, covering a real `DEMO-201` commit through
-the daemon, SQLite, and MCP. The workflow is committed on `dev`; End-to-end run `34045590767` passed
-for commit `ed0f571`. This evidence does not mean the remaining full Managed release gates are
-complete.
+the daemon, SQLite, and MCP. Those source and environment checks do not close the remaining gates:
+the separate TASK-154 server-admin redesign at `54ceb05` is not integrated into `dev` and must be
+reviewed, integrated, or retired before the packaged build is qualified. Public screenshots/video
+still need privacy review, and the exact Glama listing path must be recorded before its score badge
+is updated.
+
+The merged PR #263 and PR #264 check sets retain historical failed hosted-Windows unit-test jobs. PR
+#264's job timed out after 60 seconds in SQLite-backed `internal/db` and `internal/mcp` tests. PR
+#265 subsequently passed all 19 branch checks, including the full Windows test job, Windows/Ubuntu
+no-send E2E, all five native MCPB smokes, PostgreSQL, wiki, and memory validation. This restores a
+green branch baseline; TASK-158's native-Linux TTY/non-TTY qualification remains separate.
+
+DevTrack Sage development is the active product initiative. Its capture, model-free search, neutral
+Go LLM client, validated structured distiller, and non-blocking worker foundation are on `dev`.
+Durable SQLite claims and daemon wiring, deterministic Markdown, correction routing,
+retry/diagnostic state, safe local commits, and executable parity closure remain incomplete.
+
+TASK-158's completely silent native-Git path is also merged into `dev` but is not in v3.1.1.
+Until a newer public build ships, v3.1.1 users can still encounter its shell-wrapped post-commit
+prompt regression.
+
+Rolling `dev` update-channel support merged through PR #265 and is available in the published
+[`dev` prerelease](https://github.com/sraj0501/Devtrack_/releases/tag/dev). The stable v3.1.1 binary
+does not contain `devtrack upgrade --dev`, `--main`, or `--stable`; install the development binary
+manually (or build current `dev`) before using those flags.
+
+## Communication-learning CLI adapter
+
+Automatic local Git-history voice seeding is implemented in Managed onboarding. However, the
+Python HTTP handlers for communication-learning commands use an incomplete `LearningIntegration`
+adapter. Status, enable, sync, reset, cron, test, and revoke call absent method names; profile calls
+an existing method before initialization. Until that adapter is repaired, treat all of these CLI
+paths as unavailable. Teams and Outlook must not be advertised as a completed end-to-end learning
+workflow.
 
 ## Platform rollout
 

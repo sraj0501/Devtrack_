@@ -23,6 +23,6 @@ USER devtrack
 WORKDIR /data
 
 # Glama communicates with the process over stdin/stdout and only needs a
-# disposable SQLite database to initialize and introspect the six tools.
+# disposable SQLite database to initialize and introspect the ten tools.
 ENTRYPOINT ["/usr/local/bin/devtrack"]
 CMD ["mcp", "serve", "--database", "/data/devtrack.db"]

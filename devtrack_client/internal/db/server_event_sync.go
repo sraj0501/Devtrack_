@@ -55,6 +55,7 @@ func (d *Database) initServerEventSync() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_server_event_outbox_status
 			ON server_event_outbox(status, updated_at)`,
+		`DROP TRIGGER IF EXISTS sync_triggers_insert`,
 		`CREATE TRIGGER IF NOT EXISTS sync_triggers_insert
 		AFTER INSERT ON triggers BEGIN
 			INSERT INTO server_event_outbox(event_id, table_name, source_row_id, payload)
@@ -65,7 +66,15 @@ func (d *Database) initServerEventSync() error {
 					'source', NEW.source, 'repo_path', NEW.repo_path,
 					'commit_hash', NEW.commit_hash, 'commit_message', NEW.commit_message,
 					'author', NEW.author, 'data', NEW.data, 'processed', NEW.processed,
-					'ticket_id', NEW.ticket_id, 'created_at', NEW.created_at
+					'ticket_id', NEW.ticket_id,
+					'ticket_canonical_ref', NEW.ticket_canonical_ref,
+					'ticket_external_id', NEW.ticket_external_id,
+					'ticket_source', NEW.ticket_source,
+					'ticket_confidence', NEW.ticket_confidence,
+					'ticket_state', NEW.ticket_state,
+					'ticket_branch', NEW.ticket_branch,
+					'ticket_conflict', NEW.ticket_conflict,
+					'created_at', NEW.created_at
 				)
 			)
 			ON CONFLICT(event_id) DO UPDATE SET
@@ -73,6 +82,7 @@ func (d *Database) initServerEventSync() error {
 				status = 'pending', last_error = NULL,
 				updated_at = datetime('now'), synced_at = NULL;
 		END`,
+		`DROP TRIGGER IF EXISTS sync_triggers_update`,
 		`CREATE TRIGGER IF NOT EXISTS sync_triggers_update
 		AFTER UPDATE ON triggers BEGIN
 			INSERT INTO server_event_outbox(event_id, table_name, source_row_id, payload)
@@ -83,7 +93,15 @@ func (d *Database) initServerEventSync() error {
 					'source', NEW.source, 'repo_path', NEW.repo_path,
 					'commit_hash', NEW.commit_hash, 'commit_message', NEW.commit_message,
 					'author', NEW.author, 'data', NEW.data, 'processed', NEW.processed,
-					'ticket_id', NEW.ticket_id, 'created_at', NEW.created_at
+					'ticket_id', NEW.ticket_id,
+					'ticket_canonical_ref', NEW.ticket_canonical_ref,
+					'ticket_external_id', NEW.ticket_external_id,
+					'ticket_source', NEW.ticket_source,
+					'ticket_confidence', NEW.ticket_confidence,
+					'ticket_state', NEW.ticket_state,
+					'ticket_branch', NEW.ticket_branch,
+					'ticket_conflict', NEW.ticket_conflict,
+					'created_at', NEW.created_at
 				)
 			)
 			ON CONFLICT(event_id) DO UPDATE SET
@@ -138,7 +156,11 @@ func (d *Database) initServerEventSync() error {
 					'workspace_name', NEW.workspace_name, 'description', NEW.description,
 					'commits', NEW.commits, 'duration_minutes', NEW.duration_minutes,
 					'adjusted_minutes', NEW.adjusted_minutes,
-					'auto_stopped', NEW.auto_stopped, 'created_at', NEW.created_at
+					'auto_stopped', NEW.auto_stopped,
+					'measurement_source', NEW.measurement_source,
+					'last_activity_at', NEW.last_activity_at,
+					'confidence', NEW.confidence, 'evidence_count', NEW.evidence_count,
+					'created_at', NEW.created_at
 				)
 			)
 			ON CONFLICT(event_id) DO UPDATE SET
@@ -157,7 +179,11 @@ func (d *Database) initServerEventSync() error {
 					'workspace_name', NEW.workspace_name, 'description', NEW.description,
 					'commits', NEW.commits, 'duration_minutes', NEW.duration_minutes,
 					'adjusted_minutes', NEW.adjusted_minutes,
-					'auto_stopped', NEW.auto_stopped, 'created_at', NEW.created_at
+					'auto_stopped', NEW.auto_stopped,
+					'measurement_source', NEW.measurement_source,
+					'last_activity_at', NEW.last_activity_at,
+					'confidence', NEW.confidence, 'evidence_count', NEW.evidence_count,
+					'created_at', NEW.created_at
 				)
 			)
 			ON CONFLICT(event_id) DO UPDATE SET
@@ -204,12 +230,17 @@ func (d *Database) initServerEventSync() error {
 				updated_at = datetime('now'), synced_at = NULL;
 		END`,
 	}
+	tx, err := d.beginSchemaTransaction()
+	if err != nil {
+		return fmt.Errorf("server event sync schema: %w", err)
+	}
+	defer tx.Rollback()
 	for _, statement := range statements {
-		if _, err := d.db.Exec(statement); err != nil {
+		if _, err := tx.Exec(statement); err != nil {
 			return fmt.Errorf("server event sync schema: %w", err)
 		}
 	}
-	return nil
+	return tx.Commit()
 }
 
 // GetOrCreateServerEventClientID returns a stable random identifier stored in

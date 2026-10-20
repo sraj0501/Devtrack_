@@ -29,7 +29,7 @@ func TestNormalizeCodexHistoryItemSupportsIDEAndCLI(t *testing.T) {
 				t.Fatalf("got %d events, want 1", len(events))
 			}
 			event := events[0]
-			if event.Command != "git status --short" || event.Signature != "git status" ||
+			if event.Command != "git status --short" || event.Signature != "git status --short" ||
 				event.Success == nil || !*event.Success || event.ExitCode == nil || *event.ExitCode != 0 {
 				t.Fatalf("unexpected normalized event: %+v", event)
 			}

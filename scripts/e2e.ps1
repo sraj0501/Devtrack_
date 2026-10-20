@@ -25,16 +25,24 @@ function Invoke-Captured {
     )
 
     $previousPreference = $ErrorActionPreference
+    $stderrFile = [IO.Path]::GetTempFileName()
     try {
         $ErrorActionPreference = 'Continue'
-        $output = @(& $Executable @Arguments 2>&1)
+        # Only stdout is command data. Timestamped startup logs on stderr
+        # must not participate in status comparisons across daemon restarts.
+        $output = @(& $Executable @Arguments 2> $stderrFile)
         $exitCode = $LASTEXITCODE
+        $diagnostics = Get-Content -Raw -LiteralPath $stderrFile
     }
     finally {
         $ErrorActionPreference = $previousPreference
+        Remove-Item -LiteralPath $stderrFile -Force
     }
     if ($exitCode -ne 0) {
-        throw "$Executable exited with code $exitCode`n$($output -join [Environment]::NewLine)"
+        throw "$Executable exited with code $exitCode`n$($output -join [Environment]::NewLine)`n$diagnostics"
+    }
+    if ($diagnostics) {
+        Write-Host $diagnostics.TrimEnd()
     }
     return @($output | ForEach-Object { $_.ToString() })
 }
@@ -159,10 +167,10 @@ try {
         Start-Sleep -Milliseconds 250
     }
 
-    Invoke-Checked git -C $workspace switch -q -c feature/DEMO-201-automated-e2e
+    Invoke-Checked git -C $workspace switch -q -c feature/E2E-201-automated-e2e
     Add-Content -LiteralPath (Join-Path $workspace 'README.md') -Value 'observed by the real daemon' -Encoding utf8
     Invoke-Checked git -C $workspace add README.md
-    Invoke-Checked git -C $workspace commit -q -m 'DEMO-201: verify automated end-to-end flow'
+    Invoke-Checked git -C $workspace commit -q -m 'E2E-201: verify automated end-to-end flow'
     $commitHash = (& git -C $workspace rev-parse --short=12 HEAD).Trim()
     if ($LASTEXITCODE -ne 0) {
         throw 'Could not resolve the E2E commit hash.'
@@ -184,12 +192,56 @@ try {
 
     $mcpOutput = (Invoke-Captured $binary @('mcp', 'test') | Out-String)
     if ($mcpOutput -notmatch '=== PASS ===' -or
-        $mcpOutput -notmatch 'DEMO-201' -or
+        $mcpOutput -notmatch 'E2E-201' -or
         $mcpOutput -notmatch 'today_commits[^0-9]*[1-9]') {
         throw "MCP context did not contain the observed commit and local-day count:`n$mcpOutput"
     }
 
+    # The log can precede the work-time transaction; wait for persisted CLI evidence.
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        $workStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($workStatus -match '\[inferred, confidence 0\.50\].*E2E-201') { break }
+        if ([DateTime]::UtcNow -ge $deadline) {
+            throw "Commit did not produce an inferred work session:`n$workStatus"
+        }
+        Start-Sleep -Milliseconds 250
+    } while ($true)
+
+    Invoke-Checked $binary work adjust 45
+    $correctedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+    if ($correctedStatus -notmatch '45m.*\[adjusted\].*E2E-201') {
+        throw "CLI correction was not visible:`n$correctedStatus"
+    }
+    Invoke-Checked $binary stop
+    # Cross a log timestamp boundary so this cannot pass accidentally just
+    # because both status calls happened within the same second.
+    Start-Sleep -Milliseconds 1100
+    Invoke-Checked $binary start
+    $restartedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+    if ($restartedStatus -ne $correctedStatus) {
+        throw "Work sessions changed across daemon restart:`n$restartedStatus"
+    }
+
+    Push-Location $workspace
+    try {
+        Invoke-Checked $binary work start E2E-202
+        $activeStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($activeStatus -notmatch 'Active session' -or $activeStatus -notmatch 'Ticket: E2E-202') {
+            throw "Explicit session did not start:`n$activeStatus"
+        }
+        Invoke-Checked $binary work stop
+        $stoppedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($stoppedStatus -notmatch 'No active session' -or
+            $stoppedStatus -notmatch '\[explicit,.*E2E-202' -or
+            $stoppedStatus -notmatch '45m.*\[adjusted\].*E2E-201') {
+            throw "Explicit stop or earlier correction was lost:`n$stoppedStatus"
+        }
+    }
+    finally { Pop-Location }
+
     Invoke-Checked $binary queue list
+    Write-Host 'PASS: automatic time, CLI correction, restart persistence, and explicit start/stop.'
     Write-Host "PASS: Windows no-send E2E observed $commitHash and exposed it through MCP."
 }
 finally {

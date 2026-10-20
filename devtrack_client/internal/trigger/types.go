@@ -6,14 +6,18 @@ package trigger
 
 // CommitTriggerData contains information about a Git commit.
 type CommitTriggerData struct {
-	RepoPath      string   `json:"repo_path"`
-	CommitHash    string   `json:"commit_hash"`
-	CommitMessage string   `json:"commit_message"`
-	Author        string   `json:"author"`
-	Timestamp     string   `json:"timestamp"`
-	FilesChanged  []string `json:"files_changed"`
-	Branch        string   `json:"branch"`
-	TicketID      string   `json:"ticket_id,omitempty"`
+	RepoPath         string   `json:"repo_path"`
+	CommitHash       string   `json:"commit_hash"`
+	CommitMessage    string   `json:"commit_message"`
+	Author           string   `json:"author"`
+	Timestamp        string   `json:"timestamp"`
+	FilesChanged     []string `json:"files_changed"`
+	Branch           string   `json:"branch"`
+	TicketID         string   `json:"ticket_id,omitempty"`
+	TicketExternalID string   `json:"ticket_external_id,omitempty"`
+	TicketSource     string   `json:"ticket_source,omitempty"`
+	TicketState      string   `json:"ticket_state,omitempty"`
+	TicketConflict   bool     `json:"ticket_conflict,omitempty"`
 	// IsFirstCommitForTicket is true when CountTicketCommits returned 0 BEFORE
 	// InsertTrigger was called for this commit — meaning this is the first linked
 	// commit for this ticket in this repo. Used by Python (TASK-073) to decide
@@ -24,9 +28,7 @@ type CommitTriggerData struct {
 	// the repository's default branch. Used by Python (TASK-126) to stage a
 	// state_transition to the platform's done state ("merged to main → Done").
 	IsMergeToDefault bool `json:"is_merge_to_default,omitempty"`
-	// TicketConfidence reflects the extraction strategy that produced TicketID
-	// (TASK-128): 0.95 branch name, 0.85 commit message, 0.60 active-ticket
-	// fallback. Python uses it as the confidence for staged queue actions.
+	// TicketConfidence accompanies the deterministic mapping provenance.
 	TicketConfidence float64 `json:"ticket_confidence,omitempty"`
 	// Workspace routing fields (omitempty — zero value = fall back to priority chain)
 	WorkspaceName string `json:"workspace_name,omitempty"`

@@ -1,5 +1,285 @@
 # DevTrack Engineer Log
 
+## 2026-10-15 — TASK-157 repeated Sage acceptance
+
+- Commit `f38f14f` adds the two-pass isolated capture-to-knowledge acceptance gate.
+- Native Windows and Linux Go 1.24 runs pass twice from clean state. The full Linux suite and vet,
+  focused acceptance race test, parity checker, memory boundary, wiki JavaScript, and whitespace
+  checks pass.
+- PR #284's unrelated hosted Windows suite timeout was reproduced as timeout pressure rather than
+  a product failure: the named database test passed five native Windows repetitions in under 0.1s
+  each. Commit `812555c` gives the full hosted suite the existing 120-second allowance.
+- Evidence: `docs/SAGE_END_TO_END_ACCEPTANCE.md`. Remaining TASK-157 work is hosted review and
+  integration of the stacked PRs.
+
+## 2026-10-01 — TASK-157 recoverable topic merges
+
+- Commit `b6b7f81`: `sage merge`, bounded recovery journal, route repointing, index repair,
+  publication recovery, and edit-conflict/source-note protection. Windows full suite/vet,
+  Fedora WSL2 focused Sage race/vet, ledger consistency, memory boundary, and diff checks pass.
+- Original message: `feat(TASK-157): add recoverable Sage topic merges`. DevTrack kept it unchanged
+  because local Ollama was unavailable; approximately one second, no raw-Git fallback. Ticket
+  auto-link and PM update were not observed. Friction: LOW for commit; sandbox startup still
+  requires escalation. No full acceptance or hosted-CI claim.
+- Routing checkpoint `ae4ac88` and its outcome log `db009e8` were pushed successfully before
+  this slice. The outcome-log commit used `--no-enhance`, completed successfully without prompts,
+  and the combined commit/push command took approximately four seconds.
+- Evidence: `docs/SAGE_MERGE_QUALIFICATION.md`; next work remains on the board and in shared memory.
+
+## 2026-10-01 — TASK-157 persistent routing
+
+- Commit `ae4ac88`: remembered routes, entry precedence, CLI route/list commands, and publication
+  integration. Windows full suite/vet and Fedora WSL2 focused Sage race/vet passed; ledger check
+  reports 22 implemented, 15 partial, 99 pending. Shared-memory and diff checks passed.
+- Original message: `feat(TASK-157): persist Sage routing corrections`. DevTrack kept it unchanged
+  because local Ollama was unavailable. Commit completed in approximately one second with no
+  raw-Git fallback or post-commit questions.
+- Daemon was stopped; started it and confirmed running PID 31068, connected SQLite and Python
+  health. Ticket auto-link and PM update were not observed; workspace reports no PM integration.
+- Friction: sandbox process startup fails before execution; approved escalated commands work.
+  Routing qualification: `docs/SAGE_ROUTING_QUALIFICATION.md`. Full acceptance remains open.
+
+## 2026-09-30 — TASK-157 durable Markdown publication
+
+- Continued from `fe50798` on the existing task branch. Added transactional publication enqueue,
+  legacy draft backfill, safe persistent retries, stable SHA-256 markers, configured output root,
+  and daemon publication lifecycle. Model completion remains distinct from documented state.
+- File/index failure and restart tests pass without duplicate entries or repeated model work.
+  Added a two-handle cancellation regression after review identified that automatic transaction
+  rollback could release the writer lock before file I/O returned.
+- Windows full Go suite/vet passed; the subsequent cancellation regression passed separately.
+  Fedora WSL2 focused Sage database/infra race tests and database/infra/config vet passed.
+- Normal sandbox execution works again. WSL service access and installed CLI user-database
+  initialization required escalation. Installed daemon was running (PID 7080).
+- Qualification: `docs/SAGE_PUBLICATION_QUALIFICATION.md`. No hosted CI or full parity claim.
+- Commit workflow: supplied `feat(TASK-157): publish durable Sage drafts to Markdown`;
+  DevTrack enhanced it to `feat(sage): publish durable drafts to Markdown` and created `e21975e`
+  in approximately 25 seconds. No raw-Git fallback or post-commit questions. Ticket auto-link
+  and PM update were not observed; the configured workspace reports no PM integration.
+
+## 2026-09-30 — TASK-157 deterministic Markdown writer
+
+- Continued from pushed `5c64271` on the existing Sage task branch; inspected pinned reference
+  parsing, rendering, insertion, and routing tests before implementation.
+- Added the Go writer library with structural-injection protection, portable filenames,
+  idempotent signature reuse/attachment, atomic replacement, and index repair on retry.
+- Seven reference scenarios now have matching Go tests. Full Windows Go suite/vet and Linux
+  writer race/fuzz/vet passed; fuzzing completed 164,435 executions without failure.
+- Corrected a fixture's expected command-line count after its first run; production parsing
+  correctly kept forged headings/signatures within the command fence.
+- The sandbox process helper failed at setup; repository commands ran through the approved
+  escalated runner. No repository configuration was changed to bypass that failure.
+- Next: durable draft-to-Markdown publication/recovery. The daemon still stops at a persisted
+  draft; no full Sage completion or hosted-integration claim.
+- Evidence: `docs/SAGE_MARKDOWN_QUALIFICATION.md`.
+
+**Commit outcome:** `f47041f`, created through `devtrack git commit` after about 112 seconds.
+Original message: `feat(TASK-157): add deterministic Sage Markdown writer`.
+DevTrack enhanced it to `feat(sage): Implement deterministic Markdown writer for knowledge base`
+with an explanatory body (its displayed Git subject also included the following summary line).
+The daemon was stopped at pickup and was started for this workflow. The helper emitted no progress
+while enhancing; a fallback was considered, but it completed before any process was stopped.
+No raw commit was used. Ticket auto-link and PM delivery were not reported by this invocation.
+Friction: MEDIUM (silent enhancement delay). The small outcome-log follow-up uses DevTrack's
+`--no-enhance` option. Ledger consistency, eight checker tests, shared-memory validation, and
+diff whitespace checks passed. The first checker-test invocation used an incorrect module import
+path; running `python scripts/test_check_sage_parity.py` passed all eight tests.
+
+## 2026-09-30 — TASK-157 durable queue and daemon integration
+
+- Continued from published parity commit `8008fbe`; no pending local changes at pickup.
+- Added transactional enqueue/backfill, atomic SQLite claims, random fencing tokens, leases,
+  retry timing, sanitized diagnostics, and persistent skip/draft outcomes.
+- Connected the worker to daemon-owned cancellation and pause state; shutdown joins Sage before
+  database closure. Production hooks remain independent of model availability.
+- Full native Windows and Fedora WSL2 Go suites and vet passed. Tests include concurrent claims,
+  restart recovery, stale-token rejection, injected import failure, and real spool-to-draft processing
+  across a simulated outage, malformed output, and daemon-worker restart.
+- Scope remains a persisted draft; deterministic Markdown and the full Sage closure gate remain open.
+- Evidence: `docs/SAGE_DURABLE_QUEUE_QUALIFICATION.md`.
+
+## 2026-09-30 — TASK-159 upstream push and TASK-157 parity continuation
+
+- Committed the qualification/script changes through `devtrack git commit` as `2e50763`,
+  message `fix(TASK-159): qualify restart persistence on Windows and Linux`.
+- The daemon was stopped; started it for the commit workflow. Ollama was unreachable, so
+  DevTrack preserved the supplied message and committed successfully. No PM delivery was reported.
+- Pushed `fix/TASK-159-schema-transactions`; `git ls-remote` confirmed upstream at
+  `2e507636031444b0100cd4d4a911390aa9659da4`. GitHub API remains HTTP 401; no hosted/merge claim.
+- Continued on `features/TASK-157-sage-parity`, stacked on that published follow-up.
+- Reconciled 136 reference tests against `b85a1ab` in the user-supplied relocated checkout.
+  Added explicit coverage status, existing test references, planned closure tests, and a checker.
+- Eight checker fault tests pass. The pinned-source check passes; `--require-complete` fails
+  as expected with remaining gaps. Focused Go tests and vet pass on Windows and Fedora WSL2.
+- No Sage runtime behavior changed. Empty model output and uncapped requests now have transport
+  regression coverage. Durable queue/daemon integration and final behavioral parity remain open.
+
+## 2026-09-30 — TASK-159 qualification and shared-state reconciliation
+
+- Qualified schema transaction commit `3c3fedf` and the existing Windows E2E stdout/stderr
+  separation change on `fix/TASK-159-schema-transactions`.
+- Windows Go 1.27.0: full uncached suite with a 60-second package timeout and vet passed;
+  database package completed in 6.915 seconds. Schema rollback/retry passed.
+- Fedora 44 WSL2 Go 1.24.4: full uncached suite with the same timeout and vet passed,
+  including pipe/PTY silent-Git cases after installing the missing `script` utility.
+- Both isolated daemon E2E lanes passed automatic inference, correction, restart persistence,
+  explicit start/stop, MCP commit visibility, and cleanup without outbound delivery.
+- Updated the board, feature tracker, and canonical shared memory. All five product criteria
+  are locally qualified; upstream follow-up integration and hosted verification remain open.
+- No new commit, push, or PR mutation was performed. GitHub CLI returned HTTP 401, so no current
+  hosted result is claimed. Detailed evidence: `docs/TASK_159_QUALIFICATION.md`.
+
+
+### [2026-09-29 10:45] TASK-160 — deterministic ticket contract committed for upstream review
+
+**Original message**: "feat(TASK-160): enforce deterministic ticket mapping"
+**DevTrack enhanced it to**: no enhancement requested; committed through `devtrack git commit --amend --no-enhance`.
+**Ticket auto-linked**: NO — this repository is not in the running installed daemon's workspace configuration.
+**PM system updated**: NO — repository board only; no external PM connector configured.
+**Time**: ~5 minutes for commit audit and cleanup.
+**Friction**: MEDIUM — a pre-existing local commit had captured a PowerShell module-analysis cache;
+the unpublished commit was cleaned while preserving the local file. The isolated Git configuration
+also required supplying the existing commit identity explicitly on the successful retry.
+**Notes**: implementation commit `92c0711`; all previously recorded Windows, Ubuntu WSL2, Python,
+memory, wiki, and whitespace checks remain green. The first push found an existing remote branch
+containing PR #267 plus partial TASK-160 commit `aa0d2c0`; it was fetched and merged without force.
+The merge retains its independent Linux pipe/PTY CI test, timezone fixes, and hot-reload coverage,
+while the locally qualified resolver remains authoritative. Full Windows and Ubuntu WSL2 Go
+tests/vet plus the 75 Python contract tests passed again on the reconciled tree.
+
+## Task Summary — TASK-160: Deterministic branch-to-ticket contract — 2026-09-29
+
+- Total commits: 3 local branch commits (implementation, status follow-up, and upstream reconciliation merge).
+- Acceptance criteria met: 7/7.
+- Implemented canonical branch grammar and strict workspace validation; deterministic branch,
+  prefix/trailer, active-ticket, and unlinked precedence; immutable provenance, append-only
+  corrections, separate non-authoritative candidates, corrected MCP/read models, and outbound
+  conflict suppression.
+- Added `ticket convention`, `ticket check`, and `ticket link`, plus setup/status/doctor visibility
+  and synchronized README, API documentation, examples, and wiki guidance.
+- Verification: Windows and Ubuntu WSL2 full `go test ./...` plus `go vet ./...`; 75 focused Python
+  API/trigger tests; shared-memory validation; wiki inline-JavaScript validation; and
+  `git diff --check` all pass.
+- Blockers encountered: no product/test blocker; the accidental cache inclusion was removed before push.
+- Ready for PM review: YES — final integration PR #270 targets `dev`.
+
+### [2026-09-29] TASK-160 — merged slice history
+
+Slice 1 merged through PR #268 at `87dcbc7` after all 18 checks passed. Slice 2 merged through
+PR #269 at `2fda9e8`. The completed branch was then reconciled with both merged slices so the
+runtime integration, correction channels, outbound gating, documentation, and cross-platform
+qualification can be reviewed as one final integration change.
+
+### [2026-09-26] TASK-158 — Ubuntu WSL2 silence qualification complete
+
+**Notes**:
+
+- Ran the preserved TASK-158 integration draft against a disposable archive of current `dev` on
+  Ubuntu 24.04.5 under WSL2 with Go 1.24.4; the stash was not applied to the working tree.
+- Redirected non-TTY and `script`-backed pseudo-TTY `git commit` both completed successfully with
+  zero hook output. An intentionally unavailable commit-log destination remained fail-open.
+- The full Linux `go test ./...` suite passed across all packages and `go vet ./...` completed with
+  no findings.
+- TASK-158 is fully qualified. TASK-160 is authorized and started on
+  `features/TASK-160-deterministic-ticket-contract` from `origin/dev` at `4c663b0`.
+
+
+### [2026-09-26] TASK-161 — documentation completion audit and hosted-CI reconciliation
+
+**Notes**:
+
+- Re-audited README, shared project memory, active plans, ownership/architecture records, project
+  trackers, the complete public wiki, privacy copy, verification guidance, and download metadata
+  against the current branch, code routes, and live PR #265 state.
+- Corrected material public drift: unreleased Sage is now labeled as development work; maintained
+  `devtrack voice` routes are separated from the broken legacy learning adapter; Teams/Outlook and
+  Slack/Telegram boundaries are explicit; legacy Telegram planning is not presented as Go-bot
+  functionality; and local-first copy acknowledges explicitly configured cloud/server services.
+- Added a durable v3.1.1 download fallback for all five published OS/architecture assets, including
+  the previously omitted Linux ARM64 card, while preserving live latest-release discovery.
+- Recorded all 19 PR checks passing, including the full hosted-Windows unit-test job that restores
+  the current branch baseline after the historical PR #263/#264 timeouts.
+- Verification passed: shared-memory boundary, inline JavaScript, Git Bash installer syntax,
+  whitespace, 86-file Markdown local-link audit, HTML asset/link audit, wiki hash targets, five
+  platform fallbacks, and stale-claim scans. No browser connection was available, so no visual
+  browser result is claimed.
+- PR #265 subsequently merged to `dev` at `f6b0ec0`. Successful workflow run `36136822555`
+  published the rolling `dev-f6b0ec0` prerelease with checksums and all five platform binaries:
+  https://github.com/sraj0501/Devtrack_/releases/tag/dev
+- The completed post-merge documentation synchronization is under review in PR #266 targeting
+  `dev`: https://github.com/sraj0501/Devtrack_/pull/266
+
+### [2026-09-25] TASK-161 — rolling development update channel pushed for review
+
+**Original message**: "feat(TASK-161): add rolling development update channel"
+**DevTrack enhanced it to**: no enhancement; local Ollama was unavailable. The first quoted
+multi-word invocation was misparsed as Git pathspecs, so the successful wrapper invocation used the
+shell-safe message `feat-TASK-161-rolling-development-update-channel`.
+**Ticket auto-linked**: YES — canonical branch `features/TASK-161-rolling-dev-channel`
+**PM system updated**: NO — repository board only; no external PM connector configured
+**Time**: ~6 minutes including rebase, validation, push, and PR creation
+**Friction**: MEDIUM — the Windows shell/commit wrapper split a quoted message, and the rebase onto
+`origin/dev` required resolving three overlapping Sage memory files.
+**Notes**:
+
+- Commit `fe902f5` is pushed to `origin/features/TASK-161-rolling-dev-channel`.
+- PR #265 targets `dev`: https://github.com/sraj0501/Devtrack_/pull/265
+- Full `go test ./... -timeout 120s`, `go vet ./...`, five focused update-channel tests, memory
+  validation, wiki inline-JavaScript validation, and `git diff --check origin/dev...HEAD` pass after
+  the rebase.
+- All 19 hosted PR checks passed on 2026-09-25/26, including the full Windows test job, Windows and
+  Ubuntu no-send E2E, five native MCPB smokes, PostgreSQL, API-contract, wiki, and memory gates.
+- The separate TASK-158 native-silence test draft is preserved in a named local stash and excluded
+  from the branch.
+
+## Task Summary — TASK-161: Rolling development update channel — 2026-09-25
+
+- Total commits: 1 implementation/documentation commit plus this status follow-up
+- Acceptance criteria met: 8/8 locally and all 19 hosted checks passing; merged and rolling
+  prerelease published on 2026-09-25
+- Tickets auto-updated: 0 external PM tickets
+- Estimated daily time saved: not measured
+- Blockers encountered: none
+- One thing that still feels rough: the installed v3.1.1 commit wrapper does not preserve a quoted
+  multi-word `-m` value correctly under this Windows invocation path
+- Ready for PM review: COMPLETE — PR #265 merged
+
+---
+
+### [2026-09-25] Repository-wide documentation and current-state reconciliation
+
+**Notes**:
+
+- Verified live GitHub state rather than relying on stale local prose: PR #263 merged the Sage
+  distillation foundation to `dev` at `e4283db`; PR #264 merged TASK-158 at `fe3ad38`; no pull
+  requests are open; v3.1.1 remains the latest public release.
+- Reconciled README, public wiki pages, shared `agent-memory/`, active execution plans, Sage parity
+  records, architecture/capability docs, the project board, and the feature tracker. Release-facing
+  copy now distinguishes v3.1.1 from unreleased `dev` and from the separate uncommitted rolling
+  update-channel experiment.
+- Corrected the communication-learning availability claim after checking the implementation. The
+  HTTP routes for status, enable, sync, reset, cron, test, and revoke call method names absent from
+  `LearningIntegration`; profile calls an existing method before initialization. All related CLI
+  paths are now documented as unavailable until the adapter is repaired.
+- Recorded the unintegrated TASK-154 server-admin branch as a prerequisite for packaged-build
+  qualification and media capture.
+- Audited current CI: the merged PR #263 and PR #264 check sets each retain a failed hosted-Windows
+  unit-test job. PR #264 timed out after 60 seconds in SQLite-backed `internal/db` and
+  `internal/mcp`; Windows build/vet, native MCPB smoke, no-send E2E, and Sage distillation tests
+  passed. This remains a validation gap rather than being hidden by the green lanes.
+- Focused local tests for the uncommitted update-channel work passed:
+  `TestParseUpgradeArgs`, `TestUpdateChannelDefaultsAndPersists`,
+  `TestFetchReleaseAtValidatesDevPrerelease`, `TestCurrentVersionComparisonIsChannelAware`, and
+  `TestServerBootstrapDevChannelChecksOutDev`.
+- The full local Go suite did not pass: three deferred-commit tests hit the host's 1Password signing
+  restriction, the uncommitted post-commit silence test hit a Git Bash signal-pipe access error, and
+  two MCP tests failed their date-sensitive expectations. None is recorded as acceptance evidence.
+- Documentation verification passed: shared-memory boundary check, wiki inline-JavaScript check,
+  and `git diff --check`. No commit, push, PR, release, publication, or source edit was performed by
+  this documentation reconciliation.
+
+---
+
 ### [2026-09-06] TASK-152 — automated Windows/Linux no-send E2E
 
 **Notes**:
@@ -2697,3 +2977,113 @@ Pre-existing test failure (test_find_related_projects) confirmed unchanged.
 - Blockers encountered: none
 - One thing that still feels rough: `test_skips_pm_sync_when_nlp_returns_none` had quietly encoded the bug as the expected behavior — a reminder that test names asserting a negative ("skips X") deserve extra scrutiny when the surrounding logic changes, since a passing test gave false confidence the old gate was intentional.
 - Ready for PM review: YES
+
+### [2026-10-01 11:02] TASK-157 — skipped-action records and full-entry search
+
+**Original message**: "feat(TASK-157): record skipped actions and search full entries"
+**DevTrack enhanced it to**: unchanged; local Ollama was unavailable and the helper retained the supplied text.
+**Commit**: `9f2281b` on `features/TASK-157-sage-parity`.
+**Ticket auto-linked**: not reported by the helper; TASK-157 is explicit in branch/message.
+**PM system updated**: NO external update observed; workspace platform is none. Local board and feature tracker updated.
+**Time**: ~2 seconds for the commit helper.
+**Friction**: LOW — daemon already running, no prompts, no raw Git commit fallback.
+**Notes**: Explicit skips now publish idempotent private Markdown records with migration/backfill and restart recovery. Search/topics refresh a SQLite cache of complete Markdown entries, preserving literal reference matching and reflecting corrections, merges, edits, moves, and deletion. Windows full Go suite/vet and Fedora WSL2 focused Sage race/vet pass. Ledger/memory validation and whitespace checks pass. Two initial test expectations incorrectly assumed common literal substrings were absent from Markdown; corrected the fixtures without changing reference matching. Ledger: 27 implemented, 1 adapted, 12 partial, 96 pending. Full Sage acceptance remains open; next diagnostics and safe local commits.
+
+The accompanying docs-only checkpoint uses `devtrack git commit --no-enhance`; its purpose is to record the implementation hash and validation outcome before the authorized task-branch push. No merge or installed-binary qualification is claimed.
+### [2026-10-14] TASK-157 — Isolate Sage runtime and knowledge roots
+
+**Original message**: "Finish the Sage features one by one, document each change, run docu-agent, and raise a PR after each completed change."
+**DevTrack enhanced it to**: Enhancement unavailable; Ollama returned an empty response, so DevTrack preserved `feat(sage): isolate runtime and knowledge roots`.
+**Ticket auto-linked**: NO — the commit message did not include the TASK-157 key.
+**PM system updated**: YES — the local project board records commit `5317d4a` and PR #279.
+**Time**: qualification and two documentation reconciliation passes completed before commit
+**Friction**: MEDIUM
+**Notes**: The Docker evaluation daemon exited before the commit, but `devtrack git commit` completed successfully. A legacy post-commit hook then reported a missing historical log directory after Git had already committed; no push was attempted by the hook. PR: https://github.com/sraj0501/Devtrack_/pull/279
+
+### [2026-10-14] TASK-157 — Add explicit Sage model backends
+
+**Original message**: "Finish the Sage features one by one, document each change, run docu-agent, and raise a PR after each completed change."
+**Commit**: `80bb76f` (`feat(sage): add explicit model backends`) on `features/TASK-157-sage-model-backends`.
+**Ticket auto-linked**: NO — the commit message did not include the TASK-157 key; the task is recorded by the board and branch.
+**PM system updated**: local project board and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Friction**: LOW — host Go and Node are absent, so qualification used disposable Go 1.24 and Node 22 containers.
+**Notes**: Ollama HTTP remains the default. Explicit `claude`, `devin`, `codex`, `copilot`, and `cursor-agent` providers use fixed argv without a shell, declared prompt modes, runtime-local temporary prompts, process-local capture suppression, and Windows no-console flags. The full Go suite and vet passed under Go 1.24; the Windows distillation package cross-compiled. The current `ai_sessions_skills` HEAD is `ea2e067`; the parity ledger passes at 89 implemented, 2 adapted, 2 partial, and 43 pending. Two docu-agent passes reconciled README, wiki, active memory, plans, and board; shared-memory, parity-checker, wiki inline-JavaScript, and whitespace validations pass. PR: https://github.com/sraj0501/Devtrack_/pull/280 (stacked on fully green, unmerged PR #279).
+All 19 PR #280 checks passed, including hosted Windows build/vet, tests, no-send E2E, and the Windows MCPB smoke.
+
+### [2026-10-14] TASK-157 — Port Sage platform layouts and additive installers
+
+**Original message**: "List out all the Sage features of DevTrack. Finish them one by one, document each change, run docu-agent, and raise a PR after each completed change. Then move on to the next one."
+**Commit**: `24c28f8` (`feat(sage): port platform layouts and installers`) on `features/TASK-157-sage-platform-installers`.
+**Ticket auto-linked**: NO — the commit message omitted TASK-157; the task remains explicit in branch and project records.
+**PM system updated**: local board, feature tracker, and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Friction**: LOW — the Python reference's `.cmd`/`.sh` pair required an explicit Go-native adaptation rather than copying its runtime architecture.
+**Notes**: Pure target-layout resolution now covers Windows `APPDATA`, Linux XDG, macOS, Devin/OpenCode, home-relative dot directories, and every reference skill destination. The selective registry still advertises Codex only. Recursive marker removal preserves foreign settings, migrates known `ai_sessions_skills` paths, is idempotent, and distinguishes created/updated/unchanged/missing outcomes. Full Go tests and vet pass under Go 1.24 Docker; hooks cross-compile for Windows/amd64. Current-reference parity passes at 105 implemented, 4 adapted, 2 partial, and 25 pending. Two docu-agent passes completed. PR: https://github.com/sraj0501/Devtrack_/pull/281 (stacked on fully green, unmerged PRs #279 and #280).
+All 19 PR #281 checks passed, including hosted Windows build/vet, tests, no-send E2E, and Windows MCPB smoke.
+
+### [2026-10-14] TASK-157 — Port Sage daemon and CLI lifecycle
+
+**Original message**: "List out all the Sage features of DevTrack. Finish them one by one, document each change, run docu-agent, and raise a PR after each completed change. Then move on to the next one."
+**Commit**: `2711882` (`feat(sage): port daemon and CLI lifecycle`) on `features/TASK-157-sage-lifecycle`.
+**DevTrack enhanced it to**: unchanged; Ollama returned an empty response, so the helper retained the supplied message.
+**Ticket auto-linked**: NO — the message omitted TASK-157; the task is explicit in the branch and project board.
+**PM system updated**: local project board and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Time**: implementation, cross-platform qualification, and two docu-agent passes completed before commit.
+**Friction**: LOW — host Go and Node are absent, so the Go 1.24 and Node 22 Docker toolchains supplied the missing build tools.
+**Notes**: The single DevTrack daemon now owns Sage locks, liveness, and lifecycle; no detached Sage watcher was added. Windows children request no console, access-denied liveness is conservative, capture supports start/stop/restart aliases and local stop reasons, typos fail loudly, and legacy hook shims cannot resume capture. The full Linux Go suite/vet, actual Windows lifecycle executables, full Windows test-tree cross-compilation, current-reference parity, parity-checker tests, shared-memory validation, wiki inline JavaScript, and whitespace checks pass. Ledger: 110 implemented, 16 adapted, 2 partial, 8 pending. The helper committed successfully despite the known legacy post-commit log-path warning.
+**PR**: https://github.com/sraj0501/Devtrack_/pull/282 (targets `dev`, stacked on unmerged PRs #279-#281). All 19 hosted checks passed. The first Windows no-send E2E attempt timed out waiting for its isolated daemon PID; the identical rerun passed in 1m49s, matching the successful local Windows reproduction and hosted Windows unit suite.
+
+### [2026-10-14] TASK-157 — Close Sage capture and Codex-history parity
+
+**Original message**: "List out all the Sage features of DevTrack. Finish them one by one, document each change, run docu-agent, and raise a PR after each completed change. Then move on to the next one."
+**Commit**: `215222b` (`feat(sage): close capture and history parity`) on `features/TASK-157-sage-capture-history`.
+**DevTrack enhanced it to**: unchanged; the helper retained the supplied message.
+**Ticket auto-linked**: NO — the message omitted TASK-157; the task is explicit in the branch and project board.
+**PM system updated**: local project board, feature tracker, and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Time**: implementation and cross-platform qualification completed before the implementation commit.
+**Friction**: LOW — the first helper invocation completed after its command wrapper stopped returning output; the commit was verified before continuing, and no raw Git commit fallback was used.
+**Notes**: Installed Codex capture now honors persistent pause state; bounded content-free capture decisions distinguish `new`, `known`, and same-payload `repeat`; logging is fail-open; interleaved Codex-history items are collected exactly when terminal; and failed items preserve exact exit status. The full Go suite/vet passes in Go 1.24 Docker, and all six exact parity tests pass as native Windows binaries. Ledger: 116 implemented, 16 adapted, 0 partial, 4 pending. Evidence: `docs/SAGE_CAPTURE_HISTORY_QUALIFICATION.md`.
+**PR**: https://github.com/sraj0501/Devtrack_/pull/283 (targets `dev`, stacked on fully green PR #282); all 19 hosted checks passed and the review is clean.
+
+### [2026-10-18] TASK-170 — Add Sage operational lifecycle controls
+
+**Original message**: "Finish the Sage features one by one, document each change, run docu-agent, and raise a PR after each completed change."
+**Commit**: `081ace5` (`feat(sage): add operational lifecycle controls`) on `features/TASK-170-sage-operational-closure`.
+**DevTrack enhanced it to**: unchanged; Ollama returned an empty response, so the helper retained the supplied message.
+**Ticket auto-linked**: NO — the message omitted TASK-170; the task is explicit in the branch and project board.
+**PM system updated**: local project board and canonical `agent-memory/` reconciled; no external PM platform is configured.
+**Time**: implementation, cross-platform qualification, fault coverage, and two docu-agent passes completed before commit.
+**Friction**: LOW — the only expected warning was the legacy Linux post-commit log path after Git had already committed.
+**Notes**: Retention now previews by default and preserves summarized knowledge; quarantine inspection is bounded and opaque; purge and exact topic deletion require explicit confirmation; repair/delete/import reconcile the derived SQLite cache from authoritative Markdown; export/import are additive, bounded, link-safe, and conflict-safe. Injected delete/import write failures roll back prior filesystem changes. Full Go tests/vet, focused race/fault coverage, native Windows focused binaries, current-reference parity against `C:\Work\git_apps\ai_sessions_skills` at `ea2e067`, shared-memory validation, wiki inline JavaScript, and whitespace checks pass. Two docu-agent passes reconciled README, wiki, plan, next steps, board, and active memory.
+**PR**: https://github.com/sraj0501/Devtrack_/pull/292 (targets `dev`, stacked on fully green PR #291); all 19 hosted checks pass, including both Windows jobs and all five native MCPB smokes.
+
+## Task Summary — TASK-170: Sage operational retention, repair, and portability — 2026-10-18
+
+- Total commits: 7 (one implementation commit and six documentation/status commits, including the
+  post-merge reconciliation and its PR record)
+- Acceptance criteria met: 10/10
+- Tickets auto-updated: 0 (no PM platform configured)
+- Estimated daily time saved: operational safety/portability feature; not meaningfully expressed as a daily duration
+- Blockers encountered: none
+- One thing that still feels rough: Windows link-safety tests require developer-mode symlink privilege and skip locally when that privilege is unavailable; the same cases pass in Linux while production rejects links on both platforms.
+- Ready for PM review: YES
+
+### [2026-10-18] TASK-170 — Reconcile merged Sage roadmap state
+
+**Original message**: "Finish the Sage features one by one, document each change, run docu-agent, and raise a PR after each completed change."
+**Commits**: `51f6d31` closes stale roadmap records; `ff1dfee` reconciles the externally merged PR #291/#292 state on `docs/TASK-170-post-merge-reconciliation`.
+**DevTrack enhanced it to**: unchanged; both documentation commits used the explicit `--no-enhance` path.
+**Ticket auto-linked**: NO — documentation-only reconciliation; TASK-170 remains explicit in branch/project records.
+**PM system updated**: local board and canonical memory reconciled; no external PM platform is configured.
+**Friction**: LOW — PR #292 merged externally while the completion audit was running, so its post-merge-only delta correctly moved to a separate docs PR instead of touching `dev` directly.
+**Notes**: Two additional docu-agent passes verified GitHub's authoritative merge SHAs (`34aafb8`, `77e2f5b`), removed the obsolete Sage resume handoff, closed stale TASK-157/TASK-170 active claims, and passed memory, 136/136 parity, wiki JavaScript, stale-claim, and whitespace validation.
+**PR**: https://github.com/sraj0501/Devtrack_/pull/293 (post-merge documentation reconciliation).
+
+### [2026-10-15] TASK-157 — Close optional IDE parity
+
+**Original message**: "List out all the Sage features of DevTrack. Finish them one by one, document each change, run docu-agent, and raise a PR after each completed change. Then move on to the next one."
+**Commit**: `836feb7` (`test(sage): close optional IDE parity`) on `features/TASK-157-sage-ide-parity`.
+**DevTrack enhanced it to**: unchanged; Ollama returned an empty response, so the helper retained the supplied message.
+**Ticket auto-linked**: NO — the message omitted TASK-157; the task is explicit in the branch and project board.
+**PM system updated**: local project board, feature tracker, and canonical `agent-memory/` reconciled; no external PM platform configured.
+**Friction**: LOW — one test expectation was aligned with the existing deterministic ripgrep flag normalization after the first focused run exposed `rg -c -i -n`.
+**Notes**: The existing opt-in Codex history adapter now has exact reference-named coverage for first-use exclusion and repeat polling, pause without database access or checkpoint mutation, pause/resume cutoff reset, and enqueue-failure retry. One explicit adaptation retains both `vscode` and `cli` sources and privacy-minimized commands; no harness was added. Full Go tests/vet, focused Linux race coverage, and native Windows exact tests pass. Ledger: 119 implemented, 17 adapted, 0 partial, 0 pending; `--require-complete` passes. Evidence: `docs/SAGE_IDE_PARITY_QUALIFICATION.md`.

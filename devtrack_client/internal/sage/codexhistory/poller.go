@@ -36,10 +36,11 @@ type pollState struct {
 }
 
 type Poller struct {
-	Root      string
-	CodexHome string
-	Now       func() time.Time
-	RowLimit  int
+	Root        string
+	CodexHome   string
+	Now         func() time.Time
+	RowLimit    int
+	WriteEvents func(string, []sage.Event) (sage.CaptureResult, error)
 }
 
 func Enabled(root string) bool {
@@ -70,6 +71,9 @@ func (p Poller) Poll(ctx context.Context) (int, error) {
 	}
 	if p.RowLimit <= 0 || p.RowLimit > defaultRowLimit {
 		p.RowLimit = defaultRowLimit
+	}
+	if p.WriteEvents == nil {
+		p.WriteEvents = sage.WriteEvents
 	}
 	statePath := filepath.Join(p.Root, stateFilename)
 	state, err := loadState(statePath)
@@ -212,12 +216,12 @@ func (p Poller) pollThread(ctx context.Context, history *sql.DB, since int64, th
 			continue
 		}
 		delete(pending, item.itemID)
-		for _, event := range hooks.NormalizeCodexHistoryItem(item.raw, source, threadID, item.itemID, time.UnixMilli(item.created).UTC()) {
-			if err := sage.WriteEvent(p.Root, event); err != nil {
-				return count, current, err
-			}
-			count++
+		events := hooks.NormalizeCodexHistoryItem(item.raw, source, threadID, item.itemID, time.UnixMilli(item.created).UTC())
+		result, err := p.WriteEvents(p.Root, events)
+		if err != nil {
+			return count, current, err
 		}
+		count += result.New
 	}
 	current.Pending = current.Pending[:0]
 	for id := range pending {

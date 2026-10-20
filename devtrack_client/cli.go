@@ -5,8 +5,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	gitsage "github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
 )
 
 // CLI provides command-line interface for daemon management
@@ -25,7 +23,7 @@ func NewCLI() (*CLI, error) {
 			cmd == "azure-list" || cmd == "azure-sync" || cmd == "azure-view" ||
 			cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
 			cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
-			cmd == "ticket-sync" || cmd == "narrative" || cmd == "eod" || cmd == "skills" ||
+			cmd == "ticket" || cmd == "ticket-sync" || cmd == "narrative" || cmd == "eod" || cmd == "skills" ||
 			cmd == "review" {
 			return &CLI{}, nil
 		}
@@ -157,6 +155,8 @@ func (cli *CLI) Execute() error {
 		return cli.handleGitHubSync()
 	case "ticket-sync":
 		return cli.handleTicketSync()
+	case "ticket":
+		return cli.handleTicket()
 	case "issues":
 		return cli.handleIssues()
 	case "narrative":
@@ -251,27 +251,15 @@ func requiresManagedMode(command string) error {
 	return nil
 }
 
-// handleSage keeps the shipped Git agent working while the local memory
-// commands are introduced one explicit step at a time.
-//
-// Usage:
-//
-//	devtrack sage ask "<question>"       — one-shot Q&A about the repository
-//	devtrack sage do "<task>" [--verbose] — agentic task execution with approval dialog
-//	devtrack sage pr                     — show current branch PR info
-//	devtrack sage interactive            — explicit interactive multi-turn chat
-//	devtrack sage                        — interactive multi-turn chat
+// handleSage dispatches only the local command-knowledge product. Legacy
+// repository chat and autonomous Git commands are intentionally rejected.
 func (cli *CLI) handleSage() error {
-	repoPath, err := os.Getwd()
+	sub, args, err := routeSage(os.Args[2:])
 	if err != nil {
-		repoPath = "."
-	}
-	sub, args, legacy := routeSage(os.Args[2:])
-	if legacy {
-		fmt.Fprintln(os.Stderr, "sage: Git-agent commands are moving to 'devtrack sage git ...'; this alias remains available.")
+		return err
 	}
 	switch sub {
-	case "status", "pause", "resume", "doctor":
+	case "status", "start", "stop", "restart", "pause", "resume", "on", "off", "hook-start", "hook-end", "end", "doctor", "log":
 		return runSageState(sub, args)
 	case "install-hooks":
 		return runSageHookInstall(true, args)
@@ -281,49 +269,16 @@ func (cli *CLI) handleSage() error {
 		return runSageHook(args, os.Stdin)
 	case "harness":
 		return runSageHarness(args, os.Stdout)
-	case "search", "topics":
-		return fmt.Errorf("sage %s is planned but unavailable until the capture/search milestones", sub)
-	case "ask":
-		if len(args) == 0 {
-			fmt.Println("Usage: devtrack sage ask \"<question>\"")
-			return fmt.Errorf("missing question")
-		}
-		question := strings.Join(args, " ")
-		return gitsage.RunAsk(repoPath, question)
-
-	case "do":
-		if len(args) == 0 {
-			fmt.Println("Usage: devtrack sage do \"<task>\"")
-			return fmt.Errorf("missing task")
-		}
-		// Strip --verbose flag; pass remaining tokens as task
-		verbose := false
-		var taskParts []string
-		for _, a := range args {
-			if a == "--verbose" || a == "-v" {
-				verbose = true
-			} else {
-				taskParts = append(taskParts, a)
-			}
-		}
-		task := strings.Join(taskParts, " ")
-		return gitsage.RunDoVerbose(repoPath, task, verbose)
-
-	case "pr":
-		info, err := gitsage.FindPR(repoPath)
-		if err != nil {
-			return fmt.Errorf("sage pr: %w", err)
-		}
-		fmt.Println(info.Format())
-		return nil
-
-	case "interactive":
-		return gitsage.RunInteractive(repoPath)
-
+	case "search":
+		return runSageSearch(args, os.Stdout)
+	case "topics":
+		return runSageTopics(args, os.Stdout)
+	case "routes", "route", "merge":
+		return runSageRoutes(sub, args, os.Stdout)
+	case "retention", "quarantine", "delete-topic", "repair", "export", "import":
+		return runSageMaintenance(sub, args, os.Stdout)
 	default:
-		// Preserve the historical free-form question shorthand.
-		question := strings.Join(append([]string{sub}, args...), " ")
-		return gitsage.RunAsk(repoPath, question)
+		return fmt.Errorf("unknown Sage command %q", sub)
 	}
 }
 
@@ -507,23 +462,27 @@ func (cli *CLI) handleWorkspace() error {
 		return wc.List()
 	case "add":
 		if len(os.Args) < 5 {
-			fmt.Println("Usage: devtrack workspace add <name> <path> [--pm azure|gitlab|github|jira|none]")
+			fmt.Println("Usage: devtrack workspace add <name> <path> [--pm azure|gitlab|github|jira|none] [--ticket-key KEY]")
 			return fmt.Errorf("missing arguments")
 		}
 		name := os.Args[3]
 		path := os.Args[4]
 		pmPlatform := ""
+		ticketKey := ""
 		addArgs := os.Args[5:]
 		for i := 0; i < len(addArgs); i++ {
 			if addArgs[i] == "--pm" && i+1 < len(addArgs) {
 				pmPlatform = addArgs[i+1]
+				i++
+			} else if addArgs[i] == "--ticket-key" && i+1 < len(addArgs) {
+				ticketKey = addArgs[i+1]
 				i++
 			} else if !strings.HasPrefix(addArgs[i], "--") {
 				// backwards-compatible: bare positional platform arg
 				pmPlatform = addArgs[i]
 			}
 		}
-		return wc.Add(name, path, pmPlatform)
+		return wc.Add(name, path, pmPlatform, ticketKey)
 	case "remove":
 		if len(os.Args) < 4 {
 			fmt.Println("Usage: devtrack workspace remove <name>")
@@ -550,7 +509,7 @@ func (cli *CLI) handleWorkspace() error {
 		fmt.Printf("Unknown workspace subcommand: %s\n", subCmd)
 		fmt.Println("Usage:")
 		fmt.Println("  devtrack workspace list                         List configured workspaces")
-		fmt.Println("  devtrack workspace add <name> <path> [--pm azure|gitlab|github|jira|none]  Add a workspace")
+		fmt.Println("  devtrack workspace add <name> <path> [--pm PLATFORM] [--ticket-key KEY]  Add a workspace")
 		fmt.Println("  devtrack workspace remove <name>                Remove a workspace")
 		fmt.Println("  devtrack workspace enable <name>                Enable a workspace")
 		fmt.Println("  devtrack workspace disable <name>               Disable a workspace")

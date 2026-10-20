@@ -21,6 +21,7 @@ type Installation struct {
 	Changed       bool   `json:"changed"`
 	Mode          string `json:"mode"`
 	ConfigPath    string `json:"config_path,omitempty"`
+	Outcome       string `json:"outcome,omitempty"`
 }
 
 type Installer struct {
@@ -63,14 +64,18 @@ func (i Installer) Install() (Installation, error) {
 	}
 	if i.GOOS == "windows" {
 		before := sage.CodexHistoryEnabled(i.Root)
-		changed, path, err := i.removeOwnedCodexHooks()
+		changed, path, _, err := i.removeOwnedCodexHooks()
 		if err != nil {
 			return Installation{}, err
 		}
 		if err := sage.SetCodexHistoryEnabled(i.Root, true); err != nil {
 			return Installation{}, errors.New("sage history configuration unavailable")
 		}
-		return Installation{SchemaVersion: sage.SchemaVersion, Installed: true, Changed: !before || changed, Mode: "codex-history", ConfigPath: path}, nil
+		outcome := "unchanged"
+		if !before || changed {
+			outcome = "updated"
+		}
+		return Installation{SchemaVersion: sage.SchemaVersion, Installed: true, Changed: !before || changed, Mode: "codex-history", ConfigPath: path, Outcome: outcome}, nil
 	}
 	if strings.TrimSpace(i.Executable) == "" {
 		return Installation{}, errors.New("devtrack executable path is required")
@@ -91,7 +96,7 @@ func (i Installer) Install() (Installation, error) {
 		return Installation{}, err
 	}
 	before, _ := json.Marshal(document)
-	removeOwned(document)
+	removeMarked(document, ownedMarkers(), false)
 	hooksMap := ensureMap(document, "hooks")
 	existing, _ := hooksMap["PostToolUse"].([]any)
 	command := shellQuote(i.Executable) + " sage hook codex " + OwnerMarker
@@ -107,7 +112,14 @@ func (i Installer) Install() (Installation, error) {
 			return Installation{}, err
 		}
 	}
-	return Installation{SchemaVersion: sage.SchemaVersion, Installed: true, Changed: changed, Mode: "codex-hook", ConfigPath: path}, nil
+	outcome := "unchanged"
+	if changed {
+		outcome = "updated"
+		if missing {
+			outcome = "created"
+		}
+	}
+	return Installation{SchemaVersion: sage.SchemaVersion, Installed: true, Changed: changed, Mode: "codex-hook", ConfigPath: path, Outcome: outcome}, nil
 }
 
 func (i Installer) Uninstall() (Installation, error) {
@@ -115,32 +127,38 @@ func (i Installer) Uninstall() (Installation, error) {
 	if err := sage.SetCodexHistoryEnabled(i.Root, false); err != nil {
 		return Installation{}, errors.New("sage history configuration unavailable")
 	}
-	changed, path, err := i.removeOwnedCodexHooks()
+	changed, path, missing, err := i.removeOwnedCodexHooks()
 	if err != nil {
 		return Installation{}, err
 	}
-	return Installation{SchemaVersion: sage.SchemaVersion, Installed: false, Changed: wasEnabled || changed, Mode: "disabled", ConfigPath: path}, nil
+	outcome := "unchanged"
+	if missing && !wasEnabled {
+		outcome = "missing"
+	} else if wasEnabled || changed {
+		outcome = "updated"
+	}
+	return Installation{SchemaVersion: sage.SchemaVersion, Installed: false, Changed: wasEnabled || changed, Mode: "disabled", ConfigPath: path, Outcome: outcome}, nil
 }
 
-func (i Installer) removeOwnedCodexHooks() (bool, string, error) {
+func (i Installer) removeOwnedCodexHooks() (bool, string, bool, error) {
 	path, err := i.codexHooksPath()
 	if err != nil {
-		return false, "", err
+		return false, "", false, err
 	}
 	document, mode, err := readHookDocument(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return false, path, nil
+		return false, path, true, nil
 	}
 	if err != nil {
-		return false, path, err
+		return false, path, false, err
 	}
-	changed := removeOwned(document)
+	changed := removeMarked(document, ownedMarkers(), true)
 	if changed {
 		if err := writeHookDocument(path, document, mode); err != nil {
-			return false, path, err
+			return false, path, false, err
 		}
 	}
-	return changed, path, nil
+	return changed, path, false, nil
 }
 
 func (i Installer) codexHooksPath() (string, error) {
@@ -164,16 +182,16 @@ func readHookDocument(path string) (map[string]any, os.FileMode, error) {
 		return map[string]any{}, 0600, os.ErrNotExist
 	}
 	if err != nil {
-		return nil, 0, errors.New("codex hook configuration unavailable")
+		return nil, 0, errors.New("harness hook configuration unavailable")
 	}
 	raw = bytes.TrimPrefix(raw, []byte{0xef, 0xbb, 0xbf})
 	var document map[string]any
 	if err := json.Unmarshal(raw, &document); err != nil || document == nil {
-		return nil, 0, errors.New("codex hook configuration is invalid")
+		return nil, 0, errors.New("harness hook configuration is invalid")
 	}
 	info, err := os.Stat(path)
 	if err != nil {
-		return nil, 0, errors.New("codex hook configuration unavailable")
+		return nil, 0, errors.New("harness hook configuration unavailable")
 	}
 	return document, info.Mode().Perm(), nil
 }
@@ -187,36 +205,77 @@ func ensureMap(parent map[string]any, key string) map[string]any {
 	return child
 }
 
-func removeOwned(document map[string]any) bool {
-	hooksMap, ok := document["hooks"].(map[string]any)
+func removeMarked(document map[string]any, markers []string, prune bool) bool {
+	cleaned, changed := purgeMarked(document, markers, prune)
+	result, ok := cleaned.(map[string]any)
 	if !ok {
-		return false
+		return changed
 	}
-	changed := false
-	for event, value := range hooksMap {
-		entries, ok := value.([]any)
-		if !ok {
-			continue
-		}
-		kept := entries[:0]
-		for _, entry := range entries {
-			raw, _ := json.Marshal(entry)
-			if strings.Contains(string(raw), OwnerMarker) {
+	for key := range document {
+		delete(document, key)
+	}
+	for key, value := range result {
+		document[key] = value
+	}
+	return changed
+}
+
+func purgeMarked(node any, markers []string, prune bool) (any, bool) {
+	switch value := node.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(value))
+		changed := false
+		for key, child := range value {
+			cleaned, childChanged := purgeMarked(child, markers, prune)
+			changed = changed || childChanged
+			if prune && isEmptyJSON(cleaned) {
 				changed = true
 				continue
 			}
-			kept = append(kept, entry)
+			out[key] = cleaned
 		}
-		if len(kept) == 0 {
-			delete(hooksMap, event)
-		} else {
-			hooksMap[event] = kept
+		return out, changed
+	case []any:
+		out := make([]any, 0, len(value))
+		changed := false
+		for _, child := range value {
+			raw, _ := json.Marshal(child)
+			if containsMarker(string(raw), markers) {
+				changed = true
+				continue
+			}
+			cleaned, childChanged := purgeMarked(child, markers, prune)
+			changed = changed || childChanged
+			out = append(out, cleaned)
+		}
+		return out, changed
+	default:
+		return node, false
+	}
+}
+
+func containsMarker(serialized string, markers []string) bool {
+	for _, marker := range markers {
+		if marker != "" && strings.Contains(serialized, marker) {
+			return true
 		}
 	}
-	if len(hooksMap) == 0 {
-		delete(document, "hooks")
+	return false
+}
+
+func ownedMarkers() []string {
+	return []string{OwnerMarker, "ai_sessions_skills", "ai-session-skills"}
+}
+
+func isEmptyJSON(value any) bool {
+	switch typed := value.(type) {
+	case map[string]any:
+		return len(typed) == 0
+	case []any:
+		return len(typed) == 0
+	default:
+		return false
 	}
-	return changed
 }
 
 func containsOwned(document map[string]any) bool {
@@ -226,7 +285,7 @@ func containsOwned(document map[string]any) bool {
 
 func writeHookDocument(path string, document map[string]any, mode os.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return errors.New("codex hook configuration unavailable")
+		return errors.New("harness hook configuration unavailable")
 	}
 	raw, err := json.MarshalIndent(document, "", "  ")
 	if err != nil {
@@ -235,7 +294,7 @@ func writeHookDocument(path string, document map[string]any, mode os.FileMode) e
 	raw = append(raw, '\n')
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".hooks-*.tmp")
 	if err != nil {
-		return errors.New("codex hook configuration unavailable")
+		return errors.New("harness hook configuration unavailable")
 	}
 	tmpPath := tmp.Name()
 	defer os.Remove(tmpPath)
@@ -255,7 +314,7 @@ func writeHookDocument(path string, document map[string]any, mode os.FileMode) e
 		return err
 	}
 	if err := os.Rename(tmpPath, path); err != nil {
-		return fmt.Errorf("publish codex hook configuration: %w", err)
+		return fmt.Errorf("publish harness hook configuration: %w", err)
 	}
 	return nil
 }

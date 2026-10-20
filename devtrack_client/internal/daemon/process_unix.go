@@ -3,16 +3,21 @@
 package daemon
 
 import (
+	"errors"
 	"os"
 	"syscall"
 )
 
 func CheckProcessAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
 	process, err := os.FindProcess(pid)
 	if err != nil {
 		return false
 	}
-	return process.Signal(syscall.Signal(0)) == nil
+	err = process.Signal(syscall.Signal(0))
+	return err == nil || errors.Is(err, syscall.EPERM)
 }
 
 // KillProcessTree terminates pid. On POSIX, "uv run ... python ..." execs

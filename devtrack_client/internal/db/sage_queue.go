@@ -1,0 +1,227 @@
+package db
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"time"
+
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/llmclient"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/knowledge"
+)
+
+// SageQueue persists model work independently from capture and Git operations.
+// IDs returned to workers are fencing tokens, not stable event identifiers.
+type SageQueue struct {
+	Database   *Database
+	Lease      time.Duration
+	RetryDelay time.Duration
+	Now        func() time.Time
+}
+
+var ErrSageClaimLost = errors.New("sage processing lease expired or replaced")
+
+func (d *Database) createSageQueue() error {
+	tx, err := d.beginSchemaTransaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	_, err = tx.Exec(`CREATE TABLE IF NOT EXISTS sage_jobs (
+		signature TEXT PRIMARY KEY,
+		command TEXT NOT NULL,
+		failed INTEGER NOT NULL,
+		state TEXT NOT NULL DEFAULT 'waiting' CHECK(state IN ('waiting','processing','retrying','distilled','skipped')),
+		attempts INTEGER NOT NULL DEFAULT 0,
+		next_retry_ms INTEGER NOT NULL DEFAULT 0,
+		lease_until_ms INTEGER NOT NULL DEFAULT 0,
+		claim_token TEXT NOT NULL DEFAULT '',
+		last_error TEXT NOT NULL DEFAULT '',
+		skip_reason TEXT NOT NULL DEFAULT '',
+		draft_json TEXT NOT NULL DEFAULT '',
+		completed_ms INTEGER NOT NULL DEFAULT 0
+	);
+	CREATE INDEX IF NOT EXISTS idx_sage_jobs_due ON sage_jobs(state,next_retry_ms,lease_until_ms);
+	CREATE TRIGGER IF NOT EXISTS sage_jobs_enqueue AFTER INSERT ON sage_knowledge BEGIN
+		INSERT OR IGNORE INTO sage_jobs(signature,command,failed)
+		VALUES (new.signature,new.representative_command,
+		 CASE WHEN new.success_count=0 AND new.failure_count>0 THEN 1 ELSE 0 END);
+	END;
+	INSERT OR IGNORE INTO sage_jobs(signature,command,failed)
+		SELECT signature,representative_command,CASE WHEN success_count=0 AND failure_count>0 THEN 1 ELSE 0 END
+		FROM sage_knowledge;
+	CREATE TABLE IF NOT EXISTS sage_publications (
+		signature TEXT PRIMARY KEY REFERENCES sage_jobs(signature),
+		state TEXT NOT NULL DEFAULT 'waiting' CHECK(state IN ('waiting','retrying','documented')),
+		attempts INTEGER NOT NULL DEFAULT 0,
+		next_retry_ms INTEGER NOT NULL DEFAULT 0,
+		last_error TEXT NOT NULL DEFAULT '',
+		filename TEXT NOT NULL DEFAULT '',
+		completed_ms INTEGER NOT NULL DEFAULT 0
+	);
+	CREATE INDEX IF NOT EXISTS idx_sage_publications_due ON sage_publications(state,next_retry_ms);
+	CREATE TABLE IF NOT EXISTS sage_entries (
+		filename TEXT NOT NULL, line INTEGER NOT NULL, heading TEXT NOT NULL,
+		body TEXT NOT NULL, commands TEXT NOT NULL, topic_fold TEXT NOT NULL,
+		body_fold TEXT NOT NULL, heading_fold TEXT NOT NULL, commands_fold TEXT NOT NULL,
+		PRIMARY KEY(filename,line)
+	);
+	DROP TRIGGER IF EXISTS sage_publications_enqueue;
+	CREATE TRIGGER sage_publications_enqueue AFTER UPDATE OF state ON sage_jobs
+	WHEN new.state IN ('distilled','skipped') BEGIN
+		INSERT OR IGNORE INTO sage_publications(signature) VALUES(new.signature);
+	END;
+	INSERT OR IGNORE INTO sage_publications(signature) SELECT signature FROM sage_jobs WHERE state IN ('distilled','skipped');`)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (q *SageQueue) now() time.Time {
+	if q.Now != nil {
+		return q.Now()
+	}
+	return time.Now()
+}
+
+func (q *SageQueue) Claim(ctx context.Context) (distill.Job, bool, error) {
+	// Import enqueues transactionally through a trigger. Idle polling does not
+	// rescan command history; migration backfills pre-existing signatures once.
+	var token [24]byte
+	if _, err := rand.Read(token[:]); err != nil {
+		return distill.Job{}, false, err
+	}
+	lease := q.Lease
+	if lease <= 0 {
+		lease = 2 * time.Minute
+	}
+	now := q.now()
+	job := distill.Job{ID: hex.EncodeToString(token[:])}
+	err := q.Database.db.QueryRowContext(ctx, `UPDATE sage_jobs SET
+		state='processing',attempts=attempts+1,claim_token=?,lease_until_ms=?
+		WHERE signature=(SELECT signature FROM sage_jobs
+		 WHERE attempts<? AND ((state IN ('waiting','retrying') AND next_retry_ms<=?)
+		 OR (state='processing' AND lease_until_ms<=?))
+		 ORDER BY next_retry_ms,signature LIMIT 1)
+		RETURNING command,failed`, job.ID, now.Add(lease).UnixMilli(), SageMaxAttempts, now.UnixMilli(), now.UnixMilli()).Scan(&job.Fact.Command, &job.Fact.Failed)
+	if errors.Is(err, sql.ErrNoRows) {
+		return distill.Job{}, false, nil
+	}
+	return job, err == nil, err
+}
+
+// ReuseDocumented attaches a new signature variant to an existing action and
+// completes it without a model call. File mutation happens before durable
+// acknowledgement; a lost acknowledgement safely replays the idempotent add.
+func (q *SageQueue) ReuseDocumented(ctx context.Context, writer knowledge.Writer) (bool, error) {
+	now := q.now()
+	var signature, command string
+	err := q.Database.db.QueryRowContext(ctx, `SELECT signature,command FROM sage_jobs
+		WHERE state IN ('waiting','retrying') AND attempts<? AND next_retry_ms<=?
+		ORDER BY next_retry_ms,signature LIMIT 1`, SageMaxAttempts, now.UnixMilli()).Scan(&signature, &command)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	digest := sha256.Sum256([]byte(signature))
+	variant := hex.EncodeToString(digest[:])
+	filename, existing, found, err := writer.ResolveExisting(command, variant)
+	if err != nil || !found {
+		return false, err
+	}
+	if existing != variant {
+		added, err := writer.AddSignature(filename, existing, variant)
+		if err != nil {
+			return true, err
+		}
+		if !added {
+			// A concurrent/manual edit removed the target; let normal distillation
+			// reconsider it instead of claiming completion.
+			return false, nil
+		}
+	}
+	tx, err := q.Database.db.BeginTx(ctx, nil)
+	if err != nil {
+		return true, err
+	}
+	defer tx.Rollback()
+	result, err := tx.ExecContext(ctx, `UPDATE sage_jobs SET state='distilled',draft_json='{}',
+		last_error='',next_retry_ms=0,completed_ms=?,claim_token='',lease_until_ms=0
+		WHERE signature=? AND state IN ('waiting','retrying')`, now.UnixMilli(), signature)
+	if err != nil {
+		return true, err
+	}
+	if changed, err := result.RowsAffected(); err != nil || changed != 1 {
+		if err != nil {
+			return true, err
+		}
+		return false, nil
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE sage_publications SET state='documented',filename=?,
+		completed_ms=?,next_retry_ms=0,last_error='' WHERE signature=?`, filename, now.UnixMilli(), signature); err != nil {
+		return true, err
+	}
+	return true, tx.Commit()
+}
+
+func (q *SageQueue) finish(ctx context.Context, token, state, draft, reason, diagnostic string, retryAt int64) error {
+	now := q.now().UnixMilli()
+	completed := now
+	if state == "retrying" {
+		completed = 0
+	}
+	result, err := q.Database.db.ExecContext(ctx, `UPDATE sage_jobs SET state=?,draft_json=?,skip_reason=?,last_error=?,
+		next_retry_ms=?,completed_ms=?,claim_token='',lease_until_ms=0
+		WHERE claim_token=? AND state='processing' AND lease_until_ms>?`,
+		state, draft, reason, diagnostic, retryAt, completed, token, now)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return ErrSageClaimLost
+	}
+	return nil
+}
+
+func (q *SageQueue) Complete(ctx context.Context, token string, draft distill.Draft) error {
+	raw, err := json.Marshal(draft)
+	if err != nil {
+		return err
+	}
+	return q.finish(ctx, token, "distilled", string(raw), "", "", 0)
+}
+
+func (q *SageQueue) Skip(ctx context.Context, token, reason string) error {
+	if reason == "" {
+		return errors.New("sage skip requires an explicit reason")
+	}
+	// Model prose can echo sensitive input. Keep a stable local verdict category.
+	return q.finish(ctx, token, "skipped", "", "model judged command not useful", "", 0)
+}
+
+func (q *SageQueue) Retry(ctx context.Context, token string, cause error) error {
+	delay := q.RetryDelay
+	if delay <= 0 {
+		delay = 2 * time.Second
+	}
+	// Never persist raw HTTP response bodies, URLs, credentials, or model prose.
+	diagnostic := "model or persistence failure"
+	if errors.Is(cause, context.DeadlineExceeded) {
+		diagnostic = "model timeout"
+	} else if errors.Is(cause, llmclient.ErrTokenLimit) {
+		diagnostic = "model token limit"
+	}
+	return q.finish(ctx, token, "retrying", "", "", diagnostic, q.now().Add(delay).UnixMilli())
+}

@@ -1,10 +1,14 @@
 # Git features
 
+> The silent native-Git behavior below is merged into `dev` in PR #264 but remains unreleased.
+> Public v3.1.1 still has a known regression in its shell-wrapped commit path.
+
 ## Silent observation
 
 The daemon watches enabled repositories and reacts after commits. It does not prompt during normal
-Git work. Ticket context is resolved from branch names, commit prefixes, trailers, explicit work
-sessions, or recent context. Failure to resolve a ticket is logged and never blocks Git.
+Git work. The current configured ticket resolver runs in the background; failure to resolve a
+ticket is recorded and never blocks Git. The stricter canonical branch and provenance contract is
+planned work and is not presented here as shipped behavior.
 
 ## Optional enhanced commit
 
@@ -15,11 +19,13 @@ devtrack git commit -m "short message" --dry-run
 devtrack git commit -m "short message" --no-enhance
 ```
 
-This explicitly invoked Go-native workflow can refine the message, offer a ticket picker, capture
-time, and offer a push. If the LLM is unavailable, the original message remains usable.
+This explicitly invoked Go-native workflow can refine the message before Git runs. After the commit
+it returns immediately: it does not offer a ticket picker, ask for time, post to a PM system, or
+offer a push. The daemon observes the completed commit asynchronously and stages applicable work.
+If the LLM is unavailable, the original message remains usable.
 
-Configuration uses `GIT_SAGE_PROVIDER`, `GIT_SAGE_DEFAULT_MODEL`, `OLLAMA_HOST`, and the appropriate
-provider credential. Server `LLM_PROVIDER` does not replace the client git-sage configuration.
+Configuration uses the shared `LLM_PROVIDER`, `OLLAMA_HOST`, `OLLAMA_MODEL`, and the appropriate
+provider credential. Ollama remains the offline-first default.
 
 ## Deferred commits
 
@@ -32,17 +38,21 @@ devtrack commits review
 Deferred staged work is pinned by a Git reference and can be recovered even if the worktree changes.
 The pre-push enhancement hook never blocks a push.
 
-## Git-sage agent
+## DevTrack Sage command knowledge
 
 ```bash
-devtrack sage ask "how do I undo the last commit but keep the files?"
-devtrack sage do "squash the last three commits" --verbose
-devtrack sage pr
-devtrack sage interactive
+devtrack sage harness install codex
+devtrack sage harness install claude
+devtrack sage harness install copilot
+devtrack sage harness install opencode
+devtrack sage status
+devtrack sage search "undo commit"
+devtrack sage topics
 ```
 
-Squash operations use a soft reset plus commit, never interactive rebase. Agent failures roll back
-when possible and do not add a blocking dependency to normal Git commands.
+Sage silently captures a bounded, privacy-minimized command event from supported harnesses and
+indexes it locally. It does not execute Git operations or answer repository questions; use normal
+Git commands and `devtrack git` for explicit commit workflow assistance.
 
 ## Ticket and PM behavior
 

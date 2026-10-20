@@ -169,6 +169,12 @@ COMMIT_EXAMPLE = {
     "workspace_name": "myproject",
     "pm_platform":    "github",
     "pm_project":     "myorg/myproject",
+    "ticket_id":      "GH-42",
+    "ticket_external_id": "42",
+    "ticket_source":  "branch",
+    "ticket_state":   "linked",
+    "ticket_confidence": 1.0,
+    "ticket_conflict": False,
 }
 
 

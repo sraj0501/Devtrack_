@@ -89,9 +89,9 @@ func TestGetRecentTriggers_IncludesTicketID(t *testing.T) {
 	}
 }
 
-// TestGetLastTicketID confirms the active-ticket fallback query (used by
-// TASK-069) returns the most recently matched ticket for a repo, ignoring
-// unlinked (empty) commits, and "" when no prior matched commit exists.
+// TestGetLastTicketID confirms the retained compatibility/diagnostic query
+// returns the most recently matched ticket for a repo, ignoring unlinked
+// commits, without making it part of deterministic resolution.
 func TestGetLastTicketID(t *testing.T) {
 	database := newTestDB(t)
 

@@ -1,37 +1,36 @@
-# Next Steps — DevTrack Sage
+# Next Steps — DevTrack
 
-_Updated 2026-09-15. This file lists active work only. Completed delivery and validation history
+_Updated 2026-10-18. This file lists active work only. Completed delivery and validation history
 lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
-## Current product initiative
+## Immediate repository sequence
 
-Plan **DevTrack Sage** as DevTrack's local, cross-harness memory layer. The product is no longer
-named Git Sage because its scope extends beyond Git operations to commands, tool activity,
-searchable personal knowledge, and later opt-in session playback across coding-agent harnesses.
+The approved Sage roadmap is complete and integrated into `dev` at `77e2f5b` through PR #292.
+No Sage implementation slice remains pending. Resume with the separate server-admin UI decision,
+then packaged-build qualification and the remaining publication follow-ups below.
 
-The existing `devtrack sage ask/do/pr/interactive` behavior and the Go `gitsage` package are shipped
-legacy surfaces. Preserve commit enhancement, PR discovery, conflict handling, Git operations, and
-shared model transport while the migration plan defines compatible command and package boundaries.
+The authoritative clean behavioral reference is
+`C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The parity inventory
+accounts for all 136 reference scenarios: 119 implemented, 17 adapted, 0 partial, and 0 pending.
+Python remains development evidence only; shipped Sage is Go-native and local.
 
-The first implementation slice should stop at reliable local capture plus searchable command
-knowledge. Playback and visible-reasoning enrichment are later milestones and must not be folded
-into the capture foundation.
+## Product boundary
 
-The executable milestones, architecture, acceptance criteria, and risk register are in
-[DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md](DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md). Supporting active
-context is maintained in `.claude/memory/project_sage_session_memory.md`. SAGE-001 established the
-contract and compatibility seam as TASK-155. SAGE-002 is complete as TASK-156: the atomic bounded
-spool, append-only SQLite event store, daemon importer, and opt-in read-only Codex history adapter
-are implemented, hook installation/removal is reversible, and the isolated packaged capture
-journey passes. Start SAGE-003 searchable command knowledge next. Sanitized observed hook fixtures
-remain an external harness-validation gate.
-The selective harness registry and external plugin boundary are now fixed in
-`SAGE_HARNESS_PLUGIN_CONTRACT.md`; new adapters must plug into that boundary rather than adding
-global installer switches or harness-specific storage.
-`Data/agent_logs/project_board.md` remains the task-ID authority.
+`devtrack sage` is the local cross-harness command-knowledge product, not a repository-chat or
+autonomous Git agent. Hooks remain silent, bounded, model-free, and fail-open. SQLite owns private
+queues and derived retrieval state; deterministic Markdown is the portable knowledge authority.
+Raw harness payloads never enter PostgreSQL, telemetry, MCP, or remote synchronization.
+
+The implementation plan and qualification details are in
+[DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md](DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md),
+[SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md](SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md), and
+`agent-memory/initiatives/sage.md`. `Data/agent_logs/project_board.md` remains the task-ID and
+status authority.
 
 ## Open release follow-ups
 
+- Review `feat/TASK-154-server-admin-ui` at `54ceb05` against current `dev`, then integrate it or
+  explicitly retire it before packaged-build qualification.
 - Qualify the admin review journey against packaged release artifacts.
 - Capture and privacy-review the approved launch screenshots and video.
 - Record the exact approved Glama listing path and add its score badge to
@@ -39,14 +38,3 @@ global installer switches or harness-specific storage.
 
 Clean Windows installation and full Managed Linux validation were confirmed complete by the owner
 on 2026-09-10 and must not be reintroduced as pending work.
-
-## Planning boundary
-
-DevTrack Sage remains local-first and Go-client-owned. Hooks must be silent, bounded, model-free,
-and failure-isolated. Raw capture and playback data stay local by default and never enter
-PostgreSQL, telemetry, or remote synchronization implicitly.
-
-The implementation is a complete Go port of the required behavior and tests from the pinned Python
-reference. Python is development evidence only: shipped Sage code must not invoke it or depend on
-its environment. Port completion is tracked by behavioral parity, including edge cases, rather
-than by translating files line-for-line.

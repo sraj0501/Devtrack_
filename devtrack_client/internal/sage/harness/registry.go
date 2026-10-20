@@ -83,3 +83,48 @@ func (c Codex) Descriptor() Descriptor {
 func (c Codex) Install() (hooks.Installation, error)   { return c.Installer.Install() }
 func (c Codex) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
 func (c Codex) Status() (hooks.Installation, error)    { return c.Installer.Status() }
+
+type Claude struct{ Installer hooks.ClaudeInstaller }
+
+func (c Claude) Descriptor() Descriptor {
+	return Descriptor{ID: "claude", DisplayName: "Claude Code", BuiltIn: true}
+}
+func (c Claude) Install() (hooks.Installation, error)   { return c.Installer.Install() }
+func (c Claude) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
+func (c Claude) Status() (hooks.Installation, error)    { return c.Installer.Status() }
+
+type Copilot struct{ Installer hooks.CopilotInstaller }
+
+func (c Copilot) Descriptor() Descriptor {
+	return Descriptor{ID: "copilot", DisplayName: "GitHub Copilot CLI", BuiltIn: true}
+}
+func (c Copilot) Install() (hooks.Installation, error)   { return c.Installer.Install() }
+func (c Copilot) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
+func (c Copilot) Status() (hooks.Installation, error)    { return c.Installer.Status() }
+
+type OpenCode struct{ Installer hooks.OpenCodeInstaller }
+
+func (o OpenCode) Descriptor() Descriptor {
+	return Descriptor{ID: "opencode", DisplayName: "OpenCode", BuiltIn: true}
+}
+func (o OpenCode) Install() (hooks.Installation, error)   { return o.Installer.Install() }
+func (o OpenCode) Uninstall() (hooks.Installation, error) { return o.Installer.Uninstall() }
+func (o OpenCode) Status() (hooks.Installation, error)    { return o.Installer.Status() }
+
+type Cursor struct{ Installer hooks.CursorInstaller }
+
+func (c Cursor) Descriptor() Descriptor {
+	return Descriptor{ID: "cursor", DisplayName: "Cursor", BuiltIn: true}
+}
+func (c Cursor) Install() (hooks.Installation, error)   { return c.Installer.Install() }
+func (c Cursor) Uninstall() (hooks.Installation, error) { return c.Installer.Uninstall() }
+func (c Cursor) Status() (hooks.Installation, error)    { return c.Installer.Status() }
+
+type Devin struct{ Installer hooks.DevinInstaller }
+
+func (d Devin) Descriptor() Descriptor {
+	return Descriptor{ID: "devin", DisplayName: "Devin CLI", BuiltIn: true}
+}
+func (d Devin) Install() (hooks.Installation, error)   { return d.Installer.Install() }
+func (d Devin) Uninstall() (hooks.Installation, error) { return d.Installer.Uninstall() }
+func (d Devin) Status() (hooks.Installation, error)    { return d.Installer.Status() }

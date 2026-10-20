@@ -1,0 +1,82 @@
+name: Development release
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - "devtrack_client/**"
+      - "devtrack_server/**"
+      - ".github/workflows/dev-release.yml"
+
+concurrency:
+  group: dev-release
+  cancel-in-progress: true
+
+jobs:
+  build-dev-release:
+    name: Build rolling dev release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: devtrack_client/go.mod
+          cache-dependency-path: devtrack_client/go.sum
+
+      - name: Test
+        working-directory: devtrack_client
+        run: go test ./... -timeout 60s
+
+      - name: Build all platforms
+        working-directory: devtrack_client
+        shell: bash
+        run: |
+          VERSION="dev-${GITHUB_SHA:0:7}"
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GITHUB_SHA:0:7}"
+          mkdir -p dist
+
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
+            go build -ldflags "$LDFLAGS" -o dist/devtrack_windows_amd64.exe .
+
+          for GOOS in darwin linux; do
+            for GOARCH in amd64 arm64; do
+              GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 \
+                go build -ldflags "$LDFLAGS" -o dist/devtrack .
+              tar czf "dist/devtrack_${GOOS}_${GOARCH}.tar.gz" -C dist devtrack
+              rm dist/devtrack
+            done
+          done
+
+          (cd dist && sha256sum * > checksums.txt)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Publish rolling prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view dev --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh api "repos/${{ github.repository }}/git/refs/tags/dev" \
+              --method PATCH --field sha="$GITHUB_SHA" --field force=true
+            gh release upload dev devtrack_client/dist/* \
+              --repo "${{ github.repository }}" \
+              --clobber
+            gh release edit dev \
+              --repo "${{ github.repository }}" \
+              --title "$VERSION" \
+              --prerelease \
+              --notes "Automated development build from the dev branch at $GITHUB_SHA."
+          else
+            gh release create dev \
+              devtrack_client/dist/* \
+              --repo "${{ github.repository }}" \
+              --target "$GITHUB_SHA" \
+              --title "$VERSION" \
+              --prerelease \
+              --notes "Automated development build from the dev branch at $GITHUB_SHA."
+          fi

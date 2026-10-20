@@ -2,6 +2,9 @@
 
 `devtrack git commit` wraps a normal Git commit with repository-aware message generation. Git still owns the commit; DevTrack must never make the developer's normal Git workflow depend on its AI or server.
 
+> This page describes the TASK-158 correction merged into `dev` by PR #264. It remains unreleased;
+> public v3.1.1 still has the shell-wrapped post-commit prompt regression.
+
 ## Interactive commit
 
 Stage changes and provide an initial message:
@@ -31,7 +34,10 @@ devtrack git commit -m "describe the change" --dry-run
 
 ## After the commit
 
-In an interactive terminal, DevTrack can ask for time spent and whether to push. Work that becomes a PM update or another outbound action must be staged through `pending_actions`; there is no direct-send fallback.
+DevTrack returns immediately after Git completes. It does not ask for a ticket, duration, PM post,
+or push, and it never pushes as a side effect of committing. The daemon observes the completed
+commit asynchronously, records it locally, and stages applicable outbound work through
+`pending_actions`.
 
 If the configured LLM or managed server is unavailable, DevTrack degrades gracefully. Inspect the repository with `git status` and use normal Git commands whenever needed.
 
@@ -41,8 +47,7 @@ If the configured LLM or managed server is unavailable, DevTrack degrades gracef
 devtrack commits list
 devtrack commits enhance
 devtrack commits review
-devtrack sage ask "explain the staged changes"
-devtrack sage do "prepare a conventional commit"
 ```
 
-`devtrack commits` manages deferred commit work. `devtrack sage` is the separate Go-native repository assistant.
+`devtrack commits` manages deferred commit work. DevTrack Sage is a separate local command-knowledge
+product and does not perform repository operations.

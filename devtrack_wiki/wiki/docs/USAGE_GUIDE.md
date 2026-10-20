@@ -11,14 +11,23 @@
 
 ## Signal priority
 
-DevTrack resolves ticket context from the branch name, commit prefix, Git trailer, an explicit
-`devtrack work start`, or recent ticket context—in that order. An unlinked commit is logged and never
-blocks Git.
+DevTrack resolves ticket context from a full canonical branch match, an explicit first-line commit
+prefix or `Refs:` trailer, or an explicit `devtrack work start`—in that order. Otherwise the commit
+is unlinked. Incidental prose IDs, recent tickets, and LLM suggestions are never authoritative.
+Conflicts are retained for correction and cannot stage outbound work. None of these states blocks
+Git.
+
+```bash
+devtrack ticket convention
+devtrack ticket check feature/PROJ-123-description
+devtrack ticket link abc1234 PROJ-123
+```
 
 ## Optional interactive Git wrapper
 
-`devtrack git commit` can refine the message, offer the Go-native ticket picker, record time, and
-offer a push. This is an explicitly invoked workflow and is separate from the silent daemon path.
+`devtrack git commit` can refine the message before Git runs. After a successful commit it returns
+without asking about tickets, time, PM posting, or pushing. This explicitly invoked helper is
+separate from the silent daemon path.
 
 ## Pending actions
 
@@ -33,6 +42,12 @@ devtrack queue flag <id> "correction"
 Every external PM, email, or Git action must pass through this queue and carry confidence.
 
 ## Work and reports
+
+The TASK-159 development implementation estimates time from local monitored commits.
+Explicit sessions are optional. Estimates use a 45-minute activity gap, up to 15 minutes
+of padding at each edge, and an eight-hour cap per window. Status shows confidence;
+adjustments preserve measured time and an audit history. Automatic idle/EOD closure
+uses the last observed activity, so an unattended session does not accrue idle time.
 
 ```bash
 devtrack work start PROJ-123

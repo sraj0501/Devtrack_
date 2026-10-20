@@ -56,7 +56,7 @@ var launchdEnvVarPrefixes = []string{
 	"CONFIG_", "LEARNING_", "WORKSPACES_", "CLI_",
 	"IPC_", "WEBHOOK_",
 	"LLM_", "OLLAMA_", "LMSTUDIO_", "OPENAI_", "ANTHROPIC_", "GROQ_",
-	"GIT_SAGE_", "HTTP_", "PROMPT_",
+	"HTTP_", "PROMPT_",
 	"AZURE_", "GITHUB_", "GITLAB_", "JIRA_", "TEAMS_",
 	"EMAIL_", "TELEGRAM_", "SLACK_",
 	"ALERT_", "ADMIN_",

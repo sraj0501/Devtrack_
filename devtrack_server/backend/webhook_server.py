@@ -537,13 +537,12 @@ class TriggerProcessor:
         pm_iteration_path = data.get("pm_iteration_path", "")
         pm_area_path      = data.get("pm_area_path", "")
         pm_milestone      = data.get("pm_milestone", "")
-        # Phase 2 — Go-resolved ticket ID (branch/message/active-ticket fallback
-        # chain, ~100% hit-rate verified). Absent or empty means Go's extractor
-        # found no ticket for this commit (logged [UNLINKED] on the client side).
-        # This is the authoritative ticket-resolution signal. Server-side LLM
-        # parsing only enriches descriptive fields and cannot infer or redirect
-        # the PM target.
+        # TASK-160 — Go-resolved deterministic ticket mapping. Absent or empty
+        # means unlinked. A conflict retains local evidence but cannot stage an
+        # outbound PM action. Server-side LLM parsing only enriches descriptive
+        # fields and cannot infer or redirect the PM target.
         resolved_ticket_id = data.get("ticket_id", "")
+        ticket_conflict = bool(data.get("ticket_conflict")) or data.get("ticket_state") == "conflict"
 
         logger.info(f"[HTTP commit] {commit_hash[:12]} — {commit_msg[:60]}")
 
@@ -574,7 +573,12 @@ class TriggerProcessor:
 
         # PM sync — stage via queue (Phase 1) or fall back to direct post
         with _stage("PM sync"):
-            if not resolved_ticket_id:
+            if ticket_conflict:
+                logger.info(
+                    "PM sync skipped: commit %s has conflicting deterministic ticket evidence",
+                    commit_hash[:12] if commit_hash else "?",
+                )
+            elif not resolved_ticket_id:
                 # Phase 2 found no ticket for this commit (branch/message/
                 # active-ticket fallback chain all came up empty — logged
                 # [UNLINKED] on the Go side). Non-Negotiable #8: never block,

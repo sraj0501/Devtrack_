@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	gitsage "github.com/sraj0501/Devtrack_/devtrack_client/gitsage"
+	"github.com/sraj0501/Devtrack_/devtrack_client/internal/gitcmd"
 )
 
 func main() {
@@ -34,8 +34,8 @@ func main() {
 			if err != nil || repoPath == "" {
 				repoPath = "."
 			}
-			if err := gitsage.RunGit(repoPath, os.Args[2:], gitCommitHooks()); err != nil {
-				var ece *gitsage.ExitCodeError
+			if err := gitcmd.RunGit(repoPath, os.Args[2:], gitCommitHooks()); err != nil {
+				var ece *gitcmd.ExitCodeError
 				if errors.As(err, &ece) {
 					os.Exit(ece.Code)
 				}
@@ -73,10 +73,14 @@ func main() {
 			return
 		}
 
-		// devtrack upgrade [--check] — self-update binary and run migrations
+		// devtrack upgrade [--check] [--dev|--main] — self-update binary and run migrations
 		if cmd == "upgrade" {
-			checkOnly := len(os.Args) > 2 && os.Args[2] == "--check"
-			if err := RunUpgrade(checkOnly); err != nil {
+			checkOnly, channel, err := parseUpgradeArgs(os.Args[2:])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			if err := RunUpgradeForChannel(checkOnly, channel); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
@@ -176,7 +180,7 @@ func main() {
 			cmd == "plan" || cmd == "boardroom" ||
 			cmd == "github-check" || cmd == "github-list" || cmd == "github-sync" || cmd == "github-view" ||
 			cmd == "gitlab-check" || cmd == "gitlab-list" || cmd == "gitlab-sync" || cmd == "gitlab-view" ||
-			cmd == "ticket-sync" || cmd == "narrative" || cmd == "issues" ||
+			cmd == "ticket" || cmd == "ticket-sync" || cmd == "narrative" || cmd == "issues" ||
 			cmd == "eod" ||
 			cmd == "voice" ||
 			cmd == "newproject" {
@@ -214,10 +218,14 @@ func printBasicUsage() {
 	fmt.Println("INFO:       logs | db-stats | stats | version | settings | help")
 	fmt.Println()
 	fmt.Println("GIT:        git add | git commit -m 'msg'     AI-enhanced; shell-init required")
-	fmt.Println("SAGE:       sage status|pause|resume|doctor    local capture state (capture not installed yet)")
-	fmt.Println("            sage git ask '<question>'          Git agent Q&A")
-	fmt.Println("            sage git do '<task>' [--verbose]   Git agent task execution")
-	fmt.Println("            sage git pr|interactive            Git agent PR info or chat")
+	fmt.Println("SAGE:       sage status|pause|resume|doctor    local capture and pipeline state")
+	fmt.Println("            sage log                          sanitized durable pipeline log")
+	fmt.Println("            sage search <query> [--topic name] search command knowledge")
+	fmt.Println("            sage topics                       list knowledge topics")
+	fmt.Println("            sage routes                       list effective knowledge routes")
+	fmt.Println("            sage route <binary> <topic>       remember a Markdown destination")
+	fmt.Println("            sage merge <source> <destination> move documented entries between topics")
+	fmt.Println("            sage harness list|install|uninstall <name>")
 	fmt.Println()
 	fmt.Println("ISSUES:     issues                                 browse assigned tickets (TUI)")
 	fmt.Println("GITHUB:     github-check | github-list | github-sync | github-view <number>")
@@ -227,6 +235,7 @@ func printBasicUsage() {
 	fmt.Println()
 	fmt.Println("WORKSPACES: workspace list | add <name> <path> | remove <name>")
 	fmt.Println("            workspace enable|disable <name> | workspace reload")
+	fmt.Println("TICKETS:    ticket convention | ticket check [branch] | ticket link <commit> <ref>")
 	fmt.Println("COMMITS:    commits pending | commits review")
 	fmt.Println("ALERTS:     alerts | alerts --all | alerts --clear")
 	fmt.Println("REVIEW:     review                                  show PR review comment queue")
@@ -236,7 +245,7 @@ func printBasicUsage() {
 	fmt.Println("            cloud status | cloud logout")
 	fmt.Println("ACCOUNT:    login | logout | whoami | license | terms | telemetry [on|off]")
 	fmt.Println()
-	fmt.Println("UPDATE:     upgrade | upgrade --check")
+	fmt.Println("UPDATE:     upgrade [--check] [--dev|--main]")
 	fmt.Println("UNINSTALL:  uninstall | uninstall --keep-data")
 	fmt.Println()
 	fmt.Println("MCP:        mcp [serve|status]                 MCP server for Claude Code integration (stdio)")
