@@ -556,7 +556,7 @@
         </div>
       </a>
       <div class="sidebar-version">
-        <span class="sidebar-version-tag">v3.1.1</span>
+        <span class="sidebar-version-tag">v3.2.0</span>
         <span class="sidebar-version-status">
           <span class="sidebar-version-dot"></span>
           live
@@ -587,7 +587,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v3.1.1</span>
+        <span class="version-chip">v3.2.0</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -963,8 +963,8 @@ devtrack voice status</code></pre>
 <h1>Setup Wizard</h1>
 <p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode, LLM provider, credentials, workspace, project-management platform, and shell integration, then writes a complete environment file under the DevTrack XDG data directory and registers it so every subsequent <code>devtrack</code> invocation auto-loads it. Managed mode also collects and validates the required PostgreSQL URL.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available in the latest public release — v3.1.1</div>
-<blockquote><p>v3.1.1 includes the background bootstrap, <code>doctor</code>, first-run MCP guidance, voice seeding, and LLM fast lane described below.</p></blockquote>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Included in the v3.2.0 release candidate</div>
+<blockquote><p>v3.2.0 includes the background bootstrap, <code>doctor</code>, first-run MCP guidance, voice seeding, DevTrack Sage, and the LLM fast lane described below.</p></blockquote>
 
 <h2>Running the Wizard</h2>
 <pre><code class="language-bash">devtrack setup</code></pre>
@@ -1091,7 +1091,7 @@ uv run python -m backend.server_tui</code></pre>
 <h1>Admin Console</h1>
 <p>The Admin Console is a lightweight web UI for operating DevTrack's Python backend — reviewing server-side pending actions, monitoring connected clients and trigger activity, and managing users, roles, API keys, LLM configuration, integration credentials, and license status — without touching the command line or <code>.env</code> directly. It is built with HTMX + Jinja2 and has no JavaScript build step.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Current <code>dev</code> console — latest public release remains v3.1.1</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Admin console in v3.2.0</div>
 
 <h2>Launching</h2>
 <pre><code class="language-bash">cd Devtrack_/devtrack_server\nuv run python -m backend.admin</code></pre>
@@ -1551,7 +1551,7 @@ devtrack upgrade --check
 devtrack upgrade</code></pre>
 <p>Linux and macOS use <code>devtrack_&lt;os&gt;_&lt;arch&gt;.tar.gz</code>. Windows downloads the published <code>.exe</code> directly. A development build reports the latest release without overwriting itself as a tagged installation.</p>
 <h2>Rolling development update channel</h2>
-<p>TASK-161 merged through <a href="https://github.com/sraj0501/Devtrack_/pull/265" target="_blank" rel="noopener">PR #265</a> and adds a persistent update-channel choice: stable releases from <code>main</code> remain the default, while <code>devtrack upgrade --dev</code> opts into the rolling <a href="https://github.com/sraj0501/Devtrack_/releases/tag/dev" target="_blank" rel="noopener"><code>dev</code> prerelease</a> and <code>devtrack upgrade --main</code> (or <code>--stable</code>) returns to stable. <code>--check</code> can inspect either channel without switching. The v3.1.1 binary does not contain these flags; first install a rolling-development binary manually or build current <code>dev</code>.</p>
+<p>v3.2.0 adds a persistent update-channel choice: stable releases from <code>main</code> remain the default, while <code>devtrack upgrade --dev</code> opts into the rolling <a href="https://github.com/sraj0501/Devtrack_/releases/tag/dev" target="_blank" rel="noopener"><code>dev</code> prerelease</a> and <code>devtrack upgrade --main</code> (or <code>--stable</code>) returns to stable. <code>--check</code> can inspect either channel without switching.</p>
 <h2>Managed Server Update</h2>
 <p>After the binary succeeds, managed mode updates the optional Python server through the durable background worker:</p>
 <pre><code class="language-bash">devtrack doctor
@@ -1635,7 +1635,14 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<p>This page distinguishes the latest public release from newer work on <code>dev</code>. The latest public release remains <code>v3.1.1</code>; GitHub Releases remains the version-history archive.</p>
+<p><code>v3.2.0</code> is the active release candidate; <code>v3.1.1</code> remains public until TASK-171 promotion, tagging, and publication complete. GitHub Releases remains the version-history archive.</p>
+<h2>v3.2.0 — DevTrack Sage and silent workflow intelligence</h2>
+<ul>
+<li><strong>DevTrack Sage:</strong> six independent harness adapters feed a privacy-minimized local pipeline that publishes deterministic searchable Markdown.</li>
+<li><strong>Ten read-only MCP tools:</strong> four Sage knowledge/status tools join the six work-context tools in every native MCPB bundle.</li>
+<li><strong>Silent workflow fixes:</strong> normal Git no longer enters the interactive enhancer; deterministic ticket mapping and bounded work-time inference run in the background.</li>
+<li><strong>Operations:</strong> retention, quarantine purge, exact topic deletion, repair, export, and import are bounded local commands with explicit mutation gates.</li>
+</ul>
 <h2>Integrated — TASK-170 Sage operational closure</h2>
 <ul>
 <li><strong>Lifecycle controls:</strong> retention previews by default and deletes only old normalized source events when <code>--apply</code> is explicit; summarized knowledge and Markdown remain.</li>
@@ -1645,13 +1652,13 @@ devtrack start</code></pre>
 <li><strong>Safety:</strong> filesystem changes require paused capture, serialize with publication, reject traversal, links, overlaps, and conflicts, and roll back partial delete/import writes under injected faults.</li>
 <li><strong>Qualification:</strong> the full Linux Go suite, vet, focused race/fault coverage, native Windows focused tests, and all 19 hosted checks passed; PR #292 merged into <code>dev</code> at <code>77e2f5b</code>.</li>
 </ul>
-<h2>Current work — TASK-169 read-only Sage MCP</h2>
+<h2>Integrated — TASK-169 read-only Sage MCP</h2>
 <ul>
 <li><strong>Four local tools:</strong> <code>sage_search</code>, <code>sage_topics</code>, <code>sage_get_entry</code>, and <code>sage_status</code> extend the existing stdio server without adding a remote transport.</li>
 <li><strong>Current knowledge:</strong> search, topics, and exact topic/line retrieval reconcile deterministic Markdown edits, moves, and deletions before responding.</li>
 <li><strong>Bounded diagnostics:</strong> status reports capture state, durable pipeline counts, and adapter installation modes without raw events, logs, prompts, output, reasoning, or configuration paths.</li>
 <li><strong>Safety:</strong> all four tools are read-only, non-destructive, idempotent, and closed-world; schemas reject undeclared or out-of-range inputs.</li>
-<li><strong>Qualification:</strong> the full Linux Go suite, vet, focused race coverage, and native Windows MCP/database tests pass locally on commit <code>122c06e</code>; hosted review remains.</li>
+<li><strong>Qualification:</strong> the full Linux Go suite, vet, focused race coverage, native Windows MCP/database tests, and all 19 hosted checks passed before PR #291 merged.</li>
 </ul>
 <h2>Integrated — TASK-168 Devin CLI capture</h2>
 <ul>
@@ -1662,7 +1669,7 @@ devtrack start</code></pre>
 <li><strong>Runtime boundary:</strong> no session hooks, Python shim, or second process are installed because the DevTrack daemon owns lifecycle.</li>
 <li><strong>Qualification:</strong> focused Linux and native Windows tests, the full Go suite, vet, race coverage, and privacy-canary checks passed; all 19 hosted checks passed and PR #290 merged into <code>dev</code> at <code>1b87ee6</code>.</li>
 </ul>
-<h2>Current dev — TASK-157 durable Sage knowledge pipeline</h2>
+<h2>Integrated — TASK-157 durable Sage knowledge pipeline</h2>
 <ul>
 <li><strong>Integrated pipeline:</strong> PR #278 merged durable distillation/publication, routing and merge/refile, search, truthful diagnostics, bounded retries, safe local knowledge commits, and capture/model-request parity to <code>dev</code> at <code>a6a75b0</code>.</li>
 <li><strong>Integration:</strong> PRs #279–#292 are merged into <code>dev</code> at <code>77e2f5b</code>, carrying capture/history closure, the completed parity ledger, repeated acceptance, six independent capture adapters, read-only MCP, and operational closure.</li>
@@ -1673,32 +1680,32 @@ devtrack start</code></pre>
 <li><strong>Parity checkpoint:</strong> the current <code>ea2e067</code> reference ledger is complete at 119 implemented, 17 adapted, 0 partial, and 0 pending scenarios.</li>
 <li><strong>Acceptance closure:</strong> the complete capture-to-knowledge journey now passes twice from clean state on native Windows and Linux. Parent parity PR #284 and final acceptance PR #285 are both clean with all 19 hosted checks passing.</li>
 </ul>
-<h2>Current dev — TASK-158 completely silent Git path</h2>
+<h2>Released — TASK-158 completely silent Git path</h2>
 <ul>
-<li><strong>Merge and release boundary:</strong> PR #264 is merged into <code>dev</code>. Public v3.1.1 still contains the shell-wrapped post-commit prompt regression, so the correction remains unreleased.</li>
+<li><strong>Historical boundary:</strong> when PR #264 first merged into <code>dev</code>, public v3.1.1 still contained the shell-wrapped post-commit prompt regression. The correction now ships in v3.2.0.</li>
 <li><strong>Native Git stays native:</strong> shell integration no longer routes <code>git add</code> or <code>git commit</code> through DevTrack. It retains only the optional history/message aliases.</li>
 <li><strong>No post-commit interrogation:</strong> the explicitly invoked AI commit helper returns after Git completes without asking for a ticket, duration, PM post, or push.</li>
 <li><strong>No commit-time push:</strong> committing never invokes <code>git push</code>. Outbound PM work remains asynchronous and stages through the pending queue.</li>
 <li><strong>Silent observation:</strong> the generated post-commit hook suppresses its own errors and always lets Git succeed; database initialization details no longer appear in the user-facing path.</li>
 </ul>
-<h2>Current dev — DevTrack Sage foundation</h2>
+<h2>Released — DevTrack Sage</h2>
 <ul>
-<li><strong>Product direction:</strong> <code>devtrack sage</code> is exclusively the local, cross-harness, self-writing command-knowledge product. DevTrack is porting behavior from the current <code>ai_sessions_skills</code> reference at commit <code>ea2e067</code>; repository-assistant commands are not part of this product surface.</li>
+<li><strong>Product direction:</strong> <code>devtrack sage</code> is exclusively the local, cross-harness, self-writing command-knowledge product. v3.2.0 follows the authoritative <code>ai_sessions_skills</code> bug-fix baseline at commit <code>ea2e067</code>; repository-assistant commands are not part of this product surface.</li>
 <li><strong>Capture foundation:</strong> SAGE-001 and SAGE-002 provide the versioned event contract, fail-open Codex capture, atomic local spool, bounded import/quarantine, append-only SQLite events, pause/resume state, and harness installation management.</li>
 <li><strong>Searchable knowledge slice:</strong> repeated command signatures are grouped deterministically in SQLite, indexed with FTS5, attributed to source harnesses, backfilled idempotently, and exposed through <code>devtrack sage search</code> and <code>devtrack sage topics</code>.</li>
 <li><strong>Distillation foundation:</strong> PR #263 adds a neutral Go LLM client, structured title/what/why/example/notes drafts with required-field validation and explicit skip verdicts, and a non-blocking worker with bounded model calls.</li>
-<li><strong>Integration status:</strong> SAGE-001–SAGE-005 are integrated through PR #292. Durable claims, daemon lifecycle, Markdown publication, routing, merge/refile, skipped records, full-entry search, truthful diagnostics, safe local knowledge commits, six adapters, read-only MCP, and operational maintenance are on rolling <code>dev</code>.</li>
+<li><strong>Release status:</strong> SAGE-001–SAGE-005 ship in v3.2.0. Durable claims, daemon lifecycle, Markdown publication, routing, merge/refile, skipped records, full-entry search, truthful diagnostics, safe local knowledge commits, six adapters, read-only MCP, and operational maintenance are included.</li>
 </ul>
 <h2>TASK-161 merged — rolling update channels</h2>
 <ul>
 <li><strong>Stable by default:</strong> existing and new installations continue to follow releases from <code>main</code>.</li>
 <li><strong>Explicit rolling opt-in:</strong> TASK-161 adds <code>devtrack upgrade --dev</code>, with <code>--main</code>/<code>--stable</code> to return and <code>--check</code> to inspect without switching.</li>
 <li><strong>Current integration evidence:</strong> <a href="https://github.com/sraj0501/Devtrack_/pull/275" target="_blank" rel="noopener">PR #275</a> merged the qualified TASK-157 pipeline slice to <code>dev</code> at <code>a1777b6</code>; all post-merge workflows passed. <a href="https://github.com/sraj0501/Devtrack_/pull/276" target="_blank" rel="noopener">PR #276</a> then added the local Docker evaluation guide at <code>fc3217f</code>.</li>
-<li><strong>Published rolling build:</strong> <a href="https://github.com/sraj0501/Devtrack_/releases/tag/dev" target="_blank" rel="noopener"><code>dev-a1777b6</code></a> contains the TASK-157 implementation slice. Current <code>dev</code> is <code>fc3217f</code> after the documentation-only merge. Stable v3.1.1 remains unchanged.</li>
+<li><strong>Historical rolling build:</strong> <code>dev-a1777b6</code> contained the first TASK-157 implementation slice before the completed Sage roadmap shipped in v3.2.0.</li>
 </ul>
-<h2>Current dev — E2E and Windows Admin Acceptance</h2>
+<h2>Validation history and deferred UI work</h2>
 <ul>
-<li><strong>UI integration boundary:</strong> the TASK-154 full-console redesign is committed at <code>54ceb05</code> on its separate branch but is not integrated into <code>dev</code>. Review and integrate or explicitly retire it before packaged-build qualification and media capture.</li>
+<li><strong>UI integration boundary:</strong> the TASK-154 full-console redesign at <code>54ceb05</code> is explicitly deferred from v3.2.0 and requires a separate drift/accessibility acceptance pass.</li>
 <li><strong>Windows CI history:</strong> the merged PR #263 and PR #264 check sets retain historical failed hosted-Windows unit-test jobs; PR #264 timed out in SQLite-backed <code>internal/db</code> and <code>internal/mcp</code> tests. PR #265 later passed all 19 branch checks, including the full Windows test job, restoring a green branch baseline. TASK-158's native-Linux TTY/non-TTY qualification remains separate.</li>
 <li><strong>Server review queue:</strong> the authenticated Admin Console now lists pending PostgreSQL actions, exposes their draft and full payload, and supports race-safe rejection with reviewer metadata and an audit event. Approval and editing are not part of this web flow yet.</li>
 <li><strong>Responsive operations dashboard:</strong> the refreshed console presents connected clients, active runtime configuration, trigger activity, and recent request paths in a dark operations view with responsive grids and a mobile navigation drawer.</li>
@@ -1707,7 +1714,7 @@ devtrack start</code></pre>
 <li><strong>CI definition:</strong> the repository now runs the same no-send test on native <code>windows-latest</code> and <code>ubuntu-latest</code> runners. Local Windows and Linux-container executions passed, and GitHub Actions run <code>34045590767</code> passed for <code>dev</code> commit <code>ed0f571</code>. The general CI and wiki CI runs for that commit passed as well.</li>
 <li><strong>Source-based Windows admin acceptance:</strong> on 2026-09-09, <code>scripts/e2e-admin.ps1</code> used the source admin UI with an existing Managed PostgreSQL installation to log in, inspect the real confidence-0.95 commit action, reject it, and verify its reviewer, timestamp, and audit event. The real EOD action was also visible, MCP passed, and the disposable workspace was cleaned.</li>
 <li><strong>Owner-confirmed validation:</strong> clean Windows installation and full Managed Linux acceptance with PostgreSQL/Python/Ollama were completed outside GitHub Actions on 2026-09-10.</li>
-<li><strong>Remaining release follow-ups:</strong> packaged-build Windows admin acceptance and privacy-reviewed launch media remain open. The exact Glama listing path and score-badge update also remain open distribution follow-ups.</li>
+<li><strong>Remaining publication follow-ups:</strong> privacy-reviewed launch media and the exact Glama listing path/score-badge update remain open.</li>
 </ul>
 <h2>v3.1.1 — TASK-147–150 readiness, distribution, and documentation</h2>
 <ul>
@@ -1717,7 +1724,7 @@ devtrack start</code></pre>
 <li><strong>MCPB distribution:</strong> manifest 0.3 bundles ship for five OS/architecture targets, with official CLI validation and native execution in CI.</li>
 <li><strong>Documentation synchronization:</strong> TASK-149 reconciled the README, durable project memory, HTTP/MCP references, release gates, and this wiki; TASK-150 records v3.1.0 and the privacy-compliance v3.1.1 patch.</li>
 </ul>
-<h2>Latest Public Release — v3.1.1</h2>
+<h2>Previous Public Release — v3.1.1</h2>
 <ul>
 <li>Standalone Go client with managed, lightweight and external modes.</li>
 <li>Cross-platform daemon, autostart, workspace routing and Go-native PM connectors.</li>
@@ -1849,7 +1856,7 @@ devtrack issues</code></pre>
 devtrack git commit -m "message"</code></pre>
 <p>Normal <code>git commit</code> remains normal Git and is observed after completion. Git operations are separate from DevTrack Sage's cross-harness command-knowledge workflow.</p>
 
-<h2>DevTrack Sage (current dev)</h2>
+<h2>DevTrack Sage (v3.2.0)</h2>
 <pre><code class="language-bash">devtrack sage status
 devtrack sage pause
 devtrack sage resume
@@ -1869,7 +1876,7 @@ devtrack sage repair
 devtrack sage delete-topic &lt;topic&gt; --yes
 devtrack sage export &lt;new-directory&gt;
 devtrack sage import &lt;directory&gt;</code></pre>
-<p>These unreleased commands manage local capture and query deterministic Markdown knowledge. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are independently selected adapters; installing one never installs another. Search returns complete entries and reflects route corrections, merges, edits, moves, and deletions. Retention previews by default; filesystem-changing repair, delete, export, import, and quarantine purge require paused capture, and destructive commands require the documented explicit confirmation. All 136 reference rows and repeated Windows/Linux acceptance are qualified.</p>
+<p>These v3.2.0 commands manage local capture and query deterministic Markdown knowledge. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are independently selected adapters; installing one never installs another. Search returns complete entries and reflects route corrections, merges, edits, moves, and deletions. Retention previews by default; filesystem-changing repair, delete, export, import, and quarantine purge require paused capture, and destructive commands require the documented explicit confirmation. All 136 reference rows and repeated Windows/Linux acceptance are qualified.</p>
 
 <h2>Interfaces, Alerts and Lifecycle</h2>
 <pre><code class="language-bash">devtrack tui
@@ -1932,7 +1939,7 @@ devtrack uninstall</code></pre>
 <tr><td>Groq</td><td><code>GROQ_API_KEY</code>, <code>GROQ_MODEL</code></td><td>Optional OpenAI-compatible fallback.</td></tr>
 <tr><td>Sage command provider</td><td><code>DEVTRACK_SAGE_MODEL_BACKEND</code>, <code>DEVTRACK_SAGE_MODEL</code></td><td>Explicit opt-in to an installed <code>claude</code>, <code>devin</code>, <code>codex</code>, <code>copilot</code>, or <code>cursor-agent</code> executable. Ollama HTTP remains the Sage default.</td></tr>
 </tbody></table></div>
-<p><code>OLLAMA_URL</code> and <code>LMSTUDIO_URL</code> are retired. The current settings are <code>OLLAMA_HOST</code> and <code>LMSTUDIO_HOST</code>. Current <code>dev</code> contains Sage's durable daemon-owned distillation path. The hook path never calls a model. Command providers use fixed argv without a shell, are never auto-selected, and suppress recursive Sage capture only in their process tree.</p>
+<p><code>OLLAMA_URL</code> and <code>LMSTUDIO_URL</code> are retired. The current settings are <code>OLLAMA_HOST</code> and <code>LMSTUDIO_HOST</code>. v3.2.0 contains Sage's durable daemon-owned distillation path. The hook path never calls a model. Command providers use fixed argv without a shell, are never auto-selected, and suppress recursive Sage capture only in their process tree.</p>
 
 <h2>Timeout and Readiness Settings</h2>
 <p>Setup writes visible defaults for IPC connection/retry, short/normal/long HTTP operations, LLM requests, prompt-bound legacy/optional interfaces and sentiment analysis. Common settings include:</p>
@@ -1944,7 +1951,7 @@ HTTP_TIMEOUT_LONG=60
 LLM_REQUEST_TIMEOUT_SECS=120
 SQLITE_BUSY_TIMEOUT_MS=5000
 
-# Current dev only; bounded background Sage worker settings
+# v3.2.0; bounded background Sage worker settings
 DEVTRACK_SAGE_MODEL_BACKEND=ollama
 DEVTRACK_SAGE_MODEL=
 DEVTRACK_SAGE_MODEL_TIMEOUT_SECS=180
@@ -2748,17 +2755,17 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   // ── Redirect stubs: broken internal links point here; we route to the correct page ──
   VISION: `<div class="md-body">
 <h1>Roadmap</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.1.1 public; core validation complete</div>
-<p>DevTrack's product build arc and Phase 9 adoption work are complete: silent observation, the confidence-scored pending-actions queue, ticket extraction, EOD reporting, local voice learning, the PR review loop, read-only MCP context, first-run onboarding, and native MCPB distribution. The latest public release is <code>v3.1.1</code>.</p>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.2.0 candidate; Sage roadmap complete</div>
+<p>DevTrack's current product arc is prepared for release: silent observation, the confidence-scored pending-actions queue, deterministic ticket extraction, EOD reporting, local voice learning, the PR review loop, ten-tool read-only MCP context, DevTrack Sage, first-run onboarding, and native MCPB distribution.</p>
 <h2>Current focus</h2>
-<p>The core no-send workflow is validated. The owner confirmed clean Windows installation and full Managed Linux acceptance with PostgreSQL, Python, Ollama, staging, EOD, and MCP complete on 2026-09-10 outside GitHub Actions. Earlier Windows Managed, credential-free cross-platform E2E, and source-based admin acceptance runs also passed. The separate TASK-154 admin-UI branch must be integrated or retired before packaged-build Windows admin acceptance and privacy-reviewed launch media. The official MCP Registry record remains active/latest. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
+<p>The core no-send workflow is validated. The owner confirmed clean Windows installation and full Managed Linux acceptance with PostgreSQL, Python, Ollama, staging, EOD, and MCP complete on 2026-09-10 outside GitHub Actions. Earlier Windows Managed, credential-free cross-platform E2E, and source-based admin acceptance runs also passed. The separate TASK-154 admin-UI branch is deferred from v3.2.0 and needs its own drift and UI acceptance. Official MCP Registry v3.1.1 remains active/latest until the candidate publishes. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
 <h2>Next</h2>
 <ol>
 <li>Repeat the Windows admin login, action inspection, rejection, and audit journey against packaged release artifacts rather than the source checkout.</li>
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
-<p><strong>In development, not released:</strong> DevTrack Sage exclusively ports the cross-harness self-writing command-knowledge product from the current <code>ai_sessions_skills</code> commit <code>ea2e067</code>, including its newer bug fixes. The approved SAGE-001–SAGE-005 roadmap is integrated into <code>dev</code> at <code>77e2f5b</code> through PR #292. Stable <code>v3.1.1</code> remains unchanged.</p>
+<p><strong>Released in v3.2.0:</strong> DevTrack Sage ports the cross-harness self-writing command-knowledge product from the authoritative <code>ai_sessions_skills</code> bug-fix baseline <code>ea2e067</code>. The approved SAGE-001–SAGE-005 roadmap is complete.</p>
 <blockquote><p><strong>Permanent direction:</strong> DevTrack remains a silent, local-first daemon. Every outbound action is staged first, and the Go CLI remains the user-facing gateway.</p></blockquote>
 </div>`,
 
@@ -2771,7 +2778,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   SAGE: `<div class="md-body">
 <h1>DevTrack Sage and the retired Git Sage name</h1>
 <p><strong>DevTrack Sage</strong> is DevTrack's local, cross-harness, self-writing command-knowledge product. It captures useful command activity from supported coding-agent harnesses, groups repeated actions, and turns them into private, searchable knowledge that remains useful across tools and sessions.</p>
-<blockquote><p><strong>Development status:</strong> PRs #279–#292 are integrated on rolling <code>dev</code> at <code>77e2f5b</code> and are not part of stable <code>v3.1.1</code>. The approved SAGE-001–SAGE-005 roadmap is complete: deterministic local knowledge, all 136 reference rows, repeated Windows/Linux acceptance, six independent adapters, four read-only MCP tools, and operational maintenance.</p></blockquote>
+<blockquote><p><strong>Release status:</strong> v3.2.0 includes deterministic local knowledge, all 136 reference rows, repeated Windows/Linux acceptance, six independent adapters, four Sage MCP tools, and operational maintenance.</p></blockquote>
 
 <h2>What happened to Git Sage?</h2>
 <p>Older DevTrack documentation used <strong>Git Sage</strong> for a repository chat and Git-operation experiment. That product surface has been removed. The current <code>devtrack sage</code> namespace is deliberately narrower and safer: it captures privacy-minimized command events and builds local personal knowledge.</p>
@@ -3111,8 +3118,8 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 
   MCP_CLAUDE_CODE: `<div class="md-body">
 <h1>MCP and Agent Memory</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available in v3.1.1 · official MCP Registry record active/latest</div>
-<blockquote><p>The commands on this page ship in v3.1.1. Five privacy-declaring native MCPB bundles are published for Windows, macOS, and Linux.</p></blockquote>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available in v3.2.0 · official MCP Registry record active/latest</div>
+<blockquote><p>The commands on this page ship in v3.2.0. Five privacy-declaring native MCPB bundles are published for Windows, macOS, and Linux.</p></blockquote>
 
 <h2>Why DevTrack Added MCP</h2>
 <p>AI coding assistants usually know the files in the current conversation but not the developer's working history. They do not automatically know which ticket is active, what was committed earlier today, what DevTrack is waiting to send, or how the developer normally writes a project update. That missing context forces the developer to repeat information and allows different assistants to build inconsistent versions of the same story.</p>
@@ -3130,7 +3137,7 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 </tbody></table></div>
 
 <h2>Important Safety Boundary</h2>
-<p>Stable v3.1.1 has six MCP tools. TASK-169 adds four development-only Sage tools, for ten total. Every declaration includes a human-readable title plus read-only, non-destructive, idempotent, and no-open-world safety hints. They expose selected local context and published knowledge but cannot approve a queue item, post a comment, change a ticket, push Git, edit source data, or start and stop the daemon. Outbound work still uses DevTrack's pending-actions queue and normal CLI review commands.</p>
+<p>Stable v3.2.0 has ten MCP tools: six work-context tools and four Sage knowledge/status tools. Every declaration includes a human-readable title plus read-only, non-destructive, idempotent, and no-open-world safety hints. They expose selected local context and published knowledge but cannot approve a queue item, post a comment, change a ticket, push Git, edit source data, or start and stop the daemon. Outbound work still uses DevTrack's pending-actions queue and normal CLI review commands.</p>
 <p>The MCP process reads the same local SQLite database as the Go client. On the TASK-169 branch, Sage knowledge calls also reconcile the local deterministic Markdown directory before answering. It does not contact the Python server, PostgreSQL, Ollama, a PM platform or a cloud API. However, the MCP host can see the tool response, so only configure DevTrack in assistants you trust with the displayed ticket metadata, commit messages, action previews, and published Sage knowledge.</p>
 
 <h2>How the Connection Works</h2>
@@ -3156,7 +3163,7 @@ devtrack mcp  ---- read only ----> local DevTrack SQLite
 <h3>1. Confirm the Installed Release</h3>
 <pre><code class="language-bash">devtrack version
 devtrack mcp status</code></pre>
-<p>Stable v3.1.1 reports six tools. The TASK-169 development branch reports ten. Both use stdio and negotiate handshake support through <code>2025-11-25</code>; the per-request protocol introduced in <code>2026-07-28</code> is not yet supported.</p>
+<p>Stable v3.2.0 reports ten tools over stdio and negotiates handshake support through <code>2025-11-25</code>; the per-request protocol introduced in <code>2026-07-28</code> is not yet supported.</p>
 
 <h3>2. Create the Project Configuration</h3>
 <pre><code class="language-bash">cd /path/to/the/project
@@ -3180,9 +3187,9 @@ devtrack mcp setup</code></pre>
 <p><code>command</code> is the absolute path to the DevTrack binary used during setup. <code>DEVTRACK_ENV_FILE</code> points to the configuration registered by <code>devtrack setup</code>, which lets the MCP subprocess locate the same data directory as the daemon.</p>
 
 <h3>4. Understand MCPB Packaging</h3>
-<p>v3.1.1 publishes manifest 0.3 MCPB bundles for Windows x64, macOS x64/arm64, and Linux x64/arm64. Each manifest declares the public privacy policy, and each bundled README contains a Privacy Policy section. A packaged host asks the user to select an existing <code>devtrack.db</code>, then starts the bundled binary as:</p>
+<p>The v3.2.0 candidate packages manifest 0.3 MCPB bundles for Windows x64, macOS x64/arm64, and Linux x64/arm64. Each manifest declares the public privacy policy, and each bundled README contains a Privacy Policy section. A packaged host asks the user to select an existing <code>devtrack.db</code>, then starts the bundled binary as:</p>
 <pre><code class="language-bash">devtrack mcp serve --database /path/to/devtrack.db</code></pre>
-<p>CI creates and executes each native bundle, validates manifests with the official MCPB CLI, and checks clean-project setup plus protocol behavior. The release publishes checksums and <code>server.json</code>; version 3.1.1 is active/latest in the official MCP Registry.</p>
+<p>CI creates and executes each native bundle, validates manifests with the official MCPB CLI, and checks clean-project setup plus protocol behavior. After tagging, the release workflow publishes checksums and <code>server.json</code>, then publishes version 3.2.0 to the official MCP Registry.</p>
 
 <h3>5. Run the Built-In Self-Test</h3>
 <pre><code class="language-bash">devtrack mcp test</code></pre>
@@ -3393,7 +3400,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-first · latest release v3.1.1 · official MCP Registry</div>
+      <div class="home-badge">Local-first · latest release v3.2.0 · official MCP Registry</div>
       <h1 class="home-title">Never write a<br><span>standup</span> again.</h1>
       <p class="home-sub">You commit; DevTrack prepares ticket updates and end-of-day reports silently, in your voice, on your machine. Every outbound action stays reviewable before it leaves.</p>
     </div>
@@ -3402,17 +3409,17 @@ function renderHome() {
       ${[
         // ── Product promise: outcome → agent memory → trust ────────────────────
         { id:'WORK_TRACKER',     icon:'☀️', title:'Your standup, from your commits', desc:'DevTrack groups work by ticket and prepares an end-of-day narrative in your voice. Keep coding; the daemon handles the project-update overhead.' },
-        { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'Agent memory over MCP', desc:'v3.1.1 exposes six annotated read-only tools and ships privacy-declaring native MCPB bundles for Windows, macOS, and Linux.' },
+        { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'Agent memory over MCP', desc:'v3.2.0 exposes ten annotated read-only tools and ships privacy-declaring native MCPB bundles for Windows, macOS, and Linux.' },
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation, MCP context, and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.1.1 remains stable; current <code>dev</code> adds the silent Git correction, Sage capture/search/structured-distillation foundations, and the published rolling development update channel.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.2.0 ships the silent Git correction, completed DevTrack Sage roadmap, deterministic ticket mapping, time inference, and rolling development update channel.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
-        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the selected channel\'s platform asset, runs migrations, and restarts the daemon. Persistent <code>--dev</code>/<code>--main</code> selection is available in the rolling <code>dev</code> prerelease, not in v3.1.1.' },
+        { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the selected channel\'s platform asset, runs migrations, and restarts the daemon. v3.2.0 includes persistent <code>--dev</code>/<code>--main</code> selection.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
         { id:'GETTING_STARTED',  icon:'🚀', title:'Getting Started',    desc:'New to DevTrack? Start here — concepts, setup, and first run.' },
         { id:'QUICK_START',      icon:'⚡', title:'Quick Start',        desc:'Get running in 5 minutes with the minimal setup guide.' },
-        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard', desc:'v3.1.1 writes registered XDG config immediately, then bootstraps managed Python/LLM dependencies in the background with <code>doctor</code> progress.' },
+        { id:'SETUP_WIZARD',     icon:'🧙', title:'Setup Wizard', desc:'v3.2.0 writes registered XDG config immediately, then bootstraps managed Python/LLM dependencies in the background with <code>doctor</code> progress.' },
         // ── Reference ─────────────────────────────────────────────────────────
         { id:'CLI_REFERENCE',    icon:'⌨️', title:'CLI Reference',      desc:'All devtrack commands with flags and examples.' },
         { id:'CONFIGURATION',    icon:'🔧', title:'Configuration',      desc:'All .env variables with defaults, required vars, timeout settings, server modes, TLS, LLM providers, and feature flags.' },
@@ -3430,7 +3437,7 @@ function renderHome() {
         { id:'PM_AGENT',        icon:'🗂️', title:'PM Agent',            desc:'AI decomposes problems into Epic → Story → Task hierarchies.' },
         { id:'PROJECT_PLANNING',icon:'📋', title:'AI Project Planning', desc:'Use explicit <code>devtrack plan</code> and optional <code>devtrack boardroom</code> CLI flows. The legacy Python Telegram <code>/newproject</code> prototype is not part of the current Go bot.' },
         // ── AI & Personalization ──────────────────────────────────────────────
-        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'Current command-knowledge product and Git Sage migration guide: local capture, durable distillation, deterministic Markdown, search, corrections, diagnostics, safe local commits, all 136 parity rows, read-only MCP, and operational maintenance are integrated on rolling <code>dev</code>.' },
+        { id:'SAGE',            icon:'🤖', title:'DevTrack Sage',       desc:'v3.2.0 command-knowledge product: local capture, durable distillation, deterministic Markdown, search, corrections, diagnostics, safe local commits, all 136 parity rows, read-only MCP, and operational maintenance.' },
         { id:'LLM_GUIDE',       icon:'🧠', title:'LLM Setup',           desc:'Configure local (Ollama, LM Studio) or cloud (OpenAI, Anthropic, Groq) AI providers. Automatic fallback chain. Per-use-case temperature and token limits.' },
         { id:'PERSONALIZATION', icon:'🎨', title:'Personalization',     desc:'Maintained <code>devtrack voice</code> routes seed from local Git, manual examples, and supported PM content. Teams/Outlook communication learning and legacy learning controls remain unavailable pending adapter repair.' },
         // ── System Integration ────────────────────────────────────────────────
@@ -3454,7 +3461,7 @@ function renderHome() {
     </div>
 
     <div class="quick-start-box">
-      <h3>Latest public release: v3.1.1</h3>
+      <h3>Latest public release: v3.2.0</h3>
       <p style="margin:0 0 .75rem;font-size:.9rem;opacity:.8;">Download the published binary and use only its released command surface.</p>
       <pre><code class="language-bash"># macOS / Linux — the lean Go binary. Normalise OS/arch to the release asset names.
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -3468,7 +3475,7 @@ devtrack start
 devtrack status
 devtrack logs</code></pre>
 
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;"><strong>Optional source build for contributors.</strong> The same commands are available in the v3.1.1 release binary.</p>
+      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;"><strong>Optional source build for contributors.</strong> The same commands are available in the v3.2.0 release binary.</p>
       <pre><code class="language-bash">git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
 cd Devtrack_/devtrack_client
 go build -o devtrack .
@@ -3506,7 +3513,7 @@ devtrack start</code></pre>
         { n:'Go-Native Ticket Connectors', d:'The terminal client provides ticket list, view, create, comment, check, and sync paths for <strong>GitHub, GitLab, and Azure DevOps</strong>. Connector failures degrade without blocking local observation or queueing.' },
         { n:'Go-Native Alerts', d:'The daemon polls <strong>GitHub and Azure DevOps</strong> for relevant notifications and keeps alert state in local SQLite. Alert delivery can use terminal, OS, Telegram, or Slack notifiers; no MongoDB-backed alert state or Jira poller is claimed.' },
         { n:'End-of-Day Reports in Your Voice', d:'Commits and work sessions feed an EOD narrative. When a learned local voice profile is available it shapes generated text; missing models or optional services degrade gracefully, and any outbound delivery still passes through the pending queue.' },
-        { n:'Local Context + MCP', d:'The Go client keeps observation, queue, and history data in local SQLite. v3.1.1 provides read-only MCP access to active work and pending actions, including privacy-declaring native MCPB bundles.' },
+        { n:'Local Context + MCP', d:'The Go client keeps observation, queue, and history data in local SQLite. v3.2.0 provides ten read-only MCP tools for active work, pending actions, and published Sage knowledge, including privacy-declaring native MCPB bundles.' },
         { n:'Optional Visibility and Corrections', d:'The TUI and Telegram show daemon activity and expose available correction paths; notifications surface status for a quick glance. None gates daemon capabilities: closing every interface leaves the same silent background engine running.' },
       ].map((f, i) => `
         <div class="feature-item">

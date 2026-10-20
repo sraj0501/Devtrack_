@@ -1,13 +1,51 @@
 ﻿# DevTrack Project Board
 
-_Last reconciled: 2026-10-18 — the approved Sage implementation roadmap landed in `dev` at
+_Last reconciled: 2026-10-21 — the approved Sage implementation roadmap landed in `dev` at
 `77e2f5b`.
 PR #291 merged read-only MCP retrieval at `34aafb8`; PR #292 merged operational retention,
 quarantine, repair/deletion, and Markdown portability at `77e2f5b`, after all 19 hosted checks
 passed. The authoritative clean reference checkout is
 `C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The ledger is complete
-at 119 implemented, 17 adapted, 0 partial, and 0 pending. Next unused task ID: TASK-171, subject to
-verification before allocation. Post-merge documentation reconciliation followed in PR #293._
+at 119 implemented, 17 adapted, 0 partial, and 0 pending. TASK-171 is the active v3.2.0 release
+qualification and promotion task. PR #295 promoted the pre-release development line to `main`, and
+`68a7575` reconciled that ancestry back into `dev`; TASK-171 release files still require their own
+feature PR and a fresh promotion PR. Post-merge documentation reconciliation followed in PR #293._
+
+**[2026-10-18] TASK-171 — Qualify and publish DevTrack v3.2.0 (in progress).**
+**Priority:** High. **Branch:** `features/TASK-171-v3.2.0-release`.
+**Assigned to:** engineer. **Depends on:** merged TASK-170 PR #292.
+
+Promote the completed backward-compatible development arc as v3.2.0. The release includes the
+complete Go-native DevTrack Sage product, deterministic ticket mapping, silent time inference,
+rolling update-channel support, and the corrected silent native-Git path. Keep the separate
+TASK-154 server-admin redesign out of this release: its old branch predates the canonical memory
+migration, is not an ancestor of `dev`, and requires its own drift reconciliation and UI acceptance.
+
+**Acceptance criteria:**
+- [x] Curated v3.2.0 release notes and release-facing README/wiki/docs accurately distinguish the
+      new stable behavior from known limitations and deferred work.
+- [x] Windows executable metadata and all package/registry version inputs are v3.2.0; generated
+      resources and release metadata validate.
+- [x] Full Go tests/vet, Python tests, wiki validation, privacy scans, and release-specific package
+      checks pass from the release candidate.
+- [ ] All five native MCPB/platform artifacts pass packaged smoke tests; checksums and generated
+      `server.json` agree with the exact candidate artifacts.
+- [ ] A feature PR targets `dev` and all required checks pass.
+- [ ] An explicit `dev` to `main` promotion PR reconciles the five main-only commits without
+      dropping either branch's behavior, and its required checks pass.
+- [ ] The verified `main` commit is tagged `v3.2.0`; the GitHub release, assets, checksums, and
+      official MCP Registry publication are verified after the release workflow completes.
+- [x] Two docu-agent reconciliation passes leave shared memory, board, README, wiki, next steps,
+      and public stable-version claims consistent.
+
+**Engineer status:** release preparation and local qualification are complete from `origin/dev`
+`68a7575`. Full native Windows Go tests/vet, focused Linux race tests, CI-equivalent Docker Python
+tests (967 passed, 10 skipped), shared-memory/parity checks, wiki JavaScript, Windows 3.2.0 metadata,
+five cross-built MCPB archives, five official manifest validations, Windows/Linux-amd64 native
+package smokes, and official `server.json` validation pass. The remaining three native package
+smokes require the hosted macOS/Linux-arm64 runners. Two docu-agent passes reconciled candidate
+versus public-release claims. Stable v3.1.1 remains public until every remaining gate passes.
+**Blockers:** none. TASK-154 is explicitly deferred to a separate post-release reconciliation task.
 
 **[2026-10-17] TASK-170 / SAGE-005 — Operational retention, repair, and portability (complete).**
 **Priority:** High. **Branch:** `features/TASK-170-sage-operational-closure`.

@@ -41,11 +41,11 @@ Setup writes `IPC_CONNECT_TIMEOUT_SECS`, `IPC_RETRY_DELAY_MS`, `HTTP_TIMEOUT_SHO
 `SENTIMENT_ANALYSIS_WINDOW_MINUTES`. The Go SQLite concurrency timeout is
 `SQLITE_BUSY_TIMEOUT_MS`.
 
-Current `dev` additionally defines bounded settings for the Sage distillation-worker foundation:
+v3.2.0 defines bounded settings for the Sage distillation worker:
 `DEVTRACK_SAGE_MODEL_TIMEOUT_SECS` (default 180, range 5–1800),
 `DEVTRACK_SAGE_IDLE_POLL_MS` (default 500, range 50–5000), and
 `DEVTRACK_SAGE_RETRY_DELAY_SECS` (default 2, range 1–60). The worker is not yet wired to durable
-SQLite claims or daemon lifecycle, and these variables are not part of v3.1.1.
+SQLite claims and runs under the daemon lifecycle.
 
 ## Secrets and workspace metadata
 

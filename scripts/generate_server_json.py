@@ -57,9 +57,7 @@ def main() -> None:
         "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
         "name": "io.github.sraj0501/devtrack",
         "title": "DevTrack",
-        "description": (
-            "Read local tickets, commits, pending actions, voice profile, and EOD context over MCP."
-        ),
+        "description": "Read local work context and published Sage command knowledge over MCP.",
         "repository": {
             "url": "https://github.com/sraj0501/Devtrack_.git",
             "source": "github",

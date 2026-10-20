@@ -15,12 +15,15 @@ target PRs to `dev`, never `main`.
   merges may advance `dev` without changing the implementation boundary.
 - Sage SAGE-001–SAGE-005 is complete; no approved Sage implementation slice remains pending.
 - Reference: `C:\Work\git_apps\ai_sessions_skills` at authoritative clean HEAD `ea2e067`.
-- Next unused task ID: TASK-171, subject to board verification.
+- TASK-171 is active on `features/TASK-171-v3.2.0-release` for v3.2.0 qualification and promotion.
 
 ## Ordered work
 
-1. Resolve or retire the server-admin UI branch.
-2. Close packaged-build, privacy-reviewed media, and exact Glama badge follow-ups.
+1. Qualify and integrate the v3.2.0 release candidate into `dev`.
+2. Reconcile `dev` into `main` through the explicitly authorized promotion PR.
+3. Tag the verified `main` commit and verify release assets plus MCP Registry publication.
+4. Reconcile TASK-154 separately after release; capture privacy-reviewed media from tested behavior.
+5. Record the exact Glama listing path and update the score badge.
 
 ## Guardrails
 
@@ -29,7 +32,8 @@ target PRs to `dev`, never `main`.
 - SQLite owns queues and derived indexes; deterministic Markdown is the portable knowledge source.
 - Playback, visible-reasoning capture, autonomous Git operations, and raw-activity cloud sync are
   out of scope.
-- Do not merge PRs or publish externally without explicit authorization.
+- TASK-171 has owner authorization to create the release PRs, promote `dev` to `main`, tag v3.2.0,
+  and verify publication after all recorded gates pass. Do not bypass a failed gate.
 
 ## Resume procedure
 
