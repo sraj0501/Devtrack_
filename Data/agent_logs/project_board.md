@@ -6,13 +6,13 @@ PR #291 merged read-only MCP retrieval at `34aafb8`; PR #292 merged operational 
 quarantine, repair/deletion, and Markdown portability at `77e2f5b`, after all 19 hosted checks
 passed. The authoritative clean reference checkout is
 `C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The ledger is complete
-at 119 implemented, 17 adapted, 0 partial, and 0 pending. TASK-171 is the active v3.2.0 release
-qualification and promotion task. PR #295 promoted the pre-release development line to `main`, and
-`68a7575` reconciled that ancestry back into `dev`; TASK-171 release files still require their own
-feature PR and a fresh promotion PR. Post-merge documentation reconciliation followed in PR #293._
+at 119 implemented, 17 adapted, 0 partial, and 0 pending. TASK-171 released v3.2.0: PR #296 merged
+the candidate to `dev`, PR #297 promoted it to `main` at `701c7a7`, and the tag workflow published
+12 GitHub assets plus the official MCP Registry record. Post-merge documentation reconciliation for
+the Sage roadmap followed in PR #293._
 
-**[2026-10-18] TASK-171 — Qualify and publish DevTrack v3.2.0 (in progress).**
-**Priority:** High. **Branch:** `features/TASK-171-v3.2.0-release`.
+**[2026-10-18] TASK-171 — Qualify and publish DevTrack v3.2.0 (complete).**
+**Priority:** High. **Branch:** `features/TASK-171-v3.2.0-release`. **Release:** `v3.2.0`.
 **Assigned to:** engineer. **Depends on:** merged TASK-170 PR #292.
 
 Promote the completed backward-compatible development arc as v3.2.0. The release includes the
@@ -28,23 +28,22 @@ migration, is not an ancestor of `dev`, and requires its own drift reconciliatio
       resources and release metadata validate.
 - [x] Full Go tests/vet, Python tests, wiki validation, privacy scans, and release-specific package
       checks pass from the release candidate.
-- [ ] All five native MCPB/platform artifacts pass packaged smoke tests; checksums and generated
+- [x] All five native MCPB/platform artifacts pass packaged smoke tests; checksums and generated
       `server.json` agree with the exact candidate artifacts.
-- [ ] A feature PR targets `dev` and all required checks pass.
-- [ ] An explicit `dev` to `main` promotion PR reconciles the five main-only commits without
+- [x] A feature PR targets `dev` and all required checks pass.
+- [x] An explicit `dev` to `main` promotion PR reconciles the five main-only commits without
       dropping either branch's behavior, and its required checks pass.
-- [ ] The verified `main` commit is tagged `v3.2.0`; the GitHub release, assets, checksums, and
+- [x] The verified `main` commit is tagged `v3.2.0`; the GitHub release, assets, checksums, and
       official MCP Registry publication are verified after the release workflow completes.
 - [x] Two docu-agent reconciliation passes leave shared memory, board, README, wiki, next steps,
       and public stable-version claims consistent.
 
-**Engineer status:** release preparation and local qualification are complete from `origin/dev`
-`68a7575`. Full native Windows Go tests/vet, focused Linux race tests, CI-equivalent Docker Python
-tests (967 passed, 10 skipped), shared-memory/parity checks, wiki JavaScript, Windows 3.2.0 metadata,
-five cross-built MCPB archives, five official manifest validations, Windows/Linux-amd64 native
-package smokes, and official `server.json` validation pass. The remaining three native package
-smokes require the hosted macOS/Linux-arm64 runners. Two docu-agent passes reconciled candidate
-versus public-release claims. Stable v3.1.1 remains public until every remaining gate passes.
+**Engineer status:** PR #296 merged the qualified candidate to `dev`; PR #297 promoted it to `main`
+at `701c7a7`. The annotated `v3.2.0` tag completed release workflow run `39538638885`: tests,
+five native MCPB smokes, manifest and registry metadata validation, GitHub release creation, and
+official MCP Registry publication all passed. The public release has 12 assets; all ten packaged
+artifact entries in `checksums.txt` independently matched their downloads. Two pre-release
+docu-agent passes and this post-release reconciliation keep public-version claims aligned.
 **Blockers:** none. TASK-154 is explicitly deferred to a separate post-release reconciliation task.
 
 **[2026-10-17] TASK-170 / SAGE-005 — Operational retention, repair, and portability (complete).**

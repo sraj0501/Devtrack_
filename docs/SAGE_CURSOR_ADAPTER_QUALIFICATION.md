@@ -1,7 +1,7 @@
 # Sage Cursor adapter qualification
 
 TASK-167 adds Cursor as DevTrack Sage's fifth independently managed capture adapter. This is
-development-branch behavior and is not part of stable v3.1.1.
+behavior that was qualified on the development branch and now ships in stable v3.2.0.
 
 ## Reference and supported surface
 

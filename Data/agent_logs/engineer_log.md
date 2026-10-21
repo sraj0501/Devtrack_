@@ -1,5 +1,16 @@
 # DevTrack Engineer Log
 
+## 2026-10-21 — TASK-171 v3.2.0 publication
+
+- PR #296 merged the release candidate to `dev`; PR #297 promoted it to `main` at `701c7a7` after
+  the single Windows SQLite cleanup-lock flake passed on rerun.
+- Tag workflow `39538638885` passed tests, five-platform build and MCPB validation, release
+  creation, and official MCP Registry publication for `io.github.sraj0501/devtrack` 3.2.0.
+- The non-draft, non-prerelease GitHub release contains 12 assets. All ten entries in
+  `checksums.txt` matched independently downloaded artifacts; published `server.json` contains the
+  same five MCPB hashes.
+- Post-release documentation reconciliation removed completed TASK-171 gates from active memory.
+
 ## 2026-10-15 — TASK-157 repeated Sage acceptance
 
 - Commit `f38f14f` adds the two-pass isolated capture-to-knowledge acceptance gate.

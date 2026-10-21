@@ -1,7 +1,7 @@
 # Sage Devin CLI adapter qualification
 
 TASK-168 adds Devin CLI as DevTrack Sage's sixth independently managed capture adapter. This is
-development-branch behavior and is not part of stable v3.1.1.
+behavior that was qualified on the development branch and now ships in stable v3.2.0.
 
 ## Reference and supported surface
 

@@ -1,8 +1,8 @@
 # Sage read-only MCP qualification
 
 TASK-169 / SAGE-005 adds four local Sage tools to DevTrack's existing stdio MCP server. The
-implementation is on `features/TASK-169-sage-mcp-readonly` in commit `122c06e`; it is development
-work and is not part of stable v3.1.1.
+implementation was qualified on `features/TASK-169-sage-mcp-readonly` in commit `122c06e` and now
+ships in stable v3.2.0.
 
 ## Contract
 

@@ -42,4 +42,4 @@ binaries. The full Go suite, `go vet ./...`, and race coverage for the modified 
 Go 1.24. Privacy-canary tests verify that Claude payload values and raw output do not reach the
 spool.
 
-This adapter is part of rolling `dev` development and is not included in stable v3.1.1.
+This adapter was qualified on rolling `dev` and now ships in stable v3.2.0.

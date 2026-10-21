@@ -1,6 +1,6 @@
 ---
 name: Active execution plan
-description: Ordered pickup sequence for active UI integration and release gates
+description: Ordered pickup sequence for active UI integration and distribution follow-ups
 type: project
 ---
 
@@ -15,15 +15,14 @@ target PRs to `dev`, never `main`.
   merges may advance `dev` without changing the implementation boundary.
 - Sage SAGE-001–SAGE-005 is complete; no approved Sage implementation slice remains pending.
 - Reference: `C:\Work\git_apps\ai_sessions_skills` at authoritative clean HEAD `ea2e067`.
-- TASK-171 is active on `features/TASK-171-v3.2.0-release` for v3.2.0 qualification and promotion.
+- v3.2.0 is the latest stable public release; no release gate remains active.
 
 ## Ordered work
 
-1. Qualify and integrate the v3.2.0 release candidate into `dev`.
-2. Reconcile `dev` into `main` through the explicitly authorized promotion PR.
-3. Tag the verified `main` commit and verify release assets plus MCP Registry publication.
-4. Reconcile TASK-154 separately after release; capture privacy-reviewed media from tested behavior.
-5. Record the exact Glama listing path and update the score badge.
+1. Reconcile and re-qualify TASK-154 separately from the released v3.2.0 line.
+2. Qualify the packaged build and capture privacy-reviewed media from tested behavior.
+3. Record the exact Glama listing path and update the score badge.
+4. Complete third-party directory forms only in owner-authenticated sessions.
 
 ## Guardrails
 
@@ -32,8 +31,8 @@ target PRs to `dev`, never `main`.
 - SQLite owns queues and derived indexes; deterministic Markdown is the portable knowledge source.
 - Playback, visible-reasoning capture, autonomous Git operations, and raw-activity cloud sync are
   out of scope.
-- TASK-171 has owner authorization to create the release PRs, promote `dev` to `main`, tag v3.2.0,
-  and verify publication after all recorded gates pass. Do not bypass a failed gate.
+- Release completion does not authorize later source changes, directory submissions, or publishing
+  through owner accounts. Obtain the relevant authorization for each follow-up.
 
 ## Resume procedure
 

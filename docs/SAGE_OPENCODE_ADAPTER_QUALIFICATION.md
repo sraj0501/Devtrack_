@@ -1,7 +1,7 @@
 # Sage OpenCode adapter qualification
 
 TASK-166 adds OpenCode as DevTrack Sage's fourth independently managed capture adapter. This is
-development-branch behavior and is not part of stable v3.1.1.
+behavior that was qualified on the development branch and now ships in stable v3.2.0.
 
 ## Reference and supported surface
 
