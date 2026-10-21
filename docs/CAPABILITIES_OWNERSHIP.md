@@ -6,9 +6,9 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-09-26 (client-server decoupling complete; PostgreSQL is mandatory server-side;
-TASK-158 and the first Sage structured-distillation boundary are merged on unreleased `dev`; legacy
-communication-learning adapter gaps are explicit)._
+_Last updated: 2026-10-21 (client-server decoupling complete; PostgreSQL is mandatory server-side;
+the complete Go-native Sage roadmap and silent-Git correction are included in the v3.2.0 release
+candidate; legacy communication-learning adapter gaps are explicit)._
 
 ## Ownership model (intended)
 

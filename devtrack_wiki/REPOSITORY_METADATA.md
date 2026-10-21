@@ -38,10 +38,9 @@ lowercase and hyphenated for GitHub compatibility.
 
 ## Review boundary
 
-- Latest public release is `v3.1.1`; it includes `devtrack mcp`, the six read-only tools, and five
-  native MCPB bundles with privacy declarations.
-- `mcp` and `model-context-protocol` describe released repository capabilities. Current `dev` also
-  carries the credential-free Windows/Linux E2E lane; that source-only addition does not imply a
-  newer public release.
+- Latest public release is `v3.2.0`; it includes `devtrack mcp`, ten read-only tools, DevTrack
+  Sage, and five native MCPB bundles with privacy declarations.
+- `mcp`, `model-context-protocol`, and local command knowledge describe released repository
+  capabilities. The credential-free Windows/Linux E2E lane validates the source and packaged path.
 - No usage, time-saved, customer-count, or adoption claim is included.
 - Applying the description or topics requires separate explicit authorization.

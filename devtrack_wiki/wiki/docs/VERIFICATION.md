@@ -76,7 +76,7 @@ On Linux or macOS:
 ./scripts/demo.sh --record --automated
 ```
 
-A passing run must use real output and show all six MCP tools, a completed commit, ticket extraction,
+A passing run must use real output and show all ten MCP tools, a completed commit, ticket extraction,
 confidence-bearing action staging, an EOD narrative containing the observed commit, an incremented
 local-day commit count, and cleanup of the disposable workspace. Do not approve any action merely to
 complete the demonstration.

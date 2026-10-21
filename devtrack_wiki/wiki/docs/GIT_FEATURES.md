@@ -1,14 +1,13 @@
 # Git features
 
-> The silent native-Git behavior below is merged into `dev` in PR #264 but remains unreleased.
-> Public v3.1.1 still has a known regression in its shell-wrapped commit path.
+> The silent native-Git behavior below ships in v3.2.0.
 
 ## Silent observation
 
 The daemon watches enabled repositories and reacts after commits. It does not prompt during normal
 Git work. The current configured ticket resolver runs in the background; failure to resolve a
-ticket is recorded and never blocks Git. The stricter canonical branch and provenance contract is
-planned work and is not presented here as shipped behavior.
+ticket is recorded and never blocks Git. Canonical branch rules, mapping provenance, and immutable
+correction audit are part of the shipped deterministic ticket resolver.
 
 ## Optional enhanced commit
 
