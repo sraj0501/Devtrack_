@@ -178,10 +178,10 @@ the configured or loopback-fallback server URL and degrade when no backend is re
 ## Project Status & Direction
 
 - **Direction:** see [`PRODUCT_BIBLE.md`](../../PRODUCT_BIBLE.md). Build arc **Phase 0→9 COMPLETE** on
-  `dev`. TASK-171 is qualifying v3.2.0 with the completed Sage roadmap, ten-tool local MCP surface,
-  first-run onboarding, PostgreSQL-backed managed services, and five native MCPB bundles. The
-  official MCP Registry update follows the verified release; third-party directory forms and held
-  launch posts remain owner-account actions.
+  `dev`. Stable v3.2.0 ships the completed Sage roadmap, ten-tool local MCP surface, first-run
+  onboarding, PostgreSQL-backed managed services, and five native MCPB bundles. The official MCP
+  Registry record is published; third-party directory forms and held launch posts remain
+  owner-account actions.
 - **Board & history:** `Data/agent_logs/project_board.md` (current tasks) and `feature_tracker.md`.
 - **Shipped (v3.x):** three-codebase split (EPIC-SPLIT); client-server decoupling (Go-native
   connectors, Git helpers, alerts, Telegram bot); CS-1 HTTP transport; CS-3 admin UI; boardroom + plan;

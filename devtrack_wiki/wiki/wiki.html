@@ -963,7 +963,7 @@ devtrack voice status</code></pre>
 <h1>Setup Wizard</h1>
 <p>The <strong>setup wizard</strong> is a one-command interactive onboarding flow that configures DevTrack from scratch — no manual <code>.env</code> editing required. It walks through server mode, LLM provider, credentials, workspace, project-management platform, and shell integration, then writes a complete environment file under the DevTrack XDG data directory and registers it so every subsequent <code>devtrack</code> invocation auto-loads it. Managed mode also collects and validates the required PostgreSQL URL.</p>
 
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Included in the v3.2.0 release candidate</div>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Included in stable v3.2.0</div>
 <blockquote><p>v3.2.0 includes the background bootstrap, <code>doctor</code>, first-run MCP guidance, voice seeding, DevTrack Sage, and the LLM fast lane described below.</p></blockquote>
 
 <h2>Running the Wizard</h2>
@@ -1635,7 +1635,7 @@ devtrack start</code></pre>
 
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
-<p><code>v3.2.0</code> is the active release candidate; <code>v3.1.1</code> remains public until TASK-171 promotion, tagging, and publication complete. GitHub Releases remains the version-history archive.</p>
+<p><code>v3.2.0</code> is the latest public release. Its five native MCPB bundles and official MCP Registry record were published after all release gates passed. GitHub Releases remains the version-history archive.</p>
 <h2>v3.2.0 — DevTrack Sage and silent workflow intelligence</h2>
 <ul>
 <li><strong>DevTrack Sage:</strong> six independent harness adapters feed a privacy-minimized local pipeline that publishes deterministic searchable Markdown.</li>
@@ -2755,10 +2755,10 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
   // ── Redirect stubs: broken internal links point here; we route to the correct page ──
   VISION: `<div class="md-body">
 <h1>Roadmap</h1>
-<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">v3.2.0 candidate; Sage roadmap complete</div>
-<p>DevTrack's current product arc is prepared for release: silent observation, the confidence-scored pending-actions queue, deterministic ticket extraction, EOD reporting, local voice learning, the PR review loop, ten-tool read-only MCP context, DevTrack Sage, first-run onboarding, and native MCPB distribution.</p>
+<div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Stable v3.2.0; Sage roadmap complete</div>
+<p>DevTrack's completed product arc is released: silent observation, the confidence-scored pending-actions queue, deterministic ticket extraction, EOD reporting, local voice learning, the PR review loop, ten-tool read-only MCP context, DevTrack Sage, first-run onboarding, and native MCPB distribution.</p>
 <h2>Current focus</h2>
-<p>The core no-send workflow is validated. The owner confirmed clean Windows installation and full Managed Linux acceptance with PostgreSQL, Python, Ollama, staging, EOD, and MCP complete on 2026-09-10 outside GitHub Actions. Earlier Windows Managed, credential-free cross-platform E2E, and source-based admin acceptance runs also passed. The separate TASK-154 admin-UI branch is deferred from v3.2.0 and needs its own drift and UI acceptance. Official MCP Registry v3.1.1 remains active/latest until the candidate publishes. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
+<p>The core no-send workflow is validated. The owner confirmed clean Windows installation and full Managed Linux acceptance with PostgreSQL, Python, Ollama, staging, EOD, and MCP complete on 2026-09-10 outside GitHub Actions. Earlier Windows Managed, credential-free cross-platform E2E, and source-based admin acceptance runs also passed. Stable v3.2.0 and its official MCP Registry record are public. The separate TASK-154 admin-UI branch remains deferred and needs its own drift and UI acceptance. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
 <h2>Next</h2>
 <ol>
 <li>Repeat the Windows admin login, action inspection, rejection, and audit journey against packaged release artifacts rather than the source checkout.</li>
@@ -3138,7 +3138,7 @@ WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
 
 <h2>Important Safety Boundary</h2>
 <p>Stable v3.2.0 has ten MCP tools: six work-context tools and four Sage knowledge/status tools. Every declaration includes a human-readable title plus read-only, non-destructive, idempotent, and no-open-world safety hints. They expose selected local context and published knowledge but cannot approve a queue item, post a comment, change a ticket, push Git, edit source data, or start and stop the daemon. Outbound work still uses DevTrack's pending-actions queue and normal CLI review commands.</p>
-<p>The MCP process reads the same local SQLite database as the Go client. On the TASK-169 branch, Sage knowledge calls also reconcile the local deterministic Markdown directory before answering. It does not contact the Python server, PostgreSQL, Ollama, a PM platform or a cloud API. However, the MCP host can see the tool response, so only configure DevTrack in assistants you trust with the displayed ticket metadata, commit messages, action previews, and published Sage knowledge.</p>
+<p>The MCP process reads the same local SQLite database as the Go client. Sage knowledge calls also reconcile the local deterministic Markdown directory before answering. It does not contact the Python server, PostgreSQL, Ollama, a PM platform or a cloud API. However, the MCP host can see the tool response, so only configure DevTrack in assistants you trust with the displayed ticket metadata, commit messages, action previews, and published Sage knowledge.</p>
 
 <h2>How the Connection Works</h2>
 <ol>
@@ -3187,9 +3187,9 @@ devtrack mcp setup</code></pre>
 <p><code>command</code> is the absolute path to the DevTrack binary used during setup. <code>DEVTRACK_ENV_FILE</code> points to the configuration registered by <code>devtrack setup</code>, which lets the MCP subprocess locate the same data directory as the daemon.</p>
 
 <h3>4. Understand MCPB Packaging</h3>
-<p>The v3.2.0 candidate packages manifest 0.3 MCPB bundles for Windows x64, macOS x64/arm64, and Linux x64/arm64. Each manifest declares the public privacy policy, and each bundled README contains a Privacy Policy section. A packaged host asks the user to select an existing <code>devtrack.db</code>, then starts the bundled binary as:</p>
+<p>Stable v3.2.0 publishes manifest 0.3 MCPB bundles for Windows x64, macOS x64/arm64, and Linux x64/arm64. Each manifest declares the public privacy policy, and each bundled README contains a Privacy Policy section. A packaged host asks the user to select an existing <code>devtrack.db</code>, then starts the bundled binary as:</p>
 <pre><code class="language-bash">devtrack mcp serve --database /path/to/devtrack.db</code></pre>
-<p>CI creates and executes each native bundle, validates manifests with the official MCPB CLI, and checks clean-project setup plus protocol behavior. After tagging, the release workflow publishes checksums and <code>server.json</code>, then publishes version 3.2.0 to the official MCP Registry.</p>
+<p>CI creates and executes each native bundle, validates manifests with the official MCPB CLI, and checks clean-project setup plus protocol behavior. The v3.2.0 release workflow published checksums and <code>server.json</code>, then published the same package hashes to the official MCP Registry.</p>
 
 <h3>5. Run the Built-In Self-Test</h3>
 <pre><code class="language-bash">devtrack mcp test</code></pre>
@@ -3198,7 +3198,7 @@ devtrack mcp setup</code></pre>
 <h3>6. Reload the AI Host</h3>
 <p>Close and reopen, or reload, the MCP-capable assistant in that project so it notices <code>.mcp.json</code>. The server should appear under the name <code>devtrack</code>. No background MCP process should be visible before the assistant invokes it.</p>
 
-<h2>The Ten Development-Branch Tools in Detail</h2>
+<h2>The Ten Stable Tools in Detail</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>Tool</th><th>When an assistant should use it</th><th>Input</th><th>Returned facts</th></tr></thead>
 <tbody>

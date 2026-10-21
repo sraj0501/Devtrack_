@@ -16,19 +16,16 @@ Windows/Linux acceptance, and all six independent capture adapters. The authorit
 `C:\Work\git_apps\ai_sessions_skills` at clean HEAD `ea2e067`; its newer bug fixes are intentional.
 No approved Sage implementation slice remains pending.
 
-**Distribution state:** TASK-171 is qualifying v3.2.0 from `origin/dev` `68a7575`. Stable v3.1.1
-remains public until the candidate is promoted and tagged. PR #295 previously promoted the older
-development line to `main`; after the TASK-171 candidate merges into `dev`, its release files still
-require a fresh, explicit `dev` to `main` promotion PR.
+**Distribution state:** v3.2.0 is the latest stable public release. Five native MCPB bundles and
+the official MCP Registry record for `io.github.sraj0501/devtrack` are published.
 
 **Active UI work:** The server-admin redesign remains isolated on
 `feat/TASK-154-server-admin-ui` at `54ceb05`. It is explicitly deferred from v3.2.0 because the old
 branch predates canonical-memory migration and needs a separate drift/UI-acceptance pass.
 
-**Active release gates:** v3.2.0 version/docs reconciliation, full source validation, five native
-packaged MCPB smokes, `dev` integration, `dev` to `main` promotion, tag/release verification, and
-official MCP Registry verification. Privacy-reviewed media and the exact Glama path/badge remain
-post-release publication follow-ups.
+**Active distribution follow-ups:** qualify the packaged build rather than a source checkout,
+capture privacy-reviewed media from real behavior, and record the exact Glama path before updating
+the score badge. Third-party directory forms remain owner-account actions.
 
 **Known communication-learning gap:** Managed onboarding can seed voice data from local Git
 history, but several Python HTTP learning/status/sync/profile adapters are incomplete. Treat those

@@ -1,5 +1,14 @@
 # DevTrack Feature Tracker
 
+## 2026-10-21 — TASK-171 v3.2.0 release complete
+
+PR #296 integrated the qualified release candidate into `dev`; PR #297 promoted it to `main` at
+`701c7a7`. The annotated `v3.2.0` tag completed release workflow `39538638885`, publishing 12
+GitHub assets and `io.github.sraj0501/devtrack` 3.2.0 to the official MCP Registry. All five native
+MCPB smokes passed, and all ten packaged-artifact hashes in `checksums.txt` matched independently
+downloaded release assets. TASK-154, packaged UI qualification/media capture, the exact Glama path,
+and owner-authenticated third-party submissions remain separate follow-ups.
+
 ## 2026-10-15 — TASK-157 repeated end-to-end acceptance complete locally
 
 The stacked `features/TASK-157-sage-acceptance` branch adds one isolated executable journey that

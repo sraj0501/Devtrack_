@@ -1,7 +1,7 @@
 # Sage GitHub Copilot CLI adapter qualification
 
 TASK-165 adds GitHub Copilot CLI as DevTrack Sage's third independently managed capture adapter.
-This is development-branch behavior and is not part of stable v3.1.1.
+It was qualified as development-branch behavior and now ships in stable v3.2.0.
 
 ## Reference and supported surface
 
