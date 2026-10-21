@@ -7,8 +7,8 @@ the **Current state** column records how it is implemented *today* so you can se
 where reality diverges from the intended ownership.
 
 _Last updated: 2026-10-21 (client-server decoupling complete; PostgreSQL is mandatory server-side;
-the complete Go-native Sage roadmap and silent-Git correction are included in the v3.2.0 release
-candidate; legacy communication-learning adapter gaps are explicit)._
+the complete Go-native Sage roadmap and silent-Git correction ship in stable v3.2.0; legacy
+communication-learning adapter gaps are explicit)._
 
 ## Ownership model (intended)
 

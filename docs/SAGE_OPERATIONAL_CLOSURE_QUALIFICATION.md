@@ -1,8 +1,8 @@
 # Sage operational closure qualification
 
 TASK-170 completes the approved local Sage operations surface. PR #292 merged the qualified branch
-into `dev` at `77e2f5b`, after TASK-169 PR #291 merged at `34aafb8`. This work is not part of stable
-v3.1.1.
+into `dev` at `77e2f5b`, after TASK-169 PR #291 merged at `34aafb8`. This work now ships in stable
+v3.2.0.
 
 ## Command contract
 

@@ -1,14 +1,14 @@
 # Next Steps — DevTrack
 
-_Updated 2026-10-18. This file lists active work only. Completed delivery and validation history
+_Updated 2026-10-21. This file lists active work only. Completed delivery and validation history
 lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
 ## Immediate repository sequence
 
 The approved Sage roadmap is complete and integrated into `dev` at `77e2f5b` through PR #292.
-No Sage implementation slice remains pending. TASK-171 is qualifying the completed development arc
-as v3.2.0, then promoting `dev` through an explicit PR to `main` and verifying the tag-driven
-release plus official MCP Registry publication.
+No Sage implementation slice remains pending. TASK-171 released the completed development arc as
+v3.2.0 from verified `main` commit `701c7a7`. The GitHub release, 12 assets, packaged checksums,
+`server.json`, five native MCPB bundles, and official MCP Registry publication are complete.
 
 The authoritative clean behavioral reference is
 `C:\Work\git_apps\ai_sessions_skills` at intentional bug-fix HEAD `ea2e067`. The parity inventory
@@ -27,14 +27,6 @@ The implementation plan and qualification details are in
 [SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md](SAGE_OPERATIONAL_CLOSURE_QUALIFICATION.md), and
 `agent-memory/initiatives/sage.md`. `Data/agent_logs/project_board.md` remains the task-ID and
 status authority.
-
-## v3.2.0 release gates
-
-- Reconcile release notes, public version claims, Windows metadata, and RC package metadata.
-- Pass full Go/Python/wiki/privacy validation and all five native packaged MCPB smoke jobs.
-- Integrate the candidate into `dev`, promote `dev` to `main` through a reviewable PR, and tag only
-  the verified `main` commit.
-- Verify GitHub assets, checksums, `server.json`, and official MCP Registry publication.
 
 ## Deferred follow-ups
 

@@ -50,9 +50,8 @@ you run `devtrack telemetry on`.
 
 ## Ten-minute quickstart
 
-The **v3.2.0 release candidate** is being qualified; v3.1.1 remains the latest public release until
-the verified candidate is tagged. Use [GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/latest)
-for the current public asset, or build this branch from source. v3.2.0 fixes the v3.1.1
+**v3.2.0 is the latest public release.** Use [GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/latest)
+for the release record and platform assets, or build `main` from source. v3.2.0 fixes the v3.1.1
 shell-wrapped post-commit prompt regression: normal Git is no longer
 routed through DevTrack, observation hooks are silent and fail-open, and the explicit enhanced
 commit helper returns immediately after Git succeeds.

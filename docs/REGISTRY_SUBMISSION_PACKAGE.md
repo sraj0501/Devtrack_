@@ -1,8 +1,8 @@
 # DevTrack MCP registry submission package
 
-_Release state checked: 2026-10-21. v3.2.0 is the active release candidate; v3.1.1 and its official
-MCP Registry record remain public until TASK-171 promotion, tagging, and publication complete.
-Third-party directory submissions and launch posts remain unpublished._
+_Release state checked: 2026-10-21. v3.2.0 is the latest public release and its official MCP
+Registry publication completed through GitHub OIDC. Third-party directory submissions and launch
+posts remain unpublished unless noted below._
 
 ## Release and capability facts
 
@@ -15,11 +15,9 @@ Third-party directory submissions and launch posts remain unpublished._
   knowledge and bounded local status without raw capture data.
 - The MCP path does not require the Python server or a network request. It does require an
   installed DevTrack binary and the user's local DevTrack data/configuration.
-- The v3.2.0 candidate adds the four Sage tools to the six public work-context tools. Its release
-  gate requires five native MCPB smoke jobs, matching checksums, and validated `server.json` before
-  publication.
-- The latest public release and official MCP Registry version remain `v3.1.1` until those gates
-  pass and the verified `main` commit is tagged.
+- v3.2.0 adds the four Sage tools to the six work-context tools. All five native MCPB smoke jobs,
+  matching packaged-artifact checksums, and validated `server.json` passed before publication.
+- The latest public release and official MCP Registry version are `v3.2.0`.
 - DevTrack is distributed under its Community License/EULA in `TERMS.md`, not an OSI license.
   Directory forms and manifests must use that exact description and must not label it MIT,
   Apache-2.0, or generally "open source."
@@ -28,9 +26,9 @@ Third-party directory submissions and launch posts remain unpublished._
 
 | Target | Eligibility now | Required fields or artifact | Authoritative submission URL | Blocker / next action |
 |---|---|---|---|---|
-| Official MCP Registry | **v3.1.1 published; v3.2.0 pending release** | Publicly downloadable supported packages plus validated `server.json`; MCPB release URLs include SHA-256 values and `stdio` transport. | [Official publishing quickstart](https://modelcontextprotocol.io/registry/quickstart), [supported package types](https://modelcontextprotocol.io/registry/package-types), and [public record](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.sraj0501%2Fdevtrack&version=latest) | The active latest record is `io.github.sraj0501/devtrack` 3.1.1. The tag-driven release workflow will publish 3.2.0 through GitHub OIDC only after candidate qualification and promotion. |
-| Anthropic Connectors Directory (desktop extension) | **Packaging-compliant; desktop review and owner form required** | Installable `.mcpb` with a valid `manifest.json`, privacy policy, clear documentation, working examples, and required `title` plus `readOnlyHint`/`destructiveHint` annotations on every tool, followed by Anthropic's desktop-extension submission form and review. | [Build an MCPB](https://claude.com/docs/connectors/building/mcpb), [directory submission requirements](https://claude.com/docs/connectors/building/submission), [pre-submission checklist](https://claude.com/docs/connectors/building/review-criteria), and [MCPB manifest specification](https://github.com/modelcontextprotocol/mcpb/blob/main/MANIFEST.md) | Public v3.1.1 declares `privacy_policies` and passed official CLI plus native execution checks. Reconfirm the v3.2.0 candidate evidence after its hosted native jobs pass. Interactive desktop evidence and the authenticated owner form remain unavailable in this environment. |
-| Smithery | **Artifact-ready; account required** | For local stdio servers, a prebuilt `.mcpb` bundle and listing metadata; hosted URL submissions instead require Streamable HTTP. | [Smithery publishing documentation](https://smithery.ai/docs/build/publish) | Public v3.1.1 supplies local stdio MCPBs; v3.2.0 publication is pending. Do not present the Python HTTP API as MCP. Upload/publication remains blocked by the absence of Smithery account credentials in this environment. |
+| Official MCP Registry | **v3.2.0 published** | Publicly downloadable supported packages plus validated `server.json`; MCPB release URLs include SHA-256 values and `stdio` transport. | [Official publishing quickstart](https://modelcontextprotocol.io/registry/quickstart), [supported package types](https://modelcontextprotocol.io/registry/package-types), and [public record](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.sraj0501%2Fdevtrack&version=latest) | The tag-driven release workflow published `io.github.sraj0501/devtrack` 3.2.0 through GitHub OIDC after all release gates passed. |
+| Anthropic Connectors Directory (desktop extension) | **Packaging-compliant; desktop review and owner form required** | Installable `.mcpb` with a valid `manifest.json`, privacy policy, clear documentation, working examples, and required `title` plus `readOnlyHint`/`destructiveHint` annotations on every tool, followed by Anthropic's desktop-extension submission form and review. | [Build an MCPB](https://claude.com/docs/connectors/building/mcpb), [directory submission requirements](https://claude.com/docs/connectors/building/submission), [pre-submission checklist](https://claude.com/docs/connectors/building/review-criteria), and [MCPB manifest specification](https://github.com/modelcontextprotocol/mcpb/blob/main/MANIFEST.md) | Public v3.2.0 declares `privacy_policies` and passed official CLI plus all five native execution checks. Interactive desktop evidence and the authenticated owner form remain unavailable in this environment. |
+| Smithery | **Artifact-ready; account required** | For local stdio servers, a prebuilt `.mcpb` bundle and listing metadata; hosted URL submissions instead require Streamable HTTP. | [Smithery publishing documentation](https://smithery.ai/docs/build/publish) | Public v3.2.0 supplies local stdio MCPBs. Do not present the Python HTTP API as MCP. Upload/publication remains blocked by the absence of Smithery account credentials in this environment. |
 | Glama | **Approved; exact path/PR badge pending** | GitHub OAuth by a maintainer with write/admin access; Glama clones, builds, runs, and introspects the repository using a Dockerfile supplied in its submission UI. | [Glama registry](https://glama.ai/mcp/servers) and [indexing methodology](https://glama.ai/mcp/methodology) | Glama's admins approved the owner's submission using `Dockerfile.mcp`. Record the exact approved listing path before adding its score badge to PR #13608; do not guess slug normalization or present the Python backend as hosted MCP. |
 | mcpservers.org / `wong2/awesome-mcp-servers` | **Form-ready; contact/login required** | Server name, one-sentence description, GitHub/docs link, category, and contact email. The associated awesome list no longer accepts PRs. | [Submission form](https://mcpservers.org/submit) and [list repository](https://github.com/wong2/awesome-mcp-servers) | The release gate is clear. Submission still needs an owner-approved contact email and an authenticated interactive form session. Premium review is optional and must not be purchased implicitly. |
 | `punkpeye/awesome-mcp-servers` | **Submitted; checks pass** | A repository-linked server name, concise accurate description, appropriate category, alphabetical placement, one server per line, and a contributor PR. | [PR #13608](https://github.com/punkpeye/awesome-mcp-servers/pull/13608) and [contribution guide](https://github.com/punkpeye/awesome-mcp-servers/blob/main/CONTRIBUTING.md) | Submitted under Developer Tools on 2026-09-04 after rechecking the live rules. The automated `check-submission` job passed; maintainer review/merge remains external. |
@@ -119,6 +117,6 @@ window covering TASK-121–123 and TASK-143–147. Review-only dev.to, Show HN, 
 are stored under `Data/agent_logs/posts/2026-W36/`.
 
 The drafts remain deliberately unpublished because no authenticated channel sessions are available
-in this environment. They now describe public v3.1.1, avoid adoption and time-saved claims that the
+in this environment. They must describe public v3.2.0, avoid adoption and time-saved claims that the
 repository cannot prove, and link to the released artifacts. TASK-150 cleared the technical release
 gate but did not create external-usage evidence; launch copy must keep that boundary.
