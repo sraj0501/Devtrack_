@@ -125,9 +125,6 @@ func (s *Scheduler) Start() error {
 	// Optional: auto EOD report at configured hour
 	s.scheduleEODReport()
 
-	// Optional: auto-stop idle sessions
-	s.scheduleIdleSessionStop()
-
 	// Drain the offline PM update queue periodically
 	s.schedulePMQueueFlush()
 
@@ -360,9 +357,9 @@ func (s *Scheduler) IsWorkingHours() bool {
 }
 
 // scheduleEODReport adds a daily cron job at EOD_REPORT_HOUR:EOD_REPORT_MINUTE
-// (hour = 0 disables). When triggered it auto-stops any active work session, then
-// calls the Python EOD report generator which emails the report to EOD_REPORT_EMAIL
-// if set. Config is read via typed accessors in internal/config — no bare os.Getenv.
+// (hour = 0 disables). It sends captured commits to the Python EOD generator,
+// which stages the report for delivery. It does not measure work duration.
+// Config is read via typed accessors in internal/config — no bare os.Getenv.
 func (s *Scheduler) scheduleEODReport() {
 	hour := config.GetEODReportHour()
 	if hour <= 0 {
@@ -380,9 +377,6 @@ func (s *Scheduler) scheduleEODReport() {
 		var eodCommits []trigger.EODCommit
 		if dbErr == nil {
 			defer database.Close()
-			if err := database.CloseInactiveWorkSession(time.Now(), 0); err != nil {
-				log.Printf("close work session for EOD: %v", err)
-			}
 			if localCommits, commitsErr := database.ListTodayCommits(""); commitsErr == nil {
 				eodCommits = make([]trigger.EODCommit, 0, len(localCommits))
 				for _, commit := range localCommits {
@@ -417,33 +411,6 @@ func (s *Scheduler) scheduleEODReport() {
 		return
 	}
 	log.Printf("✓ EOD auto-report scheduled at %02d:%02d daily", hour, minute)
-}
-
-// scheduleIdleSessionStop adds a periodic check that auto-stops sessions idle
-// for longer than WORK_SESSION_AUTO_STOP_MINUTES (0 = disabled).
-// Config is read via the typed accessor in internal/config — no bare os.Getenv.
-func (s *Scheduler) scheduleIdleSessionStop() {
-	idleMins := config.GetWorkSessionAutoStopMinutes()
-	if idleMins <= 0 {
-		return
-	}
-
-	// Check every minute whether the active session has been idle too long.
-	_, err := s.cron.AddFunc("0 * * * * *", func() {
-		database, dbErr := db.NewDatabase()
-		if dbErr != nil {
-			return
-		}
-		defer database.Close()
-		if err := database.CloseInactiveWorkSession(time.Now(), time.Duration(idleMins)*time.Minute); err != nil {
-			log.Printf("close idle work session: %v", err)
-		}
-	})
-	if err != nil {
-		log.Printf("⚠️  Could not schedule idle session check: %v", err)
-		return
-	}
-	log.Printf("✓ Work session idle auto-stop enabled (%d minutes)", idleMins)
 }
 
 // schedulePMQueueFlush periodically drains the offline PM update queue

@@ -91,7 +91,7 @@ class TestGetDailyActivitiesSQLite:
         activities = reporter.get_daily_activities(TODAY)
         assert len(activities) == 2
         assert activities[0].ticket_id == "PROJ-1"
-        assert activities[0].time_spent == 1.5
+        assert not hasattr(activities[0], "time_spent")
         assert activities[1].source == "manual"
 
     def test_reads_rows_without_optional_columns(self, isolated_engine):
@@ -100,7 +100,7 @@ class TestGetDailyActivitiesSQLite:
         reporter = EmailReporter()
         activities = reporter.get_daily_activities(TODAY)
         assert len(activities) == 2
-        assert activities[0].time_spent == 0.0
+        assert not hasattr(activities[0], "time_spent")
         assert activities[0].source == "manual"
 
     def test_no_rows_returns_empty_list(self, isolated_engine):

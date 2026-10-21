@@ -68,11 +68,11 @@ communication-learning adapter gaps are explicit)._
 | Jira | — | **None in client** | Server | ⚠ No Go Jira connector; Jira handled only server-side today |
 | GitHub ticket sync (legacy) | (internal) | Go-native | Client | ✅ Removed Python `github_ticket_sync.py` call (Phase 1b — d5f8f36); routes to Go-native `github-sync` |
 
-## 4. Work tracking & workspaces — Owner: **Client**
+## 4. Ticket context & workspaces — Owner: **Client**
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Work sessions | `work` | Go-native (SQLite) | Client | |
+| Active ticket selection and work reports | `work start/stop/status/report` | Go-native context, HTTP reports | Client | No timers, durations, sessions, or time corrections |
 | Vacation mode | `vacation` | Go-native | Client | |
 | Workspace management | `workspace`, `is-workspace`, `list`, `enable`, `disable`, `remove` | Go-native | Client | |
 | Git integration / hooks | `enable-git`, `disable-git`, `install-hooks`, `shell-init` | Go-native | Client | post-commit + pre-push hooks |

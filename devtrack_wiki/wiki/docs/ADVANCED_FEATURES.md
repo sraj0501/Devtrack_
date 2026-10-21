@@ -6,7 +6,7 @@ They are not separate interactive product flows.
 ## Reports and voice
 
 - `devtrack eod generate` stages an end-of-day report with explicit confidence.
-- `devtrack work report` previews the current work session on demand.
+- `devtrack work report` previews captured commits on demand.
 - `devtrack voice seed|profile|add|sync|status` manages local voice evidence.
 - `devtrack learning-status`, `learning-sync`, and `learning-reset` are the intended personalization
   controls, but their current server adapter is incomplete; treat them as unavailable until repaired.

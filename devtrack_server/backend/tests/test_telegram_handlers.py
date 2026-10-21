@@ -1,6 +1,6 @@
 """
 Tests for backend/telegram/handlers.py's _cmd_queue/_cmd_commits/_cmd_health/
-_cmd_workstart/_cmd_vacation -- Postgres backend epic (TASK-112, module 11 of 15).
+_cmd_vacation -- Postgres backend epic (TASK-112, module 11 of 15).
 
 These were the module's six raw-sqlite3 call sites (one function, _get_db_path,
 was dead code after the port and removed). All now delegate to shared,
@@ -9,7 +9,6 @@ port (TASK-136) already fixed, plus two new Go-owned status-count tables:
 
   - _cmd_queue/_cmd_commits -> new backend.queue_status_store.get_status_counts()
   - _cmd_health             -> backend.health_snapshots_store.get_latest_snapshot_per_service()
-  - _cmd_workstart          -> backend.work_tracker.session_store.WorkSessionStore.start_session()
   - _cmd_vacation on/off    -> backend.vacation.auto_responder.get_vacation_state()/set_vacation_state()
 
 No raw sqlite3 remains in telegram/handlers.py.
@@ -156,37 +155,6 @@ class TestCmdHealth:
         assert "UP" in msg
 
 
-class TestCmdWorkstart:
-    @pytest.mark.asyncio
-    async def test_starts_session(self, isolated_engine: Path):
-        from backend.telegram.handlers import _cmd_workstart
-
-        db_path = isolated_engine / "devtrack.db"
-        _make_work_sessions_table(db_path)
-
-        update = _make_update()
-        context = MagicMock()
-        context.args = ["PROJ-1"]
-        await _cmd_workstart(update, context, MagicMock())
-        msg = update.message.reply_text.call_args[0][0]
-        assert "started" in msg.lower()
-        assert "PROJ-1" in msg
-
-    @pytest.mark.asyncio
-    async def test_warns_if_already_active(self, isolated_engine: Path):
-        from backend.telegram.handlers import _cmd_workstart
-
-        db_path = isolated_engine / "devtrack.db"
-        _make_work_sessions_table(db_path)
-
-        context = MagicMock()
-        context.args = []
-        await _cmd_workstart(_make_update(), context, MagicMock())
-
-        update2 = _make_update()
-        await _cmd_workstart(update2, context, MagicMock())
-        msg = update2.message.reply_text.call_args[0][0]
-        assert "already active" in msg.lower()
 
 
 class TestCmdVacation:
@@ -258,21 +226,6 @@ class TestTelegramHandlersPostgresMode:
             monkeypatch.delenv("POSTGRES_URL", raising=False)
             reset_engine()
 
-    @pytest.mark.asyncio
-    async def test_workstart_reports_unavailable_in_postgres_mode(self, isolated_engine: Path, monkeypatch):
-        monkeypatch.setenv("POSTGRES_URL", "postgresql://fake/fake")
-        reset_engine()
-        try:
-            from backend.telegram.handlers import _cmd_workstart
-            update = _make_update()
-            context = MagicMock()
-            context.args = []
-            await _cmd_workstart(update, context, MagicMock())
-            msg = update.message.reply_text.call_args[0][0]
-            assert "not available" in msg.lower()
-        finally:
-            monkeypatch.delenv("POSTGRES_URL", raising=False)
-            reset_engine()
 
     @pytest.mark.asyncio
     async def test_vacation_on_reports_unavailable_in_postgres_mode(self, isolated_engine: Path, monkeypatch):

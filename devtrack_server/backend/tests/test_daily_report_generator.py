@@ -91,7 +91,7 @@ class TestReportStore:
         assert row["report_type"] == "daily"
         assert row["format"] == "text"
         assert row["content"] == "Full report content here."
-        assert row["total_hours"] == 8.0
+        assert row["total_hours"] == 8.0  # Historical storage remains readable internally.
         assert row["task_count"] == 3
         assert row["completed_count"] == 2
         assert row["projects_count"] == 1
@@ -192,13 +192,11 @@ def _make_enhanced_report(report_type_hint: str = "daily"):
         ticket_id="PROJ-1",
         status="done",
         description="Fixed a bug",
-        time_spent=2.0,
         source="commit",
     )
     base = DailyReport(
         date=datetime(2026, 7, 31),
         activities=[activity],
-        total_hours=8.0,
         projects_worked=["devtrack"],
         tickets_updated=["PROJ-1"],
         completed_count=1,
@@ -229,7 +227,7 @@ class TestDailyReportGeneratorDbMethods:
         row = rows[0]
         assert row["id"] == report_id
         assert row["report_type"] == "daily"
-        assert row["total_hours"] == 8.0
+        assert "total_hours" not in row
         assert row["completed_count"] == 1
         assert row["projects_count"] == 1
         assert row["ai_enhanced"] is False

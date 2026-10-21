@@ -8,7 +8,7 @@ All Python-owned store modules import `metadata` from here and register their
 Table objects against it. SQLite test/local compatibility uses
 ``metadata.create_all()``; PostgreSQL always advances through Alembic.
 
-Go-owned tables (`triggers`, `task_updates`, `work_sessions`) are NEVER touched
+Go-owned tables (`triggers`, `task_updates`) are NEVER touched
 by Python in PostgreSQL mode.
 
 Usage in a store module

@@ -32,7 +32,7 @@ No tool absorbs the developer's meta-work. DevTrack does.
 ## The Vision
 
 DevTrack is a silent background AI layer that absorbs all developer meta-work — ticket
-updates, EOD reports, PR review cycles, time tracking — by watching what the developer
+updates, EOD reports, and PR review cycles — by watching what the developer
 already does (committing code) and inferring everything else.
 
 The developer's only obligation is to follow the workspace's ticket branch convention. DevTrack
@@ -147,6 +147,14 @@ same phase. Exceptions are permitted only for security-administrative functions
 capability audit is a rolling checklist, updated with each phase.
 
 ---
+
+## Product decision: no time tracking
+
+On 2026-10-21 the owner explicitly removed work-time tracking because measuring time spent per
+task enables micromanagement and conflicts with the intended developer relationship. DevTrack
+records what was done and when an activity happened. It must not infer or collect work durations,
+run work timers, log hours per ticket, or include time-spent metrics in reports or synchronization.
+Explicit active-ticket selection remains a context override and never starts a timer.
 
 ## The Developer Contract
 

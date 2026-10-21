@@ -7,7 +7,7 @@ package main
 //   devtrack eod generate     POST /reports/eod via the HTTP trigger client;
 //                             print the narrative to stdout;
 //                             if action_id is in the response print "Queued as action <id>"
-//   devtrack eod status       query db.ListPendingActions("") filtered to action_type=="eod_report";
+//   devtrack eod status       query local and server history for action_type=="eod_report";
 //                             print most recent: date, action_id, status
 //   devtrack eod show         same filter, most recent, parse payload JSON for "narrative" and print;
 //                             if none: print "No EOD report on record"
@@ -90,7 +90,7 @@ func runEODGenerate() error {
 	}
 
 	if result.ActionID != nil {
-		fmt.Printf("Queued as action %d\n", *result.ActionID)
+		fmt.Printf("Queued as action server:%d\n", *result.ActionID)
 	}
 	return nil
 }
@@ -107,7 +107,7 @@ func runEODStatus() error {
 	}
 	defer d.Close()
 
-	action, err := latestEODAction(d)
+	action, source, err := latestVisibleEODAction(d)
 	if err != nil {
 		return fmt.Errorf("eod status: %w", err)
 	}
@@ -117,7 +117,7 @@ func runEODStatus() error {
 	}
 
 	fmt.Printf("Date:      %s\n", action.CreatedAt.Local().Format("2006-01-02 15:04"))
-	fmt.Printf("Action ID: %d\n", action.ID)
+	fmt.Printf("Action ID: %s%d\n", source, action.ID)
 	fmt.Printf("Status:    %s\n", action.Status)
 	return nil
 }
@@ -134,7 +134,7 @@ func runEODShow() error {
 	}
 	defer d.Close()
 
-	action, err := latestEODAction(d)
+	action, _, err := latestVisibleEODAction(d)
 	if err != nil {
 		return fmt.Errorf("eod show: %w", err)
 	}
@@ -176,14 +176,35 @@ func latestEODAction(d *db.Database) (*db.PendingAction, error) {
 	if err != nil {
 		return nil, err
 	}
-	// ListPendingActions orders by expires_at ASC; iterate in reverse to find most recent.
-	for i := len(all) - 1; i >= 0; i-- {
-		if all[i].ActionType == "eod_report" {
-			a := all[i]
-			return &a, nil
+	var latest *db.PendingAction
+	for i := range all {
+		if all[i].ActionType == "eod_report" && (latest == nil || all[i].CreatedAt.After(latest.CreatedAt) ||
+			(all[i].CreatedAt.Equal(latest.CreatedAt) && all[i].ID > latest.ID)) {
+			latest = &all[i]
 		}
 	}
-	return nil, nil
+	return latest, nil
+}
+
+// Compare local legacy reports with the authoritative server history. A server
+// outage must not be presented as an empty history.
+func latestVisibleEODAction(d *db.Database) (*db.PendingAction, string, error) {
+	local, err := latestEODAction(d)
+	if err != nil {
+		return nil, "", err
+	}
+	remote, err := trigger.NewHTTPTriggerClient().QueueHistory("eod_report", 0, 1)
+	if err != nil {
+		if local == nil {
+			return nil, "", fmt.Errorf("server report history unavailable: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "warning: server history unavailable; showing local report: %v\n", err)
+		return local, "", nil
+	}
+	if len(remote) > 0 && (local == nil || !remote[0].CreatedAt.Before(local.CreatedAt)) {
+		return &remote[0], "server:", nil
+	}
+	return local, "", nil
 }
 
 // printEODUsage prints a short usage block for the eod command group.

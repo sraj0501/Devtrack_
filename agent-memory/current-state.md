@@ -4,6 +4,22 @@ description: Active implementation work, integration state, and unresolved relea
 type: project
 ---
 
+**Immediate user priority (2026-10-21):** qualify basic Git capture and EOD reports for an upcoming
+real use case before testing Sage. The owner explicitly removed time tracking as micromanagement;
+work durations, sessions, corrections, and time metrics are no longer product requirements.
+The working tree removes runtime time collection, CLI/session APIs, chat commands, report metrics,
+and session synchronization; legacy tables remain inert for upgrade compatibility. The public
+v3.2.0 package still contains the old behavior until a new build is installed.
+Legacy learning repairs and platform parity remain on hold. Working-tree fixes now enumerate
+unseen commits across local branch tips and read server report/queue history over authenticated
+HTTP with `server:<id>` review identities. Container regression and full-suite results are recorded
+in the qualification initiative; no installed/public package has been updated.
+See [basic workflow qualification](initiatives/basic-workflow-qualification.md). On 2026-10-22,
+the owner authorized the v3.3.0 version update and push to `dev`; stable publication and host
+installation remain separate. Windows metadata and CI candidate bundles target 3.3.0; the rolling
+development channel retains its `dev-<commit>` version convention. The next acceptance gates are
+recorded in [the daily-use test plan](../docs/testing/basic-workflow.md). No board mutation is included.
+
 **Sage product state:** The approved SAGE-001–SAGE-005 roadmap is complete and integrated into
 `dev` at `77e2f5b`. PR #291 merged read-only MCP retrieval at `34aafb8`; PR #292 merged dry-run
 retention, bounded opaque quarantine controls, exact deletion, deterministic repair/cache rebuild,

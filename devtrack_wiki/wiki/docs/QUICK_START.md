@@ -162,7 +162,7 @@ devtrack queue                  # inspect local pending actions
 devtrack queue approve <id>     # explicitly dispatch a reviewed local action
 devtrack queue reject <id>      # discard a local pending action
 devtrack eod                    # generate and stage today's narrative
-devtrack work report            # immediate work-session report
+devtrack work report            # immediate commit-based report
 devtrack mcp test               # verify local MCP context
 devtrack stop                   # stop the daemon
 ```

@@ -69,12 +69,13 @@ def isolated_engine(tmp_path, monkeypatch):
     """Point DATABASE_DIR at a fresh temp directory and reset the shared
     SQLAlchemy engine singleton so QueueGateway's engine-based reads/writes
     hit an isolated SQLite file instead of whatever engine a prior test
-    built (same fixture shape as test_skill_detector.py's isolated_engine
-    and test_work_tracker.py's TestWorkSessionStore.setup).
+    built (same fixture shape as test_skill_detector.py's isolated_engine).
     """
     from backend.db.engine import reset_engine
 
     monkeypatch.setenv("DATABASE_DIR", str(tmp_path))
+    monkeypatch.setenv("DATABASE_FILE_NAME", "devtrack.db")
+    monkeypatch.setenv("POSTGRES_URL", "")
     reset_engine()
     yield
     reset_engine()
@@ -466,6 +467,51 @@ def api_client_with_queue(monkeypatch, db_path):
         yield client
 
     gw_instance.close()
+
+
+class TestQueueHistoryAndReview:
+    def test_history_uses_creation_order_and_retains_rejected_reports(self, gateway, api_client_with_queue, db_path):
+        older = gateway.stage(action_type="eod_report", target="old", platform="email",
+                              workspace="ws", payload={"narrative": "old"}, confidence=0.5)
+        newer = gateway.stage(action_type="eod_report", target="new", platform="email",
+                              workspace="ws", payload={"narrative": "new"}, confidence=0.99)
+        # Deliberately invert expiration order; history is about creation order.
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("UPDATE pending_actions SET created_at='2026-01-01T00:00:00', expires_at='2099-01-01T00:00:00' WHERE id=?", (older,))
+            conn.execute("UPDATE pending_actions SET created_at='2026-01-02T00:00:00' WHERE id=?", (newer,))
+        response = api_client_with_queue.post("/queue/review", json={"action_id": newer, "operation": "reject"})
+        assert response.status_code == 200
+        data = api_client_with_queue.get("/queue/history?action_type=eod_report&hours=0&limit=1").json()
+        assert [row["id"] for row in data["actions"]] == [newer]
+        assert data["actions"][0]["status"] == "rejected"
+        page2 = api_client_with_queue.get("/queue/history?action_type=eod_report&hours=0&limit=1&offset=1").json()
+        assert [row["id"] for row in page2["actions"]] == [older]
+
+    def test_edit_preserves_pending_and_cannot_modify_claimed_action(self, gateway, api_client_with_queue):
+        action = gateway.stage(action_type="eod_report", target="today", platform="email",
+                               workspace="ws", payload={"narrative": "before"}, confidence=0.5)
+        request = {"action_id": action, "operation": "edit", "payload": {"narrative": "after"}}
+        assert api_client_with_queue.post("/queue/review", json=request).status_code == 200
+        row = gateway.get_action(action)
+        assert row["status"] == "pending"
+        assert json.loads(row["payload"])["narrative"] == "after"
+        assert gateway.claim(action)
+        assert api_client_with_queue.post("/queue/review", json=request).status_code == 409
+        assert api_client_with_queue.post("/queue/review", json={"action_id": action, "operation": "reject"}).status_code == 409
+
+    def test_history_failure_is_not_empty_success(self, api_client):
+        with patch("backend.webhook_server._get_queue_gateway", return_value=None):
+            assert api_client.get("/queue/history").status_code == 503
+
+    def test_history_and_review_require_api_key(self, api_client, monkeypatch):
+        monkeypatch.setenv("DEVTRACK_API_KEY", "history-test-key")
+        assert api_client.get("/queue/history").status_code in (401, 403)
+        assert api_client.post("/queue/review", json={"action_id": 1, "operation": "reject"}).status_code in (401, 403)
+
+    @pytest.mark.parametrize("body", [[], {}, {"action_id": True, "operation": "reject"},
+                                      {"action_id": 1, "operation": "edit", "payload": []}])
+    def test_invalid_review(self, api_client, body):
+        assert api_client.post("/queue/review", json=body).status_code == 400
 
 
 class TestGetQueuePendingEndpoint:

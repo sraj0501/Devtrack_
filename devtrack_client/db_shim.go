@@ -17,7 +17,6 @@ type QueuedMessage = idb.QueuedMessage
 type DeferredCommitRecord = idb.DeferredCommitRecord
 type HealthSnapshot = idb.HealthSnapshot
 type ReportRecord = idb.ReportRecord
-type WorkSessionRecord = idb.WorkSessionRecord
 type NotificationRecord = idb.NotificationRecord
 type VacationState = idb.VacationState
 type TicketCacheRecord = idb.TicketCacheRecord
@@ -30,6 +29,6 @@ type ConfidenceThreshold = idb.ConfidenceThreshold
 
 // ── Function forwards ─────────────────────────────────────────────────────────
 
-func NewDatabase() (*Database, error)                        { return idb.NewDatabase() }
-func RunPendingMigrations()                                  { idb.RunPendingMigrations() }
-func MarkAllMigrationsApplied()                              { idb.MarkAllMigrationsApplied() }
+func NewDatabase() (*Database, error) { return idb.NewDatabase() }
+func RunPendingMigrations()           { idb.RunPendingMigrations() }
+func MarkAllMigrationsApplied()       { idb.MarkAllMigrationsApplied() }

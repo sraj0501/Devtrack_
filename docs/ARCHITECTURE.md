@@ -73,7 +73,7 @@ accepting requests. Compose waits for its bundled PostgreSQL health check; manag
 an explicit local or remote `POSTGRES_URL` and do not fall back to server-side SQLite.
 
 Client activity leaves SQLite only when `SERVER_EVENT_SYNC_ENABLED=true`. The daemon captures
-latest-state snapshots for `triggers`, `task_updates`, `work_sessions`, and client-originated
+latest-state snapshots for `triggers`, `task_updates`, and client-originated
 `pending_actions` in a local outbox. Each batch is itself staged in `pending_actions`, then sent to
 `POST /trigger/client_events`. PostgreSQL deduplicates replays by `(client_id, event_id)` and rejects
 stale revisions; an unreachable server leaves the outbox intact for the next queue poll.
@@ -758,8 +758,15 @@ PostgreSQL numeric IDs as the same action. Transport failures leave the local ro
 | Queue endpoint | Purpose |
 |---|---|
 | `GET /queue/pending` | List server-originated PostgreSQL queue rows |
+| `GET /queue/history` | Read paginated server history, including completed/rejected EOD reports |
+| `POST /queue/review` | Edit/reject a pending server row atomically |
 | `POST /queue/execute` | Execute a server-originated row by its PostgreSQL ID |
 | `POST /queue/execute_staged` | Execute a complete Go-local row after local approval/expiry |
+
+CLI queue/history reads include both stores without copying server rows into SQLite. Server rows
+use `server:<id>` in CLI output and review commands; bare numbers address only local rows.
+`eod status`/`show` compare creation time across server and legacy local reports, independent of
+the confidence-based expiry order. Server outages are surfaced instead of looking like empty history.
 
 ### Health Monitoring
 

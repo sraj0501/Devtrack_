@@ -46,10 +46,6 @@ const (
 
 	// Workspace management
 	MsgTypeWorkspaceReload MessageType = "workspace_reload"
-
-	// Work session tracking
-	MsgTypeWorkSessionStart MessageType = "work_session_start"
-	MsgTypeWorkSessionStop  MessageType = "work_session_stop"
 )
 
 // IPCMessage represents a message sent between Go and Python
@@ -490,7 +486,6 @@ func CreateTaskUpdateMessage(data trigger.TaskUpdateData) IPCMessage {
 		"ticket_id":   data.TicketID,
 		"description": data.Description,
 		"status":      data.Status,
-		"time_spent":  data.TimeSpent,
 		"synced":      data.Synced,
 	}
 	if data.AzureWorkItemID != 0 {

@@ -15,6 +15,7 @@ DevTrack is an offline-first silent Go daemon with an optional Python AI/server 
 
 ## Active work
 
+- [initiatives/basic-workflow-qualification.md](initiatives/basic-workflow-qualification.md) — user-prioritized Git capture and EOD qualification; time tracking removed by owner decision. Learning repairs, platform parity, and Sage testing are on hold.
 - [current-state.md](current-state.md) — current initiatives, branch state, and unresolved release work.
 - [execution-plan.md](execution-plan.md) — ordered pickup sequence and acceptance gates for the active work.
 - [initiatives/sage.md](initiatives/sage.md) — active DevTrack Sage port of the cross-harness, self-writing command-knowledge product; legacy Git Sage and playback are excluded.

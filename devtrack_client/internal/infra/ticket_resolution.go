@@ -2,7 +2,6 @@ package infra
 
 import (
 	"log"
-	"path/filepath"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 )
@@ -19,15 +18,6 @@ func (im *IntegratedMonitor) resolveCommitMapping(ws *WorkspaceMonitor, evidence
 			log.Printf("active ticket unavailable: %v", err)
 		} else {
 			evidence.ActiveTicket = active
-			// Preserve explicit sessions created before durable overrides existed.
-			if active == "" {
-				session, err := im.database.GetActiveWorkSession()
-				if err == nil && session != nil &&
-					(session.RepoPath == "" || filepath.Clean(session.RepoPath) == filepath.Clean(ws.gitMonitor.repoPath)) &&
-					(session.WorkspaceName == "" || session.WorkspaceName == ws.workspaceName) {
-					evidence.ActiveTicket = session.TicketRef
-				}
-			}
 		}
 	}
 	return r.Resolve(*evidence)

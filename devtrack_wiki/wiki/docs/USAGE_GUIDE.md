@@ -43,16 +43,12 @@ Every external PM, email, or Git action must pass through this queue and carry c
 
 ## Work and reports
 
-The TASK-159 development implementation estimates time from local monitored commits.
-Explicit sessions are optional. Estimates use a 45-minute activity gap, up to 15 minutes
-of padding at each edge, and an eight-hour cap per window. Status shows confidence;
-adjustments preserve measured time and an audit history. Automatic idle/EOD closure
-uses the last observed activity, so an unattended session does not accrue idle time.
+DevTrack reports work without measuring time spent on each task. Active-ticket selection is
+optional context only. It creates no timed session or duration record.
 
 ```bash
 devtrack work start PROJ-123
 devtrack work status
-devtrack work adjust 15
 devtrack work stop
 devtrack work report
 devtrack eod generate

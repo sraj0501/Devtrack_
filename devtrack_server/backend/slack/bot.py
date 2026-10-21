@@ -62,7 +62,7 @@ class SlackBot:
             channel = event.get("channel", "")
             if not self.is_allowed(channel):
                 return
-            # Strip the mention text (e.g. "<@UBOT> workstatus")
+            # Strip the mention text (e.g. "<@UBOT> workreport")
             text = event.get("text", "")
             parts = text.split(None, 1)
             subtext = parts[1].strip() if len(parts) > 1 else "help"

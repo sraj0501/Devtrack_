@@ -46,7 +46,6 @@ class ActivitySummary:
     ticket_id: str
     status: str
     description: str
-    time_spent: float
     source: str  # 'commit', 'manual', 'timer'
 
 
@@ -55,7 +54,6 @@ class DailyReport:
     """Complete daily report data"""
     date: datetime
     activities: List[ActivitySummary]
-    total_hours: float
     projects_worked: List[str]
     tickets_updated: List[str]
     completed_count: int
@@ -137,52 +135,27 @@ class EmailReporter:
                     ticket_id=row.get("ticket_id") or "",
                     status=row.get("status") or "in_progress",
                     description=row.get("update_text") or "",
-                    time_spent=float(row.get("time_estimate") or 0),
                     source=row.get("source") or "manual",
                 ))
             return activities
 
         try:
             with get_engine().connect() as conn:
-                # Query task updates for the day (schema: Go devtrack uses timestamp,
-                # project, ticket_id, status, update_text; no time_estimate/source -
-                # use 0 and 'manual')
-                columns = [
-                    r[1] for r in conn.execute(text("PRAGMA table_info(task_updates)")).fetchall()
-                ]
-                has_time_estimate = "time_estimate" in columns
-                has_source = "source" in columns
-
-                if has_time_estimate and has_source:
-                    query = text(
-                        """
-                        SELECT timestamp, project, ticket_id, status, update_text,
-                               time_estimate, source
-                        FROM task_updates
-                        WHERE timestamp >= :start AND timestamp <= :end
-                        ORDER BY timestamp ASC
-                        """
-                    )
-                else:
-                    query = text(
-                        """
-                        SELECT timestamp, project, ticket_id, status, update_text
-                        FROM task_updates
-                        WHERE timestamp >= :start AND timestamp <= :end
-                        ORDER BY timestamp ASC
-                        """
-                    )
+                # Read work descriptions and activity timestamps only.
+                query = text("""
+                    SELECT timestamp, project, ticket_id, status, update_text
+                    FROM task_updates
+                    WHERE timestamp >= :start AND timestamp <= :end
+                    ORDER BY timestamp ASC
+                """)
 
                 rows = conn.execute(
                     query, {"start": start_of_day.isoformat(), "end": end_of_day.isoformat()}
                 ).fetchall()
 
                 for row in rows:
-                    if has_time_estimate and has_source:
-                        timestamp_str, project, ticket_id, status, description, time_est, source = row
-                    else:
-                        timestamp_str, project, ticket_id, status, description = row
-                        time_est, source = 0, "manual"
+                    timestamp_str, project, ticket_id, status, description = row
+                    source = "manual"
 
                     activities.append(ActivitySummary(
                         timestamp=datetime.fromisoformat(timestamp_str),
@@ -190,7 +163,6 @@ class EmailReporter:
                         ticket_id=ticket_id or "",
                         status=status or "in_progress",
                         description=description or "",
-                        time_spent=float(time_est or 0),
                         source=source or "manual"
                     ))
 
@@ -215,7 +187,6 @@ class EmailReporter:
         activities = self.get_daily_activities(date)
         
         # Calculate statistics
-        total_hours = sum(act.time_spent for act in activities)
         projects_worked = list(set(act.project for act in activities if act.project))
         tickets_updated = list(set(act.ticket_id for act in activities if act.ticket_id))
         
@@ -226,7 +197,6 @@ class EmailReporter:
         return DailyReport(
             date=date,
             activities=activities,
-            total_hours=total_hours,
             projects_worked=projects_worked,
             tickets_updated=tickets_updated,
             completed_count=completed_count,
@@ -265,7 +235,6 @@ class EmailReporter:
         # Summary section
         lines.append("SUMMARY")
         lines.append("-" * 70)
-        lines.append(f"Total Hours Logged: {report.total_hours:.1f}h")
         lines.append(f"Tasks Completed: {report.completed_count}")
         lines.append(f"Tasks In Progress: {report.in_progress_count}")
         if report.blocked_count > 0:
@@ -295,7 +264,7 @@ class EmailReporter:
                     }.get(act.status, '•')
                     
                     ticket_str = f"[{act.ticket_id}] " if act.ticket_id else ""
-                    time_str = f" ({act.time_spent:.1f}h)" if act.time_spent > 0 else ""
+                    time_str = ""
                     
                     lines.append(f"  {status_emoji} {ticket_str}{act.description}{time_str}")
         
@@ -314,7 +283,6 @@ class EmailReporter:
         
         # Quick summary
         lines.append("Quick Summary:")
-        lines.append(f"⏱️  {report.total_hours:.1f} hours logged today")
         lines.append(f"✅ {report.completed_count} tasks completed")
         if report.in_progress_count > 0:
             lines.append(f"🔄 {report.in_progress_count} tasks in progress")
@@ -361,7 +329,6 @@ class EmailReporter:
         lines.append("STATISTICS")
         lines.append("-" * 70)
         lines.append(f"Total Activities: {len(report.activities)}")
-        lines.append(f"Total Hours: {report.total_hours:.2f}h")
         lines.append(f"Projects: {len(report.projects_worked)}")
         lines.append(f"Tickets: {len(report.tickets_updated)}")
         lines.append(f"Completed: {report.completed_count}")
@@ -383,8 +350,6 @@ class EmailReporter:
                     lines.append(f"   Ticket: {act.ticket_id}")
                 lines.append(f"   Status: {status_str}")
                 lines.append(f"   Description: {act.description}")
-                if act.time_spent > 0:
-                    lines.append(f"   Time: {act.time_spent:.1f}h")
                 lines.append(f"   Source: {act.source}")
         
         lines.append("")
@@ -478,7 +443,6 @@ class EmailReporter:
         
         <div class="summary">
             <h2>Summary</h2>
-            <div class="summary-item">⏱️ <strong>Total Hours:</strong> {report.total_hours:.1f}h</div>
             <div class="summary-item">✅ <strong>Completed:</strong> {report.completed_count} tasks</div>
             <div class="summary-item">🔄 <strong>In Progress:</strong> {report.in_progress_count} tasks</div>
 """
@@ -522,7 +486,7 @@ class EmailReporter:
                 }.get(act.status, '•')
                 
                 ticket_str = f'<strong>[{act.ticket_id}]</strong> ' if act.ticket_id else ''
-                time_str = f' <em>({act.time_spent:.1f}h)</em>' if act.time_spent > 0 else ''
+                time_str = ""
                 
                 html += f"""
             <div class="activity">

@@ -209,12 +209,12 @@ class DailyReportGenerator:
         activities_text = self._format_activities_for_ai(report)
         
         prompt = f"""Analyze this developer's daily work activities and provide structured insights.
+Do not estimate or report time spent, work durations, or hours worked.
 
 ACTIVITIES:
 {activities_text}
 
 STATISTICS:
-- Total Hours: {report.total_hours:.1f}
 - Tasks Completed: {report.completed_count}
 - Tasks In Progress: {report.in_progress_count}
 - Tasks Blocked: {report.blocked_count}
@@ -271,9 +271,8 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
         for act in report.activities:
             time_str = act.timestamp.strftime('%I:%M %p')
             ticket = f"[{act.ticket_id}] " if act.ticket_id else ""
-            hours = f" ({act.time_spent:.1f}h)" if act.time_spent > 0 else ""
             status = act.status.replace("_", " ").title()
-            lines.append(f"- {time_str}: {ticket}{act.description}{hours} [{status}]")
+            lines.append(f"- {time_str}: {ticket}{act.description} [{status}]")
         return "\n".join(lines)
     
     def _parse_ai_response(self, response: str) -> Optional[Dict[str, Any]]:
@@ -383,7 +382,6 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
         
         # Summary section
         lines.append("  ┌─ SUMMARY ─────────────────────────────────────────────────────────┐")
-        lines.append(f"  │  ⏱️  Total Hours:     {base.total_hours:.1f}h")
         lines.append(f"  │  ✅ Completed:       {base.completed_count} tasks")
         lines.append(f"  │  🔄 In Progress:     {base.in_progress_count} tasks")
         if base.blocked_count > 0:
@@ -457,8 +455,7 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
                     status_icon = {"completed": "✓", "in_progress": "→", "blocked": "✗"}.get(act.status, "•")
                     ticket = f"[{act.ticket_id}] " if act.ticket_id else ""
                     desc = act.description[:50] if act.description else ""
-                    time_str = f" ({act.time_spent:.1f}h)" if act.time_spent > 0 else ""
-                    lines.append(f"  │     {status_icon} {ticket}{desc}{time_str}")
+                    lines.append(f"  │     {status_icon} {ticket}{desc}")
             
             lines.append("  └────────────────────────────────────────────────────────────────────┘")
         
@@ -541,7 +538,6 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
         # Summary
         lines.append("## Summary")
         lines.append("")
-        lines.append(f"- **Total Hours:** {base.total_hours:.1f}h")
         lines.append(f"- **Completed:** {base.completed_count} tasks")
         lines.append(f"- **In Progress:** {base.in_progress_count} tasks")
         if base.blocked_count > 0:
@@ -600,8 +596,7 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
                 for act in activities:
                     status = {"completed": "✅", "in_progress": "🔄", "blocked": "🚫"}.get(act.status, "•")
                     ticket = f"`{act.ticket_id}` " if act.ticket_id else ""
-                    time_str = f" *({act.time_spent:.1f}h)*" if act.time_spent > 0 else ""
-                    lines.append(f"- {status} {ticket}{act.description}{time_str}")
+                    lines.append(f"- {status} {ticket}{act.description}")
                 lines.append("")
         
         # Footer
@@ -621,7 +616,6 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
             "style": report.report_style.value,
             "is_ai_enhanced": report.is_ai_enhanced,
             "summary": {
-                "total_hours": report.base_report.total_hours,
                 "completed_count": report.base_report.completed_count,
                 "in_progress_count": report.base_report.in_progress_count,
                 "blocked_count": report.base_report.blocked_count,
@@ -635,7 +629,6 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
                     "ticket_id": act.ticket_id,
                     "status": act.status,
                     "description": act.description,
-                    "time_spent": act.time_spent,
                     "source": act.source
                 }
                 for act in report.base_report.activities
@@ -677,7 +670,6 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
         """Generate a brief summary of the report for database storage."""
         base = report.base_report
         summary_parts = [
-            f"Hours: {base.total_hours:.1f}",
             f"Tasks: {len(base.activities)}",
             f"Done: {base.completed_count}",
             f"Projects: {', '.join(base.projects_worked[:3])}"
@@ -718,7 +710,7 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
                 "format": output_format.value,
                 "content": content,
                 "summary": summary,
-                "total_hours": base.total_hours,
+                "total_hours": 0,
                 "task_count": len(base.activities),
                 "completed_count": base.completed_count,
                 "projects_count": len(base.projects_worked),
@@ -779,7 +771,6 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
                     "report_type": row["report_type"],
                     "format": row["format"],
                     "summary": row["summary"],
-                    "total_hours": row["total_hours"],
                     "task_count": row["task_count"],
                     "completed_count": row["completed_count"],
                     "projects_count": row["projects_count"],
@@ -880,7 +871,7 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
         lines.append("┌─ Report Preview ─────────────────────────┐")
         lines.append(f"│ 📅 {base.date.strftime('%A, %B %d, %Y'):<35}│")
         lines.append("├──────────────────────────────────────────┤")
-        lines.append(f"│ ⏱️  Hours: {base.total_hours:<5.1f}  ✅ Done: {base.completed_count:<3}    │")
+        lines.append(f"Completed: {base.completed_count}")
         lines.append(f"│ 📁 Projects: {len(base.projects_worked):<3}  📝 Tasks: {len(base.activities):<3}  │")
         
         if report.is_ai_enhanced and report.ai_insights:
@@ -938,7 +929,6 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
             current_date += timedelta(days=1)
         
         # Aggregate statistics
-        total_hours = sum(r.base_report.total_hours for r in daily_reports)
         total_completed = sum(r.base_report.completed_count for r in daily_reports)
         total_in_progress = sum(r.base_report.in_progress_count for r in daily_reports)
         total_blocked = sum(r.base_report.blocked_count for r in daily_reports)
@@ -966,7 +956,6 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
         daily_breakdown = [
             {
                 "date": r.base_report.date.strftime("%a %m/%d"),
-                "hours": r.base_report.total_hours,
                 "completed": r.base_report.completed_count,
                 "activities": len(r.base_report.activities)
             }
@@ -977,14 +966,13 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
         ai_insights = None
         if include_ai and self.check_ollama_available() and all_activities:
             ai_insights = self._generate_weekly_ai_insights(
-                daily_reports, total_hours, total_completed, all_projects
+                daily_reports, total_completed, all_projects
             )
         
         return WeeklyReport(
             week_start=week_start,
             week_end=week_end_date,
             daily_reports=daily_reports,
-            total_hours=total_hours,
             total_completed=total_completed,
             total_in_progress=total_in_progress,
             total_blocked=total_blocked,
@@ -999,7 +987,6 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
     def _generate_weekly_ai_insights(
         self,
         daily_reports: List[EnhancedReport],
-        total_hours: float,
         total_completed: int,
         projects: List[str]
     ) -> Optional[AIInsights]:
@@ -1011,14 +998,13 @@ Keep it professional and constructive. Respond ONLY with valid JSON."""
             if r.base_report.activities:
                 day_name = r.base_report.date.strftime('%A')
                 summary_parts.append(
-                    f"{day_name}: {r.base_report.total_hours:.1f}h, "
                     f"{r.base_report.completed_count} completed"
                 )
         
         prompt = f"""Analyze this developer's weekly work summary and provide insights.
+Do not estimate or report time spent, work durations, or hours worked.
 
 WEEKLY STATISTICS:
-- Total Hours: {total_hours:.1f}
 - Tasks Completed: {total_completed}
 - Projects: {', '.join(projects)}
 
@@ -1103,7 +1089,6 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         
         # Summary
         lines.append("  ┌─ WEEKLY SUMMARY ──────────────────────────────────────────────────┐")
-        lines.append(f"  │  ⏱️  Total Hours:     {report.total_hours:.1f}h")
         lines.append(f"  │  ✅ Tasks Completed: {report.total_completed}")
         lines.append(f"  │  🔄 In Progress:     {report.total_in_progress}")
         lines.append(f"  │  📁 Projects:        {len(report.projects_worked)}")
@@ -1113,14 +1098,9 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         
         # Daily breakdown chart
         lines.append("  ┌─ DAILY BREAKDOWN ─────────────────────────────────────────────────┐")
-        max_hours = max((d["hours"] for d in report.daily_breakdown), default=8)
-        bar_width = 30
-        
         for day in report.daily_breakdown:
-            bar_len = int((day["hours"] / max(max_hours, 1)) * bar_width) if day["hours"] > 0 else 0
-            bar = "█" * bar_len + "░" * (bar_width - bar_len)
-            lines.append(f"  │  {day['date']}: {bar} {day['hours']:.1f}h ({day['completed']} done)")
-        
+            lines.append(f"  │  {day['date']}: {day['completed']} completed; {day['activities']} activities")
+
         lines.append("  └────────────────────────────────────────────────────────────────────┘")
         lines.append("")
         
@@ -1173,7 +1153,6 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         lines.append("")
         lines.append("| Metric | Value |")
         lines.append("|--------|-------|")
-        lines.append(f"| Total Hours | {report.total_hours:.1f}h |")
         lines.append(f"| Tasks Completed | {report.total_completed} |")
         lines.append(f"| In Progress | {report.total_in_progress} |")
         lines.append(f"| Projects | {len(report.projects_worked)} |")
@@ -1183,10 +1162,10 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         # Daily breakdown
         lines.append("## Daily Breakdown")
         lines.append("")
-        lines.append("| Day | Hours | Completed | Activities |")
-        lines.append("|-----|-------|-----------|------------|")
+        lines.append("| Day | Completed | Activities |")
+        lines.append("|-----|-----------|------------|")
         for day in report.daily_breakdown:
-            lines.append(f"| {day['date']} | {day['hours']:.1f}h | {day['completed']} | {day['activities']} |")
+            lines.append(f"| {day['date']} | {day['completed']} | {day['activities']} |")
         lines.append("")
         
         # AI Insights
@@ -1235,7 +1214,6 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
             "generated_at": report.generated_at.isoformat(),
             "is_ai_enhanced": report.is_ai_enhanced,
             "summary": {
-                "total_hours": report.total_hours,
                 "total_completed": report.total_completed,
                 "total_in_progress": report.total_in_progress,
                 "total_blocked": report.total_blocked,
@@ -1338,10 +1316,6 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         
         <div class="stats">
             <div class="stat-card">
-                <div class="stat-value">{report.total_hours:.1f}h</div>
-                <div>Total Hours</div>
-            </div>
-            <div class="stat-card">
                 <div class="stat-value">{report.total_completed}</div>
                 <div>Completed</div>
             </div>
@@ -1359,16 +1333,9 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         <div class="daily-chart">
 """
         
-        max_hours = max((d["hours"] for d in report.daily_breakdown), default=8)
         for day in report.daily_breakdown:
-            width_pct = int((day["hours"] / max(max_hours, 1)) * 100) if day["hours"] > 0 else 0
-            html += f"""
-            <div class="day-row">
-                <span class="day-label">{day['date']}</span>
-                <div class="day-bar" style="width: {width_pct}%"></div>
-                <span>{day['hours']:.1f}h ({day['completed']} done)</span>
-            </div>
-"""
+            html += f"<p>{day['date']}: {day['completed']} completed; {day['activities']} activities</p>"
+
         
         html += """
         </div>
@@ -1425,7 +1392,6 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
             content = self.format_weekly_report(report, output_format)
             summary = (
                 f"Week: {report.week_start.strftime('%Y-%m-%d')} to {report.week_end.strftime('%Y-%m-%d')} | "
-                f"Hours: {report.total_hours:.1f} | "
                 f"Tasks: {report.total_completed} completed | "
                 f"Projects: {len(report.projects_worked)}"
             )
@@ -1436,7 +1402,7 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
                 "format": output_format.value,
                 "content": content,
                 "summary": summary,
-                "total_hours": report.total_hours,
+                "total_hours": 0,
                 "task_count": report.total_completed + report.total_in_progress + report.total_blocked,
                 "completed_count": report.total_completed,
                 "projects_count": len(report.projects_worked),
@@ -1589,6 +1555,7 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
         self,
         target_date: Optional[str] = None,
         commit_rows: Optional[List[Dict[str, Any]]] = None,
+        include_ai: bool = True,
     ) -> str:
         """Generate an EOD report narrative by querying today's commits from the
         triggers table, grouping by ticket_id, and producing a per-ticket
@@ -1632,7 +1599,10 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
 
             # Per-ticket narrative sections
             for ticket_id, messages in grouped.items():
-                narrative = self._generate_ticket_narrative(ticket_id, messages)
+                narrative = (
+                    self._generate_ticket_narrative(ticket_id, messages)
+                    if include_ai else "\n".join(f"- {message}" for message in messages if message)
+                )
                 sections.append(f"## {ticket_id}\n\n{narrative}")
 
             # Unlinked commits section
@@ -1735,7 +1705,7 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
                 f"Summarize what was accomplished on ticket {ticket_id} today "
                 f"based on these commit messages:\n{joined}\n\n"
                 "Write 1-3 sentences, first person, past tense. "
-                "Be concise and professional."
+                "Be concise and professional. Do not estimate or report time spent, work durations, or hours worked."
             )
 
             prompt = _inject_style(
@@ -1768,58 +1738,16 @@ Be constructive and highlight patterns. Respond ONLY with valid JSON."""
             return bullet_fallback
 
     def get_productivity_trend(self, days: int = 7) -> Dict[str, Any]:
-        """
-        Calculate productivity trend over recent days.
-
-        Args:
-            days: Number of days to analyze
-
-        Returns:
-            Dictionary with trend data
-        """
-        daily_data = []
-        current = datetime.now()
-        
+        """Compatibility name for an activity summary; no time or productivity ranking."""
+        daily = []
         for i in range(days):
-            date = current - timedelta(days=i)
-            report = self.generate_report(date=date, include_ai=False)
-            
-            if report.base_report.activities:
-                daily_data.append({
-                    "date": date.strftime('%Y-%m-%d'),
-                    "day": date.strftime('%a'),
-                    "hours": report.base_report.total_hours,
-                    "completed": report.base_report.completed_count,
-                    "activities": len(report.base_report.activities)
-                })
-        
-        if not daily_data:
-            return {"trend": "no_data", "daily": []}
-        
-        # Calculate averages and trends
-        avg_hours = sum(d["hours"] for d in daily_data) / len(daily_data)
-        avg_completed = sum(d["completed"] for d in daily_data) / len(daily_data)
-        
-        # Simple trend: compare first half to second half
-        mid = len(daily_data) // 2
-        first_half_hours = sum(d["hours"] for d in daily_data[:mid]) / max(mid, 1)
-        second_half_hours = sum(d["hours"] for d in daily_data[mid:]) / max(len(daily_data) - mid, 1)
-        
-        if second_half_hours > first_half_hours * 1.1:
-            trend = "improving"
-        elif second_half_hours < first_half_hours * 0.9:
-            trend = "declining"
-        else:
-            trend = "stable"
-        
-        return {
-            "trend": trend,
-            "avg_hours": round(avg_hours, 1),
-            "avg_completed": round(avg_completed, 1),
-            "total_hours": round(sum(d["hours"] for d in daily_data), 1),
-            "total_completed": sum(d["completed"] for d in daily_data),
-            "daily": list(reversed(daily_data))
-        }
+            day = datetime.now() - timedelta(days=i)
+            report = self.generate_report(date=day, include_ai=False).base_report
+            if report.activities:
+                daily.append({"date": day.strftime('%Y-%m-%d'), "day": day.strftime('%a'),
+                              "completed": report.completed_count, "activities": len(report.activities)})
+        return {"trend": "not_assessed" if daily else "no_data", "daily": list(reversed(daily)),
+                "total_completed": sum(d["completed"] for d in daily)}
 
 
 @dataclass
@@ -1828,7 +1756,6 @@ class WeeklyReport:
     week_start: datetime
     week_end: datetime
     daily_reports: List[EnhancedReport]
-    total_hours: float
     total_completed: int
     total_in_progress: int
     total_blocked: int
@@ -1965,51 +1892,12 @@ Examples:
         }.get(trend["trend"], "❓ Unknown")
         
         print(f"Trend: {trend_icon}")
-        print(f"Avg Hours/Day: {trend['avg_hours']:.1f}h")
-        print(f"Avg Completed/Day: {trend['avg_completed']:.1f}")
-        print(f"Total Hours: {trend['total_hours']:.1f}h")
         print(f"Total Completed: {trend['total_completed']}")
         print()
         print("Daily Breakdown:")
         
-        max_hours = max((d["hours"] for d in trend["daily"]), default=8)
         for day in trend["daily"]:
-            bar_len = int((day["hours"] / max(max_hours, 1)) * 20) if day["hours"] > 0 else 0
-            bar = "█" * bar_len + "░" * (20 - bar_len)
-            print(f"  {day['day']} {day['date']}: {bar} {day['hours']:.1f}h")
-        
-        return 0
-    
-    # -------------------------------------------------------------------------
-    # DAILY REPORT COMMANDS
-    # -------------------------------------------------------------------------
-    
-    # Parse date
-    date = None
-    if args.date:
-        try:
-            date = datetime.strptime(args.date, '%Y-%m-%d')
-        except ValueError:
-            print("Invalid date format. Use YYYY-MM-DD")
-            return 1
-    
-    # Generate report
-    style = ReportStyle(args.style)
-    report = generator.generate_report(date, style=style, include_ai=not args.no_ai)
-    
-    if args.command == "generate" or args.command == "preview":
-        output_format = OutputFormat(args.format)
-        print(generator.format_report(report, output_format))
-    
-    elif args.command == "save":
-        output_format = OutputFormat(args.format if args.format != "terminal" else "text")
-        path = generator.save_report(report, output_format, args.output)
-        print(f"✓ Report saved to {path}")
-    
-    elif args.command == "json":
-        print(generator.format_report(report, OutputFormat.JSON))
-    
-    return 0
+            print(f"  {day['date']}: {day['activities']} activities")
 
 
 if __name__ == "__main__":

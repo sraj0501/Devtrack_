@@ -380,8 +380,6 @@ class DevTrackTUI:
             elif status in ["blocked"]:
                 status = f"{Colors.RED}{status}{Colors.RESET}"
             content["Status"] = status
-        if parsed_task.get("time_spent"):
-            content["Time Spent"] = parsed_task["time_spent"]
         if parsed_task.get("description"):
             content["Description"] = parsed_task["description"][:50] + "..." if len(parsed_task.get("description", "")) > 50 else parsed_task.get("description", "")
         if parsed_task.get("confidence"):
@@ -490,7 +488,6 @@ if __name__ == "__main__":
         "ticket_id": "DT-123",
         "action_verb": "fixed",
         "status": "completed",
-        "time_spent": "2h",
         "description": "Fixed the login authentication bug",
         "confidence": 0.85
     })

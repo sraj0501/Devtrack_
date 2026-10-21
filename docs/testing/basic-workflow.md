@@ -1,0 +1,52 @@
+# Basic workflow test plan
+
+Scope: automatic Git capture, ticket association, persisted work, and EOD reports. No time
+tracking. Sage, communication-learning repairs, and platform parity remain on hold.
+
+## 1. Qualify the packaged development build
+
+- Wait for the client/server CI and rolling development release for the pushed commit to pass.
+- Download that build, verify its checksum and reported commit, and pair it with the matching
+  server source. Record OS, version, commit, timezone, and configuration without secrets.
+- Run the isolated Linux container scenarios with PostgreSQL using the packaged binary rather
+  than the source-built binary: rapid commits, branch switches, server outage/recovery, restart,
+  on-demand EOD, scheduled EOD, queue edit/reject, and colliding local/server action IDs.
+- Compare expected commit hashes against persisted records: every hash exactly once, correct
+  ticket or explicitly unlinked, and every expected work item represented in the report.
+- Confirm retired time commands reject requests, new reports contain no duration metrics, and
+  historical duration tables receive no new records or synchronization.
+
+## 2. Run a native Windows rehearsal
+
+- Preserve the current executable, configuration, and local database for rollback. Upgrade the
+  test installation to the qualified development build and verify the actual running version.
+- Use a disposable Git repository and test tickets. Exercise canonical ticket branches,
+  explicit ticket context, unlinked work, rapid commits, branch switching, and daemon restart.
+- Stop only the server, make commits, restore it, and verify local recording and recovered EOD.
+  Separately stop the daemon, make a commit, and restart it: document whether catch-up occurs;
+  this behavior has not been qualified and must not be assumed.
+- Generate and inspect an EOD report. Confirm status/show/history agree and pending actions can
+  be edited or rejected without changing unrelated local actions.
+- Exercise the configured scheduled EOD across the local date boundary. Verify the intended
+  reporting date, commit coverage, and absence of duplicate scheduled actions.
+
+## 3. Check real delivery with a controlled destination
+
+- Configure one designated test ticket/project and one test email recipient, using local secrets.
+- Generate one ticket update and one EOD delivery action. Inspect destinations and content in
+  the pending queue, then explicitly approve these controlled test actions.
+- Verify receipt in the destination, matching content, final queue status, and no duplicate
+  delivery on a repeated approval or restart. Verify rejection prevents delivery.
+- Check AI-written report accuracy with the intended LLM provider; retain the unavailable-model
+  fallback check as well.
+
+## 4. Complete one representative workday
+
+Run the qualified installation during normal Git work. Keep a simple expected commit/ticket list
+and compare it with the scheduled EOD. Record missing or duplicate work, wrong ticket links,
+incorrect report content, delivery failures, and restart/outage behavior.
+
+Accept the basics when the required scenarios have no missing or duplicate commits, correct
+ticket provenance, complete readable reports, successful controlled delivery, and no new time
+tracking. Resolve any daemon-off catch-up limitation before relying on capture while stopped.
+Keep an evidence record of the tested commit and results before starting Sage qualification.

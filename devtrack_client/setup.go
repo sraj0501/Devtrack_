@@ -733,7 +733,6 @@ func generateEnvContent(cfg *SetupConfig) string {
 	b.WriteString("## WORK SESSION TRACKING\n")
 	b.WriteString("EOD_REPORT_HOUR=18\n")
 	b.WriteString("EOD_REPORT_EMAIL=" + cfg.UserEmail + "\n")
-	b.WriteString("WORK_SESSION_AUTO_STOP_MINUTES=0\n\n")
 
 	b.WriteString("## PROJECT PLANNING\n")
 	b.WriteString("NEWPROJECT_ENABLED=true\n")

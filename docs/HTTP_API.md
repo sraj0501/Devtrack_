@@ -38,12 +38,8 @@ The normal payload contains `timestamp`, `interval_mins`, and `trigger_count`, w
 workspace-routing fields. An empty JSON object is accepted for compatibility. A successful response
 includes `status` and `trigger_count`.
 
-### Work sessions
-
-| Method and path | Request | Successful response |
-|---|---|---|
-| `POST /trigger/work_session_start` | `{"session_id":42,"ticket_ref":"GH-123"}` | status plus `session_id` |
-| `POST /trigger/work_session_stop` | `{"session_id":42}` | status plus `session_id` |
+Work-duration session endpoints have been removed. Active-ticket selection remains local to the
+client; it does not start a timer or record durations.
 
 ## Boardroom
 
@@ -63,6 +59,19 @@ reports the number accepted. `POST /queue/execute_staged` carries the full local
 identity and returns `posted` or an error state. Both routes require the API-key header when server
 authentication is enabled.
 
+`GET /queue/history` reads server-owned queue rows across all statuses, ordered by creation time
+descending with ID as the tie breaker. Parameters: `action_type` (optional exact match), `hours`
+(default 24; 0 means all history), `limit` (1–1000, default 1000), and `offset` (default 0).
+Response: `{"actions":[<complete queue rows>]}`. Unavailable persistence returns HTTP 503 rather
+than an empty success. The CLI pages through history and labels these independent PostgreSQL
+identities `server:<id>`; bare numeric IDs continue to identify local SQLite actions.
+
+`POST /queue/review` accepts `{"action_id":123,"operation":"reject"}` or
+`{"action_id":123,"operation":"edit","payload":{"narrative":"..."}}`. Edits preserve pending
+status. Both operations require the row still to be pending; otherwise HTTP 409. Approval uses
+the existing `POST /queue/execute` atomic claim and execution path. These authenticated reads
+and review operations do not enable client-event synchronization.
+
 ## End-of-day report
 
 `POST /reports/eod` accepts `email`, `date`, `workspace`, and an optional `commits` array. Each
@@ -71,6 +80,11 @@ client includes only the selected day's local commit summaries when the user run
 enables the EOD scheduler. This makes reports work in PostgreSQL-backed Managed mode without
 silently enabling continuous client-event synchronization. The response contains `output`,
 `success`, and the staged `action_id` when queue staging is available.
+
+`devtrack eod status` and `devtrack eod show` consult server history as well as legacy local
+report actions. The most recently created report wins, including rejected or posted reports.
+An unavailable server is reported explicitly; an existing local report remains readable with
+a warning. Generating a report prints its qualified queue ID for subsequent review.
 
 Changes to a request or response shape must update both contract-test suites and this document in
 the same change.

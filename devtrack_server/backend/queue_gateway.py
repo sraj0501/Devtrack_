@@ -257,6 +257,28 @@ class QueueGateway:
             row = conn.execute(stmt).mappings().fetchone()
         return dict(row) if row else None
 
+    def history(self, action_type: str = "", hours: int = 24, limit: int = 1000, offset: int = 0) -> list[dict]:
+        """Read server-owned queue history, newest creation first (not expiry)."""
+        table = pending_actions_table
+        stmt = select(table)
+        if action_type:
+            stmt = stmt.where(table.c.action_type == action_type)
+        if hours:
+            cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%S")
+            stmt = stmt.where(table.c.created_at >= cutoff)
+        stmt = stmt.order_by(table.c.created_at.desc(), table.c.id.desc()).limit(limit).offset(offset)
+        with _init().connect() as conn:
+            return [dict(row) for row in conn.execute(stmt).mappings().all()]
+
+    def edit_pending(self, action_id: int, payload: dict) -> bool:
+        """Editing preserves the pending review boundary and cannot race execution."""
+        with _init().begin() as conn:
+            result = conn.execute(pending_actions_table.update().where(
+                pending_actions_table.c.id == action_id,
+                pending_actions_table.c.status == "pending",
+            ).values(payload=json.dumps(payload)))
+            return result.rowcount == 1
+
     def close(self) -> None:
         """No-op — kept for backward compatibility with callers that call
         ``gw.close()`` (e.g. ``webhook_server.py``'s ``/queue/pending``

@@ -5,80 +5,38 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
 )
 
-// handleWork dispatches devtrack work <subcommand>
+// Work selects ticket context only. It never starts a timer or a work session.
 func (cli *CLI) handleWork() error {
 	if len(os.Args) < 3 {
 		printWorkUsage()
 		return nil
 	}
-
-	sub := os.Args[2]
-	switch sub {
-	case "start":
-		return cli.handleWorkStart()
-	case "stop":
-		return cli.handleWorkStop()
-	case "adjust":
-		return cli.handleWorkAdjust()
-	case "status":
-		return cli.handleWorkStatus()
+	switch os.Args[2] {
+	case "start", "stop", "status":
+		return cli.handleWorkTicket(os.Args[2])
 	case "report":
 		return cli.handleWorkReport()
 	default:
-		fmt.Printf("Unknown work subcommand: %s\n\n", sub)
-		printWorkUsage()
-		return fmt.Errorf("unknown work subcommand: %s", sub)
+		return fmt.Errorf("unknown work subcommand %q; use start <ticket-ref>, stop, status, or report", os.Args[2])
 	}
 }
 
 func printWorkUsage() {
 	fmt.Println(`Usage: devtrack work <subcommand>
 
-Subcommands:
-  start [ticket-ref]          Start a work session (optionally tied to a ticket/PR)
-  stop                        Stop the active work session (auto-measures duration)
-  adjust <minutes>            Override time on the active or last session
-  status                      Show the active session and today's completed sessions
-  report [--email addr]       Generate the EOD report; optionally email it`)
+  start <ticket-ref>       Select the active ticket for this repository
+  stop                    Clear the active ticket selection
+  status                  Show the active ticket selection
+  report [--email addr]   Generate a commit-based EOD report`)
 }
 
-// handleWorkStart starts a new work session
-func (cli *CLI) handleWorkStart() error {
-	db, err := NewDatabase()
-	if err != nil {
-		return fmt.Errorf("database error: %w", err)
-	}
-
-	// Check for already-active session
-	defer db.Close()
-	active, err := db.GetActiveWorkSession()
-	if err != nil {
-		return fmt.Errorf("could not check active session: %w", err)
-	}
-	if active != nil {
-		fmt.Printf("⚠️  A session is already active (started %s", active.StartedAt)
-		if active.TicketRef != "" {
-			fmt.Printf(", ticket: %s", active.TicketRef)
-		}
-		fmt.Println(")")
-		fmt.Println("Run `devtrack work stop` first.")
-		return nil
-	}
-
-	// Optional ticket ref: devtrack work start AUTH-42
-	ticketRef := ""
-	if len(os.Args) >= 4 {
-		ticketRef = os.Args[3]
-	}
-
+func (cli *CLI) handleWorkTicket(operation string) error {
 	ws, err := currentTicketWorkspace()
 	if err != nil {
 		return err
@@ -88,247 +46,39 @@ func (cli *CLI) handleWorkStart() error {
 		return fmt.Errorf("resolve repository: %w", err)
 	}
 	repoPath := filepath.Clean(strings.TrimSpace(string(out)))
-	workspaceName := ws.Name
-	resolver, err := resolverForWorkspace(ws)
+	database, err := NewDatabase()
 	if err != nil {
 		return err
 	}
-	if ticketRef != "" && resolver.Resolve(ticket.ResolveInput{ActiveTicket: ticketRef}).TicketID != ticketRef {
-		return fmt.Errorf("ticket reference does not match workspace convention")
-	}
-
-	id, err := db.InsertWorkSession(ticketRef, repoPath, workspaceName)
-	if err != nil {
-		return fmt.Errorf("failed to start session: %w", err)
-	}
-
-	if ticketRef != "" {
-		if err := db.SetActiveTicket(workspaceName, repoPath, ticketRef, ticket.ResolverConfig{
+	defer database.Close()
+	switch operation {
+	case "start":
+		if len(os.Args) != 4 {
+			return fmt.Errorf("usage: devtrack work start <ticket-ref>")
+		}
+		ref := os.Args[3]
+		if err := database.SetActiveTicket(ws.Name, repoPath, ref, ticket.ResolverConfig{
 			TicketKey: ws.TicketKey, Kinds: ws.TicketKinds, BranchPattern: ws.TicketPattern,
 		}); err != nil {
 			return err
 		}
-	} else if err := db.ClearActiveTicket(workspaceName, repoPath); err != nil {
-		return err
-	}
-
-	msg := fmt.Sprintf("✅ Work session started (ID %d)", id)
-	if ticketRef != "" {
-		msg += fmt.Sprintf(" for %s", ticketRef)
-	}
-	fmt.Println(msg)
-	fmt.Println("   Run `devtrack work stop` when you're done.")
-	return nil
-}
-
-// handleWorkStop stops the active work session and records auto-measured duration
-func (cli *CLI) handleWorkStop() error {
-	db, err := NewDatabase()
-	if err != nil {
-		return fmt.Errorf("database error: %w", err)
-	}
-
-	defer db.Close()
-	active, err := db.GetActiveWorkSession()
-	if err != nil {
-		return fmt.Errorf("could not check active session: %w", err)
-	}
-	if active == nil {
-		// Automatic time closure does not revoke an explicit ticket selection.
-		// An explicit stop clears it even after the timed session was closed.
-		if ws, err := currentTicketWorkspace(); err == nil {
-			if out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output(); err == nil {
-				if err := db.ClearActiveTicket(ws.Name, filepath.Clean(strings.TrimSpace(string(out)))); err != nil {
-					return err
-				}
-			}
+		fmt.Printf("Active ticket: %s\n", ref)
+	case "stop":
+		if err := database.ClearActiveTicket(ws.Name, repoPath); err != nil {
+			return err
 		}
-		fmt.Println("No active work session found; current ticket override cleared when available.")
-		return nil
-	}
-
-	// Compute duration
-	startTime, err := time.Parse("2006-01-02 15:04:05", active.StartedAt)
-	if err != nil {
-		// Try RFC3339 fallback
-		startTime, err = time.Parse(time.RFC3339, active.StartedAt)
+		fmt.Println("Active ticket cleared.")
+	case "status":
+		ref, err := database.GetActiveTicket(ws.Name, repoPath)
 		if err != nil {
-			startTime = time.Now()
+			return err
+		}
+		if ref == "" {
+			fmt.Println("No active ticket selected.")
+		} else {
+			fmt.Printf("Active ticket: %s\n", ref)
 		}
 	}
-	durationMins := int(time.Since(startTime).Minutes())
-	durationMins = max(durationMins, 0)
-
-	endedAt := time.Now().Format(time.RFC3339Nano)
-	if err := db.EndWorkSession(active.ID, endedAt, durationMins); err != nil {
-		return fmt.Errorf("failed to stop session: %w", err)
-	}
-
-	if err := db.ClearActiveTicket(active.WorkspaceName, active.RepoPath); err != nil {
-		return err
-	}
-	hours := durationMins / 60
-	mins := durationMins % 60
-	durationStr := fmt.Sprintf("%dm", durationMins)
-	if hours > 0 {
-		durationStr = fmt.Sprintf("%dh %dm", hours, mins)
-	}
-
-	fmt.Printf("✅ Session stopped. Duration: %s", durationStr)
-	if active.TicketRef != "" {
-		fmt.Printf(" (ticket: %s)", active.TicketRef)
-	}
-	fmt.Println()
-	fmt.Println("   Tip: `devtrack work adjust <minutes>` to correct the recorded time.")
-	return nil
-}
-
-// handleWorkAdjust overrides the time on the most recent (or active) session
-func (cli *CLI) handleWorkAdjust() error {
-	if len(os.Args) < 4 {
-		fmt.Println("Usage: devtrack work adjust <minutes>")
-		return fmt.Errorf("missing minutes argument")
-	}
-
-	minutes, err := strconv.Atoi(os.Args[3])
-	if err != nil || minutes < 0 {
-		return fmt.Errorf("invalid minutes value: %s (must be a non-negative integer)", os.Args[3])
-	}
-
-	db, err := NewDatabase()
-	if err != nil {
-		return fmt.Errorf("database error: %w", err)
-	}
-
-	// Try active session first, then today's last session
-	defer db.Close()
-	active, err := db.GetActiveWorkSession()
-	if err != nil {
-		return fmt.Errorf("could not check active session: %w", err)
-	}
-
-	var targetID int64
-	if active != nil {
-		targetID = active.ID
-	} else {
-		today := time.Now().Format("2006-01-02")
-		sessions, err := db.GetWorkSessionsForDate(today)
-		if err != nil || len(sessions) == 0 {
-			fmt.Println("No active or recent session found to adjust.")
-			return nil
-		}
-		targetID = sessions[len(sessions)-1].ID
-	}
-
-	if err := db.AdjustWorkSessionTime(targetID, minutes); err != nil {
-		return fmt.Errorf("failed to adjust session: %w", err)
-	}
-
-	hours := minutes / 60
-	mins := minutes % 60
-	durationStr := fmt.Sprintf("%dm", minutes)
-	if hours > 0 {
-		durationStr = fmt.Sprintf("%dh %dm", hours, mins)
-	}
-	fmt.Printf("✅ Session %d time adjusted to %s (auto-measured time preserved in DB for audit).\n", targetID, durationStr)
-	return nil
-}
-
-// handleWorkStatus shows the active session and today's completed sessions
-func (cli *CLI) handleWorkStatus() error {
-	db, err := NewDatabase()
-	if err != nil {
-		return fmt.Errorf("database error: %w", err)
-	}
-
-	defer db.Close()
-	active, err := db.GetActiveWorkSession()
-	if err != nil {
-		return fmt.Errorf("could not check active session: %w", err)
-	}
-
-	if active != nil {
-		startTime, parseErr := time.Parse("2006-01-02 15:04:05", active.StartedAt)
-		if parseErr != nil {
-			startTime, parseErr = time.Parse(time.RFC3339Nano, active.StartedAt)
-		}
-		if parseErr != nil {
-			return parseErr
-		}
-		elapsed := int(time.Since(startTime).Minutes())
-		hours := elapsed / 60
-		mins := elapsed % 60
-		elapsedStr := fmt.Sprintf("%dm", elapsed)
-		if hours > 0 {
-			elapsedStr = fmt.Sprintf("%dh %dm", hours, mins)
-		}
-
-		fmt.Printf("🟢 Active session (ID %d) — running for %s\n", active.ID, elapsedStr)
-		if active.TicketRef != "" {
-			fmt.Printf("   Ticket: %s\n", active.TicketRef)
-		}
-		if active.RepoPath != "" && active.RepoPath != "." {
-			fmt.Printf("   Repo:   %s\n", active.RepoPath)
-		}
-		fmt.Println()
-	} else {
-		fmt.Println("⚪ No active session.")
-	}
-
-	today := time.Now().Format("2006-01-02")
-	sessions, err := db.GetWorkSessionsForDate(today)
-	if err != nil {
-		return fmt.Errorf("could not load today's sessions: %w", err)
-	}
-
-	completed := make([]WorkSessionRecord, 0)
-	for _, s := range sessions {
-		if s.EndedAt != nil {
-			completed = append(completed, s)
-		}
-	}
-
-	if len(completed) == 0 {
-		fmt.Println("No completed sessions today.")
-		return nil
-	}
-
-	fmt.Printf("Today's completed sessions (%d):\n", len(completed))
-	totalMins := 0
-	for _, s := range completed {
-		dur := 0
-		if s.AdjustedMinutes != nil {
-			dur = *s.AdjustedMinutes
-		} else if s.DurationMinutes != nil {
-			dur = *s.DurationMinutes
-		}
-		totalMins += dur
-
-		hours := dur / 60
-		mins := dur % 60
-		durationStr := fmt.Sprintf("%dm", dur)
-		if hours > 0 {
-			durationStr = fmt.Sprintf("%dh %dm", hours, mins)
-		}
-
-		ticketStr := s.TicketRef
-		if ticketStr == "" {
-			ticketStr = "(no ticket)"
-		}
-		adjNote := fmt.Sprintf(" [%s, confidence %.2f]", s.MeasurementSource, s.Confidence)
-		if s.AdjustedMinutes != nil {
-			adjNote += " [adjusted]"
-		}
-		fmt.Printf("  • %s  %s%s\n", durationStr+adjNote, ticketStr, "")
-	}
-	totalHours := totalMins / 60
-	totalMinsRem := totalMins % 60
-	totalStr := fmt.Sprintf("%dm", totalMins)
-	if totalHours > 0 {
-		totalStr = fmt.Sprintf("%dh %dm", totalHours, totalMinsRem)
-	}
-	fmt.Printf("  ─────────────────────────────\n")
-	fmt.Printf("  Total today: %s\n", totalStr)
 	return nil
 }
 

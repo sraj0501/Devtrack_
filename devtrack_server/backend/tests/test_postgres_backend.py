@@ -289,7 +289,6 @@ def test_synced_client_events_feed_server_readers(pg_engine):
     from backend.daily_report_generator import DailyReportGenerator
     from backend.db.client_event_store import persist_client_events
     from backend.email_reporter import EmailReporter
-    from backend.work_tracker.session_store import WorkSessionStore
 
     events = [
         {
@@ -322,22 +321,8 @@ def test_synced_client_events_feed_server_readers(pg_engine):
             },
             "updated_at": "2026-08-11 10:00:00",
         },
-        {
-            "event_id": "work_sessions:reader",
-            "table_name": "work_sessions",
-            "source_row_id": "203",
-            "revision": 1,
-            "payload": {
-                "id": 203,
-                "started_at": "2026-08-11 08:00:00",
-                "ended_at": None,
-                "ticket_ref": "TASK-114",
-                "commits": "[]",
-            },
-            "updated_at": "2026-08-11 10:00:00",
-        },
     ]
-    assert persist_client_events("reader-client", events, pg_engine) == 3
+    assert persist_client_events("reader-client", events, pg_engine) == 2
 
     generator = DailyReportGenerator.__new__(DailyReportGenerator)
     commit_rows = generator._query_commit_rows("2026-08-11")
@@ -345,7 +330,3 @@ def test_synced_client_events_feed_server_readers(pg_engine):
 
     activities = EmailReporter().get_daily_activities(datetime(2026, 8, 11))
     assert any(activity.ticket_id == "TASK-114" for activity in activities)
-
-    sessions = WorkSessionStore().get_sessions_for_date("2026-08-11")
-    assert any(session["id"] == 203 for session in sessions)
-    assert WorkSessionStore().get_active_session()["id"] == 203

@@ -1,11 +1,10 @@
 """
-Tests for backend/slack/handlers.py's cmd_health/cmd_workstart/cmd_vacation
+Tests for backend/slack/handlers.py's cmd_health/cmd_vacation
 -- Postgres backend epic (TASK-112, module 10 of 15).
 
-These were the module's three raw-sqlite3 call sites. All now delegate to
+These handlers delegate to
 shared, already-ported helpers:
   - cmd_health    -> backend.health_snapshots_store.get_recent_snapshots()
-  - cmd_workstart -> backend.work_tracker.session_store.WorkSessionStore.start_session()
   - cmd_vacation  -> backend.vacation.auto_responder.get_vacation_state()/set_vacation_state()
 
 No raw sqlite3 remains in slack/handlers.py.
@@ -110,31 +109,6 @@ class TestCmdHealth:
         assert "up" in msg
 
 
-class TestCmdWorkstart:
-    def test_starts_session(self, isolated_engine: Path):
-        from backend.slack.handlers import cmd_workstart
-
-        db_path = isolated_engine / "devtrack.db"
-        _make_work_sessions_table(db_path)
-
-        respond = MagicMock()
-        cmd_workstart("PROJ-1", respond, MagicMock())
-        msg = respond.call_args[0][0]
-        assert "started" in msg.lower()
-        assert "PROJ-1" in msg
-
-    def test_warns_if_already_active(self, isolated_engine: Path):
-        from backend.slack.handlers import cmd_workstart
-
-        db_path = isolated_engine / "devtrack.db"
-        _make_work_sessions_table(db_path)
-
-        respond = MagicMock()
-        cmd_workstart("", respond, MagicMock())
-        respond.reset_mock()
-        cmd_workstart("", respond, MagicMock())
-        msg = respond.call_args[0][0]
-        assert "already active" in msg.lower()
 
 
 class TestCmdVacation:
@@ -194,18 +168,6 @@ class TestSlackHandlersPostgresMode:
             monkeypatch.delenv("POSTGRES_URL", raising=False)
             reset_engine()
 
-    def test_workstart_reports_unavailable_in_postgres_mode(self, isolated_engine: Path, monkeypatch):
-        monkeypatch.setenv("POSTGRES_URL", "postgresql://fake/fake")
-        reset_engine()
-        try:
-            from backend.slack.handlers import cmd_workstart
-            respond = MagicMock()
-            cmd_workstart("", respond, MagicMock())
-            msg = respond.call_args[0][0]
-            assert "not available" in msg.lower()
-        finally:
-            monkeypatch.delenv("POSTGRES_URL", raising=False)
-            reset_engine()
 
     def test_vacation_on_reports_unavailable_in_postgres_mode(self, isolated_engine: Path, monkeypatch):
         monkeypatch.setenv("POSTGRES_URL", "postgresql://fake/fake")

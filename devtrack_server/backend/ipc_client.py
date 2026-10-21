@@ -340,7 +340,6 @@ def create_task_update_message(
     ticket_id: str,
     description: str,
     status: str,
-    time_spent: str,
     synced: bool = False,
     azure_work_item_id: Optional[int] = None,
     synced_platform: Optional[str] = None,
@@ -351,7 +350,6 @@ def create_task_update_message(
         "ticket_id": ticket_id,
         "description": description,
         "status": status,
-        "time_spent": time_spent,
         "synced": synced,
     }
     if azure_work_item_id is not None:

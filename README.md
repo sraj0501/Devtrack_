@@ -21,6 +21,7 @@ review.
 ## What DevTrack does
 
 - Observes commits without interrupting or replacing normal Git commands.
+- Current source reports completed work without tracking hours or time spent per task; this removal is not yet in the v3.2.0 release.
 - Maps ticket-named branches such as `feature/AUTH-42-refresh-token` to work items.
 - Builds reviewable ticket updates and end-of-day reports from the work already completed.
 - Keeps its client-side source of truth in local SQLite and uses Ollama by default for local AI.

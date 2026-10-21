@@ -76,6 +76,7 @@ def test_list_rows_preserves_server_owned_attribution(isolated_engine):
     [
         ("", [_event()], "client_id"),
         ("client-a", [{**_event(), "table_name": "logs"}], "unsupported"),
+        ("client-a", [{**_event(), "table_name": "work_sessions"}], "unsupported"),
         ("client-a", [{**_event(), "payload": "not-an-object"}], "payload"),
         ("client-a", [_event(), _event()], "duplicate"),
     ],
