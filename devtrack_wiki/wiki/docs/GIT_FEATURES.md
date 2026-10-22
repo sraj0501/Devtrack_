@@ -55,6 +55,14 @@ Git commands and `devtrack git` for explicit commit workflow assistance.
 
 ## Ticket and PM behavior
 
+An incident, story, bug, or task is identified by the configured workspace's canonical reference;
+the PM system owns its item type. For example, `hotfix/OPS-123-restore-login` can map to a Jira
+incident, while `feature/ADO-456-add-export` can map to an Azure DevOps story. The branch kind
+does not determine the PM type. Full-branch evidence wins over explicit commit prefix/trailer,
+which wins over selected ticket context. Conflicting evidence is recorded for review; incidental
+IDs in prose do not count. See the [mapping guide](../../../docs/TICKET_MAPPING.md) for setup,
+provider IDs, examples, and `devtrack ticket link` corrections.
+
 The Go connectors support GitHub, GitLab, and Azure DevOps issue operations. PM, email, and Git writes
 are staged before execution. Use `skip_issues: true` for a code-only workspace when the same
 repository has a separate PM-authoritative workspace.

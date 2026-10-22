@@ -10,6 +10,9 @@ TASK-160 replaces permissive substring and last-ticket assignment with a determi
 resolver. `PRODUCT_BIBLE.md` owns the product rule; this record preserves the maintenance contract.
 The shipped resolver is not a pending implementation plan. Current qualification follows
 [basic workflow acceptance](../../docs/testing/basic-workflow.md); time tracking is removed.
+The user-facing explanation and examples for incidents, stories, bugs, and tasks live in
+[docs/TICKET_MAPPING.md](../../docs/TICKET_MAPPING.md). Work-item type is owned by the configured PM
+system; the branch kind and canonical reference identify work but do not classify its type.
 
 ## Fixed product decisions
 

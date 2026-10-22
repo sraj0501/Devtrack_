@@ -6,24 +6,26 @@
 
 New to DevTrack? Read these in order:
 
-1. [Getting Started](GETTING_STARTED.md) — what DevTrack is and how it works
-2. [Installation Guide](INSTALLATION.md) — install the binary and (optionally) the server
-3. [Quick Start Guide](QUICK_START.md) — first commands and first workflow
-4. [CLI Quickstart](CLI_QUICKSTART.md) — core command reference
+1. [What DevTrack Does](GETTING_STARTED.md) — features, components, and optional services
+2. [Install](INSTALLATION.md) — choose the right Windows, macOS, or Linux binary
+3. [First Commit](QUICK_START.md) — configure one repository and inspect a mapped commit
+4. [Usage Guide](USAGE_GUIDE.md) — review the queue and generate a daily report
 
 ---
 
 ## Configuration
 
-- [Configuration Reference](CONFIGURATION.md) — all `.env` variables explained
+- [Configuration Reference](CONFIGURATION.md) — key settings and links to maintained samples
+- [CLI Quickstart](CLI_QUICKSTART.md) — common commands by task
 - [LLM Guide](LLM_GUIDE.md) — configure Ollama, OpenAI, Anthropic, Groq
-- [Verification Guide](VERIFICATION.md) — run isolated Windows/Linux E2E checks and the full Managed acceptance workflow
+- [Verification Guide](VERIFICATION.md) — qualify an installed build and run isolated checks
 
 ---
 
 ## Features
 
 - [Git Features Guide](GIT_FEATURES.md) — silent observation, explicit commit enhancement, and Git context
+- [Work-item and Ticket Mapping](../../../docs/TICKET_MAPPING.md) — branch conventions, incident/story examples, precedence, conflicts, and correction
 - [DevTrack Sage and Git Sage migration](GIT_SAGE_INTEGRATION.md) — current local command knowledge,
   the separate enhanced-commit workflow, and retired repository-agent commands
 - [Git Commit Workflow](GIT_COMMIT_WORKFLOW.md) — explicit message refinement with no post-commit prompts or push

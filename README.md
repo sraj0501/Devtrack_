@@ -107,6 +107,14 @@ history is seeded at startup, and catch-up for commits made while it was stopped
 shows it. These commands do not start or stop timers. `devtrack work report` generates a commit-based
 EOD report through the configured server.
 
+Incidents, stories, bugs, and tasks all map by their work-item reference: for example, a Jira
+incident `hotfix/OPS-123-restore-login`, Azure DevOps story `feature/ADO-456-add-export`, or
+GitHub issue `fix/GH-42-handle-timeout`. The PM system supplies the item type; the branch kind
+does not. A canonical branch wins over an explicit commit reference, which wins over selected
+ticket context. Run `devtrack ticket convention` and `devtrack ticket check <branch>` to inspect
+the rule, or `devtrack ticket link <commit-hash> <ticket-ref>` to correct an observed mapping.
+See [work-item and ticket mapping](docs/TICKET_MAPPING.md) for configuration, conflicts, and examples.
+
 `devtrack eod status` and `devtrack eod show` read the latest report across local and server history.
 `devtrack queue list --all` shows recent actions from both stores. Server actions use IDs such as
 `server:123`: pass that full ID to `queue approve`, `queue reject`, or `queue edit`. Bare numeric IDs
@@ -152,6 +160,7 @@ Learn more in [MCP and Agent Memory](https://devtrack.cloud/wiki.html#MCP_CLAUDE
 | Fix an installation or runtime problem | [Troubleshooting](https://devtrack.cloud/wiki.html#TROUBLESHOOTING) |
 | Review privacy and data flow | [Privacy](https://devtrack.cloud/privacy.html) |
 | Qualify automatic capture and reporting | [Basic workflow testing](docs/testing/basic-workflow.md) |
+| Map incidents, stories, bugs, and tasks | [Work-item and ticket mapping](docs/TICKET_MAPPING.md) |
 | Review the v3.3.0 development boundary | [Development release notes](docs/releases/v3.3.0.md) |
 
 Contributors and maintainers can start with the repository [documentation map](docs/README.md) and

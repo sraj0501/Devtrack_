@@ -613,13 +613,13 @@ const NAV = [
     group: 'Get Started',
     items: [
       { id: 'home',            label: 'Home',               icon: home_icon() },
-      { id: 'GETTING_STARTED', label: 'Getting Started',    icon: rocket_icon() },
-      { id: 'INSTALLATION',    label: 'Installation',       icon: download_icon() },
-      { id: 'QUICK_START',     label: 'Quick Start',        icon: flash_icon() },
-      { id: 'SETUP_WIZARD',    label: 'Setup Wizard',       icon: flash_icon() },
+      { id: 'GETTING_STARTED', label: 'What DevTrack Does', icon: rocket_icon() },
+      { id: 'INSTALLATION',    label: 'Install',            icon: download_icon() },
+      { id: 'QUICK_START',     label: 'First Commit',       icon: flash_icon() },
       { id: 'FIRST_DAY',       label: 'Your First Day',     icon: rocket_icon() },
+      { id: 'SETUP_WIZARD',    label: 'Setup Wizard',       icon: settings_icon() },
       { id: 'POSTGRES_SETUP',  label: 'PostgreSQL Setup',   icon: settings_icon() },
-      { id: 'WHATS_NEW',       label: "What's New",         icon: '🎉' },
+      { id: 'WHATS_NEW',       label: "What's New",        icon: '🎉' },
       { id: 'DEVTRACK_SERVER', label: 'devtrack-server CLI', icon: terminal_icon() },
       { id: 'UPGRADE',         label: 'Upgrade',             icon: download_icon() },
       { id: 'UNINSTALL',       label: 'Uninstall',           icon: bug_icon() },
@@ -641,6 +641,7 @@ const NAV = [
     group: 'Git & Shell Integration',
     items: [
       { id: 'GIT_FEATURES',       label: 'Git Features',      icon: git_icon() },
+      { id: 'TICKET_MAPPING',    label: 'Ticket Mapping',    icon: git_icon() },
       { id: 'GIT_COMMIT_WORKFLOW', label: 'Commit Workflow',   icon: commit_icon() },
       { id: 'SAGE',               label: 'DevTrack Sage',      icon: agent_icon() },
     ]
@@ -742,12 +743,12 @@ function launch_icon()   { return svgIcon('<path fill-rule="evenodd" d="M11.3 1.
 const CONTENT = {
   FIRST_DAY: `<div class="md-body">
 <h1>Your First Day with DevTrack</h1>
-<p>This walkthrough assumes you have never used DevTrack. By the end, the daemon will be watching one repository, your first ticket-linked commit will be recorded, and you will know exactly where to review anything DevTrack intends to send.</p>
+<p>Start with <a href="#GETTING_STARTED" onclick="navigate('GETTING_STARTED');return false;">What DevTrack Does</a>, then follow the <a href="#QUICK_START" onclick="navigate('QUICK_START');return false;">First Commit</a> walkthrough for a short, copyable path. This page explains the choices and checks behind that walkthrough.</p>
 
 <blockquote><p><strong>The mental model:</strong> DevTrack is a silent background worker. You continue using Git normally. It reads branch names and commits, prepares ticket updates and reports, assigns confidence, and places every outbound action in a review queue before it can leave your machine.</p></blockquote>
 
 <h2>Before You Start</h2>
-<p>You need Git and a DevTrack binary on your <code>PATH</code>. For the default managed mode you also need a PostgreSQL database and an Ollama service. They may run on this computer, in Docker, or on another trusted machine.</p>
+<p>You need Git and a DevTrack binary on your <code>PATH</code>. For a first local evaluation, choose External in setup, leave its server URL unset, and choose no PM integration. Managed mode adds a Python service and requires PostgreSQL; Ollama is the default local model provider when generation is configured.</p>
 <div class="table-wrap"><table>
 <thead><tr><th>Component</th><th>Why it is needed</th><th>Can you continue without it?</th></tr></thead>
 <tbody>
@@ -762,12 +763,12 @@ const CONTENT = {
 <thead><tr><th>Mode</th><th>Choose it when</th><th>What runs</th></tr></thead>
 <tbody>
 <tr><td><strong>Managed</strong></td><td>You want the normal local experience with AI reports and voice features.</td><td>The Go daemon manages a local Python server. PostgreSQL is required by that server.</td></tr>
-<tr><td><strong>Lightweight</strong></td><td>You want Git monitoring, local queue, connectors, alerts, TUI and MCP without Python.</td><td>Only the Go client and local SQLite.</td></tr>
+<tr><td><strong>Local-only evaluation</strong></td><td>Choose External in the setup wizard and leave the server URL unset.</td><td>The Go client and local SQLite remain available; server-backed features show as unavailable.</td></tr>
 <tr><td><strong>External</strong></td><td>Your Python server and PostgreSQL live on another host or in a container.</td><td>The local Go client connects to <code>DEVTRACK_SERVER_URL</code>.</td></tr>
 </tbody></table></div>
 
 <h2>Step 2 — Prepare the Dependencies</h2>
-<p>For managed mode, follow <a href="#POSTGRES_SETUP" onclick="navigate('POSTGRES_SETUP');return false;">PostgreSQL Setup</a>. Then follow <a href="#LLM_GUIDE" onclick="navigate('LLM_GUIDE');return false;">LLM Setup</a>. If those services already exist on the network, write down their URLs; you do not need to reinstall them locally.</p>
+<p>For a first local capture test, choose External with no server URL and skip this step. For generated reports in Managed mode, follow <a href="#POSTGRES_SETUP" onclick="navigate('POSTGRES_SETUP');return false;">PostgreSQL Setup</a> and <a href="#LLM_GUIDE" onclick="navigate('LLM_GUIDE');return false;">LLM Setup</a>. If those services already exist on the network, write down their URLs.</p>
 
 <h2>Step 3 — Run Setup from the Repository You Want to Watch</h2>
 <pre><code class="language-bash">cd /path/to/your/project
@@ -783,15 +784,17 @@ devtrack logs -f</code></pre>
 <p>In managed mode, setup may finish before Python dependencies or a model download finish. This is expected. <code>doctor</code> explains which capability is ready, degraded, or still installing. If background preparation failed, use <code>devtrack doctor --repair</code>.</p>
 
 <h2>Step 5 — Make a Ticket-Linked Commit</h2>
-<p>DevTrack gets its strongest signal from the branch name. Replace <code>PROJ-123</code> with a real ticket ID used by your team:</p>
+<p>DevTrack gets its strongest signal from the branch name. Use the workspace key shown by <code>devtrack ticket convention</code> and a real work item. For a practice run, use a disposable repository with no PM destination:</p>
 <pre><code class="language-bash">git switch -c feature/PROJ-123-first-devtrack-test
+devtrack ticket check feature/PROJ-123-first-devtrack-test
 # edit a file normally
 git add path/to/file
-git commit -m "PROJ-123: describe the change"</code></pre>
+git commit -m "Describe the change"</code></pre>
 <p>DevTrack observes the completed commit. It never holds the commit open waiting for a model or project-management API. If no ticket can be identified, it records the commit as unlinked and moves on.</p>
+<p>The PM system determines whether <code>PROJ-123</code> is an incident, story, bug, or task; the branch kind does not. <a href="#TICKET_MAPPING" onclick="navigate('TICKET_MAPPING');return false;">Ticket Mapping</a> explains the precedence, conflicts, and correction command.</p>
 
 <h2>Step 6 — Inspect What Happened</h2>
-<pre><code class="language-bash">devtrack commits
+<pre><code class="language-bash">devtrack status
 devtrack queue list
 devtrack queue status
 devtrack logs</code></pre>
@@ -801,7 +804,7 @@ devtrack logs</code></pre>
 <pre><code class="language-bash">devtrack eod generate
 devtrack eod show
 devtrack eod status</code></pre>
-<p>The narrative is generated from work already observed; DevTrack does not ask you to reconstruct your day. Delivery is still staged as an action. See <a href="#EOD_AND_VOICE" onclick="navigate('EOD_AND_VOICE');return false;">EOD &amp; Your Voice</a> to train the local voice profile.</p>
+<p>This step requires a ready Python service. Generating a report can stage a new action; <code>eod show</code> reads an existing one. Delivery is reviewed in the queue. See <a href="#EOD_AND_VOICE" onclick="navigate('EOD_AND_VOICE');return false;">EOD &amp; Your Voice</a> for narrative options.</p>
 
 <h2>What Success Looks Like</h2>
 <ul>
@@ -811,6 +814,7 @@ devtrack eod status</code></pre>
 <li>Any external update appears in the pending queue before dispatch.</li>
 <li>Git still works normally if PostgreSQL, Ollama or a PM API is temporarily unavailable.</li>
 </ul>
+<p>Keep the daemon running during work: the v3.3.0 development line does not guarantee catch-up for commits made while it was stopped. Before relying on daily unattended reporting, qualify the exact installed build, scheduling, delivery, and a representative workday using <a href="#BASIC_WORKFLOW_TESTING" onclick="navigate('BASIC_WORKFLOW_TESTING');return false;">Basic Workflow Testing</a>.</p>
 <p>For an isolated, credential-free source-checkout verification, run <code>.\scripts\e2e-local.ps1</code> on Windows 11. It exercises native Windows first, then uses WSL when Go is available there or a disposable Linux Go container through Docker Desktop when it is not. Run <code>.\scripts\e2e.ps1</code> or <code>sh ./scripts/e2e.sh</code> to test one platform directly.</p>
 <p>The automated lane verifies a real ticket-linked commit flowing through the daemon, local SQLite, and MCP without contacting a PM, telemetry, email, or the Python server. For the separate full Managed acceptance workflow, run <code>.\scripts\demo.ps1 -Mode Check</code> on Windows PowerShell or <code>./scripts/demo.sh --check</code> on Linux/macOS. Add <code>-Automated</code> or <code>--automated</code> to suppress scene pauses after the environment is configured.</p>
 <p>Next, configure additional repositories in <a href="#WORKSPACES" onclick="navigate('WORKSPACES');return false;">Workspaces</a>, then install login-time startup from <a href="#AUTOSTART" onclick="navigate('AUTOSTART');return false;">Auto-Start</a>.</p>
@@ -1644,7 +1648,7 @@ devtrack start</code></pre>
 <li><strong>Reliable commit bursts:</strong> the running monitor walks unseen commits from all local branches and detached HEAD, records oldest first and deduplicates hashes. Rapid commits and branches switched away while processing are retained.</li>
 <li><strong>Safe enrichment:</strong> message enhancement checks that the observed commit is still HEAD before and after generation, and refuses amendment when staged changes are present.</li>
 <li><strong>Visible server reports and review:</strong> queue/history and EOD commands read PostgreSQL actions directly. Server actions use <code>server:&lt;id&gt;</code>; pending edits and rejection are race-safe.</li>
-<li><strong>Qualification boundary:</strong> source-based Linux/PostgreSQL container tests covered bursts, branch switching, outages, restart and manual/scheduled EOD visibility. Packaged-build acceptance, native Windows rehearsal, real PM/email delivery and a representative workday remain to be qualified. Commits made while the daemon is stopped are not a guaranteed catch-up path.</li>
+<li><strong>Qualification boundary:</strong> the packaged Linux amd64 client passed isolated PostgreSQL burst, branch-switch, outage/restart and manual/scheduled EOD checks; the packaged Windows client passed an isolated no-send Git/MCP/restart check. Native installed workflows with a live server, real PM/email delivery and a representative workday remain to be qualified. Commits made while the daemon is stopped are not a guaranteed catch-up path.</li>
 </ul>
 <p>See <a href="#BASIC_WORKFLOW_TESTING" onclick="navigate('BASIC_WORKFLOW_TESTING');return false;">Basic Workflow Testing</a>. Sage testing, learning-adapter repairs and platform-parity work remain on hold until the basics qualify.</p>
 <h2>v3.2.0 — DevTrack Sage and silent workflow intelligence</h2>
@@ -2768,7 +2772,7 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Stable v3.2.0; Sage roadmap complete</div>
 <p>DevTrack's completed product arc is released: silent observation, the confidence-scored pending-actions queue, deterministic ticket extraction, EOD reporting, local voice learning, the PR review loop, ten-tool read-only MCP context, DevTrack Sage, first-run onboarding, and native MCPB distribution.</p>
 <h2>Current focus</h2>
-<p><strong>v3.3.0 development:</strong> the priority is reliable Git capture, ticket recording and commit-based EOD reports. Time tracking has been removed. Source-based container acceptance covers burst/branch capture and server report visibility; the packaged build, native Windows workflow, controlled PM/email delivery and a representative workday are the next gates. Sage testing, learning-adapter repairs and platform-parity work are on hold.</p>
+<p><strong>v3.3.0 development:</strong> the priority is reliable Git capture, ticket recording and commit-based EOD reports. Time tracking has been removed. The packaged Linux client passed isolated PostgreSQL workflow checks; the packaged Windows client passed an isolated no-send check. Native installed workflows with a live server, controlled PM/email delivery and a representative workday are the next gates. Sage testing, learning-adapter repairs and platform-parity work are on hold.</p>
 <p>The core no-send workflow is validated. The owner confirmed clean Windows installation and full Managed Linux acceptance with PostgreSQL, Python, Ollama, staging, EOD, and MCP complete on 2026-09-10 outside GitHub Actions. Earlier Windows Managed, credential-free cross-platform E2E, and source-based admin acceptance runs also passed. Stable v3.2.0 and its official MCP Registry record are public. The separate TASK-154 admin-UI branch remains deferred and needs its own drift and UI acceptance. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
 <h2>Next</h2>
 <ol>
@@ -2896,7 +2900,7 @@ devtrack sage resume</code></pre>
     pm_org: my-organization
     pm_project: My Project
     pm_username: developer@example.com
-    ticket_pattern: '(ADO-[0-9]+)'</code></pre>
+    ticket_key: ADO</code></pre>
 <p>Keep the PAT in the environment. Keep organization, project, username and ticket routing in the workspace file.</p>
 <h2>3. Verify Before Sync</h2>
 <pre><code class="language-bash">devtrack workspace reload
@@ -2932,7 +2936,7 @@ devtrack azure-view &lt;work-item-id&gt;</code></pre>
     pm_api_url: https://gitlab.com
     pm_project: "12345"
     pm_username: developer-handle
-    ticket_pattern: '(GL-[0-9]+)'</code></pre>
+    ticket_key: GL</code></pre>
 <p><code>pm_project</code> is the numeric GitLab project ID as a string. For self-hosted GitLab, set <code>pm_api_url</code> to the instance URL.</p>
 <h2>3. Verify</h2>
 <pre><code class="language-bash">devtrack workspace reload
@@ -2962,8 +2966,8 @@ devtrack gitlab-view &lt;project-id&gt; &lt;issue-iid&gt;</code></pre>
     pm_org: my-org-or-user
     pm_project: my-repository
     pm_username: my-github-login
-    pm_milestone: v3
-    ticket_pattern: '(GH-[0-9]+)'
+    pm_milestone: 3
+    ticket_key: GH
     skip_issues: false</code></pre>
 <p>Use <code>skip_issues: true</code> when GitHub hosts the code but a different platform (for example Azure DevOps) is the ticket source, preventing duplicate ticket lists.</p>
 <h2>3. Verify</h2>
@@ -3104,6 +3108,25 @@ devtrack eod status</code></pre>
 <p>Configure scheduled EOD and optional destinations through the registered environment. Delivery requires queue review and a working connector. Actual PM/email delivery is still an upcoming qualification step for this development version.</p>
 </div>`,
 
+  TICKET_MAPPING: `<div class="md-body">
+<h1>Incidents, Stories and Ticket Mapping</h1>
+<p>DevTrack links an observed commit to one work-item reference in its configured workspace. The connected PM system owns whether that item is an incident, story, bug or task and how it relates to an epic. The Git branch kind describes the code change; it does not classify or create the PM item.</p>
+<h2>Configure and name the branch</h2>
+<p>Run <code>devtrack setup</code> for the repository and configure its PM adapter, project and uppercase <code>ticket_key</code> in <code>workspaces.yaml</code>. Keep credentials in the registered environment file. The default full-branch rule is <code>&lt;kind&gt;/&lt;ticket-key&gt;-&lt;number&gt;-&lt;slug&gt;</code>. Kinds: <code>feature</code>, <code>feat</code>, <code>fix</code>, <code>bugfix</code>, <code>hotfix</code>, <code>chore</code>, <code>docs</code>, <code>refactor</code>, <code>test</code>. The positive number and lowercase kebab-case slug are required. Run <code>devtrack ticket convention</code> and <code>devtrack ticket check &lt;branch&gt;</code> inside the workspace to inspect the rule.</p>
+<div class="table-wrap"><table><thead><tr><th>Example work item</th><th>Branch</th><th>Canonical reference</th><th>PM native ID</th></tr></thead><tbody>
+<tr><td>Jira incident</td><td><code>hotfix/OPS-123-restore-login</code></td><td><code>OPS-123</code></td><td><code>OPS-123</code></td></tr>
+<tr><td>Azure DevOps story</td><td><code>feature/ADO-456-add-export</code></td><td><code>ADO-456</code></td><td><code>456</code></td></tr>
+<tr><td>GitHub issue labelled bug</td><td><code>fix/GH-42-handle-timeout</code></td><td><code>GH-42</code></td><td><code>42</code></td></tr>
+<tr><td>GitLab issue labelled story</td><td><code>feature/GL-18-report-filter</code></td><td><code>GL-18</code></td><td><code>18</code></td></tr>
+</tbody></table></div>
+<p>Each row assumes a separate workspace bound to that PM platform and key. A custom branch pattern must match the entire branch and have exactly one named <code>ticket</code> capture. Commits on exactly named <code>ignore_branches</code> entries are skipped; wildcard family matching is not available in the current runtime.</p>
+<h2>How one commit is resolved</h2>
+<ol><li>Full canonical branch, or one canonical source branch parsed from a merge subject.</li><li>An explicit first-line prefix such as <code>ADO-456: add export</code> or a later <code>Refs: ADO-456</code> trailer. These have equal priority.</li><li>Explicit repository/workspace context selected with <code>devtrack work start ADO-456</code>.</li><li>Unlinked if no deterministic signal resolves one reference.</li></ol>
+<p>For example, <code>feature/ADO-456-add-export</code> wins over active context <code>ADO-900</code>, but the contradiction is recorded as a conflict. On a nonconforming but observed branch such as <code>chore/cleanup</code>, <code>ADO-456: add export</code> links through the prefix. A message that merely mentions <code>ADO-456</code> in prose stays unlinked. Disagreeing prefix and trailer references leave the commit unlinked with conflict metadata. DevTrack never guesses from the previous commit's ticket; an LLM suggestion is a candidate only.</p>
+<p>Conflicted mappings cannot auto-execute outbound PM comments or transitions. Git is never blocked. Review counts in <code>devtrack status</code> or <code>devtrack doctor</code>, then use <code>devtrack ticket link &lt;commit-hash&gt; ADO-456</code> to record an explicit correction without rewriting Git history. <code>work stop</code> clears selected context; it does not stop a timer.</p>
+<p>Commits feed ticket-grouped EOD reports; outbound actions are staged for review. In the v3.3.0 development line, keep the daemon running during work because stopped-daemon catch-up is not guaranteed. The repository's <code>docs/TICKET_MAPPING.md</code> has the full mapping table and examples.</p>
+</div>`,
+
   BASIC_WORKFLOW_TESTING: `<div class="md-body">
 <h1>Basic Workflow Testing</h1>
 <p>The immediate goal is dependable Git capture, ticket recording and EOD reporting without time tracking. Stable v3.2.0 remains public; v3.3.0 changes are on dev. Sage testing, learning repairs and platform-parity work remain on hold.</p>
@@ -3115,7 +3138,7 @@ devtrack eod status</code></pre>
 <li><strong>Representative workday:</strong> reconcile every expected commit hash and ticket against the final report. Check completeness, correct mapping, readable content and absence of time tracking before returning to Sage.</li>
 </ol>
 <h2>Current Evidence and Limits</h2>
-<p>Source-based Linux client/server tests with PostgreSQL exercised rapid commits, switched-away branches, intentional server outages, restart, scheduled EOD, server history and pending review. This does not establish that a packaged update is installed or that real email/PM delivery, native Windows behavior, overnight coverage or stopped-daemon catch-up has passed.</p>
+<p>The packaged Linux amd64 client passed isolated PostgreSQL rapid-commit, branch-switch, server-outage, restart, scheduled EOD and pending-review checks. The packaged Windows client passed an isolated no-send Git/MCP/restart check. Neither establishes that a host installation with a live server, real email/PM delivery, overnight coverage or stopped-daemon catch-up has passed.</p>
 <p>The detailed maintainer checklist is <code>docs/testing/basic-workflow.md</code> in the repository. Keep credentials and private generated reports out of committed evidence.</p>
 </div>`,
   MCP_CLAUDE_CODE: `<div class="md-body">
@@ -3409,8 +3432,12 @@ function renderHome() {
 
     <div class="home-grid">
       ${[
+        { id:'GETTING_STARTED', icon:'🚀', title:'What DevTrack Does', desc:'See the core features, what runs locally, and which optional services each feature needs.' },
+        { id:'INSTALLATION', icon:'⬇️', title:'Install', desc:'Choose the Windows, macOS, or Linux release asset and check the installed version.' },
+        { id:'QUICK_START', icon:'⚡', title:'Your First Commit', desc:'Configure one repository, start the daemon, make a normal commit, and inspect the result.' },
         // ── Product promise: outcome → agent memory → trust ────────────────────
         { id:'WORK_TRACKER',     icon:'☀️', title:'Your standup, from your commits', desc:'DevTrack groups work by ticket and prepares an end-of-day narrative in your voice. Keep coding; the daemon handles the project-update overhead.' },
+        { id:'TICKET_MAPPING',  icon:'🎫', title:'Map incidents and stories', desc:'Use canonical branches or explicit references to link commits to PM work items. Inspect conflicts and correct mappings without interrupting Git.' },
         { id:'MCP_CLAUDE_CODE', icon:'🤖', title:'Agent memory over MCP', desc:'v3.2.0 exposes ten annotated read-only tools and ships privacy-declaring native MCPB bundles for Windows, macOS, and Linux.' },
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation, MCP context, and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git.' },
@@ -3454,7 +3481,11 @@ function renderHome() {
         { id:'AUTH',            icon:'👤', title:'Login &amp; Auth',        desc:'Optional identity layer. Run <code>devtrack login</code> to connect an email via magic-link; <code>devtrack whoami</code> to see the active session; <code>devtrack logout</code> to clear it. Fully offline without a login.' },
         // ── Advanced ──────────────────────────────────────────────────────────
         { id:'TROUBLESHOOTING', icon:'🔍', title:'Troubleshooting',     desc:'Common problems, error messages, and solutions.' },
-      ].map(c => `
+      ].filter((c, i, cards) => [
+        'GETTING_STARTED', 'INSTALLATION', 'QUICK_START', 'WORK_TRACKER',
+        'TICKET_MAPPING', 'TUI_DASHBOARD', 'MCP_CLAUDE_CODE', 'OFFLINE_RESILIENCE',
+        'TROUBLESHOOTING'
+      ].includes(c.id) && cards.findIndex(first => first.id === c.id) === i).map(c => `
         <a class="home-card" href="#${c.id}" onclick="navigate('${c.id}');return false;">
           <div class="home-card-icon">${c.icon}</div>
           <div class="home-card-title">${c.title}</div>
@@ -3464,50 +3495,15 @@ function renderHome() {
     </div>
 
     <div class="quick-start-box">
-      <h3>Latest public release: v3.2.0</h3>
-      <p style="margin:0 0 .75rem;font-size:.9rem;opacity:.8;">Download the published binary and use only its released command surface.</p>
-      <pre><code class="language-bash"># macOS / Linux — the lean Go binary. Normalise OS/arch to the release asset names.
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; [ "$ARCH" = "aarch64" ] && ARCH="arm64"
-curl -fsSL "https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_\${OS}_\${ARCH}.tar.gz" | tar xz
-sudo mv devtrack /usr/local/bin/
-
-# Configure and start the published release.
+      <h3>Start with one repository</h3>
+      <p style="margin:0 0 .75rem;font-size:.9rem;opacity:.8;">Install the asset for your operating system, then run setup inside the Git repository you want to watch. For an initial local evaluation, choose External with no server URL and no PM integration.</p>
+      <pre><code class="language-bash">devtrack version
 devtrack setup
+devtrack doctor
+devtrack ticket convention
 devtrack start
-devtrack status
-devtrack logs</code></pre>
-
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;"><strong>Optional source build for contributors.</strong> The same commands are available in the v3.2.0 release binary.</p>
-      <pre><code class="language-bash">git clone --branch main --single-branch https://github.com/sraj0501/Devtrack_.git
-cd Devtrack_/devtrack_client
-go build -o devtrack .
-
-./devtrack setup
-./devtrack start
-./devtrack mcp setup   # immediate SQLite-backed agent context
-./devtrack status      # daemon and capability readiness
-./devtrack doctor      # background bootstrap progress; use --repair after a failure
-
-# Once voice seeding is ready, generate an EOD narrative through the local server.
-# This can stage a report; use eod show to read an existing report.
-./devtrack work report</code></pre>
-      <p style="margin:.5rem 0 .75rem;font-size:.85rem;opacity:.7;">The wizard reuses an installed generation-capable Ollama model when available. If none is ready, it can explicitly use an already-present OpenAI or Anthropic key as a temporary fast lane while Ollama remains the local default.</p>
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Lightweight mode (no Python at all)</p>
-      <pre><code class="language-bash"># Git monitoring, scheduling, Sage capture/search, PM connectors and alerts are Go-native.
-# Set this before \`devtrack start\` to skip the Python server entirely.
-DEVTRACK_SERVER_MODE=lightweight
-devtrack start</code></pre>
-      <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Docker (Python server in a container)</p>
-      <pre><code class="language-bash">git clone https://github.com/sraj0501/Devtrack_.git
-cd Devtrack_/devtrack_server
-cp .env_sample .env                      # then fill it in
-docker compose up -d devtrack_server     # starts PostgreSQL first and waits for health
-
-# Point the client at the container.
-# In .env: DEVTRACK_SERVER_MODE=external  DEVTRACK_SERVER_URL=http://localhost:8089
-devtrack start</code></pre>
-      <p style="margin:.5rem 0 0;font-size:.85rem;opacity:.7;">All releases: <a href="https://github.com/sraj0501/Devtrack_/releases" target="_blank">github.com/sraj0501/Devtrack_/releases</a> — Go binaries for Linux, macOS and Windows.</p>
+devtrack status</code></pre>
+      <p style="margin:.75rem 0 0;font-size:.9rem;opacity:.8;">Continue with <a href="#QUICK_START" onclick="navigate('QUICK_START');return false;">First Commit</a> to make a ticket-linked commit and inspect the result. See <a href="#INSTALLATION" onclick="navigate('INSTALLATION');return false;">Install</a> for Windows, macOS, and Linux assets, and <a href="#GETTING_STARTED" onclick="navigate('GETTING_STARTED');return false;">What DevTrack Does</a> for the feature map. The latest public release is v3.2.0; v3.3.0 changes are on the development channel.</p>
     </div>
 
     <div class="feature-list">
@@ -3628,7 +3624,7 @@ function renderMarkdown(md, container) {
 
   // Open external links in new tab, rewrite internal .md links, handle in-page anchors
   renderer.link = (href, title, text) => {
-    if (href && href.endsWith('.md')) {
+    if (href && !/^https?:\/\//i.test(href) && href.endsWith('.md')) {
       const id = href.replace(/.*\//, '').replace('.md', '');
       return `<a href="#${id}" onclick="navigate('${id}');return false;"${title ? ` title="${title}"` : ''}>${text}</a>`;
     }
