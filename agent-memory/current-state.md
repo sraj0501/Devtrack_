@@ -17,8 +17,12 @@ in the linked acceptance documentation; the host installation has not been updat
 See [basic workflow qualification](initiatives/basic-workflow-qualification.md). On 2026-10-22,
 the v3.3.0 preparation and fixes were pushed to remote `dev` at `860b91b`; stable publication and host
 installation remain separate. Windows metadata and CI candidate bundles target 3.3.0; the rolling
-development channel retains its `dev-<commit>` version convention. The next acceptance gates are
-recorded in [the daily-use test plan](../docs/testing/basic-workflow.md). No board mutation is included.
+development channel retains its `dev-<commit>` version convention. The packaged `dev-dc39101`
+Linux/PostgreSQL acceptance and isolated Windows no-send checkpoint passed on 2026-10-22;
+details are in the [acceptance record](../docs/testing/basic-workflow-source-acceptance.md).
+Native Windows with a live server, controlled delivery, and a representative workday remain.
+The next gates are in [the daily-use test plan](../docs/testing/basic-workflow.md). No board
+mutation is included.
 
 **Sage state:** No approved implementation slice remains pending. The current owner-requested
 qualification is on hold until basic Git capture and EOD acceptance. Durable runtime boundaries

@@ -1,171 +1,84 @@
-# Quick Start Guide
+# Quick start: one repository, one commit
 
-Reach DevTrack's first local value in about two minutes, then let the optional AI service finish
-preparing in the background.
+Follow this after [Installation](INSTALLATION.md). These commands use your normal shell on Linux
+or macOS and PowerShell on Windows. Use `devtrack.exe` in PowerShell if that is the filename on
+your `PATH`.
 
-> **Release candidate:** v3.2.0 includes DevTrack Sage, ten read-only MCP tools, and the Phase 9
-> onboarding flow below. v3.1.1 remains public until TASK-171 completes.
+## 1. Configure the repository
 
----
+Open a terminal **inside the Git repository** you want DevTrack to watch:
 
-## 1. Install or build the current client
-
-After publication, download the v3.2.0 asset for your platform from
-[GitHub Releases](https://github.com/sraj0501/Devtrack_/releases). Python, PostgreSQL, and Ollama
-are not required for the first MCP-backed local context check. During qualification, contributors
-can build this release branch with Go and Git:
-
-```bash
-git clone --branch features/TASK-171-v3.2.0-release --single-branch https://github.com/sraj0501/Devtrack_.git
-cd Devtrack_/devtrack_client
-go build -o devtrack .
-sudo install -m 0755 devtrack /usr/local/bin/devtrack
-
-devtrack mcp status   # should report ten registered tools
-```
-
-On Windows PowerShell, build `devtrack.exe` and place it in a directory on `PATH`:
-
-```powershell
-git clone --branch v3.2.0 --single-branch https://github.com/sraj0501/Devtrack_.git
-Set-Location Devtrack_/devtrack_client
-go build -o devtrack.exe .
-devtrack.exe mcp status
-```
-
-See the [Installation Guide](INSTALLATION.md) for release binaries, external-server mode, Docker,
-and platform-specific installation details.
-
----
-
-## 2. Run setup from the repository you want to watch
-
-```bash
-cd /path/to/your/project
+```sh
+devtrack version
 devtrack setup
-```
-
-The wizard writes and registers a complete environment file; future commands load it automatically.
-You do not need to copy or source `.env` manually.
-
-- Choose **Managed** for the default local AI service.
-- Choose **None** for the PM integration if you want a local-only evaluation with no external target.
-- Managed mode requires a PostgreSQL URL for the Python service.
-- Ollama is the default LLM. If a usable local generation model is installed, setup reuses it.
-- Checkout, `uv sync --extra ai`, and required model pulls continue in a detached worker after setup
-  returns. Managed Ollama setup prepares the generation model plus `nomic-embed-text`; initial voice
-  mining is bounded to 25 recent commits and uses batched embeddings.
-
-No daemon, PM post, email, or Git push is started by the wizard.
-
----
-
-## 3. Minute two: give Claude Code local context
-
-The MCP server is Go-native, SQLite-backed, and started on demand over stdio. It does not wait for
-Python, PostgreSQL, or an LLM model.
-
-```bash
-devtrack mcp setup
-devtrack mcp test
-```
-
-Reload Claude Code after `mcp setup`, then ask:
-
-> What am I working on?
-
-The ten local tools expose work context, today's commits, pending actions, voice profile, ticket
-context, an EOD summary, and published Sage knowledge/status. The self-test uses the configured SQLite database when available
-and a disposable database when setup has not run, so a fresh checkout can still complete protocol
-introspection. An empty result on that new database is expected. Daily counts use the user's local
-calendar date.
-
----
-
-## 4. Start the silent worker
-
-```bash
-devtrack start
-devtrack status
 devtrack doctor
 ```
 
-`status` and `doctor` distinguish what works now from what is still preparing. Git monitoring,
-ticket extraction, scheduling, SQLite, and MCP remain available if the optional AI service is still
-installing or unavailable. Use `devtrack doctor --repair` after a failed or interrupted bootstrap.
+Setup asks for a deployment mode, repository path, identity, and PM integration. For a first
+local evaluation, choose **External** and **None** as the PM platform, and leave the server URL and
+API key unset. This exercises Git capture and ticket mapping without starting a Python server,
+PostgreSQL, an AI model, or a PM destination. The external server will show as unavailable until
+you configure one. Choose
+**Managed** if you also want generated reports: it requires a reachable PostgreSQL database and
+the Python server may continue installing after setup returns. `devtrack doctor` reports progress.
+The wizard registers its environment file; you do not need to source it in every shell.
 
-The daemon is silent during normal work. It observes commits and stages actions; it does not prompt
-or block your Git workflow.
+## 2. Start observation
 
----
+```sh
+devtrack ticket convention
+devtrack start
+devtrack status
+```
 
-## 5. Try the real workflow
+`ticket convention` shows the branch format and workspace key. Keep the daemon running while you
+work. In the v3.3.0 development line, a commit made while it is stopped is not guaranteed to be
+captured after restart.
 
-When `devtrack doctor` reports the AI service ready, use a ticket-named branch and commit normally:
+## 3. Make a normal commit
 
-```bash
-git switch -c feature/AUTH-42-refresh-token
-# edit files as usual
+Use a **real work item** and your workspace's key. For a practice run, use a disposable repository
+and `pm_platform: none`. For a workspace with key `PROJ`, the branch below maps to `PROJ-123`:
+
+```sh
+git switch -c feature/PROJ-123-first-change
+devtrack ticket check feature/PROJ-123-first-change
+# Edit a file as you normally would, then:
 git add path/to/changed-file
-git commit -m "fix auth redirect"
+git commit -m "Describe the change"
+```
 
+The branch is the strongest mapping signal. A Jira incident, Azure story, GitHub bug, or GitLab
+task all use the same mechanism; the connected PM system determines the item's type. See
+[Ticket Mapping](../../../docs/TICKET_MAPPING.md) for provider examples and conflicts.
+
+## 4. Inspect the result
+
+```sh
+devtrack status
 devtrack logs
-devtrack queue
-devtrack eod
+devtrack queue list
 ```
 
-The expected flow is:
+Check that the daemon is running and that the commit and its ticket appear in local activity.
+The queue can be empty in a local-only setup. If an action exists, review its target, text, and
+confidence before using `devtrack queue approve <id>`; approving can contact the configured
+destination. Keep any `server:` prefix shown on server-owned action IDs.
 
-1. DevTrack detects the commit without interrupting it.
-2. The branch name resolves ticket `AUTH-42`.
-3. A ticket comment is staged with explicit confidence before any external action.
-4. `devtrack eod` generates the current narrative and prints `Queued as action <id>` when server
-   staging succeeds.
+If no commit appears, confirm the repository is enabled, the daemon was running when you committed,
+and the branch is not in `ignore_branches`. Run `devtrack doctor` and consult
+[Troubleshooting](TROUBLESHOOTING.md). To correct an observed commit's mapping, use
+`devtrack ticket link <commit-hash> PROJ-123`.
 
-Do not run `devtrack queue approve` during a no-send evaluation. With `pm_platform: none` and no
-`--email` argument, there is no PM or email destination.
+## 5. Add optional features
 
-Server-generated actions are stored in PostgreSQL. Depending on whether opt-in client-event sync is
-enabled, `devtrack queue` may not mirror that server row in local SQLite immediately. The daemon log
-and the `Queued as action <id>` response are the authoritative staging evidence; an empty local queue
-does not mean the server bypassed staging.
+| Feature | Command or guide | Requirement |
+|---|---|---|
+| Local assistant context | `devtrack mcp setup`, then `devtrack mcp test` | Go client and local SQLite. Reload your MCP client after setup. |
+| Existing EOD report | `devtrack eod show` | An earlier report. This only reads it. |
+| New EOD report | `devtrack eod generate`, then `devtrack queue list` | Ready Python service; generation may stage a new action. |
+| PM delivery | [Usage Guide](USAGE_GUIDE.md) | Configured connector and credentials; review the pending action first. |
+| More repositories | [Configuration](CONFIGURATION.md) | A workspace entry for each repository. |
 
-For a disposable, recorder-friendly run that verifies live output and never manufactures queue
-rows, use the repository's [credential-free demo storyboard](../../../docs/DEMO_STORYBOARD.md). On
-Windows PowerShell run `./scripts/demo.ps1 -Mode Check` first, then use `-Mode Record` for a paced
-capture. Linux and macOS use `./scripts/demo.sh --check` and `./scripts/demo.sh --record`.
-
----
-
-## Readiness map
-
-| Capability | Before AI readiness | Requires the Python service |
-|---|---:|---:|
-| Git monitoring and ticket extraction | Yes | No |
-| Local SQLite history and pending queue | Yes | No |
-| MCP setup, self-test, and context tools | Yes | No |
-| Voice-aware ticket-comment generation | No | Yes |
-| Generated EOD narrative and server staging | No | Yes |
-
-If model preparation takes longer than ten minutes, keep coding. DevTrack records the local signal
-and never blocks the commit; `devtrack doctor` shows the recovery path.
-
----
-
-## Everyday commands
-
-```bash
-devtrack status                 # daemon and capability summary
-devtrack doctor                 # bootstrap readiness and recovery
-devtrack logs -f                # follow daemon activity
-devtrack queue                  # inspect local pending actions
-devtrack queue approve <id>     # explicitly dispatch a reviewed local action
-devtrack queue reject <id>      # discard a local pending action
-devtrack eod                    # generate and stage today's narrative
-devtrack work report            # immediate commit-based report
-devtrack mcp test               # verify local MCP context
-devtrack stop                   # stop the daemon
-```
-
-Next: [Setup Wizard](../wiki.html#SETUP_WIZARD) · [Configuration](CONFIGURATION.md) ·
-[Troubleshooting](TROUBLESHOOTING.md)
+The [Verification Guide](VERIFICATION.md) covers qualification of an installed build before
+unattended use.

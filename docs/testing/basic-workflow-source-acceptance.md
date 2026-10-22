@@ -25,6 +25,54 @@ are reliable. Pre-commit activity capture is outside this test scope. This reque
 container testing; the subsequent version update and `dev` push were explicitly authorized.
 No stable publication, host installation, or board change was performed.
 
+## Packaged development build: isolated acceptance
+
+On 2026-10-22, the rolling `dev` release tag pointed to `dc391012a9904dab3276fc31273daa386ed7ffbe`.
+Its [development-release workflow](https://github.com/sraj0501/Devtrack_/actions/runs/39723309417)
+passed, as did the later [client CI](https://github.com/sraj0501/Devtrack_/actions/runs/39723851679)
+and [no-send E2E](https://github.com/sraj0501/Devtrack_/actions/runs/39723851666) jobs
+at `7aad376`. No client or server runtime files changed between the packaged commit and that
+later `dev` head. The downloaded `devtrack_windows_amd64.exe` reports version `dev-dc39101`,
+commit `dc39101`, and build time `2026-10-22T04:37:02Z`. Its SHA-256 matches the release's
+`checksums.txt`:
+`83223a4d732569a6a5326b1187314266fda55157b9bea369022e9cbfca94b788`.
+
+On native Windows, `scripts/e2e.ps1 -BinaryPath <downloaded exe> -TimeoutSeconds 180` passed in
+an isolated temporary workspace with `DEVTRACK_SERVER_MODE=lightweight`, an unreachable server,
+`SEND_ON_TRIGGER=false`, `SEND_DAILY_SUMMARY=false`, and test timezone `UTC`. The disposable daemon
+observed a native Git commit, exposed it through MCP, persisted it across restart, retained and
+cleared explicit ticket context, and surfaced unavailable server queue history. The generated
+post-commit hook wrote to the expected Git Bash path under the isolated Windows log directory;
+no obsolete Linux host path was used. The first sandboxed run could not stop its child daemon;
+the same packaged test passed outside that process-control sandbox. Both runs removed their
+temporary test process and files. The host installation was not changed.
+
+The downloaded Linux amd64 archive also matched `checksums.txt` at SHA-256
+`74a4c83e6caa1b5baaa111e0b6e6a4dbd72d1afebcf1a3a2ddffb28dd192efe0`;
+its extracted binary reported `dev-dc39101` and commit `dc39101`. The existing disposable
+`devtrack-basic-acceptance` stack paired that binary with PostgreSQL 16 and the current mounted
+server backend/migrations. Server runtime source has not changed since the packaged commit; the
+server image supplies dependencies and was not rebuilt for this run. The stack used no real
+PM/email credentials, had Sage capture disabled and automatic sending disabled, and was stopped
+afterward with volumes preserved. The separate `devtrack-isolated` stack was untouched.
+
+The packaged Linux regression passed: 20 rapid commits, 3 commits on a branch switched away from
+before processing, 5 commits during server outage, and 1 post-restart commit each had exactly one
+persisted hash with the expected ticket provenance. HTTP processing was delayed by 600 ms per
+rapid commit. The recovered EOD contained the expected work; CLI status/show/queue history,
+server edit/reject, rejected-approval denial, and a colliding local action ID passed. An actual
+scheduled EOD was staged as `server:125` for the Asia/Kolkata local date and was visible through
+CLI report and queue views. A separate ticket-context smoke confirmed `work start/status/stop`,
+rejected `work adjust`, a report without duration metrics, and unchanged legacy table counts:
+3 work sessions, 11 activity records, and 1 adjustment before and after. Machine-local evidence
+is under ignored `Data/basic-acceptance/results/` (`fixes-smoke.json`,
+`scheduled-fix-smoke.json`, `no-time-smoke.json`).
+
+The packaged container gate is satisfied for the checked scenarios. Native Windows with a live
+server, daemon-off catch-up, overnight local-date boundaries, controlled delivery, intended-model
+report quality, and a representative workday remain open. This isolated run did not upgrade the
+host installation or qualify a newly built server image.
+
 ## Time-tracking removal validation
 
 The updated Linux client was built from the working tree and exercised in the same disposable

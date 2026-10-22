@@ -54,4 +54,7 @@ organization, project, API URL, user name, `ticket_key`, optional anchored `tick
 `skip_issues`—in `workspaces.yaml`. The default convention is
 `<kind>/<ticket-key>-<number>-<slug>`; an advanced pattern must match the full branch and contain
 exactly one named `ticket` capture.
+The key identifies the work item, regardless of whether the PM system calls it an incident, story,
+bug, or task. See [work-item and ticket mapping](../../../docs/TICKET_MAPPING.md) for examples and
+resolution precedence.
 Never commit real credentials.

@@ -12,6 +12,7 @@ records. Use this map before treating a document as current implementation guida
 | Go↔Python HTTP contract | [`HTTP_API.md`](HTTP_API.md) |
 | Installation and modes | [`INSTALLATION.md`](INSTALLATION.md) |
 | Basic capture and EOD acceptance | [`testing/basic-workflow.md`](testing/basic-workflow.md) |
+| Incident/story/ticket mapping and correction | [`TICKET_MAPPING.md`](TICKET_MAPPING.md) |
 | Time-tracking removal and context commands | [`WORK_TIME_INFERENCE.md`](WORK_TIME_INFERENCE.md) |
 | v3.3.0 development changes | [`releases/v3.3.0.md`](releases/v3.3.0.md) |
 | Current execution priorities | [`NEXT_STEPS.md`](NEXT_STEPS.md) and [`../agent-memory/execution-plan.md`](../agent-memory/execution-plan.md) |
@@ -43,8 +44,9 @@ separate. Qualify the packaged development build using the basic-workflow plan b
 - [`TASK_159_QUALIFICATION.md`](TASK_159_QUALIFICATION.md) records tests of the former time-tracking
   feature; its commands, test names, and integration gates are historical, not current requirements.
 - [`testing/basic-workflow-source-acceptance.md`](testing/basic-workflow-source-acceptance.md)
-  records the initial v3.2.0 failures and passing source/container regression. It does not qualify
-  a later packaged installation or real email/PM delivery.
+  records the initial v3.2.0 failures, passing source/container regression, packaged Linux
+  container acceptance, and isolated Windows no-send checkpoint. It does not qualify a native
+  installation with real email/PM delivery.
 
 ## Sage naming
 

@@ -5,8 +5,9 @@ tracking. Sage, communication-learning repairs, and platform parity remain on ho
 
 Starting point: fixes and v3.3.0 preparation are on `dev` at `860b91b`. Rolling development
 packages use `dev-<commit>`; the installed host has not been upgraded. The
-[source acceptance record](basic-workflow-source-acceptance.md) covers the passing 29-commit
-container regression. The gates below qualify the distributable and real daily workflow.
+[acceptance record](basic-workflow-source-acceptance.md) covers the passing packaged
+`dev-dc39101` Linux/PostgreSQL regression and isolated Windows no-send checkpoint. The remaining
+gates below qualify the installed daily workflow.
 
 ## 1. Qualify the packaged development build
 
