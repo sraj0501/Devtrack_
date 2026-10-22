@@ -60,8 +60,18 @@ Credentials and full connection URLs are intentionally not recorded here.
 The repository includes an isolated, credential-free E2E test for the Go-native product boundary.
 It builds the current client, creates temporary configuration and a disposable Git repository,
 starts the daemon in lightweight mode, makes a real ticket-linked commit, waits for observation,
-and verifies that MCP exposes the commit and a non-zero local-day count. PM delivery, telemetry,
-email, continuous server-event sync, and automatic approvals remain disabled.
+and verifies that MCP exposes the ticket and exactly one local-day commit before and after a
+restart. Ticket selection, persistence across restart, and clearing run inside the disposable
+workspace. With no server and no local actions, queue listing must explicitly report unavailable
+server history. PM delivery, telemetry, email, continuous server-event sync, and automatic
+approvals remain disabled.
+
+On 2026-10-22, PR #301's Ubuntu run failed after successful commit capture because the script
+called repository-scoped `work status` outside the test workspace. Both platform scripts also
+still asserted the retired inferred-time/correction behavior and assumed offline empty-queue
+listing succeeded. The corrected lane passed locally on native Windows and in a disposable Linux
+container with the current cross-compiled client. This lane does not qualify server reporting,
+real delivery, packaged installation, or Sage.
 
 Run both local lanes from Windows 11 with WSL:
 

@@ -193,55 +193,63 @@ try {
     $mcpOutput = (Invoke-Captured $binary @('mcp', 'test') | Out-String)
     if ($mcpOutput -notmatch '=== PASS ===' -or
         $mcpOutput -notmatch 'E2E-201' -or
-        $mcpOutput -notmatch 'today_commits[^0-9]*[1-9]') {
+        $mcpOutput -notmatch 'today_commits[^0-9]*1([^0-9]|$)') {
         throw "MCP context did not contain the observed commit and local-day count:`n$mcpOutput"
     }
 
-    # The log can precede the work-time transaction; wait for persisted CLI evidence.
-    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
-    do {
-        $workStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
-        if ($workStatus -match '\[inferred, confidence 0\.50\].*E2E-201') { break }
-        if ([DateTime]::UtcNow -ge $deadline) {
-            throw "Commit did not produce an inferred work session:`n$workStatus"
-        }
-        Start-Sleep -Milliseconds 250
-    } while ($true)
-
-    Invoke-Checked $binary work adjust 45
-    $correctedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
-    if ($correctedStatus -notmatch '45m.*\[adjusted\].*E2E-201') {
-        throw "CLI correction was not visible:`n$correctedStatus"
-    }
-    Invoke-Checked $binary stop
-    # Cross a log timestamp boundary so this cannot pass accidentally just
-    # because both status calls happened within the same second.
-    Start-Sleep -Milliseconds 1100
-    Invoke-Checked $binary start
-    $restartedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
-    if ($restartedStatus -ne $correctedStatus) {
-        throw "Work sessions changed across daemon restart:`n$restartedStatus"
-    }
-
+    # Ticket-context commands are repository-scoped and must run in the test workspace.
     Push-Location $workspace
     try {
+        $initialStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($initialStatus -notmatch 'No active ticket selected\.') {
+            throw "Unexpected initial ticket context:`n$initialStatus"
+        }
         Invoke-Checked $binary work start E2E-202
-        $activeStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
-        if ($activeStatus -notmatch 'Active session' -or $activeStatus -notmatch 'Ticket: E2E-202') {
-            throw "Explicit session did not start:`n$activeStatus"
+        $selectedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($selectedStatus -notmatch 'Active ticket: E2E-202') {
+            throw "Ticket was not selected:`n$selectedStatus"
+        }
+        Invoke-Checked $binary stop
+        # Cross a timestamp boundary; startup logs must not enter status comparisons.
+        Start-Sleep -Milliseconds 1100
+        Invoke-Checked $binary start
+        $restartedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($restartedStatus -ne $selectedStatus) {
+            throw "Ticket context changed across daemon restart:`n$restartedStatus"
         }
         Invoke-Checked $binary work stop
-        $stoppedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
-        if ($stoppedStatus -notmatch 'No active session' -or
-            $stoppedStatus -notmatch '\[explicit,.*E2E-202' -or
-            $stoppedStatus -notmatch '45m.*\[adjusted\].*E2E-201') {
-            throw "Explicit stop or earlier correction was lost:`n$stoppedStatus"
+        $clearedStatus = (Invoke-Captured $binary @('work', 'status') | Out-String)
+        if ($clearedStatus -notmatch 'No active ticket selected\.') {
+            throw "Ticket selection was not cleared:`n$clearedStatus"
         }
     }
     finally { Pop-Location }
 
-    Invoke-Checked $binary queue list
-    Write-Host 'PASS: automatic time, CLI correction, restart persistence, and explicit start/stop.'
+    # Persisted commits must remain visible after restarting the daemon.
+    $restartedMcp = (Invoke-Captured $binary @('mcp', 'test') | Out-String)
+    if ($restartedMcp -notmatch '=== PASS ===' -or
+        $restartedMcp -notmatch 'E2E-201' -or
+        $restartedMcp -notmatch 'today_commits[^0-9]*1([^0-9]|$)') {
+        throw "Persisted commit context changed across daemon restart:`n$restartedMcp"
+    }
+
+    # This lane deliberately has no server and no staged local actions.
+    # Unavailable combined history must not appear as a successful empty queue.
+    $queueErrorFile = Join-Path $testRoot 'queue-error.txt'
+    $queuePreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $queueOutput = @(& $binary queue list 2> $queueErrorFile)
+        $queueExitCode = $LASTEXITCODE
+        $queueDiagnostics = Get-Content -Raw -LiteralPath $queueErrorFile
+    }
+    finally { $ErrorActionPreference = $queuePreference }
+    if ($queueExitCode -ne 1 -or
+        $queueDiagnostics -notmatch 'warning: server queue unavailable; showing local queue only:' -or
+        $queueDiagnostics -notmatch 'Error: server queue history unavailable:') {
+        throw "Unexpected offline queue result (exit $queueExitCode):`n$queueOutput`n$queueDiagnostics"
+    }
+    Write-Host 'PASS: ticket selection, restart persistence, clearing, and persisted commit context.'
     Write-Host "PASS: Windows no-send E2E observed $commitHash and exposed it through MCP."
 }
 finally {
