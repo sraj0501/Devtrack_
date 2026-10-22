@@ -13,10 +13,13 @@ It shows overview, activity, pending actions, alerts, and workspaces. Queue acti
 rejected, or edited. Equivalent correction commands remain available through the CLI and supported
 notification channels.
 
+The client TUI reads the local SQLite queue. v3.3.0 development CLI commands additionally read
+server-owned history; use `devtrack queue list` and preserve `server:<id>` to review those rows.
+
 ## Ticket correction
 
 Commit-time ticket selection is not part of the DevTrack workflow. Ticket resolution runs in the
-background; unlinked results are corrected later through explicit queue, work-session, status, or
+background; unlinked results are corrected later through explicit queue, ticket-context, status, or
 `devtrack ticket link` surfaces. Deterministic provenance and conflicts remain visible for review.
 
 ## Python server TUI

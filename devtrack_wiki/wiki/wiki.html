@@ -587,7 +587,7 @@
         <span class="current" id="breadcrumbCurrent">Home</span>
       </div>
       <div class="topbar-actions">
-        <span class="version-chip">v3.2.0</span>
+        <span class="version-chip">v3.2.0 stable · v3.3.0 dev</span>
         <button class="icon-btn" id="themeToggle" title="Toggle theme">
           <svg id="themeIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         </button>
@@ -650,7 +650,8 @@ const NAV = [
     items: [
       { id: 'PENDING_ACTIONS', label: 'Pending Actions',    icon: bell_icon() },
       { id: 'EOD_AND_VOICE',   label: 'EOD & Your Voice',   icon: user_icon() },
-      { id: 'WORK_TRACKER',    label: 'Work Tracker',       icon: '⏱️' },
+      { id: 'BASIC_WORKFLOW_TESTING', label: 'Basic Workflow Testing', icon: '🧪' },
+      { id: 'WORK_TRACKER',    label: 'Ticket Context',     icon: '🎫' },
       { id: 'MCP_CLAUDE_CODE', label: 'MCP / Agent Memory', icon: '🤖' },
     ]
   },
@@ -891,20 +892,22 @@ uv run python -m backend.db.migrate</code></pre>
 devtrack queue list
 devtrack queue list --all
 devtrack queue status</code></pre>
-<p>The default view shows pending actions. <code>--all</code> includes recent posted and rejected rows. Each row shows an ID, status, confidence, action type, target and expiry.</p>
+<p>The default view shows pending actions of any age. <code>--all</code> includes actions created in the last 24 hours across statuses, including posted and rejected rows. Each row shows an ID, status, confidence, action type, target and expiry.</p>
+<p><strong>v3.3.0 development:</strong> the CLI also reads server-side PostgreSQL actions directly. Local rows use numeric IDs; server rows use <code>server:&lt;id&gt;</code>. Listing, history and counts do not require opt-in client-event synchronization. During a server outage, listing can still display local rows with a warning; <code>queue status</code> returns an error rather than partial counts. The client TUI reads local SQLite actions only.</p>
 
 <h2>Review an Action</h2>
 <ol>
 <li>Confirm the target ticket, repository, recipient or branch.</li>
 <li>Read the generated content and check that it is factually supported by the observed work.</li>
 <li>Use the confidence as context, not as a substitute for checking the action.</li>
-<li>Approve, edit or reject by numeric ID.</li>
+<li>Approve, edit or reject using the displayed ID. On v3.3.0 development builds, retain the <code>server:</code> prefix for a server action.</li>
 </ol>
 <pre><code class="language-bash">devtrack queue approve &lt;id&gt;
 devtrack queue edit &lt;id&gt; '{"content":"corrected text"}'
 devtrack queue reject &lt;id&gt;
 devtrack queue flag &lt;id&gt;</code></pre>
 <p>Approval marks the local row approved and asks the configured server or connector to execute it. If a remote service is unavailable, the local outbox remains intact for retry; a failed network call must not block Git.</p>
+<p>For a server action, use commands such as <code>devtrack queue reject server:42</code> or <code>devtrack queue edit server:42 '{"content":"corrected text"}'</code>. Server edits and rejection apply only to still-pending rows; a claimed or completed row returns a conflict. Rejected rows remain in history. Server-side flagging is unsupported. The Admin Console web page still supports inspection and rejection only.</p>
 
 <h2>Confidence and Expiry</h2>
 <div class="table-wrap"><table>
@@ -921,20 +924,22 @@ devtrack queue flag &lt;id&gt;</code></pre>
 <ul>
 <li>Check <code>devtrack logs -f</code> for an unlinked ticket, degraded server, or connector error.</li>
 <li>Confirm the branch contains a ticket ID or set one explicitly with <code>devtrack work start PROJ-123</code>.</li>
-<li>Remember that server-generated actions live in PostgreSQL. Local mirroring depends on the opt-in client-event sync setting.</li>
-<li>Use <code>devtrack eod status</code> for the latest EOD action even when the local queue view has not mirrored the server row.</li>
+<li>Server-generated actions live in PostgreSQL. v3.3.0 development builds read them directly; check server reachability if a warning accompanies the local rows.</li>
+<li>Use <code>devtrack eod status</code> and <code>devtrack eod show</code> to inspect the latest report across local and server history on v3.3.0 development builds.</li>
 </ul>
 </div>`,
 
   EOD_AND_VOICE: `<div class="md-body">
 <h1>End-of-Day Reports and Your Voice</h1>
-<p>DevTrack builds an end-of-day narrative from commits and work sessions already observed. It should sound like you when a local voice profile exists and degrade to clear template or raw output when AI services are unavailable.</p>
+<p>DevTrack builds an end-of-day narrative from observed commits and their ticket context. v3.3.0 development removes time tracking: reports do not measure hours or time spent per task. A local voice profile can shape the narrative; unavailable AI services fall back to clear template or raw output.</p>
 
 <h2>Generate and Inspect a Report</h2>
 <pre><code class="language-bash">devtrack eod generate
 devtrack eod show
 devtrack eod status</code></pre>
 <p><code>generate</code> prints the narrative and reports the staged action ID when queueing succeeds. <code>show</code> prints the most recent saved narrative. <code>status</code> shows its date, action ID and state.</p>
+<p><code>work report</code> calls the same server endpoint as <code>eod generate</code>; both can stage a new report and require the Python server. Use <code>eod show</code> for a read-only view. Generation can succeed even if staging fails: confirm <code>Queued as action server:&lt;id&gt;</code> and the queue row before assuming the report was saved. Supply an explicit delivery address with <code>work report --email &lt;address&gt;</code>.</p>
+<p>On v3.3.0 development builds, <code>show</code> and <code>status</code> choose the latest report from local and server history. Server actions are identified as <code>server:&lt;id&gt;</code>; server unavailability is visible, with local history still available.</p>
 <p>In Managed mode, an explicit manual or scheduled EOD request includes only that local calendar day's minimal commit summaries from the Go-owned SQLite database. The Python server uses those summaries to build the PostgreSQL-backed report without silently enabling continuous client-event synchronization.</p>
 
 <h2>Teach DevTrack How You Write</h2>
@@ -1241,10 +1246,6 @@ SLACK_ALLOWED_CHANNEL_IDS=C123ABC,C456DEF   # leave blank for all channels (dev 
 <tr><td><code>/devtrack trigger</code></td><td>Manually fire a timer trigger</td></tr>
 <tr><td><code>/devtrack status</code></td><td>Show runtime and configured-service state</td></tr>
 <tr><td><code>/devtrack commits</code></td><td>Show recent commits logged today</td></tr>
-<tr><td><code>/devtrack workstart [ticket]</code></td><td>Start a work session, optionally linked to a ticket</td></tr>
-<tr><td><code>/devtrack workstop</code></td><td>Stop the active work session</td></tr>
-<tr><td><code>/devtrack workadjust &lt;mins&gt;</code></td><td>Override the recorded time for the active/last session</td></tr>
-<tr><td><code>/devtrack workstatus</code></td><td>Show today's sessions and the active timer</td></tr>
 <tr><td><code>/devtrack workreport [--email addr]</code></td><td>Generate the EOD report; optionally email it</td></tr>
 <tr><td><code>/devtrack github</code></td><td>List open GitHub issues/PRs assigned to you</td></tr>
 <tr><td><code>/devtrack gitlab</code></td><td>List open GitLab issues assigned to you</td></tr>
@@ -1636,6 +1637,16 @@ devtrack start</code></pre>
   WHATS_NEW: `<div class="md-body">
 <h1>What's New</h1>
 <p><code>v3.2.0</code> is the latest public release. Its five native MCPB bundles and official MCP Registry record were published after all release gates passed. GitHub Releases remains the version-history archive.</p>
+<h2>v3.3.0 — Development: reliable Git capture and commit-based reporting</h2>
+<p>These changes are on <code>dev</code>; rolling builds identify themselves as <code>dev-&lt;commit&gt;</code>. They have not replaced stable v3.2.0 or automatically updated an existing installation.</p>
+<ul>
+<li><strong>Time tracking removed:</strong> no timed sessions, idle inference, duration corrections, per-task hours or session synchronization. <code>work start</code> selects ticket context; <code>work stop</code> clears it. Reports use commits.</li>
+<li><strong>Reliable commit bursts:</strong> the running monitor walks unseen commits from all local branches and detached HEAD, records oldest first and deduplicates hashes. Rapid commits and branches switched away while processing are retained.</li>
+<li><strong>Safe enrichment:</strong> message enhancement checks that the observed commit is still HEAD before and after generation, and refuses amendment when staged changes are present.</li>
+<li><strong>Visible server reports and review:</strong> queue/history and EOD commands read PostgreSQL actions directly. Server actions use <code>server:&lt;id&gt;</code>; pending edits and rejection are race-safe.</li>
+<li><strong>Qualification boundary:</strong> source-based Linux/PostgreSQL container tests covered bursts, branch switching, outages, restart and manual/scheduled EOD visibility. Packaged-build acceptance, native Windows rehearsal, real PM/email delivery and a representative workday remain to be qualified. Commits made while the daemon is stopped are not a guaranteed catch-up path.</li>
+</ul>
+<p>See <a href="#BASIC_WORKFLOW_TESTING" onclick="navigate('BASIC_WORKFLOW_TESTING');return false;">Basic Workflow Testing</a>. Sage testing, learning-adapter repairs and platform-parity work remain on hold until the basics qualify.</p>
 <h2>v3.2.0 — DevTrack Sage and silent workflow intelligence</h2>
 <ul>
 <li><strong>DevTrack Sage:</strong> six independent harness adapters feed a privacy-minimized local pipeline that publishes deterministic searchable Markdown.</li>
@@ -1771,14 +1782,13 @@ devtrack start</code></pre>
 <div class="table-wrap"><table><thead><tr><th>Method and path</th><th>Contract summary</th></tr></thead><tbody>
 <tr><td><code>POST /trigger/commit</code></td><td>Requires commit hash, message, author, and branch; returns status, actions, and commit hash.</td></tr>
 <tr><td><code>POST /trigger/timer</code></td><td>Accepts timestamp, interval, and trigger count; an empty object remains valid for compatibility.</td></tr>
-<tr><td><code>POST /trigger/work_session_start</code></td><td>Starts a session from its numeric ID and optional ticket reference.</td></tr>
-<tr><td><code>POST /trigger/work_session_stop</code></td><td>Stops the identified work session.</td></tr>
 <tr><td><code>POST /trigger/boardroom</code></td><td>Accepts <code>plan_text</code> or <code>markdown</code> and returns the report, verdict, votes, pros, and cons.</td></tr>
 <tr><td><code>POST /trigger/boardroom/chat</code></td><td>Accepts plan text, history, and optional user direction; returns persona responses and updated session state.</td></tr>
 </tbody></table></div>
 
 <h2>Synchronization and Failure Behavior</h2>
 <p><code>POST /trigger/client_events</code> replays client events with stable replay keys. <code>POST /queue/execute_staged</code> carries the complete pending-action identity and returns either <code>posted</code> or an error state. Authentication applies to both when enabled.</p>
+<p>v3.3.0 development adds authenticated <code>GET /queue/history</code> for paginated action history and <code>POST /queue/review</code> for pending-only edit/reject. Non-pending review returns a conflict; unavailable queue storage returns a service-unavailable response. The work-session start/stop routes are retired, and session events are no longer synchronized.</p>
 <p>The Go client keeps observing Git and recording local SQLite state when the Python server is unavailable. Timeouts and retry queues bound network failures; normal Git commands are never held open by this boundary.</p>
 
 <h2>Cross-Platform Contract</h2>
@@ -1824,8 +1834,8 @@ devtrack start</code></pre>
 <tr><td><code>devtrack queue reject &lt;id&gt;</code></td><td>Reject an action so it cannot post.</td></tr>
 <tr><td><code>devtrack eod generate</code></td><td>Generate today's narrative and stage delivery.</td></tr>
 <tr><td><code>devtrack eod show</code>/<code>status</code></td><td>Show the latest narrative or its action state.</td></tr>
-<tr><td><code>devtrack work start &lt;ticket&gt;</code></td><td>Set an explicit active ticket when branch inference is insufficient.</td></tr>
-<tr><td><code>devtrack work stop</code>/<code>status</code>/<code>report</code></td><td>Manage and summarize explicit work sessions.</td></tr>
+<tr><td><code>devtrack work start &lt;ticket&gt;</code></td><td>Select explicit ticket context when branch inference is insufficient; no timer in v3.3.0 development.</td></tr>
+<tr><td><code>devtrack work stop</code>/<code>status</code>/<code>report</code></td><td>Clear or inspect ticket context, or summarize commits; v3.3.0 development records no durations.</td></tr>
 </tbody></table></div>
 
 <h2>Voice and Agent Memory</h2>
@@ -2544,7 +2554,7 @@ workspaces:
     enabled: false</code></pre>
 
 <h2>ignore_branches Field <span style="font-size:.75rem;font-weight:400;background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:1px 8px;margin-left:6px;">v1.4-dev</span></h2>
-<p>List branch name patterns to exclude from commit monitoring. When the active branch matches, no commit trigger or external action is prepared for that event.</p>
+<p>List branch name patterns to exclude from commit monitoring. When the observed commit branch matches, no commit trigger or external action is prepared for that event.</p>
 <div class="table-wrap"><table>
 <thead><tr><th>Pattern</th><th>Matches</th></tr></thead>
 <tbody>
@@ -2559,7 +2569,7 @@ workspaces:
 <h2>How Routing Works</h2>
 <ol>
 <li>Go daemon detects a commit in a workspace path</li>
-<li>If the current branch matches an <code>ignore_branches</code> pattern, the event is dropped immediately</li>
+<li>If the observed commit branch matches an <code>ignore_branches</code> pattern, the event is dropped immediately</li>
 <li>The trigger message includes <code>pm_platform</code>, <code>pm_project</code>, <code>pm_milestone</code>, and <code>workspace_name</code></li>
 <li>The Python server reads <code>pm_platform</code> and calls only that platform's sync handler</li>
 <li>Azure, GitHub, GitLab, and Jira are all skipped for platform values that don't match</li>
@@ -2758,10 +2768,12 @@ schtasks /Run /TN DevTrack               # Start immediately without waiting for
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Stable v3.2.0; Sage roadmap complete</div>
 <p>DevTrack's completed product arc is released: silent observation, the confidence-scored pending-actions queue, deterministic ticket extraction, EOD reporting, local voice learning, the PR review loop, ten-tool read-only MCP context, DevTrack Sage, first-run onboarding, and native MCPB distribution.</p>
 <h2>Current focus</h2>
+<p><strong>v3.3.0 development:</strong> the priority is reliable Git capture, ticket recording and commit-based EOD reports. Time tracking has been removed. Source-based container acceptance covers burst/branch capture and server report visibility; the packaged build, native Windows workflow, controlled PM/email delivery and a representative workday are the next gates. Sage testing, learning-adapter repairs and platform-parity work are on hold.</p>
 <p>The core no-send workflow is validated. The owner confirmed clean Windows installation and full Managed Linux acceptance with PostgreSQL, Python, Ollama, staging, EOD, and MCP complete on 2026-09-10 outside GitHub Actions. Earlier Windows Managed, credential-free cross-platform E2E, and source-based admin acceptance runs also passed. Stable v3.2.0 and its official MCP Registry record are public. The separate TASK-154 admin-UI branch remains deferred and needs its own drift and UI acceptance. Glama's admins approved the submitted server on 2026-09-06; the exact approved path and score-badge update for <a href="https://github.com/punkpeye/awesome-mcp-servers/pull/13608" target="_blank" rel="noopener">awesome-mcp-servers PR #13608</a> remain to be recorded.</p>
 <h2>Next</h2>
 <ol>
-<li>Repeat the Windows admin login, action inspection, rejection, and audit journey against packaged release artifacts rather than the source checkout.</li>
+<li>Complete <a href="#BASIC_WORKFLOW_TESTING" onclick="navigate('BASIC_WORKFLOW_TESTING');return false;">Basic Workflow Testing</a> before resuming Sage or other deferred work.</li>
+<li>As part of packaged acceptance, repeat the Windows admin login, action inspection, rejection, and audit journey against packaged release artifacts rather than the source checkout.</li>
 <li>Capture and privacy-review the approved screenshots and video from real behavior.</li>
 <li>Copy the exact approved Glama listing path and add its score badge to PR #13608. Keep other submissions and launch posts held until owner-authenticated sessions or approved contact details are available.</li>
 </ol>
@@ -3071,51 +3083,41 @@ project: owner/repository</code></pre>
 </div>`,
 
   WORK_TRACKER: `<div class="md-body">
-<h1>Work Tracker</h1>
-<p>Automatic session-based time tracking. Start a session against a ticket, make commits — they're all attached automatically — then stop the session. At end of day, generate an AI narrative report of everything you did.</p>
-
-<h2>Quick Start</h2>
-<pre><code class="language-bash"># Start a work session
+<h1>Ticket Context and Commit Reports</h1>
+<p><strong>v3.3.0 development:</strong> DevTrack records work through Git commits and ticket context. Time tracking has been removed by product decision. Selecting a ticket does not start a timer, estimate effort, infer idle time or collect per-task hours.</p>
+<h2>Daily Use</h2>
+<pre><code class="language-bash"># Optional ticket context when the branch or message does not identify one
 devtrack work start AUTH-42
-
-# Make commits as normal — they're auto-attached to AUTH-42
+# Commit normally while the daemon is running
 git commit -m "Add OAuth2 callback handler"
-
-# Stop the session (records elapsed time)
-devtrack work stop
-
-# View today's sessions
+# Inspect or clear explicit context
 devtrack work status
-
-# Generate EOD report
+devtrack work stop
+# Generate a commit-based report
 devtrack work report
-</code></pre>
-
-<h2>Commands</h2>
-<table><thead><tr><th>Command</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td><code>devtrack work start &lt;ticket&gt;</code></td><td>Begin a timed session for the given ticket</td></tr>
-<tr><td><code>devtrack work stop</code></td><td>Stop the active session and record duration</td></tr>
-<tr><td><code>devtrack work status</code></td><td>Show active session and today's completed sessions</td></tr>
-<tr><td><code>devtrack work report</code></td><td>Generate AI narrative EOD summary with achievements, in-progress, pending</td></tr>
-<tr><td><code>devtrack work report --email &lt;address&gt;</code></td><td>Generate the report and request delivery to the explicit address</td></tr>
-</tbody></table>
-
-<h2>Configuration</h2>
-<pre><code class="language-bash">EOD_REPORT_HOUR=18                     # Hour to auto-generate report (24h)
-EOD_REPORT_EMAIL=manager@example.com   # Who to email the report to
-WORK_SESSION_AUTO_STOP_MINUTES=480     # Auto-stop after 8 hours if forgotten
-</code></pre>
-
-<h2>How It Works</h2>
-<ul>
-<li>Sessions are stored in the configured local SQLite database (<code>work_sessions</code> table); setup places <code>devtrack.db</code> under the DevTrack data home's <code>data/db</code> directory</li>
-<li>Every git commit made while a session is active is recorded against that session</li>
-<li>The AI report uses commit messages, session duration, and ticket context to generate a narrative summary</li>
-<li>Reports can be output as Terminal text, Markdown, HTML, or JSON</li>
-</ul>
+devtrack eod show
+devtrack eod status</code></pre>
+<p>Canonical branch names and explicit commit references take precedence over the selected ticket. Clearing context does not delete recorded commits. <code>work adjust</code> is retired and rejects duration corrections.</p>
+<h2>Capture and Storage</h2>
+<p>The running Go daemon observes unseen commits across local branch tips and detached HEAD, in ancestry order, and deduplicates commit hashes. This covers rapid bursts and switching away from a branch while earlier commits are being processed. Existing history at monitor startup forms a baseline; do not rely on capture of commits made while the daemon was stopped.</p>
+<p>The client stores commit records and ticket context in local SQLite. Server reports and staged actions live in PostgreSQL. Historical time-related schema can remain for compatibility; it is inert and does not collect or synchronize new time records.</p>
+<p>Configure scheduled EOD and optional destinations through the registered environment. Delivery requires queue review and a working connector. Actual PM/email delivery is still an upcoming qualification step for this development version.</p>
 </div>`,
 
+  BASIC_WORKFLOW_TESTING: `<div class="md-body">
+<h1>Basic Workflow Testing</h1>
+<p>The immediate goal is dependable Git capture, ticket recording and EOD reporting without time tracking. Stable v3.2.0 remains public; v3.3.0 changes are on dev. Sage testing, learning repairs and platform-parity work remain on hold.</p>
+<h2>Acceptance Sequence</h2>
+<ol>
+<li><strong>Packaged development build:</strong> identify the exact commit and checksum, then repeat isolated Linux/PostgreSQL container tests for bursts, branch switches, outage recovery, restart, queue edit/reject, and manual/scheduled reports.</li>
+<li><strong>Native Windows:</strong> preserve a rollback copy, rehearse ticket-linked and unlinked commits in a disposable repository, inspect Git hooks and restart/outage behavior, and test local-calendar EOD coverage across midnight. Explicitly test daemon-off behavior before depending on it.</li>
+<li><strong>Controlled delivery:</strong> review a designated test ticket and email recipient, approve only the intended action, verify receipt/status and no duplicate delivery, and confirm rejection prevents delivery.</li>
+<li><strong>Representative workday:</strong> reconcile every expected commit hash and ticket against the final report. Check completeness, correct mapping, readable content and absence of time tracking before returning to Sage.</li>
+</ol>
+<h2>Current Evidence and Limits</h2>
+<p>Source-based Linux client/server tests with PostgreSQL exercised rapid commits, switched-away branches, intentional server outages, restart, scheduled EOD, server history and pending review. This does not establish that a packaged update is installed or that real email/PM delivery, native Windows behavior, overnight coverage or stopped-daemon catch-up has passed.</p>
+<p>The detailed maintainer checklist is <code>docs/testing/basic-workflow.md</code> in the repository. Keep credentials and private generated reports out of committed evidence.</p>
+</div>`,
   MCP_CLAUDE_CODE: `<div class="md-body">
 <h1>MCP and Agent Memory</h1>
 <div class="home-badge" style="margin-bottom:24px;background:var(--callout-tip);border-color:var(--callout-tip-border);color:#166534;">Available in v3.2.0 · official MCP Registry record active/latest</div>
@@ -3400,7 +3402,7 @@ function renderHome() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="home-hero">
-      <div class="home-badge">Local-first · latest release v3.2.0 · official MCP Registry</div>
+      <div class="home-badge">Stable v3.2.0 · v3.3.0 development · local-first</div>
       <h1 class="home-title">Never write a<br><span>standup</span> again.</h1>
       <p class="home-sub">You commit; DevTrack prepares ticket updates and end-of-day reports silently, in your voice, on your machine. Every outbound action stays reviewable before it leaves.</p>
     </div>
@@ -3413,7 +3415,8 @@ function renderHome() {
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation, MCP context, and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'v3.2.0 ships the silent Git correction, completed DevTrack Sage roadmap, deterministic ticket mapping, time inference, and rolling development update channel.' },
+        { id:'BASIC_WORKFLOW_TESTING', icon:'🧪', title:'Test Capture and Reporting', desc:'Qualify the packaged development build, native Windows workflow, controlled delivery and a representative workday before resuming Sage testing.' },
+        { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'Stable v3.2.0 remains public. v3.3.0 development removes time tracking, repairs burst/branch capture, and makes server reports and review visible from the CLI.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the selected channel\'s platform asset, runs migrations, and restarts the daemon. v3.2.0 includes persistent <code>--dev</code>/<code>--main</code> selection.' },
         { id:'UNINSTALL',        icon:'🗑️', title:'Uninstall',           desc:'<code>devtrack uninstall [--yes]</code> — clean, interactive removal: stops daemon, removes autostart, deletes <code>Data/</code> and <code>~/.devtrack/</code>, and removes the binary. Cross-platform (macOS/Linux/Windows). Your <code>.env</code> and git repos are left intact.' },
@@ -3486,7 +3489,8 @@ go build -o devtrack .
 ./devtrack status      # daemon and capability readiness
 ./devtrack doctor      # background bootstrap progress; use --repair after a failure
 
-# Once voice seeding is ready, preview the generated EOD narrative locally.
+# Once voice seeding is ready, generate an EOD narrative through the local server.
+# This can stage a report; use eod show to read an existing report.
 ./devtrack work report</code></pre>
       <p style="margin:.5rem 0 .75rem;font-size:.85rem;opacity:.7;">The wizard reuses an installed generation-capable Ollama model when available. If none is ready, it can explicitly use an already-present OpenAI or Anthropic key as a temporary fast lane while Ollama remains the local default.</p>
       <p style="margin:.75rem 0 .25rem;font-size:.9rem;opacity:.8;">Lightweight mode (no Python at all)</p>
@@ -3512,7 +3516,7 @@ devtrack start</code></pre>
         { n:'Pending Queue + Explicit Confidence', d:'Every outbound PM, email, or Git action is staged in <code>pending_actions</code> first with a confidence score and review window. Approve, edit, reject, or let earned auto-approval rules proceed; there is no direct-send fallback.' },
         { n:'Go-Native Ticket Connectors', d:'The terminal client provides ticket list, view, create, comment, check, and sync paths for <strong>GitHub, GitLab, and Azure DevOps</strong>. Connector failures degrade without blocking local observation or queueing.' },
         { n:'Go-Native Alerts', d:'The daemon polls <strong>GitHub and Azure DevOps</strong> for relevant notifications and keeps alert state in local SQLite. Alert delivery can use terminal, OS, Telegram, or Slack notifiers; no MongoDB-backed alert state or Jira poller is claimed.' },
-        { n:'End-of-Day Reports in Your Voice', d:'Commits and work sessions feed an EOD narrative. When a learned local voice profile is available it shapes generated text; missing models or optional services degrade gracefully, and any outbound delivery still passes through the pending queue.' },
+        { n:'End-of-Day Reports in Your Voice', d:'Observed commits and ticket context feed an EOD narrative; v3.3.0 development removes time tracking. When a learned local voice profile is available it shapes generated text; missing models or optional services degrade gracefully, and any outbound delivery still passes through the pending queue.' },
         { n:'Local Context + MCP', d:'The Go client keeps observation, queue, and history data in local SQLite. v3.2.0 provides ten read-only MCP tools for active work, pending actions, and published Sage knowledge, including privacy-declaring native MCPB bundles.' },
         { n:'Optional Visibility and Corrections', d:'The TUI and Telegram show daemon activity and expose available correction paths; notifications surface status for a quick glance. None gates daemon capabilities: closing every interface leaves the same silent background engine running.' },
       ].map((f, i) => `

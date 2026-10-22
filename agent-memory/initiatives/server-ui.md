@@ -1,13 +1,14 @@
 ---
 name: Server UI refresh
-description: Active admin-console redesign awaiting integration decision
+description: Deferred admin-console redesign and its separate integration gate
 type: project
 ---
 
 The full-console redesign is committed on `feat/TASK-154-server-admin-ui` at `54ceb05`, but that
 commit is not an ancestor of current `dev`. The current `dev` working tree has no uncommitted admin
-changes. Review and integrate the branch or explicitly retire it before packaged qualification and
-privacy-reviewed media capture.
+changes. This cosmetic work is deferred behind basic Git/EOD acceptance and does not block testing
+the current packaged workflow. Review and integrate the branch or explicitly retire it before
+qualifying or capturing media that claims to include the redesign.
 
 The admin console is a server-rendered Jinja/HTML and HTMX application under `devtrack_server/backend/admin`, with shared styling in `static/admin.css`. Keep this lightweight architecture for the first redesign. Do not introduce a SPA framework or frontend build pipeline unless audited interaction requirements justify the maintenance cost.
 

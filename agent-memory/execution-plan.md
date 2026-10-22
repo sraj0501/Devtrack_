@@ -1,6 +1,6 @@
 ---
 name: Active execution plan
-description: Ordered pickup sequence for active UI integration and distribution follow-ups
+description: Ordered basic-workflow acceptance and deferred UI/distribution follow-ups
 type: project
 ---
 
@@ -11,18 +11,22 @@ target PRs to `dev`, never `main`.
 
 ## Pickup checkpoint
 
-- Sage implementation integration commit: `77e2f5b` after merged PR #292; later documentation-only
-  merges may advance `dev` without changing the implementation boundary.
-- Sage SAGE-001–SAGE-005 is complete; no approved Sage implementation slice remains pending.
-- Reference: `C:\Work\git_apps\ai_sessions_skills` at authoritative clean HEAD `ea2e067`.
-- v3.2.0 is the latest stable public release; no release gate remains active.
+- Basic capture/report fixes, time-tracking removal, and v3.3.0 preparation are on `dev` at
+  `860b91b`. The installed host version has not been updated.
+- v3.2.0 is the last recorded stable release; development packages use `dev-<commit>`.
+- Sage has no pending approved implementation slice; its qualification is on hold.
 
 ## Ordered work
 
-1. Reconcile and re-qualify TASK-154 separately from the released v3.2.0 line.
-2. Qualify the packaged build and capture privacy-reviewed media from tested behavior.
-3. Record the exact Glama listing path and update the score badge.
-4. Complete third-party directory forms only in owner-authenticated sessions.
+1. Qualify the exact packaged development build in an isolated container with PostgreSQL.
+2. Run native Windows acceptance, including restart/outage and local-date reporting boundaries.
+3. Verify controlled real delivery and the intended model's report quality.
+4. Complete a representative workday and reconcile commit/ticket coverage against EOD.
+
+Use [the concrete test plan](../docs/testing/basic-workflow.md). Only after accepting the basics,
+resume Sage qualification. Legacy learning repairs and platform parity remain on hold. UI
+reconciliation (TASK-154), privacy-reviewed media, the Glama path/badge, and owner-authenticated
+directory submissions are deferred behind the immediate daily-use priority.
 
 ## Guardrails
 

@@ -69,3 +69,13 @@ managed mode the client spawns the server as a subprocess.
 Full API contract: `docs/ARCHITECTURE.md`
 
 Auth: `X-DevTrack-API-Key` header (value from `DEVTRACK_API_KEY` env var).
+
+## Basic-workflow contract
+
+The monitor walks unseen ancestry across local branch tips while running; startup seeds existing
+history, so daemon-off catch-up must not be assumed. `work start`/`stop`/`status` manage ticket
+context only, and `work report` generates a commit-based report. There are no duration collectors,
+timed sessions, time corrections, or time metrics. Legacy duration tables are inert compatibility
+schemas. EOD/queue readers combine local records with authenticated server history; server action
+identities are `server:<id>`, with numeric IDs reserved for local actions. Do not mirror server
+records into SQLite just to display them. See [the acceptance plan](../../docs/testing/basic-workflow.md).

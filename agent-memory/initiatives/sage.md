@@ -1,6 +1,6 @@
 ---
-name: DevTrack Sage implementation plan
-description: Active completion plan and durable boundaries for local cross-harness command knowledge
+name: DevTrack Sage runtime boundaries
+description: Durable local command-knowledge contract and deferred qualification
 type: project
 ---
 
@@ -10,16 +10,10 @@ is `docs/DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md`; the executable parity authority 
 
 ## Active state
 
-PRs #279–#292 are integrated into `dev` at `77e2f5b`. The 136-row reference ledger is complete at
-119 implemented and 17 adapted, and the clean capture-to-knowledge journey passes repeatedly on
-Windows and Linux. Codex, Claude Code, GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are
-independent advertised adapters.
-
-TASK-169 PR #291 merged read-only MCP retrieval at `34aafb8`. TASK-170 PR #292 merged dry-run/apply
-retention, bounded opaque quarantine inspection and confirmed purge, confirmed exact topic
-deletion, deterministic Markdown/index/cache repair, and validated additive Markdown export/import
-at `77e2f5b`. Its Linux full tests/vet, focused race/fault coverage, native Windows focused tests,
-two documentation passes, and all 19 hosted checks passed. No approved Sage slice remains pending.
+No approved implementation slice remains pending. Owner-requested Sage qualification is on hold
+until basic Git capture and EOD reporting pass the daily-use acceptance plan. Codex, Claude Code,
+GitHub Copilot CLI, OpenCode, Cursor, and Devin CLI are independent advertised adapters. Historical
+implementation and validation evidence belongs in `docs/SAGE_*`, not the active pickup plan.
 
 ## Durable product surface
 

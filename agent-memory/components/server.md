@@ -1,8 +1,15 @@
+---
+name: DevTrack server
+description: Python AI pipeline, PostgreSQL persistence, queue ownership, and client boundary
+type: project
+---
+
 # devtrack_server — Python AI Pipeline
 
 Python package: `devtrack-server` (see `pyproject.toml`)
 
-This is the **canonical** Python source for the DevTrack server. The monorepo's root `backend/` directory is a legacy mirror being retired in TASK-048. All new Python development goes here.
+This is the **canonical** Python source for the DevTrack server. The monorepo's root `backend/`
+mirror was retired; do not recreate it. All Python development goes here.
 
 See `../INDEX.md` and `../operations/build-guide.md` for shared project context, configuration
 patterns, and vision rules.
@@ -102,3 +109,10 @@ The Go client communicates with this server exclusively over HTTPS. There is no 
 
 Auth for client→server calls: `X-DevTrack-API-Key` header (value from `DEVTRACK_API_KEY` env var).
 Admin routes use JWT cookie auth, not the API key.
+
+Server-generated reports/actions remain PostgreSQL-owned. Authenticated `/queue/history` returns
+paginated full records; `/queue/review` edits or rejects pending actions atomically, and execution
+uses the existing claim route. Go displays these with `server:<id>`; this read path does not enable
+client-event synchronization. Reports are commit-based with no duration metrics, work-session APIs,
+or session synchronization. Use [the HTTP contract](../../docs/HTTP_API.md) for validation and
+unavailable/conflict responses.

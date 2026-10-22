@@ -5,8 +5,10 @@ They are not separate interactive product flows.
 
 ## Reports and voice
 
-- `devtrack eod generate` stages an end-of-day report with explicit confidence.
-- `devtrack work report` previews captured commits on demand.
+- `devtrack eod generate` calls the Python server, prints a narrative, and attempts to stage an
+  end-of-day report with explicit confidence. Confirm the returned queue ID.
+- `devtrack work report` uses the same report-generation endpoint; it is not a read-only preview.
+  Use `devtrack eod show` to read the latest saved report.
 - `devtrack voice seed|profile|add|sync|status` manages local voice evidence.
 - `devtrack learning-status`, `learning-sync`, and `learning-reset` are the intended personalization
   controls, but their current server adapter is incomplete; treat them as unavailable until repaired.

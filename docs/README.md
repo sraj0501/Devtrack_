@@ -11,6 +11,9 @@ records. Use this map before treating a document as current implementation guida
 | Runtime architecture and ownership | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | Go↔Python HTTP contract | [`HTTP_API.md`](HTTP_API.md) |
 | Installation and modes | [`INSTALLATION.md`](INSTALLATION.md) |
+| Basic capture and EOD acceptance | [`testing/basic-workflow.md`](testing/basic-workflow.md) |
+| Time-tracking removal and context commands | [`WORK_TIME_INFERENCE.md`](WORK_TIME_INFERENCE.md) |
+| v3.3.0 development changes | [`releases/v3.3.0.md`](releases/v3.3.0.md) |
 | Current execution priorities | [`NEXT_STEPS.md`](NEXT_STEPS.md) and [`../agent-memory/execution-plan.md`](../agent-memory/execution-plan.md) |
 | DevTrack Sage scope and completed implementation | [`DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md`](DEVTRACK_SAGE_IMPLEMENTATION_PLAN.md) |
 | Sage executable parity inventory | [`SAGE_PORT_PARITY_MATRIX.md`](SAGE_PORT_PARITY_MATRIX.md) |
@@ -21,9 +24,11 @@ records. Use this map before treating a document as current implementation guida
 | Release-facing MCP listing copy | [`REGISTRY_SUBMISSION_PACKAGE.md`](REGISTRY_SUBMISSION_PACKAGE.md) |
 | Public user documentation | [`../devtrack_wiki/wiki/wiki.html`](../devtrack_wiki/wiki/wiki.html) and [`../devtrack_wiki/wiki/docs/`](../devtrack_wiki/wiki/docs/) |
 
-The v3.2.0 release documentation covers the completed DevTrack Sage roadmap, deterministic ticket
-mapping, silent time inference, rolling update channels, and the TASK-158 silent-Git correction.
-Use [`releases/v3.2.0.md`](releases/v3.2.0.md) for the curated release boundary.
+Stable v3.2.0 includes the earlier Sage roadmap, ticket mapping, former time inference, rolling
+update channels, and the TASK-158 silent-Git correction. Its notes describe that historical release.
+The v3.3.0 development line removes time tracking and fixes burst/branch capture and server report
+visibility. Source fixes are on `dev` at `860b91b`; installed binaries and stable publication are
+separate. Qualify the packaged development build using the basic-workflow plan before daily use.
 
 ## Historical records
 
@@ -35,6 +40,11 @@ Use [`releases/v3.2.0.md`](releases/v3.2.0.md) for the curated release boundary.
 - Dated validation evidence in [`END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md) and
   [`WINDOWS_ADMIN_ACCEPTANCE.md`](WINDOWS_ADMIN_ACCEPTANCE.md) should not be interpreted as a claim
   that later packaged-build or media gates are complete.
+- [`TASK_159_QUALIFICATION.md`](TASK_159_QUALIFICATION.md) records tests of the former time-tracking
+  feature; its commands, test names, and integration gates are historical, not current requirements.
+- [`testing/basic-workflow-source-acceptance.md`](testing/basic-workflow-source-acceptance.md)
+  records the initial v3.2.0 failures and passing source/container regression. It does not qualify
+  a later packaged installation or real email/PM delivery.
 
 ## Sage naming
 

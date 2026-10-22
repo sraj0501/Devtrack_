@@ -53,13 +53,16 @@ uv run pytest backend/tests/ -k name    # Filter by name
 
 ### Run the daemon locally
 ```bash
-source .env            # daemon reads env from the process at startup; it does NOT reload .env
-devtrack start &       # managed mode spawns webhook_server.py as a subprocess
+devtrack start         # auto-loads the registered environment; managed mode spawns Python
 devtrack status        # verify
 devtrack logs          # recent log output
 ```
 For persistent autostart, `devtrack autostart-install` bakes `.env` into the launchd
 plist (macOS) / systemd unit (Linux).
+
+The commands above work from PowerShell or a POSIX shell. Environment resolution is documented in
+[environment loading](environment-loading.md); existing process values take precedence. Changes
+to the environment file require a daemon restart.
 
 ### Testing notes
 - `backend/tests/conftest.py` adds repo root to `sys.path`.
@@ -108,7 +111,7 @@ and `mcp` (JSON-RPC 2.0 stdio server).
 | `internal/alerts/`, `internal/notify/` | **Go-native** ticket alert poller + notifiers (Terminal/Telegram/Slack/OS) |
 | `internal/ticket/`, `internal/match/` | Ticket-ID extraction from branch names (Phase 2) + ticket matching |
 | `internal/reviewer/` | PR review loop — fix-commit-push orchestration + escalation (Phase 7) |
-| `internal/mcp/`, `mcp_cmd.go` | MCP server (JSON-RPC 2.0 stdio); 6 read-only SQLite tools (Phase 8) |
+| `internal/mcp/`, `mcp_cmd.go` | MCP server (JSON-RPC 2.0 stdio); ten local read-only tools, including four Sage snapshot/diagnostic readers |
 | `cli_queue.go`, `cli_eod.go`, `cli_review.go` | Pending-actions queue, EOD report, PR review CLI groups |
 | `internal/telegram/` | **Go-native** Telegram bot; starts with daemon when `TELEGRAM_ENABLED=true` |
 | `connectors/{github,gitlab,azure}/` | **Go-native** PM connectors (list/view/sync/check) |
@@ -177,6 +180,11 @@ the configured or loopback-fallback server URL and degrade when no backend is re
 
 ## Project Status & Direction
 
+- **Immediate priority:** qualify basic Git capture and EOD reporting using
+  [the daily-use test plan](../../docs/testing/basic-workflow.md). v3.3.0 preparation at `860b91b`
+  removes time tracking and fixes rapid/branch-switched commit capture and server report/queue
+  visibility. It is on `dev`; installed-host and stable-release upgrades are separate. Sage
+  qualification, learning repairs, and platform parity remain on hold until the basics pass.
 - **Direction:** see [`PRODUCT_BIBLE.md`](../../PRODUCT_BIBLE.md). Build arc **Phase 0→9 COMPLETE** on
   `dev`. Stable v3.2.0 ships the completed Sage roadmap, ten-tool local MCP surface, first-run
   onboarding, PostgreSQL-backed managed services, and five native MCPB bundles. The official MCP
@@ -268,7 +276,12 @@ CLI: `devtrack alerts [--all|--clear]`. Config: `ALERT_ENABLED`, `ALERT_POLL_INT
   failures degrade to the original message.
 - **Git monitor not detecting commits:** confirm the repository is enabled in the authoritative
   `workspaces.yaml` (`devtrack workspace list`) and inspect `devtrack logs -f`. The retired
-  `DEVTRACK_WORKSPACE` fallback is ignored.
+  `DEVTRACK_WORKSPACE` fallback is ignored. The monitor seeds existing history on startup;
+  daemon-off commits are not a supported catch-up guarantee. While running, it walks unseen
+  ancestry across local branch tips and deduplicates shared commits.
+- **EOD/queue records:** server history is read over authenticated HTTP, without mirroring into
+  client SQLite. Review server records with `server:<id>`; bare numeric IDs refer to local actions.
+  A server outage must be surfaced rather than reported as an empty history.
 - **Structured task parsing unavailable:** check the configured LLM provider and server logs; the
   request must degrade to raw/template data rather than blocking the Git flow.
 - **Tests "provider not found":** call `reset_provider_cache()` in setup/teardown when changing `LLM_PROVIDER`.

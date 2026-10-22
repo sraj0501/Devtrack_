@@ -1,5 +1,10 @@
 # TASK-159 qualification — 2026-09-30
 
+> Historical qualification of the former time-tracking feature. The v3.3.0 development line removes
+> that feature, its commands, and its test modules. The integration follow-ups below record the state
+> of that dated run; they are not current execution priorities. See
+> [Time tracking removed](WORK_TIME_INFERENCE.md) and [current testing](testing/basic-workflow.md).
+
 Local qualification is complete. The automatic-time implementation merged through
 PR #272 at `94dbc7c`, as recorded in local Git history. These results qualify
 `3c3fedf` on `fix/TASK-159-schema-transactions` plus the working-tree change to
@@ -42,7 +47,7 @@ Clock-controlled coverage includes `TestWorkActivityRestartReplayAndCorrections`
 `TestWorkTimeBoundaries`, `TestExplicitStartTicketSwitchAndLateEvidence`,
 `TestCorrectionsSurviveLaterEvidence`, `TestWorkWindowArrivalPermutations`,
 `TestStopCannotRewriteAutomaticTicketClosure`, and the `internal/worktime` tests.
-The algorithm and privacy boundary are documented in [WORK_TIME_INFERENCE.md](WORK_TIME_INFERENCE.md).
+The former algorithm document is now replaced by the [removal decision](WORK_TIME_INFERENCE.md).
 
 Three-iteration Windows initialization benchmarks reported about 29.1 ms for a
 fresh database and 10.7 ms for reopening. These are local observations, not a
