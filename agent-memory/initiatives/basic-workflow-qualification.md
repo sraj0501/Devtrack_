@@ -45,6 +45,10 @@ Daemon-off catch-up, overnight boundaries, native installation, real delivery, a
 narrative quality remain unqualified. Source/container validation is recorded in
 [the acceptance record](../../docs/testing/basic-workflow-source-acceptance.md), not evidence that
 the user's installed workflow has been upgraded or qualified.
+The packaged `dev-dc39101` Windows binary passed an isolated no-send capture, hook-path,
+ticket-context, and restart checkpoint on 2026-10-22. The matching packaged Linux binary then
+passed the disposable PostgreSQL rapid/branch-switch/outage/restart, report-review, scheduled EOD,
+and no-time-tracking scenarios. The same acceptance record has checksums and remaining gates.
 
 ## Deferred work and authorization
 

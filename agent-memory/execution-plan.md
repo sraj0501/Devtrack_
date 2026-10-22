@@ -14,12 +14,16 @@ target PRs to `dev`, never `main`.
 - Basic capture/report fixes, time-tracking removal, and v3.3.0 preparation are on `dev` at
   `860b91b`. The installed host version has not been updated.
 - v3.2.0 is the last recorded stable release; development packages use `dev-<commit>`.
+- The packaged `dev-dc39101` Linux/PostgreSQL container gate and isolated Windows no-send
+  checkpoint passed on 2026-10-22. Evidence is in `docs/testing/basic-workflow-source-acceptance.md`.
 - Sage has no pending approved implementation slice; its qualification is on hold.
 
 ## Ordered work
 
-1. Qualify the exact packaged development build in an isolated container with PostgreSQL.
-2. Run native Windows acceptance, including restart/outage and local-date reporting boundaries.
+1. Completed: qualify the exact packaged development build in an isolated container with PostgreSQL.
+2. Run the remaining native Windows acceptance with a live server, including daemon-off catch-up,
+   outage recovery, queue review, and local-date reporting boundaries. The isolated no-send lane
+   already passed; the host installation has not been upgraded.
 3. Verify controlled real delivery and the intended model's report quality.
 4. Complete a representative workday and reconcile commit/ticket coverage against EOD.
 

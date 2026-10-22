@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [ValidateRange(10, 300)]
-    [int]$TimeoutSeconds = 60
+    [int]$TimeoutSeconds = 60,
+    [string]$BinaryPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,7 +48,9 @@ function Invoke-Captured {
     return @($output | ForEach-Object { $_.ToString() })
 }
 
-foreach ($name in @('go', 'git')) {
+$requiredCommands = @('git')
+if (-not $BinaryPath) { $requiredCommands += 'go' }
+foreach ($name in $requiredCommands) {
     if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
         throw "Missing required command: $name"
     }
@@ -79,14 +82,21 @@ try {
         New-Item -ItemType Directory -Path $path -Force | Out-Null
     }
 
-    Write-Host 'Building the Windows DevTrack binary...'
-    $env:GOCACHE = Join-Path $testRoot 'go-cache'
-    Push-Location (Join-Path $repoRoot 'devtrack_client')
-    try {
-        Invoke-Checked -Executable go -Arguments @('build', '-o', $binary, '.')
+    if ($BinaryPath) {
+        $sourceBinary = (Resolve-Path -LiteralPath $BinaryPath -ErrorAction Stop).Path
+        Write-Host "Testing packaged Windows DevTrack binary: $sourceBinary"
+        Copy-Item -LiteralPath $sourceBinary -Destination $binary
     }
-    finally {
-        Pop-Location
+    else {
+        Write-Host 'Building the Windows DevTrack binary...'
+        $env:GOCACHE = Join-Path $testRoot 'go-cache'
+        Push-Location (Join-Path $repoRoot 'devtrack_client')
+        try {
+            Invoke-Checked -Executable go -Arguments @('build', '-o', $binary, '.')
+        }
+        finally {
+            Pop-Location
+        }
     }
 
     Invoke-Checked git -C $workspace init -q
@@ -174,6 +184,14 @@ try {
     $commitHash = (& git -C $workspace rev-parse --short=12 HEAD).Trim()
     if ($LASTEXITCODE -ne 0) {
         throw 'Could not resolve the E2E commit hash.'
+    }
+
+    $hook = Get-Content -Raw -LiteralPath (Join-Path $workspace '.git/hooks/post-commit')
+    $expectedCommitLog = '/' + $stateRoot.Substring(0, 1).ToLowerInvariant() + '/' +
+        $stateRoot.Substring(3).Replace('\', '/') + '/logs/commit.log'
+    if (-not $hook.Contains($expectedCommitLog) -or
+        -not (Test-Path -LiteralPath (Join-Path $stateRoot 'logs/commit.log'))) {
+        throw "Post-commit hook did not write to the isolated Windows log path: $expectedCommitLog"
     }
 
     $logFile = Join-Path $stateRoot 'logs/daemon.log'
