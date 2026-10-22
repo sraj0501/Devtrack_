@@ -21,6 +21,7 @@ review.
 ## What DevTrack does
 
 - Observes commits without interrupting or replacing normal Git commands.
+- Reports completed work without tracking hours or time spent per task in the v3.3.0 development line.
 - Maps ticket-named branches such as `feature/AUTH-42-refresh-token` to work items.
 - Builds reviewable ticket updates and end-of-day reports from the work already completed.
 - Keeps its client-side source of truth in local SQLite and uses Ollama by default for local AI.
@@ -55,6 +56,11 @@ irm https://devtrack.cloud/install.ps1 | iex
 ```
 
 Manual binaries and checksums are available on [GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/latest).
+
+Stable v3.2.0 retains the former time-tracking behavior. The fixes and removal are on `dev` at
+`860b91b`, prepared for v3.3.0; rolling development builds use `dev-<commit>`. A push to `dev` does
+not upgrade an installed binary or publish a new stable release. See the
+[development release notes](docs/releases/v3.3.0.md) and [qualification plan](docs/testing/basic-workflow.md).
 
 ```sh
 devtrack version
@@ -92,6 +98,19 @@ devtrack eod
 
 `queue` lets you inspect staged actions before approving anything. See the
 [Quick Start](https://devtrack.cloud/wiki.html#QUICK_START) for the complete first-run walkthrough.
+
+In the development line, capture enumerates unseen commits across local branch tips, so rapid
+commits and switching branches during processing are included. Keep the daemon running: existing
+history is seeded at startup, and catch-up for commits made while it was stopped is not guaranteed.
+
+`devtrack work start AUTH-42` selects fallback ticket context; `work stop` clears it and `work status`
+shows it. These commands do not start or stop timers. `devtrack work report` generates a commit-based
+EOD report through the configured server.
+
+`devtrack eod status` and `devtrack eod show` read the latest report across local and server history.
+`devtrack queue list --all` shows recent actions from both stores. Server actions use IDs such as
+`server:123`: pass that full ID to `queue approve`, `queue reject`, or `queue edit`. Bare numeric IDs
+address local actions. An unavailable server is reported explicitly.
 
 ## Agent memory and DevTrack Sage
 
@@ -132,6 +151,8 @@ Learn more in [MCP and Agent Memory](https://devtrack.cloud/wiki.html#MCP_CLAUDE
 | Use local command knowledge | [DevTrack Sage](https://devtrack.cloud/wiki.html#SAGE) |
 | Fix an installation or runtime problem | [Troubleshooting](https://devtrack.cloud/wiki.html#TROUBLESHOOTING) |
 | Review privacy and data flow | [Privacy](https://devtrack.cloud/privacy.html) |
+| Qualify automatic capture and reporting | [Basic workflow testing](docs/testing/basic-workflow.md) |
+| Review the v3.3.0 development boundary | [Development release notes](docs/releases/v3.3.0.md) |
 
 Contributors and maintainers can start with the repository [documentation map](docs/README.md) and
 [architecture](docs/ARCHITECTURE.md).

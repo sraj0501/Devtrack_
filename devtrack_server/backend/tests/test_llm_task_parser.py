@@ -13,8 +13,6 @@ def _response(**overrides):
         "project": "Alpha",
         "action_verb": "fixed",
         "status": "completed",
-        "time_spent": "2h",
-        "time_estimate": None,
         "description": "Fixed login bug",
         "confidence": 0.91,
     }
@@ -50,8 +48,6 @@ def test_valid_provider_response_returns_structured_enrichment():
             "project": None,
             "action_verb": None,
             "status": None,
-            "time_spent": None,
-            "time_estimate": None,
             "description": "work",
             "confidence": 0.5,
             "ticket_id": "PROJ-999",
@@ -68,8 +64,7 @@ def test_invalid_provider_response_degrades_to_raw_text(response):
     assert task.project is None
     assert task.action_verb is None
     assert task.status is None
-    assert task.time_spent is None
-    assert task.time_estimate is None
+    assert "time_spent" not in task.to_dict()
     assert task.confidence == 0.0
 
 

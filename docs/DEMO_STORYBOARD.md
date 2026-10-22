@@ -14,9 +14,11 @@ calls `devtrack queue approve`, never supplies `--email`, and never inserts a ca
 
 ## Preconditions
 
-- Use a build from upstream `main` that passes `devtrack mcp status`. The latest public release is
-  **v3.2.0** and includes MCP, Phase 9 onboarding, and DevTrack Sage, so it can run this storyboard. See the README
-  for platform installation and source-build commands.
+- For current capture/queue behavior, use a qualified development build containing `860b91b` and
+  record its exact `devtrack version` output. Stable **v3.2.0** includes MCP, onboarding, and Sage,
+  but retains the older time-tracking and report-visibility behavior. Follow the
+  [basic workflow acceptance plan](testing/basic-workflow.md) before recording new development
+  behavior; an installed stable binary is not upgraded by a `dev` push.
 - Run `devtrack setup` once with that build and choose Managed mode.
 - Start DevTrack with `devtrack start`.
 - Wait until `devtrack doctor` reports the Python service ready. MCP itself does not need it, but the
@@ -84,10 +86,11 @@ Then capture:
 devtrack queue list
 ```
 
-This is the local SQLite queue view. Depending on where the action originated, the PostgreSQL-backed
-server action may be evidenced in the daemon log rather than mirrored as a client row. Do not imply
-that an absent local row means the server bypassed staging, and do not insert a row solely for the
-recording.
+In the v3.3.0 development line this reads local SQLite and server PostgreSQL actions without
+mirroring server rows into SQLite. Server rows appear with `server:<id>` identities; numeric IDs
+are local. Capture any explicit server-unavailable warning as a failed scene rather than presenting
+an empty queue as success. Do not insert a row solely for the recording. Stable v3.2.0 only shows
+the local queue through this command.
 
 The script waits up to 120 seconds for local-model staging by default. Slower machines can set a
 larger positive value without editing the script:
@@ -104,7 +107,7 @@ Capture:
 devtrack eod
 ```
 
-The command prints the generated narrative and its real `Queued as action <id>` line when server
+The command prints the generated narrative and its real `Queued as action server:<id>` line when server
 staging succeeds. The script supplies neither an email nor an approval, so there is no delivery step.
 
 ### Scene 5 — MCP sees the day's context

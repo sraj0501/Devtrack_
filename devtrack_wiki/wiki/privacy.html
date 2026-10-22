@@ -65,7 +65,7 @@
       <p><code>XDG_DATA_HOME</code> and the generated environment file can change these paths. Use <code>devtrack settings</code> and <code>devtrack status</code> rather than assuming a path.</p>
       <h2>Client and server storage are different</h2>
       <ul>
-        <li><strong>Go client:</strong> local SQLite for triggers, work sessions, pending actions, history, MCP context, and offline replay.</li>
+        <li><strong>Go client:</strong> local SQLite for triggers, ticket context, commit records, pending actions, history, MCP context, and offline replay. v3.3.0 development removes time tracking and new session/duration collection; historical compatibility schema may remain. Stable v3.2.0 predates that removal.</li>
         <li><strong>Python server:</strong> PostgreSQL is required for server persistence and server-side events.</li>
         <li><strong>Voice retrieval:</strong> ChromaDB is optional and lives with the configured Python server (local in managed mode, server-side in external mode).</li>
         <li><strong>Teams learning source:</strong> MongoDB is referenced only by an optional adapter whose end-to-end HTTP path is currently incomplete. It is not required for the working local Git-history voice path.</li>

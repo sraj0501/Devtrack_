@@ -4,6 +4,11 @@ Python AI pipeline for DevTrack. Receives triggers from the Go client over HTTPS
 
 **Version**: 1.1.0 | **Requires**: Python 3.12–3.13
 
+This Python package version is independent of the client release. The v3.3.0 development line
+removes time tracking and exposes server-owned report/queue history to the CLI; stable v3.2.0
+predates those changes. See [the development notes](../docs/releases/v3.3.0.md) and
+[basic workflow test plan](../docs/testing/basic-workflow.md).
+
 ---
 
 ## Role in the monorepo
@@ -17,7 +22,10 @@ devtrack_client (Go binary)
 devtrack_server/backend/webhook_server.py   ← FastAPI on :8089
         │
         ├── /trigger/commit   → LLM enrichment → pending action → PM sync
-        ├── /trigger/timer    → silent work update → staged report/action
+        ├── /trigger/timer    → staged timer nudge → configured reminders
+        ├── /reports/eod      → commit-based report → pending action
+        ├── /queue/history    → paginated server action/report history
+        ├── /queue/review     → atomic pending edit/reject
         ├── /webhooks/*       → inbound platform webhooks
         ├── /admin/*          → web admin console (JWT auth)
         ├── /boardroom        → multi-persona AI plan review
@@ -25,7 +33,10 @@ devtrack_server/backend/webhook_server.py   ← FastAPI on :8089
         └── /health, /version
 ```
 
-The server and client share no compiled artefact. The only interface is HTTP/JSON. See `docs/ARCHITECTURE.md` for the full contract.
+The server and client share no compiled artefact. The only interface is HTTP/JSON. See
+[architecture](../docs/ARCHITECTURE.md) and [the HTTP contract](../docs/HTTP_API.md). Server-owned
+actions remain in PostgreSQL and appear as `server:<id>` in the CLI; bare numeric IDs are local
+SQLite actions. History reads do not enable optional client-event synchronization.
 
 ---
 
@@ -97,7 +108,7 @@ uv run python -m backend.db.sqlite_import \
 ```
 
 The import is transactional and replay-safe. Server-owned rows use their
-existing keys; `triggers`, `task_updates`, `work_sessions`, and local
+existing keys; `triggers`, `task_updates`, and local
 `pending_actions` become attributable revision-zero `client_events`, allowing
 later live client sync revisions to supersede them.
 
@@ -196,7 +207,8 @@ Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Session is JWT cookie, valid for
 | `backend/jira/` | Jira REST client |
 | `backend/slack/` | Legacy/server Slack handlers; Go owns notification delivery |
 | `backend/server_tui/` | Terminal UI for monitoring server processes |
-| `backend/work_tracker/` | Work session tracking and EOD report generation |
+| `backend/daily_report_generator.py`, `backend/email_reporter.py` | Commit-based EOD generation and configured delivery |
+| `backend/queue_gateway.py` | Server action history, pending review, and execution claims |
 | `backend/rag/` | ChromaDB RAG for personalization (optional, `--extra ai`) |
 | `backend/db/` | PostgreSQL stores, Alembic entry point, and one-shot SQLite importer |
 

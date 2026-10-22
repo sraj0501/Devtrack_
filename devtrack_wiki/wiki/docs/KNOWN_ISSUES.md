@@ -2,10 +2,23 @@
 
 ## Release boundary
 
-The v3.2.0 release candidate includes DevTrack Sage, ten read-only MCP tools, five native MCPB
-bundles, deterministic ticket mapping, silent time inference, rolling update channels, and the
-Phase 9 onboarding path. v3.1.1 remains public until candidate promotion, tagging, and publication
-complete.
+Stable v3.2.0 is public, including DevTrack Sage, ten read-only MCP tools, five native MCPB bundles,
+deterministic ticket mapping, rolling update channels and onboarding. v3.3.0 is development work on
+`dev`; rolling builds use `dev-<commit>`. An existing installation is not updated by pushing source.
+
+## Basic workflow qualification
+
+v3.3.0 development removes time tracking and makes work reports commit-based. The running monitor
+walks unseen commits across local branch tips and detached HEAD to retain rapid bursts and
+switched-away branches. Server queue history and EOD reports are directly readable from the CLI;
+server actions use `server:<id>` for review without colliding with numeric local IDs.
+
+Source-based Linux/PostgreSQL container checks passed for capture, ticket context, intentional
+outages, restart, queue review and manual/scheduled report visibility. Packaged development-build
+acceptance, native Windows rehearsal, real PM/email delivery, overnight coverage and a representative
+workday remain to qualify. Commits made while the daemon is stopped are not a guaranteed catch-up
+path. Follow `docs/testing/basic-workflow.md` in the repository. Sage testing, learning repairs and
+platform-parity work remain on hold until these basics qualify.
 
 ## Local model latency
 
@@ -45,8 +58,8 @@ parity.
 
 ## Registry distribution
 
-`io.github.sraj0501/devtrack` 3.1.1 remains active/latest in the official MCP Registry while the
-3.2.0 candidate is qualified. The DevTrack entry
+`io.github.sraj0501/devtrack` 3.2.0 is active/latest in the official MCP Registry. v3.3.0 development
+has not replaced that stable record. The DevTrack entry
 in `punkpeye/awesome-mcp-servers` is awaiting maintainer review in
 [PR #13608](https://github.com/punkpeye/awesome-mcp-servers/pull/13608), whose automated submission
 check passed. Glama's admins approved the submitted server on 2026-09-06, but its exact approved

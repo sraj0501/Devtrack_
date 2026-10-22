@@ -326,21 +326,6 @@ class TestWorkspaceReloadContract:
 # Expected: HTTP 200, body {"status": "ok", "session_id": <int>}
 # ---------------------------------------------------------------------------
 
-class TestWorkSessionStartContract:
-    def test_returns_200(self, client):
-        resp = client.post("/trigger/work_session_start",
-                           json={"session_id": 42, "ticket_ref": "GH-123"})
-        assert resp.status_code == 200
-
-    def test_response_status_ok(self, client):
-        data = client.post("/trigger/work_session_start",
-                           json={"session_id": 42, "ticket_ref": "GH-123"}).json()
-        assert data.get("status") == "ok"
-
-    def test_response_echoes_session_id(self, client):
-        data = client.post("/trigger/work_session_start",
-                           json={"session_id": 42}).json()
-        assert data.get("session_id") == 42
 
 
 # ---------------------------------------------------------------------------
@@ -348,12 +333,3 @@ class TestWorkSessionStartContract:
 # Spec: docs/HTTP_API.md § POST /trigger/work_session_stop
 # Expected: HTTP 200, body {"status": "ok", "session_id": <int>}
 # ---------------------------------------------------------------------------
-
-class TestWorkSessionStopContract:
-    def test_returns_200(self, client):
-        resp = client.post("/trigger/work_session_stop", json={"session_id": 42})
-        assert resp.status_code == 200
-
-    def test_response_status_ok(self, client):
-        data = client.post("/trigger/work_session_stop", json={"session_id": 42}).json()
-        assert data.get("status") == "ok"

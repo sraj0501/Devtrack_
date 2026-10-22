@@ -548,20 +548,6 @@ class TriggerProcessor:
 
         actions: list[str] = []
 
-        # Auto-link commit to active work session
-        with _stage("Link work session"):
-            if commit_hash:
-                try:
-                    from backend.work_tracker.session_store import WorkSessionStore
-                    store   = WorkSessionStore()
-                    active  = store.get_active_session()
-                    if active:
-                        store.append_commit(active["id"], commit_hash)
-                        actions.append(f"session_linked:{active['id']}")
-                        logger.info(f"Commit {commit_hash[:12]} linked to session #{active['id']}")
-                except Exception as e:
-                    logger.debug(f"Work session link failed (non-fatal): {e}")
-
         # Optional LLM enrichment
         task_data = None
         with _stage("LLM task parse"):
@@ -805,7 +791,7 @@ class TriggerProcessor:
 
         In HTTP/external mode there is no local TUI — the developer is not
         sitting at the terminal where Python runs.  Primary interaction channel
-        is Telegram (the bot is already running and handles /workstop etc.).
+        is Telegram (the bot is already running and handles work reports).
         This method acknowledges the trigger and optionally sends a Telegram
         nudge; the full interactive flow happens via Telegram commands.
 
@@ -873,15 +859,6 @@ class TriggerProcessor:
             except Exception as e:
                 logger.debug(f"Vacation auto-responder error (non-fatal): {e}")
 
-        # Check active work session
-        active_session = None
-        with _stage("Check active session"):
-            try:
-                from backend.work_tracker.session_store import WorkSessionStore
-                active_session = WorkSessionStore().get_active_session()
-            except Exception as e:
-                logger.debug(f"Work session check failed: {e}")
-
         # Attempt Telegram nudge (non-fatal)
         telegram_sent = False
         with _stage("Send Telegram reminder"):
@@ -890,7 +867,6 @@ class TriggerProcessor:
                 _tg_reminder(
                     interval_mins=interval_mins,
                     trigger_count=trigger_count,
-                    active_session=active_session,
                     pm_platform=pm_platform,
                     workspace_name=workspace_name,
                 )
@@ -907,7 +883,6 @@ class TriggerProcessor:
                 slack_sent = _slack_reminder(
                     interval_mins=interval_mins,
                     trigger_count=trigger_count,
-                    active_session=active_session,
                     pm_platform=pm_platform,
                     workspace_name=workspace_name,
                 )
@@ -926,7 +901,6 @@ class TriggerProcessor:
             "status": "accepted",
             "trigger_count": trigger_count,
             "prompt_channel": ",".join(channels) if channels else "none",
-            "active_session": active_session is not None,
             "narrative_id": _story_id(),
         }
         if timer_action_id is not None:
@@ -1398,6 +1372,50 @@ async def http_queue_pending(
             pass
 
 
+@app.get("/queue/history")
+async def http_queue_history(
+    action_type: str = "", hours: int = 24, limit: int = 1000, offset: int = 0,
+    _auth: None = Depends(_verify_trigger_key),
+) -> dict:
+    """Authenticated read path for server-owned reports and queue history."""
+    if not 0 <= hours <= 87600 or not 1 <= limit <= 1000 or offset < 0:
+        raise HTTPException(status_code=400, detail="Invalid history range")
+    gw = _get_queue_gateway()
+    if gw is None:
+        raise HTTPException(status_code=503, detail="Queue gateway unavailable")
+    try:
+        return {"actions": gw.history(action_type, hours, limit, offset)}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Queue history unavailable") from exc
+    finally:
+        gw.close()
+
+
+@app.post("/queue/review")
+async def http_queue_review(request: Request, _auth: None = Depends(_verify_trigger_key)) -> dict:
+    """Reject or edit a server action without copying it into the client queue."""
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
+    if not isinstance(body, dict) or type(body.get("action_id")) is not int or body["action_id"] <= 0:
+        raise HTTPException(status_code=400, detail="Positive action_id required")
+    operation = body.get("operation")
+    if operation not in ("reject", "edit") or (operation == "edit" and not isinstance(body.get("payload"), dict)):
+        raise HTTPException(status_code=400, detail="Expected reject or edit with object payload")
+    gw = _get_queue_gateway()
+    if gw is None:
+        raise HTTPException(status_code=503, detail="Queue gateway unavailable")
+    try:
+        changed = (gw.reject(body["action_id"], "cli") if operation == "reject"
+                   else gw.edit_pending(body["action_id"], body["payload"]))
+        if not changed:
+            raise HTTPException(status_code=409, detail="Action is no longer pending or does not exist")
+        return {"status": "rejected" if operation == "reject" else "pending"}
+    finally:
+        gw.close()
+
+
 @app.post("/queue/execute")
 async def http_queue_execute(
     request: Request,
@@ -1742,29 +1760,8 @@ async def http_client_events(
     return {"status": "ok", "accepted": accepted}
 
 
-@app.post("/trigger/work_session_start")
-async def http_work_session_start(
-    request: Request,
-    _auth: None = Depends(_verify_trigger_key),
-) -> dict:
-    """Notifies Python that a work session has started in Go."""
-    data = await request.json()
-    session_id = data.get("session_id")
-    ticket_ref = data.get("ticket_ref", "")
-    logger.info(f"Work session #{session_id} started (ticket={ticket_ref})")
-    return {"status": "ok", "session_id": session_id}
 
 
-@app.post("/trigger/work_session_stop")
-async def http_work_session_stop(
-    request: Request,
-    _auth: None = Depends(_verify_trigger_key),
-) -> dict:
-    """Notifies Python that a work session has stopped in Go."""
-    data = await request.json()
-    session_id = data.get("session_id")
-    logger.info(f"Work session #{session_id} stopped")
-    return {"status": "ok", "session_id": session_id}
 
 
 @app.post("/trigger/ticket_sync")

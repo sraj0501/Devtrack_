@@ -69,9 +69,6 @@ const RouteInternalReloadConfig = "/internal/reload-config"
 // RouteInternalStats serves trigger throughput stats for the Python admin panel.
 const RouteInternalStats = "/internal/stats"
 
-// RouteInternalActiveSession serves the active work session for the Python server.
-const RouteInternalActiveSession = "/internal/sessions/active"
-
 // RouteDialecticPromoteSkill is the path for the daemon's skill promotion endpoint.
 // Called by the Python SkillDetector when a pattern cluster crosses the emergence threshold.
 const RouteDialecticPromoteSkill = "/dialectic/promote-skill"
@@ -85,14 +82,12 @@ const RouteDialecticPromoteSkill = "/dialectic/promote-skill"
 //	POST /internal/force-trigger      — trigger an immediate scheduler run
 //	POST /internal/reload-config      — reload .env + YAML config without restart
 //	GET  /internal/stats              — trigger throughput stats for Python admin panel
-//	GET  /internal/sessions/active    — active work session for Python server
 //	POST /dialectic/promote-skill     — upsert a promoted skill from Python SkillDetector
 func (d *Daemon) startInternalHTTPServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc(RouteInternalForceTrigger, d.handleInternalForceTrigger)
 	mux.HandleFunc(RouteInternalReloadConfig, d.handleInternalReloadConfig)
 	mux.HandleFunc(RouteInternalStats, d.handleInternalStats)
-	mux.HandleFunc(RouteInternalActiveSession, d.handleInternalActiveSession)
 	mux.HandleFunc(RouteDialecticPromoteSkill, d.handleDialecticPromoteSkill)
 
 	addr := fmt.Sprintf("%s:%d", config.GetIPCHost(), config.GetDevTrackServerHTTPPort())
@@ -160,48 +155,6 @@ func (d *Daemon) handleInternalStats(w http.ResponseWriter, r *http.Request) {
 	stats := database.GetTriggerStats()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
-}
-
-// handleInternalActiveSession handles GET /internal/sessions/active.
-// Returns the active work session as JSON, or {"active": false} if none.
-func (d *Daemon) handleInternalActiveSession(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	database, err := db.NewDatabase()
-	if err != nil {
-		log.Printf("internal/sessions/active: failed to open DB: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]string{"error": "db unavailable"})
-		return
-	}
-	defer database.Close()
-
-	session, err := database.GetActiveWorkSession()
-	if err != nil {
-		log.Printf("internal/sessions/active: query error: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if session == nil {
-		json.NewEncoder(w).Encode(map[string]bool{"active": false})
-		return
-	}
-	json.NewEncoder(w).Encode(map[string]any{
-		"active":         true,
-		"id":             session.ID,
-		"started_at":     session.StartedAt,
-		"ticket_ref":     session.TicketRef,
-		"workspace_name": session.WorkspaceName,
-		"description":    session.Description,
-	})
 }
 
 // handleInternalReloadConfig handles POST /internal/reload-config.
@@ -309,7 +262,8 @@ func (d *Daemon) startHeartbeatLoop() {
 // Auth: X-DevTrack-API-Key header (same key as all /trigger/* endpoints).
 // Body:  {"name":"...","description":"...","context_type":"...","evidence_count":N}
 // Response 200: {"status":"promoted","skill_id":<int64>} on new insert,
-//               {"status":"already_exists"} on upsert of an existing name.
+//
+//	{"status":"already_exists"} on upsert of an existing name.
 func (d *Daemon) handleDialecticPromoteSkill(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -383,4 +337,3 @@ func (d *Daemon) handleDialecticPromoteSkill(w http.ResponseWriter, r *http.Requ
 	}
 	json.NewEncoder(w).Encode(map[string]any{"status": "promoted", "skill_id": skill.ID})
 }
-

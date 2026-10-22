@@ -145,52 +145,17 @@ func (d *Database) initServerEventSync() error {
 				status = 'pending', last_error = NULL,
 				updated_at = datetime('now'), synced_at = NULL;
 		END`,
-		`CREATE TRIGGER IF NOT EXISTS sync_work_sessions_insert
-		AFTER INSERT ON work_sessions BEGIN
-			INSERT INTO server_event_outbox(event_id, table_name, source_row_id, payload)
-			VALUES (
-				'work_sessions:' || NEW.id, 'work_sessions', CAST(NEW.id AS TEXT),
-				json_object(
-					'id', NEW.id, 'started_at', NEW.started_at, 'ended_at', NEW.ended_at,
-					'ticket_ref', NEW.ticket_ref, 'repo_path', NEW.repo_path,
-					'workspace_name', NEW.workspace_name, 'description', NEW.description,
-					'commits', NEW.commits, 'duration_minutes', NEW.duration_minutes,
-					'adjusted_minutes', NEW.adjusted_minutes,
-					'auto_stopped', NEW.auto_stopped,
-					'measurement_source', NEW.measurement_source,
-					'last_activity_at', NEW.last_activity_at,
-					'confidence', NEW.confidence, 'evidence_count', NEW.evidence_count,
-					'created_at', NEW.created_at
-				)
-			)
-			ON CONFLICT(event_id) DO UPDATE SET
-				payload = excluded.payload, revision = server_event_outbox.revision + 1,
-				status = 'pending', last_error = NULL,
-				updated_at = datetime('now'), synced_at = NULL;
-		END`,
-		`CREATE TRIGGER IF NOT EXISTS sync_work_sessions_update
-		AFTER UPDATE ON work_sessions BEGIN
-			INSERT INTO server_event_outbox(event_id, table_name, source_row_id, payload)
-			VALUES (
-				'work_sessions:' || NEW.id, 'work_sessions', CAST(NEW.id AS TEXT),
-				json_object(
-					'id', NEW.id, 'started_at', NEW.started_at, 'ended_at', NEW.ended_at,
-					'ticket_ref', NEW.ticket_ref, 'repo_path', NEW.repo_path,
-					'workspace_name', NEW.workspace_name, 'description', NEW.description,
-					'commits', NEW.commits, 'duration_minutes', NEW.duration_minutes,
-					'adjusted_minutes', NEW.adjusted_minutes,
-					'auto_stopped', NEW.auto_stopped,
-					'measurement_source', NEW.measurement_source,
-					'last_activity_at', NEW.last_activity_at,
-					'confidence', NEW.confidence, 'evidence_count', NEW.evidence_count,
-					'created_at', NEW.created_at
-				)
-			)
-			ON CONFLICT(event_id) DO UPDATE SET
-				payload = excluded.payload, revision = server_event_outbox.revision + 1,
-				status = 'pending', last_error = NULL,
-				updated_at = datetime('now'), synced_at = NULL;
-		END`,
+		`DROP TRIGGER IF EXISTS sync_work_sessions_insert`,
+		`DROP TRIGGER IF EXISTS sync_work_sessions_update`,
+		`DELETE FROM server_event_outbox WHERE table_name = 'work_sessions'`,
+		`UPDATE pending_actions SET status = 'rejected',
+		    error = 'Time tracking has been removed', acted_by = 'feature_retirement',
+		    acted_at = datetime('now')
+		  WHERE action_type = 'server_event_sync' AND status IN ('pending', 'approved')
+		  AND json_valid(payload) AND EXISTS (
+		    SELECT 1 FROM json_each(payload, '$.events')
+		    WHERE json_extract(value, '$.table_name') = 'work_sessions'
+		  )`,
 		`CREATE TRIGGER IF NOT EXISTS sync_pending_actions_insert
 		AFTER INSERT ON pending_actions
 	WHEN NEW.action_type <> 'server_event_sync' BEGIN
@@ -274,7 +239,7 @@ func (d *Database) ListPendingServerEvents(limit int) ([]ServerEvent, error) {
 	rows, err := d.db.Query(`
 		SELECT event_id, table_name, source_row_id, revision, payload, updated_at
 		FROM server_event_outbox
-		WHERE status = 'pending'
+		WHERE status = 'pending' AND table_name <> 'work_sessions'
 		ORDER BY updated_at ASC, event_id ASC
 		LIMIT ?`, limit)
 	if err != nil {
@@ -367,6 +332,16 @@ func DecodeServerEventSyncAction(action PendingAction) (ServerEventSyncPayload, 
 	}
 	if payload.ClientID == "" || len(payload.Events) == 0 {
 		return ServerEventSyncPayload{}, fmt.Errorf("action %d has an empty sync payload", action.ID)
+	}
+	events := payload.Events[:0]
+	for _, event := range payload.Events {
+		if event.TableName != "work_sessions" {
+			events = append(events, event)
+		}
+	}
+	payload.Events = events
+	if len(events) == 0 {
+		return ServerEventSyncPayload{}, fmt.Errorf("action %d contains only retired time-tracking events", action.ID)
 	}
 	return payload, nil
 }

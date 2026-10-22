@@ -6,9 +6,10 @@ owned by the **client** (`devtrack_client`, Go) vs the **server**
 the **Current state** column records how it is implemented *today* so you can see
 where reality diverges from the intended ownership.
 
-_Last updated: 2026-10-21 (client-server decoupling complete; PostgreSQL is mandatory server-side;
-the complete Go-native Sage roadmap and silent-Git correction ship in stable v3.2.0; legacy
-communication-learning adapter gaps are explicit)._
+_Last updated: 2026-10-22. Current implementation below describes the v3.3.0 development line
+(`dev` at `860b91b`), including time-tracking removal and capture/report fixes. Stable v3.2.0 and
+existing installations retain their earlier behavior until upgraded. PostgreSQL remains mandatory
+server-side; legacy communication-learning adapter repairs and platform parity are on hold._
 
 ## Ownership model (intended)
 
@@ -52,6 +53,7 @@ communication-learning adapter gaps are explicit)._
 |---|---|---|---|---|
 | AI-enhanced commit (A/E/R/Q/C) | `devtrack git commit` | Go-native (`internal/gitcmd` → LLM) | Client | Explicit helper only; normal `git commit` is never intercepted. Calls the configured Ollama/OpenAI-compatible provider directly from the client. |
 | Stage / history / passthrough | `devtrack git add`, optional `git history`/`git messages` aliases | Go-native | Client | Shell integration leaves native `git add` and `git commit` unchanged. |
+| Automatic commit observation | (daemon) | Go-native (`internal/infra`) | Client | Enumerates unseen ancestry across local branch tips, oldest first, with hash deduplication; startup seeds existing history, so daemon-off catch-up is not guaranteed. |
 | DevTrack Sage | `sage status/pause/resume/search/topics/doctor/harness` | Go-native (`internal/sage/`) | Client | Local command capture and searchable knowledge; legacy repository chat/autonomous Git commands are removed. |
 | Deferred (offline) commits | `commits pending/review/enhance`, `commit-queue` | Go-native | Client | Durable snapshot + 3-way apply |
 
@@ -68,11 +70,11 @@ communication-learning adapter gaps are explicit)._
 | Jira | — | **None in client** | Server | ⚠ No Go Jira connector; Jira handled only server-side today |
 | GitHub ticket sync (legacy) | (internal) | Go-native | Client | ✅ Removed Python `github_ticket_sync.py` call (Phase 1b — d5f8f36); routes to Go-native `github-sync` |
 
-## 4. Work tracking & workspaces — Owner: **Client**
+## 4. Ticket context & workspaces — Owner: **Client**
 
 | Capability | Commands | Current state | Owner | Notes |
 |---|---|---|---|---|
-| Work sessions | `work` | Go-native (SQLite) | Client | |
+| Active ticket selection and work reports | `work start/stop/status/report` | Go-native context, HTTP reports | Client | No timers, durations, sessions, or time corrections |
 | Vacation mode | `vacation` | Go-native | Client | |
 | Workspace management | `workspace`, `is-workspace`, `list`, `enable`, `disable`, `remove` | Go-native | Client | |
 | Git integration / hooks | `enable-git`, `disable-git`, `install-hooks`, `shell-init` | Go-native | Client | post-commit + pre-push hooks |
@@ -106,6 +108,8 @@ communication-learning adapter gaps are explicit)._
 | Preview / send / save report | `preview-report`, `send-report`, `save-report` | HTTP → server | Server | `/reports/preview`, `/reports/send`, `/reports/save` |
 | Summary delivery | `send-summary` | HTTP → server | Server | `/reports/eod` |
 | End-of-day report (scheduled) | (scheduler) | HTTP → server | Server | Scheduler calls `/reports/eod` |
+| Generate and inspect EOD | `eod [generate/status/show]`, `work report` | HTTP generation; local + HTTP history reads | Shared | Commit-based; latest report selected across server and legacy local rows; no duration metrics. |
+| Queue history and review | `queue list/status/approve/reject/edit` | SQLite + authenticated HTTP | Shared | Server PostgreSQL rows use `server:<id>`, numeric IDs are local; server edit/reject atomically require pending status. `queue flag` is local-only. |
 
 ## 8. Ticket alerts — Owner: **Client** (ticket events = client)
 

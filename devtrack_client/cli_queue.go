@@ -9,9 +9,9 @@ package main
 //   devtrack queue edit    <id> <json> Replace payload JSON of a pending action
 //   devtrack queue status             Show one-line summary: pending / posted today / rejected today
 //
-// All DB access goes through internal/db functions — no raw SQL in CLI code.
-// The approve subcommand calls UpdatePendingActionStatus then ExecuteQueueAction.
-// The edit subcommand validates JSON with json.Valid before writing to the DB.
+// Local DB access goes through internal/db; server-owned rows use authenticated HTTP.
+// Qualified server:<id> identities prevent collisions with local SQLite action IDs.
+// Editing either store preserves the existing review/dispatch flow.
 // Output is plain text; ANSI colour is stripped when stdout is not a TTY so
 // the output is pipe-friendly (e.g. devtrack queue list | cat).
 
@@ -37,7 +37,7 @@ func (cli *CLI) handleQueue() error {
 	}
 
 	switch sub {
-	case "list", "ls":
+	case "list", "ls", "--all":
 		return runQueueList()
 	case "approve":
 		return runQueueApprove()
@@ -87,7 +87,20 @@ func runQueueList() error {
 		return fmt.Errorf("queue list: %w", err)
 	}
 
-	if len(actions) == 0 {
+	remote, remoteErr := trigger.NewHTTPTriggerClient().QueueHistory("", 0, 1000)
+	if remoteErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: server queue unavailable; showing local queue only: %v\n", remoteErr)
+	}
+	visible := remote[:0]
+	for _, a := range remote {
+		if (!showAll && a.Status == "pending") || (showAll && a.CreatedAt.After(time.Now().Add(-24*time.Hour))) {
+			visible = append(visible, a)
+		}
+	}
+	if len(actions) == 0 && len(visible) == 0 {
+		if remoteErr != nil {
+			return fmt.Errorf("server queue history unavailable: %w", remoteErr)
+		}
 		if showAll {
 			fmt.Println("No actions in the last 24 hours.")
 		} else {
@@ -97,7 +110,12 @@ func runQueueList() error {
 	}
 
 	tty := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
-	printQueueTable(actions, tty)
+	if len(actions) > 0 {
+		printQueueTable(actions, tty)
+	}
+	if len(visible) > 0 {
+		printQueueTableWithSource(visible, tty, "server:")
+	}
 	return nil
 }
 
@@ -120,9 +138,13 @@ func minimum(a, b int) int {
 // printQueueTable renders pending actions as a fixed-width table.
 // Colour is suppressed when tty is false (pipe-friendly mode).
 func printQueueTable(actions []db.PendingAction, tty bool) {
+	printQueueTableWithSource(actions, tty, "")
+}
+
+func printQueueTableWithSource(actions []db.PendingAction, tty bool, source string) {
 	const (
 		hdr = "%-6s  %-9s  %-5s  %-16s  %-20s  %-9s\n"
-		row = "%-6d  %-9s  %.2f   %-16s  %-20s  %s\n"
+		row = "%-6s  %-9s  %.2f   %-16s  %-20s  %s\n"
 	)
 
 	if tty {
@@ -145,10 +167,10 @@ func printQueueTable(actions []db.PendingAction, tty bool) {
 		}
 
 		if tty {
-			fmt.Printf(row, a.ID, padStatus(a.Status), a.Confidence, actionType, target, exp)
+			fmt.Printf(row, fmt.Sprintf("%s%d", source, a.ID), padStatus(a.Status), a.Confidence, actionType, target, exp)
 		} else {
-			fmt.Printf("%d\t%s\t%.2f\t%s\t%s\t%s\n",
-				a.ID, a.Status, a.Confidence, a.ActionType, a.Target, exp)
+			fmt.Printf("%s%d\t%s\t%.2f\t%s\t%s\t%s\n",
+				source, a.ID, a.Status, a.Confidence, a.ActionType, a.Target, exp)
 		}
 	}
 }
@@ -187,6 +209,10 @@ func expiresLabel(a db.PendingAction) string {
 // runQueueApprove implements `devtrack queue approve <id>`.
 // It marks the action approved in SQLite, then calls POST /queue/execute immediately.
 func runQueueApprove() error {
+	if len(os.Args) > 3 && strings.HasPrefix(os.Args[3], "server:") {
+		return runServerQueueReview("approve")
+	}
+
 	id, err := parseQueueID("approve")
 	if err != nil {
 		return err
@@ -258,6 +284,10 @@ func runQueueApprove() error {
 
 // runQueueReject implements `devtrack queue reject <id>`.
 func runQueueReject() error {
+	if len(os.Args) > 3 && strings.HasPrefix(os.Args[3], "server:") {
+		return runServerQueueReview("reject")
+	}
+
 	id, err := parseQueueID("reject")
 	if err != nil {
 		return err
@@ -284,6 +314,10 @@ func runQueueReject() error {
 // After a successful edit the action is NOT automatically approved — the user
 // must run `devtrack queue approve <id>` separately if desired.
 func runQueueEdit() error {
+	if len(os.Args) > 3 && strings.HasPrefix(os.Args[3], "server:") {
+		return runServerQueueReview("edit")
+	}
+
 	args := os.Args[3:] // everything after "edit"
 	if len(args) < 2 {
 		fmt.Println("Usage: devtrack queue edit <id> <json>")
@@ -330,6 +364,24 @@ func runQueueStatus() error {
 		return fmt.Errorf("queue status: %w", err)
 	}
 
+	remote, err := trigger.NewHTTPTriggerClient().QueueHistory("", 0, 1000)
+	if err != nil {
+		return fmt.Errorf("queue status: server history unavailable: %w", err)
+	}
+	now := time.Now().UTC()
+	for _, a := range remote {
+		if a.Status == "pending" {
+			pending++
+		}
+		if a.ActedAt != nil && a.ActedAt.UTC().Format("2006-01-02") == now.Format("2006-01-02") {
+			if a.Status == "posted" {
+				posted++
+			}
+			if a.Status == "rejected" {
+				rejected++
+			}
+		}
+	}
 	fmt.Printf("Pending: %d | Posted today: %d | Rejected today: %d\n", pending, posted, rejected)
 	return nil
 }
@@ -341,6 +393,10 @@ func runQueueStatus() error {
 // row with flagged_from="tui" (channel parity — same DB path as the TUI), and
 // halves the inference's confidence score as an immediate negative signal.
 func runQueueFlag() error {
+	if len(os.Args) > 3 && strings.HasPrefix(os.Args[3], "server:") {
+		return runServerQueueReview("flag")
+	}
+
 	args := os.Args[3:] // everything after "flag"
 	if len(args) < 2 {
 		fmt.Println("Usage: devtrack queue flag <action_id> \"<correction text>\"")
@@ -427,4 +483,41 @@ func printQueueUsage() {
 	fmt.Println("  devtrack queue edit    <id> <json>    Replace payload JSON of action")
 	fmt.Println("  devtrack queue status                 Show summary: pending / posted / rejected")
 	fmt.Println("  devtrack queue flag <id> \"<text>\"    Flag inference as wrong, halve its confidence")
+}
+
+// Server IDs are explicit because SQLite and PostgreSQL sequences are independent.
+func runServerQueueReview(operation string) error {
+	id, err := strconv.ParseInt(strings.TrimPrefix(os.Args[3], "server:"), 10, 64)
+	if err != nil || id <= 0 {
+		return fmt.Errorf("invalid server queue ID %q", os.Args[3])
+	}
+	tc := trigger.NewHTTPTriggerClient()
+	switch operation {
+	case "approve":
+		result, err := tc.ExecuteQueueAction(id)
+		if err != nil {
+			return err
+		}
+		if result.Status != "posted" {
+			return fmt.Errorf("server action %d: %s: %s", id, result.Status, result.Error)
+		}
+		fmt.Printf("approved: action server:%d dispatched\n", id)
+	case "reject", "edit":
+		var payload map[string]any
+		if operation == "edit" {
+			if len(os.Args) < 5 {
+				return fmt.Errorf("queue edit: JSON object required")
+			}
+			if err := json.Unmarshal([]byte(strings.Join(os.Args[4:], " ")), &payload); err != nil || payload == nil {
+				return fmt.Errorf("queue edit: JSON object required")
+			}
+		}
+		if err := tc.ReviewQueueAction(id, operation, payload); err != nil {
+			return err
+		}
+		fmt.Printf("%s: action server:%d\n", operation, id)
+	default:
+		return fmt.Errorf("queue %s: server actions do not have a local inference to flag", operation)
+	}
+	return nil
 }

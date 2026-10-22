@@ -19,7 +19,9 @@ devtrack queue list
 devtrack logs -f
 ```
 
-MCP and queue reads use local SQLite and do not wait for Python or Ollama.
+MCP reads local SQLite without Python or Ollama. On v3.3.0 development, queue commands also
+query server history; listing can display local rows with an explicit server warning, while
+`queue status` errors if server history is unavailable.
 
 ## Daily commands
 
@@ -32,6 +34,9 @@ devtrack queue list
 devtrack queue approve <id>
 devtrack queue reject <id>
 ```
+
+Report generation requires the Python server and can stage a new action. Use `devtrack eod show`
+to read an existing report. Keep the `server:` prefix when reviewing a server-owned action.
 
 ## Diagnosis and recovery
 

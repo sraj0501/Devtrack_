@@ -7,7 +7,7 @@ Or via @devtrack mention:
     @devtrack <subcommand> [args]
 
 Business logic is shared with the Telegram handlers — same SQLite DB,
-same PM clients, same WorkSessionStore.
+same PM clients, commit-based reports.
 """
 from __future__ import annotations
 
@@ -89,9 +89,6 @@ def _run(args: list[str], timeout: int = 10) -> str:
         return "devtrack binary not found."
 
 
-def _fmt_duration(minutes: int) -> str:
-    h, m = divmod(max(0, minutes), 60)
-    return f"{h}h {m}m" if h else f"{m}m"
 
 
 # ── Commands ───────────────────────────────────────────────────────────────────
@@ -106,11 +103,7 @@ def cmd_help(args: str, respond: Callable, bot: "SlackBot") -> None:
         "  `logs`           — Recent log lines\n"
         "  `trigger`        — Force immediate work update\n"
         "  `health`         — Service health check\n"
-        "\n*Work Sessions*\n"
-        "  `workstart [ticket-ref]`   — Start a work session\n"
-        "  `workstop`                 — Stop active session\n"
-        "  `workadjust <minutes>`     — Override session time\n"
-        "  `workstatus`               — Today's sessions\n"
+        "\n*Work Reports*\n"
         "  `workreport [--email addr]` — Generate EOD report\n"
         "\n*Integrations*\n"
         "  `commits`        — Recent commits\n"
@@ -169,139 +162,14 @@ def cmd_commits(args: str, respond: Callable, bot: "SlackBot") -> None:
     respond(f"```{out}```" if out else "No pending commits.")
 
 
-# ── Work session commands ─────────────────────────────────────────────────────
-
-@_cmd("workstart")
-def cmd_workstart(args: str, respond: Callable, bot: "SlackBot") -> None:
-    ticket_ref = args.strip()
-    try:
-        from backend.work_tracker.session_store import WorkSessionStore
-
-        store = WorkSessionStore()
-        active = store.get_active_session()
-        if active:
-            msg = f":warning: A session is already active (ID {active['id']}"
-            if active.get("ticket_ref"):
-                msg += f", ticket: `{active['ticket_ref']}`"
-            msg += "). Use `workstop` first."
-            respond(msg)
-            return
-
-        session_id = store.start_session(ticket_ref)
-        if session_id is None:
-            respond(":x: Could not start a work session (not available yet in this server mode).")
-            return
-
-        msg = f":white_check_mark: Work session started (ID {session_id})"
-        if ticket_ref:
-            msg += f" for *{ticket_ref}*"
-        msg += "\nUse `workstop` when you're done."
-        respond(msg)
-    except Exception as e:
-        respond(f":x: Error starting session: {e}")
+# ── Commit-based work reports ─────────────────────────────────────────────────
 
 
-@_cmd("workstop")
-def cmd_workstop(args: str, respond: Callable, bot: "SlackBot") -> None:
-    try:
-        from backend.work_tracker.session_store import WorkSessionStore
-        store = WorkSessionStore()
-        active = store.get_active_session()
-        if not active:
-            respond("No active session found.")
-            return
-
-        store.end_session(active["id"])
-
-        started_at = active.get("started_at", "")
-        duration_str = ""
-        try:
-            start = datetime.fromisoformat(started_at)
-            elapsed = int((datetime.now(timezone.utc).replace(tzinfo=None) - start).total_seconds() / 60)
-            duration_str = _fmt_duration(elapsed)
-        except Exception:
-            pass
-
-        msg = f":white_check_mark: Session {active['id']} stopped."
-        if duration_str:
-            msg += f" Duration: *{duration_str}*"
-        if active.get("ticket_ref"):
-            msg += f" (ticket: `{active['ticket_ref']}`)"
-        msg += "\nUse `workadjust <minutes>` to correct the time."
-        respond(msg)
-    except Exception as e:
-        respond(f":x: Error stopping session: {e}")
 
 
-@_cmd("workadjust")
-def cmd_workadjust(args: str, respond: Callable, bot: "SlackBot") -> None:
-    if not args.strip().isdigit():
-        respond("Usage: `/devtrack workadjust <minutes>`  (e.g. `workadjust 90`)")
-        return
-    minutes = int(args.strip())
-    try:
-        from backend.work_tracker.session_store import WorkSessionStore
-        store = WorkSessionStore()
-        active = store.get_active_session()
-        if active:
-            target_id = active["id"]
-        else:
-            sessions = store.get_sessions_for_date(date.today().isoformat())
-            if not sessions:
-                respond("No session found to adjust.")
-                return
-            target_id = sessions[-1]["id"]
-
-        store.adjust_time(target_id, minutes)
-        respond(
-            f":white_check_mark: Session {target_id} time adjusted to *{_fmt_duration(minutes)}*.\n"
-            "_Auto-measured time preserved in DB for audit._"
-        )
-    except Exception as e:
-        respond(f":x: Error adjusting session: {e}")
 
 
-@_cmd("workstatus")
-def cmd_workstatus(args: str, respond: Callable, bot: "SlackBot") -> None:
-    try:
-        from backend.work_tracker.session_store import WorkSessionStore
-        store = WorkSessionStore()
-        active = store.get_active_session()
-        today = date.today().isoformat()
-        sessions = store.get_sessions_for_date(today)
 
-        lines: list[str] = []
-        if active:
-            started_at = active.get("started_at", "")
-            elapsed_str = ""
-            try:
-                start = datetime.fromisoformat(started_at)
-                elapsed = int((datetime.now(timezone.utc).replace(tzinfo=None) - start).total_seconds() / 60)
-                elapsed_str = _fmt_duration(elapsed)
-            except Exception:
-                pass
-            line = f":large_green_circle: *Active* (ID {active['id']}) — running {elapsed_str}"
-            if active.get("ticket_ref"):
-                line += f"\n   Ticket: `{active['ticket_ref']}`"
-            lines.append(line)
-        else:
-            lines.append(":white_circle: No active session.")
-
-        completed = [s for s in sessions if s.get("ended_at")]
-        if completed:
-            lines.append(f"\n*Today ({len(completed)} session(s)):*")
-            total = 0
-            for s in completed:
-                dur = WorkSessionStore.effective_duration(s)
-                total += dur
-                adj = " :pencil2:" if s.get("adjusted_minutes") is not None else ""
-                ticket = s.get("ticket_ref") or "(no ticket)"
-                lines.append(f"  • {_fmt_duration(dur)}{adj}  {ticket}")
-            lines.append(f"  Total: *{_fmt_duration(total)}*")
-
-        respond("\n".join(lines))
-    except Exception as e:
-        respond(f":x: Error loading work status: {e}")
 
 
 @_cmd("workreport")
@@ -315,21 +183,10 @@ def cmd_workreport(args: str, respond: Callable, bot: "SlackBot") -> None:
     try:
         from backend.work_tracker.eod_report_generator import EODReportGenerator
         generator = EODReportGenerator()
-        report = generator.generate(date.today().isoformat(), include_ai=True)
+        import asyncio
+        report = asyncio.run(generator.generate(date.today().isoformat()))
 
-        lines: list[str] = [f"*EOD Report — {report.date}*\n"]
-        for s in report.sessions:
-            dur = _fmt_duration(s.get("duration_minutes") or 0)
-            ticket = s.get("ticket_ref") or "(no ticket)"
-            commits = len(s.get("commits") or [])
-            lines.append(f"  • {dur}  {ticket}  ({commits} commit(s))")
-
-        if report.total_minutes:
-            lines.append(f"\nTotal: *{_fmt_duration(report.total_minutes)}*")
-
-        if report.ai_narrative:
-            narrative = report.ai_narrative[:800]
-            lines.append(f"\n_{narrative}_")
+        lines = [report.as_text()]
 
         if email_to:
             try:

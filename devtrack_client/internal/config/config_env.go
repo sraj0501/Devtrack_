@@ -652,8 +652,6 @@ func IsWebhookEnabled() bool {
 	return val == "true" || val == "1" || val == "yes" || val == "on"
 }
 
-// --- GitHub / Ticket Sync ---
-
 // GetGitHubToken returns the GitHub PAT from GITHUB_TOKEN.
 // Exits with an error if the variable is not set.
 func GetGitHubToken() string {
@@ -1001,8 +999,6 @@ func boundedPositiveIntEnv(name string, fallback, minimum, maximum int) int {
 	return parsed
 }
 
-// --- Alert poller config ---
-
 // IsAlertEnabled returns true when ALERT_ENABLED=true/1.
 func IsAlertEnabled() bool {
 	val := os.Getenv("ALERT_ENABLED")
@@ -1198,21 +1194,6 @@ func GetEODReportMinute() int {
 // Reads EOD_REPORT_EMAIL. Returns "" if not set (disables email delivery).
 func GetEODReportEmail() string {
 	return strings.TrimSpace(os.Getenv("EOD_REPORT_EMAIL"))
-}
-
-// GetWorkSessionAutoStopMinutes returns the idle duration after which an active
-// work session is automatically stopped. Reads WORK_SESSION_AUTO_STOP_MINUTES.
-// Returns 0 if absent or invalid (0 = disabled).
-func GetWorkSessionAutoStopMinutes() int {
-	val := os.Getenv("WORK_SESSION_AUTO_STOP_MINUTES")
-	if val == "" {
-		return 0
-	}
-	m, err := strconv.Atoi(strings.TrimSpace(val))
-	if err != nil || m <= 0 {
-		return 0
-	}
-	return m
 }
 
 // GetEODTelegramEnabled returns whether EOD reports should be delivered via Telegram.

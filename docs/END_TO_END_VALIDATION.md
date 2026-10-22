@@ -1,8 +1,10 @@
 # End-to-end validation record
 
 The clean Windows installation and full Managed Linux journeys were confirmed complete by the
-owner on 2026-09-10. DevTrack Sage planning may proceed. This record remains open only for packaged
-release qualification and privacy-reviewed media capture.
+owner on 2026-09-10. This dated record remains relevant to packaged release qualification and
+privacy-reviewed media capture; it does not qualify subsequent v3.3.0 behavior. The current priority
+is [basic Git/EOD workflow acceptance](testing/basic-workflow.md), including a targeted native
+Windows rehearsal of the new build. Sage testing remains on hold until those basics pass.
 
 ## Rules
 
@@ -27,7 +29,7 @@ release qualification and privacy-reviewed media capture.
 
 Credentials and full connection URLs are intentionally not recorded here.
 
-## Current results
+## Recorded results (September 2026)
 
 | Check | Result | Evidence |
 |---|---|---|
@@ -58,8 +60,18 @@ Credentials and full connection URLs are intentionally not recorded here.
 The repository includes an isolated, credential-free E2E test for the Go-native product boundary.
 It builds the current client, creates temporary configuration and a disposable Git repository,
 starts the daemon in lightweight mode, makes a real ticket-linked commit, waits for observation,
-and verifies that MCP exposes the commit and a non-zero local-day count. PM delivery, telemetry,
-email, continuous server-event sync, and automatic approvals remain disabled.
+and verifies that MCP exposes the ticket and exactly one local-day commit before and after a
+restart. Ticket selection, persistence across restart, and clearing run inside the disposable
+workspace. With no server and no local actions, queue listing must explicitly report unavailable
+server history. PM delivery, telemetry, email, continuous server-event sync, and automatic
+approvals remain disabled.
+
+On 2026-10-22, PR #301's Ubuntu run failed after successful commit capture because the script
+called repository-scoped `work status` outside the test workspace. Both platform scripts also
+still asserted the retired inferred-time/correction behavior and assumed offline empty-queue
+listing succeeded. The corrected lane passed locally on native Windows and in a disposable Linux
+container with the current cross-compiled client. This lane does not qualify server reporting,
+real delivery, packaged installation, or Sage.
 
 Run both local lanes from Windows 11 with WSL:
 
@@ -145,8 +157,9 @@ The environment-validation gates are complete. Remaining release-level checks ar
 1. Review the unintegrated `feat/TASK-154-server-admin-ui` branch at `54ceb05` against current
    `dev`, then integrate it through a PR or explicitly retire it before packaged qualification.
 2. **Windows review passed on 2026-09-09** through the source admin UI, including rejection and audit.
-   Repeat against packaged builds during release qualification. The local `devtrack queue list`
-   intentionally does not mirror PostgreSQL actions when continuous event sync is disabled.
+   Repeat against packaged builds during release qualification. In the v3.3.0 development line,
+   `devtrack queue list` reads PostgreSQL actions directly over HTTP and displays `server:<id>`;
+   it does not mirror those actions into SQLite or require continuous event sync.
 3. Capture the approved screenshot/video set from a privacy-reviewed terminal and browser session.
 
 ## Capture list

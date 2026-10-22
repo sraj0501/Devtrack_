@@ -7,7 +7,9 @@ type: project
 # Deterministic ticket-mapping contract
 
 TASK-160 replaces permissive substring and last-ticket assignment with a deterministic, explainable
-resolver. `PRODUCT_BIBLE.md` owns the product rule; this record owns the implementation plan.
+resolver. `PRODUCT_BIBLE.md` owns the product rule; this record preserves the maintenance contract.
+The shipped resolver is not a pending implementation plan. Current qualification follows
+[basic workflow acceptance](../../docs/testing/basic-workflow.md); time tracking is removed.
 
 ## Fixed product decisions
 
@@ -128,7 +130,7 @@ devtrack ticket link <commit> <ticket-ref>
 configuration. These commands report; they never rewrite a branch. Documentation uses the same
 grammar and provider examples everywhere.
 
-## Implementation slices
+## Maintenance boundaries
 
 1. **Resolver and configuration:** typed result, anchored grammar, explicit prefix/trailer parser,
    workspace ticket key/provider adapter, strict validation, and hot-reload identity.
@@ -143,8 +145,8 @@ grammar and provider examples everywhere.
 6. **Documentation and qualification:** onboarding, README/wiki, migration notes, and cross-platform
    end-to-end evidence.
 
-Each slice is one reviewable PR targeting `dev`; TASK-160 may be decomposed into child board tasks
-before dispatch. Do not combine it with TASK-158 silence changes or TASK-159 time inference.
+Future resolver changes must preserve these boundaries and target `dev` through the authorized
+task workflow. Active-ticket selection is context only and must never reintroduce time inference.
 
 ## Required tests
 

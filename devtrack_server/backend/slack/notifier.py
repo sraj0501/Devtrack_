@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 def send_work_reminder(
     interval_mins: int = 0,
     trigger_count: int = 0,
-    active_session: dict | None = None,
     pm_platform: str = "",
     workspace_name: str = "",
 ) -> bool:
@@ -43,13 +42,7 @@ def send_work_reminder(
     if pm_platform:
         lines.append(f"Platform: {pm_platform}")
 
-    if active_session:
-        sid = active_session.get("id", "?")
-        ticket = active_session.get("ticket_ref", "")
-        lines.append(f":green_circle: Active session #{sid}" + (f" — `{ticket}`" if ticket else ""))
-        lines.append("Use `/devtrack workstop` to stop it or `/devtrack workreport` for an EOD summary.")
-    else:
-        lines.append("No active session. Use `/devtrack workstart [ticket-ref]` to start tracking.")
+    lines.append("Use `/devtrack workreport` for an EOD summary.")
 
     text = "\n".join(lines)
 

@@ -136,47 +136,43 @@ mcp_output=$(DEVTRACK_ENV_FILE="$env_file" XDG_DATA_HOME="$state_root/xdg" "$bin
 printf '%s\n' "$mcp_output"
 printf '%s\n' "$mcp_output" | grep -F '=== PASS ===' >/dev/null
 printf '%s\n' "$mcp_output" | grep -F 'E2E-201' >/dev/null
-printf '%s\n' "$mcp_output" | grep -E 'today_commits[^0-9]*[1-9]' >/dev/null
+printf '%s\n' "$mcp_output" | grep -E 'today_commits[^0-9]*1([^0-9]|$)' >/dev/null
 
 run_cli() {
     DEVTRACK_ENV_FILE="$env_file" GIT_NO_DEVTRACK=1 XDG_DATA_HOME="$state_root/xdg" "$binary" "$@"
 }
 
-# Trigger logging precedes the time transaction, so wait for persisted evidence.
-deadline=$(( $(date +%s) + timeout_secs ))
-while :; do
-    work_status=$(run_cli work status)
-    if printf '%s\n' "$work_status" | grep -E '\[inferred, confidence 0\.50\].*E2E-201' >/dev/null; then
-        break
-    fi
-    if [ "$(date +%s)" -ge "$deadline" ]; then
-        printf 'Commit did not produce an inferred work session:\n%s\n' "$work_status" >&2
-        exit 1
-    fi
-    sleep 1
-done
-run_cli work adjust 45
-corrected_status=$(run_cli work status)
-printf '%s\n' "$corrected_status" | grep -E '45m.*\[adjusted\].*E2E-201' >/dev/null
-run_cli stop
-run_cli start
-restarted_status=$(run_cli work status)
-if [ "$restarted_status" != "$corrected_status" ]; then
-    printf 'Work sessions changed across daemon restart:\n%s\n' "$restarted_status" >&2
-    exit 1
-fi
+# Ticket-context commands are repository-scoped and must run in the test workspace.
 (
     cd "$workspace"
+    initial_status=$(run_cli work status)
+    printf '%s\n' "$initial_status" | grep -F 'No active ticket selected.' >/dev/null
     run_cli work start E2E-202
-    active_status=$(run_cli work status)
-    printf '%s\n' "$active_status" | grep -F 'Active session' >/dev/null
-    printf '%s\n' "$active_status" | grep -F 'Ticket: E2E-202' >/dev/null
+    selected_status=$(run_cli work status)
+    printf '%s\n' "$selected_status" | grep -F 'Active ticket: E2E-202' >/dev/null
+    run_cli stop
+    run_cli start
+    restarted_status=$(run_cli work status)
+    if [ "$restarted_status" != "$selected_status" ]; then
+        printf 'Ticket context changed across daemon restart:\n%s\n' "$restarted_status" >&2
+        exit 1
+    fi
     run_cli work stop
-    stopped_status=$(run_cli work status)
-    printf '%s\n' "$stopped_status" | grep -F 'No active session' >/dev/null
-    printf '%s\n' "$stopped_status" | grep -E '\[explicit,.*E2E-202' >/dev/null
-    printf '%s\n' "$stopped_status" | grep -E '45m.*\[adjusted\].*E2E-201' >/dev/null
+    cleared_status=$(run_cli work status)
+    printf '%s\n' "$cleared_status" | grep -F 'No active ticket selected.' >/dev/null
 )
-run_cli queue list
-printf '%s\n' 'PASS: automatic time, CLI correction, restart persistence, and explicit start/stop.'
+# Persisted commits must remain visible after restarting the daemon.
+restarted_mcp=$(run_cli mcp test 2>&1)
+printf '%s\n' "$restarted_mcp" | grep -F '=== PASS ===' >/dev/null
+printf '%s\n' "$restarted_mcp" | grep -F 'E2E-201' >/dev/null
+printf '%s\n' "$restarted_mcp" | grep -E 'today_commits[^0-9]*1([^0-9]|$)' >/dev/null
+# This lane deliberately has no server and no staged local actions. It must
+# report unavailable history rather than claim the combined queue is empty.
+if queue_output=$(run_cli queue list 2>&1); then
+    printf 'Queue unexpectedly succeeded without server history:\n%s\n' "$queue_output" >&2
+    exit 1
+fi
+printf '%s\n' "$queue_output" | grep -F 'warning: server queue unavailable; showing local queue only:' >/dev/null
+printf '%s\n' "$queue_output" | grep -F 'Error: server queue history unavailable:' >/dev/null
+printf '%s\n' 'PASS: ticket selection, restart persistence, clearing, and persisted commit context.'
 printf 'PASS: Linux no-send E2E observed %s and exposed it through MCP.\n' "$commit_hash"

@@ -78,7 +78,6 @@ type ResponseRecord struct {
 	Project     string
 	TicketID    string
 	Description string
-	TimeSpent   string
 	Status      string
 	RawInput    string
 }
@@ -164,40 +163,6 @@ type ReportRecord struct {
 	EmailSent      bool
 	EmailSentAt    *time.Time
 	CreatedAt      time.Time
-}
-
-// WorkSessionRecord represents an active or completed work session
-type WorkSessionRecord struct {
-	ID                int64
-	StartedAt         string
-	EndedAt           *string
-	TicketRef         string
-	RepoPath          string
-	WorkspaceName     string
-	Description       string
-	Commits           string // JSON array of commit hashes
-	DurationMinutes   *int
-	AdjustedMinutes   *int
-	AutoStopped       bool
-	MeasurementSource string
-	LastActivityAt    *string
-	Confidence        float64
-	EvidenceCount     int
-	CreatedAt         string
-}
-
-// WorkSessionAdjustment is an append-only audit record for an explicit time
-// correction. Adjustments never replace measured duration; MeasuredMinutes
-// captures its value at correction time even if later evidence changes it.
-type WorkSessionAdjustment struct {
-	ID              int64
-	WorkSessionID   int64
-	PreviousMinutes *int
-	MeasuredMinutes *int
-	AdjustedMinutes int
-	Channel         string
-	Reason          string
-	CreatedAt       string
 }
 
 // NotificationRecord represents a ticket alert notification
@@ -678,7 +643,7 @@ func (d *Database) InsertResponse(record ResponseRecord) (int64, error) {
 		record.Project,
 		record.TicketID,
 		record.Description,
-		record.TimeSpent,
+		"", // Retired duration column retained for database compatibility.
 		record.Status,
 		record.RawInput,
 	)
@@ -1448,8 +1413,6 @@ func (d *Database) GetReportByDate(reportDate time.Time, reportType string) (*Re
 	return &record, nil
 }
 
-// --- Message Queue CRUD ---
-
 // EnqueueMessage inserts a message into the store-and-forward queue
 func (d *Database) EnqueueMessage(msg QueuedMessage) (int64, error) {
 	query := `
@@ -1606,8 +1569,6 @@ func (d *Database) CleanOldMessages(retentionDays int) error {
 
 	return nil
 }
-
-// --- Deferred Commits CRUD ---
 
 // InsertDeferredCommit inserts a deferred commit record
 func (d *Database) InsertDeferredCommit(record DeferredCommitRecord) (int64, error) {
@@ -1844,8 +1805,6 @@ func (d *Database) GetDeferredCommitStats() (pending int, enhanced int, committe
 	return
 }
 
-// --- Health Snapshots CRUD ---
-
 // InsertHealthSnapshot inserts a health check snapshot
 func (d *Database) InsertHealthSnapshot(snap HealthSnapshot) error {
 	query := `
@@ -1920,198 +1879,6 @@ func (d *Database) CleanOldHealthSnapshots(retentionDays int) error {
 	}
 
 	return nil
-}
-
-// InsertWorkSession starts a new work session and returns its ID
-func (d *Database) InsertWorkSession(ticketRef, repoPath, workspaceName string) (int64, error) {
-	return d.insertWorkSessionAt(ticketRef, repoPath, workspaceName, time.Now())
-}
-
-// EndWorkSession marks a session as ended and stores the auto-measured duration
-func (d *Database) EndWorkSession(id int64, endedAt string, durationMins int) error {
-	end, err := parseWorkSessionTime(endedAt)
-	if err != nil {
-		return err
-	}
-	if durationMins < 0 {
-		return fmt.Errorf("duration must be non-negative")
-	}
-	result, err := d.db.Exec(`UPDATE work_sessions SET ended_at=?, duration_minutes=?
-        WHERE id=? AND ended_at IS NULL AND julianday(started_at) <= julianday(?)`, endedAt, durationMins, id, end.Format(time.RFC3339Nano))
-	if err != nil {
-		return fmt.Errorf("failed to end work session %d: %w", id, err)
-	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count != 1 {
-		return fmt.Errorf("work session %d is missing, already closed, or starts after the stop time", id)
-	}
-	return nil
-}
-
-// AdjustWorkSessionTime sets the user-overridden time for a session.
-// The original auto-measured duration_minutes is preserved for audit purposes.
-func (d *Database) AdjustWorkSessionTime(id int64, adjustedMins int) error {
-	if adjustedMins < 0 {
-		return fmt.Errorf("adjusted minutes must be non-negative")
-	}
-	tx, err := d.db.Begin()
-	if err != nil {
-		return fmt.Errorf("begin work session adjustment: %w", err)
-	}
-	defer tx.Rollback()
-	var previous, measured *int
-	if err := tx.QueryRow(`SELECT adjusted_minutes, duration_minutes FROM work_sessions WHERE id = ?`, id).Scan(&previous, &measured); err != nil {
-		return fmt.Errorf("read work session %d adjustment: %w", id, err)
-	}
-	if _, err := tx.Exec(`
-		INSERT INTO work_session_adjustments (
-			work_session_id, previous_minutes, adjusted_minutes, channel, measured_minutes
-		) VALUES (?, ?, ?, 'cli', ?)`, id, previous, adjustedMins, measured); err != nil {
-		return fmt.Errorf("audit work session %d adjustment: %w", id, err)
-	}
-	if _, err := tx.Exec(`UPDATE work_sessions SET adjusted_minutes = ? WHERE id = ?`, adjustedMins, id); err != nil {
-		return fmt.Errorf("failed to adjust work session %d: %w", id, err)
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit work session %d adjustment: %w", id, err)
-	}
-	return nil
-}
-
-// ListWorkSessionAdjustments returns the append-only correction history.
-func (d *Database) ListWorkSessionAdjustments(id int64) ([]WorkSessionAdjustment, error) {
-	rows, err := d.db.Query(`
-		SELECT id, work_session_id, previous_minutes, adjusted_minutes, channel, reason, created_at, measured_minutes
-		FROM work_session_adjustments WHERE work_session_id = ? ORDER BY id`, id)
-	if err != nil {
-		return nil, fmt.Errorf("list work session %d adjustments: %w", id, err)
-	}
-	defer rows.Close()
-	var adjustments []WorkSessionAdjustment
-	for rows.Next() {
-		var adjustment WorkSessionAdjustment
-		if err := rows.Scan(&adjustment.ID, &adjustment.WorkSessionID, &adjustment.PreviousMinutes,
-			&adjustment.AdjustedMinutes, &adjustment.Channel, &adjustment.Reason,
-			&adjustment.CreatedAt, &adjustment.MeasuredMinutes); err != nil {
-			return nil, fmt.Errorf("scan work session adjustment: %w", err)
-		}
-		adjustments = append(adjustments, adjustment)
-	}
-	return adjustments, rows.Err()
-}
-
-// GetActiveWorkSession returns the first session where ended_at IS NULL, or nil if none
-func (d *Database) GetActiveWorkSession() (*WorkSessionRecord, error) {
-	query := `
-		SELECT id, started_at, ended_at, ticket_ref, repo_path, workspace_name,
-		       COALESCE(description, ''), COALESCE(commits, '[]'), duration_minutes, adjusted_minutes, auto_stopped,
-		       measurement_source, last_activity_at, confidence, evidence_count, created_at
-		FROM work_sessions
-		WHERE ended_at IS NULL
-		ORDER BY started_at DESC
-		LIMIT 1
-	`
-	row := d.db.QueryRow(query)
-	return scanWorkSession(row)
-}
-
-// GetWorkSessionsForDate returns all sessions that started on the given date (YYYY-MM-DD)
-func (d *Database) GetWorkSessionsForDate(date string) ([]WorkSessionRecord, error) {
-	query := `
-		SELECT id, started_at, ended_at, ticket_ref, repo_path, workspace_name,
-		       COALESCE(description, ''), COALESCE(commits, '[]'), duration_minutes, adjusted_minutes, auto_stopped,
-		       measurement_source, last_activity_at, confidence, evidence_count, created_at
-		FROM work_sessions
-		WHERE substr(started_at, 1, 10) = ?
-		ORDER BY started_at ASC
-	`
-	rows, err := d.db.Query(query, date)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query work sessions for %s: %w", date, err)
-	}
-	defer rows.Close()
-
-	var sessions []WorkSessionRecord
-	for rows.Next() {
-		s, err := scanWorkSessionRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		sessions = append(sessions, *s)
-	}
-	return sessions, rows.Err()
-}
-
-// AppendCommitToSession adds a commit hash to the JSON commits array of a session
-func (d *Database) AppendCommitToSession(sessionID int64, commitHash string) error {
-	// Read current commits array
-	var commitsJSON string
-	err := d.db.QueryRow("SELECT commits FROM work_sessions WHERE id = ?", sessionID).Scan(&commitsJSON)
-	if err != nil {
-		return fmt.Errorf("failed to read commits for session %d: %w", sessionID, err)
-	}
-
-	// Parse, append, re-serialize
-	var commits []string
-	if commitsJSON != "" && commitsJSON != "[]" {
-		// Simple JSON array unmarshal via encoding/json is unavailable without import;
-		// we do a lightweight string manipulation instead to avoid import churn.
-		// Strip leading [ and trailing ], split on comma-quote boundaries.
-		inner := commitsJSON[1 : len(commitsJSON)-1]
-		if inner != "" {
-			for _, part := range splitJSONStringArray(inner) {
-				commits = append(commits, part)
-			}
-		}
-	}
-	commits = append(commits, commitHash)
-
-	newJSON := buildJSONStringArray(commits)
-	_, err = d.db.Exec("UPDATE work_sessions SET commits = ? WHERE id = ?", newJSON, sessionID)
-	if err != nil {
-		return fmt.Errorf("failed to append commit to session %d: %w", sessionID, err)
-	}
-	return nil
-}
-
-// scanWorkSession scans a *sql.Row into a WorkSessionRecord
-func scanWorkSession(row *sql.Row) (*WorkSessionRecord, error) {
-	var s WorkSessionRecord
-	var autoStopped int
-	err := row.Scan(
-		&s.ID, &s.StartedAt, &s.EndedAt, &s.TicketRef, &s.RepoPath,
-		&s.WorkspaceName, &s.Description, &s.Commits,
-		&s.DurationMinutes, &s.AdjustedMinutes, &autoStopped,
-		&s.MeasurementSource, &s.LastActivityAt, &s.Confidence, &s.EvidenceCount, &s.CreatedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan work session: %w", err)
-	}
-	s.AutoStopped = autoStopped == 1
-	return &s, nil
-}
-
-// scanWorkSessionRow scans a *sql.Rows row into a WorkSessionRecord
-func scanWorkSessionRow(rows *sql.Rows) (*WorkSessionRecord, error) {
-	var s WorkSessionRecord
-	var autoStopped int
-	err := rows.Scan(
-		&s.ID, &s.StartedAt, &s.EndedAt, &s.TicketRef, &s.RepoPath,
-		&s.WorkspaceName, &s.Description, &s.Commits,
-		&s.DurationMinutes, &s.AdjustedMinutes, &autoStopped,
-		&s.MeasurementSource, &s.LastActivityAt, &s.Confidence, &s.EvidenceCount, &s.CreatedAt,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan work session row: %w", err)
-	}
-	s.AutoStopped = autoStopped == 1
-	return &s, nil
 }
 
 // TriggerStats holds the trigger throughput snapshot served by GET /internal/stats.
@@ -2418,8 +2185,6 @@ func (d *Database) SetAlertLastChecked(userID, source string, ts time.Time) erro
 	return err
 }
 
-// --- Ticket Cache ---
-
 // TicketCacheRecord represents a cached ticket from an upstream PM system.
 type TicketCacheRecord struct {
 	ID          string
@@ -2540,8 +2305,6 @@ func (d *Database) GetTicketByID(id string) (*TicketCacheRecord, error) {
 	r.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
 	return &r, nil
 }
-
-// --- PM Update Queue ---
 
 // InsertPMUpdateQueue inserts a new PM update request into the outbox queue.
 // Returns the row ID of the inserted record.
@@ -2862,10 +2625,6 @@ func (d *Database) InsertSageEvent(event sage.Event) (bool, error) {
 	}
 	return true, nil
 }
-
-// ---------------------------------------------------------------------------
-// MCP read-only query helpers (TASK-099)
-// ---------------------------------------------------------------------------
 
 // TriggerCommit is a minimal commit record returned by MCP tools.
 // It is a lighter-weight view than the full TriggerRecord.

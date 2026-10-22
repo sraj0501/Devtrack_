@@ -73,7 +73,7 @@ accepting requests. Compose waits for its bundled PostgreSQL health check; manag
 an explicit local or remote `POSTGRES_URL` and do not fall back to server-side SQLite.
 
 Client activity leaves SQLite only when `SERVER_EVENT_SYNC_ENABLED=true`. The daemon captures
-latest-state snapshots for `triggers`, `task_updates`, `work_sessions`, and client-originated
+latest-state snapshots for `triggers`, `task_updates`, and client-originated
 `pending_actions` in a local outbox. Each batch is itself staged in `pending_actions`, then sent to
 `POST /trigger/client_events`. PostgreSQL deduplicates replays by `(client_id, event_id)` and rejects
 stale revisions; an unreachable server leaves the outbox intact for the next queue poll.
@@ -344,14 +344,14 @@ The smart processing engine that handles LLM enrichment and integrations.
 Developer makes a commit
          │
          ▼
-Git hook detected by fsnotify
+Repository change detected by fsnotify or polling
          │
          ▼
-Go daemon receives file event
+Go daemon enumerates unseen ancestors across all local branch tips
          │
          ▼
-[DEVTRACK_AUTO_ENHANCE=true] Auto-enhance: read diff, call LLM,
-amend commit message in-place (skipped if commit is already pushed)
+[DEVTRACK_AUTO_ENHANCE=true] Auto-enhance only if the observed commit is still HEAD,
+unpushed, and has no staged changes; recheck HEAD and staging after the LLM call
          │
          ▼
 Go daemon logs to database
@@ -369,7 +369,7 @@ Python backend receives commit_trigger
          ├─ Extract task numbers
          │
          ▼
-Send task_update to project management (Azure DevOps, GitHub, etc.)
+Stage task_update in pending_actions for review/trust-policy execution
          │
          ▼
 Send acknowledge back to Go daemon
@@ -378,20 +378,33 @@ Send acknowledge back to Go daemon
 Log completion in database
 ```
 
+The monitor seeds pre-existing reachable history at startup, then walks unseen ancestry oldest
+first and deduplicates shared hashes. Source branches are checked before default-branch merge
+ancestry; detached HEAD is also considered. This handles rapid bursts and branches switched away
+from during a slow callback. Empty repositories attach monitoring once their first commit exists.
+The seen set is process-local: startup does not replay old history, and commits made while the
+daemon was stopped do not have a qualified catch-up guarantee. These capture changes are on the
+v3.3.0 development line, not stable v3.2.0.
+
 #### Background Commit-Message Auto-Enhancement
 
-When `DEVTRACK_AUTO_ENHANCE=true`, the daemon enhances every detected commit's message before forwarding it to the Python server. This is designed for workflows where developers use plain `git commit` without going through `devtrack git commit`.
+When `DEVTRACK_AUTO_ENHANCE=true`, the daemon may enhance an eligible current HEAD commit before
+forwarding it to the Python server. Historical backlog commits are recorded without amending a
+different HEAD. This opt-in path supports plain `git commit` without `devtrack git commit`.
 
 **How it works:**
 
 1. The git monitor detects a new commit (via fsnotify or 2-second polling).
 2. The daemon checks:
    - Is `DEVTRACK_AUTO_ENHANCE=true`?
+   - Does HEAD still match the observed commit hash? (If not, skip enhancement.)
    - Is the configured LLM reachable (Ollama / OpenAI / Groq)?
-   - Has the commit been pushed to any remote? (If yes, skip — amending would require a force-push.)
+   - Is the commit reachable from a local remote-tracking ref? (If yes, skip.) This checks locally
+     known remote state; it does not query the remote for newly pushed commits.
    - Are there any staged changes in the working tree? (If yes, skip — amending would accidentally include them.)
 3. If all checks pass, the daemon reads the full commit diff (`git show HEAD`), sends it to the LLM, and generates a Conventional Commits-formatted message.
-4. The commit is amended in-place (`git commit --amend -m "enhanced message"`).
+4. HEAD and staged changes are checked again after model processing. If still eligible, the commit
+   is amended in-place (`git commit --amend -m "enhanced message"`).
 5. The new commit hash is recorded internally to prevent re-processing the amended commit.
 6. The trigger payload sent to the Python server carries the enhanced message.
 
@@ -399,7 +412,8 @@ When `DEVTRACK_AUTO_ENHANCE=true`, the daemon enhances every detected commit's m
 
 | Guard | Behaviour |
 |---|---|
-| Commit already pushed | Skipped — amending would diverge the branch |
+| Observed hash differs from HEAD, before or after model processing | Skipped; record the original observed commit |
+| Commit reachable from a local remote-tracking ref | Skipped — amending would diverge the known remote branch |
 | Staged changes present | Skipped — amending would alter the commit's tree |
 | LLM unreachable | Skipped — original message is preserved |
 | LLM returns same or empty message | Skipped — no amend performed |
@@ -428,7 +442,7 @@ Go daemon POSTs timer context to Python /trigger/timer
 Python timer processor
          ├─ Stage the timer-derived proposal in pending_actions
          ├─ Check vacation mode and score any generated update explicitly
-         ├─ Check the active work session
+         ├─ Use available ticket/workspace context without measuring time spent
          ├─ Send configured best-effort Telegram/Slack reminders
          └─ Return trigger count, staged-action ID, and delivered channels
 
@@ -450,7 +464,7 @@ HTTP/JSON trigger carries authoritative ticket ID + commit text
          ▼
 LLM structured task parser
 ├─ Validate provider output against the task schema
-├─ Extract optional action/time/description enrichment
+├─ Extract optional action/description enrichment; no time estimates
 ├─ Keep the Go-resolved ticket authoritative
 └─ Degrade without blocking when the provider is unavailable
          │
@@ -607,7 +621,7 @@ CREATE TABLE task_updates (
     id INTEGER PRIMARY KEY,
     task_id TEXT,                 -- e.g., 'PROJ-123'
     system TEXT,                  -- 'azure_devops', 'github', 'jira'
-    action TEXT,                  -- 'status_change', 'comment', 'time_tracking'
+    action TEXT,                  -- e.g. 'status_change', 'comment'; no new time-tracking actions
     payload JSON,                 -- Full update data
     status TEXT,                  -- 'queued', 'sent', 'failed'
     created_at DATETIME,
@@ -687,7 +701,8 @@ X-DevTrack-API-Key: <DEVTRACK_API_KEY>   (if configured)
 {
   "commit_hash": "abc123def456",
   "branch": "feature/auth",
-  "message": "Fixed OAuth flow",
+  "commit_message": "Fixed OAuth flow",
+  "author": "Developer",
   "workspace_name": "my-api",
   "pm_platform": "azure"
 }
@@ -710,7 +725,7 @@ X-DevTrack-API-Key: <DEVTRACK_API_KEY>   (if configured)
 | `DEVTRACK_TLS` | `true` | Enable HTTPS (disable only in trusted Docker networks) |
 | `DEVTRACK_TLS_CERT` | `Data/tls/server.crt` | Auto-generated cert path |
 | `DEVTRACK_TLS_KEY` | `Data/tls/server.key` | Auto-generated key path |
-| `DEVTRACK_API_KEY` | — | Optional bearer token for cloud/public deployments |
+| `DEVTRACK_API_KEY` | — | Optional shared key sent in `X-DevTrack-API-Key` |
 
 ---
 
@@ -758,8 +773,25 @@ PostgreSQL numeric IDs as the same action. Transport failures leave the local ro
 | Queue endpoint | Purpose |
 |---|---|
 | `GET /queue/pending` | List server-originated PostgreSQL queue rows |
+| `GET /queue/history` | Read paginated server history, including completed/rejected EOD reports |
+| `POST /queue/review` | Edit/reject a pending server row atomically |
 | `POST /queue/execute` | Execute a server-originated row by its PostgreSQL ID |
 | `POST /queue/execute_staged` | Execute a complete Go-local row after local approval/expiry |
+
+CLI queue/history reads include both stores without copying server rows into SQLite. Server rows
+use `server:<id>` in CLI output and review commands; bare numbers address only local rows.
+`eod status`/`show` compare creation time across server and legacy local reports, independent of
+the confidence-based expiry order. Server outages are surfaced instead of looking like empty history.
+
+`queue list` includes pending rows from both stores; `queue list --all` shows the last 24 hours
+across statuses. Server edit/reject require pending status atomically; approval uses the server's
+execution claim. `queue flag` remains local-only. History/review use the configured API-key
+authentication and do not enable client-event synchronization.
+
+Time-tracking collection, inference, corrections, report metrics, and session synchronization are
+removed in the v3.3.0 development line. Legacy duration schemas remain inert for upgrade
+compatibility, and previously queued session-sync payloads are suppressed. `work start/stop/status`
+select, clear, and inspect ticket context; `work report` requests a commit-based EOD report.
 
 ### Health Monitoring
 
@@ -831,8 +863,10 @@ task state is tracked in `Data/agent_logs/project_board.md`.
 | **8 — MCP server** | JSON-RPC 2.0 stdio server exposing ten read-only local context and Sage tools to compatible hosts |
 
 ### Phase 9 — Adoption Gate (complete)
-Current product planning focuses on **DevTrack Sage**, the broader local cross-harness capture and
-personal command-knowledge layer described in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md). The existing
+Current priority is the Git capture and EOD qualification sequence in
+[`docs/testing/basic-workflow.md`](testing/basic-workflow.md). **DevTrack Sage** testing is on hold
+until these basics pass; Sage remains the local cross-harness command-knowledge product described
+in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md). The existing
 legacy repository-chat and autonomous-Git Sage commands have been removed; independently useful Git
 helpers remain under `devtrack git`. Packaged-build acceptance and privacy-reviewed media remain
 release follow-ups tracked in

@@ -32,7 +32,7 @@ No tool absorbs the developer's meta-work. DevTrack does.
 ## The Vision
 
 DevTrack is a silent background AI layer that absorbs all developer meta-work — ticket
-updates, EOD reports, PR review cycles, time tracking — by watching what the developer
+updates, EOD reports, and PR review cycles — by watching what the developer
 already does (committing code) and inferring everything else.
 
 The developer's only obligation is to follow the workspace's ticket branch convention. DevTrack
@@ -148,6 +148,20 @@ capability audit is a rolling checklist, updated with each phase.
 
 ---
 
+## Product decision: no time tracking
+
+On 2026-10-21 the owner explicitly removed work-time tracking because measuring time spent per
+task enables micromanagement and conflicts with the intended developer relationship. DevTrack
+records what was done and when an activity happened. It must not infer or collect work durations,
+run work timers, log hours per ticket, or include time-spent metrics in reports or synchronization.
+Explicit active-ticket selection remains a context override and never starts a timer.
+
+The removal is implemented in the v3.3.0 development line (`dev` at `860b91b`). Stable v3.2.0 and
+existing installations retain the previous behavior until upgraded. The immediate qualification
+scope is automatic Git capture, ticket association, persisted commits, and EOD reports. Legacy
+learning repairs, platform event/connector parity, and Sage testing are on hold until these basics
+pass [packaged-build and real-workflow acceptance](docs/testing/basic-workflow.md).
+
 ## The Developer Contract
 
 This is the entirety of what a developer must learn to use DevTrack:
@@ -175,6 +189,8 @@ Refs: PROJ-456
 **3. For explicit override:**
 ```bash
 devtrack work start PROJ-123    # set active ticket manually
+devtrack work status            # inspect selected context
+devtrack work stop              # clear selected context; no timer is involved
 ```
 
 That is all. DevTrack resolves one authoritative ticket in strict priority order:

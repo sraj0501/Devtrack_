@@ -104,11 +104,7 @@ def register_handlers(app: Application, bot: "DevTrackBot"):
     app.add_handler(CallbackQueryHandler(_on_newproject_approve, pattern=r"^np_approve:"))
     app.add_handler(CallbackQueryHandler(_on_newproject_revise, pattern=r"^np_revise:"))
     app.add_handler(CallbackQueryHandler(_on_newproject_cancel, pattern=r"^np_cancel:"))
-    # Work session tracking
-    app.add_handler(CommandHandler("workstart", _make_handler(bot, _cmd_workstart)))
-    app.add_handler(CommandHandler("workstop", _make_handler(bot, _cmd_workstop)))
-    app.add_handler(CommandHandler("workadjust", _make_handler(bot, _cmd_workadjust)))
-    app.add_handler(CommandHandler("workstatus", _make_handler(bot, _cmd_workstatus)))
+    # Commit-based work reporting
     app.add_handler(CommandHandler("workreport", _make_handler(bot, _cmd_workreport)))
     app.add_handler(CommandHandler("vacation", _make_handler(bot, _cmd_vacation)))
 
@@ -2033,156 +2029,15 @@ async def _on_newproject_cancel(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 # ---------------------------------------------------------------------------
-# Work session Telegram commands
+# Commit-based work report
 # ---------------------------------------------------------------------------
 
-async def _cmd_workstart(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
-    """/workstart [ticket-ref] — start a work session."""
-    import asyncio
-    ticket_ref = " ".join(context.args) if context.args else ""
-    try:
-        from backend.work_tracker.session_store import WorkSessionStore
-        store = WorkSessionStore()
-        active = await asyncio.to_thread(store.get_active_session)
-        if active:
-            msg = f"⚠️ A session is already active (ID {active['id']}"
-            if active.get("ticket_ref"):
-                msg += f", ticket: {active['ticket_ref']}"
-            msg += ").\nUse /workstop first."
-            await update.message.reply_text(msg)
-            return
-
-        session_id = await asyncio.to_thread(store.start_session, ticket_ref)
-        if session_id is None:
-            await update.message.reply_text("Could not start a work session (not available yet in this server mode).")
-            return
-
-        msg = f"✅ Work session started (ID {session_id})"
-        if ticket_ref:
-            msg += f" for *{ticket_ref}*"
-        msg += "\nUse /workstop when you're done."
-        await update.message.reply_text(msg, parse_mode="Markdown")
-    except Exception as e:
-        await update.message.reply_text(f"Error starting session: {e}")
 
 
-async def _cmd_workstop(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
-    """/workstop — stop the active work session."""
-    import asyncio
-    from datetime import datetime, timezone
-    try:
-        from backend.work_tracker.session_store import WorkSessionStore
-        store = WorkSessionStore()
-        active = await asyncio.to_thread(store.get_active_session)
-        if not active:
-            await update.message.reply_text("No active session found.")
-            return
-
-        await asyncio.to_thread(store.end_session, active["id"])
-
-        started_at = active.get("started_at", "")
-        duration_str = ""
-        try:
-            start = datetime.fromisoformat(started_at)
-            elapsed = int((datetime.now(timezone.utc).replace(tzinfo=None) - start).total_seconds() / 60)
-            h, m = divmod(max(0, elapsed), 60)
-            duration_str = f"{h}h {m}m" if h else f"{m}m"
-        except Exception:
-            pass
-
-        msg = f"✅ Session {active['id']} stopped."
-        if duration_str:
-            msg += f" Duration: *{duration_str}*"
-        if active.get("ticket_ref"):
-            msg += f" (ticket: {active['ticket_ref']})"
-        msg += "\nUse `/workadjust <minutes>` to correct the time."
-        await update.message.reply_text(msg, parse_mode="Markdown")
-    except Exception as e:
-        await update.message.reply_text(f"Error stopping session: {e}")
 
 
-async def _cmd_workadjust(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
-    """/workadjust <minutes> — override time on the active or last session."""
-    import asyncio
-    if not context.args or not context.args[0].isdigit():
-        await update.message.reply_text("Usage: /workadjust <minutes>  (e.g. /workadjust 90)")
-        return
-    minutes = int(context.args[0])
-    try:
-        from backend.work_tracker.session_store import WorkSessionStore
-        from datetime import date
-        store = WorkSessionStore()
-
-        active = await asyncio.to_thread(store.get_active_session)
-        if active:
-            target_id = active["id"]
-        else:
-            today = date.today().isoformat()
-            sessions = await asyncio.to_thread(store.get_sessions_for_date, today)
-            if not sessions:
-                await update.message.reply_text("No session found to adjust.")
-                return
-            target_id = sessions[-1]["id"]
-
-        await asyncio.to_thread(store.adjust_time, target_id, minutes)
-        h, m = divmod(minutes, 60)
-        dur_str = f"{h}h {m}m" if h else f"{m}m"
-        await update.message.reply_text(
-            f"✅ Session {target_id} time adjusted to *{dur_str}*.\n"
-            "_Auto-measured time is preserved in DB for audit._",
-            parse_mode="Markdown",
-        )
-    except Exception as e:
-        await update.message.reply_text(f"Error adjusting session: {e}")
 
 
-async def _cmd_workstatus(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):
-    """/workstatus — show active session and today's completed sessions."""
-    import asyncio
-    from datetime import date, datetime, timezone
-    try:
-        from backend.work_tracker.session_store import WorkSessionStore
-        store = WorkSessionStore()
-        active = await asyncio.to_thread(store.get_active_session)
-        today = date.today().isoformat()
-        sessions = await asyncio.to_thread(store.get_sessions_for_date, today)
-
-        lines = []
-        if active:
-            started_at = active.get("started_at", "")
-            elapsed_str = ""
-            try:
-                start = datetime.fromisoformat(started_at)
-                elapsed = int((datetime.now(timezone.utc).replace(tzinfo=None) - start).total_seconds() / 60)
-                h, m = divmod(max(0, elapsed), 60)
-                elapsed_str = f"{h}h {m}m" if h else f"{m}m"
-            except Exception:
-                pass
-            line = f"🟢 *Active* (ID {active['id']}) — running {elapsed_str}"
-            if active.get("ticket_ref"):
-                line += f"\n   Ticket: {active['ticket_ref']}"
-            lines.append(line)
-        else:
-            lines.append("⚪ No active session.")
-
-        completed = [s for s in sessions if s.get("ended_at")]
-        if completed:
-            lines.append(f"\n*Today ({len(completed)} session(s)):*")
-            total = 0
-            for s in completed:
-                dur = WorkSessionStore.effective_duration(s)
-                total += dur
-                h, m = divmod(dur, 60)
-                dur_str = f"{h}h {m}m" if h else f"{m}m"
-                adj = " ✏️" if s.get("adjusted_minutes") is not None else ""
-                ticket = s.get("ticket_ref") or "(no ticket)"
-                lines.append(f"  • {dur_str}{adj}  {ticket}")
-            th, tm = divmod(total, 60)
-            lines.append(f"  Total: *{th}h {tm}m*" if th else f"  Total: *{tm}m*")
-
-        await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
-    except Exception as e:
-        await update.message.reply_text(f"Error loading work status: {e}")
 
 
 async def _cmd_workreport(update: Update, context: ContextTypes.DEFAULT_TYPE, bot: "DevTrackBot"):

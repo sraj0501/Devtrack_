@@ -52,6 +52,10 @@ func tryAutoEnhance(repoPath string, commit CommitInfo) (newHash, newMsg string,
 	if !autoEnhanceEnabled() {
 		return "", "", false
 	}
+	initialHead, err := exec.Command("git", "-C", repoPath, "rev-parse", "HEAD").Output()
+	if err != nil || strings.TrimSpace(string(initialHead)) != commit.Hash {
+		return "", "", false
+	}
 	if !gitcmd.LLMReachable() {
 		return "", "", false
 	}
@@ -78,6 +82,16 @@ func tryAutoEnhance(repoPath string, commit CommitInfo) (newHash, newMsg string,
 	}
 	enhanced = strings.TrimSpace(enhanced)
 	if enhanced == "" || enhanced == strings.TrimSpace(commit.Message) {
+		return "", "", false
+	}
+
+	// A burst may have advanced HEAD while the model was running. Historical
+	// commits must never cause a different commit to be amended.
+	head, err := exec.Command("git", "-C", repoPath, "rev-parse", "HEAD").Output()
+	if err != nil || strings.TrimSpace(string(head)) != commit.Hash {
+		return "", "", false
+	}
+	if hasStagedChanges(repoPath) {
 		return "", "", false
 	}
 

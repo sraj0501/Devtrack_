@@ -3,6 +3,9 @@
 > Living document — updated alongside each implementation phase.
 > Think of this as notes taken while integrating the library, not a retrospective.
 
+v3.3.0 development removes work-session tracking. Narrative durations below measure server request
+and stage latency for diagnostics; they are not time spent by a developer or per-ticket work metrics.
+
 ---
 
 ## What it is
@@ -115,7 +118,7 @@ Format: one JSON object per line, UTF-8, append mode.
   "exception_chain": [...],
   "exact_cause": "PostgreSQL connection refused while writing the ticket store",
   "llm_analysis": "The PostgreSQL service configured by POSTGRES_URL is unreachable. Confirm the service is running, the host and port are reachable, and the database exists.",
-  "stage_timeline": "Link work session (0.4ms) → LLM task parse (0.2ms) → [FAILED] Upsert 42 github tickets",
+  "stage_timeline": "[FAILED] Upsert 42 github tickets",
   "progress": { "percent": 66, "completed_stages": 2, "total_stages": 3 },
   "timestamp": "..."
 }
@@ -250,8 +253,8 @@ These are issues in `runtime-narrative` itself (not DevTrack):
 
 | Endpoint | Stages | Pattern |
 |---|---|---|
-| `POST /trigger/commit` | Link work session · LLM task parse · PM sync | Graceful |
-| `POST /trigger/timer` | Check vacation mode · Check active session · Send Telegram reminder · Send Slack reminder | Graceful |
+| `POST /trigger/commit` | LLM task parse · PM sync (stages a proposal; external writes pass through pending actions) | Graceful |
+| `POST /trigger/timer` | Check vacation mode · Send Telegram reminder · Send Slack reminder | Graceful |
 | `POST /trigger/ticket_sync` | Force clear cache _(force=true only)_ · Upsert N source tickets | **Critical** |
 
 ### LLM provider chain (`llm/provider_factory.py`)

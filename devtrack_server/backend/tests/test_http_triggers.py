@@ -313,6 +313,11 @@ class TestTimerTriggerEndpoint:
 # /trigger/workspace_reload
 # ---------------------------------------------------------------------------
 
+def test_retired_time_session_routes_are_not_available(client):
+    for path in ("/trigger/work_session_start", "/trigger/work_session_stop"):
+        assert client.post(path, json={"session_id": 42}).status_code == 404
+
+
 class TestWorkspaceReloadEndpoint:
     def test_reload_returns_ok(self, client):
         resp = client.post("/trigger/workspace_reload", json={})
@@ -324,24 +329,6 @@ class TestWorkspaceReloadEndpoint:
 # /trigger/work_session_start and /trigger/work_session_stop
 # ---------------------------------------------------------------------------
 
-class TestWorkSessionEndpoints:
-    def test_session_start_returns_ok(self, client):
-        resp = client.post(
-            "/trigger/work_session_start",
-            json={"session_id": 42, "ticket_ref": "GH-123"},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data.get("status") == "ok"
-        assert data.get("session_id") == 42
-
-    def test_session_stop_returns_ok(self, client):
-        resp = client.post(
-            "/trigger/work_session_stop",
-            json={"session_id": 42},
-        )
-        assert resp.status_code == 200
-        assert resp.json().get("status") == "ok"
 
 
 # ---------------------------------------------------------------------------
@@ -672,11 +659,3 @@ class TestTriggerProcessorTimer:
         }):
             result = proc.process_timer(TIMER_PAYLOAD)
         assert result.get("prompt_channel") == "none"
-
-    def test_active_session_false_when_store_unavailable(self):
-        proc = _bare_processor()
-        with patch("backend.work_tracker.session_store.WorkSessionStore") as mock_store:
-            mock_store.side_effect = Exception("db unavailable")
-            result = proc.process_timer(TIMER_PAYLOAD)
-        # Should not raise; active_session defaults to False
-        assert result.get("active_session") is False

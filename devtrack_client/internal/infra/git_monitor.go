@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ type GitMonitor struct {
 	repo     *gogit.Repository
 	watcher  *fsnotify.Watcher
 	stopChan chan bool
+	seen     map[plumbing.Hash]bool // includes pre-monitor history and delivered commits
 }
 
 // CommitInfo contains information about a detected commit
@@ -88,14 +90,24 @@ func (gm *GitMonitor) Start(onCommit func(CommitInfo)) error {
 	}
 
 	// Determine initial state; an empty repo (no commits) is valid — monitoring continues.
-	lastCommit, err := gm.getLatestCommit()
+	gm.seen = make(map[plumbing.Hash]bool)
+	_, err := gm.repo.Head()
 	if err != nil {
 		if errors.Is(err, plumbing.ErrReferenceNotFound) {
 			log.Printf("Started monitoring Git repository (no commits yet): %s", gm.repoPath)
 		} else {
-			log.Printf("Started monitoring Git repository (warning: %v): %s", err, gm.repoPath)
+			return fmt.Errorf("read initial HEAD: %w", err)
 		}
 	} else {
+		// Seed all existing refs so checking out an old branch does not import
+		// its pre-monitor history as newly completed work.
+		iter, walkErr := gm.repo.Log(&gogit.LogOptions{All: true})
+		if walkErr != nil {
+			return fmt.Errorf("read initial commit history: %w", walkErr)
+		}
+		if walkErr = iter.ForEach(func(c *object.Commit) error { gm.seen[c.Hash] = true; return nil }); walkErr != nil {
+			return fmt.Errorf("read initial commit history: %w", walkErr)
+		}
 		log.Printf("Started monitoring Git repository: %s", gm.repoPath)
 	}
 
@@ -107,27 +119,7 @@ func (gm *GitMonitor) Start(onCommit func(CommitInfo)) error {
 		for {
 			select {
 			case <-ticker.C:
-				// Periodic check for new commits (works reliably across Docker volumes)
-				currentCommit, err := gm.getLatestCommit()
-				if err != nil {
-					if !errors.Is(err, plumbing.ErrReferenceNotFound) {
-						log.Printf("Error getting latest commit: %v", err)
-					}
-					continue
-				}
-
-				// If we have a new commit, trigger the callback
-				if lastCommit == nil || currentCommit.Hash != lastCommit.Hash {
-					if lastCommit == nil {
-						// First commit — wire up watchers that didn't exist before
-						gitDir := filepath.Join(gm.repoPath, ".git")
-						_ = gm.watcher.Add(filepath.Join(gitDir, "refs", "heads"))
-						_ = gm.watcher.Add(filepath.Join(gitDir, "COMMIT_EDITMSG"))
-					}
-					log.Printf("New commit detected: %s - %s", currentCommit.Hash[:8], currentCommit.Message)
-					onCommit(*currentCommit)
-					lastCommit = currentCommit
-				}
+				gm.checkNewCommits(onCommit)
 
 			case event, ok := <-gm.watcher.Events:
 				if !ok {
@@ -144,21 +136,7 @@ func (gm *GitMonitor) Start(onCommit func(CommitInfo)) error {
 					// Small delay to allow git operations to complete
 					time.Sleep(100 * time.Millisecond)
 
-					// Check for new commit
-					currentCommit, err := gm.getLatestCommit()
-					if err != nil {
-						if !errors.Is(err, plumbing.ErrReferenceNotFound) {
-							log.Printf("Error getting latest commit: %v", err)
-						}
-						continue
-					}
-
-					// If we have a new commit, trigger the callback
-					if lastCommit == nil || currentCommit.Hash != lastCommit.Hash {
-						log.Printf("New commit detected (fsnotify): %s", currentCommit.Hash[:8])
-						onCommit(*currentCommit)
-						lastCommit = currentCommit
-					}
+					gm.checkNewCommits(onCommit)
 				}
 
 			case err, ok := <-gm.watcher.Errors:
@@ -175,6 +153,101 @@ func (gm *GitMonitor) Start(onCommit func(CommitInfo)) error {
 	}()
 
 	return nil
+}
+
+// checkNewCommits walks every unseen ancestor, oldest first. A slow callback
+// cannot collapse a burst to the latest HEAD. Known ancestors prune the walk,
+// including shared merge parents and branch checkouts already observed.
+func (gm *GitMonitor) checkNewCommits(onCommit func(CommitInfo)) {
+	head, err := gm.repo.Head()
+	if err != nil {
+		if !errors.Is(err, plumbing.ErrReferenceNotFound) {
+			log.Printf("Read HEAD: %v", err)
+		}
+		return
+	}
+	if len(gm.seen) == 0 {
+		gitDir := filepath.Join(gm.repoPath, ".git")
+		_ = gm.watcher.Add(filepath.Join(gitDir, "refs", "heads"))
+		_ = gm.watcher.Add(filepath.Join(gitDir, "COMMIT_EDITMSG"))
+	}
+	// A callback can block on a downstream service while Git switches branches.
+	// Scan every local branch tip so commits on the departed branch survive,
+	// carrying that branch's ticket context rather than the eventual HEAD's.
+	refs, err := gm.repo.References()
+	if err != nil {
+		log.Printf("Read branch refs: %v", err)
+		return
+	}
+	var tips []*plumbing.Reference
+	err = refs.ForEach(func(ref *plumbing.Reference) error {
+		if ref.Name().IsBranch() {
+			tips = append(tips, ref)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("Read branch refs: %v", err)
+		return
+	}
+	def := gm.DefaultBranch()
+	sort.Slice(tips, func(i, j int) bool {
+		// Visit source branches before the default branch's merge ancestry.
+		if tips[i].Name().Short() == def {
+			return false
+		}
+		if tips[j].Name().Short() == def {
+			return true
+		}
+		return tips[i].Name() < tips[j].Name()
+	})
+	if !head.Name().IsBranch() {
+		tips = append(tips, head)
+	}
+	for _, ref := range tips {
+		gm.checkTip(ref, onCommit)
+	}
+}
+
+func (gm *GitMonitor) checkTip(ref *plumbing.Reference, onCommit func(CommitInfo)) {
+	branch := ""
+	if ref.Name().IsBranch() {
+		branch = ref.Name().Short()
+	}
+	var commits []*object.Commit
+	visiting := make(map[plumbing.Hash]bool)
+	var walk func(plumbing.Hash) error
+	walk = func(hash plumbing.Hash) error {
+		if gm.seen[hash] || visiting[hash] {
+			return nil
+		}
+		visiting[hash] = true
+		commit, err := gm.repo.CommitObject(hash)
+		if err != nil {
+			return err
+		}
+		for _, parent := range commit.ParentHashes {
+			if err := walk(parent); err != nil {
+				return err
+			}
+		}
+		commits = append(commits, commit)
+		return nil
+	}
+	if err := walk(ref.Hash()); err != nil {
+		log.Printf("Read new commits: %v", err)
+		return
+	}
+	for _, commit := range commits {
+		files, err := gm.getChangedFiles(commit)
+		if err != nil {
+			log.Printf("Read changed files: %v", err)
+		}
+		onCommit(CommitInfo{Hash: commit.Hash.String(), Message: strings.TrimSpace(commit.Message),
+			Author: commit.Author.Name, Timestamp: commit.Author.When, Files: files,
+			Branch: branch, IsMerge: commit.NumParents() >= 2})
+		gm.seen[commit.Hash] = true
+	}
 }
 
 // Stop stops the Git monitoring

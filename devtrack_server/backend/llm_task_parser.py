@@ -37,8 +37,6 @@ _SCHEMA_FIELDS = {
     "project",
     "action_verb",
     "status",
-    "time_spent",
-    "time_estimate",
     "description",
     "confidence",
 }
@@ -53,13 +51,12 @@ Schema:
   "project": "string or null",
   "action_verb": "string or null",
   "status": "completed | in_progress | started | blocked | waiting | in_review | testing | null",
-  "time_spent": "string or null",
-  "time_estimate": "string or null",
   "description": "non-empty string",
   "confidence": 0.0
 }}
 
 Set confidence to a JSON number from 0.0 to 1.0.
+Do not estimate or infer hours worked, effort duration, or time spent.
 
 Commit message: {text}
 """
@@ -76,8 +73,6 @@ class StructuredTask:
     raw_text: str
     project: Optional[str] = None
     action_verb: Optional[str] = None
-    time_estimate: Optional[str] = None
-    time_spent: Optional[str] = None
     status: Optional[str] = None
     description: str = ""
     confidence: float = 0.0
@@ -88,8 +83,6 @@ class StructuredTask:
             "raw_text": self.raw_text,
             "project": self.project,
             "action_verb": self.action_verb,
-            "time_estimate": self.time_estimate,
-            "time_spent": self.time_spent,
             "status": self.status,
             "description": self.description,
             "confidence": self.confidence,
@@ -142,8 +135,6 @@ def _validate_response(raw_response: str) -> Dict[str, Any]:
         "project": _optional_string(data, "project"),
         "action_verb": _optional_string(data, "action_verb"),
         "status": status,
-        "time_spent": _optional_string(data, "time_spent"),
-        "time_estimate": _optional_string(data, "time_estimate"),
         "description": description.strip(),
         "confidence": confidence,
     }

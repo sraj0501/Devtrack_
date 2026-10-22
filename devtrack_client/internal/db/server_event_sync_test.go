@@ -80,9 +80,6 @@ func TestServerEventOutboxTracksAllApprovedCoreTables(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("InsertTaskUpdate: %v", err)
 	}
-	if _, err := database.InsertWorkSession("TASK-114", "/repo", "devtrack"); err != nil {
-		t.Fatalf("InsertWorkSession: %v", err)
-	}
 	if _, err := database.InsertPendingAction(PendingAction{
 		ActionType: "post_comment", Target: "TASK-114", Platform: "github",
 		Workspace: "devtrack", Payload: `{}`, Confidence: 0.9, Status: "pending",
@@ -96,7 +93,7 @@ func TestServerEventOutboxTracksAllApprovedCoreTables(t *testing.T) {
 		t.Fatalf("ListPendingServerEvents: %v", err)
 	}
 	want := map[string]bool{
-		"task_updates:1": false, "work_sessions:1": false, "pending_actions:1": false,
+		"task_updates:1": false, "pending_actions:1": false,
 	}
 	for _, event := range events {
 		if _, ok := want[event.EventID]; ok {

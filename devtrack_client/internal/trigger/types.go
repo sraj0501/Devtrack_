@@ -66,7 +66,6 @@ type TaskUpdateData struct {
 	TicketID        string `json:"ticket_id"`
 	Description     string `json:"description"`
 	Status          string `json:"status"`
-	TimeSpent       string `json:"time_spent"`
 	Synced          bool   `json:"synced"`
 	AzureWorkItemID int    `json:"azure_work_item_id,omitempty"`
 	SyncedPlatform  string `json:"synced_platform,omitempty"`

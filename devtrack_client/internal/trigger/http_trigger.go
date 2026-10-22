@@ -190,21 +190,6 @@ func (c *HTTPTriggerClient) SendClientEvents(payload ClientEventSyncPayload) (*C
 	return &response, nil
 }
 
-// SendWorkSessionStart notifies Python that a work session has started.
-func (c *HTTPTriggerClient) SendWorkSessionStart(sessionID int64, ticketRef string) error {
-	return c.post("/trigger/work_session_start", map[string]any{
-		"session_id": sessionID,
-		"ticket_ref": ticketRef,
-	})
-}
-
-// SendWorkSessionStop notifies Python that a work session has ended.
-func (c *HTTPTriggerClient) SendWorkSessionStop(sessionID int64) error {
-	return c.post("/trigger/work_session_stop", map[string]any{
-		"session_id": sessionID,
-	})
-}
-
 // SlimTicket is the minimal ticket representation sent to the Python server
 // for fuzzy/semantic matching. Body/description is truncated to 500 chars to
 // keep payloads small — Python only needs enough text for embedding.
@@ -619,8 +604,6 @@ func (c *HTTPTriggerClient) getText(path string) (string, error) {
 	return r.Output, nil
 }
 
-// ── Pending actions queue methods ─────────────────────────────────────────────
-
 // QueuePendingAction is the minimal representation of a pending action returned
 // by GET /queue/pending. Only the fields the queue executor needs are included.
 type QueuePendingAction struct {
@@ -706,8 +689,6 @@ func (c *HTTPTriggerClient) ExecuteStagedQueueAction(action db.PendingAction) (*
 	return &resp, nil
 }
 
-// ── Report methods ────────────────────────────────────────────────────────────
-
 // ReportPreview calls POST /reports/preview and returns the formatted preview text.
 func (c *HTTPTriggerClient) ReportPreview(date string) (string, error) {
 	return c.postText("/reports/preview", map[string]string{"date": date})
@@ -780,8 +761,6 @@ func (c *HTTPTriggerClient) ReportEODFull(email, date string, commits ...[]EODCo
 	return &EODReportResult{Narrative: r.Output, ActionID: r.ActionID}, nil
 }
 
-// ── Learning methods ──────────────────────────────────────────────────────────
-
 // LearningStatusResponse mirrors the /learning/status JSON payload.
 type LearningStatusResponse struct {
 	Enabled      bool   `json:"enabled"`
@@ -851,8 +830,6 @@ func (c *HTTPTriggerClient) LearningTestResponse(text string) (string, error) {
 func (c *HTTPTriggerClient) LearningRevoke() (string, error) {
 	return c.postText("/learning/revoke", map[string]any{})
 }
-
-// ── Auth methods ──────────────────────────────────────────────────────────────
 
 // AuthSessionResponse mirrors the session payload returned by auth endpoints.
 type AuthSessionResponse struct {
@@ -926,8 +903,6 @@ func (c *HTTPTriggerClient) AuthTelemetry(action string) (string, error) {
 	return r.Message, nil
 }
 
-// ── License methods ───────────────────────────────────────────────────────────
-
 // LicenseCheckResponse mirrors the /license/check response.
 type LicenseCheckResponse struct {
 	Accepted bool `json:"accepted"`
@@ -957,8 +932,6 @@ func (c *HTTPTriggerClient) LicenseTerms() (string, error) {
 	return c.getText("/license/terms")
 }
 
-// ── Voice seeding methods (Phase 5) ──────────────────────────────────────────
-
 // VoiceSeedRequest is the payload for POST /voice/seed.
 type VoiceSeedRequest struct {
 	RepoPath    string `json:"repo_path"`
@@ -983,8 +956,6 @@ func (c *HTTPTriggerClient) VoiceSeed(req VoiceSeedRequest) (*VoiceSeedResponse,
 	}
 	return &resp, nil
 }
-
-// ── Voice profile generation methods (Phase 5) ───────────────────────────────
 
 // VoiceProfileGenerateRequest is the payload for POST /voice/profile/generate.
 type VoiceProfileGenerateRequest struct {
@@ -1012,8 +983,6 @@ func (c *HTTPTriggerClient) VoiceProfileGenerate(repoPaths []string) (path strin
 	}
 	return resp.Path, resp.WordCount, nil
 }
-
-// ── Voice add / status methods (Phase 5 — Tier 2) ────────────────────────────
 
 // VoiceAddRequest is the payload for POST /voice/add.
 type VoiceAddRequest struct {
@@ -1098,8 +1067,6 @@ func (c *HTTPTriggerClient) VoiceStatus() (*VoiceStatusResponse, error) {
 	return &resp, nil
 }
 
-// ── Voice sync methods (Phase 5 — Tier 1) ────────────────────────────────────
-
 // VoiceSyncRequest is the optional payload for POST /voice/sync.
 // When WorkspaceNames is empty all configured workspaces are synced.
 type VoiceSyncRequest struct {
@@ -1136,8 +1103,6 @@ func (c *HTTPTriggerClient) VoiceSync(workspaceNames []string) (map[string]int, 
 		"total":  resp.Synced.Total,
 	}, nil
 }
-
-// ── Review classification methods (Phase 7) ──────────────────────────────────
 
 // reviewClassifyRequest is the body sent to POST /review/classify.
 type reviewClassifyRequest struct {

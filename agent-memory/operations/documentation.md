@@ -10,7 +10,9 @@ type: project
 
 **Contracts:** `docs/HTTP_API.md` records the Go/Python HTTP boundary. MCP uses local stdio, not the Python HTTP API. `docs/REGISTRY_SUBMISSION_PACKAGE.md` owns listing copy and submission gates.
 
-**Active documentation rule:** closed validation steps, task histories, dated test runs, and superseded plans must not be surfaced as current work. Current next-step documents should show only packaged-build acceptance, privacy-reviewed media, the Glama path/badge follow-up, current UI WIP, and DevTrack Sage planning where applicable.
+**Active documentation rule:** closed validation steps, task histories, dated test runs, and superseded plans must not be surfaced as current work. The immediate priority is basic-workflow packaged/container acceptance, native Windows rehearsal, controlled delivery, and a representative workday. Sage qualification, learning repairs, and platform parity remain on hold. UI WIP, privacy-reviewed media, and the Glama path/badge are deferred follow-ups. Keep run evidence in docs/testing/ or release notes, not active memory.
+
+**Version boundary:** v3.3.0 preparation is on `dev`; rolling development packages identify as `dev-<commit>`. The last recorded stable release is v3.2.0. A source push does not upgrade the installed host or establish packaged/native/delivery qualification. Historical release notes retain the behavior of their release, including retired time features.
 
 **Channels:** Telegram controls daemon/queue and supports corrections, not PM browsing/planning. Go Slack is outbound webhook delivery; optional legacy Python Socket Mode is not the client path.
 

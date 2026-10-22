@@ -19,7 +19,6 @@ import (
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/sage/distill"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/ticket"
 	"github.com/sraj0501/Devtrack_/devtrack_client/internal/trigger"
-	"github.com/sraj0501/Devtrack_/devtrack_client/internal/worktime"
 )
 
 // WorkspaceMonitor pairs a GitMonitor with its workspace routing metadata
@@ -624,19 +623,6 @@ func (im *IntegratedMonitor) handleTrigger(event TriggerEvent) {
 			log.Printf("Failed to log trigger to database: %v", err)
 		} else {
 			log.Printf("✓ Logged trigger to database (ID: %d)", triggerID)
-		}
-	}
-
-	// Time evidence is local and independent of model/server availability.
-	if im.database != nil && event.Type == TriggerTypeCommit {
-		if commit, ok := event.Data.(CommitInfo); ok {
-			_, _, err := im.database.RecordWorkActivity(db.WorkActivity{
-				SourceKind: "commit", SourceID: commit.Hash, OccurredAt: commit.Timestamp.In(time.Local),
-				TicketRef: event.TicketID, RepoPath: event.RepoPath, WorkspaceName: event.WorkspaceName,
-			}, worktime.DefaultPolicy())
-			if err != nil {
-				log.Printf("record local work activity: %v", err)
-			}
 		}
 	}
 

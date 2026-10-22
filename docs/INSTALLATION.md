@@ -23,6 +23,12 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 ## Install the DevTrack binary
 
+The commands below install the latest stable release, currently v3.2.0. The v3.3.0 changes on
+`dev` (`860b91b`) remove time tracking and fix rapid/branch-switched capture and server report
+visibility. They require a development build containing that commit; rolling versions use
+`dev-<commit>`. A source push does not upgrade an existing installation. Qualify the exact packaged
+build using [basic workflow acceptance](testing/basic-workflow.md) before relying on it for daily work.
+
 **Linux / macOS (amd64)**:
 ```sh
 curl -fsSL https://github.com/sraj0501/Devtrack_/releases/latest/download/devtrack_linux_amd64.tar.gz | tar xz
@@ -317,5 +323,18 @@ check with `uv run python -m backend.db.migrate current`, then re-run `devtrack 
 URL is wrong.
 
 **Daemon already running**: `devtrack stop` then `devtrack start`.
+
+**Commits missing from reports**: confirm the running binary with `devtrack version`, the enabled
+workspace, and that the daemon was running when the commits were made. The development monitor
+walks unseen commits across local branch tips; stable v3.2.0 can miss intermediate rapid commits.
+Pre-existing history is seeded at daemon startup, so catch-up after committing while stopped must
+be tested separately. An unavailable optional server does not prevent local commit recording;
+on-demand EOD includes the selected day's persisted local commit summaries after recovery.
+
+**Generated EOD absent from the queue**: in the development build, use `devtrack eod status`,
+`devtrack eod show`, and `devtrack queue list --all`. These read server history as well as local
+records. Server IDs are `server:<id>`; preserve that prefix when approving, rejecting, or editing.
+An unavailable server produces an explicit diagnostic; verify its URL and API key rather than
+treating an empty local queue as proof no report was generated.
 
 **Port conflict**: `devtrack status` shows which ports are in use. Change `WEBHOOK_PORT` (default 8089) in `.env` if there is a conflict.

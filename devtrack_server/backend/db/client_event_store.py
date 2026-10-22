@@ -17,7 +17,7 @@ from backend.db.engine import ensure_tables, get_engine, metadata, upsert
 
 
 ALLOWED_EVENT_TABLES = frozenset(
-    {"triggers", "task_updates", "work_sessions", "pending_actions"}
+    {"triggers", "task_updates", "pending_actions"}
 )
 
 client_events_table = Table(
