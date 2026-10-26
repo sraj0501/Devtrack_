@@ -45,6 +45,8 @@ devtrack queue flag <id> "correction"
 ```
 
 Every external PM, email, or Git action must pass through this queue and carry confidence.
+Eligible actions can advance under configured earned auto-approval rules after their review window;
+inspect the queue promptly when a destination is enabled.
 Development builds list local and server history directly, without requiring opt-in event sync.
 Local IDs are numeric; preserve `server:<id>` when approving, editing or rejecting a server row.
 Server edits/rejection require a still-pending row, and server flagging is unsupported. During a
@@ -74,8 +76,9 @@ on stopped-daemon catch-up. `eod show` and `eod status` select the latest local/
 Generation can return narrative text even when queue staging fails. Confirm the
 `Queued as action server:<id>` output from `eod generate` and inspect the queue before assuming
 a report was saved or scheduled for delivery. `work report --email <address>` supplies a destination.
-Packaged-build, native Windows, real delivery and representative-workday acceptance remain the
-next gates; see `docs/testing/basic-workflow.md` in the repository. Sage testing is on hold.
+The packaged `dev-dc39101` build passed isolated Linux/PostgreSQL and Windows no-send checks.
+Native installed Windows, real delivery and representative-workday acceptance remain the next
+gates; see `docs/testing/basic-workflow.md` in the repository. Sage testing is on hold.
 
 ## Agent context
 

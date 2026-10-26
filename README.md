@@ -29,7 +29,8 @@ review.
   MCP tools.
 
 Nothing is posted merely because DevTrack generated it. PM updates, transitions, and deliveries are
-placed in a pending-actions queue until approved. Anonymous telemetry is also opt-in and disabled by
+placed in a pending-actions queue before delivery; configured earned auto-approval rules can advance
+eligible actions. Anonymous telemetry is also opt-in and disabled by
 default.
 
 ## Get started
@@ -82,6 +83,14 @@ The setup wizard configures the operating mode, repository, LLM, identity, and o
 integration. Choose `none` for the PM integration when evaluating the local-only path. Managed mode
 requires PostgreSQL for the optional Python service; Go-native features remain available while that
 service and the model are being prepared.
+
+Managed mode starts the local Python server for AI-written ticket comments, EOD narratives,
+Boardroom reviews, planning, and voice personalization. External mode does not start Python: point
+`DEVTRACK_SERVER_URL` at a separately operated Python/PostgreSQL server for those features. With no
+server reachable, commit capture, deterministic ticket mapping, local history, queue, and MCP still
+work; generated reports and other server-backed features are unavailable. Model failures on a
+reachable server fall back to raw or templated wording. External mode skips automatic first-run
+voice mining. See the [LLM guide](devtrack_wiki/wiki/docs/LLM_GUIDE.md).
 
 ### 3. Try the workflow
 

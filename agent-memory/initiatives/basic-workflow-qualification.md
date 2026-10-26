@@ -33,13 +33,12 @@ pending-only edit/reject applies to server review; local review must be qualifie
 
 Follow [the daily-use test plan](../../docs/testing/basic-workflow.md), in order:
 
-1. Verify CI and repeat container acceptance with the exact packaged development build and
-   matching server source, recording version, checksum, commit, and configuration without secrets.
-2. Rehearse native Windows capture, ticket mapping, restart, server outage, report review, and
-   the scheduled local-date boundary. Inspect the generated Git hook for obsolete host paths.
-3. Verify controlled email/PM delivery, pending-action review, rejection, and duplicate prevention,
+1. Rehearse native Windows capture with the qualified packaged build, ticket mapping, restart,
+   server outage, report review, and the scheduled local-date boundary. Inspect the generated Git
+   hook for obsolete host paths.
+2. Verify controlled email/PM delivery, pending-action review, rejection, and duplicate prevention,
    plus narrative accuracy with the intended model and its unavailable-model fallback.
-4. Complete one representative workday and reconcile expected commit hashes/tickets with EOD.
+3. Complete one representative workday and reconcile expected commit hashes/tickets with EOD.
 
 Daemon-off catch-up, overnight boundaries, native installation, real delivery, and AI-written
 narrative quality remain unqualified. Source/container validation is recorded in

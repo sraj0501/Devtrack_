@@ -753,7 +753,7 @@ const CONTENT = {
 <thead><tr><th>Component</th><th>Why it is needed</th><th>Can you continue without it?</th></tr></thead>
 <tbody>
 <tr><td>Go client</td><td>Daemon, Git monitor, local SQLite, queue, connectors, TUI and MCP</td><td>No — this is DevTrack</td></tr>
-<tr><td>PostgreSQL</td><td>Persistence for the optional Python AI server</td><td>Yes in lightweight mode</td></tr>
+<tr><td>PostgreSQL</td><td>Persistence for the optional Python AI server</td><td>Yes for Go-only use; required wherever the Python server runs</td></tr>
 <tr><td>Ollama</td><td>Private local text generation and enrichment</td><td>Yes; Git observation continues and generation degrades</td></tr>
 <tr><td>PM token</td><td>Lets reviewed actions reach GitHub, GitLab, Azure DevOps or Jira</td><td>Yes; choose no PM integration for a local evaluation</td></tr>
 </tbody></table></div>
@@ -763,9 +763,10 @@ const CONTENT = {
 <thead><tr><th>Mode</th><th>Choose it when</th><th>What runs</th></tr></thead>
 <tbody>
 <tr><td><strong>Managed</strong></td><td>You want the normal local experience with AI reports and voice features.</td><td>The Go daemon manages a local Python server. PostgreSQL is required by that server.</td></tr>
-<tr><td><strong>Local-only evaluation</strong></td><td>Choose External in the setup wizard and leave the server URL unset.</td><td>The Go client and local SQLite remain available; server-backed features show as unavailable.</td></tr>
+<tr><td><strong>Local-only evaluation</strong></td><td>Choose External in the setup wizard and leave the server URL unset.</td><td>The Go client tries its loopback default but does not start Python. With no server listening, local SQLite remains available and server-backed features show as unavailable.</td></tr>
 <tr><td><strong>External</strong></td><td>Your Python server and PostgreSQL live on another host or in a container.</td><td>The local Go client connects to <code>DEVTRACK_SERVER_URL</code>.</td></tr>
 </tbody></table></div>
+<p>Managed and External use the same server AI features when a model is available: ticket-comment enrichment, EOD narratives, Boardroom, planning, and voice personalization. Model failures degrade ticket and EOD writing to raw commit text, templated comments, or bullet-list reports; Boardroom and planning still need a model. External mode does not run automatic first-run voice mining. Git capture, deterministic ticket mapping, local queue/history, and MCP need no Python server or model. The explicit <code>devtrack git commit</code> helper and optional Go-side matching/Sage distillation use separate client-side model configuration; normal <code>git commit</code> and Sage capture do not call a model.</p>
 
 <h2>Step 2 — Prepare the Dependencies</h2>
 <p>For a first local capture test, choose External with no server URL and skip this step. For generated reports in Managed mode, follow <a href="#POSTGRES_SETUP" onclick="navigate('POSTGRES_SETUP');return false;">PostgreSQL Setup</a> and <a href="#LLM_GUIDE" onclick="navigate('LLM_GUIDE');return false;">LLM Setup</a>. If those services already exist on the network, write down their URLs.</p>
@@ -890,6 +891,7 @@ uv run python -m backend.db.migrate</code></pre>
   PENDING_ACTIONS: `<div class="md-body">
 <h1>Pending Actions</h1>
 <p>The pending-actions queue is DevTrack's safety boundary. Ticket comments, state changes, reports, email and Git actions are staged with an explicit confidence score before dispatch. There is no supported direct-send fallback.</p>
+<p>Eligible actions can advance under configured earned auto-approval rules after their review window. Inspect pending actions promptly when a destination is enabled; rejection must happen before a worker claims the row.</p>
 
 <h2>Read the Queue</h2>
 <pre><code class="language-bash">devtrack queue
@@ -3132,7 +3134,6 @@ devtrack eod status</code></pre>
 <p>The immediate goal is dependable Git capture, ticket recording and EOD reporting without time tracking. Stable v3.2.0 remains public; v3.3.0 changes are on dev. Sage testing, learning repairs and platform-parity work remain on hold.</p>
 <h2>Acceptance Sequence</h2>
 <ol>
-<li><strong>Packaged development build:</strong> identify the exact commit and checksum, then repeat isolated Linux/PostgreSQL container tests for bursts, branch switches, outage recovery, restart, queue edit/reject, and manual/scheduled reports.</li>
 <li><strong>Native Windows:</strong> preserve a rollback copy, rehearse ticket-linked and unlinked commits in a disposable repository, inspect Git hooks and restart/outage behavior, and test local-calendar EOD coverage across midnight. Explicitly test daemon-off behavior before depending on it.</li>
 <li><strong>Controlled delivery:</strong> review a designated test ticket and email recipient, approve only the intended action, verify receipt/status and no duplicate delivery, and confirm rejection prevents delivery.</li>
 <li><strong>Representative workday:</strong> reconcile every expected commit hash and ticket against the final report. Check completeness, correct mapping, readable content and absence of time tracking before returning to Sage.</li>
@@ -3442,7 +3443,7 @@ function renderHome() {
         { id:'TUI_DASHBOARD',   icon:'🛡️', title:'Review before anything leaves', desc:'Every outbound PM, email, or Git action is staged first with explicit confidence. Approve, edit, or reject it; there is no direct-send fallback.' },
         { id:'OFFLINE_RESILIENCE', icon:'🏠', title:'Local by default', desc:'Git observation, MCP context, and the pending queue stay on your machine. Ollama is the default for generation, and optional services degrade without blocking Git.' },
         // ── Get Started ────────────────────────────────────────────────────────
-        { id:'BASIC_WORKFLOW_TESTING', icon:'🧪', title:'Test Capture and Reporting', desc:'Qualify the packaged development build, native Windows workflow, controlled delivery and a representative workday before resuming Sage testing.' },
+        { id:'BASIC_WORKFLOW_TESTING', icon:'🧪', title:'Test Capture and Reporting', desc:'The packaged development build passed isolated checks; qualify native Windows, controlled delivery and a representative workday before resuming Sage testing.' },
         { id:'WHATS_NEW',        icon:'🎉', title:"What's New",         desc:'Stable v3.2.0 remains public. v3.3.0 development removes time tracking, repairs burst/branch capture, and makes server reports and review visible from the CLI.' },
         { id:'DEVTRACK_SERVER',  icon:'🖥️', title:'devtrack-server CLI', desc:'Standalone management CLI for headless server deployments. Repository helper for source-based headless installs; no separate server release bundle is currently published.' },
         { id:'UPGRADE',          icon:'⬆️', title:'Self-Update',         desc:'<code>devtrack upgrade</code> downloads the selected channel\'s platform asset, runs migrations, and restarts the daemon. v3.2.0 includes persistent <code>--dev</code>/<code>--main</code> selection.' },

@@ -3,6 +3,16 @@
 Ollama is DevTrack's default provider. Cloud providers are optional fallbacks and must be configured
 explicitly.
 
+Managed mode starts a local Python server. External mode leaves server operation to you: connect a
+separately running Python/PostgreSQL server with `DEVTRACK_SERVER_URL` and configure its model there.
+With no reachable server, Git capture, deterministic ticket mapping, local SQLite, the pending queue,
+and MCP continue; server-generated reports, ticket-comment enrichment, Boardroom, and planning are
+unavailable. External mode also skips automatic first-run voice mining. On a reachable server,
+model outages degrade ticket and EOD writing to raw commit text, templated comments, and bullet
+lists; Boardroom and planning still need a model. The explicit
+`devtrack git commit` AI helper and optional Go-side matching/Sage distillation use their own local
+model configuration; normal `git commit` and Sage capture do not call a model.
+
 ## Ollama
 
 ```bash

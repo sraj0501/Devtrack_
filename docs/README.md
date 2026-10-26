@@ -29,7 +29,9 @@ Stable v3.2.0 includes the earlier Sage roadmap, ticket mapping, former time inf
 update channels, and the TASK-158 silent-Git correction. Its notes describe that historical release.
 The v3.3.0 development line removes time tracking and fixes burst/branch capture and server report
 visibility. Source fixes are on `dev` at `860b91b`; installed binaries and stable publication are
-separate. Qualify the packaged development build using the basic-workflow plan before daily use.
+separate. The packaged `dev-dc39101` build passed isolated container and Windows no-send checks.
+Use the basic-workflow plan to qualify the native installation, controlled delivery, and a
+representative workday before relying on it for daily use.
 
 ## Historical records
 
@@ -40,7 +42,7 @@ separate. Qualify the packaged development build using the basic-workflow plan b
 - [`releases/`](releases/) contains immutable release notes for the named versions.
 - Dated validation evidence in [`END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md) and
   [`WINDOWS_ADMIN_ACCEPTANCE.md`](WINDOWS_ADMIN_ACCEPTANCE.md) should not be interpreted as a claim
-  that later packaged-build or media gates are complete.
+  that native installed workflow, controlled delivery, or media gates are complete.
 - [`TASK_159_QUALIFICATION.md`](TASK_159_QUALIFICATION.md) records tests of the former time-tracking
   feature; its commands, test names, and integration gates are historical, not current requirements.
 - [`testing/basic-workflow-source-acceptance.md`](testing/basic-workflow-source-acceptance.md)

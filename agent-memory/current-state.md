@@ -36,7 +36,7 @@ the official MCP Registry record for `io.github.sraj0501/devtrack` are published
 branch predates canonical-memory migration and needs a separate drift/UI-acceptance pass.
 It does not block qualification of the existing basic Git/report workflow.
 
-**Active distribution follow-ups:** qualify the packaged build rather than a source checkout,
+**Active distribution follow-ups:** qualify the native installed workflow and controlled delivery,
 capture privacy-reviewed media from real behavior, and record the exact Glama path before updating
 the score badge. Third-party directory forms remain owner-account actions.
 

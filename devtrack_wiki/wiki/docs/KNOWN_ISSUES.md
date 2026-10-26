@@ -14,8 +14,9 @@ switched-away branches. Server queue history and EOD reports are directly readab
 server actions use `server:<id>` for review without colliding with numeric local IDs.
 
 Source-based Linux/PostgreSQL container checks passed for capture, ticket context, intentional
-outages, restart, queue review and manual/scheduled report visibility. Packaged development-build
-acceptance, native Windows rehearsal, real PM/email delivery, overnight coverage and a representative
+outages, restart, queue review and manual/scheduled report visibility. The packaged `dev-dc39101`
+client also passed isolated Linux/PostgreSQL and Windows no-send checks. Native installed Windows
+rehearsal with a live server, real PM/email delivery, overnight coverage and a representative
 workday remain to qualify. Commits made while the daemon is stopped are not a guaranteed catch-up
 path. Follow `docs/testing/basic-workflow.md` in the repository. Sage testing, learning repairs and
 platform-parity work remain on hold until these basics qualify.

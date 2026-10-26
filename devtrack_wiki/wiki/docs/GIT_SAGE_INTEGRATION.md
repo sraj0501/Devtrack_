@@ -25,6 +25,8 @@ devtrack sage harness install codex
 devtrack sage harness install claude
 devtrack sage harness install copilot
 devtrack sage harness install opencode
+devtrack sage harness install cursor
+devtrack sage harness install devin
 devtrack sage status
 ```
 
@@ -36,6 +38,7 @@ for Bash/search/edit tools and a Bash-only `PostToolUseFailure` hook while prese
 with portable Bash and PowerShell commands while preserving foreign entries in
 `~/.copilot/hooks/ai-session-skills.json`. OpenCode uses one owned user plugin that observes both
 `tool.execute.before` and `tool.execute.after` without adding session lifecycle work.
+Cursor and Devin CLI are independently managed adapters; install only the harnesses you use.
 
 Pause or remove capture without changing unrelated harness configuration:
 
@@ -46,6 +49,8 @@ devtrack sage harness uninstall codex
 devtrack sage harness uninstall claude
 devtrack sage harness uninstall copilot
 devtrack sage harness uninstall opencode
+devtrack sage harness uninstall cursor
+devtrack sage harness uninstall devin
 ```
 
 ## Search local knowledge
@@ -57,13 +62,12 @@ devtrack sage topics
 devtrack sage doctor
 ```
 
-The current development milestone includes capture, deterministic signatures, grouping, source
-attribution, topics, SQLite FTS search, a neutral Go LLM transport, structured drafts with required
-`title`/`what`/`why`/`example` fields and optional `notes`, and a non-blocking distillation worker. Durable SQLite
-claims, daemon lifecycle wiring, deterministic Markdown topic files, correction-stable routing,
-merge/refile, retries, and safe local knowledge commits remain in progress until SAGE-003 closes.
+Stable v3.2.0 includes durable SQLite claims and retries, daemon-owned background distillation,
+deterministic Markdown topic files, correction-stable routing, merge/refile, local knowledge commits,
+and read-only Sage MCP tools. Capture does not wait for a model. Search reconciles its local index
+with the current Markdown snapshot.
 
-Current `dev` also defines bounded worker settings:
+Bounded background-worker settings include:
 
 ```bash
 DEVTRACK_SAGE_MODEL_TIMEOUT_SECS=180  # allowed: 5–1800 seconds
@@ -71,8 +75,7 @@ DEVTRACK_SAGE_IDLE_POLL_MS=500        # allowed: 50–5000 ms
 DEVTRACK_SAGE_RETRY_DELAY_SECS=2      # allowed: 1–60 seconds
 ```
 
-These tune the worker foundation only; they do not mean durable queue claims or daemon wiring are
-complete.
+Model failures remain retryable without blocking command capture.
 
 ## Git workflows
 

@@ -169,7 +169,7 @@ every generator.
 |---|---|
 | Python commit-message enrichment | Supplies commit-context style and related examples |
 | Ticket comments and work descriptions | Supplies comment/description style and related examples |
-| DevTrack Sage knowledge | Future consumer; deterministic Markdown knowledge is not complete yet |
+| DevTrack Sage knowledge | Separate Go-native command knowledge; it does not consume the Python voice profile |
 | Daily report generation | Matches your preferred format |
 | Python planning/task descriptions | Uses task-context style and related examples |
 

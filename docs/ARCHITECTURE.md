@@ -868,8 +868,8 @@ Current priority is the Git capture and EOD qualification sequence in
 until these basics pass; Sage remains the local cross-harness command-knowledge product described
 in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md). The existing
 legacy repository-chat and autonomous-Git Sage commands have been removed; independently useful Git
-helpers remain under `devtrack git`. Packaged-build acceptance and privacy-reviewed media remain
-release follow-ups tracked in
+helpers remain under `devtrack git`. The packaged development build passed isolated checks; native
+installed acceptance, controlled delivery, and privacy-reviewed media remain follow-ups tracked in
 [`docs/END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md).
 
 > **Not planned, ever:** NATS/Redis/external message queues, Kubernetes, or multi-tenancy.

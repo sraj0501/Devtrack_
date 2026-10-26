@@ -83,8 +83,11 @@ complete the demonstration.
 
 The Windows local-user Managed gate passed twice on 2026-09-04. The owner then confirmed a clean
 Windows installation and a full Managed Linux acceptance run with PostgreSQL, Python, Ollama,
-staging, EOD, and MCP on 2026-09-10. The remaining release follow-ups are packaged-build Windows
-admin acceptance, review or retirement of the unintegrated TASK-154 admin-UI branch,
+staging, EOD, and MCP on 2026-09-10. The `dev-dc39101` packaged client later passed isolated
+Linux/PostgreSQL workflow and Windows no-send checks; native installed workflow, controlled
+delivery, and representative-workday acceptance remain open. Separate release follow-ups include
+packaged-build Windows admin acceptance, review or retirement of the unintegrated TASK-154 admin-UI
+branch,
 privacy-reviewed screenshots/video, and recording the exact approved Glama path plus its score
 badge. TASK-158 also retains a separate native-Linux TTY/non-TTY qualification follow-up; do not
 conflate that narrow Git-silence gate with the already-completed Managed Linux journey. Automated

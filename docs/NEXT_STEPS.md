@@ -1,6 +1,6 @@
 # Next Steps — DevTrack
 
-_Updated 2026-10-22. This file lists active work only. Completed delivery and validation history
+_Updated 2026-10-26. This file lists active work only. Completed delivery and validation history
 lives in `Data/agent_logs/project_board.md`, release notes, and Git history._
 
 ## Immediate repository sequence
@@ -10,15 +10,17 @@ deterministic ticket association, persisted commits, and complete EOD reports. T
 removed by product decision and must not return as a requirement.
 
 Fixes and v3.3.0 preparation are pushed to `dev` at `860b91b`. Stable v3.2.0 and the installed host
-binary remain separate; rolling development versions use `dev-<commit>`. Source/container results
-do not qualify a packaged upgrade or real integration delivery.
+binary remain separate; rolling development versions use `dev-<commit>`. Packaged container and
+isolated Windows no-send checks passed for `dev-dc39101`; they do not qualify the installed host or
+real integration delivery.
 
 Follow [testing/basic-workflow.md](testing/basic-workflow.md):
 
-1. Confirm the exact development artifact and repeat container acceptance with its packaged binary.
-2. Rehearse capture, branch/ticket context, outages, restart, queue review, and EOD on native Windows.
-3. Verify controlled real email/PM delivery and duplicate prevention using approved test destinations.
-4. Reconcile one representative workday's commit hashes and ticket mapping against its report.
+1. Back up and upgrade the native Windows test installation to the qualified development build;
+   verify the running version and rehearse capture, branch/ticket context, outages, restart, queue
+   review, and EOD with a live server.
+2. Verify controlled real email/PM delivery and duplicate prevention using approved test destinations.
+3. Reconcile one representative workday's commit hashes and ticket mapping against its report.
 
 Keep the daemon running during capture. Commits made while it was stopped have no qualified
 catch-up guarantee; resolve that limitation before depending on it. Scheduled local-date/midnight

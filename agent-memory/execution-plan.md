@@ -20,12 +20,11 @@ target PRs to `dev`, never `main`.
 
 ## Ordered work
 
-1. Completed: qualify the exact packaged development build in an isolated container with PostgreSQL.
-2. Run the remaining native Windows acceptance with a live server, including daemon-off catch-up,
+1. Run the remaining native Windows acceptance with a live server, including daemon-off behavior,
    outage recovery, queue review, and local-date reporting boundaries. The isolated no-send lane
    already passed; the host installation has not been upgraded.
-3. Verify controlled real delivery and the intended model's report quality.
-4. Complete a representative workday and reconcile commit/ticket coverage against EOD.
+2. Verify controlled real delivery and the intended model's report quality.
+3. Complete a representative workday and reconcile commit/ticket coverage against EOD.
 
 Use [the concrete test plan](../docs/testing/basic-workflow.md). Only after accepting the basics,
 resume Sage qualification. Legacy learning repairs and platform parity remain on hold. UI

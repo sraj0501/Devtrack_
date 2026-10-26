@@ -35,7 +35,7 @@ devtrack status
 Choose one deployment mode:
 
 - **Managed:** local Go client plus a background-managed Python server. PostgreSQL is required.
-- **Local-only evaluation:** choose External in the wizard and leave the server URL unset. Go-native monitoring, queue, and MCP remain available without Python. The `lightweight` environment value also disables managed server startup, but is not a wizard menu choice.
+- **Local-only evaluation:** choose External in the wizard and leave the server URL unset. The client still tries its loopback default; with no Python server listening, Go-native monitoring, queue, and MCP remain available. The `lightweight` environment value also disables managed server startup, but is not a wizard menu choice.
 - **External:** connect to an independently operated Python server with `DEVTRACK_SERVER_URL`.
 
 For an initial local evaluation, select **External** and **None** as the PM platform. It needs
