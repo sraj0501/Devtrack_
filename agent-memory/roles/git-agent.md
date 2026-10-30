@@ -96,8 +96,8 @@ EOF
 
 ### Repository boundary
 
-The current source of truth is the GitHub monorepo: `devtrack_client/`, `devtrack_server/`, and
-`devtrack_wiki/`. The old GitLab subtree workflow and the retired `devtrack-bin/` and root
+The current product-code source of truth is the GitHub monorepo: `devtrack_client/` and
+`devtrack_server/`. Mogrov owns the public documentation and downloads. The old GitLab subtree workflow and the retired `devtrack-bin/` and root
 `backend/` paths are historical. Do not perform subtree pushes unless the owner explicitly defines
 a new supported mirror workflow.
 

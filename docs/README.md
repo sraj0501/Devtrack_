@@ -23,7 +23,7 @@ records. Use this map before treating a document as current implementation guida
 | Sage end-to-end acceptance qualification | [`SAGE_END_TO_END_ACCEPTANCE.md`](SAGE_END_TO_END_ACCEPTANCE.md) |
 | Sage event and harness contracts | [`SAGE_EVENT_CONTRACT_V1.md`](SAGE_EVENT_CONTRACT_V1.md), [`SAGE_HARNESS_EVALUATION.md`](SAGE_HARNESS_EVALUATION.md), and [`SAGE_HARNESS_PLUGIN_CONTRACT.md`](SAGE_HARNESS_PLUGIN_CONTRACT.md) |
 | Release-facing MCP listing copy | [`REGISTRY_SUBMISSION_PACKAGE.md`](REGISTRY_SUBMISSION_PACKAGE.md) |
-| Public user documentation | [`../devtrack_wiki/wiki/wiki.html`](../devtrack_wiki/wiki/wiki.html) and [`../devtrack_wiki/wiki/docs/`](../devtrack_wiki/wiki/docs/) |
+| Public user documentation | [Mogrov DevTrack wiki](https://mogrov.com/wiki/devtrack/) and [Markdown guides](https://mogrov.com/wiki/devtrack/docs/INDEX.md) |
 
 Stable v3.2.0 includes the earlier Sage roadmap, ticket mapping, former time inference, rolling
 update channels, and the TASK-158 silent-Git correction. Its notes describe that historical release.

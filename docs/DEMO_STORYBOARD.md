@@ -130,7 +130,7 @@ client actually observed. Do not edit IDs, counts, confidence, timestamps, or ge
   in a generated narrative from another run.
 - If a scene fails, run `devtrack doctor` and fix readiness before recording again. Failure output is
   not a successful demo scene.
-- The existing GIFs under `devtrack_wiki/wiki/assets/` are historical assets, not proof of this run.
+- The existing GIFs under Mogrov `assets/devtrack/` are historical assets, not proof of this run.
   Replace them only with a capture produced from this storyboard.
 
 ## Script preflight only

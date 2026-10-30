@@ -1,8 +1,10 @@
 # DevTrack Shared Agent Memory
 
-_Last updated: 2026-10-26_ | active work only | GitHub is canonical
+_Last updated: 2026-10-30_ | active work only | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with an optional Python AI/server layer.
+Development and qualification are paused by owner decision (2026-10-30), without archiving the
+project. The prepared combined Mogrov site is documented in [current-state.md](current-state.md).
 
 ## Read first
 

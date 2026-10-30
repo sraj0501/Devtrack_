@@ -9,12 +9,12 @@ reports in the background. It is local-first, offline-capable, and stages outbou
 review.
 
 [![GitHub Release](https://img.shields.io/github/v/release/sraj0501/Devtrack_?label=release&color=blue)](https://github.com/sraj0501/Devtrack_/releases/latest)
-[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue)](https://devtrack.cloud/download.html)
+[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue)](https://mogrov.com/download/devtrack/)
 [![License](https://img.shields.io/badge/license-Community-green)](TERMS.md)
 
-[Website](https://devtrack.cloud) · [Download](https://devtrack.cloud/download.html) · [Documentation](https://devtrack.cloud/wiki.html) · [Latest release](https://github.com/sraj0501/Devtrack_/releases/latest)
+[Website](https://mogrov.com/#projects) · [Download](https://mogrov.com/download/devtrack/) · [Documentation](https://mogrov.com/wiki/devtrack/) · [Latest release](https://github.com/sraj0501/Devtrack_/releases/latest)
 
-![DevTrack demo](devtrack_wiki/wiki/assets/demo.gif)
+![DevTrack demo](https://mogrov.com/assets/devtrack/demo.gif)
 
 </div>
 
@@ -41,19 +41,19 @@ add `uv`, PostgreSQL, and an LLM provider; Ollama is the default.
 
 ### 1. Install
 
-Use the guided [download page](https://devtrack.cloud/download.html), or install the latest stable
+Use the Mogrov [download link](https://mogrov.com/download/devtrack/), or install the latest stable
 release directly:
 
 **Linux or macOS**
 
 ```sh
-curl -fsSL https://devtrack.cloud/install.sh | sh
+curl -fsSL https://mogrov.com/downloads/devtrack/install.sh | sh
 ```
 
 **Windows PowerShell**
 
 ```powershell
-irm https://devtrack.cloud/install.ps1 | iex
+irm https://mogrov.com/downloads/devtrack/install.ps1 | iex
 ```
 
 Manual binaries and checksums are available on [GitHub Releases](https://github.com/sraj0501/Devtrack_/releases/latest).
@@ -90,7 +90,7 @@ Boardroom reviews, planning, and voice personalization. External mode does not s
 server reachable, commit capture, deterministic ticket mapping, local history, queue, and MCP still
 work; generated reports and other server-backed features are unavailable. Model failures on a
 reachable server fall back to raw or templated wording. External mode skips automatic first-run
-voice mining. See the [LLM guide](devtrack_wiki/wiki/docs/LLM_GUIDE.md).
+voice mining. See the [LLM guide](https://mogrov.com/wiki/devtrack/docs/LLM_GUIDE.md).
 
 ### 3. Try the workflow
 
@@ -106,7 +106,7 @@ devtrack eod
 ```
 
 `queue` lets you inspect staged actions before approving anything. See the
-[Quick Start](https://devtrack.cloud/wiki.html#QUICK_START) for the complete first-run walkthrough.
+[Quick Start](https://mogrov.com/wiki/devtrack/#QUICK_START) for the complete first-run walkthrough.
 
 In the development line, capture enumerates unseen commits across local branch tips, so rapid
 commits and switching branches during processing are included. Keep the daemon running: existing
@@ -152,22 +152,22 @@ devtrack sage search "docker compose"
 devtrack sage topics
 ```
 
-Learn more in [MCP and Agent Memory](https://devtrack.cloud/wiki.html#MCP_CLAUDE_CODE) and
-[DevTrack Sage](https://devtrack.cloud/wiki.html#SAGE).
+Learn more in [MCP and Agent Memory](https://mogrov.com/wiki/devtrack/#MCP_CLAUDE_CODE) and
+[DevTrack Sage](https://mogrov.com/wiki/devtrack/#SAGE).
 
 ## Where to go next
 
 | I want to… | Guide |
 |---|---|
-| Install or upgrade DevTrack | [Download](https://devtrack.cloud/download.html) |
-| Complete the first-run workflow | [Quick Start](https://devtrack.cloud/wiki.html#QUICK_START) |
-| Understand deployment choices | [Installation](https://devtrack.cloud/wiki.html#INSTALLATION) |
-| Configure repositories, integrations, or models | [Configuration](https://devtrack.cloud/wiki.html#CONFIGURATION) |
-| Find a command | [CLI Reference](https://devtrack.cloud/wiki.html#CLI_REFERENCE) |
-| Connect an AI assistant | [MCP and Agent Memory](https://devtrack.cloud/wiki.html#MCP_CLAUDE_CODE) |
-| Use local command knowledge | [DevTrack Sage](https://devtrack.cloud/wiki.html#SAGE) |
-| Fix an installation or runtime problem | [Troubleshooting](https://devtrack.cloud/wiki.html#TROUBLESHOOTING) |
-| Review privacy and data flow | [Privacy](https://devtrack.cloud/privacy.html) |
+| Install or upgrade DevTrack | [Download](https://mogrov.com/download/devtrack/) |
+| Complete the first-run workflow | [Quick Start](https://mogrov.com/wiki/devtrack/#QUICK_START) |
+| Understand deployment choices | [Installation](https://mogrov.com/wiki/devtrack/#INSTALLATION) |
+| Configure repositories, integrations, or models | [Configuration](https://mogrov.com/wiki/devtrack/#CONFIGURATION) |
+| Find a command | [CLI Reference](https://mogrov.com/wiki/devtrack/#CLI_REFERENCE) |
+| Connect an AI assistant | [MCP and Agent Memory](https://mogrov.com/wiki/devtrack/#MCP_CLAUDE_CODE) |
+| Use local command knowledge | [DevTrack Sage](https://mogrov.com/wiki/devtrack/#SAGE) |
+| Fix an installation or runtime problem | [Troubleshooting](https://mogrov.com/wiki/devtrack/#TROUBLESHOOTING) |
+| Review privacy and data flow | [Privacy](https://mogrov.com/wiki/devtrack/privacy.html) |
 | Qualify automatic capture and reporting | [Basic workflow testing](docs/testing/basic-workflow.md) |
 | Map incidents, stories, bugs, and tasks | [Work-item and ticket mapping](docs/TICKET_MAPPING.md) |
 | Review the v3.3.0 development boundary | [Development release notes](docs/releases/v3.3.0.md) |
@@ -180,7 +180,7 @@ Contributors and maintainers can start with the repository [documentation map](d
 The default Go, SQLite, and Ollama path stays local. External PM systems, delivery channels, and
 cloud LLMs receive data only when configured for the corresponding operation. Telemetry remains off
 until explicitly enabled with `devtrack telemetry on`. Read the full
-[privacy guide](https://devtrack.cloud/privacy.html) before enabling external services.
+[privacy guide](https://mogrov.com/wiki/devtrack/privacy.html) before enabling external services.
 
 ## License
 
