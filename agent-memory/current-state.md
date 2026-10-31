@@ -5,8 +5,8 @@ type: project
 ---
 
 **Owner decision (2026-10-30):** DevTrack development and qualification are on hold while the owner
-decides its next direction. The project is not archived. DevTrack's separate project site is retired. Mogrov owns its public wiki, privacy page,
-install scripts, and website assets. The docs are prepared at `mogrov.com/wiki/devtrack/`
+decides its next direction. The project is not archived. DevTrack's standalone landing page is restored in `website/` for independent static deployment. Mogrov owns its public wiki, privacy page,
+install scripts, and the current combined-site asset snapshot. The docs are prepared at `mogrov.com/wiki/devtrack/`
 and the Mogrov download link redirects to the latest GitHub release. Netlify subscription has been cancelled; `mogrov.com` registration stays at Hostinger.
 The combined site is prepared locally in the Mogrov repository; publication and DNS switch remain
 separate actions. Treat the work below as paused context, not an active execution queue.

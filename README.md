@@ -12,11 +12,15 @@ review.
 [![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue)](https://mogrov.com/download/devtrack/)
 [![License](https://img.shields.io/badge/license-Community-green)](TERMS.md)
 
-[Website](https://mogrov.com/#projects) · [Download](https://mogrov.com/download/devtrack/) · [Documentation](https://mogrov.com/wiki/devtrack/) · [Latest release](https://github.com/sraj0501/Devtrack_/releases/latest)
+[Website source](website/) · [Download](https://mogrov.com/download/devtrack/) · [Documentation](https://mogrov.com/wiki/devtrack/) · [Latest release](https://github.com/sraj0501/Devtrack_/releases/latest)
 
 ![DevTrack demo](https://mogrov.com/assets/devtrack/demo.gif)
 
 </div>
+
+## Website deployment
+
+`website/` is a standalone static site. Set the hosting output directory to `website` with no build command. Its Download links go to the latest GitHub release, and all documentation links go to `https://mogrov.com/wiki/devtrack/`. Legacy `wiki.html` and `download.html` redirects are in `website/_redirects` for hosts that support that file. The Mogrov wiki and installer scripts remain maintained in the Mogrov repository.
 
 ## What DevTrack does
 
