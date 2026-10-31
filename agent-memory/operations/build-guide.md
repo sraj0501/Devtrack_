@@ -20,13 +20,12 @@ offline-first: the core loop runs on Ollama + SQLite with no internet required.
 
 ## Codebase Map
 
-Monorepo with three independent codebases sharing one HTTP/JSON boundary:
+Monorepo with two independent codebases sharing one HTTP/JSON boundary:
 
 | Directory | Language | Role |
 |---|---|---|
 | `devtrack_client/` | Go | **CLIENT** — binary, git monitor, scheduler, CLI, PM connectors, DevTrack Sage, alerts, Telegram bot |
 | `devtrack_server/` | Python | **SERVER** — AI pipeline, webhook server, NLP, LLM, admin UI, integrations, personalization |
-| `devtrack_wiki/` | HTML/Markdown | **DOCS** — website (Netlify → devtrack.cloud) |
 | `devtrack-bin/`, root `backend/` | — | **RETIRED** in TASK-048. Deleted; do not recreate. |
 
 - `docs/ARCHITECTURE.md` — system and ownership boundaries.
@@ -76,8 +75,8 @@ to the environment file require a daemon restart.
 ## Architecture
 
 ```
-devtrack_client/ (Go)            devtrack_server/ (Python)         devtrack_wiki/
-        │   HTTPS POST /trigger/* │                                  Netlify
+devtrack_client/ (Go)            devtrack_server/ (Python)
+        │   HTTPS POST /trigger/* │
         │ ───────────────────────▶│
 Git commits / cron / CLI    NLP · LLM · Admin UI · Personalization
 SQLite (offline source)     PostgreSQL server events · PM APIs · MS Graph

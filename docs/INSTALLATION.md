@@ -26,8 +26,9 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 The commands below install the latest stable release, currently v3.2.0. The v3.3.0 changes on
 `dev` (`860b91b`) remove time tracking and fix rapid/branch-switched capture and server report
 visibility. They require a development build containing that commit; rolling versions use
-`dev-<commit>`. A source push does not upgrade an existing installation. Qualify the exact packaged
-build using [basic workflow acceptance](testing/basic-workflow.md) before relying on it for daily work.
+`dev-<commit>`. A source push does not upgrade an existing installation. The packaged `dev-dc39101`
+build passed isolated checks; qualify the installed workflow using
+[basic workflow acceptance](testing/basic-workflow.md) before relying on it for daily work.
 
 **Linux / macOS (amd64)**:
 ```sh

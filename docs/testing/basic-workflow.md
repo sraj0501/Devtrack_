@@ -9,22 +9,13 @@ packages use `dev-<commit>`; the installed host has not been upgraded. The
 `dev-dc39101` Linux/PostgreSQL regression and isolated Windows no-send checkpoint. The remaining
 gates below qualify the installed daily workflow.
 
-## 1. Qualify the packaged development build
+## Completed checkpoint: packaged development build
 
-- Wait for the client/server CI and rolling development release for the pushed commit to pass.
-- Download that build, verify its checksum and reported commit, and pair it with the matching
-  server source. Record OS, version, commit, timezone, and configuration without secrets.
-- Run the isolated Linux container scenarios with PostgreSQL using the packaged binary rather
-  than the source-built binary: rapid commits, branch switches, server outage/recovery, restart,
-  on-demand EOD, scheduled EOD, queue edit/reject, and colliding local/server action IDs.
-- Compare expected commit hashes against persisted records: every hash exactly once, correct
-  ticket or explicitly unlinked, and every expected work item represented in the report.
-- Confirm retired time commands reject requests, new reports contain no duration metrics, and
-  historical duration tables receive no new records or synchronization.
-- Test `work start <ticket>`, `work status`, and `work stop` as supported ticket-context commands;
-  `work adjust` is the retired duration command. Do not treat selecting a ticket as a timer.
+The packaged `dev-dc39101` Linux/PostgreSQL container gate and isolated Windows no-send gate passed.
+The [acceptance record](basic-workflow-source-acceptance.md) contains the artifact versions, hashes,
+configuration boundary, and scenario results. Repeat this gate only for a different build.
 
-## 2. Run a native Windows rehearsal
+## 1. Run a native Windows rehearsal
 
 - Preserve the current executable, configuration, and local database for rollback. Upgrade the
   test installation to the qualified development build and verify the actual running version.
@@ -54,7 +45,7 @@ gates below qualify the installed daily workflow.
 - Exercise the configured scheduled EOD across the local date boundary. Verify the intended
   reporting date, commit coverage, and absence of duplicate scheduled actions.
 
-## 3. Check real delivery with a controlled destination
+## 2. Check real delivery with a controlled destination
 
 - Configure one designated test ticket/project and one test email recipient, using local secrets.
 - Generate one ticket update and one EOD delivery action. Inspect destinations and content in
@@ -64,7 +55,7 @@ gates below qualify the installed daily workflow.
 - Check AI-written report accuracy with the intended LLM provider; retain the unavailable-model
   fallback check as well.
 
-## 4. Complete one representative workday
+## 3. Complete one representative workday
 
 Run the qualified installation during normal Git work. Keep a simple expected commit/ticket list
 and compare it with the scheduled EOD. Record missing or duplicate work, wrong ticket links,

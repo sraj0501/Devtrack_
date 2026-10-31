@@ -4,6 +4,13 @@ description: Active implementation work, integration state, and unresolved relea
 type: project
 ---
 
+**Owner decision (2026-10-30):** DevTrack development and qualification are on hold while the owner
+decides its next direction. The project is not archived. Mogrov owns the DevTrack landing page at `/devtrack/`, public wiki, privacy page,
+installer scripts, and website assets. This repository does not contain a separate deployable website. The docs are prepared at `mogrov.com/wiki/devtrack/`
+and the Mogrov download link redirects to the latest GitHub release. Netlify subscription has been cancelled; `mogrov.com` registration stays at Hostinger.
+The combined site is prepared locally in the Mogrov repository; publication and DNS switch remain
+separate actions. Treat the work below as paused context, not an active execution queue.
+
 **Immediate user priority (2026-10-21):** qualify basic Git capture and EOD reports for an upcoming
 real use case before testing Sage. The owner explicitly removed time tracking as micromanagement;
 work durations, sessions, corrections, and time metrics are no longer product requirements.
@@ -36,7 +43,7 @@ the official MCP Registry record for `io.github.sraj0501/devtrack` are published
 branch predates canonical-memory migration and needs a separate drift/UI-acceptance pass.
 It does not block qualification of the existing basic Git/report workflow.
 
-**Active distribution follow-ups:** qualify the packaged build rather than a source checkout,
+**Active distribution follow-ups:** qualify the native installed workflow and controlled delivery,
 capture privacy-reviewed media from real behavior, and record the exact Glama path before updating
 the score badge. Third-party directory forms remain owner-account actions.
 

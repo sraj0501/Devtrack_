@@ -8,13 +8,12 @@ Complete overview of DevTrack's system design, components, and data flow.
 
 ---
 
-## Three-Codebase Structure
+## Two-Codebase Structure
 
 | Directory | Language | Role |
 |---|---|---|
 | `devtrack_client/` | Go | Binary, git monitor, scheduler, CLI, PM connectors, DevTrack Sage — canonical Go source |
 | `devtrack_server/` | Python | AI pipeline, webhook server, admin UI — canonical Python source |
-| `devtrack_wiki/` | HTML/Markdown | Website (Netlify → devtrack.cloud) |
 
 Client and server share no compiled artefact. Their interface is authenticated HTTP/JSON; the
 primary event family is `/trigger/*`, with documented health, report, voice, queue, auth, and
@@ -87,7 +86,7 @@ stateful background worker that prepares the Python server and optional local mo
 
 ### Binary Releases
 
-The Go binary (~5 MB, no Python) is published to **GitHub Releases** (`github.com/sraj0501/Devtrack_`) on every tagged release via the automated pipeline (`release.yml`). `devtrack upgrade` fetches from GitHub automatically. Users set up the Python backend separately — see [devtrack.cloud](https://devtrack.cloud).
+The Go binary (~5 MB, no Python) is published to **GitHub Releases** (`github.com/sraj0501/Devtrack_`) on every tagged release via the automated pipeline (`release.yml`). `devtrack upgrade` fetches from GitHub automatically. Users set up the Python backend separately — see [DevTrack website](https://mogrov.com/wiki/devtrack/).
 
 ---
 
@@ -868,8 +867,8 @@ Current priority is the Git capture and EOD qualification sequence in
 until these basics pass; Sage remains the local cross-harness command-knowledge product described
 in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md). The existing
 legacy repository-chat and autonomous-Git Sage commands have been removed; independently useful Git
-helpers remain under `devtrack git`. Packaged-build acceptance and privacy-reviewed media remain
-release follow-ups tracked in
+helpers remain under `devtrack git`. The packaged development build passed isolated checks; native
+installed acceptance, controlled delivery, and privacy-reviewed media remain follow-ups tracked in
 [`docs/END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md).
 
 > **Not planned, ever:** NATS/Redis/external message queues, Kubernetes, or multi-tenancy.
@@ -899,5 +898,5 @@ release follow-ups tracked in
 ## Next Steps
 
 - **For development**: See [CLAUDE.md](../CLAUDE.md)
-- **Setup, configuration, and troubleshooting**: see [devtrack.cloud](https://devtrack.cloud)
+- **Setup, configuration, and troubleshooting**: see [DevTrack website](https://mogrov.com/wiki/devtrack/)
 - **Client↔server boundary & env config**: this document and the project `CLAUDE.md`

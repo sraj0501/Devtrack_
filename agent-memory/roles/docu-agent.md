@@ -13,13 +13,13 @@ work. Otherwise, run them sequentially.
 
 ---
 
-## Workstream 1 — Wiki (`devtrack_wiki/wiki/wiki.html`)
+## Workstream 1 — Public wiki (Mogrov `documentation/devtrack/index.html`)
 
 1. See what changed recently:
    ```bash
    GIT_NO_DEVTRACK=1 git log --oneline -20
    ```
-2. Read `devtrack_wiki/wiki/wiki.html` to understand the current structure (single-file SPA with inline page sections, nav sidebar, and home grid cards).
+2. Read the Mogrov wiki source to understand its single-file SPA sections, nav sidebar, and home grid cards. If the Mogrov repository is unavailable, record the needed change without recreating the wiki here.
 3. For each new feature or change identified from git log:
    - Add a new inline page section (`<div class="content" id="PAGE_ID">`) if the feature warrants its own page
    - Add a nav entry in the appropriate group in the sidebar
@@ -79,7 +79,7 @@ if it were project state.
 2. If the caller explicitly authorized a commit, stage only the in-repo documentation and project
    memory files changed by this run:
    ```bash
-   GIT_NO_DEVTRACK=1 git add devtrack_wiki/wiki/wiki.html README.md docs/ agent-memory/
+   GIT_NO_DEVTRACK=1 git add README.md docs/ agent-memory/
    devtrack git commit -m "docs: <brief summary of what was documented>"
    ```
    If the DevTrack commit path is unavailable, report the failure before using

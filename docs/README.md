@@ -23,13 +23,15 @@ records. Use this map before treating a document as current implementation guida
 | Sage end-to-end acceptance qualification | [`SAGE_END_TO_END_ACCEPTANCE.md`](SAGE_END_TO_END_ACCEPTANCE.md) |
 | Sage event and harness contracts | [`SAGE_EVENT_CONTRACT_V1.md`](SAGE_EVENT_CONTRACT_V1.md), [`SAGE_HARNESS_EVALUATION.md`](SAGE_HARNESS_EVALUATION.md), and [`SAGE_HARNESS_PLUGIN_CONTRACT.md`](SAGE_HARNESS_PLUGIN_CONTRACT.md) |
 | Release-facing MCP listing copy | [`REGISTRY_SUBMISSION_PACKAGE.md`](REGISTRY_SUBMISSION_PACKAGE.md) |
-| Public user documentation | [`../devtrack_wiki/wiki/wiki.html`](../devtrack_wiki/wiki/wiki.html) and [`../devtrack_wiki/wiki/docs/`](../devtrack_wiki/wiki/docs/) |
+| Public user documentation | [Mogrov DevTrack wiki](https://mogrov.com/wiki/devtrack/) and [Markdown guides](https://mogrov.com/wiki/devtrack/docs/INDEX.md) |
 
 Stable v3.2.0 includes the earlier Sage roadmap, ticket mapping, former time inference, rolling
 update channels, and the TASK-158 silent-Git correction. Its notes describe that historical release.
 The v3.3.0 development line removes time tracking and fixes burst/branch capture and server report
 visibility. Source fixes are on `dev` at `860b91b`; installed binaries and stable publication are
-separate. Qualify the packaged development build using the basic-workflow plan before daily use.
+separate. The packaged `dev-dc39101` build passed isolated container and Windows no-send checks.
+Use the basic-workflow plan to qualify the native installation, controlled delivery, and a
+representative workday before relying on it for daily use.
 
 ## Historical records
 
@@ -40,7 +42,7 @@ separate. Qualify the packaged development build using the basic-workflow plan b
 - [`releases/`](releases/) contains immutable release notes for the named versions.
 - Dated validation evidence in [`END_TO_END_VALIDATION.md`](END_TO_END_VALIDATION.md) and
   [`WINDOWS_ADMIN_ACCEPTANCE.md`](WINDOWS_ADMIN_ACCEPTANCE.md) should not be interpreted as a claim
-  that later packaged-build or media gates are complete.
+  that native installed workflow, controlled delivery, or media gates are complete.
 - [`TASK_159_QUALIFICATION.md`](TASK_159_QUALIFICATION.md) records tests of the former time-tracking
   feature; its commands, test names, and integration gates are historical, not current requirements.
 - [`testing/basic-workflow-source-acceptance.md`](testing/basic-workflow-source-acceptance.md)

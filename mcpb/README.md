@@ -20,4 +20,4 @@ local deterministic Markdown knowledge directory. It does not expose raw capture
 prompts, output, reasoning, or adapter configuration paths. Its MCP tools do not contact the
 optional Python server or any hosted MCP endpoint. The DevTrack privacy policy explains local
 storage, optional integrations, sharing, retention, deletion, and how to report a privacy or
-security concern: https://devtrack.cloud/privacy.html
+security concern: https://mogrov.com/wiki/devtrack/privacy.html

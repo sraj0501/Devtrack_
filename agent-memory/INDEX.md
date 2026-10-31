@@ -1,8 +1,10 @@
 # DevTrack Shared Agent Memory
 
-_Last updated: 2026-10-22_ | active work only | GitHub is canonical
+_Last updated: 2026-10-30_ | active work only | GitHub is canonical
 
 DevTrack is an offline-first silent Go daemon with an optional Python AI/server layer.
+Development and qualification are paused by owner decision (2026-10-30), without archiving the
+project. The prepared combined Mogrov site is documented in [current-state.md](current-state.md).
 
 ## Read first
 
@@ -24,7 +26,7 @@ DevTrack is an offline-first silent Go daemon with an optional Python AI/server 
 
 ## Unresolved release follow-ups
 
-- Qualify the packaged build rather than a source checkout.
+- Qualify the native installed workflow with a live server, controlled delivery, and a representative workday.
 - Capture and approve privacy-reviewed media from real behavior.
 - Record the exact Glama listing path and update the score badge on awesome-mcp-servers PR #13608; do not guess the normalized slug.
 

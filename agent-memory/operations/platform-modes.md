@@ -9,6 +9,9 @@ The documented configuration values are `managed`, `lightweight`, and `external`
 - Centralize mode checks through `GetServerMode()` and `IsExternalServer()` in `internal/config/server_config.go`; do not duplicate direct `DEVTRACK_SERVER_MODE` parsing.
 - `requiresManagedMode()` only errors for external/lightweight mode when `GetServerURL()` is empty. `GetServerURL()` falls back to loopback, so do not claim every Python-dependent command is categorically blocked without changing and testing the implementation.
 - PM connectors, Sage capture and command-knowledge processing, alerts, local SQLite, queueing, scheduling, and MCP are Go-native. Managed mode spawns the Python server; external/lightweight mode does not.
+- In external/lightweight mode with no `DEVTRACK_SERVER_URL`, `GetServerURL()` still tries the loopback
+  default. An unavailable server degrades server-backed commands; the mode alone does not disable
+  those calls. External mode also skips automatic first-run voice mining.
 - On Windows, an isolated full-capability evaluation can use a hybrid external-mode layout: run
   PostgreSQL and the Python server in Docker, but keep the Go client native for host filesystem
   notifications, Git hooks, login-time autostart, and IPC. A Linux server container cannot resolve
